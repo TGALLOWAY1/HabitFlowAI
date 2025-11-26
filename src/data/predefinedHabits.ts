@@ -1,8 +1,8 @@
 import type { Habit, Category } from '../types';
 
 export const PREDEFINED_CATEGORIES: Omit<Category, 'id'>[] = [
-    { name: 'Physical & Energy', color: 'bg-emerald-500' },
-    { name: 'Mind & Emotional', color: 'bg-violet-500' },
+    { name: 'Physical Health', color: 'bg-emerald-500' },
+    { name: 'Mental Health', color: 'bg-violet-500' },
     { name: 'Relationships', color: 'bg-rose-500' },
     { name: 'Dog / Home', color: 'bg-amber-500' },
     { name: 'Creativity & Skill', color: 'bg-blue-500' },
@@ -12,28 +12,28 @@ export const PREDEFINED_CATEGORIES: Omit<Category, 'id'>[] = [
 ];
 
 export const PREDEFINED_HABITS: { categoryName: string; habit: Omit<Habit, 'id' | 'categoryId' | 'createdAt'> }[] = [
-    // Physical & Energy
-    { categoryName: 'Physical & Energy', habit: { name: 'Protein Target', goal: { type: 'number', target: 170, unit: 'g', frequency: 'daily' }, archived: false } },
-    { categoryName: 'Physical & Energy', habit: { name: 'Eat Prepped Meals', goal: { type: 'number', target: 3, unit: 'meals', frequency: 'daily' }, archived: false } },
-    { categoryName: 'Physical & Energy', habit: { name: '10k Steps', goal: { type: 'number', target: 10000, unit: 'steps', frequency: 'daily' }, archived: false } },
-    { categoryName: 'Physical & Energy', habit: { name: 'Deep Breathing', goal: { type: 'boolean', frequency: 'daily' }, archived: false } },
-    { categoryName: 'Physical & Energy', habit: { name: 'Hip Mobility / Rehab', goal: { type: 'boolean', frequency: 'daily' }, archived: false } },
-    { categoryName: 'Physical & Energy', habit: { name: 'No Caffeine after 1PM', goal: { type: 'boolean', frequency: 'daily' }, archived: false } },
-    { categoryName: 'Physical & Energy', habit: { name: 'Supplements', goal: { type: 'boolean', frequency: 'daily' }, archived: false } },
-    { categoryName: 'Physical & Energy', habit: { name: 'Sleep Hygiene (Eve)', goal: { type: 'boolean', frequency: 'daily' }, archived: false } },
-    { categoryName: 'Physical & Energy', habit: { name: 'Sleep Hygiene (Morn)', goal: { type: 'boolean', frequency: 'daily' }, archived: false } },
-    { categoryName: 'Physical & Energy', habit: { name: 'Wake up at 7AM', goal: { type: 'boolean', frequency: 'daily' }, archived: false } },
-    { categoryName: 'Physical & Energy', habit: { name: 'Lights out < 12AM', goal: { type: 'boolean', frequency: 'daily' }, archived: false } },
-    { categoryName: 'Physical & Energy', habit: { name: 'Hydration', goal: { type: 'number', target: 3, unit: 'L', frequency: 'daily' }, archived: false } },
-    { categoryName: 'Physical & Energy', habit: { name: 'Morning Sunlight', goal: { type: 'boolean', frequency: 'daily' }, archived: false } },
+    // Physical Health
+    { categoryName: 'Physical Health', habit: { name: 'Protein Target', goal: { type: 'number', target: 170, unit: 'g', frequency: 'daily' }, archived: false } },
+    { categoryName: 'Physical Health', habit: { name: 'Eat Prepped Meals', goal: { type: 'number', target: 3, unit: 'meals', frequency: 'daily' }, archived: false } },
+    { categoryName: 'Physical Health', habit: { name: '10k Steps', goal: { type: 'number', target: 10000, unit: 'steps', frequency: 'daily' }, archived: false } },
+    { categoryName: 'Physical Health', habit: { name: 'Deep Breathing', goal: { type: 'boolean', frequency: 'daily' }, archived: false } },
+    { categoryName: 'Physical Health', habit: { name: 'Hip Mobility / Rehab', goal: { type: 'boolean', frequency: 'daily' }, archived: false } },
+    { categoryName: 'Physical Health', habit: { name: 'No Caffeine after 1PM', goal: { type: 'boolean', frequency: 'daily' }, archived: false } },
+    { categoryName: 'Physical Health', habit: { name: 'Supplements', goal: { type: 'boolean', frequency: 'daily' }, archived: false } },
+    { categoryName: 'Physical Health', habit: { name: 'Sleep Hygiene (Eve)', goal: { type: 'boolean', frequency: 'daily' }, archived: false } },
+    { categoryName: 'Physical Health', habit: { name: 'Sleep Hygiene (Morn)', goal: { type: 'boolean', frequency: 'daily' }, archived: false } },
+    { categoryName: 'Physical Health', habit: { name: 'Wake up at 7AM', goal: { type: 'boolean', frequency: 'daily' }, archived: false } },
+    { categoryName: 'Physical Health', habit: { name: 'Lights out < 12AM', goal: { type: 'boolean', frequency: 'daily' }, archived: false } },
+    { categoryName: 'Physical Health', habit: { name: 'Hydration', goal: { type: 'number', target: 3, unit: 'L', frequency: 'daily' }, archived: false } },
+    { categoryName: 'Physical Health', habit: { name: 'Morning Sunlight', goal: { type: 'boolean', frequency: 'daily' }, archived: false } },
 
-    // Mind & Emotional
-    { categoryName: 'Mind & Emotional', habit: { name: 'Self-support Affirmation', goal: { type: 'boolean', frequency: 'daily' }, archived: false } },
-    { categoryName: 'Mind & Emotional', habit: { name: 'Reframe Negative Thought', goal: { type: 'boolean', frequency: 'daily' }, archived: false } },
-    { categoryName: 'Mind & Emotional', habit: { name: 'Log "Tiny Victory"', goal: { type: 'boolean', frequency: 'daily' }, archived: false } },
-    { categoryName: 'Mind & Emotional', habit: { name: 'Morning Intention', goal: { type: 'boolean', frequency: 'daily' }, archived: false } },
-    { categoryName: 'Mind & Emotional', habit: { name: 'Anxiety Level', goal: { type: 'number', target: 5, unit: 'level', frequency: 'daily' }, archived: false } },
-    { categoryName: 'Mind & Emotional', habit: { name: 'Depression Level', goal: { type: 'number', target: 5, unit: 'level', frequency: 'daily' }, archived: false } },
+    // Mental Health
+    { categoryName: 'Mental Health', habit: { name: 'Self-support Affirmation', goal: { type: 'boolean', frequency: 'daily' }, archived: false } },
+    { categoryName: 'Mental Health', habit: { name: 'Reframe Negative Thought', goal: { type: 'boolean', frequency: 'daily' }, archived: false } },
+    { categoryName: 'Mental Health', habit: { name: 'Log "Tiny Victory"', goal: { type: 'boolean', frequency: 'daily' }, archived: false } },
+    { categoryName: 'Mental Health', habit: { name: 'Morning Intention', goal: { type: 'boolean', frequency: 'daily' }, archived: false } },
+    { categoryName: 'Mental Health', habit: { name: 'Anxiety Level', goal: { type: 'number', target: 5, unit: 'level', frequency: 'daily' }, archived: false } },
+    { categoryName: 'Mental Health', habit: { name: 'Depression Level', goal: { type: 'number', target: 5, unit: 'level', frequency: 'daily' }, archived: false } },
 
     // Relationships
     { categoryName: 'Relationships', habit: { name: 'Kindness for Juba', goal: { type: 'boolean', frequency: 'daily' }, archived: false } },
@@ -53,17 +53,17 @@ export const PREDEFINED_HABITS: { categoryName: string; habit: Omit<Habit, 'id' 
     { categoryName: 'Music', habit: { name: 'Record Music Content', goal: { type: 'number', target: 2, unit: 'sessions', frequency: 'weekly' }, archived: false } },
 
     // Weekly Habits (Physical)
-    { categoryName: 'Physical & Energy', habit: { name: 'Gym', goal: { type: 'number', target: 3, unit: 'sessions', frequency: 'weekly' }, archived: false } },
-    { categoryName: 'Physical & Energy', habit: { name: 'Run', goal: { type: 'number', target: 3, unit: 'sessions', frequency: 'weekly' }, archived: false } },
-    { categoryName: 'Physical & Energy', habit: { name: 'Yoga Session', goal: { type: 'boolean', frequency: 'weekly' }, archived: false } },
-    { categoryName: 'Physical & Energy', habit: { name: 'Long Run', goal: { type: 'boolean', frequency: 'weekly' }, archived: false } },
-    { categoryName: 'Physical & Energy', habit: { name: 'Kickboxing Class', goal: { type: 'boolean', frequency: 'weekly' }, archived: false } },
-    { categoryName: 'Physical & Energy', habit: { name: 'Climbing + Weights', goal: { type: 'boolean', frequency: 'weekly' }, archived: false } },
-    { categoryName: 'Physical & Energy', habit: { name: 'Meal Prep', goal: { type: 'boolean', frequency: 'weekly' }, archived: false } },
+    { categoryName: 'Physical Health', habit: { name: 'Gym', goal: { type: 'number', target: 3, unit: 'sessions', frequency: 'weekly' }, archived: false } },
+    { categoryName: 'Physical Health', habit: { name: 'Run', goal: { type: 'number', target: 3, unit: 'sessions', frequency: 'weekly' }, archived: false } },
+    { categoryName: 'Physical Health', habit: { name: 'Yoga Session', goal: { type: 'boolean', frequency: 'weekly' }, archived: false } },
+    { categoryName: 'Physical Health', habit: { name: 'Long Run', goal: { type: 'boolean', frequency: 'weekly' }, archived: false } },
+    { categoryName: 'Physical Health', habit: { name: 'Kickboxing Class', goal: { type: 'boolean', frequency: 'weekly' }, archived: false } },
+    { categoryName: 'Physical Health', habit: { name: 'Climbing + Weights', goal: { type: 'boolean', frequency: 'weekly' }, archived: false } },
+    { categoryName: 'Physical Health', habit: { name: 'Meal Prep', goal: { type: 'boolean', frequency: 'weekly' }, archived: false } },
 
-    // Weekly Habits (Mind & Emotional)
-    { categoryName: 'Mind & Emotional', habit: { name: 'Spontaneity / Journaling', goal: { type: 'boolean', frequency: 'weekly' }, archived: false } },
-    { categoryName: 'Mind & Emotional', habit: { name: 'Weekly Reflection', goal: { type: 'boolean', frequency: 'weekly' }, archived: false } },
+    // Weekly Habits (Mental Health)
+    { categoryName: 'Mental Health', habit: { name: 'Spontaneity / Journaling', goal: { type: 'boolean', frequency: 'weekly' }, archived: false } },
+    { categoryName: 'Mental Health', habit: { name: 'Weekly Reflection', goal: { type: 'boolean', frequency: 'weekly' }, archived: false } },
 
     // Weekly Habits (Relationships)
     { categoryName: 'Relationships', habit: { name: 'Date / Quality Time', goal: { type: 'boolean', frequency: 'weekly' }, archived: false } },

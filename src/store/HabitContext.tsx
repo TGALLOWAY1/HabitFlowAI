@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import type { Category, Habit, DayLog } from '../types';
+import type { Category, Habit, DayLog, DailyWellbeing } from '../types';
 
 interface HabitContextType {
     categories: Category[];
@@ -16,6 +16,8 @@ interface HabitContextType {
         habitsData: { categoryName: string; habit: Omit<Habit, 'id' | 'categoryId' | 'createdAt' | 'archived'> }[]
     ) => void;
     reorderCategories: (newOrder: Category[]) => void;
+    wellbeingLogs: Record<string, DailyWellbeing>;
+    logWellbeing: (date: string, data: DailyWellbeing) => void;
 }
 
 const HabitContext = createContext<HabitContextType | undefined>(undefined);
@@ -30,9 +32,14 @@ export const useHabitStore = () => {
 
 // Initial Data for Demo
 const INITIAL_CATEGORIES: Category[] = [
-    { id: '1', name: 'Health', color: 'bg-emerald-500' },
-    { id: '2', name: 'Productivity', color: 'bg-blue-500' },
-    { id: '3', name: 'Mindfulness', color: 'bg-purple-500' },
+    { id: '1', name: 'Physical Health', color: 'bg-emerald-500' },
+    { id: '2', name: 'Mental Health', color: 'bg-violet-500' },
+    { id: '3', name: 'Relationships', color: 'bg-rose-500' },
+    { id: '4', name: 'Dog / Home', color: 'bg-amber-500' },
+    { id: '5', name: 'Creativity & Skill', color: 'bg-blue-500' },
+    { id: '6', name: 'Music', color: 'bg-fuchsia-500' },
+    { id: '7', name: 'Career & Growth', color: 'bg-cyan-500' },
+    { id: '8', name: 'Financial', color: 'bg-green-500' },
 ];
 
 const INITIAL_HABITS: Habit[] = [
@@ -198,11 +205,37 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         setCategories(newOrder);
     };
 
+    const [wellbeingLogs, setWellbeingLogs] = useState<Record<string, DailyWellbeing>>(() => {
+        const saved = localStorage.getItem('wellbeingLogs');
+        return saved ? JSON.parse(saved) : {};
+    });
+
+    useEffect(() => {
+        localStorage.setItem('wellbeingLogs', JSON.stringify(wellbeingLogs));
+    }, [wellbeingLogs]);
+
+    const logWellbeing = (date: string, data: DailyWellbeing) => {
+        setWellbeingLogs(prev => {
+            const existing = prev[date] || { date };
+            return {
+                ...prev,
+                [date]: {
+                    ...existing,
+                    ...data,
+                    // Deep merge morning/evening if provided, preserving the other if not
+                    morning: data.morning ? { ...existing.morning, ...data.morning } : existing.morning,
+                    evening: data.evening ? { ...existing.evening, ...data.evening } : existing.evening,
+                }
+            };
+        });
+    };
+
     return (
         <HabitContext.Provider value={{
             categories,
             habits,
             logs,
+            wellbeingLogs,
             addCategory,
             addHabit,
             toggleHabit,
@@ -211,6 +244,7 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             deleteCategory,
             importHabits,
             reorderCategories,
+            logWellbeing,
         }}>
             {children}
         </HabitContext.Provider>

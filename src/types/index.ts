@@ -4,6 +4,26 @@ export interface Category {
     color: string; // Hex code or Tailwind color class
 }
 
+export interface WellbeingSession {
+    depression: number; // 1-5
+    anxiety: number; // 1-5
+    energy: number; // 1-5
+    sleepScore: number; // 0-100
+    notes?: string;
+}
+
+export interface DailyWellbeing {
+    date: string;
+    morning?: WellbeingSession;
+    evening?: WellbeingSession;
+    // Legacy fields for backward compatibility (optional)
+    depression?: number;
+    anxiety?: number;
+    energy?: number;
+    sleepScore?: number;
+    notes?: string;
+}
+
 export interface Goal {
     type: 'boolean' | 'number';
     target?: number; // e.g., 8 (hours), 2000 (calories)
