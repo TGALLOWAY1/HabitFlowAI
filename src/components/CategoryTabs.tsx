@@ -1,0 +1,219 @@
+import React from 'react';
+import { useHabitStore } from '../store/HabitContext';
+import type { Category } from '../types';
+import { Plus, Download, X } from 'lucide-react';
+import { PREDEFINED_CATEGORIES, PREDEFINED_HABITS } from '../data/predefinedHabits';
+import {
+    DndContext,
+    closestCenter,
+    KeyboardSensor,
+    PointerSensor,
+    useSensor,
+    useSensors,
+    type DragEndEvent,
+} from '@dnd-kit/core';
+import {
+    arrayMove,
+    SortableContext,
+    sortableKeyboardCoordinates,
+    useSortable,
+    horizontalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+
+interface CategoryTabsProps {
+    categories: Category[];
+    activeCategoryId: string;
+    onSelectCategory: (id: string) => void;
+}
+
+interface SortableCategoryPillProps {
+    category: Category;
+    isActive: boolean;
+    onSelect: () => void;
+    onDelete: (e: React.MouseEvent) => void;
+    deleteConfirmId: string | null;
+}
+
+const SortableCategoryPill: React.FC<SortableCategoryPillProps> = ({
+    category,
+    isActive,
+    onSelect,
+    onDelete,
+    deleteConfirmId,
+}) => {
+    const {
+        attributes,
+        listeners,
+        setNodeRef,
+        transform,
+        transition,
+        isDragging,
+    } = useSortable({ id: category.id });
+
+    const style = {
+        transform: CSS.Transform.toString(transform),
+        transition,
+        zIndex: isDragging ? 50 : 'auto',
+    };
+
+    return (
+        <div
+            ref={setNodeRef}
+            style={style}
+            {...attributes}
+            {...listeners}
+            className="relative group touch-none"
+        >
+            <button
+                onClick={onSelect}
+                className={`
+          px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all select-none
+          ${isActive
+                        ? `${category.color} text-white shadow-lg shadow-white/10 pr-8`
+                        : 'bg-neutral-800 text-neutral-400 hover:bg-neutral-700 hover:text-white'
+                    }
+        `}
+            >
+                {category.name}
+            </button>
+
+            {isActive && (
+                <button
+                    onClick={onDelete}
+                    className={`absolute right-1 top-1/2 -translate-y-1/2 p-1.5 rounded-full transition-colors z-10 ${deleteConfirmId === category.id
+                        ? 'bg-red-500 text-white hover:bg-red-600 shadow-sm'
+                        : 'hover:bg-black/20 text-white/70 hover:text-white'
+                        }`}
+                    title={deleteConfirmId === category.id ? "Click again to confirm delete" : "Delete Category"}
+                    onPointerDown={(e) => e.stopPropagation()} // Prevent drag start on delete button
+                >
+                    <X size={14} />
+                </button>
+            )}
+        </div>
+    );
+};
+
+export const CategoryTabs: React.FC<CategoryTabsProps> = ({
+    categories,
+    activeCategoryId,
+    onSelectCategory,
+}) => {
+    const { addCategory, importHabits, deleteCategory, reorderCategories } = useHabitStore();
+    const [isAdding, setIsAdding] = React.useState(false);
+    const [newCategoryName, setNewCategoryName] = React.useState('');
+    const [deleteConfirmId, setDeleteConfirmId] = React.useState<string | null>(null);
+    const [importStatus, setImportStatus] = React.useState<'idle' | 'success'>('idle');
+
+    const sensors = useSensors(
+        useSensor(PointerSensor, {
+            activationConstraint: {
+                distance: 8, // Require 8px movement before drag starts to allow clicking
+            },
+        }),
+        useSensor(KeyboardSensor, {
+            coordinateGetter: sortableKeyboardCoordinates,
+        })
+    );
+
+    const handleDragEnd = (event: DragEndEvent) => {
+        const { active, over } = event;
+
+        if (over && active.id !== over.id) {
+            const oldIndex = categories.findIndex((c) => c.id === active.id);
+            const newIndex = categories.findIndex((c) => c.id === over.id);
+            reorderCategories(arrayMove(categories, oldIndex, newIndex));
+        }
+    };
+
+    const handleImport = () => {
+        importHabits(PREDEFINED_CATEGORIES, PREDEFINED_HABITS);
+        setImportStatus('success');
+        setTimeout(() => setImportStatus('idle'), 3000);
+    };
+
+    const handleAddCategory = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (newCategoryName.trim()) {
+            addCategory({ name: newCategoryName.trim(), color: 'bg-neutral-600' });
+            setNewCategoryName('');
+            setIsAdding(false);
+        }
+    };
+
+    return (
+        <div className="flex items-center gap-2 overflow-x-auto pb-2 no-scrollbar">
+            <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleDragEnd}
+            >
+                <SortableContext
+                    items={categories.map(c => c.id)}
+                    strategy={horizontalListSortingStrategy}
+                >
+                    {categories.map((category) => (
+                        <SortableCategoryPill
+                            key={category.id}
+                            category={category}
+                            isActive={activeCategoryId === category.id}
+                            onSelect={() => onSelectCategory(category.id)}
+                            deleteConfirmId={deleteConfirmId}
+                            onDelete={(e) => {
+                                e.stopPropagation();
+                                if (deleteConfirmId === category.id) {
+                                    deleteCategory(category.id);
+                                    const remaining = categories.filter(c => c.id !== category.id);
+                                    if (remaining.length > 0) onSelectCategory(remaining[0].id);
+                                    setDeleteConfirmId(null);
+                                } else {
+                                    setDeleteConfirmId(category.id);
+                                    setTimeout(() => setDeleteConfirmId(null), 3000);
+                                }
+                            }}
+                        />
+                    ))}
+                </SortableContext>
+            </DndContext>
+
+            {isAdding ? (
+                <form onSubmit={handleAddCategory} className="flex items-center gap-1">
+                    <input
+                        autoFocus
+                        type="text"
+                        value={newCategoryName}
+                        onChange={(e) => setNewCategoryName(e.target.value)}
+                        placeholder="Category name..."
+                        className="px-3 py-2 rounded-full bg-neutral-800 text-white text-sm border border-neutral-700 focus:border-emerald-500 outline-none w-32"
+                        onBlur={() => !newCategoryName && setIsAdding(false)}
+                    />
+                    <button type="submit" className="p-2 rounded-full bg-emerald-500 text-white hover:bg-emerald-600">
+                        <Plus size={14} />
+                    </button>
+                </form>
+            ) : (
+                <button
+                    onClick={() => setIsAdding(true)}
+                    className="px-3 py-2 rounded-full bg-neutral-800 text-neutral-400 hover:bg-neutral-700 hover:text-white transition-colors"
+                    title="Add Category"
+                >
+                    <Plus size={18} />
+                </button>
+            )}
+
+            <div className="flex items-center gap-2 ml-auto">
+                {importStatus === 'success' && (
+                    <span className="text-xs text-emerald-400 font-medium animate-fade-in">Imported!</span>
+                )}
+                <button
+                    onClick={handleImport}
+                    className="px-3 py-2 rounded-full bg-neutral-800 text-neutral-400 hover:bg-emerald-900/50 hover:text-emerald-400 transition-colors"
+                    title="Import Default Habits"
+                >
+                    <Download size={18} />
+                </button>
+            </div>
+        </div>
+    );
+};
