@@ -19,7 +19,7 @@ const HabitTrackerContent: React.FC = () => {
     <div className="flex flex-col h-full gap-6">
       <div className="flex flex-col gap-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-bold text-white">My Habits</h2>
+          <h2 className="text-2xl font-bold text-white">{view === 'tracker' ? 'Habits' : 'Habit Tracking'}</h2>
           <div className="flex items-center gap-2 bg-neutral-800 rounded-lg p-1">
             <button
               onClick={() => setView('tracker')}
