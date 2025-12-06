@@ -2,12 +2,12 @@
  * Persistence Client
  * 
  * Frontend client for communicating with the MongoDB-backed REST API.
- * Uses feature flag to determine whether to use API or localStorage.
+ * All persistent data is stored in MongoDB via this client.
  */
 
 import type { Category, Habit, DayLog, DailyWellbeing } from '../models/persistenceTypes';
 
-import { USE_MONGO_PERSISTENCE, API_BASE_URL } from './persistenceConfig';
+import { MONGO_ENABLED, API_BASE_URL } from './persistenceConfig';
 
 /**
  * Get the current user ID.
@@ -93,9 +93,9 @@ async function apiRequest<T>(
  * @throws Error if API request fails
  */
 export async function fetchCategories(): Promise<Category[]> {
-  if (!USE_MONGO_PERSISTENCE) {
+  if (!MONGO_ENABLED) {
     throw new Error(
-      'MongoDB persistence is disabled. Set VITE_USE_MONGO_PERSISTENCE=true in .env to enable.'
+      'MongoDB persistence is disabled. Set VITE_USE_MONGO_PERSISTENCE=false in .env to disable (defaults to true).'
     );
   }
 
@@ -113,9 +113,9 @@ export async function fetchCategories(): Promise<Category[]> {
 export async function saveCategory(
   data: Omit<Category, 'id'>
 ): Promise<Category> {
-  if (!USE_MONGO_PERSISTENCE) {
+  if (!MONGO_ENABLED) {
     throw new Error(
-      'MongoDB persistence is disabled. Set VITE_USE_MONGO_PERSISTENCE=true in .env to enable.'
+      'MongoDB persistence is disabled. Set VITE_USE_MONGO_PERSISTENCE=false in .env to disable (defaults to true).'
     );
   }
 
@@ -135,9 +135,9 @@ export async function saveCategory(
  * @throws Error if API request fails
  */
 export async function fetchCategoryById(id: string): Promise<Category | null> {
-  if (!USE_MONGO_PERSISTENCE) {
+  if (!MONGO_ENABLED) {
     throw new Error(
-      'MongoDB persistence is disabled. Set VITE_USE_MONGO_PERSISTENCE=true in .env to enable.'
+      'MongoDB persistence is disabled. Set VITE_USE_MONGO_PERSISTENCE=false in .env to disable (defaults to true).'
     );
   }
 
@@ -164,9 +164,9 @@ export async function updateCategory(
   id: string,
   patch: Partial<Omit<Category, 'id'>>
 ): Promise<Category> {
-  if (!USE_MONGO_PERSISTENCE) {
+  if (!MONGO_ENABLED) {
     throw new Error(
-      'MongoDB persistence is disabled. Set VITE_USE_MONGO_PERSISTENCE=true in .env to enable.'
+      'MongoDB persistence is disabled. Set VITE_USE_MONGO_PERSISTENCE=false in .env to disable (defaults to true).'
     );
   }
 
@@ -186,9 +186,9 @@ export async function updateCategory(
  * @throws Error if API request fails or category not found
  */
 export async function deleteCategory(id: string): Promise<void> {
-  if (!USE_MONGO_PERSISTENCE) {
+  if (!MONGO_ENABLED) {
     throw new Error(
-      'MongoDB persistence is disabled. Set VITE_USE_MONGO_PERSISTENCE=true in .env to enable.'
+      'MongoDB persistence is disabled. Set VITE_USE_MONGO_PERSISTENCE=false in .env to disable (defaults to true).'
     );
   }
 
@@ -205,9 +205,9 @@ export async function deleteCategory(id: string): Promise<void> {
  * @throws Error if API request fails
  */
 export async function reorderCategories(categories: Category[]): Promise<Category[]> {
-  if (!USE_MONGO_PERSISTENCE) {
+  if (!MONGO_ENABLED) {
     throw new Error(
-      'MongoDB persistence is disabled. Set VITE_USE_MONGO_PERSISTENCE=true in .env to enable.'
+      'MongoDB persistence is disabled. Set VITE_USE_MONGO_PERSISTENCE=false in .env to disable (defaults to true).'
     );
   }
 
@@ -231,9 +231,9 @@ export async function reorderCategories(categories: Category[]): Promise<Categor
  * @throws Error if API request fails
  */
 export async function fetchHabits(categoryId?: string): Promise<Habit[]> {
-  if (!USE_MONGO_PERSISTENCE) {
+  if (!MONGO_ENABLED) {
     throw new Error(
-      'MongoDB persistence is disabled. Set VITE_USE_MONGO_PERSISTENCE=true in .env to enable.'
+      'MongoDB persistence is disabled. Set VITE_USE_MONGO_PERSISTENCE=false in .env to disable (defaults to true).'
     );
   }
 
@@ -252,9 +252,9 @@ export async function fetchHabits(categoryId?: string): Promise<Habit[]> {
 export async function saveHabit(
   data: Omit<Habit, 'id' | 'createdAt' | 'archived'>
 ): Promise<Habit> {
-  if (!USE_MONGO_PERSISTENCE) {
+  if (!MONGO_ENABLED) {
     throw new Error(
-      'MongoDB persistence is disabled. Set VITE_USE_MONGO_PERSISTENCE=true in .env to enable.'
+      'MongoDB persistence is disabled. Set VITE_USE_MONGO_PERSISTENCE=false in .env to disable (defaults to true).'
     );
   }
 
@@ -278,9 +278,9 @@ export async function updateHabit(
   id: string,
   patch: Partial<Omit<Habit, 'id' | 'createdAt'>>
 ): Promise<Habit> {
-  if (!USE_MONGO_PERSISTENCE) {
+  if (!MONGO_ENABLED) {
     throw new Error(
-      'MongoDB persistence is disabled. Set VITE_USE_MONGO_PERSISTENCE=true in .env to enable.'
+      'MongoDB persistence is disabled. Set VITE_USE_MONGO_PERSISTENCE=false in .env to disable (defaults to true).'
     );
   }
 
@@ -300,9 +300,9 @@ export async function updateHabit(
  * @throws Error if API request fails or habit not found
  */
 export async function deleteHabit(id: string): Promise<void> {
-  if (!USE_MONGO_PERSISTENCE) {
+  if (!MONGO_ENABLED) {
     throw new Error(
-      'MongoDB persistence is disabled. Set VITE_USE_MONGO_PERSISTENCE=true in .env to enable.'
+      'MongoDB persistence is disabled. Set VITE_USE_MONGO_PERSISTENCE=false in .env to disable (defaults to true).'
     );
   }
 
@@ -323,9 +323,9 @@ export async function deleteHabit(id: string): Promise<void> {
  * @throws Error if API request fails
  */
 export async function fetchDayLogs(habitId?: string): Promise<Record<string, DayLog>> {
-  if (!USE_MONGO_PERSISTENCE) {
+  if (!MONGO_ENABLED) {
     throw new Error(
-      'MongoDB persistence is disabled. Set VITE_USE_MONGO_PERSISTENCE=true in .env to enable.'
+      'MongoDB persistence is disabled. Set VITE_USE_MONGO_PERSISTENCE=false in .env to disable (defaults to true).'
     );
   }
 
@@ -342,9 +342,9 @@ export async function fetchDayLogs(habitId?: string): Promise<Record<string, Day
  * @throws Error if API request fails
  */
 export async function saveDayLog(log: DayLog): Promise<DayLog> {
-  if (!USE_MONGO_PERSISTENCE) {
+  if (!MONGO_ENABLED) {
     throw new Error(
-      'MongoDB persistence is disabled. Set VITE_USE_MONGO_PERSISTENCE=true in .env to enable.'
+      'MongoDB persistence is disabled. Set VITE_USE_MONGO_PERSISTENCE=false in .env to disable (defaults to true).'
     );
   }
 
@@ -365,9 +365,9 @@ export async function saveDayLog(log: DayLog): Promise<DayLog> {
  * @throws Error if API request fails
  */
 export async function deleteDayLog(habitId: string, date: string): Promise<void> {
-  if (!USE_MONGO_PERSISTENCE) {
+  if (!MONGO_ENABLED) {
     throw new Error(
-      'MongoDB persistence is disabled. Set VITE_USE_MONGO_PERSISTENCE=true in .env to enable.'
+      'MongoDB persistence is disabled. Set VITE_USE_MONGO_PERSISTENCE=false in .env to disable (defaults to true).'
     );
   }
 
@@ -387,9 +387,9 @@ export async function deleteDayLog(habitId: string, date: string): Promise<void>
  * @throws Error if API request fails
  */
 export async function fetchWellbeingLogs(): Promise<Record<string, DailyWellbeing>> {
-  if (!USE_MONGO_PERSISTENCE) {
+  if (!MONGO_ENABLED) {
     throw new Error(
-      'MongoDB persistence is disabled. Set VITE_USE_MONGO_PERSISTENCE=true in .env to enable.'
+      'MongoDB persistence is disabled. Set VITE_USE_MONGO_PERSISTENCE=false in .env to disable (defaults to true).'
     );
   }
 
@@ -405,9 +405,9 @@ export async function fetchWellbeingLogs(): Promise<Record<string, DailyWellbein
  * @throws Error if API request fails
  */
 export async function saveWellbeingLog(log: DailyWellbeing): Promise<DailyWellbeing> {
-  if (!USE_MONGO_PERSISTENCE) {
+  if (!MONGO_ENABLED) {
     throw new Error(
-      'MongoDB persistence is disabled. Set VITE_USE_MONGO_PERSISTENCE=true in .env to enable.'
+      'MongoDB persistence is disabled. Set VITE_USE_MONGO_PERSISTENCE=false in .env to disable (defaults to true).'
     );
   }
 

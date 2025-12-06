@@ -16,11 +16,7 @@ import {
     saveWellbeingLog,
 } from '../lib/persistenceClient';
 import {
-    getPersistenceMode,
-    isLocalOnly,
-    isMongoMigration,
-    isMongoPrimary,
-    allowLocalStorageFallback,
+    MONGO_ENABLED,
 } from '../lib/persistenceConfig';
 
 interface HabitContextType {
@@ -52,190 +48,33 @@ export const useHabitStore = () => {
     return context;
 };
 
-// Initial Data for Demo
-const INITIAL_CATEGORIES: Category[] = [
-    { id: '1', name: 'Physical Health', color: 'bg-emerald-500' },
-    { id: '2', name: 'Mental Health', color: 'bg-violet-500' },
-    { id: '3', name: 'Relationships', color: 'bg-rose-500' },
-    { id: '4', name: 'Dog / Home', color: 'bg-amber-500' },
-    { id: '5', name: 'Creativity & Skill', color: 'bg-blue-500' },
-    { id: '6', name: 'Music', color: 'bg-fuchsia-500' },
-    { id: '7', name: 'Career & Growth', color: 'bg-cyan-500' },
-    { id: '8', name: 'Financial', color: 'bg-green-500' },
-];
-
-const INITIAL_HABITS: Habit[] = [
-    {
-        id: '1',
-        categoryId: '1',
-        name: 'Morning Jog',
-        goal: { type: 'boolean', frequency: 'daily' },
-        archived: false,
-        createdAt: new Date().toISOString(),
-    },
-    {
-        id: '2',
-        categoryId: '1',
-        name: 'Drink Water',
-        goal: { type: 'number', target: 8, unit: 'glasses', frequency: 'daily' },
-        archived: false,
-        createdAt: new Date().toISOString(),
-    },
-    {
-        id: '3',
-        categoryId: '2',
-        name: 'Deep Work',
-        goal: { type: 'number', target: 4, unit: 'hours', frequency: 'daily' },
-        archived: false,
-        createdAt: new Date().toISOString(),
-    },
-];
 
 export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-    // TRANSITIONAL DUAL-PATH SYSTEM:
-    // This store now supports both MongoDB (via API) and localStorage.
-    // - If VITE_USE_MONGO_PERSISTENCE=true: Attempts to use API, falls back to localStorage on failure
-    // - If false: Uses localStorage only (existing behavior)
-    // Future cleanup: Once MongoDB is stable, remove localStorage fallback and dual-write logic.
-    //
-    // NOTE: Phase 1B - Behavior is unchanged. We only route through PersistenceMode/helpers.
-    // Future phases will branch on 'mongo-migration' vs 'mongo-primary' here,
-    // following docs/mongo-migration-plan.md.
-    const persistenceMode = getPersistenceMode(); // Will be used in future phases
-    const mongoEnabled = !isLocalOnly(); // true for both 'mongo-migration' and 'mongo-primary'
-    const isMigrationMode = isMongoMigration(); // Will be used in future phases
-    const isPrimaryMode = isMongoPrimary(); // Will be used in future phases
-    // mongoEnabled is the legacy "Mongo is on" boolean
-    // isMigrationMode / isPrimaryMode will be used in future phases to differentiate behavior
-    
-    // Suppress unused variable warning - will be used in future phases
-    void persistenceMode;
+    // All persistent data is stored in MongoDB via the backend API.
+    // localStorage-based persistence is no longer supported.
+    const mongoEnabled = MONGO_ENABLED;
 
-    // Phase 2A:
-    // - In 'mongo-primary' mode, categories/habits start empty and are loaded from Mongo via API.
-    // - In 'local-only' and 'mongo-migration' modes, we keep the existing localStorage initialization.
-    // See docs/mongo-migration-plan.md for details.
-    const [categories, setCategories] = useState<Category[]>(() => {
-        if (isPrimaryMode) {
-            // Mongo-primary: start empty; data will be loaded from API in useEffect.
-            return [];
-        }
-        // local-only or mongo-migration: preserve current localStorage initialization.
-        const saved = localStorage.getItem('categories');
-        return saved ? JSON.parse(saved) : INITIAL_CATEGORIES;
-    });
+    // All state starts empty and is loaded from MongoDB via API on mount
+    const [categories, setCategories] = useState<Category[]>([]);
+    const [habits, setHabits] = useState<Habit[]>([]);
+    const [logs, setLogs] = useState<Record<string, DayLog>>({});
+    const [wellbeingLogs, setWellbeingLogs] = useState<Record<string, DailyWellbeing>>({});
 
-    const [habits, setHabits] = useState<Habit[]>(() => {
-        if (isPrimaryMode) {
-            // Mongo-primary: start empty; data will be loaded from API in useEffect.
-            return [];
-        }
-        // local-only or mongo-migration: preserve current localStorage initialization.
-        const saved = localStorage.getItem('habits');
-        return saved ? JSON.parse(saved) : INITIAL_HABITS;
-    });
-
-    // Phase 2B:
-    // - In 'mongo-primary' mode, logs start empty and are loaded from Mongo via API.
-    // - In 'local-only' and 'mongo-migration' modes, we keep the existing localStorage initialization.
-    // See docs/mongo-migration-plan.md for details.
-    const [logs, setLogs] = useState<Record<string, DayLog>>(() => {
-        if (isPrimaryMode) {
-            // Mongo-primary: start empty; logs will be loaded from Mongo via API.
-            return {};
-        }
-        // local-only or mongo-migration: preserve current localStorage initialization.
-        const saved = localStorage.getItem('logs');
-        return saved ? JSON.parse(saved) : {};
-    });
-
-    // Phase 2B:
-    // - In 'mongo-primary' mode, wellbeingLogs start empty and are loaded from Mongo via API.
-    // - In 'local-only' and 'mongo-migration' modes, we keep the existing localStorage initialization.
-    // See docs/mongo-migration-plan.md for details.
-    const [wellbeingLogs, setWellbeingLogs] = useState<Record<string, DailyWellbeing>>(() => {
-        if (isPrimaryMode) {
-            // Mongo-primary: start empty; wellbeingLogs will be loaded from Mongo via API.
-            return {};
-        }
-        // local-only or mongo-migration: preserve current localStorage initialization.
-        const saved = localStorage.getItem('wellbeingLogs');
-        return saved ? JSON.parse(saved) : {};
-    });
-
-    // Phase 2A: Load categories from API on mount
-    // - In 'mongo-primary' mode: fetch from MongoDB, optional localStorage fallback if API fails and fallback enabled
-    // - In 'mongo-migration' mode: keep current behavior (localStorage init + fetch + replace)
-    // - In 'local-only' mode: do nothing, localStorage already loaded
-    // See docs/mongo-migration-plan.md for details.
+    // Load categories from MongoDB on mount
     useEffect(() => {
-        if (isLocalOnly()) {
-            // local-only: do nothing, localStorage already loaded in initializer
-            return;
-        }
+        if (!mongoEnabled) return;
 
-        // Mongo is enabled: both migration and primary modes
         let cancelled = false;
 
         const loadCategoriesFromApi = async () => {
             try {
                 const apiCategories = await fetchCategories();
                 if (cancelled) return;
-
-                if (apiCategories.length > 0) {
-                    // API has data, use it
-                    setCategories(apiCategories);
-                    // In 'mongo-migration' we still sync to localStorage (keep existing behavior)
-                    // In 'mongo-primary' we will later disable localStorage syncing in Phase 3
-                    if (isMigrationMode) {
-                        localStorage.setItem('categories', JSON.stringify(apiCategories));
-                    }
-                } else {
-                    // API returned empty
-                    if (isMigrationMode) {
-                        // mongo-migration: check localStorage for existing data (keep current behavior)
-                        const saved = localStorage.getItem('categories');
-                        if (saved) {
-                            const localCategories = JSON.parse(saved);
-                            if (localCategories.length > 0) {
-                                console.warn(
-                                    'MongoDB persistence enabled but API returned no categories. ' +
-                                    'Using localStorage data. This may indicate a sync issue.'
-                                );
-                                if (!cancelled) setCategories(localCategories);
-                            }
-                        }
-                    }
-                    // mongo-primary: if API returns empty, leave categories empty (no localStorage fallback unless explicitly allowed)
-                }
+                setCategories(apiCategories);
             } catch (error) {
                 if (cancelled) return;
-
                 const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-                console.warn('Failed to fetch categories from API:', errorMessage);
-
-                // Fallback behavior:
-                if (isMigrationMode) {
-                    // mongo-migration: keep current fallback (localStorage)
-                    const saved = localStorage.getItem('categories');
-                    if (saved) {
-                        const localCategories = JSON.parse(saved);
-                        if (localCategories.length > 0 && !cancelled) {
-                            setCategories(localCategories);
-                        }
-                    }
-                } else if (isPrimaryMode && allowLocalStorageFallback()) {
-                    // mongo-primary: only fallback to localStorage if explicitly allowed
-                    const saved = localStorage.getItem('categories');
-                    if (saved) {
-                        const localCategories = JSON.parse(saved);
-                        if (localCategories.length > 0 && !cancelled) {
-                            console.warn('Using localStorage fallback for categories (fallback enabled)');
-                            setCategories(localCategories);
-                        }
-                    }
-                }
-                // mongo-primary without fallback: leave categories empty, error already logged
+                console.error('Failed to fetch categories from API:', errorMessage);
             }
         };
 
@@ -245,80 +84,23 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             cancelled = true;
         };
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []); // Only run on mount
+    }, []);
 
-    // Phase 2A: Load habits from API on mount
-    // - In 'mongo-primary' mode: fetch from MongoDB, optional localStorage fallback if API fails and fallback enabled
-    // - In 'mongo-migration' mode: keep current behavior (localStorage init + fetch + replace)
-    // - In 'local-only' mode: do nothing, localStorage already loaded
-    // See docs/mongo-migration-plan.md for details.
+    // Load habits from MongoDB on mount
     useEffect(() => {
-        if (isLocalOnly()) {
-            // local-only: do nothing, localStorage already loaded in initializer
-            return;
-        }
+        if (!mongoEnabled) return;
 
-        // Mongo is enabled: both migration and primary modes
         let cancelled = false;
 
         const loadHabitsFromApi = async () => {
             try {
                 const apiHabits = await fetchHabits();
                 if (cancelled) return;
-
-                if (apiHabits.length > 0) {
-                    // API has data, use it
-                    setHabits(apiHabits);
-                    // In 'mongo-migration' we still sync to localStorage (keep existing behavior)
-                    // In 'mongo-primary' we will later disable localStorage syncing in Phase 3
-                    if (isMigrationMode) {
-                        localStorage.setItem('habits', JSON.stringify(apiHabits));
-                    }
-                } else {
-                    // API returned empty
-                    if (isMigrationMode) {
-                        // mongo-migration: check localStorage for existing data (keep current behavior)
-                        const saved = localStorage.getItem('habits');
-                        if (saved) {
-                            const localHabits = JSON.parse(saved);
-                            if (localHabits.length > 0) {
-                                console.warn(
-                                    'MongoDB persistence enabled but API returned no habits. Using localStorage data.'
-                                );
-                                if (!cancelled) setHabits(localHabits);
-                            }
-                        }
-                    }
-                    // mongo-primary: if API returns empty, leave habits empty (no localStorage fallback unless explicitly allowed)
-                }
+                setHabits(apiHabits);
             } catch (error) {
                 if (cancelled) return;
-
                 const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-                console.warn('Failed to fetch habits from API:', errorMessage);
-
-                // Fallback behavior:
-                if (isMigrationMode) {
-                    // mongo-migration: keep current fallback (localStorage)
-                    const saved = localStorage.getItem('habits');
-                    if (saved) {
-                        const localHabits = JSON.parse(saved);
-                        if (localHabits.length > 0 && !cancelled) {
-                            setHabits(localHabits);
-                        }
-                    }
-                } else if (isPrimaryMode && allowLocalStorageFallback()) {
-                    // mongo-primary: only fallback to localStorage if explicitly allowed
-                    const saved = localStorage.getItem('habits');
-                    if (saved) {
-                        const localHabits = JSON.parse(saved);
-                        if (localHabits.length > 0 && !cancelled) {
-                            console.warn('Using localStorage fallback for habits (fallback enabled)');
-                            setHabits(localHabits);
-                        }
-                    }
-                }
-                // mongo-primary without fallback: leave habits empty, error already logged
+                console.error('Failed to fetch habits from API:', errorMessage);
             }
         };
 
@@ -330,76 +112,21 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    // Phase 2B: Load day logs from API on mount
-    // - In 'mongo-primary' mode: fetch from MongoDB, optional localStorage fallback if API fails and fallback enabled
-    // - In 'mongo-migration' mode: keep current behavior (localStorage init + fetch + replace)
-    // - In 'local-only' mode: do nothing, localStorage already loaded
-    // See docs/mongo-migration-plan.md for details.
+    // Load day logs from MongoDB on mount
     useEffect(() => {
-        if (isLocalOnly()) {
-            // local-only: do nothing, localStorage already loaded in initializer
-            return;
-        }
+        if (!mongoEnabled) return;
 
-        // Mongo is enabled: both migration and primary modes
         let cancelled = false;
 
         const loadLogsFromApi = async () => {
             try {
                 const apiLogs = await fetchDayLogs();
                 if (cancelled) return;
-
-                if (Object.keys(apiLogs).length > 0) {
-                    // API has data, use it
-                    setLogs(apiLogs);
-                    // In 'mongo-migration' we still sync to localStorage (keep existing behavior)
-                    // In 'mongo-primary' we will later disable localStorage syncing in Phase 3
-                    if (isMigrationMode) {
-                        localStorage.setItem('logs', JSON.stringify(apiLogs));
-                    }
-                } else {
-                    // API returned empty
-                    if (isMigrationMode) {
-                        // mongo-migration: check localStorage for existing data (keep current behavior)
-                        const saved = localStorage.getItem('logs');
-                        if (saved) {
-                            const localLogs = JSON.parse(saved);
-                            if (Object.keys(localLogs).length > 0) {
-                                console.warn(
-                                    'MongoDB persistence enabled but API returned no logs. Using localStorage data.'
-                                );
-                                if (!cancelled) setLogs(localLogs);
-                            }
-                        }
-                    }
-                    // mongo-primary: if API returns empty, leave logs empty (no localStorage fallback unless explicitly allowed)
-                }
+                setLogs(apiLogs);
             } catch (error) {
                 if (cancelled) return;
-
                 const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-                console.warn('Failed to fetch logs from API:', errorMessage);
-
-                // Fallback behavior:
-                if (isMigrationMode) {
-                    // mongo-migration: keep current fallback (localStorage)
-                    const saved = localStorage.getItem('logs');
-                    if (saved) {
-                        const localLogs = JSON.parse(saved);
-                        if (!cancelled) setLogs(localLogs);
-                    }
-                } else if (isPrimaryMode && allowLocalStorageFallback()) {
-                    // mongo-primary: only fallback to localStorage if explicitly allowed
-                    const saved = localStorage.getItem('logs');
-                    if (saved) {
-                        const localLogs = JSON.parse(saved);
-                        if (!cancelled) {
-                            console.warn('Using localStorage fallback for logs (fallback enabled)');
-                            setLogs(localLogs);
-                        }
-                    }
-                }
-                // mongo-primary without fallback: leave logs empty, error already logged
+                console.error('Failed to fetch logs from API:', errorMessage);
             }
         };
 
@@ -411,76 +138,21 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    // Phase 2B: Load wellbeing logs from API on mount
-    // - In 'mongo-primary' mode: fetch from MongoDB, optional localStorage fallback if API fails and fallback enabled
-    // - In 'mongo-migration' mode: keep current behavior (localStorage init + fetch + replace)
-    // - In 'local-only' mode: do nothing, localStorage already loaded
-    // See docs/mongo-migration-plan.md for details.
+    // Load wellbeing logs from MongoDB on mount
     useEffect(() => {
-        if (isLocalOnly()) {
-            // local-only: do nothing, localStorage already loaded in initializer
-            return;
-        }
+        if (!mongoEnabled) return;
 
-        // Mongo is enabled: both migration and primary modes
         let cancelled = false;
 
         const loadWellbeingLogsFromApi = async () => {
             try {
                 const apiWellbeingLogs = await fetchWellbeingLogs();
                 if (cancelled) return;
-
-                if (Object.keys(apiWellbeingLogs).length > 0) {
-                    // API has data, use it
-                    setWellbeingLogs(apiWellbeingLogs);
-                    // In 'mongo-migration' we still sync to localStorage (keep existing behavior)
-                    // In 'mongo-primary' we will later disable localStorage syncing in Phase 3
-                    if (isMigrationMode) {
-                        localStorage.setItem('wellbeingLogs', JSON.stringify(apiWellbeingLogs));
-                    }
-                } else {
-                    // API returned empty
-                    if (isMigrationMode) {
-                        // mongo-migration: check localStorage for existing data (keep current behavior)
-                        const saved = localStorage.getItem('wellbeingLogs');
-                        if (saved) {
-                            const localWellbeingLogs = JSON.parse(saved);
-                            if (Object.keys(localWellbeingLogs).length > 0) {
-                                console.warn(
-                                    'MongoDB persistence enabled but API returned no wellbeing logs. Using localStorage data.'
-                                );
-                                if (!cancelled) setWellbeingLogs(localWellbeingLogs);
-                            }
-                        }
-                    }
-                    // mongo-primary: if API returns empty, leave wellbeingLogs empty (no localStorage fallback unless explicitly allowed)
-                }
+                setWellbeingLogs(apiWellbeingLogs);
             } catch (error) {
                 if (cancelled) return;
-
                 const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-                console.warn('Failed to fetch wellbeing logs from API:', errorMessage);
-
-                // Fallback behavior:
-                if (isMigrationMode) {
-                    // mongo-migration: keep current fallback (localStorage)
-                    const saved = localStorage.getItem('wellbeingLogs');
-                    if (saved) {
-                        const localWellbeingLogs = JSON.parse(saved);
-                        if (!cancelled) setWellbeingLogs(localWellbeingLogs);
-                    }
-                } else if (isPrimaryMode && allowLocalStorageFallback()) {
-                    // mongo-primary: only fallback to localStorage if explicitly allowed
-                    const saved = localStorage.getItem('wellbeingLogs');
-                    if (saved) {
-                        const localWellbeingLogs = JSON.parse(saved);
-                        if (!cancelled) {
-                            console.warn('Using localStorage fallback for wellbeing logs (fallback enabled)');
-                            setWellbeingLogs(localWellbeingLogs);
-                        }
-                    }
-                }
-                // mongo-primary without fallback: leave wellbeingLogs empty, error already logged
+                console.error('Failed to fetch wellbeing logs from API:', errorMessage);
             }
         };
 
@@ -492,46 +164,7 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    // Phase 3A: Sync to localStorage (dual-write for safety during transition)
-    // - In 'mongo-primary' mode: categories/habits no longer write to localStorage (Mongo is source of truth)
-    // - In 'local-only' and 'mongo-migration' modes: keep localStorage sync (backwards compatible)
-    // See docs/mongo-migration-plan.md for details.
-    useEffect(() => {
-        if (!isPrimaryMode) {
-            // local-only or mongo-migration: keep localStorage sync
-            localStorage.setItem('categories', JSON.stringify(categories));
-        }
-    }, [categories, isPrimaryMode]);
 
-    useEffect(() => {
-        if (!isPrimaryMode) {
-            // local-only or mongo-migration: keep localStorage sync
-            localStorage.setItem('habits', JSON.stringify(habits));
-        }
-    }, [habits, isPrimaryMode]);
-
-    // Phase 3B: Sync to localStorage (dual-write for safety during transition)
-    // - In 'mongo-primary' mode: logs/wellbeingLogs no longer write to localStorage (Mongo is source of truth)
-    // - In 'local-only' and 'mongo-migration' modes: keep localStorage sync (backwards compatible)
-    // See docs/mongo-migration-plan.md for details.
-    useEffect(() => {
-        if (!isPrimaryMode) {
-            // local-only or mongo-migration: keep localStorage sync
-            localStorage.setItem('logs', JSON.stringify(logs));
-        }
-    }, [logs, isPrimaryMode]);
-
-    useEffect(() => {
-        if (!isPrimaryMode) {
-            // local-only or mongo-migration: keep localStorage sync
-            localStorage.setItem('wellbeingLogs', JSON.stringify(wellbeingLogs));
-        }
-    }, [wellbeingLogs, isPrimaryMode]);
-
-    // Phase 3B:
-    // In 'mongo-primary' mode, wellbeingLogs no longer write to localStorage on success.
-    // - local-only & mongo-migration: keep localStorage writes (backwards compatible).
-    // - mongo-primary: Mongo is the source of truth; localStorage is backup only (if fallback enabled).
     const logWellbeing = async (date: string, data: DailyWellbeing) => {
         // Merge with existing data for the date
         const existing = wellbeingLogs[date] || { date };
@@ -549,116 +182,50 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         };
         // Optimistic update: update state immediately
         setWellbeingLogs(updatedWellbeingLogs);
-        // Phase 3B: Only write to localStorage in local-only or mongo-migration modes
-        if (!isPrimaryMode) {
-            localStorage.setItem('wellbeingLogs', JSON.stringify(updatedWellbeingLogs));
-        }
 
         // Save to MongoDB if enabled
         if (mongoEnabled) {
             try {
                 await saveWellbeingLog(mergedData);
             } catch (error) {
-                console.warn('Failed to save wellbeing log to API:', error instanceof Error ? error.message : 'Unknown error');
-                // Phase 3B: In mongo-primary mode, only write to localStorage if fallback is enabled
-                if (isPrimaryMode && allowLocalStorageFallback()) {
-                    localStorage.setItem('wellbeingLogs', JSON.stringify(updatedWellbeingLogs));
-                }
-                // State already updated, just log warning
+                console.error('Failed to save wellbeing log to API:', error instanceof Error ? error.message : 'Unknown error');
+                // State already updated optimistically, just log error
             }
         }
     };
 
-    // Phase 3A:
-    // In 'mongo-primary' mode, categories no longer write to localStorage on success.
-    // - local-only & mongo-migration: keep localStorage writes (backwards compatible).
-    // - mongo-primary: Mongo is the source of truth, localStorage only used for fallback/migration.
     const addCategory = async (category: Omit<Category, 'id'>) => {
-        if (mongoEnabled) {
-            try {
-                // Save to API
-                const newCategory = await saveCategory(category);
-                // Update state with API response
-                const updatedCategories = [...categories, newCategory];
-                setCategories(updatedCategories);
-                // Phase 3A: Only write to localStorage in local-only or mongo-migration modes
-                if (!isPrimaryMode) {
-                    localStorage.setItem('categories', JSON.stringify(updatedCategories));
-                }
-            } catch (error) {
-                // API failed, fall back to localStorage
-                console.warn(
-                    'Failed to save category to API, using localStorage fallback:',
-                    error instanceof Error ? error.message : 'Unknown error'
-                );
-                const newCategory = { ...category, id: crypto.randomUUID() };
-                const updatedCategories = [...categories, newCategory];
-                setCategories(updatedCategories);
-                // Phase 3A: In mongo-primary mode, only write to localStorage if fallback is enabled
-                if (!isPrimaryMode || allowLocalStorageFallback()) {
-                    localStorage.setItem('categories', JSON.stringify(updatedCategories));
-                }
-            }
-        } else {
-            // Use localStorage (existing behavior)
-            const newCategory = { ...category, id: crypto.randomUUID() };
+        if (!mongoEnabled) {
+            console.warn('MongoDB persistence is disabled. Cannot save category.');
+            return;
+        }
+
+        try {
+            const newCategory = await saveCategory(category);
             setCategories([...categories, newCategory]);
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+            console.error('Failed to save category to API:', errorMessage);
+            throw error;
         }
     };
 
-    // Phase 3A:
-    // In 'mongo-primary' mode, habits no longer write to localStorage on success.
-    // - local-only & mongo-migration: keep localStorage writes (backwards compatible).
-    // - mongo-primary: Mongo is the source of truth, localStorage only used for fallback/migration.
     const addHabit = async (habit: Omit<Habit, 'id' | 'createdAt' | 'archived'>) => {
-        if (mongoEnabled) {
-            try {
-                // Save to API
-                const newHabit = await saveHabit(habit);
-                // Update state with API response
-                const updatedHabits = [...habits, newHabit];
-                setHabits(updatedHabits);
-                // Phase 3A: Only write to localStorage in local-only or mongo-migration modes
-                if (!isPrimaryMode) {
-                    localStorage.setItem('habits', JSON.stringify(updatedHabits));
-                }
-            } catch (error) {
-                // API failed, fall back to localStorage
-                console.warn(
-                    'Failed to save habit to API, using localStorage fallback:',
-                    error instanceof Error ? error.message : 'Unknown error'
-                );
-                const newHabit = {
-                    ...habit,
-                    id: crypto.randomUUID(),
-                    createdAt: new Date().toISOString(),
-                    archived: false,
-                };
-                const updatedHabits = [...habits, newHabit];
-                setHabits(updatedHabits);
-                // Phase 3A: In mongo-primary mode, only write to localStorage if fallback is enabled
-                if (!isPrimaryMode || allowLocalStorageFallback()) {
-                    localStorage.setItem('habits', JSON.stringify(updatedHabits));
-                }
-            }
-        } else {
-            // Use localStorage (existing behavior)
-            const newHabit = {
-                ...habit,
-                id: crypto.randomUUID(),
-                createdAt: new Date().toISOString(),
-                archived: false,
-            };
-            const updatedHabits = [...habits, newHabit];
-            setHabits(updatedHabits);
-            localStorage.setItem('habits', JSON.stringify(updatedHabits));
+        if (!mongoEnabled) {
+            console.warn('MongoDB persistence is disabled. Cannot save habit.');
+            return;
+        }
+
+        try {
+            const newHabit = await saveHabit(habit);
+            setHabits([...habits, newHabit]);
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+            console.error('Failed to save habit to API:', errorMessage);
+            throw error;
         }
     };
 
-    // Phase 3B:
-    // In 'mongo-primary' mode, logs no longer write to localStorage on success.
-    // - local-only & mongo-migration: keep localStorage writes (backwards compatible).
-    // - mongo-primary: Mongo is the source of truth; localStorage is backup only (if fallback enabled).
     const toggleHabit = async (habitId: string, date: string) => {
         const key = `${habitId}-${date}`;
         const currentLog = logs[key];
@@ -681,42 +248,26 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         
         // Optimistic update: update state immediately
         setLogs(updatedLogs);
-        // Phase 3B: Only write to localStorage in local-only or mongo-migration modes
-        if (!isPrimaryMode) {
-            localStorage.setItem('logs', JSON.stringify(updatedLogs));
-        }
 
         // Save to MongoDB if enabled
         if (mongoEnabled && logToSave) {
             try {
                 await saveDayLog(logToSave);
             } catch (error) {
-                console.warn('Failed to save day log to API:', error instanceof Error ? error.message : 'Unknown error');
-                // Phase 3B: In mongo-primary mode, only write to localStorage if fallback is enabled
-                if (isPrimaryMode && allowLocalStorageFallback()) {
-                    localStorage.setItem('logs', JSON.stringify(updatedLogs));
-                }
-                // State already updated, just log warning
+                console.error('Failed to save day log to API:', error instanceof Error ? error.message : 'Unknown error');
+                // State already updated optimistically, just log error
             }
         } else if (mongoEnabled && currentLog) {
             // Delete from MongoDB
             try {
                 await deleteDayLogApi(habitId, date);
             } catch (error) {
-                console.warn('Failed to delete day log from API:', error instanceof Error ? error.message : 'Unknown error');
-                // Phase 3B: In mongo-primary mode, only write to localStorage if fallback is enabled
-                if (isPrimaryMode && allowLocalStorageFallback()) {
-                    localStorage.setItem('logs', JSON.stringify(updatedLogs));
-                }
-                // State already updated, just log warning
+                console.error('Failed to delete day log from API:', error instanceof Error ? error.message : 'Unknown error');
+                // State already updated optimistically, just log error
             }
         }
     };
 
-    // Phase 3B:
-    // In 'mongo-primary' mode, logs no longer write to localStorage on success.
-    // - local-only & mongo-migration: keep localStorage writes (backwards compatible).
-    // - mongo-primary: Mongo is the source of truth; localStorage is backup only (if fallback enabled).
     const updateLog = async (habitId: string, date: string, value: number) => {
         const key = `${habitId}-${date}`;
         const habit = habits.find(h => h.id === habitId);
@@ -731,130 +282,66 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         };
         // Optimistic update: update state immediately
         setLogs(updatedLogs);
-        // Phase 3B: Only write to localStorage in local-only or mongo-migration modes
-        if (!isPrimaryMode) {
-            localStorage.setItem('logs', JSON.stringify(updatedLogs));
-        }
 
         // Save to MongoDB if enabled
         if (mongoEnabled) {
             try {
                 await saveDayLog(logToSave);
             } catch (error) {
-                console.warn('Failed to save day log to API:', error instanceof Error ? error.message : 'Unknown error');
-                // Phase 3B: In mongo-primary mode, only write to localStorage if fallback is enabled
-                if (isPrimaryMode && allowLocalStorageFallback()) {
-                    localStorage.setItem('logs', JSON.stringify(updatedLogs));
-                }
-                // State already updated, just log warning
+                console.error('Failed to save day log to API:', error instanceof Error ? error.message : 'Unknown error');
+                // State already updated optimistically, just log error
             }
         }
     };
 
-    // Phase 3A & 3B:
-    // In 'mongo-primary' mode, habits and logs no longer write to localStorage on success.
-    // - local-only & mongo-migration: keep localStorage writes (backwards compatible).
-    // - mongo-primary: Mongo is the source of truth, localStorage only used for fallback/migration.
     const deleteHabit = async (id: string) => {
-        if (mongoEnabled) {
-            try {
-                // Delete from API (this should cascade delete day logs)
-                await deleteHabitApi(id);
-                // Update state
-                const updatedHabits = habits.filter(h => h.id !== id);
-                setHabits(updatedHabits);
-                // Also remove related logs from state
-                const updatedLogs = Object.fromEntries(
-                    Object.entries(logs).filter(([key]) => !key.startsWith(`${id}-`))
-                );
-                setLogs(updatedLogs);
-                // Phase 3A: Only write habits to localStorage in local-only or mongo-migration modes
-                if (!isPrimaryMode) {
-                    localStorage.setItem('habits', JSON.stringify(updatedHabits));
-                }
-                // Phase 3B: Only write logs to localStorage in local-only or mongo-migration modes
-                if (!isPrimaryMode) {
-                    localStorage.setItem('logs', JSON.stringify(updatedLogs));
-                }
-            } catch (error) {
-                // API failed, fall back to localStorage
-                console.warn(
-                    'Failed to delete habit from API, using localStorage fallback:',
-                    error instanceof Error ? error.message : 'Unknown error'
-                );
-                const updatedHabits = habits.filter(h => h.id !== id);
-                setHabits(updatedHabits);
-                const updatedLogs = Object.fromEntries(
-                    Object.entries(logs).filter(([key]) => !key.startsWith(`${id}-`))
-                );
-                setLogs(updatedLogs);
-                // Phase 3A: In mongo-primary mode, only write habits to localStorage if fallback is enabled
-                if (!isPrimaryMode || allowLocalStorageFallback()) {
-                    localStorage.setItem('habits', JSON.stringify(updatedHabits));
-                }
-                // Phase 3B: In mongo-primary mode, only write logs to localStorage if fallback is enabled
-                if (!isPrimaryMode || allowLocalStorageFallback()) {
-                    localStorage.setItem('logs', JSON.stringify(updatedLogs));
-                }
-            }
-        } else {
-            // Use localStorage (existing behavior)
+        if (!mongoEnabled) {
+            console.warn('MongoDB persistence is disabled. Cannot delete habit.');
+            return;
+        }
+
+        try {
+            await deleteHabitApi(id);
+            // Update state
             const updatedHabits = habits.filter(h => h.id !== id);
             setHabits(updatedHabits);
+            // Also remove related logs from state
             const updatedLogs = Object.fromEntries(
                 Object.entries(logs).filter(([key]) => !key.startsWith(`${id}-`))
             );
             setLogs(updatedLogs);
-            localStorage.setItem('habits', JSON.stringify(updatedHabits));
-            localStorage.setItem('logs', JSON.stringify(updatedLogs));
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+            console.error('Failed to delete habit from API:', errorMessage);
+            throw error;
         }
     };
 
-    // Phase 3A:
-    // In 'mongo-primary' mode, categories no longer write to localStorage on success.
-    // - local-only & mongo-migration: keep localStorage writes (backwards compatible).
-    // - mongo-primary: Mongo is the source of truth, localStorage only used for fallback/migration.
     const deleteCategory = async (id: string) => {
-        if (mongoEnabled) {
-            try {
-                // Delete from API
-                await deleteCategoryApi(id);
-                // Update state
-                const updated = categories.filter(c => c.id !== id);
-                setCategories(updated);
-                // Phase 3A: Only write to localStorage in local-only or mongo-migration modes
-                if (!isPrimaryMode) {
-                    localStorage.setItem('categories', JSON.stringify(updated));
-                }
-            } catch (error) {
-                // API failed, fall back to localStorage
-                console.warn(
-                    'Failed to delete category from API, using localStorage fallback:',
-                    error instanceof Error ? error.message : 'Unknown error'
-                );
-                const updated = categories.filter(c => c.id !== id);
-                setCategories(updated);
-                // Phase 3A: In mongo-primary mode, only write to localStorage if fallback is enabled
-                if (!isPrimaryMode || allowLocalStorageFallback()) {
-                    localStorage.setItem('categories', JSON.stringify(updated));
-                }
-            }
-        } else {
-            // Use localStorage (existing behavior)
-            const updated = categories.filter(c => c.id !== id);
-            setCategories(updated);
+        if (!mongoEnabled) {
+            console.warn('MongoDB persistence is disabled. Cannot delete category.');
+            return;
+        }
+
+        try {
+            await deleteCategoryApi(id);
+            setCategories(categories.filter(c => c.id !== id));
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+            console.error('Failed to delete category from API:', errorMessage);
+            throw error;
         }
     };
 
-    // Phase 3A:
-    // In 'mongo-primary' mode, categories/habits no longer write to localStorage.
-    // - local-only & mongo-migration: keep localStorage writes via useEffect hooks (backwards compatible).
-    // - mongo-primary: Mongo is the source of truth, localStorage only used for fallback/migration.
-    // Note: This function relies on the gated useEffect hooks for localStorage sync.
     const importHabits = async (
         categoriesToImport: Omit<Category, 'id'>[],
         habitsData: { categoryName: string; habit: Omit<Habit, 'id' | 'categoryId' | 'createdAt' | 'archived'> }[]
     ) => {
+        if (!mongoEnabled) {
+            console.warn('MongoDB persistence is disabled. Cannot import habits.');
+            return;
+        }
+
         // 1. Create Categories if they don't exist
         let updatedCategories = [...categories];
         const categoryMap = new Map<string, string>(); // Name -> ID
@@ -863,99 +350,50 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         updatedCategories.forEach(c => categoryMap.set(c.name, c.id));
 
         // Add new categories from import
-        if (mongoEnabled) {
-            // Use API to create categories
-            for (const c of categoriesToImport) {
-                if (!categoryMap.has(c.name)) {
-                    try {
-                        const newCat = await saveCategory(c);
-                        updatedCategories.push(newCat);
-                        categoryMap.set(c.name, newCat.id);
-                    } catch (error) {
-                        // API failed, fall back to localStorage
-                        console.warn(
-                            `Failed to create category "${c.name}" via API, using localStorage fallback:`,
-                            error instanceof Error ? error.message : 'Unknown error'
-                        );
-                        const id = crypto.randomUUID();
-                        const newCat = { ...c, id };
-                        updatedCategories.push(newCat);
-                        categoryMap.set(c.name, id);
-                    }
+        for (const c of categoriesToImport) {
+            if (!categoryMap.has(c.name)) {
+                try {
+                    const newCat = await saveCategory(c);
+                    updatedCategories.push(newCat);
+                    categoryMap.set(c.name, newCat.id);
+                } catch (error) {
+                    console.error(
+                        `Failed to create category "${c.name}" via API:`,
+                        error instanceof Error ? error.message : 'Unknown error'
+                    );
+                    // Continue with other categories even if one fails
                 }
             }
-        } else {
-            // Use localStorage (existing behavior)
-            categoriesToImport.forEach(c => {
-                if (!categoryMap.has(c.name)) {
-                    const id = crypto.randomUUID();
-                    const newCat = { ...c, id };
-                    updatedCategories.push(newCat);
-                    categoryMap.set(c.name, id);
-                }
-            });
         }
 
         // 2. Create Habits
         let updatedHabits = [...habits];
         let addedCount = 0;
         
-        if (mongoEnabled) {
-            // Use API to create habits
-            for (const { categoryName, habit } of habitsData) {
-                const categoryId = categoryMap.get(categoryName);
-                if (categoryId) {
-                    // Check if habit already exists to avoid duplicates
-                    const exists = updatedHabits.some(h => h.name === habit.name && h.categoryId === categoryId);
-                    if (!exists) {
-                        try {
-                            const newHabit = await saveHabit({
-                                ...habit,
-                                categoryId,
-                            });
-                            updatedHabits.push(newHabit);
-                            addedCount++;
-                        } catch (error) {
-                            // API failed, fall back to localStorage
-                            console.warn(
-                                `Failed to create habit "${habit.name}" via API, using localStorage fallback:`,
-                                error instanceof Error ? error.message : 'Unknown error'
-                            );
-                            updatedHabits.push({
-                                ...habit,
-                                id: crypto.randomUUID(),
-                                categoryId,
-                                createdAt: new Date().toISOString(),
-                                archived: false,
-                            });
-                            addedCount++;
-                        }
-                    }
-                } else {
-                    console.warn(`Category not found for habit: ${habit.name} (Category: ${categoryName})`);
-                }
-            }
-        } else {
-            // Use localStorage (existing behavior)
-            habitsData.forEach(({ categoryName, habit }) => {
-                const categoryId = categoryMap.get(categoryName);
-                if (categoryId) {
-                    // Check if habit already exists to avoid duplicates
-                    const exists = updatedHabits.some(h => h.name === habit.name && h.categoryId === categoryId);
-                    if (!exists) {
-                        updatedHabits.push({
+        for (const { categoryName, habit } of habitsData) {
+            const categoryId = categoryMap.get(categoryName);
+            if (categoryId) {
+                // Check if habit already exists to avoid duplicates
+                const exists = updatedHabits.some(h => h.name === habit.name && h.categoryId === categoryId);
+                if (!exists) {
+                    try {
+                        const newHabit = await saveHabit({
                             ...habit,
-                            id: crypto.randomUUID(),
                             categoryId,
-                            createdAt: new Date().toISOString(),
-                            archived: false,
                         });
+                        updatedHabits.push(newHabit);
                         addedCount++;
+                    } catch (error) {
+                        console.error(
+                            `Failed to create habit "${habit.name}" via API:`,
+                            error instanceof Error ? error.message : 'Unknown error'
+                        );
+                        // Continue with other habits even if one fails
                     }
-                } else {
-                    console.warn(`Category not found for habit: ${habit.name} (Category: ${categoryName})`);
                 }
-            });
+            } else {
+                console.warn(`Category not found for habit: ${habit.name} (Category: ${categoryName})`);
+            }
         }
 
         console.log(`Imported ${categoriesToImport.length} categories and ${addedCount} habits.`);
@@ -965,36 +403,19 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         setHabits(updatedHabits);
     };
 
-    // Phase 3A:
-    // In 'mongo-primary' mode, categories no longer write to localStorage on success.
-    // - local-only & mongo-migration: keep localStorage writes (backwards compatible).
-    // - mongo-primary: Mongo is the source of truth, localStorage only used for fallback/migration.
     const reorderCategories = async (newOrder: Category[]) => {
-        if (mongoEnabled) {
-            try {
-                // Save new order to API
-                const updatedCategories = await reorderCategoriesApi(newOrder);
-                // Update state with API response
-                setCategories(updatedCategories);
-                // Phase 3A: Only write to localStorage in local-only or mongo-migration modes
-                if (!isPrimaryMode) {
-                    localStorage.setItem('categories', JSON.stringify(updatedCategories));
-                }
-            } catch (error) {
-                // API failed, fall back to localStorage
-                console.warn(
-                    'Failed to reorder categories in API, using localStorage fallback:',
-                    error instanceof Error ? error.message : 'Unknown error'
-                );
-                setCategories(newOrder);
-                // Phase 3A: In mongo-primary mode, only write to localStorage if fallback is enabled
-                if (isPrimaryMode && allowLocalStorageFallback()) {
-                    localStorage.setItem('categories', JSON.stringify(newOrder));
-                }
-            }
-        } else {
-            // Use localStorage (existing behavior)
-            setCategories(newOrder);
+        if (!mongoEnabled) {
+            console.warn('MongoDB persistence is disabled. Cannot reorder categories.');
+            return;
+        }
+
+        try {
+            const updatedCategories = await reorderCategoriesApi(newOrder);
+            setCategories(updatedCategories);
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+            console.error('Failed to reorder categories in API:', errorMessage);
+            throw error;
         }
     };
 
