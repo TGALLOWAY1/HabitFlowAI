@@ -5,6 +5,15 @@ import {
     saveCategory,
     deleteCategory as deleteCategoryApi,
     reorderCategories as reorderCategoriesApi,
+    fetchHabits,
+    saveHabit,
+    updateHabit as updateHabitApi,
+    deleteHabit as deleteHabitApi,
+    fetchDayLogs,
+    saveDayLog,
+    deleteDayLog as deleteDayLogApi,
+    fetchWellbeingLogs,
+    saveWellbeingLog,
     isMongoPersistenceEnabled,
 } from '../lib/persistenceClient';
 
@@ -13,10 +22,10 @@ interface HabitContextType {
     habits: Habit[];
     logs: Record<string, DayLog>; // Key: `${habitId}-${date}`
     addCategory: (category: Omit<Category, 'id'>) => Promise<void>;
-    addHabit: (habit: Omit<Habit, 'id' | 'createdAt' | 'archived'>) => void;
-    toggleHabit: (habitId: string, date: string) => void;
-    updateLog: (habitId: string, date: string, value: number) => void;
-    deleteHabit: (id: string) => void;
+    addHabit: (habit: Omit<Habit, 'id' | 'createdAt' | 'archived'>) => Promise<void>;
+    toggleHabit: (habitId: string, date: string) => Promise<void>;
+    updateLog: (habitId: string, date: string, value: number) => Promise<void>;
+    deleteHabit: (id: string) => Promise<void>;
     deleteCategory: (id: string) => Promise<void>;
     importHabits: (
         categories: Omit<Category, 'id'>[],
@@ -24,7 +33,7 @@ interface HabitContextType {
     ) => Promise<void>;
     reorderCategories: (newOrder: Category[]) => Promise<void>;
     wellbeingLogs: Record<string, DailyWellbeing>;
-    logWellbeing: (date: string, data: DailyWellbeing) => void;
+    logWellbeing: (date: string, data: DailyWellbeing) => Promise<void>;
 }
 
 const HabitContext = createContext<HabitContextType | undefined>(undefined);
@@ -98,13 +107,36 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     });
 
     const [habits, setHabits] = useState<Habit[]>(() => {
-        const saved = localStorage.getItem('habits');
-        return saved ? JSON.parse(saved) : INITIAL_HABITS;
+        // Initial load: Try API if enabled, otherwise use localStorage
+        if (isMongoPersistenceEnabled()) {
+            const saved = localStorage.getItem('habits');
+            return saved ? JSON.parse(saved) : INITIAL_HABITS;
+        } else {
+            const saved = localStorage.getItem('habits');
+            return saved ? JSON.parse(saved) : INITIAL_HABITS;
+        }
     });
 
     const [logs, setLogs] = useState<Record<string, DayLog>>(() => {
-        const saved = localStorage.getItem('logs');
-        return saved ? JSON.parse(saved) : {};
+        // Initial load: Try API if enabled, otherwise use localStorage
+        if (isMongoPersistenceEnabled()) {
+            const saved = localStorage.getItem('logs');
+            return saved ? JSON.parse(saved) : {};
+        } else {
+            const saved = localStorage.getItem('logs');
+            return saved ? JSON.parse(saved) : {};
+        }
+    });
+
+    const [wellbeingLogs, setWellbeingLogs] = useState<Record<string, DailyWellbeing>>(() => {
+        // Initial load: Try API if enabled, otherwise use localStorage
+        if (isMongoPersistenceEnabled()) {
+            const saved = localStorage.getItem('wellbeingLogs');
+            return saved ? JSON.parse(saved) : {};
+        } else {
+            const saved = localStorage.getItem('wellbeingLogs');
+            return saved ? JSON.parse(saved) : {};
+        }
     });
 
     // Load categories from API on mount if MongoDB persistence is enabled
@@ -151,7 +183,108 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []); // Only run on mount
 
-    // Sync categories to localStorage (dual-write for safety during transition)
+    // Load habits from API on mount if MongoDB persistence is enabled
+    useEffect(() => {
+        if (isMongoPersistenceEnabled()) {
+            fetchHabits()
+                .then((apiHabits) => {
+                    if (apiHabits.length > 0) {
+                        setHabits(apiHabits);
+                        localStorage.setItem('habits', JSON.stringify(apiHabits));
+                    } else {
+                        const saved = localStorage.getItem('habits');
+                        if (saved) {
+                            const localHabits = JSON.parse(saved);
+                            if (localHabits.length > 0) {
+                                console.warn(
+                                    'MongoDB persistence enabled but API returned no habits. Using localStorage data.'
+                                );
+                                setHabits(localHabits);
+                            }
+                        }
+                    }
+                })
+                .catch((error) => {
+                    console.warn('Failed to fetch habits from API, using localStorage fallback:', error.message);
+                    const saved = localStorage.getItem('habits');
+                    if (saved) {
+                        const localHabits = JSON.parse(saved);
+                        if (localHabits.length > 0) {
+                            setHabits(localHabits);
+                        }
+                    }
+                });
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    // Load day logs from API on mount if MongoDB persistence is enabled
+    useEffect(() => {
+        if (isMongoPersistenceEnabled()) {
+            fetchDayLogs()
+                .then((apiLogs) => {
+                    if (Object.keys(apiLogs).length > 0) {
+                        setLogs(apiLogs);
+                        localStorage.setItem('logs', JSON.stringify(apiLogs));
+                    } else {
+                        const saved = localStorage.getItem('logs');
+                        if (saved) {
+                            const localLogs = JSON.parse(saved);
+                            if (Object.keys(localLogs).length > 0) {
+                                console.warn(
+                                    'MongoDB persistence enabled but API returned no logs. Using localStorage data.'
+                                );
+                                setLogs(localLogs);
+                            }
+                        }
+                    }
+                })
+                .catch((error) => {
+                    console.warn('Failed to fetch logs from API, using localStorage fallback:', error.message);
+                    const saved = localStorage.getItem('logs');
+                    if (saved) {
+                        const localLogs = JSON.parse(saved);
+                        setLogs(localLogs);
+                    }
+                });
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    // Load wellbeing logs from API on mount if MongoDB persistence is enabled
+    useEffect(() => {
+        if (isMongoPersistenceEnabled()) {
+            fetchWellbeingLogs()
+                .then((apiWellbeingLogs) => {
+                    if (Object.keys(apiWellbeingLogs).length > 0) {
+                        setWellbeingLogs(apiWellbeingLogs);
+                        localStorage.setItem('wellbeingLogs', JSON.stringify(apiWellbeingLogs));
+                    } else {
+                        const saved = localStorage.getItem('wellbeingLogs');
+                        if (saved) {
+                            const localWellbeingLogs = JSON.parse(saved);
+                            if (Object.keys(localWellbeingLogs).length > 0) {
+                                console.warn(
+                                    'MongoDB persistence enabled but API returned no wellbeing logs. Using localStorage data.'
+                                );
+                                setWellbeingLogs(localWellbeingLogs);
+                            }
+                        }
+                    }
+                })
+                .catch((error) => {
+                    console.warn('Failed to fetch wellbeing logs from API, using localStorage fallback:', error.message);
+                    const saved = localStorage.getItem('wellbeingLogs');
+                    if (saved) {
+                        const localWellbeingLogs = JSON.parse(saved);
+                        setWellbeingLogs(localWellbeingLogs);
+                    }
+                });
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    // Sync to localStorage (dual-write for safety during transition)
     useEffect(() => {
         localStorage.setItem('categories', JSON.stringify(categories));
     }, [categories]);
@@ -163,6 +296,39 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     useEffect(() => {
         localStorage.setItem('logs', JSON.stringify(logs));
     }, [logs]);
+
+    useEffect(() => {
+        localStorage.setItem('wellbeingLogs', JSON.stringify(wellbeingLogs));
+    }, [wellbeingLogs]);
+
+    const logWellbeing = async (date: string, data: DailyWellbeing) => {
+        // Merge with existing data for the date
+        const existing = wellbeingLogs[date] || { date };
+        const mergedData: DailyWellbeing = {
+            ...existing,
+            ...data,
+            // Deep merge morning/evening if provided, preserving the other if not
+            morning: data.morning ? { ...existing.morning, ...data.morning } : existing.morning,
+            evening: data.evening ? { ...existing.evening, ...data.evening } : existing.evening,
+        };
+
+        const updatedWellbeingLogs = {
+            ...wellbeingLogs,
+            [date]: mergedData,
+        };
+        setWellbeingLogs(updatedWellbeingLogs);
+        localStorage.setItem('wellbeingLogs', JSON.stringify(updatedWellbeingLogs));
+
+        // Save to MongoDB if enabled
+        if (isMongoPersistenceEnabled()) {
+            try {
+                await saveWellbeingLog(mergedData);
+            } catch (error) {
+                console.warn('Failed to save wellbeing log to API:', error instanceof Error ? error.message : 'Unknown error');
+                // State already updated, just log warning
+            }
+        }
+    };
 
     const addCategory = async (category: Omit<Category, 'id'>) => {
         if (isMongoPersistenceEnabled()) {
@@ -190,61 +356,156 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         }
     };
 
-    const addHabit = (habit: Omit<Habit, 'id' | 'createdAt' | 'archived'>) => {
-        const newHabit = {
-            ...habit,
-            id: crypto.randomUUID(),
-            createdAt: new Date().toISOString(),
-            archived: false,
-        };
-        const updatedHabits = [...habits, newHabit];
-        setHabits(updatedHabits);
-        // Immediately save to localStorage to prevent data loss on refresh/close
-        localStorage.setItem('habits', JSON.stringify(updatedHabits));
+    const addHabit = async (habit: Omit<Habit, 'id' | 'createdAt' | 'archived'>) => {
+        if (isMongoPersistenceEnabled()) {
+            try {
+                // Save to API
+                const newHabit = await saveHabit(habit);
+                // Update state with API response
+                const updatedHabits = [...habits, newHabit];
+                setHabits(updatedHabits);
+                // Dual-write: Also save to localStorage for safety during transition
+                localStorage.setItem('habits', JSON.stringify(updatedHabits));
+            } catch (error) {
+                // API failed, fall back to localStorage
+                console.warn(
+                    'Failed to save habit to API, using localStorage fallback:',
+                    error instanceof Error ? error.message : 'Unknown error'
+                );
+                const newHabit = {
+                    ...habit,
+                    id: crypto.randomUUID(),
+                    createdAt: new Date().toISOString(),
+                    archived: false,
+                };
+                const updatedHabits = [...habits, newHabit];
+                setHabits(updatedHabits);
+                localStorage.setItem('habits', JSON.stringify(updatedHabits));
+            }
+        } else {
+            // Use localStorage (existing behavior)
+            const newHabit = {
+                ...habit,
+                id: crypto.randomUUID(),
+                createdAt: new Date().toISOString(),
+                archived: false,
+            };
+            const updatedHabits = [...habits, newHabit];
+            setHabits(updatedHabits);
+            localStorage.setItem('habits', JSON.stringify(updatedHabits));
+        }
     };
 
-    const toggleHabit = (habitId: string, date: string) => {
+    const toggleHabit = async (habitId: string, date: string) => {
         const key = `${habitId}-${date}`;
         const currentLog = logs[key];
 
         let updatedLogs: Record<string, DayLog>;
+        let logToSave: DayLog | null = null;
+        
         if (currentLog) {
-            // Toggle off
+            // Toggle off - delete log
             const { [key]: _, ...rest } = logs;
             updatedLogs = rest;
         } else {
-            // Toggle on
+            // Toggle on - create log
+            logToSave = { habitId, date, value: 1, completed: true };
             updatedLogs = {
                 ...logs,
-                [key]: { habitId, date, value: 1, completed: true },
+                [key]: logToSave,
             };
         }
+        
         setLogs(updatedLogs);
-        // Immediately save to localStorage to prevent data loss on refresh/close
         localStorage.setItem('logs', JSON.stringify(updatedLogs));
+
+        // Save to MongoDB if enabled
+        if (isMongoPersistenceEnabled() && logToSave) {
+            try {
+                await saveDayLog(logToSave);
+            } catch (error) {
+                console.warn('Failed to save day log to API:', error instanceof Error ? error.message : 'Unknown error');
+                // State already updated, just log warning
+            }
+        } else if (isMongoPersistenceEnabled() && currentLog) {
+            // Delete from MongoDB
+            try {
+                await deleteDayLogApi(habitId, date);
+            } catch (error) {
+                console.warn('Failed to delete day log from API:', error instanceof Error ? error.message : 'Unknown error');
+                // State already updated, just log warning
+            }
+        }
     };
 
-    const updateLog = (habitId: string, date: string, value: number) => {
+    const updateLog = async (habitId: string, date: string, value: number) => {
         const key = `${habitId}-${date}`;
         const habit = habits.find(h => h.id === habitId);
         if (!habit) return;
 
         const completed = habit.goal.target ? value >= habit.goal.target : value > 0;
 
+        const logToSave: DayLog = { habitId, date, value, completed };
         const updatedLogs = {
             ...logs,
-            [key]: { habitId, date, value, completed },
+            [key]: logToSave,
         };
         setLogs(updatedLogs);
-        // Immediately save to localStorage to prevent data loss on refresh/close
         localStorage.setItem('logs', JSON.stringify(updatedLogs));
+
+        // Save to MongoDB if enabled
+        if (isMongoPersistenceEnabled()) {
+            try {
+                await saveDayLog(logToSave);
+            } catch (error) {
+                console.warn('Failed to save day log to API:', error instanceof Error ? error.message : 'Unknown error');
+                // State already updated, just log warning
+            }
+        }
     };
 
-    const deleteHabit = (id: string) => {
-        const updatedHabits = habits.filter(h => h.id !== id);
-        setHabits(updatedHabits);
-        // Immediately save to localStorage to prevent data loss on refresh/close
-        localStorage.setItem('habits', JSON.stringify(updatedHabits));
+    const deleteHabit = async (id: string) => {
+        if (isMongoPersistenceEnabled()) {
+            try {
+                // Delete from API (this should cascade delete day logs)
+                await deleteHabitApi(id);
+                // Update state
+                const updatedHabits = habits.filter(h => h.id !== id);
+                setHabits(updatedHabits);
+                // Also remove related logs from state
+                const updatedLogs = Object.fromEntries(
+                    Object.entries(logs).filter(([key]) => !key.startsWith(`${id}-`))
+                );
+                setLogs(updatedLogs);
+                // Dual-write: Also update localStorage
+                localStorage.setItem('habits', JSON.stringify(updatedHabits));
+                localStorage.setItem('logs', JSON.stringify(updatedLogs));
+            } catch (error) {
+                // API failed, fall back to localStorage
+                console.warn(
+                    'Failed to delete habit from API, using localStorage fallback:',
+                    error instanceof Error ? error.message : 'Unknown error'
+                );
+                const updatedHabits = habits.filter(h => h.id !== id);
+                setHabits(updatedHabits);
+                const updatedLogs = Object.fromEntries(
+                    Object.entries(logs).filter(([key]) => !key.startsWith(`${id}-`))
+                );
+                setLogs(updatedLogs);
+                localStorage.setItem('habits', JSON.stringify(updatedHabits));
+                localStorage.setItem('logs', JSON.stringify(updatedLogs));
+            }
+        } else {
+            // Use localStorage (existing behavior)
+            const updatedHabits = habits.filter(h => h.id !== id);
+            setHabits(updatedHabits);
+            const updatedLogs = Object.fromEntries(
+                Object.entries(logs).filter(([key]) => !key.startsWith(`${id}-`))
+            );
+            setLogs(updatedLogs);
+            localStorage.setItem('habits', JSON.stringify(updatedHabits));
+            localStorage.setItem('logs', JSON.stringify(updatedLogs));
+        }
     };
 
     const deleteCategory = async (id: string) => {
@@ -319,25 +580,64 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         // 2. Create Habits
         let updatedHabits = [...habits];
         let addedCount = 0;
-        habitsData.forEach(({ categoryName, habit }) => {
-            const categoryId = categoryMap.get(categoryName);
-            if (categoryId) {
-                // Check if habit already exists to avoid duplicates
-                const exists = updatedHabits.some(h => h.name === habit.name && h.categoryId === categoryId);
-                if (!exists) {
-                    updatedHabits.push({
-                        ...habit,
-                        id: crypto.randomUUID(),
-                        categoryId,
-                        createdAt: new Date().toISOString(),
-                        archived: false, // Ensure archived is set
-                    });
-                    addedCount++;
+        
+        if (isMongoPersistenceEnabled()) {
+            // Use API to create habits
+            for (const { categoryName, habit } of habitsData) {
+                const categoryId = categoryMap.get(categoryName);
+                if (categoryId) {
+                    // Check if habit already exists to avoid duplicates
+                    const exists = updatedHabits.some(h => h.name === habit.name && h.categoryId === categoryId);
+                    if (!exists) {
+                        try {
+                            const newHabit = await saveHabit({
+                                ...habit,
+                                categoryId,
+                            });
+                            updatedHabits.push(newHabit);
+                            addedCount++;
+                        } catch (error) {
+                            // API failed, fall back to localStorage
+                            console.warn(
+                                `Failed to create habit "${habit.name}" via API, using localStorage fallback:`,
+                                error instanceof Error ? error.message : 'Unknown error'
+                            );
+                            updatedHabits.push({
+                                ...habit,
+                                id: crypto.randomUUID(),
+                                categoryId,
+                                createdAt: new Date().toISOString(),
+                                archived: false,
+                            });
+                            addedCount++;
+                        }
+                    }
+                } else {
+                    console.warn(`Category not found for habit: ${habit.name} (Category: ${categoryName})`);
                 }
-            } else {
-                console.warn(`Category not found for habit: ${habit.name} (Category: ${categoryName})`);
             }
-        });
+        } else {
+            // Use localStorage (existing behavior)
+            habitsData.forEach(({ categoryName, habit }) => {
+                const categoryId = categoryMap.get(categoryName);
+                if (categoryId) {
+                    // Check if habit already exists to avoid duplicates
+                    const exists = updatedHabits.some(h => h.name === habit.name && h.categoryId === categoryId);
+                    if (!exists) {
+                        updatedHabits.push({
+                            ...habit,
+                            id: crypto.randomUUID(),
+                            categoryId,
+                            createdAt: new Date().toISOString(),
+                            archived: false,
+                        });
+                        addedCount++;
+                    }
+                } else {
+                    console.warn(`Category not found for habit: ${habit.name} (Category: ${categoryName})`);
+                }
+            });
+        }
 
         console.log(`Imported ${categoriesToImport.length} categories and ${addedCount} habits.`);
 
@@ -369,30 +669,6 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         }
     };
 
-    const [wellbeingLogs, setWellbeingLogs] = useState<Record<string, DailyWellbeing>>(() => {
-        const saved = localStorage.getItem('wellbeingLogs');
-        return saved ? JSON.parse(saved) : {};
-    });
-
-    useEffect(() => {
-        localStorage.setItem('wellbeingLogs', JSON.stringify(wellbeingLogs));
-    }, [wellbeingLogs]);
-
-    const logWellbeing = (date: string, data: DailyWellbeing) => {
-        setWellbeingLogs(prev => {
-            const existing = prev[date] || { date };
-            return {
-                ...prev,
-                [date]: {
-                    ...existing,
-                    ...data,
-                    // Deep merge morning/evening if provided, preserving the other if not
-                    morning: data.morning ? { ...existing.morning, ...data.morning } : existing.morning,
-                    evening: data.evening ? { ...existing.evening, ...data.evening } : existing.evening,
-                }
-            };
-        });
-    };
 
     return (
         <HabitContext.Provider value={{
