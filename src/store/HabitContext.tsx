@@ -135,26 +135,32 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         return saved ? JSON.parse(saved) : INITIAL_HABITS;
     });
 
+    // Phase 2B:
+    // - In 'mongo-primary' mode, logs start empty and are loaded from Mongo via API.
+    // - In 'local-only' and 'mongo-migration' modes, we keep the existing localStorage initialization.
+    // See docs/mongo-migration-plan.md for details.
     const [logs, setLogs] = useState<Record<string, DayLog>>(() => {
-        // Initial load: Try API if enabled, otherwise use localStorage
-        if (mongoEnabled) {
-            const saved = localStorage.getItem('logs');
-            return saved ? JSON.parse(saved) : {};
-        } else {
-            const saved = localStorage.getItem('logs');
-            return saved ? JSON.parse(saved) : {};
+        if (isPrimaryMode) {
+            // Mongo-primary: start empty; logs will be loaded from Mongo via API.
+            return {};
         }
+        // local-only or mongo-migration: preserve current localStorage initialization.
+        const saved = localStorage.getItem('logs');
+        return saved ? JSON.parse(saved) : {};
     });
 
+    // Phase 2B:
+    // - In 'mongo-primary' mode, wellbeingLogs start empty and are loaded from Mongo via API.
+    // - In 'local-only' and 'mongo-migration' modes, we keep the existing localStorage initialization.
+    // See docs/mongo-migration-plan.md for details.
     const [wellbeingLogs, setWellbeingLogs] = useState<Record<string, DailyWellbeing>>(() => {
-        // Initial load: Try API if enabled, otherwise use localStorage
-        if (mongoEnabled) {
-            const saved = localStorage.getItem('wellbeingLogs');
-            return saved ? JSON.parse(saved) : {};
-        } else {
-            const saved = localStorage.getItem('wellbeingLogs');
-            return saved ? JSON.parse(saved) : {};
+        if (isPrimaryMode) {
+            // Mongo-primary: start empty; wellbeingLogs will be loaded from Mongo via API.
+            return {};
         }
+        // local-only or mongo-migration: preserve current localStorage initialization.
+        const saved = localStorage.getItem('wellbeingLogs');
+        return saved ? JSON.parse(saved) : {};
     });
 
     // Phase 2A: Load categories from API on mount
@@ -324,15 +330,37 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    // Load day logs from API on mount if MongoDB persistence is enabled
+    // Phase 2B: Load day logs from API on mount
+    // - In 'mongo-primary' mode: fetch from MongoDB, optional localStorage fallback if API fails and fallback enabled
+    // - In 'mongo-migration' mode: keep current behavior (localStorage init + fetch + replace)
+    // - In 'local-only' mode: do nothing, localStorage already loaded
+    // See docs/mongo-migration-plan.md for details.
     useEffect(() => {
-        if (mongoEnabled) {
-            fetchDayLogs()
-                .then((apiLogs) => {
-                    if (Object.keys(apiLogs).length > 0) {
-                        setLogs(apiLogs);
+        if (isLocalOnly()) {
+            // local-only: do nothing, localStorage already loaded in initializer
+            return;
+        }
+
+        // Mongo is enabled: both migration and primary modes
+        let cancelled = false;
+
+        const loadLogsFromApi = async () => {
+            try {
+                const apiLogs = await fetchDayLogs();
+                if (cancelled) return;
+
+                if (Object.keys(apiLogs).length > 0) {
+                    // API has data, use it
+                    setLogs(apiLogs);
+                    // In 'mongo-migration' we still sync to localStorage (keep existing behavior)
+                    // In 'mongo-primary' we will later disable localStorage syncing in Phase 3
+                    if (isMigrationMode) {
                         localStorage.setItem('logs', JSON.stringify(apiLogs));
-                    } else {
+                    }
+                } else {
+                    // API returned empty
+                    if (isMigrationMode) {
+                        // mongo-migration: check localStorage for existing data (keep current behavior)
                         const saved = localStorage.getItem('logs');
                         if (saved) {
                             const localLogs = JSON.parse(saved);
@@ -340,32 +368,80 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                                 console.warn(
                                     'MongoDB persistence enabled but API returned no logs. Using localStorage data.'
                                 );
-                                setLogs(localLogs);
+                                if (!cancelled) setLogs(localLogs);
                             }
                         }
                     }
-                })
-                .catch((error) => {
-                    console.warn('Failed to fetch logs from API, using localStorage fallback:', error.message);
+                    // mongo-primary: if API returns empty, leave logs empty (no localStorage fallback unless explicitly allowed)
+                }
+            } catch (error) {
+                if (cancelled) return;
+
+                const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+                console.warn('Failed to fetch logs from API:', errorMessage);
+
+                // Fallback behavior:
+                if (isMigrationMode) {
+                    // mongo-migration: keep current fallback (localStorage)
                     const saved = localStorage.getItem('logs');
                     if (saved) {
                         const localLogs = JSON.parse(saved);
-                        setLogs(localLogs);
+                        if (!cancelled) setLogs(localLogs);
                     }
-                });
-        }
+                } else if (isPrimaryMode && allowLocalStorageFallback()) {
+                    // mongo-primary: only fallback to localStorage if explicitly allowed
+                    const saved = localStorage.getItem('logs');
+                    if (saved) {
+                        const localLogs = JSON.parse(saved);
+                        if (!cancelled) {
+                            console.warn('Using localStorage fallback for logs (fallback enabled)');
+                            setLogs(localLogs);
+                        }
+                    }
+                }
+                // mongo-primary without fallback: leave logs empty, error already logged
+            }
+        };
+
+        loadLogsFromApi();
+
+        return () => {
+            cancelled = true;
+        };
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    // Load wellbeing logs from API on mount if MongoDB persistence is enabled
+    // Phase 2B: Load wellbeing logs from API on mount
+    // - In 'mongo-primary' mode: fetch from MongoDB, optional localStorage fallback if API fails and fallback enabled
+    // - In 'mongo-migration' mode: keep current behavior (localStorage init + fetch + replace)
+    // - In 'local-only' mode: do nothing, localStorage already loaded
+    // See docs/mongo-migration-plan.md for details.
     useEffect(() => {
-        if (mongoEnabled) {
-            fetchWellbeingLogs()
-                .then((apiWellbeingLogs) => {
-                    if (Object.keys(apiWellbeingLogs).length > 0) {
-                        setWellbeingLogs(apiWellbeingLogs);
+        if (isLocalOnly()) {
+            // local-only: do nothing, localStorage already loaded in initializer
+            return;
+        }
+
+        // Mongo is enabled: both migration and primary modes
+        let cancelled = false;
+
+        const loadWellbeingLogsFromApi = async () => {
+            try {
+                const apiWellbeingLogs = await fetchWellbeingLogs();
+                if (cancelled) return;
+
+                if (Object.keys(apiWellbeingLogs).length > 0) {
+                    // API has data, use it
+                    setWellbeingLogs(apiWellbeingLogs);
+                    // In 'mongo-migration' we still sync to localStorage (keep existing behavior)
+                    // In 'mongo-primary' we will later disable localStorage syncing in Phase 3
+                    if (isMigrationMode) {
                         localStorage.setItem('wellbeingLogs', JSON.stringify(apiWellbeingLogs));
-                    } else {
+                    }
+                } else {
+                    // API returned empty
+                    if (isMigrationMode) {
+                        // mongo-migration: check localStorage for existing data (keep current behavior)
                         const saved = localStorage.getItem('wellbeingLogs');
                         if (saved) {
                             const localWellbeingLogs = JSON.parse(saved);
@@ -373,20 +449,46 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                                 console.warn(
                                     'MongoDB persistence enabled but API returned no wellbeing logs. Using localStorage data.'
                                 );
-                                setWellbeingLogs(localWellbeingLogs);
+                                if (!cancelled) setWellbeingLogs(localWellbeingLogs);
                             }
                         }
                     }
-                })
-                .catch((error) => {
-                    console.warn('Failed to fetch wellbeing logs from API, using localStorage fallback:', error.message);
+                    // mongo-primary: if API returns empty, leave wellbeingLogs empty (no localStorage fallback unless explicitly allowed)
+                }
+            } catch (error) {
+                if (cancelled) return;
+
+                const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+                console.warn('Failed to fetch wellbeing logs from API:', errorMessage);
+
+                // Fallback behavior:
+                if (isMigrationMode) {
+                    // mongo-migration: keep current fallback (localStorage)
                     const saved = localStorage.getItem('wellbeingLogs');
                     if (saved) {
                         const localWellbeingLogs = JSON.parse(saved);
-                        setWellbeingLogs(localWellbeingLogs);
+                        if (!cancelled) setWellbeingLogs(localWellbeingLogs);
                     }
-                });
-        }
+                } else if (isPrimaryMode && allowLocalStorageFallback()) {
+                    // mongo-primary: only fallback to localStorage if explicitly allowed
+                    const saved = localStorage.getItem('wellbeingLogs');
+                    if (saved) {
+                        const localWellbeingLogs = JSON.parse(saved);
+                        if (!cancelled) {
+                            console.warn('Using localStorage fallback for wellbeing logs (fallback enabled)');
+                            setWellbeingLogs(localWellbeingLogs);
+                        }
+                    }
+                }
+                // mongo-primary without fallback: leave wellbeingLogs empty, error already logged
+            }
+        };
+
+        loadWellbeingLogsFromApi();
+
+        return () => {
+            cancelled = true;
+        };
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
