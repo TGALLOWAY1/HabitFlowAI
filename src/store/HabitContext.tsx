@@ -492,14 +492,23 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    // Sync to localStorage (dual-write for safety during transition)
+    // Phase 3A: Sync to localStorage (dual-write for safety during transition)
+    // - In 'mongo-primary' mode: categories/habits no longer write to localStorage (Mongo is source of truth)
+    // - In 'local-only' and 'mongo-migration' modes: keep localStorage sync (backwards compatible)
+    // See docs/mongo-migration-plan.md for details.
     useEffect(() => {
-        localStorage.setItem('categories', JSON.stringify(categories));
-    }, [categories]);
+        if (!isPrimaryMode) {
+            // local-only or mongo-migration: keep localStorage sync
+            localStorage.setItem('categories', JSON.stringify(categories));
+        }
+    }, [categories, isPrimaryMode]);
 
     useEffect(() => {
-        localStorage.setItem('habits', JSON.stringify(habits));
-    }, [habits]);
+        if (!isPrimaryMode) {
+            // local-only or mongo-migration: keep localStorage sync
+            localStorage.setItem('habits', JSON.stringify(habits));
+        }
+    }, [habits, isPrimaryMode]);
 
     useEffect(() => {
         localStorage.setItem('logs', JSON.stringify(logs));
@@ -538,16 +547,22 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         }
     };
 
+    // Phase 3A:
+    // In 'mongo-primary' mode, categories no longer write to localStorage on success.
+    // - local-only & mongo-migration: keep localStorage writes (backwards compatible).
+    // - mongo-primary: Mongo is the source of truth, localStorage only used for fallback/migration.
     const addCategory = async (category: Omit<Category, 'id'>) => {
         if (mongoEnabled) {
             try {
                 // Save to API
                 const newCategory = await saveCategory(category);
                 // Update state with API response
-                setCategories([...categories, newCategory]);
-                // Dual-write: Also save to localStorage for safety during transition
-                // (This happens automatically via the useEffect above, but we do it here too for immediate consistency)
-                localStorage.setItem('categories', JSON.stringify([...categories, newCategory]));
+                const updatedCategories = [...categories, newCategory];
+                setCategories(updatedCategories);
+                // Phase 3A: Only write to localStorage in local-only or mongo-migration modes
+                if (!isPrimaryMode) {
+                    localStorage.setItem('categories', JSON.stringify(updatedCategories));
+                }
             } catch (error) {
                 // API failed, fall back to localStorage
                 console.warn(
@@ -555,7 +570,12 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                     error instanceof Error ? error.message : 'Unknown error'
                 );
                 const newCategory = { ...category, id: crypto.randomUUID() };
-                setCategories([...categories, newCategory]);
+                const updatedCategories = [...categories, newCategory];
+                setCategories(updatedCategories);
+                // Phase 3A: In mongo-primary mode, only write to localStorage if fallback is enabled
+                if (!isPrimaryMode || allowLocalStorageFallback()) {
+                    localStorage.setItem('categories', JSON.stringify(updatedCategories));
+                }
             }
         } else {
             // Use localStorage (existing behavior)
@@ -564,6 +584,10 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         }
     };
 
+    // Phase 3A:
+    // In 'mongo-primary' mode, habits no longer write to localStorage on success.
+    // - local-only & mongo-migration: keep localStorage writes (backwards compatible).
+    // - mongo-primary: Mongo is the source of truth, localStorage only used for fallback/migration.
     const addHabit = async (habit: Omit<Habit, 'id' | 'createdAt' | 'archived'>) => {
         if (mongoEnabled) {
             try {
@@ -572,8 +596,10 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 // Update state with API response
                 const updatedHabits = [...habits, newHabit];
                 setHabits(updatedHabits);
-                // Dual-write: Also save to localStorage for safety during transition
-                localStorage.setItem('habits', JSON.stringify(updatedHabits));
+                // Phase 3A: Only write to localStorage in local-only or mongo-migration modes
+                if (!isPrimaryMode) {
+                    localStorage.setItem('habits', JSON.stringify(updatedHabits));
+                }
             } catch (error) {
                 // API failed, fall back to localStorage
                 console.warn(
@@ -588,7 +614,10 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 };
                 const updatedHabits = [...habits, newHabit];
                 setHabits(updatedHabits);
-                localStorage.setItem('habits', JSON.stringify(updatedHabits));
+                // Phase 3A: In mongo-primary mode, only write to localStorage if fallback is enabled
+                if (!isPrimaryMode || allowLocalStorageFallback()) {
+                    localStorage.setItem('habits', JSON.stringify(updatedHabits));
+                }
             }
         } else {
             // Use localStorage (existing behavior)
@@ -672,6 +701,11 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         }
     };
 
+    // Phase 3A:
+    // In 'mongo-primary' mode, habits no longer write to localStorage on success.
+    // - local-only & mongo-migration: keep localStorage writes (backwards compatible).
+    // - mongo-primary: Mongo is the source of truth, localStorage only used for fallback/migration.
+    // Note: Logs localStorage writes remain unchanged (will be handled in Phase 3B).
     const deleteHabit = async (id: string) => {
         if (mongoEnabled) {
             try {
@@ -685,8 +719,11 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                     Object.entries(logs).filter(([key]) => !key.startsWith(`${id}-`))
                 );
                 setLogs(updatedLogs);
-                // Dual-write: Also update localStorage
-                localStorage.setItem('habits', JSON.stringify(updatedHabits));
+                // Phase 3A: Only write habits to localStorage in local-only or mongo-migration modes
+                // Logs localStorage write remains unchanged (Phase 3B)
+                if (!isPrimaryMode) {
+                    localStorage.setItem('habits', JSON.stringify(updatedHabits));
+                }
                 localStorage.setItem('logs', JSON.stringify(updatedLogs));
             } catch (error) {
                 // API failed, fall back to localStorage
@@ -700,7 +737,11 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                     Object.entries(logs).filter(([key]) => !key.startsWith(`${id}-`))
                 );
                 setLogs(updatedLogs);
-                localStorage.setItem('habits', JSON.stringify(updatedHabits));
+                // Phase 3A: In mongo-primary mode, only write habits to localStorage if fallback is enabled
+                // Logs localStorage write remains unchanged (Phase 3B)
+                if (!isPrimaryMode || allowLocalStorageFallback()) {
+                    localStorage.setItem('habits', JSON.stringify(updatedHabits));
+                }
                 localStorage.setItem('logs', JSON.stringify(updatedLogs));
             }
         } else {
@@ -716,30 +757,47 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         }
     };
 
+    // Phase 3A:
+    // In 'mongo-primary' mode, categories no longer write to localStorage on success.
+    // - local-only & mongo-migration: keep localStorage writes (backwards compatible).
+    // - mongo-primary: Mongo is the source of truth, localStorage only used for fallback/migration.
     const deleteCategory = async (id: string) => {
         if (mongoEnabled) {
             try {
                 // Delete from API
                 await deleteCategoryApi(id);
                 // Update state
-                setCategories(prev => prev.filter(c => c.id !== id));
-                // Dual-write: Also update localStorage
                 const updated = categories.filter(c => c.id !== id);
-                localStorage.setItem('categories', JSON.stringify(updated));
+                setCategories(updated);
+                // Phase 3A: Only write to localStorage in local-only or mongo-migration modes
+                if (!isPrimaryMode) {
+                    localStorage.setItem('categories', JSON.stringify(updated));
+                }
             } catch (error) {
                 // API failed, fall back to localStorage
                 console.warn(
                     'Failed to delete category from API, using localStorage fallback:',
                     error instanceof Error ? error.message : 'Unknown error'
                 );
-                setCategories(prev => prev.filter(c => c.id !== id));
+                const updated = categories.filter(c => c.id !== id);
+                setCategories(updated);
+                // Phase 3A: In mongo-primary mode, only write to localStorage if fallback is enabled
+                if (!isPrimaryMode || allowLocalStorageFallback()) {
+                    localStorage.setItem('categories', JSON.stringify(updated));
+                }
             }
         } else {
             // Use localStorage (existing behavior)
-            setCategories(prev => prev.filter(c => c.id !== id));
+            const updated = categories.filter(c => c.id !== id);
+            setCategories(updated);
         }
     };
 
+    // Phase 3A:
+    // In 'mongo-primary' mode, categories/habits no longer write to localStorage.
+    // - local-only & mongo-migration: keep localStorage writes via useEffect hooks (backwards compatible).
+    // - mongo-primary: Mongo is the source of truth, localStorage only used for fallback/migration.
+    // Note: This function relies on the gated useEffect hooks for localStorage sync.
     const importHabits = async (
         categoriesToImport: Omit<Category, 'id'>[],
         habitsData: { categoryName: string; habit: Omit<Habit, 'id' | 'categoryId' | 'createdAt' | 'archived'> }[]
@@ -854,6 +912,10 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         setHabits(updatedHabits);
     };
 
+    // Phase 3A:
+    // In 'mongo-primary' mode, categories no longer write to localStorage on success.
+    // - local-only & mongo-migration: keep localStorage writes (backwards compatible).
+    // - mongo-primary: Mongo is the source of truth, localStorage only used for fallback/migration.
     const reorderCategories = async (newOrder: Category[]) => {
         if (mongoEnabled) {
             try {
@@ -861,8 +923,10 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 const updatedCategories = await reorderCategoriesApi(newOrder);
                 // Update state with API response
                 setCategories(updatedCategories);
-                // Dual-write: Also save to localStorage
-                localStorage.setItem('categories', JSON.stringify(updatedCategories));
+                // Phase 3A: Only write to localStorage in local-only or mongo-migration modes
+                if (!isPrimaryMode) {
+                    localStorage.setItem('categories', JSON.stringify(updatedCategories));
+                }
             } catch (error) {
                 // API failed, fall back to localStorage
                 console.warn(
@@ -870,6 +934,10 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                     error instanceof Error ? error.message : 'Unknown error'
                 );
                 setCategories(newOrder);
+                // Phase 3A: In mongo-primary mode, only write to localStorage if fallback is enabled
+                if (isPrimaryMode && allowLocalStorageFallback()) {
+                    localStorage.setItem('categories', JSON.stringify(newOrder));
+                }
             }
         } else {
             // Use localStorage (existing behavior)
