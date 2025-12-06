@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { HabitProvider, useHabitStore } from './store/HabitContext';
+import { ActivityProvider } from './store/ActivityContext';
 import { Layout } from './components/Layout';
 import { CategoryTabs } from './components/CategoryTabs';
 import { TrackerGrid } from './components/TrackerGrid';
@@ -69,9 +70,11 @@ const HabitTrackerContent: React.FC = () => {
 function App() {
   return (
     <HabitProvider>
-      <Layout>
-        <HabitTrackerContent />
-      </Layout>
+      <ActivityProvider>
+        <Layout>
+          <HabitTrackerContent />
+        </Layout>
+      </ActivityProvider>
     </HabitProvider>
   );
 }
