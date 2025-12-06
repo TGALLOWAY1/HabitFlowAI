@@ -163,6 +163,100 @@ export interface DayLog {
 }
 
 /**
+ * ActivityStep Type
+ * 
+ * Type discriminator for activity steps.
+ * - 'habit': Step that links to an existing habit
+ * - 'task': Standalone task step with its own content
+ */
+export type ActivityStepType = 'habit' | 'task';
+
+/**
+ * ActivityStep Entity
+ * 
+ * Embedded within Activity entity.
+ * Represents a single step in an activity workflow.
+ * 
+ * Steps can be either:
+ * - Habit steps: Link to an existing habit for tracking
+ * - Task steps: Standalone tasks with instructions, images, or timers
+ */
+export interface ActivityStep {
+    /** 
+     * Unique identifier for this step within the activity
+     * Generated via crypto.randomUUID() (frontend) or randomUUID() (backend)
+     */
+    id: string;
+    
+    /** Type of step: 'habit' (links to habit) or 'task' (standalone) */
+    type: ActivityStepType;
+    
+    /** Display title/name of the step */
+    title: string;
+    
+    /** Optional detailed instructions for the step */
+    instruction?: string;
+    
+    /** Optional image URL for visual guidance (used in Image View) */
+    imageUrl?: string;
+    
+    /** 
+     * Optional duration in seconds for timer-based steps
+     * Used for timers in Image View
+     */
+    durationSeconds?: number;
+    
+    /** 
+     * Foreign key reference to Habit.id
+     * Required when type === 'habit', undefined for 'task' steps
+     */
+    habitId?: string;
+    
+    /** 
+     * Optional time estimate in minutes
+     * Editable in Habit View for habit steps
+     */
+    timeEstimateMinutes?: number;
+}
+
+/**
+ * Activity Entity
+ * 
+ * Storage Key: 'activities'
+ * Storage Format: Activity[] (array of Activity objects)
+ * 
+ * Represents a structured workflow or routine composed of multiple steps.
+ * Activities guide users through a sequence of habits and tasks, providing
+ * a structured way to complete related actions together.
+ */
+export interface Activity {
+    /** 
+     * Unique identifier, generated via crypto.randomUUID() (frontend) or randomUUID() (backend)
+     * This is the application-level primary key, not MongoDB's _id
+     */
+    id: string;
+    
+    /** 
+     * User ID to scope the activity to a specific user
+     * Added at repository layer when inserting, stripped when returning
+     * Currently uses placeholder 'anonymous-user' until authentication is implemented
+     */
+    userId: string;
+    
+    /** Display title/name of the activity */
+    title: string;
+    
+    /** Array of steps that make up this activity */
+    steps: ActivityStep[];
+    
+    /** ISO 8601 timestamp of when the activity was created */
+    createdAt: string;
+    
+    /** ISO 8601 timestamp of when the activity was last updated */
+    updatedAt: string;
+}
+
+/**
  * WellbeingSession Entity
  * 
  * Embedded within DailyWellbeing entity.
@@ -262,6 +356,9 @@ export type DayLogsStorage = Record<string, DayLog>;
  */
 export type WellbeingLogsStorage = Record<string, DailyWellbeing>;
 
+/** Activities stored as an array */
+export type ActivitiesStorage = Activity[];
+
 /**
  * Complete Persistence Schema
  * 
@@ -273,6 +370,7 @@ export type WellbeingLogsStorage = Record<string, DailyWellbeing>;
  * - habits → 'habits' collection
  * - logs → 'dayLogs' collection
  * - wellbeingLogs → 'wellbeingLogs' collection
+ * - activities → 'activities' collection
  * 
  * All MongoDB documents are scoped by userId (currently 'anonymous-user' placeholder).
  */
@@ -288,6 +386,9 @@ export interface PersistenceSchema {
     
     /** Record of all wellbeing logs, keyed by date (YYYY-MM-DD) */
     wellbeingLogs: WellbeingLogsStorage;
+    
+    /** Array of all activities */
+    activities: ActivitiesStorage;
 }
 
 
@@ -302,5 +403,6 @@ export const MONGO_COLLECTIONS = {
     HABITS: 'habits',
     DAY_LOGS: 'dayLogs',
     WELLBEING_LOGS: 'wellbeingLogs',
+    ACTIVITIES: 'activities',
 } as const;
 

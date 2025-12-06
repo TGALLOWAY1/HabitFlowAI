@@ -49,4 +49,26 @@ export interface DayLog {
     completed: boolean;
 }
 
+export type ActivityStepType = 'habit' | 'task';
+
+export interface ActivityStep {
+    id: string;
+    type: ActivityStepType;
+    title: string;
+    instruction?: string;
+    imageUrl?: string;
+    durationSeconds?: number;
+    habitId?: string; // required when type === 'habit'
+    timeEstimateMinutes?: number;
+}
+
+export interface Activity {
+    id: string;
+    userId: string;
+    title: string;
+    steps: ActivityStep[];
+    createdAt: string;
+    updatedAt: string;
+}
+
 export type Theme = 'dark' | 'light';
