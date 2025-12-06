@@ -11,7 +11,7 @@ import { getCategories, createCategoryRoute, getCategory, updateCategoryRoute, d
 import { getHabits, createHabitRoute, getHabit, updateHabitRoute, deleteHabitRoute } from './routes/habits';
 import { getDayLogs, upsertDayLogRoute, getDayLogRoute, deleteDayLogRoute } from './routes/dayLogs';
 import { getWellbeingLogs, upsertWellbeingLogRoute, getWellbeingLogRoute, deleteWellbeingLogRoute } from './routes/wellbeingLogs';
-import { getActivities, getActivity, createActivityRoute, replaceActivityRoute, updateActivityRoute, deleteActivityRoute } from './routes/activities';
+import { getActivities, getActivity, createActivityRoute, replaceActivityRoute, updateActivityRoute, deleteActivityRoute, submitActivityRoute } from './routes/activities';
 import { closeConnection } from './lib/mongoClient';
 
 // Assert MongoDB is enabled at startup (fail fast if misconfigured)
@@ -83,6 +83,7 @@ app.get('/api/activities/:id', getActivity);
 app.put('/api/activities/:id', replaceActivityRoute);
 app.patch('/api/activities/:id', updateActivityRoute);
 app.delete('/api/activities/:id', deleteActivityRoute);
+app.post('/api/activities/:id/submit', submitActivityRoute);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {

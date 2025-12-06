@@ -31,11 +31,25 @@ export async function upsertDayLog(
   const compositeKey = `${log.habitId}-${log.date}`;
 
   // Create document to store in MongoDB (includes userId and compositeKey)
-  const document = {
-    ...log,
+  // Build document with all fields from log, explicitly including activity metadata
+  const document: any = {
+    habitId: log.habitId,
+    date: log.date,
+    value: log.value,
+    completed: log.completed,
     compositeKey, // Store composite key for efficient querying
     userId,
   };
+
+  // Add activity metadata if it exists in the log object
+  // Check property existence to ensure we capture it even if it's an optional field
+  const logAny = log as any;
+  if (logAny.hasOwnProperty('activityId') && logAny.activityId != null) {
+    document.activityId = logAny.activityId;
+  }
+  if (logAny.hasOwnProperty('activityStepId') && logAny.activityStepId != null) {
+    document.activityStepId = logAny.activityStepId;
+  }
 
   // Upsert (insert or update)
   await collection.updateOne(

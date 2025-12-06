@@ -13,7 +13,8 @@ import {
   updateActivity,
   deleteActivity,
 } from '../repositories/activityRepository';
-import type { Activity, ActivityStep } from '../../models/persistenceTypes';
+import { upsertDayLog } from '../repositories/dayLogRepository';
+import type { Activity, ActivityStep, DayLog } from '../../models/persistenceTypes';
 
 /**
  * Validate an ActivityStep object.
@@ -478,6 +479,176 @@ export async function deleteActivityRoute(req: Request, res: Response): Promise<
       error: {
         code: 'INTERNAL_SERVER_ERROR',
         message: 'Failed to delete activity',
+        details: process.env.NODE_ENV === 'development' ? errorMessage : undefined,
+      },
+    });
+  }
+}
+
+/**
+ * Derive YYYY-MM-DD date string from ISO datetime string or Date object.
+ * 
+ * @param dateInput - ISO datetime string, Date object, or undefined
+ * @returns YYYY-MM-DD formatted string
+ */
+function deriveDateString(dateInput?: string | Date): string {
+  let date: Date;
+  
+  if (dateInput) {
+    if (typeof dateInput === 'string') {
+      date = new Date(dateInput);
+    } else {
+      date = dateInput;
+    }
+  } else {
+    date = new Date();
+  }
+
+  // Extract YYYY-MM-DD
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  
+  return `${year}-${month}-${day}`;
+}
+
+/**
+ * Submit activity completion and create DayLogs for habit steps.
+ * 
+ * POST /api/activities/:id/submit
+ */
+export async function submitActivityRoute(req: Request, res: Response): Promise<void> {
+  try {
+    const { id } = req.params;
+    const { mode, completedStepIds, submittedAt, dateOverride } = req.body;
+
+    // Validate activity ID
+    if (!id) {
+      res.status(400).json({
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'Activity ID is required',
+        },
+      });
+      return;
+    }
+
+    // Validate request body
+    if (!mode || (mode !== 'habit' && mode !== 'image' && mode !== 'text')) {
+      res.status(400).json({
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'mode is required and must be one of: "habit", "image", "text"',
+        },
+      });
+      return;
+    }
+
+    if (!Array.isArray(completedStepIds)) {
+      res.status(400).json({
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'completedStepIds is required and must be an array',
+        },
+      });
+      return;
+    }
+
+    // Validate dateOverride if provided
+    if (dateOverride !== undefined) {
+      if (typeof dateOverride !== 'string') {
+        res.status(400).json({
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: 'dateOverride must be a string in YYYY-MM-DD format',
+          },
+        });
+        return;
+      }
+      // Basic format validation
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(dateOverride)) {
+        res.status(400).json({
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: 'dateOverride must be in YYYY-MM-DD format',
+          },
+        });
+        return;
+      }
+    }
+
+    // TODO: Extract userId from authentication token/session
+    const userId = (req as any).userId || 'anonymous-user';
+
+    // Load the Activity
+    const activity = await getActivityById(id, userId);
+
+    if (!activity) {
+      res.status(404).json({
+        error: {
+          code: 'NOT_FOUND',
+          message: 'Activity not found',
+        },
+      });
+      return;
+    }
+
+    // Build map of steps by id
+    const stepsMap = new Map<string, ActivityStep>();
+    for (const step of activity.steps) {
+      stepsMap.set(step.id, step);
+    }
+
+    // Determine the log date
+    const logDate = dateOverride || deriveDateString(submittedAt);
+
+    // Filter completedStepIds to only include valid habit steps
+    const validHabitSteps: ActivityStep[] = [];
+    const completedHabitStepIds: string[] = [];
+
+    for (const stepId of completedStepIds) {
+      const step = stepsMap.get(stepId);
+      if (step && step.type === 'habit' && step.habitId && step.habitId.trim().length > 0) {
+        validHabitSteps.push(step);
+        completedHabitStepIds.push(stepId);
+      }
+    }
+
+    // Count total habit steps in activity
+    const totalHabitStepsInActivity = activity.steps.filter(
+      step => step.type === 'habit' && step.habitId && step.habitId.trim().length > 0
+    ).length;
+
+    // Create DayLogs for each valid habit step
+    let createdOrUpdatedCount = 0;
+
+    for (const step of validHabitSteps) {
+      // Create DayLog as plain object to ensure all fields are included
+      const dayLog = {
+        habitId: step.habitId!,
+        date: logDate,
+        value: 1, // Boolean completion (1 = completed)
+        completed: true, // Repository will recalculate, but we set it for clarity
+        activityId: activity.id, // Explicitly include activity metadata
+        activityStepId: step.id, // Explicitly include activity metadata
+      } as DayLog;
+
+      await upsertDayLog(dayLog, userId);
+      createdOrUpdatedCount++;
+    }
+
+    res.status(200).json({
+      createdOrUpdatedCount,
+      completedHabitStepIds,
+      totalHabitStepsInActivity,
+    });
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error('Error submitting activity:', errorMessage);
+    res.status(500).json({
+      error: {
+        code: 'INTERNAL_SERVER_ERROR',
+        message: 'Failed to submit activity',
         details: process.env.NODE_ENV === 'development' ? errorMessage : undefined,
       },
     });
