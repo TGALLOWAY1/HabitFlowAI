@@ -117,28 +117,41 @@ export const CategoryTabs: React.FC<CategoryTabsProps> = ({
         })
     );
 
-    const handleDragEnd = (event: DragEndEvent) => {
+    const handleDragEnd = async (event: DragEndEvent) => {
         const { active, over } = event;
 
         if (over && active.id !== over.id) {
             const oldIndex = categories.findIndex((c) => c.id === active.id);
             const newIndex = categories.findIndex((c) => c.id === over.id);
-            reorderCategories(arrayMove(categories, oldIndex, newIndex));
+            try {
+                await reorderCategories(arrayMove(categories, oldIndex, newIndex));
+            } catch (error) {
+                console.error('Failed to reorder categories:', error);
+            }
         }
     };
 
-    const handleImport = () => {
-        importHabits(PREDEFINED_CATEGORIES, PREDEFINED_HABITS);
-        setImportStatus('success');
-        setTimeout(() => setImportStatus('idle'), 3000);
+    const handleImport = async () => {
+        try {
+            await importHabits(PREDEFINED_CATEGORIES, PREDEFINED_HABITS);
+            setImportStatus('success');
+            setTimeout(() => setImportStatus('idle'), 3000);
+        } catch (error) {
+            console.error('Failed to import habits:', error);
+        }
     };
 
-    const handleAddCategory = (e: React.FormEvent) => {
+    const handleAddCategory = async (e: React.FormEvent) => {
         e.preventDefault();
         if (newCategoryName.trim()) {
-            addCategory({ name: newCategoryName.trim(), color: 'bg-neutral-600' });
-            setNewCategoryName('');
-            setIsAdding(false);
+            try {
+                await addCategory({ name: newCategoryName.trim(), color: 'bg-neutral-600' });
+                setNewCategoryName('');
+                setIsAdding(false);
+            } catch (error) {
+                console.error('Failed to add category:', error);
+                // Category might still be added via localStorage fallback
+            }
         }
     };
 
@@ -160,13 +173,17 @@ export const CategoryTabs: React.FC<CategoryTabsProps> = ({
                             isActive={activeCategoryId === category.id}
                             onSelect={() => onSelectCategory(category.id)}
                             deleteConfirmId={deleteConfirmId}
-                            onDelete={(e) => {
+                            onDelete={async (e) => {
                                 e.stopPropagation();
                                 if (deleteConfirmId === category.id) {
-                                    deleteCategory(category.id);
-                                    const remaining = categories.filter(c => c.id !== category.id);
-                                    if (remaining.length > 0) onSelectCategory(remaining[0].id);
-                                    setDeleteConfirmId(null);
+                                    try {
+                                        await deleteCategory(category.id);
+                                        const remaining = categories.filter(c => c.id !== category.id);
+                                        if (remaining.length > 0) onSelectCategory(remaining[0].id);
+                                        setDeleteConfirmId(null);
+                                    } catch (error) {
+                                        console.error('Failed to delete category:', error);
+                                    }
                                 } else {
                                     setDeleteConfirmId(category.id);
                                     setTimeout(() => setDeleteConfirmId(null), 3000);
