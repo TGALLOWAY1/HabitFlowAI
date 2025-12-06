@@ -7,7 +7,7 @@
 
 import { ObjectId } from 'mongodb';
 import { getDb } from '../lib/mongoClient';
-import { getUseMongoPersistence } from '../config';
+import { getMongoEnabled } from '../config';
 import type { DayLog } from '../../models/persistenceTypes';
 
 const COLLECTION_NAME = 'dayLogs';
@@ -18,15 +18,11 @@ const COLLECTION_NAME = 'dayLogs';
  * @param log - DayLog data
  * @param userId - User ID to associate with the log
  * @returns Created/updated day log
- * @throws Error if USE_MONGO_PERSISTENCE is false
  */
 export async function upsertDayLog(
   log: DayLog,
   userId: string
 ): Promise<DayLog> {
-  if (!getUseMongoPersistence()) {
-    throw new Error('MongoDB persistence is required. Set USE_MONGO_PERSISTENCE=true in .env');
-  }
 
   const db = await getDb();
   const collection = db.collection(COLLECTION_NAME);
@@ -58,12 +54,8 @@ export async function upsertDayLog(
  * 
  * @param userId - User ID to filter logs
  * @returns Record of day logs keyed by `${habitId}-${date}`
- * @throws Error if USE_MONGO_PERSISTENCE is false
  */
 export async function getDayLogsByUser(userId: string): Promise<Record<string, DayLog>> {
-  if (!getUseMongoPersistence()) {
-    throw new Error('MongoDB persistence is required. Set USE_MONGO_PERSISTENCE=true in .env');
-  }
 
   const db = await getDb();
   const collection = db.collection(COLLECTION_NAME);
@@ -88,15 +80,11 @@ export async function getDayLogsByUser(userId: string): Promise<Record<string, D
  * @param habitId - Habit ID to filter logs
  * @param userId - User ID to verify ownership
  * @returns Record of day logs keyed by `${habitId}-${date}`
- * @throws Error if USE_MONGO_PERSISTENCE is false
  */
 export async function getDayLogsByHabit(
   habitId: string,
   userId: string
 ): Promise<Record<string, DayLog>> {
-  if (!getUseMongoPersistence()) {
-    throw new Error('MongoDB persistence is required. Set USE_MONGO_PERSISTENCE=true in .env');
-  }
 
   const db = await getDb();
   const collection = db.collection(COLLECTION_NAME);
@@ -122,16 +110,12 @@ export async function getDayLogsByHabit(
  * @param date - Date in YYYY-MM-DD format
  * @param userId - User ID to verify ownership
  * @returns DayLog if found, null otherwise
- * @throws Error if USE_MONGO_PERSISTENCE is false
  */
 export async function getDayLog(
   habitId: string,
   date: string,
   userId: string
 ): Promise<DayLog | null> {
-  if (!getUseMongoPersistence()) {
-    throw new Error('MongoDB persistence is required. Set USE_MONGO_PERSISTENCE=true in .env');
-  }
 
   const db = await getDb();
   const collection = db.collection(COLLECTION_NAME);
@@ -155,16 +139,12 @@ export async function getDayLog(
  * @param date - Date in YYYY-MM-DD format
  * @param userId - User ID to verify ownership
  * @returns True if log was deleted, false if not found
- * @throws Error if USE_MONGO_PERSISTENCE is false
  */
 export async function deleteDayLog(
   habitId: string,
   date: string,
   userId: string
 ): Promise<boolean> {
-  if (!getUseMongoPersistence()) {
-    throw new Error('MongoDB persistence is required. Set USE_MONGO_PERSISTENCE=true in .env');
-  }
 
   const db = await getDb();
   const collection = db.collection(COLLECTION_NAME);
@@ -181,15 +161,11 @@ export async function deleteDayLog(
  * @param habitId - Habit ID
  * @param userId - User ID to verify ownership
  * @returns Number of logs deleted
- * @throws Error if USE_MONGO_PERSISTENCE is false
  */
 export async function deleteDayLogsByHabit(
   habitId: string,
   userId: string
 ): Promise<number> {
-  if (!getUseMongoPersistence()) {
-    throw new Error('MongoDB persistence is required. Set USE_MONGO_PERSISTENCE=true in .env');
-  }
 
   const db = await getDb();
   const collection = db.collection(COLLECTION_NAME);

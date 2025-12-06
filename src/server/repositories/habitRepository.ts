@@ -8,7 +8,7 @@
 import { ObjectId } from 'mongodb';
 import { randomUUID } from 'crypto';
 import { getDb } from '../lib/mongoClient';
-import { getUseMongoPersistence } from '../config';
+import { getMongoEnabled } from '../config';
 import type { Habit } from '../../models/persistenceTypes';
 
 const COLLECTION_NAME = 'habits';
@@ -19,15 +19,11 @@ const COLLECTION_NAME = 'habits';
  * @param data - Habit data (without id, createdAt, archived)
  * @param userId - User ID to associate with the habit
  * @returns Created habit with generated ID
- * @throws Error if USE_MONGO_PERSISTENCE is false
  */
 export async function createHabit(
   data: Omit<Habit, 'id' | 'createdAt' | 'archived'>,
   userId: string
 ): Promise<Habit> {
-  if (!getUseMongoPersistence()) {
-    throw new Error('MongoDB persistence is required. Set USE_MONGO_PERSISTENCE=true in .env');
-  }
 
   const db = await getDb();
   const collection = db.collection(COLLECTION_NAME);
@@ -57,12 +53,8 @@ export async function createHabit(
  * 
  * @param userId - User ID to filter habits
  * @returns Array of habits for the user
- * @throws Error if USE_MONGO_PERSISTENCE is false
  */
 export async function getHabitsByUser(userId: string): Promise<Habit[]> {
-  if (!getUseMongoPersistence()) {
-    throw new Error('MongoDB persistence is required. Set USE_MONGO_PERSISTENCE=true in .env');
-  }
 
   const db = await getDb();
   const collection = db.collection(COLLECTION_NAME);
@@ -81,15 +73,11 @@ export async function getHabitsByUser(userId: string): Promise<Habit[]> {
  * @param categoryId - Category ID to filter habits
  * @param userId - User ID to verify ownership
  * @returns Array of habits in the category
- * @throws Error if USE_MONGO_PERSISTENCE is false
  */
 export async function getHabitsByCategory(
   categoryId: string,
   userId: string
 ): Promise<Habit[]> {
-  if (!getUseMongoPersistence()) {
-    throw new Error('MongoDB persistence is required. Set USE_MONGO_PERSISTENCE=true in .env');
-  }
 
   const db = await getDb();
   const collection = db.collection(COLLECTION_NAME);
@@ -108,15 +96,11 @@ export async function getHabitsByCategory(
  * @param id - Habit ID
  * @param userId - User ID to verify ownership
  * @returns Habit if found, null otherwise
- * @throws Error if USE_MONGO_PERSISTENCE is false
  */
 export async function getHabitById(
   id: string,
   userId: string
 ): Promise<Habit | null> {
-  if (!getUseMongoPersistence()) {
-    throw new Error('MongoDB persistence is required. Set USE_MONGO_PERSISTENCE=true in .env');
-  }
 
   const db = await getDb();
   const collection = db.collection(COLLECTION_NAME);
@@ -139,16 +123,12 @@ export async function getHabitById(
  * @param userId - User ID to verify ownership
  * @param patch - Partial habit data to update
  * @returns Updated habit if found, null otherwise
- * @throws Error if USE_MONGO_PERSISTENCE is false
  */
 export async function updateHabit(
   id: string,
   userId: string,
   patch: Partial<Omit<Habit, 'id' | 'createdAt'>>
 ): Promise<Habit | null> {
-  if (!getUseMongoPersistence()) {
-    throw new Error('MongoDB persistence is required. Set USE_MONGO_PERSISTENCE=true in .env');
-  }
 
   const db = await getDb();
   const collection = db.collection(COLLECTION_NAME);
@@ -174,15 +154,11 @@ export async function updateHabit(
  * @param id - Habit ID
  * @param userId - User ID to verify ownership
  * @returns True if habit was deleted, false if not found
- * @throws Error if USE_MONGO_PERSISTENCE is false
  */
 export async function deleteHabit(
   id: string,
   userId: string
 ): Promise<boolean> {
-  if (!getUseMongoPersistence()) {
-    throw new Error('MongoDB persistence is required. Set USE_MONGO_PERSISTENCE=true in .env');
-  }
 
   const db = await getDb();
   const collection = db.collection(COLLECTION_NAME);

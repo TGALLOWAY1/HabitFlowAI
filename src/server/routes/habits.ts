@@ -6,7 +6,6 @@
  */
 
 import type { Request, Response } from 'express';
-import { getUseMongoPersistence } from '../config';
 import {
   createHabit,
   getHabitsByUser,
@@ -25,15 +24,6 @@ import type { Habit } from '../../models/persistenceTypes';
  */
 export async function getHabits(req: Request, res: Response): Promise<void> {
   try {
-    if (!getUseMongoPersistence()) {
-      res.status(501).json({
-        error: {
-          code: 'MONGO_PERSISTENCE_DISABLED',
-          message: 'MongoDB persistence is required. Set USE_MONGO_PERSISTENCE=true in .env',
-        },
-      });
-      return;
-    }
 
     // TODO: Extract userId from authentication token/session
     const userId = (req as any).userId || 'anonymous-user';
@@ -70,15 +60,6 @@ export async function getHabits(req: Request, res: Response): Promise<void> {
  */
 export async function createHabitRoute(req: Request, res: Response): Promise<void> {
   try {
-    if (!getUseMongoPersistence()) {
-      res.status(501).json({
-        error: {
-          code: 'MONGO_PERSISTENCE_DISABLED',
-          message: 'MongoDB persistence is required. Set USE_MONGO_PERSISTENCE=true in .env',
-        },
-      });
-      return;
-    }
 
     // Validate request body
     const { name, categoryId, goal, description } = req.body;
@@ -149,15 +130,6 @@ export async function createHabitRoute(req: Request, res: Response): Promise<voi
  */
 export async function getHabit(req: Request, res: Response): Promise<void> {
   try {
-    if (!getUseMongoPersistence()) {
-      res.status(501).json({
-        error: {
-          code: 'MONGO_PERSISTENCE_DISABLED',
-          message: 'MongoDB persistence is required. Set USE_MONGO_PERSISTENCE=true in .env',
-        },
-      });
-      return;
-    }
 
     const { id } = req.params;
 
@@ -209,15 +181,6 @@ export async function getHabit(req: Request, res: Response): Promise<void> {
  */
 export async function updateHabitRoute(req: Request, res: Response): Promise<void> {
   try {
-    if (!getUseMongoPersistence()) {
-      res.status(501).json({
-        error: {
-          code: 'MONGO_PERSISTENCE_DISABLED',
-          message: 'MongoDB persistence is required. Set USE_MONGO_PERSISTENCE=true in .env',
-        },
-      });
-      return;
-    }
 
     const { id } = req.params;
     const { name, categoryId, goal, description, archived } = req.body;
@@ -339,15 +302,6 @@ export async function updateHabitRoute(req: Request, res: Response): Promise<voi
  */
 export async function deleteHabitRoute(req: Request, res: Response): Promise<void> {
   try {
-    if (!getUseMongoPersistence()) {
-      res.status(501).json({
-        error: {
-          code: 'MONGO_PERSISTENCE_DISABLED',
-          message: 'MongoDB persistence is required. Set USE_MONGO_PERSISTENCE=true in .env',
-        },
-      });
-      return;
-    }
 
     const { id } = req.params;
 

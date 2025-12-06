@@ -6,7 +6,6 @@
  */
 
 import type { Request, Response } from 'express';
-import { getUseMongoPersistence } from '../config';
 import {
   upsertDayLog,
   getDayLogsByUser,
@@ -24,15 +23,6 @@ import type { DayLog } from '../../models/persistenceTypes';
  */
 export async function getDayLogs(req: Request, res: Response): Promise<void> {
   try {
-    if (!getUseMongoPersistence()) {
-      res.status(501).json({
-        error: {
-          code: 'MONGO_PERSISTENCE_DISABLED',
-          message: 'MongoDB persistence is required. Set USE_MONGO_PERSISTENCE=true in .env',
-        },
-      });
-      return;
-    }
 
     // TODO: Extract userId from authentication token/session
     const userId = (req as any).userId || 'anonymous-user';
@@ -70,15 +60,6 @@ export async function getDayLogs(req: Request, res: Response): Promise<void> {
  */
 export async function upsertDayLogRoute(req: Request, res: Response): Promise<void> {
   try {
-    if (!getUseMongoPersistence()) {
-      res.status(501).json({
-        error: {
-          code: 'MONGO_PERSISTENCE_DISABLED',
-          message: 'MongoDB persistence is required. Set USE_MONGO_PERSISTENCE=true in .env',
-        },
-      });
-      return;
-    }
 
     // Validate request body
     const { habitId, date, value, completed } = req.body;
@@ -158,15 +139,6 @@ export async function upsertDayLogRoute(req: Request, res: Response): Promise<vo
  */
 export async function getDayLogRoute(req: Request, res: Response): Promise<void> {
   try {
-    if (!getUseMongoPersistence()) {
-      res.status(501).json({
-        error: {
-          code: 'MONGO_PERSISTENCE_DISABLED',
-          message: 'MongoDB persistence is required. Set USE_MONGO_PERSISTENCE=true in .env',
-        },
-      });
-      return;
-    }
 
     const { habitId, date } = req.params;
 
@@ -218,15 +190,6 @@ export async function getDayLogRoute(req: Request, res: Response): Promise<void>
  */
 export async function deleteDayLogRoute(req: Request, res: Response): Promise<void> {
   try {
-    if (!getUseMongoPersistence()) {
-      res.status(501).json({
-        error: {
-          code: 'MONGO_PERSISTENCE_DISABLED',
-          message: 'MongoDB persistence is required. Set USE_MONGO_PERSISTENCE=true in .env',
-        },
-      });
-      return;
-    }
 
     const { habitId, date } = req.params;
 

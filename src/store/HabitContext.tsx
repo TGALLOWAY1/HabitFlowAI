@@ -15,9 +15,6 @@ import {
     fetchWellbeingLogs,
     saveWellbeingLog,
 } from '../lib/persistenceClient';
-import {
-    MONGO_ENABLED,
-} from '../lib/persistenceConfig';
 
 interface HabitContextType {
     categories: Category[];
@@ -52,7 +49,6 @@ export const useHabitStore = () => {
 export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     // All persistent data is stored in MongoDB via the backend API.
     // localStorage-based persistence is no longer supported.
-    const mongoEnabled = MONGO_ENABLED;
 
     // All state starts empty and is loaded from MongoDB via API on mount
     const [categories, setCategories] = useState<Category[]>([]);
@@ -62,8 +58,6 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     // Load categories from MongoDB on mount
     useEffect(() => {
-        if (!mongoEnabled) return;
-
         let cancelled = false;
 
         const loadCategoriesFromApi = async () => {
@@ -88,8 +82,6 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     // Load habits from MongoDB on mount
     useEffect(() => {
-        if (!mongoEnabled) return;
-
         let cancelled = false;
 
         const loadHabitsFromApi = async () => {
@@ -114,8 +106,6 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     // Load day logs from MongoDB on mount
     useEffect(() => {
-        if (!mongoEnabled) return;
-
         let cancelled = false;
 
         const loadLogsFromApi = async () => {
@@ -140,8 +130,6 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     // Load wellbeing logs from MongoDB on mount
     useEffect(() => {
-        if (!mongoEnabled) return;
-
         let cancelled = false;
 
         const loadWellbeingLogsFromApi = async () => {
@@ -183,23 +171,16 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         // Optimistic update: update state immediately
         setWellbeingLogs(updatedWellbeingLogs);
 
-        // Save to MongoDB if enabled
-        if (mongoEnabled) {
-            try {
-                await saveWellbeingLog(mergedData);
-            } catch (error) {
-                console.error('Failed to save wellbeing log to API:', error instanceof Error ? error.message : 'Unknown error');
-                // State already updated optimistically, just log error
-            }
+        // Save to MongoDB
+        try {
+            await saveWellbeingLog(mergedData);
+        } catch (error) {
+            console.error('Failed to save wellbeing log to API:', error instanceof Error ? error.message : 'Unknown error');
+            // State already updated optimistically, just log error
         }
     };
 
     const addCategory = async (category: Omit<Category, 'id'>) => {
-        if (!mongoEnabled) {
-            console.warn('MongoDB persistence is disabled. Cannot save category.');
-            return;
-        }
-
         try {
             const newCategory = await saveCategory(category);
             setCategories([...categories, newCategory]);
@@ -211,11 +192,6 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     };
 
     const addHabit = async (habit: Omit<Habit, 'id' | 'createdAt' | 'archived'>) => {
-        if (!mongoEnabled) {
-            console.warn('MongoDB persistence is disabled. Cannot save habit.');
-            return;
-        }
-
         try {
             const newHabit = await saveHabit(habit);
             setHabits([...habits, newHabit]);
@@ -249,15 +225,15 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         // Optimistic update: update state immediately
         setLogs(updatedLogs);
 
-        // Save to MongoDB if enabled
-        if (mongoEnabled && logToSave) {
+        // Save to MongoDB
+        if (logToSave) {
             try {
                 await saveDayLog(logToSave);
             } catch (error) {
                 console.error('Failed to save day log to API:', error instanceof Error ? error.message : 'Unknown error');
                 // State already updated optimistically, just log error
             }
-        } else if (mongoEnabled && currentLog) {
+        } else if (currentLog) {
             // Delete from MongoDB
             try {
                 await deleteDayLogApi(habitId, date);
@@ -283,23 +259,16 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         // Optimistic update: update state immediately
         setLogs(updatedLogs);
 
-        // Save to MongoDB if enabled
-        if (mongoEnabled) {
-            try {
-                await saveDayLog(logToSave);
-            } catch (error) {
-                console.error('Failed to save day log to API:', error instanceof Error ? error.message : 'Unknown error');
-                // State already updated optimistically, just log error
-            }
+        // Save to MongoDB
+        try {
+            await saveDayLog(logToSave);
+        } catch (error) {
+            console.error('Failed to save day log to API:', error instanceof Error ? error.message : 'Unknown error');
+            // State already updated optimistically, just log error
         }
     };
 
     const deleteHabit = async (id: string) => {
-        if (!mongoEnabled) {
-            console.warn('MongoDB persistence is disabled. Cannot delete habit.');
-            return;
-        }
-
         try {
             await deleteHabitApi(id);
             // Update state
@@ -318,11 +287,6 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     };
 
     const deleteCategory = async (id: string) => {
-        if (!mongoEnabled) {
-            console.warn('MongoDB persistence is disabled. Cannot delete category.');
-            return;
-        }
-
         try {
             await deleteCategoryApi(id);
             setCategories(categories.filter(c => c.id !== id));
@@ -337,11 +301,6 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         categoriesToImport: Omit<Category, 'id'>[],
         habitsData: { categoryName: string; habit: Omit<Habit, 'id' | 'categoryId' | 'createdAt' | 'archived'> }[]
     ) => {
-        if (!mongoEnabled) {
-            console.warn('MongoDB persistence is disabled. Cannot import habits.');
-            return;
-        }
-
         // 1. Create Categories if they don't exist
         let updatedCategories = [...categories];
         const categoryMap = new Map<string, string>(); // Name -> ID
@@ -404,11 +363,6 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     };
 
     const reorderCategories = async (newOrder: Category[]) => {
-        if (!mongoEnabled) {
-            console.warn('MongoDB persistence is disabled. Cannot reorder categories.');
-            return;
-        }
-
         try {
             const updatedCategories = await reorderCategoriesApi(newOrder);
             setCategories(updatedCategories);

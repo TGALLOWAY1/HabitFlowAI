@@ -10,24 +10,21 @@
 /**
  * MongoDB persistence enabled flag.
  * 
- * When true: Uses REST API endpoints (persistenceClient.ts) to store data in MongoDB.
- * When false: Disables persistence (useful for special dev/testing scenarios).
+ * MongoDB is required for this app. In normal usage, this should always be true.
+ * Set VITE_USE_MONGO_PERSISTENCE=false in .env only for special dev/testing scenarios.
  * 
- * Set VITE_USE_MONGO_PERSISTENCE=false in .env to disable (defaults to true).
- * 
- * In normal usage, this should be true.
+ * @default true (if env var is not set)
  */
 export const MONGO_ENABLED = import.meta.env.VITE_USE_MONGO_PERSISTENCE !== 'false';
 
 /**
  * Check if MongoDB persistence is enabled.
  * 
- * NOTE: This is effectively 'isMongoEnabled' now; Mongo is the only persistence mode.
- * The name 'isMongoPrimary' is kept for backward compatibility.
+ * NOTE: Mongo is the only persistence mode. This function always returns true in normal usage.
  * 
  * @returns boolean - True if MongoDB persistence is enabled
  */
-export function isMongoPrimary(): boolean {
+export function isMongoEnabled(): boolean {
   return MONGO_ENABLED;
 }
 

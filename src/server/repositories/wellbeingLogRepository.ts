@@ -7,7 +7,7 @@
 
 import { ObjectId } from 'mongodb';
 import { getDb } from '../lib/mongoClient';
-import { getUseMongoPersistence } from '../config';
+import { getMongoEnabled } from '../config';
 import type { DailyWellbeing } from '../../models/persistenceTypes';
 
 const COLLECTION_NAME = 'wellbeingLogs';
@@ -18,15 +18,11 @@ const COLLECTION_NAME = 'wellbeingLogs';
  * @param log - DailyWellbeing data
  * @param userId - User ID to associate with the log
  * @returns Created/updated wellbeing log
- * @throws Error if USE_MONGO_PERSISTENCE is false
  */
 export async function upsertWellbeingLog(
   log: DailyWellbeing,
   userId: string
 ): Promise<DailyWellbeing> {
-  if (!getUseMongoPersistence()) {
-    throw new Error('MongoDB persistence is required. Set USE_MONGO_PERSISTENCE=true in .env');
-  }
 
   const db = await getDb();
   const collection = db.collection(COLLECTION_NAME);
@@ -54,12 +50,8 @@ export async function upsertWellbeingLog(
  * 
  * @param userId - User ID to filter logs
  * @returns Record of wellbeing logs keyed by date (YYYY-MM-DD)
- * @throws Error if USE_MONGO_PERSISTENCE is false
  */
 export async function getWellbeingLogsByUser(userId: string): Promise<Record<string, DailyWellbeing>> {
-  if (!getUseMongoPersistence()) {
-    throw new Error('MongoDB persistence is required. Set USE_MONGO_PERSISTENCE=true in .env');
-  }
 
   const db = await getDb();
   const collection = db.collection(COLLECTION_NAME);
@@ -84,15 +76,11 @@ export async function getWellbeingLogsByUser(userId: string): Promise<Record<str
  * @param date - Date in YYYY-MM-DD format
  * @param userId - User ID to verify ownership
  * @returns DailyWellbeing if found, null otherwise
- * @throws Error if USE_MONGO_PERSISTENCE is false
  */
 export async function getWellbeingLog(
   date: string,
   userId: string
 ): Promise<DailyWellbeing | null> {
-  if (!getUseMongoPersistence()) {
-    throw new Error('MongoDB persistence is required. Set USE_MONGO_PERSISTENCE=true in .env');
-  }
 
   const db = await getDb();
   const collection = db.collection(COLLECTION_NAME);
@@ -114,15 +102,11 @@ export async function getWellbeingLog(
  * @param date - Date in YYYY-MM-DD format
  * @param userId - User ID to verify ownership
  * @returns True if log was deleted, false if not found
- * @throws Error if USE_MONGO_PERSISTENCE is false
  */
 export async function deleteWellbeingLog(
   date: string,
   userId: string
 ): Promise<boolean> {
-  if (!getUseMongoPersistence()) {
-    throw new Error('MongoDB persistence is required. Set USE_MONGO_PERSISTENCE=true in .env');
-  }
 
   const db = await getDb();
   const collection = db.collection(COLLECTION_NAME);

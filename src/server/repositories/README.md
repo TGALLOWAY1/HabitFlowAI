@@ -17,18 +17,14 @@ The Category repository provides CRUD operations for Category entities.
 
 ### MongoDB Requirement
 
-All repository functions require `USE_MONGO_PERSISTENCE=true` in the environment:
-
-- **`true`** - Uses MongoDB via `getDb()`
-- **`false`** - Throws error: "MongoDB persistence is required" (MongoDB is the only persistence layer)
+All repository functions use MongoDB via `getDb()`. MongoDB is the only persistence layer and is required for the app to function.
 
 ### Usage
 
 ```typescript
 import { createCategory, getCategoriesByUser } from './repositories/categoryRepository';
 
-// Ensure feature flag is enabled
-process.env.USE_MONGO_PERSISTENCE = 'true';
+// MongoDB is required (asserted at startup)
 
 // Create category
 const category = await createCategory(
