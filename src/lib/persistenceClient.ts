@@ -419,6 +419,3 @@ export async function saveWellbeingLog(log: DailyWellbeing): Promise<DailyWellbe
   return response.wellbeingLog;
 }
 
-// Re-export for convenience
-export { isMongoPersistenceEnabled } from './persistenceConfig';
-
