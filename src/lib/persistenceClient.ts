@@ -6,6 +6,7 @@
  */
 
 import type { Category, Habit, DayLog, DailyWellbeing } from '../models/persistenceTypes';
+import type { Activity } from '../types';
 
 import { API_BASE_URL } from './persistenceConfig';
 
@@ -341,5 +342,120 @@ export async function saveWellbeingLog(log: DailyWellbeing): Promise<DailyWellbe
   });
 
   return response.wellbeingLog;
+}
+
+/**
+ * Activity Persistence Functions
+ */
+
+/**
+ * Fetch all activities for the current user.
+ * 
+ * @returns Promise<Activity[]> - Array of activities
+ * @throws Error if API request fails
+ */
+export async function fetchActivities(): Promise<Activity[]> {
+
+  const response = await apiRequest<{ activities: Activity[] }>('/activities');
+  return response.activities;
+}
+
+/**
+ * Get a single activity by ID.
+ * 
+ * @param id - Activity ID
+ * @returns Promise<Activity> - Activity if found
+ * @throws Error if API request fails or activity not found
+ */
+export async function fetchActivity(id: string): Promise<Activity> {
+
+  const response = await apiRequest<{ activity: Activity }>(`/activities/${id}`);
+  return response.activity;
+}
+
+/**
+ * Create a new activity.
+ * 
+ * @param activity - Activity data (without id, createdAt, updatedAt)
+ * @returns Promise<Activity> - Created activity with generated ID
+ * @throws Error if API request fails
+ */
+export async function createActivity(
+  activity: Omit<Activity, 'id' | 'createdAt' | 'updatedAt' | 'userId'>
+): Promise<Activity> {
+
+  const response = await apiRequest<{ activity: Activity }>('/activities', {
+    method: 'POST',
+    body: JSON.stringify(activity),
+  });
+
+  return response.activity;
+}
+
+/**
+ * Update an activity.
+ * 
+ * @param id - Activity ID
+ * @param patch - Partial activity data to update
+ * @returns Promise<Activity> - Updated activity
+ * @throws Error if API request fails or activity not found
+ */
+export async function updateActivity(
+  id: string,
+  patch: Partial<Omit<Activity, 'id' | 'createdAt' | 'updatedAt' | 'userId'>>
+): Promise<Activity> {
+
+  const response = await apiRequest<{ activity: Activity }>(`/activities/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(patch),
+  });
+
+  return response.activity;
+}
+
+/**
+ * Delete an activity.
+ * 
+ * @param id - Activity ID
+ * @returns Promise<void>
+ * @throws Error if API request fails or activity not found
+ */
+export async function deleteActivity(id: string): Promise<void> {
+
+  await apiRequest<{ message: string }>(`/activities/${id}`, {
+    method: 'DELETE',
+  });
+}
+
+/**
+ * Submit activity completion and create DayLogs for habit steps.
+ * 
+ * @param id - Activity ID
+ * @param payload - Submission payload with mode, completedStepIds, and optional fields
+ * @returns Promise<SubmitActivityResponse> - Response with created/updated count and step IDs
+ * @throws Error if API request fails or activity not found
+ */
+export interface SubmitActivityResponse {
+  createdOrUpdatedCount: number;
+  completedHabitStepIds: string[];
+  totalHabitStepsInActivity: number;
+}
+
+export async function submitActivity(
+  id: string,
+  payload: {
+    mode: 'habit' | 'image' | 'text';
+    completedStepIds: string[];
+    submittedAt?: string;
+    dateOverride?: string;
+  }
+): Promise<SubmitActivityResponse> {
+
+  const response = await apiRequest<SubmitActivityResponse>(`/activities/${id}/submit`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+
+  return response;
 }
 
