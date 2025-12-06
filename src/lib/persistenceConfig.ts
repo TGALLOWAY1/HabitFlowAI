@@ -138,3 +138,19 @@ export function isLocalOnly(): boolean {
   return getPersistenceMode() === 'local-only';
 }
 
+/**
+ * Check if localStorage fallback is allowed when MongoDB fails.
+ * 
+ * In mongo-primary mode, this controls whether to read from localStorage
+ * when MongoDB API calls fail. Defaults to false (strict mode).
+ * 
+ * Set VITE_ALLOW_LOCALSTORAGE_FALLBACK=true in .env to enable fallback.
+ * 
+ * See docs/mongo-migration-plan.md for details.
+ * 
+ * @returns boolean - True if localStorage fallback is allowed
+ */
+export function allowLocalStorageFallback(): boolean {
+  return import.meta.env.VITE_ALLOW_LOCALSTORAGE_FALLBACK === 'true';
+}
+

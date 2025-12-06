@@ -20,6 +20,7 @@ import {
     isLocalOnly,
     isMongoMigration,
     isMongoPrimary,
+    allowLocalStorageFallback,
 } from '../lib/persistenceConfig';
 
 interface HabitContextType {
@@ -107,34 +108,31 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     // mongoEnabled is the legacy "Mongo is on" boolean
     // isMigrationMode / isPrimaryMode will be used in future phases to differentiate behavior
     
-    // Suppress unused variable warnings - these will be used in future phases
+    // Suppress unused variable warning - will be used in future phases
     void persistenceMode;
-    void isMigrationMode;
-    void isPrimaryMode;
 
+    // Phase 2A:
+    // - In 'mongo-primary' mode, categories/habits start empty and are loaded from Mongo via API.
+    // - In 'local-only' and 'mongo-migration' modes, we keep the existing localStorage initialization.
+    // See docs/mongo-migration-plan.md for details.
     const [categories, setCategories] = useState<Category[]>(() => {
-        // Initial load: Try API if enabled, otherwise use localStorage
-        if (mongoEnabled) {
-            // Attempt to fetch from API, but don't block initialization
-            // We'll load from localStorage first, then sync from API in useEffect
-            const saved = localStorage.getItem('categories');
-            return saved ? JSON.parse(saved) : INITIAL_CATEGORIES;
-        } else {
-            // Use localStorage (existing behavior)
-            const saved = localStorage.getItem('categories');
-            return saved ? JSON.parse(saved) : INITIAL_CATEGORIES;
+        if (isPrimaryMode) {
+            // Mongo-primary: start empty; data will be loaded from API in useEffect.
+            return [];
         }
+        // local-only or mongo-migration: preserve current localStorage initialization.
+        const saved = localStorage.getItem('categories');
+        return saved ? JSON.parse(saved) : INITIAL_CATEGORIES;
     });
 
     const [habits, setHabits] = useState<Habit[]>(() => {
-        // Initial load: Try API if enabled, otherwise use localStorage
-        if (mongoEnabled) {
-            const saved = localStorage.getItem('habits');
-            return saved ? JSON.parse(saved) : INITIAL_HABITS;
-        } else {
-            const saved = localStorage.getItem('habits');
-            return saved ? JSON.parse(saved) : INITIAL_HABITS;
+        if (isPrimaryMode) {
+            // Mongo-primary: start empty; data will be loaded from API in useEffect.
+            return [];
         }
+        // local-only or mongo-migration: preserve current localStorage initialization.
+        const saved = localStorage.getItem('habits');
+        return saved ? JSON.parse(saved) : INITIAL_HABITS;
     });
 
     const [logs, setLogs] = useState<Record<string, DayLog>>(() => {
@@ -159,18 +157,37 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         }
     });
 
-    // Load categories from API on mount if MongoDB persistence is enabled
+    // Phase 2A: Load categories from API on mount
+    // - In 'mongo-primary' mode: fetch from MongoDB, optional localStorage fallback if API fails and fallback enabled
+    // - In 'mongo-migration' mode: keep current behavior (localStorage init + fetch + replace)
+    // - In 'local-only' mode: do nothing, localStorage already loaded
+    // See docs/mongo-migration-plan.md for details.
     useEffect(() => {
-        if (mongoEnabled) {
-            fetchCategories()
-                .then((apiCategories) => {
-                    if (apiCategories.length > 0) {
-                        // API has data, use it
-                        setCategories(apiCategories);
-                        // Dual-write: Also save to localStorage for safety during transition
+        if (isLocalOnly()) {
+            // local-only: do nothing, localStorage already loaded in initializer
+            return;
+        }
+
+        // Mongo is enabled: both migration and primary modes
+        let cancelled = false;
+
+        const loadCategoriesFromApi = async () => {
+            try {
+                const apiCategories = await fetchCategories();
+                if (cancelled) return;
+
+                if (apiCategories.length > 0) {
+                    // API has data, use it
+                    setCategories(apiCategories);
+                    // In 'mongo-migration' we still sync to localStorage (keep existing behavior)
+                    // In 'mongo-primary' we will later disable localStorage syncing in Phase 3
+                    if (isMigrationMode) {
                         localStorage.setItem('categories', JSON.stringify(apiCategories));
-                    } else {
-                        // API returned empty, check localStorage for existing data
+                    }
+                } else {
+                    // API returned empty
+                    if (isMigrationMode) {
+                        // mongo-migration: check localStorage for existing data (keep current behavior)
                         const saved = localStorage.getItem('categories');
                         if (saved) {
                             const localCategories = JSON.parse(saved);
@@ -179,39 +196,82 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                                     'MongoDB persistence enabled but API returned no categories. ' +
                                     'Using localStorage data. This may indicate a sync issue.'
                                 );
-                                // Use localStorage data if API is empty
-                                setCategories(localCategories);
+                                if (!cancelled) setCategories(localCategories);
                             }
                         }
                     }
-                })
-                .catch((error) => {
-                    // API failed, fall back to localStorage
-                    console.warn(
-                        'Failed to fetch categories from API, using localStorage fallback:',
-                        error.message
-                    );
+                    // mongo-primary: if API returns empty, leave categories empty (no localStorage fallback unless explicitly allowed)
+                }
+            } catch (error) {
+                if (cancelled) return;
+
+                const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+                console.warn('Failed to fetch categories from API:', errorMessage);
+
+                // Fallback behavior:
+                if (isMigrationMode) {
+                    // mongo-migration: keep current fallback (localStorage)
                     const saved = localStorage.getItem('categories');
                     if (saved) {
                         const localCategories = JSON.parse(saved);
-                        if (localCategories.length > 0) {
+                        if (localCategories.length > 0 && !cancelled) {
                             setCategories(localCategories);
                         }
                     }
-                });
-        }
+                } else if (isPrimaryMode && allowLocalStorageFallback()) {
+                    // mongo-primary: only fallback to localStorage if explicitly allowed
+                    const saved = localStorage.getItem('categories');
+                    if (saved) {
+                        const localCategories = JSON.parse(saved);
+                        if (localCategories.length > 0 && !cancelled) {
+                            console.warn('Using localStorage fallback for categories (fallback enabled)');
+                            setCategories(localCategories);
+                        }
+                    }
+                }
+                // mongo-primary without fallback: leave categories empty, error already logged
+            }
+        };
+
+        loadCategoriesFromApi();
+
+        return () => {
+            cancelled = true;
+        };
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []); // Only run on mount
 
-    // Load habits from API on mount if MongoDB persistence is enabled
+    // Phase 2A: Load habits from API on mount
+    // - In 'mongo-primary' mode: fetch from MongoDB, optional localStorage fallback if API fails and fallback enabled
+    // - In 'mongo-migration' mode: keep current behavior (localStorage init + fetch + replace)
+    // - In 'local-only' mode: do nothing, localStorage already loaded
+    // See docs/mongo-migration-plan.md for details.
     useEffect(() => {
-        if (mongoEnabled) {
-            fetchHabits()
-                .then((apiHabits) => {
-                    if (apiHabits.length > 0) {
-                        setHabits(apiHabits);
+        if (isLocalOnly()) {
+            // local-only: do nothing, localStorage already loaded in initializer
+            return;
+        }
+
+        // Mongo is enabled: both migration and primary modes
+        let cancelled = false;
+
+        const loadHabitsFromApi = async () => {
+            try {
+                const apiHabits = await fetchHabits();
+                if (cancelled) return;
+
+                if (apiHabits.length > 0) {
+                    // API has data, use it
+                    setHabits(apiHabits);
+                    // In 'mongo-migration' we still sync to localStorage (keep existing behavior)
+                    // In 'mongo-primary' we will later disable localStorage syncing in Phase 3
+                    if (isMigrationMode) {
                         localStorage.setItem('habits', JSON.stringify(apiHabits));
-                    } else {
+                    }
+                } else {
+                    // API returned empty
+                    if (isMigrationMode) {
+                        // mongo-migration: check localStorage for existing data (keep current behavior)
                         const saved = localStorage.getItem('habits');
                         if (saved) {
                             const localHabits = JSON.parse(saved);
@@ -219,22 +279,48 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                                 console.warn(
                                     'MongoDB persistence enabled but API returned no habits. Using localStorage data.'
                                 );
-                                setHabits(localHabits);
+                                if (!cancelled) setHabits(localHabits);
                             }
                         }
                     }
-                })
-                .catch((error) => {
-                    console.warn('Failed to fetch habits from API, using localStorage fallback:', error.message);
+                    // mongo-primary: if API returns empty, leave habits empty (no localStorage fallback unless explicitly allowed)
+                }
+            } catch (error) {
+                if (cancelled) return;
+
+                const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+                console.warn('Failed to fetch habits from API:', errorMessage);
+
+                // Fallback behavior:
+                if (isMigrationMode) {
+                    // mongo-migration: keep current fallback (localStorage)
                     const saved = localStorage.getItem('habits');
                     if (saved) {
                         const localHabits = JSON.parse(saved);
-                        if (localHabits.length > 0) {
+                        if (localHabits.length > 0 && !cancelled) {
                             setHabits(localHabits);
                         }
                     }
-                });
-        }
+                } else if (isPrimaryMode && allowLocalStorageFallback()) {
+                    // mongo-primary: only fallback to localStorage if explicitly allowed
+                    const saved = localStorage.getItem('habits');
+                    if (saved) {
+                        const localHabits = JSON.parse(saved);
+                        if (localHabits.length > 0 && !cancelled) {
+                            console.warn('Using localStorage fallback for habits (fallback enabled)');
+                            setHabits(localHabits);
+                        }
+                    }
+                }
+                // mongo-primary without fallback: leave habits empty, error already logged
+            }
+        };
+
+        loadHabitsFromApi();
+
+        return () => {
+            cancelled = true;
+        };
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
