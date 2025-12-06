@@ -47,6 +47,8 @@ export interface DayLog {
     date: string; // YYYY-MM-DD
     value: number; // 0 or 1 for boolean, actual value for number
     completed: boolean;
+    activityId?: string; // which Activity produced this log (if any)
+    activityStepId?: string; // which step within that Activity
 }
 
 export type ActivityStepType = 'habit' | 'task';

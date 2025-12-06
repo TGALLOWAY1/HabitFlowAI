@@ -160,6 +160,18 @@ export interface DayLog {
      * independently. The calculation logic is in HabitContext.tsx (lines 446, 412)
      */
     completed: boolean;
+    
+    /** 
+     * Optional: ID of the Activity that produced this log entry
+     * Set when a habit is completed as part of an Activity workflow
+     */
+    activityId?: string;
+    
+    /** 
+     * Optional: ID of the ActivityStep within the Activity that produced this log
+     * Set when a habit step in an Activity is completed
+     */
+    activityStepId?: string;
 }
 
 /**
