@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { X } from 'lucide-react';
 import type { Activity } from '../types';
 
@@ -16,6 +16,31 @@ export const ActivityRunnerModal: React.FC<ActivityRunnerModalProps> = ({
     onClose,
 }) => {
     const [mode, setMode] = useState<ActivityRunnerMode>('habit');
+    const [completedStepIds, setCompletedStepIds] = useState<Set<string>>(new Set());
+
+    const habitSteps = useMemo(
+        () => activity?.steps.filter(step => step.type === 'habit') ?? [],
+        [activity]
+    );
+
+    const toggleStep = (stepId: string) => {
+        setCompletedStepIds(prev => {
+            const next = new Set(prev);
+            if (next.has(stepId)) {
+                next.delete(stepId);
+            } else {
+                next.add(stepId);
+            }
+            return next;
+        });
+    };
+
+    // Reset completed steps when modal closes
+    useEffect(() => {
+        if (!isOpen) {
+            setCompletedStepIds(new Set());
+        }
+    }, [isOpen]);
 
     if (!isOpen) return null;
 
@@ -76,8 +101,41 @@ export const ActivityRunnerModal: React.FC<ActivityRunnerModalProps> = ({
                     {/* Mode Content */}
                     <div className="flex-1 overflow-y-auto p-6">
                         {mode === 'habit' && (
-                            <div className="text-neutral-400 text-center py-12">
-                                Habit mode placeholder
+                            <div className="space-y-4">
+                                {habitSteps.length === 0 ? (
+                                    <div className="text-neutral-400 text-center py-12">
+                                        This activity has no habit steps; nothing to track in checklist mode.
+                                    </div>
+                                ) : (
+                                    <>
+                                        <div className="space-y-2">
+                                            {habitSteps.map((step) => (
+                                                <label
+                                                    key={step.id}
+                                                    className="flex items-center gap-3 p-3 bg-neutral-800/50 border border-white/5 rounded-lg hover:bg-neutral-800/70 transition-colors cursor-pointer"
+                                                >
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={completedStepIds.has(step.id)}
+                                                        onChange={() => toggleStep(step.id)}
+                                                        className="w-5 h-5 rounded border-neutral-700 bg-neutral-800 text-emerald-500 focus:ring-emerald-500 cursor-pointer"
+                                                    />
+                                                    <div className="flex-1">
+                                                        <div className="text-white font-medium">{step.title}</div>
+                                                        {step.timeEstimateMinutes && (
+                                                            <div className="text-sm text-neutral-400 mt-1">
+                                                                ~{step.timeEstimateMinutes} min
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </label>
+                                            ))}
+                                        </div>
+                                        <div className="text-sm text-neutral-400 pt-2">
+                                            Completed {completedStepIds.size} of {habitSteps.length} habit steps
+                                        </div>
+                                    </>
+                                )}
                             </div>
                         )}
                         {mode === 'image' && (
