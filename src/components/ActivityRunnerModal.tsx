@@ -17,6 +17,12 @@ export const ActivityRunnerModal: React.FC<ActivityRunnerModalProps> = ({
 }) => {
     const [mode, setMode] = useState<ActivityRunnerMode>('habit');
     const [completedStepIds, setCompletedStepIds] = useState<Set<string>>(new Set());
+    const [currentIndex, setCurrentIndex] = useState(0);
+
+    // For Image View: treat all steps as part of the carousel
+    // Only Habit steps contribute to completedStepIds tracking
+    const steps = activity?.steps ?? [];
+    const currentStep = steps[currentIndex] ?? null;
 
     const habitSteps = useMemo(
         () => activity?.steps.filter(step => step.type === 'habit') ?? [],
@@ -41,6 +47,34 @@ export const ActivityRunnerModal: React.FC<ActivityRunnerModalProps> = ({
             setCompletedStepIds(new Set());
         }
     }, [isOpen]);
+
+    // Reset currentIndex when activity changes or mode switches to 'image'
+    useEffect(() => {
+        if (mode === 'image') {
+            setCurrentIndex(0);
+        }
+    }, [activity, mode]);
+
+    const handleCompleteStep = () => {
+        if (currentStep?.type === 'habit' && currentStep.id) {
+            setCompletedStepIds(prev => {
+                const next = new Set(prev);
+                next.add(currentStep.id);
+                return next;
+            });
+        }
+        // Move to next step if not at the end (stays on last step if already there)
+        if (currentIndex < steps.length - 1) {
+            setCurrentIndex(prev => prev + 1);
+        }
+    };
+
+    const handleSkip = () => {
+        // Move to next step if not at the end (stays on last step if already there)
+        if (currentIndex < steps.length - 1) {
+            setCurrentIndex(prev => prev + 1);
+        }
+    };
 
     if (!isOpen) return null;
 
@@ -139,8 +173,76 @@ export const ActivityRunnerModal: React.FC<ActivityRunnerModalProps> = ({
                             </div>
                         )}
                         {mode === 'image' && (
-                            <div className="text-neutral-400 text-center py-12">
-                                Image mode placeholder
+                            <div className="space-y-6">
+                                {steps.length === 0 ? (
+                                    <div className="text-neutral-400 text-center py-12">
+                                        No steps in this activity.
+                                    </div>
+                                ) : (
+                                    <>
+                                        {/* Image Area */}
+                                        <div className="w-full aspect-video bg-neutral-800/50 border border-white/5 rounded-lg overflow-hidden flex items-center justify-center">
+                                            {currentStep?.imageUrl ? (
+                                                <img
+                                                    src={currentStep.imageUrl}
+                                                    alt={currentStep.title}
+                                                    className="w-full h-full object-contain"
+                                                />
+                                            ) : (
+                                                <div className="text-neutral-500 text-center p-8">
+                                                    No image for this step
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {/* Step Info */}
+                                        <div className="space-y-2">
+                                            <h4 className="text-lg font-semibold text-white">
+                                                {currentStep?.title || 'Untitled Step'}
+                                            </h4>
+                                            {currentStep?.instruction && (
+                                                <p className="text-neutral-300">
+                                                    {currentStep.instruction}
+                                                </p>
+                                            )}
+                                            {currentStep?.durationSeconds && (
+                                                <div className="text-sm text-neutral-400">
+                                                    Suggested: {currentStep.durationSeconds} seconds
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {/* Navigation Buttons */}
+                                        <div className="flex gap-3">
+                                            <button
+                                                type="button"
+                                                onClick={handleSkip}
+                                                className="flex-1 px-4 py-2 bg-neutral-700 text-neutral-300 font-medium rounded-lg hover:bg-neutral-600 transition-colors"
+                                            >
+                                                Skip
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={handleCompleteStep}
+                                                className="flex-1 px-4 py-2 bg-emerald-500 text-neutral-900 font-medium rounded-lg hover:bg-emerald-400 transition-colors"
+                                            >
+                                                Complete Step
+                                            </button>
+                                        </div>
+
+                                        {/* End of steps message */}
+                                        {currentIndex >= steps.length - 1 && (
+                                            <div className="text-center text-neutral-400 text-sm py-2">
+                                                End of activity steps
+                                            </div>
+                                        )}
+
+                                        {/* Summary */}
+                                        <div className="text-sm text-neutral-400 pt-2 border-t border-white/5">
+                                            Completed {completedStepIds.size} of {habitSteps.length} habit steps
+                                        </div>
+                                    </>
+                                )}
                             </div>
                         )}
                         {mode === 'text' && (
