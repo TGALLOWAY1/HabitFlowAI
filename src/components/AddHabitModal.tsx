@@ -37,7 +37,7 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
             setIsCumulative(false);
         } catch (error) {
             console.error('Failed to add habit:', error);
-            // Still close modal even if API fails (fallback to localStorage)
+            // Still close modal even if API fails
             onClose();
         }
     };

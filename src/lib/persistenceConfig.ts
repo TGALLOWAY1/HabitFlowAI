@@ -1,18 +1,32 @@
 /**
  * Persistence Configuration
  * 
- * Centralized configuration for frontend persistence feature flags.
+ * The app runs in Mongo-only mode. All persistent data
+ * (categories, habits, logs, wellbeingLogs) is stored in MongoDB via the backend API.
+ * 
+ * localStorage-based persistence is no longer supported.
  */
 
 /**
- * Frontend feature flag to enable MongoDB persistence.
+ * MongoDB persistence enabled flag.
  * 
- * When true: Uses REST API endpoints (persistenceClient.ts)
- * When false: Uses localStorage (existing behavior)
+ * MongoDB is required for this app. In normal usage, this should always be true.
+ * Set VITE_USE_MONGO_PERSISTENCE=false in .env only for special dev/testing scenarios.
  * 
- * Set VITE_USE_MONGO_PERSISTENCE=true in .env to enable.
+ * @default true (if env var is not set)
  */
-export const USE_MONGO_PERSISTENCE = import.meta.env.VITE_USE_MONGO_PERSISTENCE === 'true';
+export const MONGO_ENABLED = import.meta.env.VITE_USE_MONGO_PERSISTENCE !== 'false';
+
+/**
+ * Check if MongoDB persistence is enabled.
+ * 
+ * NOTE: Mongo is the only persistence mode. This function always returns true in normal usage.
+ * 
+ * @returns boolean - True if MongoDB persistence is enabled
+ */
+export function isMongoEnabled(): boolean {
+  return MONGO_ENABLED;
+}
 
 /**
  * API base URL for persistence requests.
@@ -28,15 +42,6 @@ export const USE_MONGO_PERSISTENCE = import.meta.env.VITE_USE_MONGO_PERSISTENCE 
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
 
 /**
- * Check if MongoDB persistence is enabled.
- * 
- * @returns boolean - True if MongoDB persistence is enabled
- */
-export function isMongoPersistenceEnabled(): boolean {
-  return USE_MONGO_PERSISTENCE;
-}
-
-/**
  * Get the API base URL.
  * 
  * @returns string - API base URL
@@ -44,4 +49,3 @@ export function isMongoPersistenceEnabled(): boolean {
 export function getApiBaseUrl(): string {
   return API_BASE_URL;
 }
-

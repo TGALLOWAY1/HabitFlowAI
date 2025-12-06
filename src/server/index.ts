@@ -6,11 +6,15 @@
 
 import express, { Express } from 'express';
 import './config/env'; // Load environment variables first
+import { assertMongoEnabled } from './config';
 import { getCategories, createCategoryRoute, getCategory, updateCategoryRoute, deleteCategoryRoute, reorderCategoriesRoute } from './routes/categories';
 import { getHabits, createHabitRoute, getHabit, updateHabitRoute, deleteHabitRoute } from './routes/habits';
 import { getDayLogs, upsertDayLogRoute, getDayLogRoute, deleteDayLogRoute } from './routes/dayLogs';
 import { getWellbeingLogs, upsertWellbeingLogRoute, getWellbeingLogRoute, deleteWellbeingLogRoute } from './routes/wellbeingLogs';
 import { closeConnection } from './lib/mongoClient';
+
+// Assert MongoDB is enabled at startup (fail fast if misconfigured)
+assertMongoEnabled();
 
 const app: Express = express();
 const PORT = process.env.PORT || 3000;
@@ -80,7 +84,7 @@ app.get('/api/health', (req, res) => {
 const server = app.listen(PORT, () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);
   console.log(`📡 API endpoints available at http://localhost:${PORT}/api`);
-  console.log(`💾 MongoDB persistence: ${process.env.USE_MONGO_PERSISTENCE === 'true' ? 'ENABLED' : 'DISABLED'}`);
+  console.log(`💾 MongoDB persistence: ENABLED (required)`);
 });
 
 // Graceful shutdown

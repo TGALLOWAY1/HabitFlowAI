@@ -2,13 +2,12 @@
  * Category Repository
  * 
  * Data access layer for Category entities.
- * Uses feature flag to switch between MongoDB persistence and local storage (not yet implemented).
+ * MongoDB is the only persistence layer.
  */
 
 import { ObjectId } from 'mongodb';
 import { randomUUID } from 'crypto';
 import { getDb } from '../lib/mongoClient';
-import { getUseMongoPersistence } from '../config';
 import type { Category } from '../../models/persistenceTypes';
 
 const COLLECTION_NAME = 'categories';
@@ -19,15 +18,11 @@ const COLLECTION_NAME = 'categories';
  * @param data - Category data (without id, which will be generated)
  * @param userId - User ID to associate the category with
  * @returns Created category with generated ID
- * @throws Error if USE_MONGO_PERSISTENCE is false (not yet implemented for local storage)
  */
 export async function createCategory(
   data: Omit<Category, 'id'>,
   userId: string
 ): Promise<Category> {
-  if (!getUseMongoPersistence()) {
-    throw new Error('MongoDB persistence is not enabled. Set USE_MONGO_PERSISTENCE=true in .env');
-  }
 
   const db = await getDb();
   const collection = db.collection(COLLECTION_NAME);
@@ -54,12 +49,8 @@ export async function createCategory(
  * 
  * @param userId - User ID to filter categories
  * @returns Array of categories for the user
- * @throws Error if USE_MONGO_PERSISTENCE is false
  */
 export async function getCategoriesByUser(userId: string): Promise<Category[]> {
-  if (!getUseMongoPersistence()) {
-    throw new Error('MongoDB persistence is not enabled. Set USE_MONGO_PERSISTENCE=true in .env');
-  }
 
   const db = await getDb();
   const collection = db.collection(COLLECTION_NAME);
@@ -78,15 +69,11 @@ export async function getCategoriesByUser(userId: string): Promise<Category[]> {
  * @param id - Category ID
  * @param userId - User ID to verify ownership
  * @returns Category if found, null otherwise
- * @throws Error if USE_MONGO_PERSISTENCE is false
  */
 export async function getCategoryById(
   id: string,
   userId: string
 ): Promise<Category | null> {
-  if (!getUseMongoPersistence()) {
-    throw new Error('MongoDB persistence is not enabled. Set USE_MONGO_PERSISTENCE=true in .env');
-  }
 
   const db = await getDb();
   const collection = db.collection(COLLECTION_NAME);
@@ -109,16 +96,12 @@ export async function getCategoryById(
  * @param userId - User ID to verify ownership
  * @param patch - Partial category data to update
  * @returns Updated category if found, null otherwise
- * @throws Error if USE_MONGO_PERSISTENCE is false
  */
 export async function updateCategory(
   id: string,
   userId: string,
   patch: Partial<Omit<Category, 'id'>>
 ): Promise<Category | null> {
-  if (!getUseMongoPersistence()) {
-    throw new Error('MongoDB persistence is not enabled. Set USE_MONGO_PERSISTENCE=true in .env');
-  }
 
   const db = await getDb();
   const collection = db.collection(COLLECTION_NAME);
@@ -144,15 +127,11 @@ export async function updateCategory(
  * @param id - Category ID
  * @param userId - User ID to verify ownership
  * @returns True if category was deleted, false if not found
- * @throws Error if USE_MONGO_PERSISTENCE is false
  */
 export async function deleteCategory(
   id: string,
   userId: string
 ): Promise<boolean> {
-  if (!getUseMongoPersistence()) {
-    throw new Error('MongoDB persistence is not enabled. Set USE_MONGO_PERSISTENCE=true in .env');
-  }
 
   const db = await getDb();
   const collection = db.collection(COLLECTION_NAME);
@@ -168,15 +147,11 @@ export async function deleteCategory(
  * @param userId - User ID
  * @param categories - Array of categories in new order
  * @returns Updated categories array
- * @throws Error if USE_MONGO_PERSISTENCE is false
  */
 export async function reorderCategories(
   userId: string,
   categories: Category[]
 ): Promise<Category[]> {
-  if (!getUseMongoPersistence()) {
-    throw new Error('MongoDB persistence is not enabled. Set USE_MONGO_PERSISTENCE=true in .env');
-  }
 
   const db = await getDb();
   const collection = db.collection(COLLECTION_NAME);

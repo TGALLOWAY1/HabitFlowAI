@@ -6,7 +6,6 @@
  */
 
 import type { Request, Response } from 'express';
-import { getUseMongoPersistence } from '../config';
 import {
   upsertWellbeingLog,
   getWellbeingLogsByUser,
@@ -22,15 +21,6 @@ import type { DailyWellbeing } from '../../models/persistenceTypes';
  */
 export async function getWellbeingLogs(req: Request, res: Response): Promise<void> {
   try {
-    if (!getUseMongoPersistence()) {
-      res.status(501).json({
-        error: {
-          code: 'MONGO_PERSISTENCE_DISABLED',
-          message: 'MongoDB persistence is disabled. Set USE_MONGO_PERSISTENCE=true in .env to enable.',
-        },
-      });
-      return;
-    }
 
     // TODO: Extract userId from authentication token/session
     const userId = (req as any).userId || 'anonymous-user';
@@ -61,15 +51,6 @@ export async function getWellbeingLogs(req: Request, res: Response): Promise<voi
  */
 export async function upsertWellbeingLogRoute(req: Request, res: Response): Promise<void> {
   try {
-    if (!getUseMongoPersistence()) {
-      res.status(501).json({
-        error: {
-          code: 'MONGO_PERSISTENCE_DISABLED',
-          message: 'MongoDB persistence is disabled. Set USE_MONGO_PERSISTENCE=true in .env to enable.',
-        },
-      });
-      return;
-    }
 
     // Validate request body
     const { date, morning, evening, ...legacyFields } = req.body;
@@ -124,15 +105,6 @@ export async function upsertWellbeingLogRoute(req: Request, res: Response): Prom
  */
 export async function getWellbeingLogRoute(req: Request, res: Response): Promise<void> {
   try {
-    if (!getUseMongoPersistence()) {
-      res.status(501).json({
-        error: {
-          code: 'MONGO_PERSISTENCE_DISABLED',
-          message: 'MongoDB persistence is disabled. Set USE_MONGO_PERSISTENCE=true in .env to enable.',
-        },
-      });
-      return;
-    }
 
     const { date } = req.params;
 
@@ -184,15 +156,6 @@ export async function getWellbeingLogRoute(req: Request, res: Response): Promise
  */
 export async function deleteWellbeingLogRoute(req: Request, res: Response): Promise<void> {
   try {
-    if (!getUseMongoPersistence()) {
-      res.status(501).json({
-        error: {
-          code: 'MONGO_PERSISTENCE_DISABLED',
-          message: 'MongoDB persistence is disabled. Set USE_MONGO_PERSISTENCE=true in .env to enable.',
-        },
-      });
-      return;
-    }
 
     const { date } = req.params;
 

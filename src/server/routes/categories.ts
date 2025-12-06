@@ -6,7 +6,6 @@
  */
 
 import type { Request, Response } from 'express';
-import { getUseMongoPersistence } from '../config';
 import {
   createCategory,
   getCategoriesByUser,
@@ -24,15 +23,6 @@ import type { Category } from '../../models/persistenceTypes';
  */
 export async function getCategories(req: Request, res: Response): Promise<void> {
   try {
-    if (!getUseMongoPersistence()) {
-      res.status(501).json({
-        error: {
-          code: 'MONGO_PERSISTENCE_DISABLED',
-          message: 'MongoDB persistence is disabled. Set USE_MONGO_PERSISTENCE=true in .env to enable.',
-        },
-      });
-      return;
-    }
 
     // TODO: Extract userId from authentication token/session
     // For now, using a placeholder - replace with actual auth middleware
@@ -63,15 +53,6 @@ export async function getCategories(req: Request, res: Response): Promise<void> 
  */
 export async function createCategoryRoute(req: Request, res: Response): Promise<void> {
   try {
-    if (!getUseMongoPersistence()) {
-      res.status(501).json({
-        error: {
-          code: 'MONGO_PERSISTENCE_DISABLED',
-          message: 'MongoDB persistence is disabled. Set USE_MONGO_PERSISTENCE=true in .env to enable.',
-        },
-      });
-      return;
-    }
 
     // Validate request body
     const { name, color } = req.body;
@@ -136,15 +117,6 @@ export async function createCategoryRoute(req: Request, res: Response): Promise<
  */
 export async function getCategory(req: Request, res: Response): Promise<void> {
   try {
-    if (!getUseMongoPersistence()) {
-      res.status(501).json({
-        error: {
-          code: 'MONGO_PERSISTENCE_DISABLED',
-          message: 'MongoDB persistence is disabled. Set USE_MONGO_PERSISTENCE=true in .env to enable.',
-        },
-      });
-      return;
-    }
 
     const { id } = req.params;
 
@@ -196,15 +168,6 @@ export async function getCategory(req: Request, res: Response): Promise<void> {
  */
 export async function updateCategoryRoute(req: Request, res: Response): Promise<void> {
   try {
-    if (!getUseMongoPersistence()) {
-      res.status(501).json({
-        error: {
-          code: 'MONGO_PERSISTENCE_DISABLED',
-          message: 'MongoDB persistence is disabled. Set USE_MONGO_PERSISTENCE=true in .env to enable.',
-        },
-      });
-      return;
-    }
 
     const { id } = req.params;
     const { name, color } = req.body;
@@ -296,15 +259,6 @@ export async function updateCategoryRoute(req: Request, res: Response): Promise<
  */
 export async function deleteCategoryRoute(req: Request, res: Response): Promise<void> {
   try {
-    if (!getUseMongoPersistence()) {
-      res.status(501).json({
-        error: {
-          code: 'MONGO_PERSISTENCE_DISABLED',
-          message: 'MongoDB persistence is disabled. Set USE_MONGO_PERSISTENCE=true in .env to enable.',
-        },
-      });
-      return;
-    }
 
     const { id } = req.params;
 
@@ -359,15 +313,6 @@ export async function deleteCategoryRoute(req: Request, res: Response): Promise<
  */
 export async function reorderCategoriesRoute(req: Request, res: Response): Promise<void> {
   try {
-    if (!getUseMongoPersistence()) {
-      res.status(501).json({
-        error: {
-          code: 'MONGO_PERSISTENCE_DISABLED',
-          message: 'MongoDB persistence is disabled. Set USE_MONGO_PERSISTENCE=true in .env to enable.',
-        },
-      });
-      return;
-    }
 
     const { categories } = req.body;
 
