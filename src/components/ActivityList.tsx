@@ -1,18 +1,21 @@
 import React, { useState } from 'react';
 import { useActivityStore } from '../store/ActivityContext';
-import type { Activity } from '../types';
+import type { Activity, ActivityStep } from '../types';
 import { countHabitSteps } from '../lib/activityUtils';
-import { Plus, Edit, Trash2, ClipboardList } from 'lucide-react';
+import { Plus, Edit, Trash2, ClipboardList, Sparkles } from 'lucide-react';
 import { cn } from '../utils/cn';
+import { CreateActivityFromHabitsModal } from './CreateActivityFromHabitsModal';
 
 interface ActivityListProps {
     onCreate: () => void;
     onEdit: (activity: Activity) => void;
+    onCreateFromHabits: (prefillSteps: ActivityStep[]) => void;
 }
 
-export const ActivityList: React.FC<ActivityListProps> = ({ onCreate, onEdit }) => {
+export const ActivityList: React.FC<ActivityListProps> = ({ onCreate, onEdit, onCreateFromHabits }) => {
     const { activities, loading, error, deleteActivity } = useActivityStore();
     const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+    const [isCreateFromHabitsOpen, setIsCreateFromHabitsOpen] = useState(false);
 
     const handleDelete = async (activity: Activity) => {
         if (deleteConfirmId === activity.id) {
@@ -34,6 +37,13 @@ export const ActivityList: React.FC<ActivityListProps> = ({ onCreate, onEdit }) 
             <div className="flex items-center justify-between p-6 border-b border-white/5">
                 <h2 className="text-2xl font-bold text-white">Activities</h2>
                 <div className="flex items-center gap-3">
+                    <button
+                        onClick={() => setIsCreateFromHabitsOpen(true)}
+                        className="flex items-center gap-2 px-4 py-2 bg-neutral-800 border border-white/10 text-neutral-300 font-medium rounded-lg hover:bg-neutral-700 hover:text-white transition-colors"
+                    >
+                        <Sparkles size={18} />
+                        Create from Habits
+                    </button>
                     <button
                         onClick={onCreate}
                         className="flex items-center gap-2 px-4 py-2 bg-emerald-500 text-neutral-900 font-medium rounded-lg hover:bg-emerald-400 transition-colors"
@@ -119,6 +129,15 @@ export const ActivityList: React.FC<ActivityListProps> = ({ onCreate, onEdit }) 
                     </div>
                 )}
             </div>
+
+            <CreateActivityFromHabitsModal
+                isOpen={isCreateFromHabitsOpen}
+                onClose={() => setIsCreateFromHabitsOpen(false)}
+                onConfirm={(prefillSteps) => {
+                    onCreateFromHabits(prefillSteps);
+                    setIsCreateFromHabitsOpen(false);
+                }}
+            />
         </div>
     );
 };

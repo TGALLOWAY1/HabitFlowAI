@@ -80,6 +80,7 @@ const HabitTrackerContent: React.FC = () => {
         <ActivityList
           onCreate={() => setActivityEditorState({ isOpen: true, mode: 'create', activity: undefined })}
           onEdit={(activity) => setActivityEditorState({ isOpen: true, mode: 'edit', activity })}
+          onCreateFromHabits={(prefillSteps) => setActivityEditorState({ isOpen: true, mode: 'create', activity: undefined, prefillSteps })}
         />
       )}
 
