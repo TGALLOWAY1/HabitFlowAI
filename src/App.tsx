@@ -8,6 +8,7 @@ import { AddHabitModal } from './components/AddHabitModal';
 import { ProgressDashboard } from './components/ProgressDashboard';
 import { ActivityList } from './components/ActivityList';
 import { ActivityEditorModal } from './components/ActivityEditorModal';
+import { ActivityRunnerModal } from './components/ActivityRunnerModal';
 import { BarChart3, Calendar, ClipboardList } from 'lucide-react';
 import type { Activity, ActivityStep } from './types';
 
@@ -22,6 +23,10 @@ const HabitTrackerContent: React.FC = () => {
     activity?: Activity;
     prefillSteps?: ActivityStep[];
   }>({ isOpen: false, mode: 'create' });
+  const [activityRunnerState, setActivityRunnerState] = useState<{
+    isOpen: boolean;
+    activity?: Activity;
+  }>({ isOpen: false });
 
   const filteredHabits = habits.filter(h => h.categoryId === activeCategoryId && !h.archived);
 
@@ -81,6 +86,7 @@ const HabitTrackerContent: React.FC = () => {
           onCreate={() => setActivityEditorState({ isOpen: true, mode: 'create', activity: undefined })}
           onEdit={(activity) => setActivityEditorState({ isOpen: true, mode: 'edit', activity })}
           onCreateFromHabits={(prefillSteps) => setActivityEditorState({ isOpen: true, mode: 'create', activity: undefined, prefillSteps })}
+          onStart={(activity) => setActivityRunnerState({ isOpen: true, activity })}
         />
       )}
 
@@ -96,6 +102,12 @@ const HabitTrackerContent: React.FC = () => {
         initialActivity={activityEditorState.activity}
         prefillSteps={activityEditorState.prefillSteps}
         onClose={() => setActivityEditorState({ ...activityEditorState, isOpen: false })}
+      />
+
+      <ActivityRunnerModal
+        isOpen={activityRunnerState.isOpen}
+        activity={activityRunnerState.activity}
+        onClose={() => setActivityRunnerState({ isOpen: false })}
       />
     </div>
   );

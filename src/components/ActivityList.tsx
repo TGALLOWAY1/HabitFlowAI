@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useActivityStore } from '../store/ActivityContext';
 import type { Activity, ActivityStep } from '../types';
 import { countHabitSteps } from '../lib/activityUtils';
-import { Plus, Edit, Trash2, ClipboardList, Sparkles } from 'lucide-react';
+import { Plus, Edit, Trash2, ClipboardList, Sparkles, Play } from 'lucide-react';
 import { cn } from '../utils/cn';
 import { CreateActivityFromHabitsModal } from './CreateActivityFromHabitsModal';
 
@@ -10,9 +10,10 @@ interface ActivityListProps {
     onCreate: () => void;
     onEdit: (activity: Activity) => void;
     onCreateFromHabits: (prefillSteps: ActivityStep[]) => void;
+    onStart: (activity: Activity) => void;
 }
 
-export const ActivityList: React.FC<ActivityListProps> = ({ onCreate, onEdit, onCreateFromHabits }) => {
+export const ActivityList: React.FC<ActivityListProps> = ({ onCreate, onEdit, onCreateFromHabits, onStart }) => {
     const { activities, loading, error, deleteActivity } = useActivityStore();
     const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
     const [isCreateFromHabitsOpen, setIsCreateFromHabitsOpen] = useState(false);
@@ -102,6 +103,13 @@ export const ActivityList: React.FC<ActivityListProps> = ({ onCreate, onEdit, on
                                         </div>
 
                                         <div className="flex items-center gap-2">
+                                            <button
+                                                onClick={() => onStart(activity)}
+                                                className="p-2 rounded-lg text-emerald-400 hover:bg-emerald-500/20 hover:text-emerald-300 transition-colors"
+                                                title="Start Activity"
+                                            >
+                                                <Play size={18} />
+                                            </button>
                                             <button
                                                 onClick={() => onEdit(activity)}
                                                 className="p-2 rounded-lg text-neutral-400 hover:bg-neutral-700 hover:text-white transition-colors"
