@@ -24,6 +24,7 @@ export const ActivityEditorModal: React.FC<ActivityEditorModalProps> = ({
     const [title, setTitle] = useState('');
     const [steps, setSteps] = useState<ActivityStep[]>([]);
     const [validationError, setValidationError] = useState<string | null>(null);
+    const [deleteConfirmStepId, setDeleteConfirmStepId] = useState<string | null>(null);
 
     // Initialize state from initialActivity or prefillSteps
     useEffect(() => {
@@ -58,41 +59,54 @@ export const ActivityEditorModal: React.FC<ActivityEditorModalProps> = ({
     };
 
     const removeStep = (stepId: string) => {
+        const step = steps.find(s => s.id === stepId);
+        // If it's a habit step, require confirmation
+        if (step?.type === 'habit' && deleteConfirmStepId !== stepId) {
+            setDeleteConfirmStepId(stepId);
+            setTimeout(() => setDeleteConfirmStepId(null), 5000);
+            return;
+        }
         setSteps(steps.filter(s => s.id !== stepId));
+        setDeleteConfirmStepId(null);
     };
 
     const updateStep = (stepId: string, updates: Partial<ActivityStep>) => {
         setSteps(steps.map(s => (s.id === stepId ? { ...s, ...updates } : s)));
     };
 
-    const validate = (): boolean => {
+    const validate = (): { isValid: boolean; error: string | null } => {
         if (!title.trim()) {
-            setValidationError('Activity title is required');
-            return false;
+            return { isValid: false, error: 'Activity title is required' };
         }
 
         // Validate habit steps have habitId
         for (const step of steps) {
             if (step.type === 'habit' && !step.habitId?.trim()) {
-                setValidationError(`Habit step "${step.title || 'Untitled'}" requires a habit selection`);
-                return false;
+                return { isValid: false, error: `Habit step "${step.title || 'Untitled'}" requires a habit selection` };
             }
             if (!step.title.trim()) {
-                setValidationError('All steps must have a title');
-                return false;
+                return { isValid: false, error: 'All steps must have a title' };
             }
         }
 
-        setValidationError(null);
-        return true;
+        return { isValid: true, error: null };
+    };
+
+    // Real-time validation for save button state
+    const hasValidationErrors = (): boolean => {
+        const result = validate();
+        return !result.isValid;
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        if (!validate()) {
+        const validation = validate();
+        if (!validation.isValid) {
+            setValidationError(validation.error);
             return;
         }
+        setValidationError(null);
 
         try {
             if (mode === 'create') {
@@ -189,8 +203,18 @@ export const ActivityEditorModal: React.FC<ActivityEditorModalProps> = ({
                                             <button
                                                 type="button"
                                                 onClick={() => removeStep(step.id)}
-                                                className="p-1.5 text-neutral-500 hover:text-red-400 hover:bg-red-500/10 rounded transition-colors"
-                                                title="Remove Step"
+                                                className={`p-1.5 rounded transition-colors ${
+                                                    deleteConfirmStepId === step.id
+                                                        ? 'bg-red-500/20 text-red-400'
+                                                        : 'text-neutral-500 hover:text-red-400 hover:bg-red-500/10'
+                                                }`}
+                                                title={
+                                                    deleteConfirmStepId === step.id
+                                                        ? 'Click again to confirm deletion'
+                                                        : step.type === 'habit'
+                                                        ? 'Remove Step (requires confirmation)'
+                                                        : 'Remove Step'
+                                                }
                                             >
                                                 <Trash2 size={16} />
                                             </button>
@@ -204,9 +228,10 @@ export const ActivityEditorModal: React.FC<ActivityEditorModalProps> = ({
                                                     type="button"
                                                     onClick={() => {
                                                         const newType: ActivityStepType = 'habit';
+                                                        // When converting to habit, don't auto-select - require user to choose
                                                         updateStep(step.id, {
                                                             type: newType,
-                                                            habitId: newType === 'habit' && !step.habitId ? habits[0]?.id : step.habitId,
+                                                            habitId: step.habitId || undefined, // Keep existing if present, otherwise undefined
                                                         });
                                                     }}
                                                     className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
@@ -220,7 +245,12 @@ export const ActivityEditorModal: React.FC<ActivityEditorModalProps> = ({
                                                 <button
                                                     type="button"
                                                     onClick={() => {
-                                                        updateStep(step.id, { type: 'task', habitId: undefined });
+                                                        // When converting from habit to task: clear habitId, keep other fields
+                                                        updateStep(step.id, {
+                                                            type: 'task',
+                                                            habitId: undefined, // Clear habitId
+                                                            // Keep: title, instruction, imageUrl, timeEstimateMinutes
+                                                        });
                                                     }}
                                                     className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                                                         step.type === 'task'
@@ -231,6 +261,14 @@ export const ActivityEditorModal: React.FC<ActivityEditorModalProps> = ({
                                                     Task
                                                 </button>
                                             </div>
+                                            {/* Inline hints */}
+                                            <p className="text-xs text-neutral-500 mt-1.5">
+                                                {step.type === 'habit' ? (
+                                                    <span>Counts toward daily tracking.</span>
+                                                ) : (
+                                                    <span>For guidance only, not tracked.</span>
+                                                )}
+                                            </p>
                                         </div>
 
                                         {/* Step Title */}
@@ -257,7 +295,11 @@ export const ActivityEditorModal: React.FC<ActivityEditorModalProps> = ({
                                                 <select
                                                     value={step.habitId || ''}
                                                     onChange={(e) => updateStep(step.id, { habitId: e.target.value })}
-                                                    className="w-full bg-neutral-800 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-emerald-500"
+                                                    className={`w-full bg-neutral-800 border rounded-lg px-4 py-2 text-white focus:outline-none ${
+                                                        !step.habitId?.trim()
+                                                            ? 'border-red-500/50 focus:border-red-500'
+                                                            : 'border-white/10 focus:border-emerald-500'
+                                                    }`}
                                                     required
                                                 >
                                                     <option value="">Select a habit...</option>
@@ -267,6 +309,9 @@ export const ActivityEditorModal: React.FC<ActivityEditorModalProps> = ({
                                                         </option>
                                                     ))}
                                                 </select>
+                                                {!step.habitId?.trim() && (
+                                                    <p className="text-xs text-red-400 mt-1">A habit selection is required for habit steps</p>
+                                                )}
                                             </div>
                                         )}
 
@@ -365,7 +410,8 @@ export const ActivityEditorModal: React.FC<ActivityEditorModalProps> = ({
                         </button>
                         <button
                             type="submit"
-                            className="px-4 py-2 bg-emerald-500 text-neutral-900 font-medium rounded-lg hover:bg-emerald-400 transition-colors"
+                            disabled={hasValidationErrors()}
+                            className="px-4 py-2 bg-emerald-500 text-neutral-900 font-medium rounded-lg hover:bg-emerald-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             {mode === 'create' ? 'Create Activity' : 'Save Changes'}
                         </button>
