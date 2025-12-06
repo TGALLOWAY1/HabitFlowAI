@@ -12,8 +12,8 @@ interface ActivityContextType {
     loading: boolean;
     error?: string;
     refreshActivities: () => Promise<void>;
-    addActivity: (data: Omit<Activity, 'id' | 'createdAt' | 'updatedAt'>) => Promise<Activity>;
-    updateActivity: (id: string, patch: Partial<Omit<Activity, 'id' | 'createdAt' | 'updatedAt'>>) => Promise<Activity>;
+    addActivity: (data: Omit<Activity, 'id' | 'createdAt' | 'updatedAt' | 'userId'>) => Promise<Activity>;
+    updateActivity: (id: string, patch: Partial<Omit<Activity, 'id' | 'createdAt' | 'updatedAt' | 'userId'>>) => Promise<Activity>;
     deleteActivity: (id: string) => Promise<void>;
 }
 
@@ -81,7 +81,7 @@ export const ActivityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         }
     };
 
-    const addActivity = async (data: Omit<Activity, 'id' | 'createdAt' | 'updatedAt'>): Promise<Activity> => {
+    const addActivity = async (data: Omit<Activity, 'id' | 'createdAt' | 'updatedAt' | 'userId'>): Promise<Activity> => {
         try {
             const newActivity = await createActivityApi(data);
             // Optimistic update: add to state immediately
@@ -96,7 +96,7 @@ export const ActivityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
     const updateActivity = async (
         id: string,
-        patch: Partial<Omit<Activity, 'id' | 'createdAt' | 'updatedAt'>>
+        patch: Partial<Omit<Activity, 'id' | 'createdAt' | 'updatedAt' | 'userId'>>
     ): Promise<Activity> => {
         try {
             const updatedActivity = await updateActivityApi(id, patch);

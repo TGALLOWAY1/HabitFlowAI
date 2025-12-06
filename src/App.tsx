@@ -7,8 +7,9 @@ import { TrackerGrid } from './components/TrackerGrid';
 import { AddHabitModal } from './components/AddHabitModal';
 import { ProgressDashboard } from './components/ProgressDashboard';
 import { ActivityList } from './components/ActivityList';
+import { ActivityEditorModal } from './components/ActivityEditorModal';
 import { BarChart3, Calendar, ClipboardList } from 'lucide-react';
-import type { Activity } from './types';
+import type { Activity, ActivityStep } from './types';
 
 const HabitTrackerContent: React.FC = () => {
   const { categories, habits, logs, toggleHabit, updateLog } = useHabitStore();
@@ -16,9 +17,11 @@ const HabitTrackerContent: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [view, setView] = useState<'tracker' | 'progress' | 'activities'>('tracker');
   const [activityEditorState, setActivityEditorState] = useState<{
+    isOpen: boolean;
     mode: 'create' | 'edit';
-    activity: Activity | null;
-  } | null>(null);
+    activity?: Activity;
+    prefillSteps?: ActivityStep[];
+  }>({ isOpen: false, mode: 'create' });
 
   const filteredHabits = habits.filter(h => h.categoryId === activeCategoryId && !h.archived);
 
@@ -75,8 +78,8 @@ const HabitTrackerContent: React.FC = () => {
         <ProgressDashboard />
       ) : (
         <ActivityList
-          onCreate={() => setActivityEditorState({ mode: 'create', activity: null })}
-          onEdit={(activity) => setActivityEditorState({ mode: 'edit', activity })}
+          onCreate={() => setActivityEditorState({ isOpen: true, mode: 'create', activity: undefined })}
+          onEdit={(activity) => setActivityEditorState({ isOpen: true, mode: 'edit', activity })}
         />
       )}
 
@@ -84,6 +87,14 @@ const HabitTrackerContent: React.FC = () => {
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         categoryId={activeCategoryId}
+      />
+
+      <ActivityEditorModal
+        isOpen={activityEditorState.isOpen}
+        mode={activityEditorState.mode}
+        initialActivity={activityEditorState.activity}
+        prefillSteps={activityEditorState.prefillSteps}
+        onClose={() => setActivityEditorState({ ...activityEditorState, isOpen: false })}
       />
     </div>
   );

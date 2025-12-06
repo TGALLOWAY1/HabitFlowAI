@@ -381,7 +381,7 @@ export async function fetchActivity(id: string): Promise<Activity> {
  * @throws Error if API request fails
  */
 export async function createActivity(
-  activity: Omit<Activity, 'id' | 'createdAt' | 'updatedAt'>
+  activity: Omit<Activity, 'id' | 'createdAt' | 'updatedAt' | 'userId'>
 ): Promise<Activity> {
 
   const response = await apiRequest<{ activity: Activity }>('/activities', {
@@ -402,7 +402,7 @@ export async function createActivity(
  */
 export async function updateActivity(
   id: string,
-  patch: Partial<Omit<Activity, 'id' | 'createdAt' | 'updatedAt'>>
+  patch: Partial<Omit<Activity, 'id' | 'createdAt' | 'updatedAt' | 'userId'>>
 ): Promise<Activity> {
 
   const response = await apiRequest<{ activity: Activity }>(`/activities/${id}`, {
