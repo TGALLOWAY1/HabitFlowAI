@@ -7,15 +7,20 @@ import {
     reorderCategories as reorderCategoriesApi,
     fetchHabits,
     saveHabit,
-    updateHabit as updateHabitApi,
+    updateHabit as updateHabitApi, // Reserved for future use
     deleteHabit as deleteHabitApi,
     fetchDayLogs,
     saveDayLog,
     deleteDayLog as deleteDayLogApi,
     fetchWellbeingLogs,
     saveWellbeingLog,
-    isMongoPersistenceEnabled,
 } from '../lib/persistenceClient';
+import {
+    getPersistenceMode,
+    isLocalOnly,
+    isMongoMigration,
+    isMongoPrimary,
+} from '../lib/persistenceConfig';
 
 interface HabitContextType {
     categories: Category[];
@@ -91,10 +96,25 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     // - If VITE_USE_MONGO_PERSISTENCE=true: Attempts to use API, falls back to localStorage on failure
     // - If false: Uses localStorage only (existing behavior)
     // Future cleanup: Once MongoDB is stable, remove localStorage fallback and dual-write logic.
+    //
+    // NOTE: Phase 1B - Behavior is unchanged. We only route through PersistenceMode/helpers.
+    // Future phases will branch on 'mongo-migration' vs 'mongo-primary' here,
+    // following docs/mongo-migration-plan.md.
+    const persistenceMode = getPersistenceMode(); // Will be used in future phases
+    const mongoEnabled = !isLocalOnly(); // true for both 'mongo-migration' and 'mongo-primary'
+    const isMigrationMode = isMongoMigration(); // Will be used in future phases
+    const isPrimaryMode = isMongoPrimary(); // Will be used in future phases
+    // mongoEnabled is the legacy "Mongo is on" boolean
+    // isMigrationMode / isPrimaryMode will be used in future phases to differentiate behavior
+    
+    // Suppress unused variable warnings - these will be used in future phases
+    void persistenceMode;
+    void isMigrationMode;
+    void isPrimaryMode;
 
     const [categories, setCategories] = useState<Category[]>(() => {
         // Initial load: Try API if enabled, otherwise use localStorage
-        if (isMongoPersistenceEnabled()) {
+        if (mongoEnabled) {
             // Attempt to fetch from API, but don't block initialization
             // We'll load from localStorage first, then sync from API in useEffect
             const saved = localStorage.getItem('categories');
@@ -108,7 +128,7 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     const [habits, setHabits] = useState<Habit[]>(() => {
         // Initial load: Try API if enabled, otherwise use localStorage
-        if (isMongoPersistenceEnabled()) {
+        if (mongoEnabled) {
             const saved = localStorage.getItem('habits');
             return saved ? JSON.parse(saved) : INITIAL_HABITS;
         } else {
@@ -119,7 +139,7 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     const [logs, setLogs] = useState<Record<string, DayLog>>(() => {
         // Initial load: Try API if enabled, otherwise use localStorage
-        if (isMongoPersistenceEnabled()) {
+        if (mongoEnabled) {
             const saved = localStorage.getItem('logs');
             return saved ? JSON.parse(saved) : {};
         } else {
@@ -130,7 +150,7 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     const [wellbeingLogs, setWellbeingLogs] = useState<Record<string, DailyWellbeing>>(() => {
         // Initial load: Try API if enabled, otherwise use localStorage
-        if (isMongoPersistenceEnabled()) {
+        if (mongoEnabled) {
             const saved = localStorage.getItem('wellbeingLogs');
             return saved ? JSON.parse(saved) : {};
         } else {
@@ -141,7 +161,7 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     // Load categories from API on mount if MongoDB persistence is enabled
     useEffect(() => {
-        if (isMongoPersistenceEnabled()) {
+        if (mongoEnabled) {
             fetchCategories()
                 .then((apiCategories) => {
                     if (apiCategories.length > 0) {
@@ -185,7 +205,7 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     // Load habits from API on mount if MongoDB persistence is enabled
     useEffect(() => {
-        if (isMongoPersistenceEnabled()) {
+        if (mongoEnabled) {
             fetchHabits()
                 .then((apiHabits) => {
                     if (apiHabits.length > 0) {
@@ -220,7 +240,7 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     // Load day logs from API on mount if MongoDB persistence is enabled
     useEffect(() => {
-        if (isMongoPersistenceEnabled()) {
+        if (mongoEnabled) {
             fetchDayLogs()
                 .then((apiLogs) => {
                     if (Object.keys(apiLogs).length > 0) {
@@ -253,7 +273,7 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     // Load wellbeing logs from API on mount if MongoDB persistence is enabled
     useEffect(() => {
-        if (isMongoPersistenceEnabled()) {
+        if (mongoEnabled) {
             fetchWellbeingLogs()
                 .then((apiWellbeingLogs) => {
                     if (Object.keys(apiWellbeingLogs).length > 0) {
@@ -320,7 +340,7 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         localStorage.setItem('wellbeingLogs', JSON.stringify(updatedWellbeingLogs));
 
         // Save to MongoDB if enabled
-        if (isMongoPersistenceEnabled()) {
+        if (mongoEnabled) {
             try {
                 await saveWellbeingLog(mergedData);
             } catch (error) {
@@ -331,7 +351,7 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     };
 
     const addCategory = async (category: Omit<Category, 'id'>) => {
-        if (isMongoPersistenceEnabled()) {
+        if (mongoEnabled) {
             try {
                 // Save to API
                 const newCategory = await saveCategory(category);
@@ -357,7 +377,7 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     };
 
     const addHabit = async (habit: Omit<Habit, 'id' | 'createdAt' | 'archived'>) => {
-        if (isMongoPersistenceEnabled()) {
+        if (mongoEnabled) {
             try {
                 // Save to API
                 const newHabit = await saveHabit(habit);
@@ -420,14 +440,14 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         localStorage.setItem('logs', JSON.stringify(updatedLogs));
 
         // Save to MongoDB if enabled
-        if (isMongoPersistenceEnabled() && logToSave) {
+        if (mongoEnabled && logToSave) {
             try {
                 await saveDayLog(logToSave);
             } catch (error) {
                 console.warn('Failed to save day log to API:', error instanceof Error ? error.message : 'Unknown error');
                 // State already updated, just log warning
             }
-        } else if (isMongoPersistenceEnabled() && currentLog) {
+        } else if (mongoEnabled && currentLog) {
             // Delete from MongoDB
             try {
                 await deleteDayLogApi(habitId, date);
@@ -454,7 +474,7 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         localStorage.setItem('logs', JSON.stringify(updatedLogs));
 
         // Save to MongoDB if enabled
-        if (isMongoPersistenceEnabled()) {
+        if (mongoEnabled) {
             try {
                 await saveDayLog(logToSave);
             } catch (error) {
@@ -465,7 +485,7 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     };
 
     const deleteHabit = async (id: string) => {
-        if (isMongoPersistenceEnabled()) {
+        if (mongoEnabled) {
             try {
                 // Delete from API (this should cascade delete day logs)
                 await deleteHabitApi(id);
@@ -509,7 +529,7 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     };
 
     const deleteCategory = async (id: string) => {
-        if (isMongoPersistenceEnabled()) {
+        if (mongoEnabled) {
             try {
                 // Delete from API
                 await deleteCategoryApi(id);
@@ -544,7 +564,7 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         updatedCategories.forEach(c => categoryMap.set(c.name, c.id));
 
         // Add new categories from import
-        if (isMongoPersistenceEnabled()) {
+        if (mongoEnabled) {
             // Use API to create categories
             for (const c of categoriesToImport) {
                 if (!categoryMap.has(c.name)) {
@@ -581,7 +601,7 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         let updatedHabits = [...habits];
         let addedCount = 0;
         
-        if (isMongoPersistenceEnabled()) {
+        if (mongoEnabled) {
             // Use API to create habits
             for (const { categoryName, habit } of habitsData) {
                 const categoryId = categoryMap.get(categoryName);
@@ -647,7 +667,7 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     };
 
     const reorderCategories = async (newOrder: Category[]) => {
-        if (isMongoPersistenceEnabled()) {
+        if (mongoEnabled) {
             try {
                 // Save new order to API
                 const updatedCategories = await reorderCategoriesApi(newOrder);
