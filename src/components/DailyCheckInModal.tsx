@@ -51,12 +51,18 @@ export const DailyCheckInModal: React.FC<DailyCheckInModalProps> = ({ isOpen, on
 
     const currentData = activeTab === 'morning' ? morningData : eveningData;
 
-    const handleSave = () => {
-        logWellbeing(today, {
-            date: today,
-            [activeTab]: currentData
-        });
-        onClose();
+    const handleSave = async () => {
+        try {
+            await logWellbeing(today, {
+                date: today,
+                [activeTab]: currentData
+            });
+            onClose();
+        } catch (error) {
+            console.error('Failed to save wellbeing log:', error);
+            // Still close modal even if API fails (fallback to localStorage)
+            onClose();
+        }
     };
 
     if (!isOpen) return null;

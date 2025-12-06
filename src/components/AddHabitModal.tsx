@@ -17,23 +17,29 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
 
     if (!isOpen) return null;
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        addHabit({
-            categoryId,
-            name,
-            goal: {
-                type: target ? 'number' : 'boolean',
-                target: target ? Number(target) : undefined,
-                unit: unit || undefined,
-                frequency: isCumulative ? 'total' : 'daily',
-            },
-        });
-        onClose();
-        setName('');
-        setTarget('');
-        setUnit('');
-        setIsCumulative(false);
+        try {
+            await addHabit({
+                categoryId,
+                name,
+                goal: {
+                    type: target ? 'number' : 'boolean',
+                    target: target ? Number(target) : undefined,
+                    unit: unit || undefined,
+                    frequency: isCumulative ? 'total' : 'daily',
+                },
+            });
+            onClose();
+            setName('');
+            setTarget('');
+            setUnit('');
+            setIsCumulative(false);
+        } catch (error) {
+            console.error('Failed to add habit:', error);
+            // Still close modal even if API fails (fallback to localStorage)
+            onClose();
+        }
     };
 
     return (

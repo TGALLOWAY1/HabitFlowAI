@@ -9,8 +9,8 @@ import { useHabitStore } from '../store/HabitContext';
 interface TrackerGridProps {
     habits: Habit[];
     logs: Record<string, DayLog>;
-    onToggle: (habitId: string, date: string) => void;
-    onUpdateValue: (habitId: string, date: string, value: number) => void;
+    onToggle: (habitId: string, date: string) => Promise<void>;
+    onUpdateValue: (habitId: string, date: string, value: number) => Promise<void>;
     onAddHabit: () => void;
 }
 
@@ -55,7 +55,9 @@ export const TrackerGrid: React.FC<TrackerGridProps> = ({ habits, logs, onToggle
                 position: { top: rect.bottom + 8, left: rect.left - 40 }, // Center-ish alignment
             });
         } else {
-            onToggle(habit.id, dateStr);
+            onToggle(habit.id, dateStr).catch(error => {
+                console.error('Failed to toggle habit:', error);
+            });
         }
     };
 
@@ -103,11 +105,15 @@ export const TrackerGrid: React.FC<TrackerGridProps> = ({ habits, logs, onToggle
 
                             {/* Delete Button (Visible on Hover) */}
                             <button
-                                onClick={(e) => {
+                                onClick={async (e) => {
                                     e.stopPropagation();
                                     if (deleteConfirmId === habit.id) {
-                                        deleteHabit(habit.id);
-                                        setDeleteConfirmId(null);
+                                        try {
+                                            await deleteHabit(habit.id);
+                                            setDeleteConfirmId(null);
+                                        } catch (error) {
+                                            console.error('Failed to delete habit:', error);
+                                        }
                                     } else {
                                         setDeleteConfirmId(habit.id);
                                         setTimeout(() => setDeleteConfirmId(null), 5000);
@@ -176,9 +182,14 @@ export const TrackerGrid: React.FC<TrackerGridProps> = ({ habits, logs, onToggle
             <NumericInputPopover
                 isOpen={popoverState.isOpen}
                 onClose={() => setPopoverState(prev => ({ ...prev, isOpen: false }))}
-                onSubmit={(val) => {
-                    onUpdateValue(popoverState.habitId, popoverState.date, val);
-                    setPopoverState(prev => ({ ...prev, isOpen: false }));
+                onSubmit={async (val) => {
+                    try {
+                        await onUpdateValue(popoverState.habitId, popoverState.date, val);
+                        setPopoverState(prev => ({ ...prev, isOpen: false }));
+                    } catch (error) {
+                        console.error('Failed to update log:', error);
+                        setPopoverState(prev => ({ ...prev, isOpen: false }));
+                    }
                 }}
                 initialValue={popoverState.initialValue}
                 unit={popoverState.unit}
