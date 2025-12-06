@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { X } from 'lucide-react';
 import type { Activity } from '../types';
+import { submitActivity, type SubmitActivityResponse } from '../lib/persistenceClient';
 
 type ActivityRunnerMode = 'habit' | 'image' | 'text';
 
@@ -18,6 +19,9 @@ export const ActivityRunnerModal: React.FC<ActivityRunnerModalProps> = ({
     const [mode, setMode] = useState<ActivityRunnerMode>('habit');
     const [completedStepIds, setCompletedStepIds] = useState<Set<string>>(new Set());
     const [currentIndex, setCurrentIndex] = useState(0);
+    const [submitting, setSubmitting] = useState(false);
+    const [submitError, setSubmitError] = useState<string | null>(null);
+    const [submitResult, setSubmitResult] = useState<SubmitActivityResponse | null>(null);
 
     // For Image and Text Views: treat all steps as part of the carousel
     // Only Habit steps contribute to completedStepIds tracking
@@ -42,10 +46,14 @@ export const ActivityRunnerModal: React.FC<ActivityRunnerModalProps> = ({
         });
     };
 
-    // Reset completed steps when modal closes
+    // Reset all state when modal closes
     useEffect(() => {
         if (!isOpen) {
             setCompletedStepIds(new Set());
+            setSubmitError(null);
+            setSubmitResult(null);
+            setMode('habit');
+            setCurrentIndex(0);
         }
     }, [isOpen]);
 
@@ -86,6 +94,29 @@ export const ActivityRunnerModal: React.FC<ActivityRunnerModalProps> = ({
     const handleNext = () => {
         if (currentIndex < steps.length - 1) {
             setCurrentIndex(prev => prev + 1);
+        }
+    };
+
+    const handleSubmitActivity = async () => {
+        if (!activity) return;
+
+        setSubmitting(true);
+        setSubmitError(null);
+        setSubmitResult(null);
+
+        try {
+            const result = await submitActivity(activity.id, {
+                mode,
+                completedStepIds: Array.from(completedStepIds),
+                submittedAt: new Date().toISOString(),
+            });
+
+            setSubmitResult(result);
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : 'Failed to submit activity';
+            setSubmitError(errorMessage);
+        } finally {
+            setSubmitting(false);
         }
     };
 
@@ -337,21 +368,39 @@ export const ActivityRunnerModal: React.FC<ActivityRunnerModalProps> = ({
                 </div>
 
                 {/* Footer */}
-                <div className="p-6 border-t border-white/10 flex justify-end gap-3">
-                    <button
-                        type="button"
-                        onClick={onClose}
-                        className="px-4 py-2 text-neutral-400 hover:text-white transition-colors"
-                    >
-                        Close
-                    </button>
-                    <button
-                        type="button"
-                        disabled
-                        className="px-4 py-2 bg-emerald-500 text-neutral-900 font-medium rounded-lg hover:bg-emerald-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                        Submit Activity
-                    </button>
+                <div className="p-6 border-t border-white/10 space-y-3">
+                    {/* Error Message */}
+                    {submitError && (
+                        <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3 text-red-400 text-sm">
+                            {submitError}
+                        </div>
+                    )}
+
+                    {/* Success Message */}
+                    {submitResult && (
+                        <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-lg p-3 text-emerald-400 text-sm">
+                            Logged {submitResult.createdOrUpdatedCount} of {submitResult.totalHabitStepsInActivity} habit steps for today.
+                        </div>
+                    )}
+
+                    {/* Buttons */}
+                    <div className="flex justify-end gap-3">
+                        <button
+                            type="button"
+                            onClick={onClose}
+                            className="px-4 py-2 text-neutral-400 hover:text-white transition-colors"
+                        >
+                            Close
+                        </button>
+                        <button
+                            type="button"
+                            onClick={handleSubmitActivity}
+                            disabled={!activity || completedStepIds.size === 0 || submitting}
+                            className="px-4 py-2 bg-emerald-500 text-neutral-900 font-medium rounded-lg hover:bg-emerald-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            {submitting ? 'Submitting...' : 'Submit Activity'}
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
