@@ -510,14 +510,28 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         }
     }, [habits, isPrimaryMode]);
 
+    // Phase 3B: Sync to localStorage (dual-write for safety during transition)
+    // - In 'mongo-primary' mode: logs/wellbeingLogs no longer write to localStorage (Mongo is source of truth)
+    // - In 'local-only' and 'mongo-migration' modes: keep localStorage sync (backwards compatible)
+    // See docs/mongo-migration-plan.md for details.
     useEffect(() => {
-        localStorage.setItem('logs', JSON.stringify(logs));
-    }, [logs]);
+        if (!isPrimaryMode) {
+            // local-only or mongo-migration: keep localStorage sync
+            localStorage.setItem('logs', JSON.stringify(logs));
+        }
+    }, [logs, isPrimaryMode]);
 
     useEffect(() => {
-        localStorage.setItem('wellbeingLogs', JSON.stringify(wellbeingLogs));
-    }, [wellbeingLogs]);
+        if (!isPrimaryMode) {
+            // local-only or mongo-migration: keep localStorage sync
+            localStorage.setItem('wellbeingLogs', JSON.stringify(wellbeingLogs));
+        }
+    }, [wellbeingLogs, isPrimaryMode]);
 
+    // Phase 3B:
+    // In 'mongo-primary' mode, wellbeingLogs no longer write to localStorage on success.
+    // - local-only & mongo-migration: keep localStorage writes (backwards compatible).
+    // - mongo-primary: Mongo is the source of truth; localStorage is backup only (if fallback enabled).
     const logWellbeing = async (date: string, data: DailyWellbeing) => {
         // Merge with existing data for the date
         const existing = wellbeingLogs[date] || { date };
@@ -533,8 +547,12 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             ...wellbeingLogs,
             [date]: mergedData,
         };
+        // Optimistic update: update state immediately
         setWellbeingLogs(updatedWellbeingLogs);
-        localStorage.setItem('wellbeingLogs', JSON.stringify(updatedWellbeingLogs));
+        // Phase 3B: Only write to localStorage in local-only or mongo-migration modes
+        if (!isPrimaryMode) {
+            localStorage.setItem('wellbeingLogs', JSON.stringify(updatedWellbeingLogs));
+        }
 
         // Save to MongoDB if enabled
         if (mongoEnabled) {
@@ -542,6 +560,10 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 await saveWellbeingLog(mergedData);
             } catch (error) {
                 console.warn('Failed to save wellbeing log to API:', error instanceof Error ? error.message : 'Unknown error');
+                // Phase 3B: In mongo-primary mode, only write to localStorage if fallback is enabled
+                if (isPrimaryMode && allowLocalStorageFallback()) {
+                    localStorage.setItem('wellbeingLogs', JSON.stringify(updatedWellbeingLogs));
+                }
                 // State already updated, just log warning
             }
         }
@@ -633,6 +655,10 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         }
     };
 
+    // Phase 3B:
+    // In 'mongo-primary' mode, logs no longer write to localStorage on success.
+    // - local-only & mongo-migration: keep localStorage writes (backwards compatible).
+    // - mongo-primary: Mongo is the source of truth; localStorage is backup only (if fallback enabled).
     const toggleHabit = async (habitId: string, date: string) => {
         const key = `${habitId}-${date}`;
         const currentLog = logs[key];
@@ -653,8 +679,12 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             };
         }
         
+        // Optimistic update: update state immediately
         setLogs(updatedLogs);
-        localStorage.setItem('logs', JSON.stringify(updatedLogs));
+        // Phase 3B: Only write to localStorage in local-only or mongo-migration modes
+        if (!isPrimaryMode) {
+            localStorage.setItem('logs', JSON.stringify(updatedLogs));
+        }
 
         // Save to MongoDB if enabled
         if (mongoEnabled && logToSave) {
@@ -662,6 +692,10 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 await saveDayLog(logToSave);
             } catch (error) {
                 console.warn('Failed to save day log to API:', error instanceof Error ? error.message : 'Unknown error');
+                // Phase 3B: In mongo-primary mode, only write to localStorage if fallback is enabled
+                if (isPrimaryMode && allowLocalStorageFallback()) {
+                    localStorage.setItem('logs', JSON.stringify(updatedLogs));
+                }
                 // State already updated, just log warning
             }
         } else if (mongoEnabled && currentLog) {
@@ -670,11 +704,19 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 await deleteDayLogApi(habitId, date);
             } catch (error) {
                 console.warn('Failed to delete day log from API:', error instanceof Error ? error.message : 'Unknown error');
+                // Phase 3B: In mongo-primary mode, only write to localStorage if fallback is enabled
+                if (isPrimaryMode && allowLocalStorageFallback()) {
+                    localStorage.setItem('logs', JSON.stringify(updatedLogs));
+                }
                 // State already updated, just log warning
             }
         }
     };
 
+    // Phase 3B:
+    // In 'mongo-primary' mode, logs no longer write to localStorage on success.
+    // - local-only & mongo-migration: keep localStorage writes (backwards compatible).
+    // - mongo-primary: Mongo is the source of truth; localStorage is backup only (if fallback enabled).
     const updateLog = async (habitId: string, date: string, value: number) => {
         const key = `${habitId}-${date}`;
         const habit = habits.find(h => h.id === habitId);
@@ -687,8 +729,12 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             ...logs,
             [key]: logToSave,
         };
+        // Optimistic update: update state immediately
         setLogs(updatedLogs);
-        localStorage.setItem('logs', JSON.stringify(updatedLogs));
+        // Phase 3B: Only write to localStorage in local-only or mongo-migration modes
+        if (!isPrimaryMode) {
+            localStorage.setItem('logs', JSON.stringify(updatedLogs));
+        }
 
         // Save to MongoDB if enabled
         if (mongoEnabled) {
@@ -696,16 +742,19 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 await saveDayLog(logToSave);
             } catch (error) {
                 console.warn('Failed to save day log to API:', error instanceof Error ? error.message : 'Unknown error');
+                // Phase 3B: In mongo-primary mode, only write to localStorage if fallback is enabled
+                if (isPrimaryMode && allowLocalStorageFallback()) {
+                    localStorage.setItem('logs', JSON.stringify(updatedLogs));
+                }
                 // State already updated, just log warning
             }
         }
     };
 
-    // Phase 3A:
-    // In 'mongo-primary' mode, habits no longer write to localStorage on success.
+    // Phase 3A & 3B:
+    // In 'mongo-primary' mode, habits and logs no longer write to localStorage on success.
     // - local-only & mongo-migration: keep localStorage writes (backwards compatible).
     // - mongo-primary: Mongo is the source of truth, localStorage only used for fallback/migration.
-    // Note: Logs localStorage writes remain unchanged (will be handled in Phase 3B).
     const deleteHabit = async (id: string) => {
         if (mongoEnabled) {
             try {
@@ -720,11 +769,13 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 );
                 setLogs(updatedLogs);
                 // Phase 3A: Only write habits to localStorage in local-only or mongo-migration modes
-                // Logs localStorage write remains unchanged (Phase 3B)
                 if (!isPrimaryMode) {
                     localStorage.setItem('habits', JSON.stringify(updatedHabits));
                 }
-                localStorage.setItem('logs', JSON.stringify(updatedLogs));
+                // Phase 3B: Only write logs to localStorage in local-only or mongo-migration modes
+                if (!isPrimaryMode) {
+                    localStorage.setItem('logs', JSON.stringify(updatedLogs));
+                }
             } catch (error) {
                 // API failed, fall back to localStorage
                 console.warn(
@@ -738,11 +789,13 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 );
                 setLogs(updatedLogs);
                 // Phase 3A: In mongo-primary mode, only write habits to localStorage if fallback is enabled
-                // Logs localStorage write remains unchanged (Phase 3B)
                 if (!isPrimaryMode || allowLocalStorageFallback()) {
                     localStorage.setItem('habits', JSON.stringify(updatedHabits));
                 }
-                localStorage.setItem('logs', JSON.stringify(updatedLogs));
+                // Phase 3B: In mongo-primary mode, only write logs to localStorage if fallback is enabled
+                if (!isPrimaryMode || allowLocalStorageFallback()) {
+                    localStorage.setItem('logs', JSON.stringify(updatedLogs));
+                }
             }
         } else {
             // Use localStorage (existing behavior)
