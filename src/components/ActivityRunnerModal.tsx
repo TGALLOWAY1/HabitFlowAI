@@ -19,9 +19,10 @@ export const ActivityRunnerModal: React.FC<ActivityRunnerModalProps> = ({
     const [completedStepIds, setCompletedStepIds] = useState<Set<string>>(new Set());
     const [currentIndex, setCurrentIndex] = useState(0);
 
-    // For Image View: treat all steps as part of the carousel
+    // For Image and Text Views: treat all steps as part of the carousel
     // Only Habit steps contribute to completedStepIds tracking
-    const steps = activity?.steps ?? [];
+    const allSteps = activity?.steps ?? [];
+    const steps = allSteps; // Alias for consistency with existing code
     const currentStep = steps[currentIndex] ?? null;
 
     const habitSteps = useMemo(
@@ -48,9 +49,9 @@ export const ActivityRunnerModal: React.FC<ActivityRunnerModalProps> = ({
         }
     }, [isOpen]);
 
-    // Reset currentIndex when activity changes or mode switches to 'image'
+    // Reset currentIndex when activity changes or mode switches to 'image' or 'text'
     useEffect(() => {
-        if (mode === 'image') {
+        if (mode === 'image' || mode === 'text') {
             setCurrentIndex(0);
         }
     }, [activity, mode]);
@@ -71,6 +72,18 @@ export const ActivityRunnerModal: React.FC<ActivityRunnerModalProps> = ({
 
     const handleSkip = () => {
         // Move to next step if not at the end (stays on last step if already there)
+        if (currentIndex < steps.length - 1) {
+            setCurrentIndex(prev => prev + 1);
+        }
+    };
+
+    const handlePrevious = () => {
+        if (currentIndex > 0) {
+            setCurrentIndex(prev => prev - 1);
+        }
+    };
+
+    const handleNext = () => {
         if (currentIndex < steps.length - 1) {
             setCurrentIndex(prev => prev + 1);
         }
@@ -246,8 +259,78 @@ export const ActivityRunnerModal: React.FC<ActivityRunnerModalProps> = ({
                             </div>
                         )}
                         {mode === 'text' && (
-                            <div className="text-neutral-400 text-center py-12">
-                                Text mode placeholder
+                            <div className="space-y-6">
+                                {allSteps.length === 0 ? (
+                                    <div className="text-neutral-400 text-center py-12">
+                                        No steps in this activity.
+                                    </div>
+                                ) : (
+                                    <>
+                                        {/* Centered Card */}
+                                        <div className="max-w-2xl mx-auto bg-neutral-800/50 border border-white/5 rounded-lg p-8 space-y-6">
+                                            {/* Step Title */}
+                                            <h4 className="text-2xl font-bold text-white text-center">
+                                                {currentStep?.title || 'Untitled Step'}
+                                            </h4>
+
+                                            {/* Instruction */}
+                                            {currentStep?.instruction && (
+                                                <p className="text-neutral-300 text-center leading-relaxed">
+                                                    {currentStep.instruction}
+                                                </p>
+                                            )}
+
+                                            {/* Habit Step Note */}
+                                            {currentStep?.type === 'habit' && (
+                                                <div className="text-sm text-emerald-400 text-center">
+                                                    This can count toward your tracking.
+                                                </div>
+                                            )}
+
+                                            {/* Habit Step Toggle */}
+                                            {currentStep?.type === 'habit' && currentStep.id && (
+                                                <div className="flex justify-center">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => toggleStep(currentStep.id)}
+                                                        className={`px-6 py-2 rounded-lg font-medium transition-colors ${
+                                                            completedStepIds.has(currentStep.id)
+                                                                ? 'bg-neutral-700 text-neutral-300 hover:bg-neutral-600'
+                                                                : 'bg-emerald-500 text-neutral-900 hover:bg-emerald-400'
+                                                        }`}
+                                                    >
+                                                        {completedStepIds.has(currentStep.id) ? 'Undo' : 'Mark done'}
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {/* Navigation Buttons */}
+                                        <div className="flex gap-3 max-w-2xl mx-auto">
+                                            <button
+                                                type="button"
+                                                onClick={handlePrevious}
+                                                disabled={currentIndex === 0}
+                                                className="flex-1 px-4 py-2 bg-neutral-700 text-neutral-300 font-medium rounded-lg hover:bg-neutral-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                            >
+                                                Previous
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={handleNext}
+                                                disabled={currentIndex >= steps.length - 1}
+                                                className="flex-1 px-4 py-2 bg-neutral-700 text-neutral-300 font-medium rounded-lg hover:bg-neutral-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                            >
+                                                Next
+                                            </button>
+                                        </div>
+
+                                        {/* Summary */}
+                                        <div className="text-sm text-neutral-400 pt-2 border-t border-white/5 text-center">
+                                            Completed {completedStepIds.size} of {habitSteps.length} habit steps
+                                        </div>
+                                    </>
+                                )}
                             </div>
                         )}
                     </div>
