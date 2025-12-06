@@ -25,7 +25,7 @@ export async function upsertDayLog(
   userId: string
 ): Promise<DayLog> {
   if (!getUseMongoPersistence()) {
-    throw new Error('MongoDB persistence is not enabled. Set USE_MONGO_PERSISTENCE=true in .env');
+    throw new Error('MongoDB persistence is required. Set USE_MONGO_PERSISTENCE=true in .env');
   }
 
   const db = await getDb();
@@ -62,7 +62,7 @@ export async function upsertDayLog(
  */
 export async function getDayLogsByUser(userId: string): Promise<Record<string, DayLog>> {
   if (!getUseMongoPersistence()) {
-    throw new Error('MongoDB persistence is not enabled. Set USE_MONGO_PERSISTENCE=true in .env');
+    throw new Error('MongoDB persistence is required. Set USE_MONGO_PERSISTENCE=true in .env');
   }
 
   const db = await getDb();
@@ -95,7 +95,7 @@ export async function getDayLogsByHabit(
   userId: string
 ): Promise<Record<string, DayLog>> {
   if (!getUseMongoPersistence()) {
-    throw new Error('MongoDB persistence is not enabled. Set USE_MONGO_PERSISTENCE=true in .env');
+    throw new Error('MongoDB persistence is required. Set USE_MONGO_PERSISTENCE=true in .env');
   }
 
   const db = await getDb();
@@ -130,7 +130,7 @@ export async function getDayLog(
   userId: string
 ): Promise<DayLog | null> {
   if (!getUseMongoPersistence()) {
-    throw new Error('MongoDB persistence is not enabled. Set USE_MONGO_PERSISTENCE=true in .env');
+    throw new Error('MongoDB persistence is required. Set USE_MONGO_PERSISTENCE=true in .env');
   }
 
   const db = await getDb();
@@ -163,7 +163,7 @@ export async function deleteDayLog(
   userId: string
 ): Promise<boolean> {
   if (!getUseMongoPersistence()) {
-    throw new Error('MongoDB persistence is not enabled. Set USE_MONGO_PERSISTENCE=true in .env');
+    throw new Error('MongoDB persistence is required. Set USE_MONGO_PERSISTENCE=true in .env');
   }
 
   const db = await getDb();
@@ -188,7 +188,7 @@ export async function deleteDayLogsByHabit(
   userId: string
 ): Promise<number> {
   if (!getUseMongoPersistence()) {
-    throw new Error('MongoDB persistence is not enabled. Set USE_MONGO_PERSISTENCE=true in .env');
+    throw new Error('MongoDB persistence is required. Set USE_MONGO_PERSISTENCE=true in .env');
   }
 
   const db = await getDb();

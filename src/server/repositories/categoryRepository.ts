@@ -26,7 +26,7 @@ export async function createCategory(
   userId: string
 ): Promise<Category> {
   if (!getUseMongoPersistence()) {
-    throw new Error('MongoDB persistence is not enabled. Set USE_MONGO_PERSISTENCE=true in .env');
+    throw new Error('MongoDB persistence is required. Set USE_MONGO_PERSISTENCE=true in .env');
   }
 
   const db = await getDb();
@@ -58,7 +58,7 @@ export async function createCategory(
  */
 export async function getCategoriesByUser(userId: string): Promise<Category[]> {
   if (!getUseMongoPersistence()) {
-    throw new Error('MongoDB persistence is not enabled. Set USE_MONGO_PERSISTENCE=true in .env');
+    throw new Error('MongoDB persistence is required. Set USE_MONGO_PERSISTENCE=true in .env');
   }
 
   const db = await getDb();
@@ -85,7 +85,7 @@ export async function getCategoryById(
   userId: string
 ): Promise<Category | null> {
   if (!getUseMongoPersistence()) {
-    throw new Error('MongoDB persistence is not enabled. Set USE_MONGO_PERSISTENCE=true in .env');
+    throw new Error('MongoDB persistence is required. Set USE_MONGO_PERSISTENCE=true in .env');
   }
 
   const db = await getDb();
@@ -117,7 +117,7 @@ export async function updateCategory(
   patch: Partial<Omit<Category, 'id'>>
 ): Promise<Category | null> {
   if (!getUseMongoPersistence()) {
-    throw new Error('MongoDB persistence is not enabled. Set USE_MONGO_PERSISTENCE=true in .env');
+    throw new Error('MongoDB persistence is required. Set USE_MONGO_PERSISTENCE=true in .env');
   }
 
   const db = await getDb();
@@ -151,7 +151,7 @@ export async function deleteCategory(
   userId: string
 ): Promise<boolean> {
   if (!getUseMongoPersistence()) {
-    throw new Error('MongoDB persistence is not enabled. Set USE_MONGO_PERSISTENCE=true in .env');
+    throw new Error('MongoDB persistence is required. Set USE_MONGO_PERSISTENCE=true in .env');
   }
 
   const db = await getDb();
@@ -175,7 +175,7 @@ export async function reorderCategories(
   categories: Category[]
 ): Promise<Category[]> {
   if (!getUseMongoPersistence()) {
-    throw new Error('MongoDB persistence is not enabled. Set USE_MONGO_PERSISTENCE=true in .env');
+    throw new Error('MongoDB persistence is required. Set USE_MONGO_PERSISTENCE=true in .env');
   }
 
   const db = await getDb();

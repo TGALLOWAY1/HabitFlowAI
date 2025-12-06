@@ -28,7 +28,7 @@ export async function getDayLogs(req: Request, res: Response): Promise<void> {
       res.status(501).json({
         error: {
           code: 'MONGO_PERSISTENCE_DISABLED',
-          message: 'MongoDB persistence is disabled. Set USE_MONGO_PERSISTENCE=true in .env to enable.',
+          message: 'MongoDB persistence is required. Set USE_MONGO_PERSISTENCE=true in .env',
         },
       });
       return;
@@ -74,7 +74,7 @@ export async function upsertDayLogRoute(req: Request, res: Response): Promise<vo
       res.status(501).json({
         error: {
           code: 'MONGO_PERSISTENCE_DISABLED',
-          message: 'MongoDB persistence is disabled. Set USE_MONGO_PERSISTENCE=true in .env to enable.',
+          message: 'MongoDB persistence is required. Set USE_MONGO_PERSISTENCE=true in .env',
         },
       });
       return;
@@ -162,7 +162,7 @@ export async function getDayLogRoute(req: Request, res: Response): Promise<void>
       res.status(501).json({
         error: {
           code: 'MONGO_PERSISTENCE_DISABLED',
-          message: 'MongoDB persistence is disabled. Set USE_MONGO_PERSISTENCE=true in .env to enable.',
+          message: 'MongoDB persistence is required. Set USE_MONGO_PERSISTENCE=true in .env',
         },
       });
       return;
@@ -222,7 +222,7 @@ export async function deleteDayLogRoute(req: Request, res: Response): Promise<vo
       res.status(501).json({
         error: {
           code: 'MONGO_PERSISTENCE_DISABLED',
-          message: 'MongoDB persistence is disabled. Set USE_MONGO_PERSISTENCE=true in .env to enable.',
+          message: 'MongoDB persistence is required. Set USE_MONGO_PERSISTENCE=true in .env',
         },
       });
       return;

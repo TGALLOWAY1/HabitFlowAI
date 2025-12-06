@@ -60,7 +60,7 @@ export const DailyCheckInModal: React.FC<DailyCheckInModalProps> = ({ isOpen, on
             onClose();
         } catch (error) {
             console.error('Failed to save wellbeing log:', error);
-            // Still close modal even if API fails (fallback to localStorage)
+            // Still close modal even if API fails
             onClose();
         }
     };

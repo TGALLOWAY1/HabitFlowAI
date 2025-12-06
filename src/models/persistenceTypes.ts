@@ -300,7 +300,7 @@ export interface PersistenceSchema {
 export const MONGO_COLLECTIONS = {
     CATEGORIES: 'categories',
     HABITS: 'habits',
-    DAY_LOGS: 'dayLogs',  // Note: Different from localStorage key 'logs'
+    DAY_LOGS: 'dayLogs',
     WELLBEING_LOGS: 'wellbeingLogs',
 } as const;
 

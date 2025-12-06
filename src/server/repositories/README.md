@@ -1,6 +1,6 @@
 # Repository Layer
 
-Data access layer for persistent entities. Uses feature flags to switch between MongoDB persistence and local storage (when implemented).
+Data access layer for persistent entities. The app uses MongoDB as the only persistence layer.
 
 ## Category Repository
 
@@ -15,12 +15,12 @@ The Category repository provides CRUD operations for Category entities.
 - **`deleteCategory(id, userId)`** - Delete a category
 - **`reorderCategories(userId, categories)`** - Replace all categories with new order
 
-### Feature Flag
+### MongoDB Requirement
 
-All repository functions check `USE_MONGO_PERSISTENCE` environment variable:
+All repository functions require `USE_MONGO_PERSISTENCE=true` in the environment:
 
 - **`true`** - Uses MongoDB via `getDb()`
-- **`false`** - Throws "not implemented" error (local storage adapter to be added)
+- **`false`** - Throws error: "MongoDB persistence is required" (MongoDB is the only persistence layer)
 
 ### Usage
 

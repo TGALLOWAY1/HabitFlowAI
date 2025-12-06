@@ -1,7 +1,7 @@
 /**
  * Persistence Configuration
  * 
- * The app runs in a single Mongo-primary mode. All persistent data
+ * The app runs in Mongo-only mode. All persistent data
  * (categories, habits, logs, wellbeingLogs) is stored in MongoDB via the backend API.
  * 
  * localStorage-based persistence is no longer supported.
@@ -21,6 +21,9 @@ export const MONGO_ENABLED = import.meta.env.VITE_USE_MONGO_PERSISTENCE !== 'fal
 
 /**
  * Check if MongoDB persistence is enabled.
+ * 
+ * NOTE: This is effectively 'isMongoEnabled' now; Mongo is the only persistence mode.
+ * The name 'isMongoPrimary' is kept for backward compatibility.
  * 
  * @returns boolean - True if MongoDB persistence is enabled
  */

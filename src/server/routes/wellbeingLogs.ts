@@ -26,7 +26,7 @@ export async function getWellbeingLogs(req: Request, res: Response): Promise<voi
       res.status(501).json({
         error: {
           code: 'MONGO_PERSISTENCE_DISABLED',
-          message: 'MongoDB persistence is disabled. Set USE_MONGO_PERSISTENCE=true in .env to enable.',
+          message: 'MongoDB persistence is required. Set USE_MONGO_PERSISTENCE=true in .env',
         },
       });
       return;
@@ -65,7 +65,7 @@ export async function upsertWellbeingLogRoute(req: Request, res: Response): Prom
       res.status(501).json({
         error: {
           code: 'MONGO_PERSISTENCE_DISABLED',
-          message: 'MongoDB persistence is disabled. Set USE_MONGO_PERSISTENCE=true in .env to enable.',
+          message: 'MongoDB persistence is required. Set USE_MONGO_PERSISTENCE=true in .env',
         },
       });
       return;
@@ -128,7 +128,7 @@ export async function getWellbeingLogRoute(req: Request, res: Response): Promise
       res.status(501).json({
         error: {
           code: 'MONGO_PERSISTENCE_DISABLED',
-          message: 'MongoDB persistence is disabled. Set USE_MONGO_PERSISTENCE=true in .env to enable.',
+          message: 'MongoDB persistence is required. Set USE_MONGO_PERSISTENCE=true in .env',
         },
       });
       return;
@@ -188,7 +188,7 @@ export async function deleteWellbeingLogRoute(req: Request, res: Response): Prom
       res.status(501).json({
         error: {
           code: 'MONGO_PERSISTENCE_DISABLED',
-          message: 'MongoDB persistence is disabled. Set USE_MONGO_PERSISTENCE=true in .env to enable.',
+          message: 'MongoDB persistence is required. Set USE_MONGO_PERSISTENCE=true in .env',
         },
       });
       return;

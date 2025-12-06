@@ -7,8 +7,8 @@
 /**
  * Feature flag to enable MongoDB persistence.
  * 
- * Set USE_MONGO_PERSISTENCE=true in .env to enable MongoDB-backed persistence.
- * When false, repository functions will throw "not implemented" errors.
+ * MongoDB persistence is required for the app to function. Set USE_MONGO_PERSISTENCE=true in .env.
+ * When false, repository functions will throw errors because MongoDB is the only persistence layer.
  * 
  * Uses a function to read dynamically for test compatibility.
  */

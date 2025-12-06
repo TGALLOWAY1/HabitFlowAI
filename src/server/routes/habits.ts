@@ -29,7 +29,7 @@ export async function getHabits(req: Request, res: Response): Promise<void> {
       res.status(501).json({
         error: {
           code: 'MONGO_PERSISTENCE_DISABLED',
-          message: 'MongoDB persistence is disabled. Set USE_MONGO_PERSISTENCE=true in .env to enable.',
+          message: 'MongoDB persistence is required. Set USE_MONGO_PERSISTENCE=true in .env',
         },
       });
       return;
@@ -74,7 +74,7 @@ export async function createHabitRoute(req: Request, res: Response): Promise<voi
       res.status(501).json({
         error: {
           code: 'MONGO_PERSISTENCE_DISABLED',
-          message: 'MongoDB persistence is disabled. Set USE_MONGO_PERSISTENCE=true in .env to enable.',
+          message: 'MongoDB persistence is required. Set USE_MONGO_PERSISTENCE=true in .env',
         },
       });
       return;
@@ -153,7 +153,7 @@ export async function getHabit(req: Request, res: Response): Promise<void> {
       res.status(501).json({
         error: {
           code: 'MONGO_PERSISTENCE_DISABLED',
-          message: 'MongoDB persistence is disabled. Set USE_MONGO_PERSISTENCE=true in .env to enable.',
+          message: 'MongoDB persistence is required. Set USE_MONGO_PERSISTENCE=true in .env',
         },
       });
       return;
@@ -213,7 +213,7 @@ export async function updateHabitRoute(req: Request, res: Response): Promise<voi
       res.status(501).json({
         error: {
           code: 'MONGO_PERSISTENCE_DISABLED',
-          message: 'MongoDB persistence is disabled. Set USE_MONGO_PERSISTENCE=true in .env to enable.',
+          message: 'MongoDB persistence is required. Set USE_MONGO_PERSISTENCE=true in .env',
         },
       });
       return;
@@ -343,7 +343,7 @@ export async function deleteHabitRoute(req: Request, res: Response): Promise<voi
       res.status(501).json({
         error: {
           code: 'MONGO_PERSISTENCE_DISABLED',
-          message: 'MongoDB persistence is disabled. Set USE_MONGO_PERSISTENCE=true in .env to enable.',
+          message: 'MongoDB persistence is required. Set USE_MONGO_PERSISTENCE=true in .env',
         },
       });
       return;

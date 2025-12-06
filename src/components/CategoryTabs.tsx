@@ -150,7 +150,6 @@ export const CategoryTabs: React.FC<CategoryTabsProps> = ({
                 setIsAdding(false);
             } catch (error) {
                 console.error('Failed to add category:', error);
-                // Category might still be added via localStorage fallback
             }
         }
     };

@@ -28,7 +28,7 @@ export async function getCategories(req: Request, res: Response): Promise<void> 
       res.status(501).json({
         error: {
           code: 'MONGO_PERSISTENCE_DISABLED',
-          message: 'MongoDB persistence is disabled. Set USE_MONGO_PERSISTENCE=true in .env to enable.',
+          message: 'MongoDB persistence is required. Set USE_MONGO_PERSISTENCE=true in .env',
         },
       });
       return;
@@ -67,7 +67,7 @@ export async function createCategoryRoute(req: Request, res: Response): Promise<
       res.status(501).json({
         error: {
           code: 'MONGO_PERSISTENCE_DISABLED',
-          message: 'MongoDB persistence is disabled. Set USE_MONGO_PERSISTENCE=true in .env to enable.',
+          message: 'MongoDB persistence is required. Set USE_MONGO_PERSISTENCE=true in .env',
         },
       });
       return;
@@ -140,7 +140,7 @@ export async function getCategory(req: Request, res: Response): Promise<void> {
       res.status(501).json({
         error: {
           code: 'MONGO_PERSISTENCE_DISABLED',
-          message: 'MongoDB persistence is disabled. Set USE_MONGO_PERSISTENCE=true in .env to enable.',
+          message: 'MongoDB persistence is required. Set USE_MONGO_PERSISTENCE=true in .env',
         },
       });
       return;
@@ -200,7 +200,7 @@ export async function updateCategoryRoute(req: Request, res: Response): Promise<
       res.status(501).json({
         error: {
           code: 'MONGO_PERSISTENCE_DISABLED',
-          message: 'MongoDB persistence is disabled. Set USE_MONGO_PERSISTENCE=true in .env to enable.',
+          message: 'MongoDB persistence is required. Set USE_MONGO_PERSISTENCE=true in .env',
         },
       });
       return;
@@ -300,7 +300,7 @@ export async function deleteCategoryRoute(req: Request, res: Response): Promise<
       res.status(501).json({
         error: {
           code: 'MONGO_PERSISTENCE_DISABLED',
-          message: 'MongoDB persistence is disabled. Set USE_MONGO_PERSISTENCE=true in .env to enable.',
+          message: 'MongoDB persistence is required. Set USE_MONGO_PERSISTENCE=true in .env',
         },
       });
       return;
@@ -363,7 +363,7 @@ export async function reorderCategoriesRoute(req: Request, res: Response): Promi
       res.status(501).json({
         error: {
           code: 'MONGO_PERSISTENCE_DISABLED',
-          message: 'MongoDB persistence is disabled. Set USE_MONGO_PERSISTENCE=true in .env to enable.',
+          message: 'MongoDB persistence is required. Set USE_MONGO_PERSISTENCE=true in .env',
         },
       });
       return;

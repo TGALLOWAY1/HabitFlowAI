@@ -25,7 +25,7 @@ export async function upsertWellbeingLog(
   userId: string
 ): Promise<DailyWellbeing> {
   if (!getUseMongoPersistence()) {
-    throw new Error('MongoDB persistence is not enabled. Set USE_MONGO_PERSISTENCE=true in .env');
+    throw new Error('MongoDB persistence is required. Set USE_MONGO_PERSISTENCE=true in .env');
   }
 
   const db = await getDb();
@@ -58,7 +58,7 @@ export async function upsertWellbeingLog(
  */
 export async function getWellbeingLogsByUser(userId: string): Promise<Record<string, DailyWellbeing>> {
   if (!getUseMongoPersistence()) {
-    throw new Error('MongoDB persistence is not enabled. Set USE_MONGO_PERSISTENCE=true in .env');
+    throw new Error('MongoDB persistence is required. Set USE_MONGO_PERSISTENCE=true in .env');
   }
 
   const db = await getDb();
@@ -91,7 +91,7 @@ export async function getWellbeingLog(
   userId: string
 ): Promise<DailyWellbeing | null> {
   if (!getUseMongoPersistence()) {
-    throw new Error('MongoDB persistence is not enabled. Set USE_MONGO_PERSISTENCE=true in .env');
+    throw new Error('MongoDB persistence is required. Set USE_MONGO_PERSISTENCE=true in .env');
   }
 
   const db = await getDb();
@@ -121,7 +121,7 @@ export async function deleteWellbeingLog(
   userId: string
 ): Promise<boolean> {
   if (!getUseMongoPersistence()) {
-    throw new Error('MongoDB persistence is not enabled. Set USE_MONGO_PERSISTENCE=true in .env');
+    throw new Error('MongoDB persistence is required. Set USE_MONGO_PERSISTENCE=true in .env');
   }
 
   const db = await getDb();
