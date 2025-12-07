@@ -1,19 +1,27 @@
-import React, { useEffect, useState } from 'react';
-import { Trophy, Sparkles, ArrowLeft, Award } from 'lucide-react';
+import React, { useEffect, useState, useMemo } from 'react';
+import { Trophy, Sparkles, Award, Image } from 'lucide-react';
 import { useGoalDetail } from '../../lib/useGoalDetail';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO, differenceInDays } from 'date-fns';
 import { Loader2 } from 'lucide-react';
 
 interface GoalCompletedPageProps {
     goalId: string;
     onBack?: () => void;
+    onAddBadge?: (goalId: string) => void;
+    onViewGoalDetail?: (goalId: string) => void;
 }
 
 /**
  * Celebration page shown when a goal is completed.
  * Displays confetti animation and goal completion details.
+ * This is the first screen users see when they finish a goal.
  */
-export const GoalCompletedPage: React.FC<GoalCompletedPageProps> = ({ goalId, onBack }) => {
+export const GoalCompletedPage: React.FC<GoalCompletedPageProps> = ({ 
+    goalId, 
+    onBack, 
+    onAddBadge,
+    onViewGoalDetail 
+}) => {
     const { data, loading } = useGoalDetail(goalId);
     const [showConfetti, setShowConfetti] = useState(true);
 
@@ -47,7 +55,30 @@ export const GoalCompletedPage: React.FC<GoalCompletedPageProps> = ({ goalId, on
     }
 
     const { goal } = data;
-    const completedDate = goal.completedAt ? format(parseISO(goal.completedAt), 'MMMM d, yyyy') : '';
+    
+    // Calculate time span
+    const timeSpan = useMemo(() => {
+        if (!goal.createdAt || !goal.completedAt) return null;
+        try {
+            const startDate = parseISO(goal.createdAt);
+            const endDate = parseISO(goal.completedAt);
+            const days = differenceInDays(endDate, startDate);
+            return days;
+        } catch {
+            return null;
+        }
+    }, [goal.createdAt, goal.completedAt]);
+
+    // Format dates for display
+    const createdDateFormatted = goal.createdAt 
+        ? format(parseISO(goal.createdAt), 'MMM d, yyyy') 
+        : '';
+    const completedDateFormatted = goal.completedAt 
+        ? format(parseISO(goal.completedAt), 'MMM d, yyyy') 
+        : '';
+
+    // Get habit count
+    const habitCount = goal.linkedHabitIds.length;
 
     return (
         <div className="w-full max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 relative overflow-hidden">
@@ -72,17 +103,6 @@ export const GoalCompletedPage: React.FC<GoalCompletedPageProps> = ({ goalId, on
                         />
                     ))}
                 </div>
-            )}
-
-            {/* Back Button */}
-            {onBack && (
-                <button
-                    onClick={onBack}
-                    className="mb-6 flex items-center gap-2 text-neutral-400 hover:text-white transition-colors"
-                >
-                    <ArrowLeft size={18} />
-                    Back to Goals
-                </button>
             )}
 
             {/* Main Content */}
@@ -111,51 +131,71 @@ export const GoalCompletedPage: React.FC<GoalCompletedPageProps> = ({ goalId, on
 
                 {/* Celebration Message */}
                 <h1 className="text-4xl sm:text-5xl font-bold text-white mb-4 animate-fade-in">
-                    Goal Completed!
+                    You completed your goal!
                 </h1>
-                <h2 className="text-2xl sm:text-3xl font-semibold text-emerald-400 mb-6">
+                <h2 className="text-2xl sm:text-3xl font-semibold text-emerald-400 mb-8">
                     {goal.title}
                 </h2>
 
-                {/* Completion Date */}
-                {completedDate && (
-                    <p className="text-neutral-400 text-lg mb-8">
-                        Completed on {completedDate}
-                    </p>
-                )}
-
-                {/* Progress Summary */}
-                <div className="max-w-md mx-auto mb-8 p-6 bg-neutral-800/50 border border-white/10 rounded-lg">
-                    <div className="text-neutral-300 text-sm mb-2">Final Progress</div>
-                    <div className="text-3xl font-bold text-emerald-400">
-                        {data.progress.currentValue} / {goal.targetValue}
-                        {goal.unit && ` ${goal.unit}`}
+                {/* Summary Stats */}
+                <div className="max-w-lg mx-auto mb-10 space-y-4">
+                    {/* Target Value and Unit */}
+                    <div className="p-4 bg-neutral-800/50 border border-white/10 rounded-lg">
+                        <div className="text-neutral-400 text-sm mb-1">Target</div>
+                        <div className="text-2xl font-bold text-white">
+                            {goal.targetValue}
+                            {goal.unit && <span className="text-emerald-400"> {goal.unit}</span>}
+                        </div>
                     </div>
-                    <div className="mt-4 w-full bg-neutral-700 rounded-full h-3 overflow-hidden">
-                        <div
-                            className="bg-emerald-500 h-full rounded-full transition-all duration-1000"
-                            style={{ width: '100%' }}
-                        />
+
+                    {/* Time Span */}
+                    {timeSpan !== null && createdDateFormatted && completedDateFormatted && (
+                        <div className="p-4 bg-neutral-800/50 border border-white/10 rounded-lg">
+                            <div className="text-neutral-400 text-sm mb-1">Time Span</div>
+                            <div className="text-lg font-semibold text-white">
+                                {timeSpan === 0 ? 'Same day' : `${timeSpan} ${timeSpan === 1 ? 'day' : 'days'}`}
+                            </div>
+                            <div className="text-neutral-400 text-xs mt-1">
+                                {createdDateFormatted} → {completedDateFormatted}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Habit Count */}
+                    <div className="p-4 bg-neutral-800/50 border border-white/10 rounded-lg">
+                        <div className="text-neutral-400 text-sm mb-1">Habits Involved</div>
+                        <div className="text-2xl font-bold text-white">
+                            {habitCount} {habitCount === 1 ? 'habit' : 'habits'}
+                        </div>
                     </div>
                 </div>
 
                 {/* Action Buttons */}
                 <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mt-8">
-                    <button
-                        onClick={onBack}
-                        className="flex items-center gap-2 px-6 py-3 bg-emerald-500 hover:bg-emerald-400 text-neutral-900 font-medium rounded-lg transition-colors"
-                    >
-                        <Award size={18} />
-                        View in Win Archive
-                    </button>
-                    {onBack && (
+                    {/* Primary CTA: Add your badge */}
+                    {onAddBadge && (
                         <button
-                            onClick={onBack}
-                            className="flex items-center gap-2 px-6 py-3 bg-neutral-700 hover:bg-neutral-600 text-white font-medium rounded-lg transition-colors"
+                            onClick={() => onAddBadge(goalId)}
+                            className="flex items-center gap-2 px-8 py-4 bg-emerald-500 hover:bg-emerald-400 text-neutral-900 font-semibold rounded-lg transition-colors text-lg"
                         >
-                            Back to Goals
+                            <Image size={20} />
+                            Add your badge
                         </button>
                     )}
+                    
+                    {/* Secondary CTA: Skip for now */}
+                    <button
+                        onClick={() => {
+                            if (onViewGoalDetail) {
+                                onViewGoalDetail(goalId);
+                            } else if (onBack) {
+                                onBack();
+                            }
+                        }}
+                        className="flex items-center gap-2 px-6 py-3 bg-neutral-700 hover:bg-neutral-600 text-white font-medium rounded-lg transition-colors"
+                    >
+                        Skip for now
+                    </button>
                 </div>
             </div>
 

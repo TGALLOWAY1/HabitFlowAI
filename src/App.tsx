@@ -103,6 +103,15 @@ const HabitTrackerContent: React.FC = () => {
             setCompletedGoalId(null);
             setView('goals');
           }}
+          onAddBadge={(goalId) => {
+            // TODO: Open badge upload modal/flow (next prompt)
+            console.log('Add badge for goal:', goalId);
+          }}
+          onViewGoalDetail={(goalId) => {
+            setCompletedGoalId(null);
+            setSelectedGoalId(goalId);
+            setView('goals');
+          }}
         />
       ) : selectedGoalId ? (
         <GoalDetailPage
