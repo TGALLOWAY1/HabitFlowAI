@@ -9,14 +9,17 @@ import { ProgressDashboard } from './components/ProgressDashboard';
 import { ActivityList } from './components/ActivityList';
 import { ActivityEditorModal } from './components/ActivityEditorModal';
 import { ActivityRunnerModal } from './components/ActivityRunnerModal';
-import { BarChart3, Calendar, ClipboardList } from 'lucide-react';
+import { BarChart3, Calendar, ClipboardList, Target } from 'lucide-react';
 import type { Activity, ActivityStep } from './types';
+import { GoalsPage } from './pages/goals/GoalsPage';
+import { CreateGoalFlow } from './pages/goals/CreateGoalFlow';
 
 const HabitTrackerContent: React.FC = () => {
   const { categories, habits, logs, toggleHabit, updateLog } = useHabitStore();
   const [activeCategoryId, setActiveCategoryId] = useState(categories[0]?.id || '');
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [view, setView] = useState<'tracker' | 'progress' | 'activities'>('tracker');
+  const [view, setView] = useState<'tracker' | 'progress' | 'activities' | 'goals'>('tracker');
+  const [showCreateGoal, setShowCreateGoal] = useState(false);
   const [activityEditorState, setActivityEditorState] = useState<{
     isOpen: boolean;
     mode: 'create' | 'edit';
@@ -35,7 +38,7 @@ const HabitTrackerContent: React.FC = () => {
       <div className="flex flex-col gap-4">
         <div className="flex items-center justify-between">
           <h2 className="text-2xl font-bold text-white">
-            {view === 'tracker' ? 'Habits' : view === 'progress' ? 'Habit Tracking' : 'Activities'}
+            {view === 'tracker' ? 'Habits' : view === 'progress' ? 'Habit Tracking' : view === 'activities' ? 'Activities' : 'Goals'}
           </h2>
           <div className="flex items-center gap-2 bg-neutral-800 rounded-lg p-1">
             <button
@@ -59,6 +62,13 @@ const HabitTrackerContent: React.FC = () => {
             >
               <ClipboardList size={20} />
             </button>
+            <button
+              onClick={() => setView('goals')}
+              className={`p-2 rounded-md transition-colors ${view === 'goals' ? 'bg-neutral-700 text-white' : 'text-neutral-400 hover:text-white'}`}
+              title="Goals"
+            >
+              <Target size={20} />
+            </button>
           </div>
         </div>
 
@@ -71,7 +81,18 @@ const HabitTrackerContent: React.FC = () => {
         )}
       </div>
 
-      {view === 'tracker' ? (
+      {showCreateGoal ? (
+        <CreateGoalFlow
+          onComplete={() => {
+            setShowCreateGoal(false);
+            setView('goals');
+          }}
+          onCancel={() => {
+            setShowCreateGoal(false);
+            setView('goals');
+          }}
+        />
+      ) : view === 'tracker' ? (
         <TrackerGrid
           habits={filteredHabits}
           logs={logs}
@@ -81,13 +102,15 @@ const HabitTrackerContent: React.FC = () => {
         />
       ) : view === 'progress' ? (
         <ProgressDashboard />
-      ) : (
+      ) : view === 'activities' ? (
         <ActivityList
           onCreate={() => setActivityEditorState({ isOpen: true, mode: 'create', activity: undefined })}
           onEdit={(activity) => setActivityEditorState({ isOpen: true, mode: 'edit', activity })}
           onCreateFromHabits={(prefillSteps) => setActivityEditorState({ isOpen: true, mode: 'create', activity: undefined, prefillSteps })}
           onStart={(activity) => setActivityRunnerState({ isOpen: true, activity })}
         />
+      ) : (
+        <GoalsPage onCreateGoal={() => setShowCreateGoal(true)} />
       )}
 
       <AddHabitModal
