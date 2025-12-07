@@ -14,6 +14,7 @@ import type { Activity, ActivityStep } from './types';
 import { GoalsPage } from './pages/goals/GoalsPage';
 import { CreateGoalFlow } from './pages/goals/CreateGoalFlow';
 import { GoalDetailPage } from './pages/goals/GoalDetailPage';
+import { GoalCompletedPage } from './pages/goals/GoalCompletedPage';
 
 const HabitTrackerContent: React.FC = () => {
   const { categories, habits, logs, toggleHabit, updateLog } = useHabitStore();
@@ -22,6 +23,7 @@ const HabitTrackerContent: React.FC = () => {
   const [view, setView] = useState<'tracker' | 'progress' | 'activities' | 'goals'>('tracker');
   const [showCreateGoal, setShowCreateGoal] = useState(false);
   const [selectedGoalId, setSelectedGoalId] = useState<string | null>(null);
+  const [completedGoalId, setCompletedGoalId] = useState<string | null>(null);
   const [activityEditorState, setActivityEditorState] = useState<{
     isOpen: boolean;
     mode: 'create' | 'edit';
@@ -94,11 +96,24 @@ const HabitTrackerContent: React.FC = () => {
             setView('goals');
           }}
         />
+      ) : completedGoalId ? (
+        <GoalCompletedPage
+          goalId={completedGoalId}
+          onBack={() => {
+            setCompletedGoalId(null);
+            setView('goals');
+          }}
+        />
       ) : selectedGoalId ? (
         <GoalDetailPage
           goalId={selectedGoalId}
           onBack={() => {
             setSelectedGoalId(null);
+            setView('goals');
+          }}
+          onNavigateToCompleted={(goalId) => {
+            setSelectedGoalId(null);
+            setCompletedGoalId(goalId);
             setView('goals');
           }}
         />
@@ -124,6 +139,10 @@ const HabitTrackerContent: React.FC = () => {
           onCreateGoal={() => setShowCreateGoal(true)}
           onViewGoal={(goalId) => {
             setSelectedGoalId(goalId);
+            setView('goals');
+          }}
+          onNavigateToCompleted={(goalId) => {
+            setCompletedGoalId(goalId);
             setView('goals');
           }}
         />

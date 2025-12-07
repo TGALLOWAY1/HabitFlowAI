@@ -1,9 +1,10 @@
-import React, { useMemo, useState, useRef } from 'react';
+import React, { useMemo, useState, useRef, useEffect } from 'react';
 import { ChevronDown, ChevronRight, AlertTriangle, Check, ExternalLink, Edit, Plus } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { useHabitStore } from '../../store/HabitContext';
 import type { GoalWithProgress } from '../../models/persistenceTypes';
 import { InactivityCoachingPopup } from './InactivityCoachingPopup';
+import { markGoalAsCompleted } from '../../lib/persistenceClient';
 
 interface GoalCardProps {
     goalWithProgress: GoalWithProgress;
@@ -12,6 +13,8 @@ interface GoalCardProps {
     onViewDetails?: (goalId: string) => void;
     onEdit?: (goalId: string) => void;
     onAddManualProgress?: (goalId: string) => void;
+    onNavigateToCompleted?: (goalId: string) => void;
+    onRefetch?: () => void;
 }
 
 export const GoalCard: React.FC<GoalCardProps> = ({
@@ -21,11 +24,18 @@ export const GoalCard: React.FC<GoalCardProps> = ({
     onViewDetails,
     onEdit,
     onAddManualProgress,
+    onNavigateToCompleted,
+    onRefetch,
 }) => {
     const { goal, progress } = goalWithProgress;
     const { habits } = useHabitStore();
     const [showCoachingPopup, setShowCoachingPopup] = useState(false);
     const warningBadgeRef = useRef<HTMLDivElement>(null);
+    
+    // Track previous state to prevent infinite loops
+    const previousPercentRef = useRef<number | null>(null);
+    const previousCompletedAtRef = useRef<string | null | undefined>(null);
+    const isCompletingRef = useRef<boolean>(false);
 
     // Create habit lookup map for efficient access
     const habitMap = useMemo(() => {
@@ -78,6 +88,52 @@ export const GoalCard: React.FC<GoalCardProps> = ({
         const max = Math.max(...progress.lastSevenDays.map(day => day.value));
         return max > 0 ? max : 1;
     }, [progress.lastSevenDays]);
+
+    // Detect when goal reaches 100% and automatically mark as completed
+    useEffect(() => {
+        if (isCompletingRef.current) return;
+
+        const currentPercent = progress.percent;
+        const currentCompletedAt = goal.completedAt;
+        const previousPercent = previousPercentRef.current;
+        const previousCompletedAt = previousCompletedAtRef.current;
+
+        // Check if goal should be completed:
+        // 1. Progress is >= 100%
+        // 2. Goal is not already completed (completedAt is null/undefined)
+        // 3. We haven't already triggered completion (prevent infinite loop)
+        // 4. Progress actually changed (prevent duplicate triggers)
+        const shouldComplete = 
+            currentPercent >= 100 && 
+            !currentCompletedAt && 
+            (previousPercent === null || previousPercent < 100) &&
+            (previousCompletedAt === null || previousCompletedAt === undefined);
+
+        if (shouldComplete) {
+            isCompletingRef.current = true;
+            
+            markGoalAsCompleted(goal.id)
+                .then(() => {
+                    // Refetch goals list if callback provided
+                    if (onRefetch) {
+                        onRefetch();
+                    }
+                    // Navigate to celebration page
+                    if (onNavigateToCompleted) {
+                        onNavigateToCompleted(goal.id);
+                    }
+                })
+                .catch((err) => {
+                    console.error('Error marking goal as completed:', err);
+                    // Reset flag on error so user can retry
+                    isCompletingRef.current = false;
+                });
+        }
+
+        // Update refs for next comparison
+        previousPercentRef.current = currentPercent;
+        previousCompletedAtRef.current = currentCompletedAt;
+    }, [goal.id, goal.completedAt, progress.percent, onNavigateToCompleted, onRefetch]);
 
     // Format deadline for display
     const formatDeadline = (deadline: string): string => {

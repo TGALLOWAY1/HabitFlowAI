@@ -526,6 +526,18 @@ export async function updateGoal(
 }
 
 /**
+ * Mark a goal as completed by setting completedAt to the current timestamp.
+ * 
+ * @param id - Goal ID
+ * @returns Promise<Goal> - Updated goal with completedAt set
+ * @throws Error if API request fails or goal not found
+ */
+export async function markGoalAsCompleted(id: string): Promise<Goal> {
+  const now = new Date().toISOString();
+  return updateGoal(id, { completedAt: now });
+}
+
+/**
  * Delete a goal.
  * 
  * @param id - Goal ID

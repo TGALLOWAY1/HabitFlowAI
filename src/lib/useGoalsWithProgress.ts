@@ -15,27 +15,30 @@ export function useGoalsWithProgress() {
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
 
+    const loadGoals = async () => {
+        setLoading(true);
+        setError(null);
+        try {
+            const fetchedGoals = await fetchGoalsWithProgress();
+            setGoals(fetchedGoals);
+            setLoading(false);
+        } catch (err) {
+            const errorMessage = err instanceof Error ? err.message : 'Failed to load goals';
+            console.error('Error fetching goals with progress:', errorMessage);
+            setError(errorMessage);
+            setLoading(false);
+        }
+    };
+
     useEffect(() => {
         let cancelled = false;
 
-        const loadGoals = async () => {
-            setLoading(true);
-            setError(null);
-            try {
-                const fetchedGoals = await fetchGoalsWithProgress();
-                if (cancelled) return;
-                setGoals(fetchedGoals);
-                setLoading(false);
-            } catch (err) {
-                if (cancelled) return;
-                const errorMessage = err instanceof Error ? err.message : 'Failed to load goals';
-                console.error('Error fetching goals with progress:', errorMessage);
-                setError(errorMessage);
-                setLoading(false);
-            }
+        const fetchData = async () => {
+            await loadGoals();
+            if (cancelled) return;
         };
 
-        loadGoals();
+        fetchData();
 
         return () => {
             cancelled = true;
@@ -46,5 +49,6 @@ export function useGoalsWithProgress() {
         data: goals,
         loading,
         error,
+        refetch: loadGoals,
     };
 }

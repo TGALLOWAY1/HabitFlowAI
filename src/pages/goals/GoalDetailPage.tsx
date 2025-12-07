@@ -1,24 +1,30 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { useGoalDetail } from '../../lib/useGoalDetail';
 import { useHabitStore } from '../../store/HabitContext';
 import { Loader2, AlertCircle, ArrowLeft, Check, Plus, Edit, Trash2, Trophy, Award } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { GoalManualProgressModal } from '../../components/goals/GoalManualProgressModal';
 import { DeleteGoalConfirmModal } from '../../components/goals/DeleteGoalConfirmModal';
-import { deleteGoal } from '../../lib/persistenceClient';
+import { deleteGoal, markGoalAsCompleted } from '../../lib/persistenceClient';
 
 interface GoalDetailPageProps {
     goalId: string;
     onBack?: () => void;
+    onNavigateToCompleted?: (goalId: string) => void;
 }
 
-export const GoalDetailPage: React.FC<GoalDetailPageProps> = ({ goalId, onBack }) => {
+export const GoalDetailPage: React.FC<GoalDetailPageProps> = ({ goalId, onBack, onNavigateToCompleted }) => {
     const { data, loading, error, refetch } = useGoalDetail(goalId);
     const { habits } = useHabitStore();
     const [showManualProgressModal, setShowManualProgressModal] = useState(false);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const [deleteError, setDeleteError] = useState<string | null>(null);
     const [isDeleting, setIsDeleting] = useState(false);
+    
+    // Track previous state to prevent infinite loops
+    const previousPercentRef = useRef<number | null>(null);
+    const previousCompletedAtRef = useRef<string | null | undefined>(null);
+    const isCompletingRef = useRef<boolean>(false);
 
     // Create habit lookup map for efficient access
     const habitMap = useMemo(() => {
@@ -72,6 +78,53 @@ export const GoalDetailPage: React.FC<GoalDetailPageProps> = ({ goalId, onBack }
         // For now, just show a message
         alert('Goal editing is not yet implemented. This will navigate to /goals/:id/edit in the future.');
     };
+
+    // Detect when goal reaches 100% and automatically mark as completed
+    useEffect(() => {
+        if (!data || loading || isCompletingRef.current) return;
+
+        const { goal, progress } = data;
+        const currentPercent = progress.percent;
+        const currentCompletedAt = goal.completedAt;
+        const previousPercent = previousPercentRef.current;
+        const previousCompletedAt = previousCompletedAtRef.current;
+
+        // Check if goal should be completed:
+        // 1. Progress is >= 100%
+        // 2. Goal is not already completed (completedAt is null/undefined)
+        // 3. We haven't already triggered completion (prevent infinite loop)
+        // 4. Progress actually changed (prevent duplicate triggers)
+        const shouldComplete = 
+            currentPercent >= 100 && 
+            !currentCompletedAt && 
+            (previousPercent === null || previousPercent < 100) &&
+            (previousCompletedAt === null || previousCompletedAt === undefined);
+
+        if (shouldComplete) {
+            isCompletingRef.current = true;
+            
+            markGoalAsCompleted(goalId)
+                .then(() => {
+                    // Refetch to get updated goal data
+                    return refetch();
+                })
+                .then(() => {
+                    // Navigate to celebration page
+                    if (onNavigateToCompleted) {
+                        onNavigateToCompleted(goalId);
+                    }
+                })
+                .catch((err) => {
+                    console.error('Error marking goal as completed:', err);
+                    // Reset flag on error so user can retry
+                    isCompletingRef.current = false;
+                });
+        }
+
+        // Update refs for next comparison
+        previousPercentRef.current = currentPercent;
+        previousCompletedAtRef.current = currentCompletedAt;
+    }, [data, loading, goalId, refetch, onNavigateToCompleted]);
 
     if (loading) {
         return (

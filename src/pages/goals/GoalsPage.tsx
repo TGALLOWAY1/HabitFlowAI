@@ -7,10 +7,11 @@ import { Loader2, AlertCircle } from 'lucide-react';
 interface GoalsPageProps {
     onCreateGoal?: () => void;
     onViewGoal?: (goalId: string) => void;
+    onNavigateToCompleted?: (goalId: string) => void;
 }
 
-export const GoalsPage: React.FC<GoalsPageProps> = ({ onCreateGoal, onViewGoal }) => {
-    const { data, loading, error } = useGoalsWithProgress();
+export const GoalsPage: React.FC<GoalsPageProps> = ({ onCreateGoal, onViewGoal, onNavigateToCompleted }) => {
+    const { data, loading, error, refetch } = useGoalsWithProgress();
 
     if (loading) {
         return (
@@ -98,6 +99,8 @@ export const GoalsPage: React.FC<GoalsPageProps> = ({ onCreateGoal, onViewGoal }
                         // TODO: Open manual progress input modal when implemented
                         console.log('Add manual progress for goal:', goalId);
                     }}
+                    onNavigateToCompleted={onNavigateToCompleted}
+                    onRefetch={refetch}
                 />
             )}
         </div>
