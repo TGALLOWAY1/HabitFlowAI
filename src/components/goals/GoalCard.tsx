@@ -101,7 +101,7 @@ export const GoalCard: React.FC<GoalCardProps> = ({
         <div className="bg-neutral-800/50 border border-white/10 rounded-lg overflow-hidden transition-all">
             <button
                 onClick={onToggleExpand}
-                className="w-full p-4 hover:bg-neutral-800/70 transition-colors text-left"
+                className="w-full p-4 sm:p-5 hover:bg-neutral-800/70 transition-colors text-left"
             >
                 {/* Collapsed View */}
                 {!isExpanded && (

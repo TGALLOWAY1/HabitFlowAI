@@ -44,17 +44,21 @@ export interface Category {
  * Embedded within Habit entity.
  * Defines the tracking goal for a habit.
  */
-export interface Goal {
+/**
+ * Habit Goal (for Habit entity)
+ * This represents the goal/target for a single habit, not to be confused with the Goal entity.
+ */
+export interface HabitGoal {
     /** Type of goal: boolean (yes/no) or number (tracked value) */
     type: 'boolean' | 'number';
-    
-    /** 
+
+    /**
      * Target value (required for 'number' type, optional for 'boolean')
      * Examples: 8 (glasses of water), 4 (hours of deep work)
      */
     target?: number;
-    
-    /** 
+
+    /**
      * Unit label for display (e.g., 'glasses', 'hours', 'steps')
      * Only used when type is 'number'
      */
@@ -99,7 +103,7 @@ export interface Habit {
     description?: string;
     
     /** Goal configuration for this habit */
-    goal: Goal;
+    goal: HabitGoal;
     
     /** Whether the habit is archived (hidden from active tracking) */
     archived: boolean;
@@ -457,7 +461,7 @@ export interface GoalProgress {
  * Represents a goal with its computed progress information.
  */
 export interface GoalWithProgress {
-    goal: Goal;
+    goal: HabitGoal;
     progress: GoalProgress;
 }
 

@@ -22,7 +22,7 @@ export const GoalCardStack: React.FC<GoalCardStackProps> = ({
     };
 
     return (
-        <div className="space-y-3">
+        <div className="space-y-4">
             {goals.map((goalWithProgress) => (
                 <GoalCard
                     key={goalWithProgress.goal.id}

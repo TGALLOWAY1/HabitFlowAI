@@ -24,7 +24,7 @@ export interface DailyWellbeing {
     notes?: string;
 }
 
-export interface Goal {
+export interface HabitGoal {
     type: 'boolean' | 'number';
     target?: number; // e.g., 8 (hours), 2000 (calories)
     unit?: string; // e.g., 'hrs', 'kcal'
@@ -36,7 +36,7 @@ export interface Habit {
     categoryId: string;
     name: string;
     description?: string;
-    goal: Goal;
+    goal: HabitGoal;
     archived: boolean;
     createdAt: string;
     pace?: string | null; // Estimated completion date

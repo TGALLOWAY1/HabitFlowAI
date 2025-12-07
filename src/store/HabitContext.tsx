@@ -21,7 +21,7 @@ interface HabitContextType {
     habits: Habit[];
     logs: Record<string, DayLog>; // Key: `${habitId}-${date}`
     addCategory: (category: Omit<Category, 'id'>) => Promise<void>;
-    addHabit: (habit: Omit<Habit, 'id' | 'createdAt' | 'archived'>) => Promise<void>;
+    addHabit: (habit: Omit<Habit, 'id' | 'createdAt' | 'archived'>) => Promise<Habit>;
     toggleHabit: (habitId: string, date: string) => Promise<void>;
     updateLog: (habitId: string, date: string, value: number) => Promise<void>;
     deleteHabit: (id: string) => Promise<void>;
@@ -191,10 +191,11 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         }
     };
 
-    const addHabit = async (habit: Omit<Habit, 'id' | 'createdAt' | 'archived'>) => {
+    const addHabit = async (habit: Omit<Habit, 'id' | 'createdAt' | 'archived'>): Promise<Habit> => {
         try {
             const newHabit = await saveHabit(habit);
             setHabits([...habits, newHabit]);
+            return newHabit;
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : 'Unknown error';
             console.error('Failed to save habit to API:', errorMessage);
