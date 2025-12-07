@@ -5,7 +5,7 @@
  * All persistent data is stored in MongoDB via this client.
  */
 
-import type { Category, Habit, DayLog, DailyWellbeing } from '../models/persistenceTypes';
+import type { Category, Habit, DayLog, DailyWellbeing, Goal } from '../models/persistenceTypes';
 import type { Activity } from '../types';
 
 import { API_BASE_URL } from './persistenceConfig';
@@ -457,5 +457,83 @@ export async function submitActivity(
   });
 
   return response;
+}
+
+/**
+ * Goal Persistence Functions
+ */
+
+/**
+ * Fetch all goals for the current user.
+ * 
+ * @returns Promise<Goal[]> - Array of goals
+ * @throws Error if API request fails
+ */
+export async function fetchGoals(): Promise<Goal[]> {
+  const response = await apiRequest<{ goals: Goal[] }>('/goals');
+  return response.goals;
+}
+
+/**
+ * Get a single goal by ID.
+ * 
+ * @param id - Goal ID
+ * @returns Promise<Goal> - Goal if found
+ * @throws Error if API request fails or goal not found
+ */
+export async function fetchGoal(id: string): Promise<Goal> {
+  const response = await apiRequest<{ goal: Goal }>(`/goals/${id}`);
+  return response.goal;
+}
+
+/**
+ * Create a new goal.
+ * 
+ * @param data - Goal data (without id, createdAt)
+ * @returns Promise<Goal> - Created goal with generated ID
+ * @throws Error if API request fails
+ */
+export async function createGoal(
+  data: Omit<Goal, 'id' | 'createdAt'>
+): Promise<Goal> {
+  const response = await apiRequest<{ goal: Goal }>('/goals', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+
+  return response.goal;
+}
+
+/**
+ * Update a goal.
+ * 
+ * @param id - Goal ID
+ * @param patch - Partial goal data to update
+ * @returns Promise<Goal> - Updated goal
+ * @throws Error if API request fails or goal not found
+ */
+export async function updateGoal(
+  id: string,
+  patch: Partial<Omit<Goal, 'id' | 'createdAt'>>
+): Promise<Goal> {
+  const response = await apiRequest<{ goal: Goal }>(`/goals/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(patch),
+  });
+
+  return response.goal;
+}
+
+/**
+ * Delete a goal.
+ * 
+ * @param id - Goal ID
+ * @returns Promise<void>
+ * @throws Error if API request fails or goal not found
+ */
+export async function deleteGoal(id: string): Promise<void> {
+  await apiRequest(`/goals/${id}`, {
+    method: 'DELETE',
+  });
 }
 

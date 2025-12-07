@@ -15,12 +15,14 @@ interface CreateGoalLinkHabitsProps {
     goalDraft: GoalDraft;
     onNext?: (selectedHabitIds: string[]) => void;
     onBack?: () => void;
+    isSubmitting?: boolean;
 }
 
 export const CreateGoalLinkHabits: React.FC<CreateGoalLinkHabitsProps> = ({
     goalDraft,
     onNext,
     onBack,
+    isSubmitting = false,
 }) => {
     const { habits, categories } = useHabitStore();
     const [selectedHabitIds, setSelectedHabitIds] = useState<Set<string>>(new Set());
@@ -179,15 +181,15 @@ export const CreateGoalLinkHabits: React.FC<CreateGoalLinkHabitsProps> = ({
                     <button
                         type="button"
                         onClick={handleNext}
-                        disabled={selectedHabitIds.size === 0}
+                        disabled={selectedHabitIds.size === 0 || isSubmitting}
                         className={`flex items-center gap-2 px-6 py-2 rounded-lg font-medium transition-colors ${
-                            selectedHabitIds.size > 0
+                            selectedHabitIds.size > 0 && !isSubmitting
                                 ? 'bg-emerald-500 hover:bg-emerald-400 text-neutral-900'
                                 : 'bg-neutral-800 text-neutral-500 cursor-not-allowed'
                         }`}
                     >
-                        Next
-                        <ArrowRight size={18} />
+                        {isSubmitting ? 'Creating...' : 'Create Goal'}
+                        {!isSubmitting && <ArrowRight size={18} />}
                     </button>
                 </div>
             </div>
