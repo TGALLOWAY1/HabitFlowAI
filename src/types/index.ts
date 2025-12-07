@@ -74,3 +74,6 @@ export interface Activity {
 }
 
 export type Theme = 'dark' | 'light';
+
+// Re-export Goal and GoalProgress from persistenceTypes for frontend use
+export type { Goal, GoalProgress, GoalWithProgress } from '../models/persistenceTypes';
