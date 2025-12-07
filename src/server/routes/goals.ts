@@ -15,8 +15,8 @@ import {
   validateHabitIds,
 } from '../repositories/goalRepository';
 import { getHabitById } from '../repositories/habitRepository';
-import { computeGoalProgress } from '../utils/goalProgressUtils';
-import type { Goal, GoalProgress } from '../../models/persistenceTypes';
+import { computeGoalProgress, computeGoalsWithProgress } from '../utils/goalProgressUtils';
+import type { Goal, GoalProgress, GoalWithProgress } from '../../models/persistenceTypes';
 
 /**
  * Validate that all habit IDs in linkedHabitIds exist in the database.
@@ -169,6 +169,37 @@ export async function getGoal(req: Request, res: Response): Promise<void> {
       error: {
         code: 'INTERNAL_SERVER_ERROR',
         message: 'Failed to fetch goal',
+        details: process.env.NODE_ENV === 'development' ? errorMessage : undefined,
+      },
+    });
+  }
+}
+
+/**
+ * Get all goals with progress information.
+ * 
+ * GET /api/goals-with-progress
+ * 
+ * Efficiently fetches all goals with their progress data in a single request,
+ * avoiding N+1 query patterns.
+ */
+export async function getGoalsWithProgress(req: Request, res: Response): Promise<void> {
+  try {
+    // TODO: Extract userId from authentication token/session
+    const userId = (req as any).userId || 'anonymous-user';
+
+    const goalsWithProgress = await computeGoalsWithProgress(userId);
+
+    res.status(200).json({
+      goals: goalsWithProgress,
+    });
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error('Error fetching goals with progress:', errorMessage);
+    res.status(500).json({
+      error: {
+        code: 'INTERNAL_SERVER_ERROR',
+        message: 'Failed to fetch goals with progress',
         details: process.env.NODE_ENV === 'development' ? errorMessage : undefined,
       },
     });

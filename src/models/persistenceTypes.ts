@@ -439,6 +439,26 @@ export interface GoalProgress {
     
     /** Percentage of goal completion (0-100) */
     percent: number;
+    
+    /** Array of progress data for the last 7 days (most recent first) */
+    lastSevenDays: Array<{
+        date: string; // YYYY-MM-DD format
+        value: number; // Progress value for this day
+        hasProgress: boolean; // Whether there was any progress on this day
+    }>;
+    
+    /** Whether the goal has an inactivity warning (≥4 days with no progress in last 7 days) */
+    inactivityWarning: boolean;
+}
+
+/**
+ * Goal with Progress
+ * 
+ * Represents a goal with its computed progress information.
+ */
+export interface GoalWithProgress {
+    goal: Goal;
+    progress: GoalProgress;
 }
 
 /**
