@@ -147,7 +147,12 @@ export async function getGoalInactivity(
  * 
  * This is an optimized version that computes all progress data in a single pass.
  * 
- * For cumulative goals, includes both habit-derived progress and manual logs.
+ * For cumulative goals, includes both habit-derived progress and manual logs:
+ * - currentValue = sum of all habit log values + sum of all manual log values
+ * - lastSevenDays: for each day, sums habit log values + manual log values for that date
+ * - Manual logs are matched to dates by extracting YYYY-MM-DD from loggedAt ISO timestamp
+ * 
+ * For frequency goals, manual logs are ignored (only habit completion counts).
  * 
  * @param goal - Goal entity
  * @param allLogs - All day logs for linked habits (pre-fetched)

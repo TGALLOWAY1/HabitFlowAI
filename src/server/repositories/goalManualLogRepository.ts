@@ -3,6 +3,15 @@
  * 
  * MongoDB data access layer for GoalManualLog entities.
  * Provides CRUD operations for goal manual logs with user-scoped queries.
+ * 
+ * Expected Behavior:
+ * - Manual logs are only supported for cumulative goals (not frequency goals)
+ * - Each log represents a discrete amount of progress (value > 0) added at a specific time (loggedAt)
+ * - Manual logs are included in goal progress computation:
+ *   - currentValue = sum of habit logs + sum of manual logs
+ *   - lastSevenDays includes manual log values for relevant dates
+ *   - Manual logs are sorted by loggedAt ascending when retrieved
+ * - Manual logs are user-scoped (filtered by userId)
  */
 
 import { ObjectId } from 'mongodb';

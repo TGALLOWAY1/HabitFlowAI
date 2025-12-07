@@ -685,6 +685,282 @@ export async function getGoalManualLogsRoute(req: Request, res: Response): Promi
 }
 
 /**
+ * Get goal detail with progress, manual logs, and history.
+ * 
+ * GET /api/goals/:id/detail
+ * 
+ * Returns comprehensive data for the goal detail page:
+ * - goal: The goal entity
+ * - progress: Current progress (currentValue, percent, lastSevenDays, inactivityWarning)
+ * - manualLogs: All manual logs for the goal
+ * - history: Optional aggregated history for last 30 days (date -> total value)
+ */
+export async function getGoalDetailRoute(req: Request, res: Response): Promise<void> {
+  try {
+    const { id } = req.params;
+
+    if (!id) {
+      res.status(400).json({
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'Goal ID is required',
+        },
+      });
+      return;
+    }
+
+    // TODO: Extract userId from authentication token/session
+    const userId = (req as any).userId || 'anonymous-user';
+
+    // Fetch the goal
+    const goal = await getGoalById(id, userId);
+    if (!goal) {
+      res.status(404).json({
+        error: {
+          code: 'NOT_FOUND',
+          message: 'Goal not found',
+        },
+      });
+      return;
+    }
+
+    // Compute progress (includes habit logs and manual logs)
+    const progress = await computeGoalProgress(id, userId);
+    if (!progress) {
+      res.status(500).json({
+        error: {
+          code: 'INTERNAL_SERVER_ERROR',
+          message: 'Failed to compute goal progress',
+        },
+      });
+      return;
+    }
+
+    // Fetch manual logs (only for cumulative goals, but fetch for all to be consistent)
+    const manualLogs = goal.type === 'cumulative'
+      ? await getGoalManualLogsByGoal(id, userId)
+      : [];
+
+    // Build aggregated history for last 30 days
+    // This aggregates both habit logs and manual logs by date
+    const { getDayLogsByHabit } = await import('../repositories/dayLogRepository');
+    
+    // Fetch all logs for linked habits
+    const allLogs: Array<{ date: string; value: number }> = [];
+    for (const habitId of goal.linkedHabitIds) {
+      const habitLogs = await getDayLogsByHabit(habitId, userId);
+      const logsArray = Object.values(habitLogs);
+      for (const log of logsArray) {
+        if (goal.type === 'cumulative') {
+          allLogs.push({ date: log.date, value: log.value });
+        } else {
+          // For frequency goals, count completed logs as 1
+          if (log.completed) {
+            allLogs.push({ date: log.date, value: 1 });
+          }
+        }
+      }
+    }
+
+    // Add manual logs to the aggregation (only for cumulative goals)
+    if (goal.type === 'cumulative') {
+      for (const manualLog of manualLogs) {
+        // Extract date from ISO timestamp (YYYY-MM-DD)
+        const loggedDate = manualLog.loggedAt.split('T')[0];
+        allLogs.push({ date: loggedDate, value: manualLog.value });
+      }
+    }
+
+    // Aggregate by date for last 30 days
+    const historyMap = new Map<string, number>();
+    const last30Days: string[] = [];
+    for (let i = 0; i < 30; i++) {
+      const dateStr = getDateStringForHistory(i);
+      last30Days.push(dateStr);
+      historyMap.set(dateStr, 0); // Initialize to 0
+    }
+
+    // Aggregate values by date
+    for (const log of allLogs) {
+      if (historyMap.has(log.date)) {
+        const currentValue = historyMap.get(log.date) || 0;
+        historyMap.set(log.date, currentValue + log.value);
+      }
+    }
+
+    // Build history array (most recent first)
+    const history = last30Days.reverse().map(date => ({
+      date,
+      value: historyMap.get(date) || 0,
+    }));
+
+    res.status(200).json({
+      goal,
+      progress,
+      manualLogs,
+      history,
+    });
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error('Error fetching goal detail:', errorMessage);
+    res.status(500).json({
+      error: {
+        code: 'INTERNAL_SERVER_ERROR',
+        message: 'Failed to fetch goal detail',
+        details: process.env.NODE_ENV === 'development' ? errorMessage : undefined,
+      },
+    });
+  }
+}
+
+/**
+ * Helper function to get date string in YYYY-MM-DD format for N days ago.
+ * Used for history aggregation.
+ */
+function getDateStringForHistory(daysAgo: number): string {
+  const date = new Date();
+  date.setDate(date.getDate() - daysAgo);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+/**
+ * Get goal detail with progress, manual logs, and history.
+ * 
+ * GET /api/goals/:id/detail
+ * 
+ * Returns comprehensive data for the goal detail page:
+ * - goal: The goal entity
+ * - progress: Current progress (currentValue, percent, lastSevenDays, inactivityWarning)
+ * - manualLogs: All manual logs for the goal
+ * - history: Aggregated history for last 30 days (date -> total value)
+ */
+export async function getGoalDetailRoute(req: Request, res: Response): Promise<void> {
+  try {
+    const { id } = req.params;
+
+    if (!id) {
+      res.status(400).json({
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'Goal ID is required',
+        },
+      });
+      return;
+    }
+
+    // TODO: Extract userId from authentication token/session
+    const userId = (req as any).userId || 'anonymous-user';
+
+    // Fetch the goal
+    const goal = await getGoalById(id, userId);
+    if (!goal) {
+      res.status(404).json({
+        error: {
+          code: 'NOT_FOUND',
+          message: 'Goal not found',
+        },
+      });
+      return;
+    }
+
+    // Compute progress (includes habit logs and manual logs)
+    const progress = await computeGoalProgress(id, userId);
+    if (!progress) {
+      res.status(500).json({
+        error: {
+          code: 'INTERNAL_SERVER_ERROR',
+          message: 'Failed to compute goal progress',
+        },
+      });
+      return;
+    }
+
+    // Fetch manual logs (only for cumulative goals, but fetch for all to be consistent)
+    const manualLogs = goal.type === 'cumulative'
+      ? await getGoalManualLogsByGoal(id, userId)
+      : [];
+
+    // Build aggregated history for last 30 days
+    // This aggregates both habit logs and manual logs by date
+    const { getDayLogsByHabit } = await import('../repositories/dayLogRepository');
+    
+    // Fetch all logs for linked habits
+    const allLogs: Array<{ date: string; value: number }> = [];
+    for (const habitId of goal.linkedHabitIds) {
+      const habitLogs = await getDayLogsByHabit(habitId, userId);
+      const logsArray = Object.values(habitLogs);
+      for (const log of logsArray) {
+        if (goal.type === 'cumulative') {
+          allLogs.push({ date: log.date, value: log.value });
+        } else {
+          // For frequency goals, count completed logs as 1
+          if (log.completed) {
+            allLogs.push({ date: log.date, value: 1 });
+          }
+        }
+      }
+    }
+
+    // Add manual logs to the aggregation (only for cumulative goals)
+    if (goal.type === 'cumulative') {
+      for (const manualLog of manualLogs) {
+        // Extract date from ISO timestamp (YYYY-MM-DD)
+        const loggedDate = manualLog.loggedAt.split('T')[0];
+        allLogs.push({ date: loggedDate, value: manualLog.value });
+      }
+    }
+
+    // Aggregate by date for last 30 days
+    const historyMap = new Map<string, number>();
+    const last30Days: string[] = [];
+    for (let i = 0; i < 30; i++) {
+      const date = new Date();
+      date.setDate(date.getDate() - i);
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      const dateStr = `${year}-${month}-${day}`;
+      last30Days.push(dateStr);
+      historyMap.set(dateStr, 0); // Initialize to 0
+    }
+
+    // Aggregate values by date
+    for (const log of allLogs) {
+      if (historyMap.has(log.date)) {
+        const currentValue = historyMap.get(log.date) || 0;
+        historyMap.set(log.date, currentValue + log.value);
+      }
+    }
+
+    // Build history array (most recent first)
+    const history = last30Days.reverse().map(date => ({
+      date,
+      value: historyMap.get(date) || 0,
+    }));
+
+    res.status(200).json({
+      goal,
+      progress,
+      manualLogs,
+      history,
+    });
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error('Error fetching goal detail:', errorMessage);
+    res.status(500).json({
+      error: {
+        code: 'INTERNAL_SERVER_ERROR',
+        message: 'Failed to fetch goal detail',
+        details: process.env.NODE_ENV === 'development' ? errorMessage : undefined,
+      },
+    });
+  }
+}
+
+/**
  * Delete a goal.
  * 
  * DELETE /api/goals/:id
