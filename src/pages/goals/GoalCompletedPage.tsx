@@ -3,6 +3,7 @@ import { Trophy, Sparkles, Award, Image } from 'lucide-react';
 import { useGoalDetail } from '../../lib/useGoalDetail';
 import { format, parseISO, differenceInDays } from 'date-fns';
 import { Loader2 } from 'lucide-react';
+import { BadgeUploadModal } from '../../components/goals/BadgeUploadModal';
 
 interface GoalCompletedPageProps {
     goalId: string;
@@ -22,8 +23,9 @@ export const GoalCompletedPage: React.FC<GoalCompletedPageProps> = ({
     onAddBadge,
     onViewGoalDetail 
 }) => {
-    const { data, loading } = useGoalDetail(goalId);
+    const { data, loading, refetch } = useGoalDetail(goalId);
     const [showConfetti, setShowConfetti] = useState(true);
+    const [showBadgeModal, setShowBadgeModal] = useState(false);
 
     // Hide confetti after animation completes
     useEffect(() => {
@@ -173,15 +175,13 @@ export const GoalCompletedPage: React.FC<GoalCompletedPageProps> = ({
                 {/* Action Buttons */}
                 <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mt-8">
                     {/* Primary CTA: Add your badge */}
-                    {onAddBadge && (
-                        <button
-                            onClick={() => onAddBadge(goalId)}
-                            className="flex items-center gap-2 px-8 py-4 bg-emerald-500 hover:bg-emerald-400 text-neutral-900 font-semibold rounded-lg transition-colors text-lg"
-                        >
-                            <Image size={20} />
-                            Add your badge
-                        </button>
-                    )}
+                    <button
+                        onClick={() => setShowBadgeModal(true)}
+                        className="flex items-center gap-2 px-8 py-4 bg-emerald-500 hover:bg-emerald-400 text-neutral-900 font-semibold rounded-lg transition-colors text-lg"
+                    >
+                        <Image size={20} />
+                        Add your badge
+                    </button>
                     
                     {/* Secondary CTA: Skip for now */}
                     <button
@@ -198,6 +198,24 @@ export const GoalCompletedPage: React.FC<GoalCompletedPageProps> = ({
                     </button>
                 </div>
             </div>
+
+            {/* Badge Upload Modal */}
+            <BadgeUploadModal
+                isOpen={showBadgeModal}
+                onClose={() => setShowBadgeModal(false)}
+                goalId={goalId}
+                onSuccess={(badgeImageUrl) => {
+                    // Refetch goal data to get updated badge
+                    refetch();
+                    
+                    // Auto-redirect to Win Archive after 1 second
+                    setTimeout(() => {
+                        if (onAddBadge) {
+                            onAddBadge(goalId);
+                        }
+                    }, 1000);
+                }}
+            />
 
             {/* Confetti CSS Animation */}
             <style>{`

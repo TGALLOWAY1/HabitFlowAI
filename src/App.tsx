@@ -20,7 +20,7 @@ const HabitTrackerContent: React.FC = () => {
   const { categories, habits, logs, toggleHabit, updateLog } = useHabitStore();
   const [activeCategoryId, setActiveCategoryId] = useState(categories[0]?.id || '');
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [view, setView] = useState<'tracker' | 'progress' | 'activities' | 'goals'>('tracker');
+  const [view, setView] = useState<'tracker' | 'progress' | 'activities' | 'goals' | 'wins'>('tracker');
   const [showCreateGoal, setShowCreateGoal] = useState(false);
   const [selectedGoalId, setSelectedGoalId] = useState<string | null>(null);
   const [completedGoalId, setCompletedGoalId] = useState<string | null>(null);
@@ -104,8 +104,9 @@ const HabitTrackerContent: React.FC = () => {
             setView('goals');
           }}
           onAddBadge={(goalId) => {
-            // TODO: Open badge upload modal/flow (next prompt)
-            console.log('Add badge for goal:', goalId);
+            // Redirect to Win Archive after badge upload
+            setCompletedGoalId(null);
+            setView('wins');
           }}
           onViewGoalDetail={(goalId) => {
             setCompletedGoalId(null);
@@ -113,6 +114,22 @@ const HabitTrackerContent: React.FC = () => {
             setView('goals');
           }}
         />
+      ) : view === 'wins' ? (
+        <div className="w-full max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+          <div className="mb-6 sm:mb-8">
+            <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2">Win Archive</h1>
+            <p className="text-neutral-400 text-sm sm:text-base">Your completed goals and achievements</p>
+          </div>
+          <div className="text-center py-12 text-neutral-500">
+            <p>Win Archive page coming soon...</p>
+            <button
+              onClick={() => setView('goals')}
+              className="mt-4 px-4 py-2 bg-neutral-700 hover:bg-neutral-600 text-white rounded-lg transition-colors"
+            >
+              Back to Goals
+            </button>
+          </div>
+        </div>
       ) : selectedGoalId ? (
         <GoalDetailPage
           goalId={selectedGoalId}
