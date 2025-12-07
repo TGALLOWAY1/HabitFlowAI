@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { useGoalDetail } from '../../lib/useGoalDetail';
 import { useHabitStore } from '../../store/HabitContext';
-import { Loader2, AlertCircle, ArrowLeft, Check, Plus, Edit, Trash2 } from 'lucide-react';
+import { Loader2, AlertCircle, ArrowLeft, Check, Plus, Edit, Trash2, Trophy, Award } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { GoalManualProgressModal } from '../../components/goals/GoalManualProgressModal';
 import { DeleteGoalConfirmModal } from '../../components/goals/DeleteGoalConfirmModal';
@@ -179,6 +179,15 @@ export const GoalDetailPage: React.FC<GoalDetailPageProps> = ({ goalId, onBack }
                                 }`}>
                                     {data.goal.completedAt ? 'Completed' : 'Active'}
                                 </span>
+                                {/* Completed Date Label */}
+                                {data.goal.completedAt && (
+                                    <div className="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-500/10 border border-emerald-500/30 rounded text-xs text-emerald-400">
+                                        <Trophy size={12} />
+                                        <span>
+                                            Completed on {formatDeadline(data.goal.completedAt)}
+                                        </span>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </div>
@@ -188,7 +197,7 @@ export const GoalDetailPage: React.FC<GoalDetailPageProps> = ({ goalId, onBack }
                         <div className="w-full h-4 bg-neutral-700 rounded-full overflow-hidden">
                             <div
                                 className="h-full bg-emerald-500 transition-all"
-                                style={{ width: `${Math.min(100, data.progress.percent)}%` }}
+                                style={{ width: `${Math.min(100, data.goal.completedAt ? 100 : data.progress.percent)}%` }}
                             />
                         </div>
 
@@ -200,7 +209,7 @@ export const GoalDetailPage: React.FC<GoalDetailPageProps> = ({ goalId, onBack }
                                     : `${data.progress.currentValue} of ${data.goal.targetValue} days`}
                             </div>
                             <div className="text-emerald-400 font-semibold text-sm sm:text-base">
-                                {data.progress.percent}%
+                                {data.goal.completedAt ? 100 : data.progress.percent}%
                             </div>
                         </div>
                     </div>
@@ -216,11 +225,18 @@ export const GoalDetailPage: React.FC<GoalDetailPageProps> = ({ goalId, onBack }
                                     { percent: 75, label: 'Almost there', value: data.goal.targetValue * 0.75 },
                                     { percent: 100, label: 'Goal!', value: data.goal.targetValue },
                                 ];
+                                // Cap progress at 100% for completed goals
+                                const displayPercent = data.goal.completedAt ? 100 : data.progress.percent;
                                 return milestones.map(milestone => ({
                                     ...milestone,
-                                    reached: data.progress.percent >= milestone.percent,
+                                    reached: displayPercent >= milestone.percent,
                                 }));
-                            }, [data.goal.targetValue, data.progress.percent]).map((milestone) => {
+                            }, [data.goal.targetValue, data.progress.percent, data.goal.completedAt]).map((milestone) => {
+                                // For completed goals, mark 100% milestone as reached even if progress < 100
+                                const isReached = data.goal.completedAt && milestone.percent === 100
+                                    ? true
+                                    : milestone.reached;
+                                
                                 const milestoneValue = data.goal.type === 'cumulative'
                                     ? `${milestone.value.toFixed(1)} ${data.goal.unit || ''} of ${data.goal.targetValue} ${data.goal.unit || ''}`
                                     : `${milestone.value.toFixed(0)} days of ${data.goal.targetValue} days`;
@@ -229,13 +245,13 @@ export const GoalDetailPage: React.FC<GoalDetailPageProps> = ({ goalId, onBack }
                                     <div
                                         key={milestone.percent}
                                         className={`p-3 rounded-lg border transition-colors ${
-                                            milestone.reached
+                                            isReached
                                                 ? 'bg-emerald-500/10 border-emerald-500/30'
                                                 : 'bg-neutral-800/50 border-white/5'
                                         }`}
                                     >
                                         <div className="flex items-start gap-2">
-                                            {milestone.reached ? (
+                                            {isReached ? (
                                                 <Check className="text-emerald-400 flex-shrink-0 mt-0.5" size={18} />
                                             ) : (
                                                 <div className="w-4 h-4 rounded-full border-2 border-neutral-600 flex-shrink-0 mt-0.5" />
@@ -256,18 +272,39 @@ export const GoalDetailPage: React.FC<GoalDetailPageProps> = ({ goalId, onBack }
                     </div>
                 </div>
 
-                {/* Manual Progress Button (only for cumulative goals) */}
-                {data.goal.type === 'cumulative' && (
-                    <div className="flex justify-end">
+                {/* Action Buttons Row */}
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+                    {/* Manual Progress Button (only for cumulative, active goals) */}
+                    {data.goal.type === 'cumulative' && !data.goal.completedAt && (
                         <button
                             onClick={() => setShowManualProgressModal(true)}
-                            className="flex items-center gap-2 px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-neutral-900 font-medium rounded-lg transition-colors"
+                            className="flex items-center justify-center gap-2 px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-neutral-900 font-medium rounded-lg transition-colors"
                         >
                             <Plus size={18} />
                             Log progress manually
                         </button>
-                    </div>
-                )}
+                    )}
+                    
+                    {/* Win Archive Button (only for completed goals) */}
+                    {data.goal.completedAt && (
+                        <button
+                            onClick={() => {
+                                // TODO: Navigate to Win Archive page when implemented in M4
+                                // For now, navigate back to goals list
+                                if (onBack) {
+                                    onBack();
+                                }
+                            }}
+                            className="flex items-center justify-center gap-2 px-4 py-2 bg-amber-500/20 hover:bg-amber-500/30 text-amber-400 font-medium rounded-lg transition-colors border border-amber-500/30"
+                        >
+                            <Award size={18} />
+                            View this in your Win Archive
+                        </button>
+                    )}
+                    
+                    {/* Spacer for layout when neither button shows */}
+                    {data.goal.type !== 'cumulative' && !data.goal.completedAt && <div />}
+                </div>
 
                 {/* Recent Progress Section */}
                 <div className="bg-neutral-800/50 border border-white/10 rounded-lg p-4 sm:p-6">
