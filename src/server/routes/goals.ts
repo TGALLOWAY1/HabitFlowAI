@@ -15,7 +15,8 @@ import {
   validateHabitIds,
 } from '../repositories/goalRepository';
 import { getHabitById } from '../repositories/habitRepository';
-import type { Goal } from '../../models/persistenceTypes';
+import { computeGoalProgress } from '../utils/goalProgressUtils';
+import type { Goal, GoalProgress } from '../../models/persistenceTypes';
 
 /**
  * Validate that all habit IDs in linkedHabitIds exist in the database.
@@ -168,6 +169,56 @@ export async function getGoal(req: Request, res: Response): Promise<void> {
       error: {
         code: 'INTERNAL_SERVER_ERROR',
         message: 'Failed to fetch goal',
+        details: process.env.NODE_ENV === 'development' ? errorMessage : undefined,
+      },
+    });
+  }
+}
+
+/**
+ * Get goal progress.
+ * 
+ * GET /api/goals/:id/progress
+ */
+export async function getGoalProgress(req: Request, res: Response): Promise<void> {
+  try {
+    const { id } = req.params;
+
+    if (!id) {
+      res.status(400).json({
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'Goal ID is required',
+        },
+      });
+      return;
+    }
+
+    // TODO: Extract userId from authentication token/session
+    const userId = (req as any).userId || 'anonymous-user';
+
+    const progress = await computeGoalProgress(id, userId);
+
+    if (!progress) {
+      res.status(404).json({
+        error: {
+          code: 'NOT_FOUND',
+          message: 'Goal not found',
+        },
+      });
+      return;
+    }
+
+    res.status(200).json({
+      progress,
+    });
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error('Error fetching goal progress:', errorMessage);
+    res.status(500).json({
+      error: {
+        code: 'INTERNAL_SERVER_ERROR',
+        message: 'Failed to fetch goal progress',
         details: process.env.NODE_ENV === 'development' ? errorMessage : undefined,
       },
     });

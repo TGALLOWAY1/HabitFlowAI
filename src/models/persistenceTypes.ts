@@ -429,6 +429,19 @@ export interface Goal {
 export type GoalsStorage = Goal[];
 
 /**
+ * Goal Progress
+ * 
+ * Represents the current progress toward a goal.
+ */
+export interface GoalProgress {
+    /** Current value achieved toward the goal */
+    currentValue: number;
+    
+    /** Percentage of goal completion (0-100) */
+    percent: number;
+}
+
+/**
  * Complete Persistence Schema
  * 
  * Represents all persistent data in the application.

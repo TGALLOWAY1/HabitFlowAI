@@ -12,7 +12,7 @@ import { getHabits, createHabitRoute, getHabit, updateHabitRoute, deleteHabitRou
 import { getDayLogs, upsertDayLogRoute, getDayLogRoute, deleteDayLogRoute } from './routes/dayLogs';
 import { getWellbeingLogs, upsertWellbeingLogRoute, getWellbeingLogRoute, deleteWellbeingLogRoute } from './routes/wellbeingLogs';
 import { getActivities, getActivity, createActivityRoute, replaceActivityRoute, updateActivityRoute, deleteActivityRoute, submitActivityRoute } from './routes/activities';
-import { getGoals, getGoal, createGoalRoute, updateGoalRoute, deleteGoalRoute } from './routes/goals';
+import { getGoals, getGoal, getGoalProgress, createGoalRoute, updateGoalRoute, deleteGoalRoute } from './routes/goals';
 import { closeConnection } from './lib/mongoClient';
 
 // Assert MongoDB is enabled at startup (fail fast if misconfigured)
@@ -89,6 +89,7 @@ app.post('/api/activities/:id/submit', submitActivityRoute);
 // Goal routes
 app.get('/api/goals', getGoals);
 app.post('/api/goals', createGoalRoute);
+app.get('/api/goals/:id/progress', getGoalProgress);
 app.get('/api/goals/:id', getGoal);
 app.put('/api/goals/:id', updateGoalRoute);
 app.delete('/api/goals/:id', deleteGoalRoute);
