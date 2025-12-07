@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
-import { Search, ArrowRight } from 'lucide-react';
+import { Search, ArrowRight, Plus } from 'lucide-react';
 import { useHabitStore } from '../../store/HabitContext';
+import { HabitCreationInlineModal } from '../../components/HabitCreationInlineModal';
 
 interface GoalDraft {
     title: string;
@@ -24,6 +25,7 @@ export const CreateGoalLinkHabits: React.FC<CreateGoalLinkHabitsProps> = ({
     const { habits, categories } = useHabitStore();
     const [selectedHabitIds, setSelectedHabitIds] = useState<Set<string>>(new Set());
     const [searchQuery, setSearchQuery] = useState('');
+    const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
     // Create category lookup map
     const categoryMap = useMemo(() => {
@@ -59,6 +61,13 @@ export const CreateGoalLinkHabits: React.FC<CreateGoalLinkHabitsProps> = ({
         }
     };
 
+    const handleHabitCreated = (habitId: string) => {
+        // Auto-select the newly created habit
+        const newSelected = new Set(selectedHabitIds);
+        newSelected.add(habitId);
+        setSelectedHabitIds(newSelected);
+    };
+
     const getHabitTypeLabel = (goalType: 'boolean' | 'number'): string => {
         return goalType === 'boolean' ? 'Binary' : 'Quantified';
     };
@@ -79,9 +88,9 @@ export const CreateGoalLinkHabits: React.FC<CreateGoalLinkHabitsProps> = ({
                 </div>
             </div>
 
-            {/* Search */}
-            <div className="mb-6">
-                <div className="relative">
+            {/* Search and Create Button */}
+            <div className="mb-6 flex gap-3">
+                <div className="relative flex-1">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" size={18} />
                     <input
                         type="text"
@@ -91,6 +100,14 @@ export const CreateGoalLinkHabits: React.FC<CreateGoalLinkHabitsProps> = ({
                         placeholder="Search habits or categories..."
                     />
                 </div>
+                <button
+                    type="button"
+                    onClick={() => setIsCreateModalOpen(true)}
+                    className="flex items-center gap-2 px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-neutral-900 font-medium rounded-lg transition-colors"
+                >
+                    <Plus size={18} />
+                    New Habit
+                </button>
             </div>
 
             {/* Habit List */}
@@ -174,6 +191,13 @@ export const CreateGoalLinkHabits: React.FC<CreateGoalLinkHabitsProps> = ({
                     </button>
                 </div>
             </div>
+
+            {/* Inline Habit Creation Modal */}
+            <HabitCreationInlineModal
+                isOpen={isCreateModalOpen}
+                onClose={() => setIsCreateModalOpen(false)}
+                onHabitCreated={handleHabitCreated}
+            />
         </div>
     );
 };
