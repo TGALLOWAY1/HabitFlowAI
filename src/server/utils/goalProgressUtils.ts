@@ -6,7 +6,8 @@
 
 import { getGoalById } from '../repositories/goalRepository';
 import { getDayLogsByHabit } from '../repositories/dayLogRepository';
-import type { Goal, GoalProgress, DayLog } from '../../models/persistenceTypes';
+import { getGoalManualLogsByGoal } from '../repositories/goalManualLogRepository';
+import type { Goal, GoalProgress, DayLog, GoalManualLog } from '../../models/persistenceTypes';
 
 /**
  * Get date string in YYYY-MM-DD format for N days ago.
@@ -41,7 +42,7 @@ function isWithinLastDays(dateStr: string, days: number): boolean {
 /**
  * Compute goal progress.
  * 
- * For cumulative goals: sums all log values from linked habits.
+ * For cumulative goals: sums all log values from linked habits + manual logs.
  * For frequency goals: counts days where any linked habit was completed.
  * 
  * @param goalId - Goal ID
@@ -67,8 +68,14 @@ export async function computeGoalProgress(
     allLogs.push(...logsArray);
   }
 
+  // Fetch manual logs for cumulative goals
+  let manualLogs: GoalManualLog[] = [];
+  if (goal.type === 'cumulative') {
+    manualLogs = await getGoalManualLogsByGoal(goalId, userId);
+  }
+
   // Use the optimized function to compute full progress
-  return computeFullGoalProgress(goal, allLogs);
+  return computeFullGoalProgress(goal, allLogs, manualLogs);
 }
 
 /**
@@ -140,13 +147,17 @@ export async function getGoalInactivity(
  * 
  * This is an optimized version that computes all progress data in a single pass.
  * 
+ * For cumulative goals, includes both habit-derived progress and manual logs.
+ * 
  * @param goal - Goal entity
  * @param allLogs - All day logs for linked habits (pre-fetched)
+ * @param manualLogs - All manual logs for the goal (pre-fetched, only for cumulative goals)
  * @returns GoalProgress with currentValue, percent, lastSevenDays, and inactivityWarning
  */
 export function computeFullGoalProgress(
   goal: Goal,
-  allLogs: DayLog[]
+  allLogs: DayLog[],
+  manualLogs: GoalManualLog[] = []
 ): GoalProgress {
   // Get date range for last 7 days (most recent first)
   const last7Days: string[] = [];
@@ -163,11 +174,28 @@ export function computeFullGoalProgress(
     logsByDate.get(log.date)!.push(log);
   }
 
+  // Build map of manual logs by date (for cumulative goals only)
+  // Convert loggedAt ISO string to YYYY-MM-DD format for date matching
+  const manualLogsByDate = new Map<string, GoalManualLog[]>();
+  if (goal.type === 'cumulative') {
+    for (const manualLog of manualLogs) {
+      // Extract date from ISO timestamp (YYYY-MM-DD)
+      const loggedDate = manualLog.loggedAt.split('T')[0];
+      if (!manualLogsByDate.has(loggedDate)) {
+        manualLogsByDate.set(loggedDate, []);
+      }
+      manualLogsByDate.get(loggedDate)!.push(manualLog);
+    }
+  }
+
   // Compute current value
   let currentValue: number;
   if (goal.type === 'cumulative') {
-    // Sum all log values
-    currentValue = allLogs.reduce((sum, log) => sum + log.value, 0);
+    // Sum all habit log values
+    const habitValue = allLogs.reduce((sum, log) => sum + log.value, 0);
+    // Sum all manual log values
+    const manualValue = manualLogs.reduce((sum, log) => sum + log.value, 0);
+    currentValue = habitValue + manualValue;
   } else {
     // Frequency: count unique days where any linked habit was completed
     const completedDates = new Set<string>();
@@ -191,8 +219,12 @@ export function computeFullGoalProgress(
     let hasProgress = false;
 
     if (goal.type === 'cumulative') {
-      // Sum values for this day
-      dayValue = dayLogs.reduce((sum, log) => sum + log.value, 0);
+      // Sum habit log values for this day
+      const habitValue = dayLogs.reduce((sum, log) => sum + log.value, 0);
+      // Sum manual log values for this day
+      const dayManualLogs = manualLogsByDate.get(date) || [];
+      const manualValue = dayManualLogs.reduce((sum, log) => sum + log.value, 0);
+      dayValue = habitValue + manualValue;
       hasProgress = dayValue > 0;
     } else {
       // Check if any log was completed on this day
@@ -232,6 +264,7 @@ export async function computeGoalsWithProgress(
 ): Promise<Array<{ goal: Goal; progress: GoalProgress }>> {
   const { getGoalsByUser } = await import('../repositories/goalRepository');
   const { getDayLogsByHabit } = await import('../repositories/dayLogRepository');
+  const { getGoalManualLogsByGoals } = await import('../repositories/goalManualLogRepository');
   
   // Fetch all goals for the user
   const goals = await getGoalsByUser(userId);
@@ -252,6 +285,21 @@ export async function computeGoalsWithProgress(
     allLogsMap.set(habitId, logsArray);
   }
 
+  // Fetch all manual logs for all cumulative goals in one batch
+  const cumulativeGoalIds = goals.filter(g => g.type === 'cumulative').map(g => g.id);
+  const allManualLogs = cumulativeGoalIds.length > 0
+    ? await getGoalManualLogsByGoals(cumulativeGoalIds, userId)
+    : [];
+  
+  // Build map of manual logs by goal ID
+  const manualLogsByGoalId = new Map<string, GoalManualLog[]>();
+  for (const manualLog of allManualLogs) {
+    if (!manualLogsByGoalId.has(manualLog.goalId)) {
+      manualLogsByGoalId.set(manualLog.goalId, []);
+    }
+    manualLogsByGoalId.get(manualLog.goalId)!.push(manualLog);
+  }
+
   // Compute progress for each goal
   const results: Array<{ goal: Goal; progress: GoalProgress }> = [];
   
@@ -263,8 +311,13 @@ export async function computeGoalsWithProgress(
       goalLogs.push(...habitLogs);
     }
 
+    // Get manual logs for this goal (only for cumulative goals)
+    const goalManualLogs = goal.type === 'cumulative'
+      ? (manualLogsByGoalId.get(goal.id) || [])
+      : [];
+
     // Compute full progress
-    const progress = computeFullGoalProgress(goal, goalLogs);
+    const progress = computeFullGoalProgress(goal, goalLogs, goalManualLogs);
     
     results.push({
       goal,

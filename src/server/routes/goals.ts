@@ -15,8 +15,9 @@ import {
   validateHabitIds,
 } from '../repositories/goalRepository';
 import { getHabitById } from '../repositories/habitRepository';
+import { createGoalManualLog, getGoalManualLogsByGoal } from '../repositories/goalManualLogRepository';
 import { computeGoalProgress, computeGoalsWithProgress } from '../utils/goalProgressUtils';
-import type { Goal, GoalProgress, GoalWithProgress } from '../../models/persistenceTypes';
+import type { Goal, GoalProgress, GoalWithProgress, GoalManualLog } from '../../models/persistenceTypes';
 
 /**
  * Validate that all habit IDs in linkedHabitIds exist in the database.
@@ -510,6 +511,173 @@ export async function updateGoalRoute(req: Request, res: Response): Promise<void
       error: {
         code: 'INTERNAL_SERVER_ERROR',
         message: 'Failed to update goal',
+        details: process.env.NODE_ENV === 'development' ? errorMessage : undefined,
+      },
+    });
+  }
+}
+
+/**
+ * Create a manual log for a goal.
+ * 
+ * POST /api/goals/:id/manual-logs
+ * 
+ * Body: { value: number; loggedAt?: string }
+ * - value: amount added toward the goal (must be > 0)
+ * - loggedAt: ISO 8601 timestamp (optional, defaults to now)
+ * 
+ * Only works for cumulative goals.
+ */
+export async function createGoalManualLogRoute(req: Request, res: Response): Promise<void> {
+  try {
+    const { id } = req.params;
+
+    if (!id) {
+      res.status(400).json({
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'Goal ID is required',
+        },
+      });
+      return;
+    }
+
+    // TODO: Extract userId from authentication token/session
+    const userId = (req as any).userId || 'anonymous-user';
+
+    // Verify goal exists and get it
+    const goal = await getGoalById(id, userId);
+    if (!goal) {
+      res.status(404).json({
+        error: {
+          code: 'NOT_FOUND',
+          message: 'Goal not found',
+        },
+      });
+      return;
+    }
+
+    // Only cumulative goals support manual logging
+    if (goal.type !== 'cumulative') {
+      res.status(400).json({
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'Manual logging is only supported for cumulative goals',
+        },
+      });
+      return;
+    }
+
+    // Validate request body
+    const { value, loggedAt } = req.body;
+
+    if (typeof value !== 'number' || value <= 0) {
+      res.status(400).json({
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'value must be a positive number',
+        },
+      });
+      return;
+    }
+
+    // Validate loggedAt if provided
+    if (loggedAt !== undefined) {
+      if (typeof loggedAt !== 'string') {
+        res.status(400).json({
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: 'loggedAt must be a string (ISO 8601 format)',
+          },
+        });
+        return;
+      }
+      // Validate it's a valid ISO 8601 date
+      const date = new Date(loggedAt);
+      if (isNaN(date.getTime())) {
+        res.status(400).json({
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: 'loggedAt must be a valid ISO 8601 date string',
+          },
+        });
+        return;
+      }
+    }
+
+    const log = await createGoalManualLog(
+      {
+        goalId: id,
+        value,
+        loggedAt: loggedAt || new Date().toISOString(),
+      },
+      userId
+    );
+
+    res.status(201).json({
+      log,
+    });
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error('Error creating goal manual log:', errorMessage);
+    res.status(500).json({
+      error: {
+        code: 'INTERNAL_SERVER_ERROR',
+        message: 'Failed to create goal manual log',
+        details: process.env.NODE_ENV === 'development' ? errorMessage : undefined,
+      },
+    });
+  }
+}
+
+/**
+ * Get all manual logs for a goal.
+ * 
+ * GET /api/goals/:id/manual-logs
+ * 
+ * Returns all manual logs for the goal, sorted by loggedAt ascending.
+ */
+export async function getGoalManualLogsRoute(req: Request, res: Response): Promise<void> {
+  try {
+    const { id } = req.params;
+
+    if (!id) {
+      res.status(400).json({
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'Goal ID is required',
+        },
+      });
+      return;
+    }
+
+    // TODO: Extract userId from authentication token/session
+    const userId = (req as any).userId || 'anonymous-user';
+
+    // Verify goal exists
+    const goal = await getGoalById(id, userId);
+    if (!goal) {
+      res.status(404).json({
+        error: {
+          code: 'NOT_FOUND',
+          message: 'Goal not found',
+        },
+      });
+      return;
+    }
+
+    const logs = await getGoalManualLogsByGoal(id, userId);
+
+    res.status(200).json({
+      logs,
+    });
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error('Error fetching goal manual logs:', errorMessage);
+    res.status(500).json({
+      error: {
+        code: 'INTERNAL_SERVER_ERROR',
+        message: 'Failed to fetch goal manual logs',
         details: process.env.NODE_ENV === 'development' ? errorMessage : undefined,
       },
     });

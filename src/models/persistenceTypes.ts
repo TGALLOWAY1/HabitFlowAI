@@ -461,9 +461,40 @@ export interface GoalProgress {
  * Represents a goal with its computed progress information.
  */
 export interface GoalWithProgress {
-    goal: HabitGoal;
+    goal: Goal;
     progress: GoalProgress;
 }
+
+/**
+ * Goal Manual Log Entity
+ * 
+ * Storage Key: 'goalManualLogs'
+ * Storage Format: GoalManualLog[] (array of GoalManualLog objects)
+ * 
+ * Represents a manual progress entry for a cumulative goal.
+ * Allows users to log progress that isn't tracked through habits.
+ */
+export interface GoalManualLog {
+    /**
+     * Unique identifier, generated via crypto.randomUUID() (frontend) or randomUUID() (backend)
+     * This is the application-level primary key, not MongoDB's _id
+     */
+    id: string;
+
+    /** Foreign key reference to Goal.id */
+    goalId: string;
+
+    /** Amount added toward the goal (must be > 0) */
+    value: number;
+
+    /** ISO 8601 timestamp of when the progress happened (defaults to now if not provided) */
+    loggedAt: string;
+
+    /** ISO 8601 timestamp of when the log was created */
+    createdAt: string;
+}
+
+export type GoalManualLogsStorage = GoalManualLog[];
 
 /**
  * Complete Persistence Schema
@@ -514,5 +545,6 @@ export const MONGO_COLLECTIONS = {
     WELLBEING_LOGS: 'wellbeingLogs',
     ACTIVITIES: 'activities',
     GOALS: 'goals',
+    GOAL_MANUAL_LOGS: 'goalManualLogs',
 } as const;
 
