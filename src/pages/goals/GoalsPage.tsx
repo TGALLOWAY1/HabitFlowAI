@@ -6,9 +6,10 @@ import { Loader2, AlertCircle } from 'lucide-react';
 
 interface GoalsPageProps {
     onCreateGoal?: () => void;
+    onViewGoal?: (goalId: string) => void;
 }
 
-export const GoalsPage: React.FC<GoalsPageProps> = ({ onCreateGoal }) => {
+export const GoalsPage: React.FC<GoalsPageProps> = ({ onCreateGoal, onViewGoal }) => {
     const { data, loading, error } = useGoalsWithProgress();
 
     if (loading) {
@@ -85,8 +86,9 @@ export const GoalsPage: React.FC<GoalsPageProps> = ({ onCreateGoal }) => {
                 <GoalCardStack
                     goals={data}
                     onViewDetails={(goalId) => {
-                        // TODO: Navigate to goal detail page when implemented
-                        console.log('View details for goal:', goalId);
+                        if (onViewGoal) {
+                            onViewGoal(goalId);
+                        }
                     }}
                     onEdit={(goalId) => {
                         // TODO: Navigate to goal edit page when implemented

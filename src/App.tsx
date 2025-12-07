@@ -13,6 +13,7 @@ import { BarChart3, Calendar, ClipboardList, Target } from 'lucide-react';
 import type { Activity, ActivityStep } from './types';
 import { GoalsPage } from './pages/goals/GoalsPage';
 import { CreateGoalFlow } from './pages/goals/CreateGoalFlow';
+import { GoalDetailPage } from './pages/goals/GoalDetailPage';
 
 const HabitTrackerContent: React.FC = () => {
   const { categories, habits, logs, toggleHabit, updateLog } = useHabitStore();
@@ -20,6 +21,7 @@ const HabitTrackerContent: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [view, setView] = useState<'tracker' | 'progress' | 'activities' | 'goals'>('tracker');
   const [showCreateGoal, setShowCreateGoal] = useState(false);
+  const [selectedGoalId, setSelectedGoalId] = useState<string | null>(null);
   const [activityEditorState, setActivityEditorState] = useState<{
     isOpen: boolean;
     mode: 'create' | 'edit';
@@ -92,6 +94,14 @@ const HabitTrackerContent: React.FC = () => {
             setView('goals');
           }}
         />
+      ) : selectedGoalId ? (
+        <GoalDetailPage
+          goalId={selectedGoalId}
+          onBack={() => {
+            setSelectedGoalId(null);
+            setView('goals');
+          }}
+        />
       ) : view === 'tracker' ? (
         <TrackerGrid
           habits={filteredHabits}
@@ -110,7 +120,13 @@ const HabitTrackerContent: React.FC = () => {
           onStart={(activity) => setActivityRunnerState({ isOpen: true, activity })}
         />
       ) : (
-        <GoalsPage onCreateGoal={() => setShowCreateGoal(true)} />
+        <GoalsPage
+          onCreateGoal={() => setShowCreateGoal(true)}
+          onViewGoal={(goalId) => {
+            setSelectedGoalId(goalId);
+            setView('goals');
+          }}
+        />
       )}
 
       <AddHabitModal
