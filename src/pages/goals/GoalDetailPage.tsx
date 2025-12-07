@@ -201,6 +201,93 @@ export const GoalDetailPage: React.FC<GoalDetailPageProps> = ({ goalId, onBack }
                     </div>
                 </div>
 
+                {/* Recent Progress Section */}
+                <div className="bg-neutral-800/50 border border-white/10 rounded-lg p-4 sm:p-6">
+                    <div className="text-neutral-400 text-sm font-medium mb-4">Recent Progress</div>
+                    {(() => {
+                        const lastSevenDays = data.progress.lastSevenDays;
+                        const maxValue = useMemo(() => {
+                            if (lastSevenDays.length === 0) return 1;
+                            const max = Math.max(...lastSevenDays.map(day => day.value));
+                            return max > 0 ? max : 1;
+                        }, [lastSevenDays]);
+
+                        const totalValue = lastSevenDays.reduce((sum, day) => sum + day.value, 0);
+                        const hasAnyProgress = totalValue > 0;
+
+                        if (!hasAnyProgress) {
+                            return (
+                                <div className="text-neutral-500 text-sm text-center py-4">
+                                    No progress in the last 7 days.
+                                </div>
+                            );
+                        }
+
+                        // Format dates for labels
+                        const startDate = lastSevenDays.length > 0
+                            ? (() => {
+                                try {
+                                    return format(parseISO(lastSevenDays[lastSevenDays.length - 1].date), 'MMM d');
+                                } catch {
+                                    return lastSevenDays[lastSevenDays.length - 1].date.split('-').slice(1).join('/');
+                                }
+                            })()
+                            : '';
+                        const endDate = lastSevenDays.length > 0
+                            ? (() => {
+                                try {
+                                    return format(parseISO(lastSevenDays[0].date), 'MMM d');
+                                } catch {
+                                    return lastSevenDays[0].date.split('-').slice(1).join('/');
+                                }
+                            })()
+                            : '';
+
+                        return (
+                            <div className="space-y-3">
+                                <div className="flex items-end gap-1.5 h-24 bg-neutral-900/50 rounded-lg p-3">
+                                    {lastSevenDays.map((day) => {
+                                        const heightPercent = (day.value / maxValue) * 100;
+                                        return (
+                                            <div
+                                                key={day.date}
+                                                className="flex-1 flex flex-col items-center gap-1.5 h-full"
+                                                title={`${day.date}: ${day.value} ${data.goal.unit || ''}`}
+                                            >
+                                                <div className="flex-1 w-full flex items-end">
+                                                    <div
+                                                        className={`w-full rounded-t transition-all min-h-[2px] ${
+                                                            day.hasProgress
+                                                                ? 'bg-emerald-500'
+                                                                : 'bg-neutral-700'
+                                                        }`}
+                                                        style={{ height: `${Math.max(2, heightPercent)}%` }}
+                                                    />
+                                                </div>
+                                                <div className="text-[10px] text-neutral-500 leading-tight">
+                                                    {(() => {
+                                                        try {
+                                                            return format(parseISO(day.date), 'd');
+                                                        } catch {
+                                                            return day.date.split('-')[2] || '';
+                                                        }
+                                                    })()}
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                                {(startDate || endDate) && (
+                                    <div className="flex items-center justify-between text-xs text-neutral-500">
+                                        <span>{startDate}</span>
+                                        <span>{endDate}</span>
+                                    </div>
+                                )}
+                            </div>
+                        );
+                    })()}
+                </div>
+
                 {/* Goal Overview Section */}
                 <div className="bg-neutral-800/50 border border-white/10 rounded-lg p-4 sm:p-6">
                     <div className="text-neutral-400 text-sm font-medium mb-4">Goal Overview</div>
