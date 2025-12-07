@@ -1,9 +1,11 @@
 import React, { useMemo, useState } from 'react';
 import { useGoalDetail } from '../../lib/useGoalDetail';
 import { useHabitStore } from '../../store/HabitContext';
-import { Loader2, AlertCircle, ArrowLeft, Check, Plus } from 'lucide-react';
+import { Loader2, AlertCircle, ArrowLeft, Check, Plus, Edit, Trash2 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { GoalManualProgressModal } from '../../components/goals/GoalManualProgressModal';
+import { DeleteGoalConfirmModal } from '../../components/goals/DeleteGoalConfirmModal';
+import { deleteGoal } from '../../lib/persistenceClient';
 
 interface GoalDetailPageProps {
     goalId: string;
@@ -14,6 +16,9 @@ export const GoalDetailPage: React.FC<GoalDetailPageProps> = ({ goalId, onBack }
     const { data, loading, error, refetch } = useGoalDetail(goalId);
     const { habits } = useHabitStore();
     const [showManualProgressModal, setShowManualProgressModal] = useState(false);
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+    const [deleteError, setDeleteError] = useState<string | null>(null);
+    const [isDeleting, setIsDeleting] = useState(false);
 
     // Create habit lookup map for efficient access
     const habitMap = useMemo(() => {
@@ -38,6 +43,34 @@ export const GoalDetailPage: React.FC<GoalDetailPageProps> = ({ goalId, onBack }
         } catch {
             return deadline;
         }
+    };
+
+    // Handle delete goal
+    const handleDeleteGoal = async () => {
+        setIsDeleting(true);
+        setDeleteError(null);
+        try {
+            await deleteGoal(goalId);
+            // Navigate back to goals list on success
+            if (onBack) {
+                onBack();
+            }
+        } catch (err) {
+            const errorMessage = err instanceof Error ? err.message : 'Failed to delete goal';
+            setDeleteError(errorMessage);
+            console.error('Error deleting goal:', err);
+            throw err; // Re-throw so modal can handle it
+        } finally {
+            setIsDeleting(false);
+        }
+    };
+
+    // Handle edit goal (placeholder for future implementation)
+    const handleEditGoal = () => {
+        // TODO: Navigate to goal edit page when implemented
+        console.log('Edit goal:', goalId);
+        // For now, just show a message
+        alert('Goal editing is not yet implemented. This will navigate to /goals/:id/edit in the future.');
     };
 
     if (loading) {
@@ -95,15 +128,35 @@ export const GoalDetailPage: React.FC<GoalDetailPageProps> = ({ goalId, onBack }
 
     return (
         <div className="w-full max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
-            {onBack && (
-                <button
-                    onClick={onBack}
-                    className="mb-6 flex items-center gap-2 text-neutral-400 hover:text-white transition-colors"
-                >
-                    <ArrowLeft size={18} />
-                    Back to Goals
-                </button>
-            )}
+            <div className="mb-6 flex items-center justify-between">
+                {onBack && (
+                    <button
+                        onClick={onBack}
+                        className="flex items-center gap-2 text-neutral-400 hover:text-white transition-colors"
+                    >
+                        <ArrowLeft size={18} />
+                        Back to Goals
+                    </button>
+                )}
+                {data && (
+                    <div className="flex items-center gap-2 ml-auto">
+                        <button
+                            onClick={handleEditGoal}
+                            className="flex items-center gap-2 px-3 py-1.5 bg-neutral-700 hover:bg-neutral-600 text-white text-sm rounded-lg transition-colors"
+                        >
+                            <Edit size={16} />
+                            Edit Goal
+                        </button>
+                        <button
+                            onClick={() => setShowDeleteConfirm(true)}
+                            className="flex items-center gap-2 px-3 py-1.5 bg-red-500/20 hover:bg-red-500/30 text-red-400 text-sm rounded-lg transition-colors border border-red-500/30"
+                        >
+                            <Trash2 size={16} />
+                            Delete Goal
+                        </button>
+                    </div>
+                )}
+            </div>
 
             <div className="space-y-6">
                 {/* Header Section */}
@@ -386,6 +439,19 @@ export const GoalDetailPage: React.FC<GoalDetailPageProps> = ({ goalId, onBack }
                     goalId={goalId}
                     unit={data.goal.unit}
                     onSuccess={refetch}
+                />
+            )}
+
+            {/* Delete Confirmation Modal */}
+            {data && (
+                <DeleteGoalConfirmModal
+                    isOpen={showDeleteConfirm}
+                    onClose={() => {
+                        setShowDeleteConfirm(false);
+                        setDeleteError(null);
+                    }}
+                    onConfirm={handleDeleteGoal}
+                    goalTitle={data.goal.title}
                 />
             )}
         </div>
