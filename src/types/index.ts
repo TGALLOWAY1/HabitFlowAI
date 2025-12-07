@@ -79,6 +79,14 @@ export type Theme = 'dark' | 'light';
 export type { Goal, GoalProgress, GoalWithProgress, GoalManualLog } from '../models/persistenceTypes';
 
 /**
+ * Completed Goal
+ * 
+ * Type alias for a completed goal (used in Win Archive).
+ * A completed goal is simply a Goal where completedAt is not null.
+ */
+export type CompletedGoal = Goal;
+
+/**
  * Goal Detail
  * 
  * Comprehensive data for a goal detail page, including the goal,

@@ -6,7 +6,7 @@
  */
 
 import type { Category, Habit, DayLog, DailyWellbeing, Goal, GoalWithProgress, GoalManualLog } from '../models/persistenceTypes';
-import type { GoalDetail } from '../types';
+import type { GoalDetail, CompletedGoal } from '../types';
 import type { Activity } from '../types';
 
 import { API_BASE_URL } from './persistenceConfig';
@@ -564,6 +564,22 @@ export async function fetchGoalsWithProgress(): Promise<GoalWithProgress[]> {
 export async function fetchGoalDetail(goalId: string): Promise<GoalDetail> {
   const response = await apiRequest<GoalDetail>(`/goals/${goalId}/detail`);
   return response;
+}
+
+/**
+ * Fetch all completed goals for the Win Archive.
+ * 
+ * GET /api/goals/completed
+ * 
+ * Returns all goals where completedAt is not null, sorted by completedAt descending.
+ * 
+ * @returns Promise<CompletedGoal[]> - Array of completed goals
+ * @throws Error if API request fails
+ */
+export async function fetchCompletedGoals(): Promise<CompletedGoal[]> {
+  const response = await apiRequest<Array<{ goal: Goal }>>('/goals/completed');
+  // Extract goal from each response item
+  return response.map(item => item.goal);
 }
 
 /**
