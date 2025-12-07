@@ -20,7 +20,7 @@ export const GoalCardStack: React.FC<GoalCardStackProps> = ({ goals }) => {
                     key={goalWithProgress.goal.id}
                     goalWithProgress={goalWithProgress}
                     isExpanded={expandedGoalId === goalWithProgress.goal.id}
-                    onToggle={() => handleToggle(goalWithProgress.goal.id)}
+                    onToggleExpand={() => handleToggle(goalWithProgress.goal.id)}
                 />
             ))}
         </div>
