@@ -5,7 +5,8 @@
  * All persistent data is stored in MongoDB via this client.
  */
 
-import type { Category, Habit, DayLog, DailyWellbeing, Goal, GoalWithProgress } from '../models/persistenceTypes';
+import type { Category, Habit, DayLog, DailyWellbeing, Goal, GoalWithProgress, GoalManualLog } from '../models/persistenceTypes';
+import type { GoalDetail } from '../types';
 import type { Activity } from '../types';
 
 import { API_BASE_URL } from './persistenceConfig';
@@ -549,5 +550,19 @@ export async function deleteGoal(id: string): Promise<void> {
 export async function fetchGoalsWithProgress(): Promise<GoalWithProgress[]> {
   const response = await apiRequest<{ goals: GoalWithProgress[] }>('/goals-with-progress');
   return response.goals;
+}
+
+/**
+ * Fetch goal detail with progress, manual logs, and history.
+ * 
+ * GET /api/goals/:id/detail
+ * 
+ * @param goalId - Goal ID to fetch
+ * @returns Promise<GoalDetail> - Goal with progress and manual logs
+ * @throws Error if API request fails or goal not found
+ */
+export async function fetchGoalDetail(goalId: string): Promise<GoalDetail> {
+  const response = await apiRequest<GoalDetail>(`/goals/${goalId}/detail`);
+  return response;
 }
 
