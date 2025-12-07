@@ -66,6 +66,29 @@ export async function getGoalsByUser(userId: string): Promise<Goal[]> {
 }
 
 /**
+ * Get all completed goals for a user, sorted by completedAt descending.
+ * 
+ * @param userId - User ID to filter goals
+ * @returns Array of completed goals, sorted by completedAt descending (most recent first)
+ */
+export async function getCompletedGoalsByUser(userId: string): Promise<Goal[]> {
+
+  const db = await getDb();
+  const collection = db.collection(COLLECTION_NAME);
+
+  const documents = await collection
+    .find({ 
+      userId,
+      completedAt: { $exists: true, $ne: null } // Only goals with completedAt set
+    })
+    .sort({ completedAt: -1 }) // Sort by completedAt descending (most recent first)
+    .toArray();
+
+  // Remove MongoDB _id and userId before returning
+  return documents.map(({ _id, userId: _, ...goal }) => goal as Goal);
+}
+
+/**
  * Get a single goal by ID.
  * 
  * @param id - Goal ID

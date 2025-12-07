@@ -10,6 +10,7 @@ import multer from 'multer';
 import {
   createGoal,
   getGoalsByUser,
+  getCompletedGoalsByUser,
   getGoalById,
   updateGoal,
   deleteGoal,
@@ -138,6 +139,36 @@ export async function getGoals(req: Request, res: Response): Promise<void> {
       error: {
         code: 'INTERNAL_SERVER_ERROR',
         message: 'Failed to fetch goals',
+        details: process.env.NODE_ENV === 'development' ? errorMessage : undefined,
+      },
+    });
+  }
+}
+
+/**
+ * Get all completed goals for the current user.
+ * 
+ * GET /api/goals/completed
+ * 
+ * Returns all goals where completedAt is not null, sorted by completedAt descending.
+ * Used for the Win Archive page.
+ */
+export async function getCompletedGoals(req: Request, res: Response): Promise<void> {
+  try {
+    // TODO: Extract userId from authentication token/session
+    const userId = (req as any).userId || 'anonymous-user';
+
+    const goals = await getCompletedGoalsByUser(userId);
+
+    // Return array of goal objects (progress optional for V1, not included here)
+    res.status(200).json(goals.map(goal => ({ goal })));
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error('Error fetching completed goals:', errorMessage);
+    res.status(500).json({
+      error: {
+        code: 'INTERNAL_SERVER_ERROR',
+        message: 'Failed to fetch completed goals',
         details: process.env.NODE_ENV === 'development' ? errorMessage : undefined,
       },
     });

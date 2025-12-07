@@ -12,7 +12,7 @@ import { getHabits, createHabitRoute, getHabit, updateHabitRoute, deleteHabitRou
 import { getDayLogs, upsertDayLogRoute, getDayLogRoute, deleteDayLogRoute } from './routes/dayLogs';
 import { getWellbeingLogs, upsertWellbeingLogRoute, getWellbeingLogRoute, deleteWellbeingLogRoute } from './routes/wellbeingLogs';
 import { getActivities, getActivity, createActivityRoute, replaceActivityRoute, updateActivityRoute, deleteActivityRoute, submitActivityRoute } from './routes/activities';
-import { getGoals, getGoal, getGoalProgress, getGoalsWithProgress, createGoalRoute, updateGoalRoute, deleteGoalRoute, createGoalManualLogRoute, getGoalManualLogsRoute, getGoalDetailRoute, uploadGoalBadgeRoute, uploadBadgeMiddleware } from './routes/goals';
+import { getGoals, getGoal, getGoalProgress, getGoalsWithProgress, getCompletedGoals, createGoalRoute, updateGoalRoute, deleteGoalRoute, createGoalManualLogRoute, getGoalManualLogsRoute, getGoalDetailRoute, uploadGoalBadgeRoute, uploadBadgeMiddleware } from './routes/goals';
 import { closeConnection } from './lib/mongoClient';
 
 // Assert MongoDB is enabled at startup (fail fast if misconfigured)
@@ -91,6 +91,7 @@ app.post('/api/activities/:id/submit', submitActivityRoute);
 
 // Goal routes
 app.get('/api/goals', getGoals);
+app.get('/api/goals/completed', getCompletedGoals);
 app.get('/api/goals-with-progress', getGoalsWithProgress);
 app.post('/api/goals', createGoalRoute);
 app.get('/api/goals/:id/progress', getGoalProgress);
