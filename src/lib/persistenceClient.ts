@@ -566,3 +566,27 @@ export async function fetchGoalDetail(goalId: string): Promise<GoalDetail> {
   return response;
 }
 
+/**
+ * Create a manual log for a goal.
+ * 
+ * POST /api/goals/:id/manual-logs
+ * 
+ * @param goalId - Goal ID
+ * @param data - Manual log data: { value: number; loggedAt?: string }
+ * @returns Promise<GoalManualLog> - Created manual log
+ * @throws Error if API request fails
+ */
+export async function createGoalManualLog(
+  goalId: string,
+  data: { value: number; loggedAt?: string }
+): Promise<GoalManualLog> {
+  const response = await apiRequest<{ log: GoalManualLog }>(
+    `/goals/${goalId}/manual-logs`,
+    {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }
+  );
+  return response.log;
+}
+

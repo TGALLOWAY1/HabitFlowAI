@@ -1,8 +1,9 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useGoalDetail } from '../../lib/useGoalDetail';
 import { useHabitStore } from '../../store/HabitContext';
-import { Loader2, AlertCircle, ArrowLeft, Check } from 'lucide-react';
+import { Loader2, AlertCircle, ArrowLeft, Check, Plus } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
+import { GoalManualProgressModal } from '../../components/goals/GoalManualProgressModal';
 
 interface GoalDetailPageProps {
     goalId: string;
@@ -10,8 +11,9 @@ interface GoalDetailPageProps {
 }
 
 export const GoalDetailPage: React.FC<GoalDetailPageProps> = ({ goalId, onBack }) => {
-    const { data, loading, error } = useGoalDetail(goalId);
+    const { data, loading, error, refetch } = useGoalDetail(goalId);
     const { habits } = useHabitStore();
+    const [showManualProgressModal, setShowManualProgressModal] = useState(false);
 
     // Create habit lookup map for efficient access
     const habitMap = useMemo(() => {
@@ -201,6 +203,19 @@ export const GoalDetailPage: React.FC<GoalDetailPageProps> = ({ goalId, onBack }
                     </div>
                 </div>
 
+                {/* Manual Progress Button (only for cumulative goals) */}
+                {data.goal.type === 'cumulative' && (
+                    <div className="flex justify-end">
+                        <button
+                            onClick={() => setShowManualProgressModal(true)}
+                            className="flex items-center gap-2 px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-neutral-900 font-medium rounded-lg transition-colors"
+                        >
+                            <Plus size={18} />
+                            Log progress manually
+                        </button>
+                    </div>
+                )}
+
                 {/* Recent Progress Section */}
                 <div className="bg-neutral-800/50 border border-white/10 rounded-lg p-4 sm:p-6">
                     <div className="text-neutral-400 text-sm font-medium mb-4">Recent Progress</div>
@@ -362,6 +377,17 @@ export const GoalDetailPage: React.FC<GoalDetailPageProps> = ({ goalId, onBack }
                     )}
                 </div>
             </div>
+
+            {/* Manual Progress Modal */}
+            {data && (
+                <GoalManualProgressModal
+                    isOpen={showManualProgressModal}
+                    onClose={() => setShowManualProgressModal(false)}
+                    goalId={goalId}
+                    unit={data.goal.unit}
+                    onSuccess={refetch}
+                />
+            )}
         </div>
     );
 };
