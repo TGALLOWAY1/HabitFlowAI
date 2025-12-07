@@ -1,8 +1,9 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useRef } from 'react';
 import { ChevronDown, ChevronRight, AlertTriangle, Check, ExternalLink, Edit, Plus } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { useHabitStore } from '../../store/HabitContext';
 import type { GoalWithProgress } from '../../models/persistenceTypes';
+import { InactivityCoachingPopup } from './InactivityCoachingPopup';
 
 interface GoalCardProps {
     goalWithProgress: GoalWithProgress;
@@ -23,6 +24,8 @@ export const GoalCard: React.FC<GoalCardProps> = ({
 }) => {
     const { goal, progress } = goalWithProgress;
     const { habits } = useHabitStore();
+    const [showCoachingPopup, setShowCoachingPopup] = useState(false);
+    const warningBadgeRef = useRef<HTMLDivElement>(null);
 
     // Create habit lookup map for efficient access
     const habitMap = useMemo(() => {
@@ -37,6 +40,23 @@ export const GoalCard: React.FC<GoalCardProps> = ({
             .map(habitId => habitMap.get(habitId))
             .filter((habit): habit is NonNullable<typeof habit> => habit !== undefined);
     }, [goal.linkedHabitIds, habitMap]);
+
+    // Calculate popup position based on badge position
+    const getPopupPosition = (): { top: number; left: number } => {
+        if (warningBadgeRef.current) {
+            const rect = warningBadgeRef.current.getBoundingClientRect();
+            return {
+                top: rect.bottom + 8,
+                left: rect.left,
+            };
+        }
+        return { top: 0, left: 0 };
+    };
+
+    const handleWarningClick = (e: React.MouseEvent) => {
+        e.stopPropagation(); // Prevent card expansion
+        setShowCoachingPopup(true);
+    };
 
     // Calculate milestone values
     const milestones = useMemo(() => {
@@ -139,7 +159,11 @@ export const GoalCard: React.FC<GoalCardProps> = ({
 
                                 {/* Inactivity Warning Badge */}
                                 {progress.inactivityWarning && (
-                                    <div className="mt-2 flex items-center gap-1.5 px-2 py-1 bg-amber-500/10 border border-amber-500/30 rounded text-xs text-amber-400">
+                                    <div
+                                        ref={warningBadgeRef}
+                                        onClick={handleWarningClick}
+                                        className="mt-2 flex items-center gap-1.5 px-2 py-1 bg-amber-500/10 border border-amber-500/30 rounded text-xs text-amber-400 cursor-pointer hover:bg-amber-500/20 transition-colors"
+                                    >
                                         <AlertTriangle size={12} />
                                         <span>No progress 4 of last 7 days</span>
                                     </div>
@@ -330,6 +354,15 @@ export const GoalCard: React.FC<GoalCardProps> = ({
                     </div>
                 </div>
             )}
+
+            {/* Inactivity Coaching Popup */}
+            <InactivityCoachingPopup
+                isOpen={showCoachingPopup}
+                onClose={() => setShowCoachingPopup(false)}
+                goal={goal}
+                linkedHabits={linkedHabits}
+                position={getPopupPosition()}
+            />
         </div>
     );
 };
