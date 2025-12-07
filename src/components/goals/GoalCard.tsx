@@ -1,20 +1,63 @@
-import React from 'react';
-import { ChevronDown, ChevronRight, AlertTriangle } from 'lucide-react';
+import React, { useMemo } from 'react';
+import { ChevronDown, ChevronRight, AlertTriangle, Check, ExternalLink, Edit, Plus } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
+import { useHabitStore } from '../../store/HabitContext';
 import type { GoalWithProgress } from '../../models/persistenceTypes';
 
 interface GoalCardProps {
     goalWithProgress: GoalWithProgress;
     isExpanded: boolean;
     onToggleExpand: () => void;
+    onViewDetails?: (goalId: string) => void;
+    onEdit?: (goalId: string) => void;
+    onAddManualProgress?: (goalId: string) => void;
 }
 
 export const GoalCard: React.FC<GoalCardProps> = ({
     goalWithProgress,
     isExpanded,
     onToggleExpand,
+    onViewDetails,
+    onEdit,
+    onAddManualProgress,
 }) => {
     const { goal, progress } = goalWithProgress;
+    const { habits } = useHabitStore();
+
+    // Create habit lookup map for efficient access
+    const habitMap = useMemo(() => {
+        const map = new Map<string, typeof habits[0]>();
+        habits.forEach(habit => map.set(habit.id, habit));
+        return map;
+    }, [habits]);
+
+    // Get linked habits
+    const linkedHabits = useMemo(() => {
+        return goal.linkedHabitIds
+            .map(habitId => habitMap.get(habitId))
+            .filter((habit): habit is NonNullable<typeof habit> => habit !== undefined);
+    }, [goal.linkedHabitIds, habitMap]);
+
+    // Calculate milestone values
+    const milestones = useMemo(() => {
+        const milestones = [
+            { percent: 25, label: 'Quarter', value: goal.targetValue * 0.25 },
+            { percent: 50, label: 'Halfway', value: goal.targetValue * 0.5 },
+            { percent: 75, label: 'Almost there', value: goal.targetValue * 0.75 },
+            { percent: 100, label: 'Goal!', value: goal.targetValue },
+        ];
+        return milestones.map(milestone => ({
+            ...milestone,
+            reached: progress.currentValue >= milestone.value,
+        }));
+    }, [goal.targetValue, progress.currentValue]);
+
+    // Calculate max value for sparkline scaling
+    const maxSparklineValue = useMemo(() => {
+        if (progress.lastSevenDays.length === 0) return 1;
+        const max = Math.max(...progress.lastSevenDays.map(day => day.value));
+        return max > 0 ? max : 1;
+    }, [progress.lastSevenDays]);
 
     // Format deadline for display
     const formatDeadline = (deadline: string): string => {
@@ -125,46 +168,162 @@ export const GoalCard: React.FC<GoalCardProps> = ({
             </button>
 
             {isExpanded && (
-                <div className="px-4 pb-4 pt-2 border-t border-white/5 animate-in fade-in slide-in-from-top-2 duration-200">
-                    <div className="space-y-4">
-                        {/* Goal Details */}
-                        <div className="grid grid-cols-2 gap-4 text-sm">
-                            <div>
-                                <div className="text-neutral-400 mb-1">Type</div>
-                                <div className="text-white capitalize">{goal.type}</div>
-                            </div>
-                            {goal.deadline && (
-                                <div>
-                                    <div className="text-neutral-400 mb-1">Deadline</div>
-                                    <div className="text-white">{goal.deadline}</div>
+                <div className="px-4 pb-4 pt-4 border-t border-white/5 bg-neutral-900/30 animate-in fade-in slide-in-from-top-2 duration-200">
+                    <div className="space-y-6">
+                        {/* Linked Habits List */}
+                        <div>
+                            <div className="text-neutral-400 text-sm font-medium mb-2">Linked Habits</div>
+                            {linkedHabits.length === 0 ? (
+                                <div className="text-neutral-500 text-sm">No habits linked</div>
+                            ) : (
+                                <div className="space-y-2">
+                                    {linkedHabits.map((habit) => (
+                                        <div
+                                            key={habit.id}
+                                            className="flex items-center gap-3 p-2 bg-neutral-800/50 rounded-lg"
+                                        >
+                                            {/* Habit Icon Placeholder */}
+                                            {habit.goal.unit && (
+                                                <div className="w-8 h-8 bg-emerald-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
+                                                    <span className="text-emerald-400 text-xs font-medium">
+                                                        {habit.goal.unit.charAt(0).toUpperCase()}
+                                                    </span>
+                                                </div>
+                                            )}
+                                            <div className="flex-1 min-w-0">
+                                                <div className="text-white text-sm font-medium truncate">
+                                                    {habit.name}
+                                                </div>
+                                                {habit.goal.unit && (
+                                                    <div className="text-neutral-400 text-xs">
+                                                        {habit.goal.type === 'number' ? 'Quantified' : 'Binary'} • {habit.goal.unit}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    ))}
                                 </div>
                             )}
                         </div>
 
-                        {/* Progress Details */}
+                        {/* Milestone List */}
                         <div>
-                            <div className="text-neutral-400 text-sm mb-2">Last 7 Days</div>
-                            <div className="flex gap-1">
-                                {progress.lastSevenDays.map((day, index) => (
-                                    <div
-                                        key={day.date}
-                                        className={`flex-1 h-8 rounded flex items-center justify-center text-xs transition-colors ${
-                                            day.hasProgress
-                                                ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                                                : 'bg-neutral-700/50 text-neutral-500 border border-neutral-600/30'
-                                        }`}
-                                        title={`${day.date}: ${day.value} ${goal.unit || ''}`}
-                                    >
-                                        {day.hasProgress ? '✓' : '—'}
-                                    </div>
-                                ))}
+                            <div className="text-neutral-400 text-sm font-medium mb-2">Milestones</div>
+                            <div className="space-y-2">
+                                {milestones.map((milestone) => {
+                                    const milestoneValue = goal.type === 'cumulative'
+                                        ? `${milestone.value.toFixed(1)} ${goal.unit || ''} of ${goal.targetValue} ${goal.unit || ''}`
+                                        : `${milestone.value.toFixed(0)} days of ${goal.targetValue} days`;
+                                    
+                                    return (
+                                        <div
+                                            key={milestone.percent}
+                                            className={`flex items-center justify-between p-2 rounded-lg transition-colors ${
+                                                milestone.reached
+                                                    ? 'bg-emerald-500/10 border border-emerald-500/30'
+                                                    : 'bg-neutral-800/50 border border-white/5'
+                                            }`}
+                                        >
+                                            <div className="flex items-center gap-3">
+                                                {milestone.reached ? (
+                                                    <Check className="text-emerald-400 flex-shrink-0" size={16} />
+                                                ) : (
+                                                    <div className="w-4 h-4 rounded-full border-2 border-neutral-600 flex-shrink-0" />
+                                                )}
+                                                <div>
+                                                    <div className="text-white text-sm font-medium">
+                                                        {milestone.percent}% • {milestone.label}
+                                                    </div>
+                                                    <div className="text-neutral-400 text-xs">
+                                                        {milestoneValue}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
                             </div>
+                        </div>
+
+                        {/* Sparkline Placeholder */}
+                        <div>
+                            <div className="text-neutral-400 text-sm font-medium mb-2">Last 7 Days</div>
+                            <div className="flex items-end gap-1 h-16 bg-neutral-800/50 rounded-lg p-2">
+                                {progress.lastSevenDays.map((day) => {
+                                    const heightPercent = (day.value / maxSparklineValue) * 100;
+                                    return (
+                                        <div
+                                            key={day.date}
+                                            className="flex-1 flex flex-col items-center gap-1"
+                                            title={`${day.date}: ${day.value} ${goal.unit || ''}`}
+                                        >
+                                            <div
+                                                className={`w-full rounded-t transition-all ${
+                                                    day.hasProgress
+                                                        ? 'bg-emerald-500'
+                                                        : 'bg-neutral-600'
+                                                }`}
+                                                style={{ height: `${Math.max(4, heightPercent)}%` }}
+                                            />
+                                            <div className="text-[8px] text-neutral-500 leading-tight">
+                                                {(() => {
+                                                    try {
+                                                        return format(parseISO(day.date), 'd');
+                                                    } catch {
+                                                        return day.date.split('-')[2] || '';
+                                                    }
+                                                })()}
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+
+                        {/* Actions */}
+                        <div className="flex flex-wrap gap-2 pt-2 border-t border-white/5">
+                            {goal.type === 'cumulative' && onAddManualProgress && (
+                                <button
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        onAddManualProgress(goal.id);
+                                    }}
+                                    className="flex items-center gap-2 px-3 py-1.5 bg-neutral-700 hover:bg-neutral-600 text-white text-sm rounded-lg transition-colors"
+                                >
+                                    <Plus size={14} />
+                                    Add manual progress
+                                </button>
+                            )}
+                            {onViewDetails && (
+                                <button
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        onViewDetails(goal.id);
+                                    }}
+                                    className="flex items-center gap-2 px-3 py-1.5 bg-neutral-700 hover:bg-neutral-600 text-white text-sm rounded-lg transition-colors"
+                                >
+                                    <ExternalLink size={14} />
+                                    View full goal details
+                                </button>
+                            )}
+                            {onEdit && (
+                                <button
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        onEdit(goal.id);
+                                    }}
+                                    className="flex items-center gap-2 px-3 py-1.5 bg-neutral-700 hover:bg-neutral-600 text-white text-sm rounded-lg transition-colors"
+                                >
+                                    <Edit size={14} />
+                                    Edit goal
+                                </button>
+                            )}
                         </div>
 
                         {/* Notes */}
                         {goal.notes && (
-                            <div>
-                                <div className="text-neutral-400 text-sm mb-1">Notes</div>
+                            <div className="pt-2 border-t border-white/5">
+                                <div className="text-neutral-400 text-sm font-medium mb-1">Notes</div>
                                 <div className="text-white text-sm">{goal.notes}</div>
                             </div>
                         )}

@@ -72,7 +72,21 @@ export const GoalsPage: React.FC<GoalsPageProps> = ({ onCreateGoal }) => {
                     )}
                 </div>
             ) : (
-                <GoalCardStack goals={data} />
+                <GoalCardStack
+                    goals={data}
+                    onViewDetails={(goalId) => {
+                        // TODO: Navigate to goal detail page when implemented
+                        console.log('View details for goal:', goalId);
+                    }}
+                    onEdit={(goalId) => {
+                        // TODO: Navigate to goal edit page when implemented
+                        console.log('Edit goal:', goalId);
+                    }}
+                    onAddManualProgress={(goalId) => {
+                        // TODO: Open manual progress input modal when implemented
+                        console.log('Add manual progress for goal:', goalId);
+                    }}
+                />
             )}
         </div>
     );

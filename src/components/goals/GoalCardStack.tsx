@@ -4,9 +4,17 @@ import type { GoalWithProgress } from '../../models/persistenceTypes';
 
 interface GoalCardStackProps {
     goals: GoalWithProgress[];
+    onViewDetails?: (goalId: string) => void;
+    onEdit?: (goalId: string) => void;
+    onAddManualProgress?: (goalId: string) => void;
 }
 
-export const GoalCardStack: React.FC<GoalCardStackProps> = ({ goals }) => {
+export const GoalCardStack: React.FC<GoalCardStackProps> = ({
+    goals,
+    onViewDetails,
+    onEdit,
+    onAddManualProgress,
+}) => {
     const [expandedGoalId, setExpandedGoalId] = useState<string | null>(null);
 
     const handleToggle = (goalId: string) => {
@@ -21,6 +29,9 @@ export const GoalCardStack: React.FC<GoalCardStackProps> = ({ goals }) => {
                     goalWithProgress={goalWithProgress}
                     isExpanded={expandedGoalId === goalWithProgress.goal.id}
                     onToggleExpand={() => handleToggle(goalWithProgress.goal.id)}
+                    onViewDetails={onViewDetails}
+                    onEdit={onEdit}
+                    onAddManualProgress={onAddManualProgress}
                 />
             ))}
         </div>
