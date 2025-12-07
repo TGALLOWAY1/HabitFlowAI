@@ -1,6 +1,8 @@
 import React, { useMemo } from 'react';
 import { useGoalDetail } from '../../lib/useGoalDetail';
+import { useHabitStore } from '../../store/HabitContext';
 import { Loader2, AlertCircle, ArrowLeft, Check } from 'lucide-react';
+import { format, parseISO } from 'date-fns';
 
 interface GoalDetailPageProps {
     goalId: string;
@@ -9,6 +11,32 @@ interface GoalDetailPageProps {
 
 export const GoalDetailPage: React.FC<GoalDetailPageProps> = ({ goalId, onBack }) => {
     const { data, loading, error } = useGoalDetail(goalId);
+    const { habits } = useHabitStore();
+
+    // Create habit lookup map for efficient access
+    const habitMap = useMemo(() => {
+        const map = new Map<string, typeof habits[0]>();
+        habits.forEach(habit => map.set(habit.id, habit));
+        return map;
+    }, [habits]);
+
+    // Get linked habits
+    const linkedHabits = useMemo(() => {
+        if (!data) return [];
+        return data.goal.linkedHabitIds
+            .map(habitId => habitMap.get(habitId))
+            .filter((habit): habit is NonNullable<typeof habit> => habit !== undefined);
+    }, [data, habitMap]);
+
+    // Format deadline for display
+    const formatDeadline = (deadline: string): string => {
+        try {
+            const date = parseISO(deadline);
+            return format(date, 'MMM d, yyyy');
+        } catch {
+            return deadline;
+        }
+    };
 
     if (loading) {
         return (
@@ -171,6 +199,80 @@ export const GoalDetailPage: React.FC<GoalDetailPageProps> = ({ goalId, onBack }
                             })}
                         </div>
                     </div>
+                </div>
+
+                {/* Goal Overview Section */}
+                <div className="bg-neutral-800/50 border border-white/10 rounded-lg p-4 sm:p-6">
+                    <div className="text-neutral-400 text-sm font-medium mb-4">Goal Overview</div>
+                    <div className="space-y-4">
+                        {/* Deadline */}
+                        {data.goal.deadline && (
+                            <div>
+                                <div className="text-neutral-400 text-xs mb-1">Deadline</div>
+                                <div className="flex items-center gap-2">
+                                    <span className="px-3 py-1.5 bg-neutral-700/50 text-neutral-300 rounded text-sm font-medium">
+                                        {formatDeadline(data.goal.deadline)}
+                                    </span>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Notes */}
+                        {data.goal.notes && (
+                            <div>
+                                <div className="text-neutral-400 text-xs mb-2">Notes</div>
+                                <div className="bg-neutral-900/50 border border-white/5 rounded-lg p-3 text-white text-sm leading-relaxed">
+                                    {data.goal.notes}
+                                </div>
+                            </div>
+                        )}
+
+                        {!data.goal.deadline && !data.goal.notes && (
+                            <div className="text-neutral-500 text-sm">No additional details</div>
+                        )}
+                    </div>
+                </div>
+
+                {/* Linked Habits Section */}
+                <div className="bg-neutral-800/50 border border-white/10 rounded-lg p-4 sm:p-6">
+                    <div className="text-neutral-400 text-sm font-medium mb-4">Linked Habits</div>
+                    {linkedHabits.length === 0 ? (
+                        <div className="text-neutral-500 text-sm">
+                            No habits linked — this goal relies on manual progress only.
+                        </div>
+                    ) : (
+                        <div className="space-y-2">
+                            {linkedHabits.map((habit) => (
+                                <div
+                                    key={habit.id}
+                                    className="flex items-center gap-3 p-3 bg-neutral-900/50 rounded-lg hover:bg-neutral-900/70 transition-colors cursor-pointer"
+                                    onClick={() => {
+                                        // TODO: Navigate to habit detail page when implemented
+                                        // For now, this is a placeholder for future navigation
+                                        console.log('Navigate to habit:', habit.id);
+                                    }}
+                                >
+                                    {/* Habit Icon Placeholder */}
+                                    {habit.goal.unit && (
+                                        <div className="w-10 h-10 bg-emerald-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
+                                            <span className="text-emerald-400 text-sm font-medium">
+                                                {habit.goal.unit.charAt(0).toUpperCase()}
+                                            </span>
+                                        </div>
+                                    )}
+                                    <div className="flex-1 min-w-0">
+                                        <div className="text-white text-sm font-medium truncate">
+                                            {habit.name}
+                                        </div>
+                                        <div className="text-neutral-400 text-xs mt-0.5">
+                                            {habit.goal.type === 'number' ? 'Quantified' : 'Binary'}
+                                            {habit.goal.unit && ` • ${habit.goal.unit}`}
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
                 </div>
             </div>
         </div>
