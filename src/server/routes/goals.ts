@@ -6,6 +6,7 @@
  */
 
 import type { Request, Response } from 'express';
+import multer from 'multer';
 import {
   createGoal,
   getGoalsByUser,
@@ -17,7 +18,24 @@ import {
 import { getHabitById } from '../repositories/habitRepository';
 import { createGoalManualLog, getGoalManualLogsByGoal } from '../repositories/goalManualLogRepository';
 import { computeGoalProgress, computeGoalsWithProgress } from '../utils/goalProgressUtils';
+import { saveUploadedFile } from '../utils/fileStorage';
 import type { Goal, GoalProgress, GoalWithProgress, GoalManualLog } from '../../models/persistenceTypes';
+
+// Configure multer for in-memory file storage
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5MB limit
+  },
+  fileFilter: (req, file, cb) => {
+    // Accept only image files
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only image files are allowed'));
+    }
+  },
+});
 
 /**
  * Validate that all habit IDs in linkedHabitIds exist in the database.
@@ -825,6 +843,109 @@ function getDateStringForHistory(daysAgo: number): string {
   const day = String(date.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
 }
+
+/**
+ * Upload badge image for a completed goal.
+ * 
+ * POST /api/goals/:id/badge
+ * 
+ * Accepts multipart/form-data with an 'image' field.
+ * Only allowed for completed goals (goal.completedAt != null).
+ * 
+ * Returns: { success: true, badgeImageUrl: string }
+ */
+export async function uploadGoalBadgeRoute(req: Request, res: Response): Promise<void> {
+  try {
+    const { id } = req.params;
+
+    if (!id) {
+      res.status(400).json({
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'Goal ID is required',
+        },
+      });
+      return;
+    }
+
+    // TODO: Extract userId from authentication token/session
+    const userId = (req as any).userId || 'anonymous-user';
+
+    // Verify goal exists
+    const goal = await getGoalById(id, userId);
+    if (!goal) {
+      res.status(404).json({
+        error: {
+          code: 'NOT_FOUND',
+          message: 'Goal not found',
+        },
+      });
+      return;
+    }
+
+    // Validate that goal is completed
+    if (!goal.completedAt) {
+      res.status(400).json({
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'Goal must be completed before uploading a badge.',
+        },
+      });
+      return;
+    }
+
+    // Check if file was uploaded
+    const file = (req as any).file;
+    if (!file) {
+      res.status(400).json({
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'Image file is required',
+        },
+      });
+      return;
+    }
+
+    // Save file and get URL
+    const badgeImageUrl = saveUploadedFile(file, 'badges');
+
+    // Update goal with badge URL
+    const updatedGoal = await updateGoal(id, userId, {
+      badgeImageUrl,
+    });
+
+    if (!updatedGoal) {
+      res.status(500).json({
+        error: {
+          code: 'INTERNAL_SERVER_ERROR',
+          message: 'Failed to update goal with badge URL',
+        },
+      });
+      return;
+    }
+
+    res.status(200).json({
+      success: true,
+      badgeImageUrl,
+    });
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error('Error uploading goal badge:', errorMessage);
+    res.status(500).json({
+      error: {
+        code: 'INTERNAL_SERVER_ERROR',
+        message: 'Failed to upload badge',
+        details: process.env.NODE_ENV === 'development' ? errorMessage : undefined,
+      },
+    });
+  }
+}
+
+/**
+ * Multer middleware for badge upload.
+ * Single file upload with field name 'image'.
+ */
+export const uploadBadgeMiddleware = upload.single('image');
 
 /**
  * Get goal detail with progress, manual logs, and history.

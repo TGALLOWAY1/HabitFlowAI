@@ -12,7 +12,7 @@ import { getHabits, createHabitRoute, getHabit, updateHabitRoute, deleteHabitRou
 import { getDayLogs, upsertDayLogRoute, getDayLogRoute, deleteDayLogRoute } from './routes/dayLogs';
 import { getWellbeingLogs, upsertWellbeingLogRoute, getWellbeingLogRoute, deleteWellbeingLogRoute } from './routes/wellbeingLogs';
 import { getActivities, getActivity, createActivityRoute, replaceActivityRoute, updateActivityRoute, deleteActivityRoute, submitActivityRoute } from './routes/activities';
-import { getGoals, getGoal, getGoalProgress, getGoalsWithProgress, createGoalRoute, updateGoalRoute, deleteGoalRoute, createGoalManualLogRoute, getGoalManualLogsRoute, getGoalDetailRoute } from './routes/goals';
+import { getGoals, getGoal, getGoalProgress, getGoalsWithProgress, createGoalRoute, updateGoalRoute, deleteGoalRoute, createGoalManualLogRoute, getGoalManualLogsRoute, getGoalDetailRoute, uploadGoalBadgeRoute, uploadBadgeMiddleware } from './routes/goals';
 import { closeConnection } from './lib/mongoClient';
 
 // Assert MongoDB is enabled at startup (fail fast if misconfigured)
@@ -23,6 +23,9 @@ const PORT = process.env.PORT || 3000;
 
 // Middleware
 app.use(express.json());
+
+// Serve static files from public directory (for uploaded images)
+app.use('/uploads', express.static('public/uploads'));
 
 // CORS middleware (for development)
 app.use((req, res, next) => {
@@ -92,6 +95,8 @@ app.get('/api/goals-with-progress', getGoalsWithProgress);
 app.post('/api/goals', createGoalRoute);
 app.get('/api/goals/:id/progress', getGoalProgress);
 app.get('/api/goals/:id/detail', getGoalDetailRoute);
+// Badge upload route (must come before /goals/:id to match first)
+app.post('/api/goals/:id/badge', uploadBadgeMiddleware, uploadGoalBadgeRoute);
 // Manual log routes (must come before /goals/:id to match first)
 app.post('/api/goals/:id/manual-logs', createGoalManualLogRoute);
 app.get('/api/goals/:id/manual-logs', getGoalManualLogsRoute);
