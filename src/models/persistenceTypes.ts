@@ -372,6 +372,63 @@ export type WellbeingLogsStorage = Record<string, DailyWellbeing>;
 export type ActivitiesStorage = Activity[];
 
 /**
+ * Goal Entity
+ * 
+ * Storage Key: 'goals'
+ * Storage Format: Goal[] (array of Goal objects)
+ * 
+ * Represents a user-defined goal that can be linked to one or more habits.
+ * Goals can be cumulative (total value over time) or frequency-based (recurring).
+ */
+export interface Goal {
+    /** 
+     * Unique identifier, generated via crypto.randomUUID() (frontend) or randomUUID() (backend)
+     * This is the application-level primary key, not MongoDB's _id
+     */
+    id: string;
+    
+    /** Display title/name of the goal */
+    title: string;
+    
+    /** 
+     * Type of goal: 'cumulative' (total value over time) or 'frequency' (recurring)
+     * - 'cumulative': Track total progress toward a target (e.g., "Run 100 miles total")
+     * - 'frequency': Track how often a goal is met (e.g., "Exercise 3 times per week")
+     */
+    type: 'cumulative' | 'frequency';
+    
+    /** Target value to achieve (e.g., 100 for "100 miles", 3 for "3 times per week") */
+    targetValue: number;
+    
+    /** Optional unit label for display (e.g., 'miles', 'times', 'hours') */
+    unit?: string;
+    
+    /** 
+     * Array of habit IDs that contribute to this goal
+     * These should reference valid Habit.id values
+     */
+    linkedHabitIds: string[];
+    
+    /** Optional deadline date in ISO 8601 format (YYYY-MM-DD) */
+    deadline?: string;
+    
+    /** ISO 8601 timestamp of when the goal was created */
+    createdAt: string;
+    
+    /** Optional ISO 8601 timestamp of when the goal was completed */
+    completedAt?: string;
+    
+    /** Optional free-text notes about the goal */
+    notes?: string;
+    
+    /** Optional URL to a badge/image associated with the goal */
+    badgeImageUrl?: string;
+}
+
+/** Goals stored as an array */
+export type GoalsStorage = Goal[];
+
+/**
  * Complete Persistence Schema
  * 
  * Represents all persistent data in the application.
@@ -401,6 +458,9 @@ export interface PersistenceSchema {
     
     /** Array of all activities */
     activities: ActivitiesStorage;
+    
+    /** Array of all goals */
+    goals: GoalsStorage;
 }
 
 
@@ -416,5 +476,6 @@ export const MONGO_COLLECTIONS = {
     DAY_LOGS: 'dayLogs',
     WELLBEING_LOGS: 'wellbeingLogs',
     ACTIVITIES: 'activities',
+    GOALS: 'goals',
 } as const;
 
