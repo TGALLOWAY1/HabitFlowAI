@@ -44,17 +44,21 @@ export interface Category {
  * Embedded within Habit entity.
  * Defines the tracking goal for a habit.
  */
-export interface Goal {
+/**
+ * Habit Goal (for Habit entity)
+ * This represents the goal/target for a single habit, not to be confused with the Goal entity.
+ */
+export interface HabitGoal {
     /** Type of goal: boolean (yes/no) or number (tracked value) */
     type: 'boolean' | 'number';
-    
-    /** 
+
+    /**
      * Target value (required for 'number' type, optional for 'boolean')
      * Examples: 8 (glasses of water), 4 (hours of deep work)
      */
     target?: number;
-    
-    /** 
+
+    /**
      * Unit label for display (e.g., 'glasses', 'hours', 'steps')
      * Only used when type is 'number'
      */
@@ -99,7 +103,7 @@ export interface Habit {
     description?: string;
     
     /** Goal configuration for this habit */
-    goal: Goal;
+    goal: HabitGoal;
     
     /** Whether the habit is archived (hidden from active tracking) */
     archived: boolean;
@@ -372,6 +376,127 @@ export type WellbeingLogsStorage = Record<string, DailyWellbeing>;
 export type ActivitiesStorage = Activity[];
 
 /**
+ * Goal Entity
+ * 
+ * Storage Key: 'goals'
+ * Storage Format: Goal[] (array of Goal objects)
+ * 
+ * Represents a user-defined goal that can be linked to one or more habits.
+ * Goals can be cumulative (total value over time) or frequency-based (recurring).
+ */
+export interface Goal {
+    /** 
+     * Unique identifier, generated via crypto.randomUUID() (frontend) or randomUUID() (backend)
+     * This is the application-level primary key, not MongoDB's _id
+     */
+    id: string;
+    
+    /** Display title/name of the goal */
+    title: string;
+    
+    /** 
+     * Type of goal: 'cumulative' (total value over time) or 'frequency' (recurring)
+     * - 'cumulative': Track total progress toward a target (e.g., "Run 100 miles total")
+     * - 'frequency': Track how often a goal is met (e.g., "Exercise 3 times per week")
+     */
+    type: 'cumulative' | 'frequency';
+    
+    /** Target value to achieve (e.g., 100 for "100 miles", 3 for "3 times per week") */
+    targetValue: number;
+    
+    /** Optional unit label for display (e.g., 'miles', 'times', 'hours') */
+    unit?: string;
+    
+    /** 
+     * Array of habit IDs that contribute to this goal
+     * These should reference valid Habit.id values
+     */
+    linkedHabitIds: string[];
+    
+    /** Optional deadline date in ISO 8601 format (YYYY-MM-DD) */
+    deadline?: string;
+    
+    /** ISO 8601 timestamp of when the goal was created */
+    createdAt: string;
+    
+    /** Optional ISO 8601 timestamp of when the goal was completed */
+    completedAt?: string;
+    
+    /** Optional free-text notes about the goal */
+    notes?: string;
+    
+    /** Optional URL to a badge/image associated with the goal */
+    badgeImageUrl?: string;
+}
+
+/** Goals stored as an array */
+export type GoalsStorage = Goal[];
+
+/**
+ * Goal Progress
+ * 
+ * Represents the current progress toward a goal.
+ */
+export interface GoalProgress {
+    /** Current value achieved toward the goal */
+    currentValue: number;
+    
+    /** Percentage of goal completion (0-100) */
+    percent: number;
+    
+    /** Array of progress data for the last 7 days (most recent first) */
+    lastSevenDays: Array<{
+        date: string; // YYYY-MM-DD format
+        value: number; // Progress value for this day
+        hasProgress: boolean; // Whether there was any progress on this day
+    }>;
+    
+    /** Whether the goal has an inactivity warning (≥4 days with no progress in last 7 days) */
+    inactivityWarning: boolean;
+}
+
+/**
+ * Goal with Progress
+ * 
+ * Represents a goal with its computed progress information.
+ */
+export interface GoalWithProgress {
+    goal: Goal;
+    progress: GoalProgress;
+}
+
+/**
+ * Goal Manual Log Entity
+ * 
+ * Storage Key: 'goalManualLogs'
+ * Storage Format: GoalManualLog[] (array of GoalManualLog objects)
+ * 
+ * Represents a manual progress entry for a cumulative goal.
+ * Allows users to log progress that isn't tracked through habits.
+ */
+export interface GoalManualLog {
+    /**
+     * Unique identifier, generated via crypto.randomUUID() (frontend) or randomUUID() (backend)
+     * This is the application-level primary key, not MongoDB's _id
+     */
+    id: string;
+
+    /** Foreign key reference to Goal.id */
+    goalId: string;
+
+    /** Amount added toward the goal (must be > 0) */
+    value: number;
+
+    /** ISO 8601 timestamp of when the progress happened (defaults to now if not provided) */
+    loggedAt: string;
+
+    /** ISO 8601 timestamp of when the log was created */
+    createdAt: string;
+}
+
+export type GoalManualLogsStorage = GoalManualLog[];
+
+/**
  * Complete Persistence Schema
  * 
  * Represents all persistent data in the application.
@@ -401,6 +526,9 @@ export interface PersistenceSchema {
     
     /** Array of all activities */
     activities: ActivitiesStorage;
+    
+    /** Array of all goals */
+    goals: GoalsStorage;
 }
 
 
@@ -416,5 +544,7 @@ export const MONGO_COLLECTIONS = {
     DAY_LOGS: 'dayLogs',
     WELLBEING_LOGS: 'wellbeingLogs',
     ACTIVITIES: 'activities',
+    GOALS: 'goals',
+    GOAL_MANUAL_LOGS: 'goalManualLogs',
 } as const;
 

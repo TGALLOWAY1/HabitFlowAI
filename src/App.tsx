@@ -9,14 +9,22 @@ import { ProgressDashboard } from './components/ProgressDashboard';
 import { ActivityList } from './components/ActivityList';
 import { ActivityEditorModal } from './components/ActivityEditorModal';
 import { ActivityRunnerModal } from './components/ActivityRunnerModal';
-import { BarChart3, Calendar, ClipboardList } from 'lucide-react';
+import { BarChart3, Calendar, ClipboardList, Target } from 'lucide-react';
 import type { Activity, ActivityStep } from './types';
+import { GoalsPage } from './pages/goals/GoalsPage';
+import { CreateGoalFlow } from './pages/goals/CreateGoalFlow';
+import { GoalDetailPage } from './pages/goals/GoalDetailPage';
+import { GoalCompletedPage } from './pages/goals/GoalCompletedPage';
+import { WinArchivePage } from './pages/goals/WinArchivePage';
 
 const HabitTrackerContent: React.FC = () => {
   const { categories, habits, logs, toggleHabit, updateLog } = useHabitStore();
   const [activeCategoryId, setActiveCategoryId] = useState(categories[0]?.id || '');
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [view, setView] = useState<'tracker' | 'progress' | 'activities'>('tracker');
+  const [view, setView] = useState<'tracker' | 'progress' | 'activities' | 'goals' | 'wins'>('tracker');
+  const [showCreateGoal, setShowCreateGoal] = useState(false);
+  const [selectedGoalId, setSelectedGoalId] = useState<string | null>(null);
+  const [completedGoalId, setCompletedGoalId] = useState<string | null>(null);
   const [activityEditorState, setActivityEditorState] = useState<{
     isOpen: boolean;
     mode: 'create' | 'edit';
@@ -35,7 +43,7 @@ const HabitTrackerContent: React.FC = () => {
       <div className="flex flex-col gap-4">
         <div className="flex items-center justify-between">
           <h2 className="text-2xl font-bold text-white">
-            {view === 'tracker' ? 'Habits' : view === 'progress' ? 'Habit Tracking' : 'Activities'}
+            {view === 'tracker' ? 'Habits' : view === 'progress' ? 'Habit Tracking' : view === 'activities' ? 'Activities' : 'Goals'}
           </h2>
           <div className="flex items-center gap-2 bg-neutral-800 rounded-lg p-1">
             <button
@@ -59,6 +67,13 @@ const HabitTrackerContent: React.FC = () => {
             >
               <ClipboardList size={20} />
             </button>
+            <button
+              onClick={() => setView('goals')}
+              className={`p-2 rounded-md transition-colors ${view === 'goals' ? 'bg-neutral-700 text-white' : 'text-neutral-400 hover:text-white'}`}
+              title="Goals"
+            >
+              <Target size={20} />
+            </button>
           </div>
         </div>
 
@@ -71,7 +86,60 @@ const HabitTrackerContent: React.FC = () => {
         )}
       </div>
 
-      {view === 'tracker' ? (
+      {showCreateGoal ? (
+        <CreateGoalFlow
+          onComplete={() => {
+            setShowCreateGoal(false);
+            setView('goals');
+          }}
+          onCancel={() => {
+            setShowCreateGoal(false);
+            setView('goals');
+          }}
+        />
+      ) : completedGoalId ? (
+        <GoalCompletedPage
+          goalId={completedGoalId}
+          onBack={() => {
+            setCompletedGoalId(null);
+            setView('goals');
+          }}
+          onAddBadge={(goalId) => {
+            // Redirect to Win Archive after badge upload
+            setCompletedGoalId(null);
+            setView('wins');
+          }}
+          onViewGoalDetail={(goalId) => {
+            setCompletedGoalId(null);
+            setSelectedGoalId(goalId);
+            setView('goals');
+          }}
+        />
+      ) : view === 'wins' ? (
+        <WinArchivePage
+          onViewGoal={(goalId) => {
+            setSelectedGoalId(goalId);
+            setView('goals');
+          }}
+        />
+      ) : selectedGoalId ? (
+        <GoalDetailPage
+          goalId={selectedGoalId}
+          onBack={() => {
+            setSelectedGoalId(null);
+            setView('goals');
+          }}
+          onNavigateToCompleted={(goalId) => {
+            setSelectedGoalId(null);
+            setCompletedGoalId(goalId);
+            setView('goals');
+          }}
+          onViewWinArchive={() => {
+            setSelectedGoalId(null);
+            setView('wins');
+          }}
+        />
+      ) : view === 'tracker' ? (
         <TrackerGrid
           habits={filteredHabits}
           logs={logs}
@@ -80,13 +148,34 @@ const HabitTrackerContent: React.FC = () => {
           onAddHabit={() => setIsModalOpen(true)}
         />
       ) : view === 'progress' ? (
-        <ProgressDashboard />
-      ) : (
+        <ProgressDashboard
+          onCreateGoal={() => setShowCreateGoal(true)}
+          onViewGoal={(goalId) => {
+            setSelectedGoalId(goalId);
+            setView('goals');
+          }}
+        />
+      ) : view === 'activities' ? (
         <ActivityList
           onCreate={() => setActivityEditorState({ isOpen: true, mode: 'create', activity: undefined })}
           onEdit={(activity) => setActivityEditorState({ isOpen: true, mode: 'edit', activity })}
           onCreateFromHabits={(prefillSteps) => setActivityEditorState({ isOpen: true, mode: 'create', activity: undefined, prefillSteps })}
           onStart={(activity) => setActivityRunnerState({ isOpen: true, activity })}
+        />
+      ) : (
+        <GoalsPage
+          onCreateGoal={() => setShowCreateGoal(true)}
+          onViewGoal={(goalId) => {
+            setSelectedGoalId(goalId);
+            setView('goals');
+          }}
+          onNavigateToCompleted={(goalId) => {
+            setCompletedGoalId(goalId);
+            setView('goals');
+          }}
+          onViewWinArchive={() => {
+            setView('wins');
+          }}
         />
       )}
 

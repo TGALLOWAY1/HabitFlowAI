@@ -28,6 +28,19 @@ export async function createHabit(
   const db = await getDb();
   const collection = db.collection(COLLECTION_NAME);
 
+  // Check for duplicate habit (same name and category) for this user
+  const existing = await collection.findOne({
+    userId,
+    name: data.name,
+    categoryId: data.categoryId,
+  });
+
+  if (existing) {
+    // Return existing habit instead of creating a duplicate
+    const { _id, userId: _, ...habit } = existing;
+    return habit as Habit;
+  }
+
   // Generate ID (using UUID format to match frontend)
   const id = randomUUID();
   const createdAt = new Date().toISOString();

@@ -1,16 +1,25 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useHabitStore } from '../store/HabitContext';
+import { useProgressOverview } from '../lib/useProgressOverview';
 import { Heatmap } from './Heatmap';
 import { ProgressRings } from './ProgressRings';
 import { DailyCheckInModal } from './DailyCheckInModal';
-import { Sun, Flame, Target, Activity, Clock, ChevronDown, ChevronRight } from 'lucide-react';
+import { Sun, Flame, Target, Activity, Clock, ChevronDown, ChevronRight, AlertTriangle, Plus, Loader2, AlertCircle } from 'lucide-react';
 import { calculateHabitStats } from '../utils/analytics';
 import { getEstimatedCompletionDate } from '../utils/pace';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { AccomplishmentsLog } from './AccomplishmentsLog';
+import { format } from 'date-fns';
+import { GoalProgressBar, GoalStatusChip, goalCardBaseClasses, goalTitleCompactClasses, goalMetadataClasses } from './goals/GoalSharedComponents';
 
-export const ProgressDashboard: React.FC = () => {
+interface ProgressDashboardProps {
+    onCreateGoal?: () => void;
+    onViewGoal?: (goalId: string) => void;
+}
+
+export const ProgressDashboard: React.FC<ProgressDashboardProps> = ({ onCreateGoal, onViewGoal }) => {
     const { habits, logs, categories } = useHabitStore();
+    const { data: progressData, loading: progressLoading, error: progressError } = useProgressOverview();
     const [isCheckInOpen, setIsCheckInOpen] = useState(false);
 
     const habitStats = habits.map(habit => {
@@ -44,6 +53,67 @@ export const ProgressDashboard: React.FC = () => {
             {/* Heatmap Section */}
             <div className="bg-neutral-900/50 rounded-2xl border border-white/5 p-6 backdrop-blur-sm">
                 <Heatmap />
+            </div>
+
+            {/* Goals Section */}
+            <div className="bg-neutral-900/50 rounded-2xl border border-white/5 p-6 backdrop-blur-sm">
+                <div className="flex items-center justify-between mb-6">
+                    <h3 className="text-lg font-semibold text-white">How your goals are progressing</h3>
+                </div>
+
+                {progressLoading ? (
+                    <div className="flex items-center justify-center py-8">
+                        <Loader2 className="text-emerald-500 animate-spin" size={24} />
+                    </div>
+                ) : progressError ? (
+                    <div className="p-4 bg-red-500/10 border border-red-500/50 rounded-lg flex items-start gap-3">
+                        <AlertCircle className="text-red-400 flex-shrink-0 mt-0.5" size={16} />
+                        <div className="flex-1">
+                            <div className="text-red-400 text-sm">{progressError.message}</div>
+                        </div>
+                    </div>
+                ) : !progressData || progressData.goalsWithProgress.length === 0 ? (
+                    <div className="text-center py-8">
+                        <div className="mb-4">
+                            <Target className="text-emerald-400/50 mx-auto" size={40} />
+                        </div>
+                        <h4 className="text-white font-medium mb-2">No goals yet</h4>
+                        <p className="text-neutral-400 text-sm mb-4">
+                            Create a goal to turn your daily habits into meaningful long-term achievements.
+                        </p>
+                        {onCreateGoal && (
+                            <button
+                                onClick={onCreateGoal}
+                                className="flex items-center gap-2 px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-neutral-900 font-medium rounded-lg transition-colors mx-auto text-sm"
+                            >
+                                <Plus size={16} />
+                                Create Your First Goal
+                            </button>
+                        )}
+                    </div>
+                ) : (
+                    <div className="space-y-3">
+                        {/* 
+                            Completed Goals Display Policy:
+                            We hide completed goals from the active goals list on the Progress page.
+                            Completed goals are accessible via the Win Archive.
+                            This keeps the Progress page focused on active, in-progress goals.
+                        */}
+                        {progressData.goalsWithProgress
+                            .filter(({ goal }) => !goal.completedAt) // Only show active goals
+                            .map((goalWithProgress) => (
+                                <CompactGoalCard
+                                    key={goalWithProgress.goal.id}
+                                    goalWithProgress={goalWithProgress}
+                                    onClick={() => {
+                                        if (onViewGoal) {
+                                            onViewGoal(goalWithProgress.goal.id);
+                                        }
+                                    }}
+                                />
+                            ))}
+                    </div>
+                )}
             </div>
 
             {/* Habit Stats Grouped by Category */}
@@ -80,6 +150,115 @@ export const ProgressDashboard: React.FC = () => {
                 onClose={() => setIsCheckInOpen(false)}
             />
         </div>
+    );
+};
+
+/**
+ * Get today's date in YYYY-MM-DD format.
+ */
+function getTodayDateString(): string {
+    return format(new Date(), 'yyyy-MM-dd');
+}
+
+/**
+ * Compute today's contribution to a goal from lastSevenDays data.
+ * 
+ * lastSevenDays is ordered with most recent first (index 0 = today).
+ * 
+ * @param progress - GoalProgress object with lastSevenDays array
+ * @param goalType - Goal type ('cumulative' or 'frequency')
+ * @returns Today's contribution value, or null if no data for today
+ */
+function getTodayContribution(progress: any, goalType: 'cumulative' | 'frequency'): number | null {
+    if (!progress.lastSevenDays || progress.lastSevenDays.length === 0) {
+        return null;
+    }
+
+    // lastSevenDays is ordered most recent first, so index 0 should be today
+    const todayDate = getTodayDateString();
+    const todayEntry = progress.lastSevenDays.find((day: any) => day.date === todayDate);
+    
+    if (!todayEntry) {
+        return null;
+    }
+
+    return todayEntry.value;
+}
+
+/**
+ * Compact Goal Card for Progress Dashboard
+ * 
+ * A simplified version of GoalCard that shows:
+ * - Title
+ * - Progress bar with percent
+ * - Inactivity warning badge (if present)
+ * - Today's contribution (if any)
+ * - Clickable to navigate to goal detail
+ */
+const CompactGoalCard: React.FC<{
+    goalWithProgress: { goal: any; progress: any };
+    onClick: () => void;
+}> = ({ goalWithProgress, onClick }) => {
+    const { goal, progress } = goalWithProgress;
+    
+    // Compute today's contribution
+    const todayContribution = useMemo(() => {
+        return getTodayContribution(progress, goal.type);
+    }, [progress, goal.type]);
+
+    return (
+        <button
+            onClick={onClick}
+            className={`w-full text-left ${goalCardBaseClasses} p-4 hover:border-emerald-500/50 hover:bg-neutral-800 transition-all duration-200 group`}
+        >
+            <div className="flex items-start justify-between gap-4 mb-3">
+                <div className="flex-1 min-w-0">
+                    <h4 className={`${goalTitleCompactClasses} mb-1 group-hover:text-emerald-400 transition-colors truncate`}>
+                        {goal.title}
+                    </h4>
+                    <div className="flex items-center gap-2 flex-wrap">
+                        <span className={`${goalMetadataClasses} capitalize`}>{goal.type}</span>
+                        {progress.inactivityWarning && (
+                            <GoalStatusChip status="warning">
+                                <AlertTriangle size={12} className="inline mr-1" />
+                                Inactive
+                            </GoalStatusChip>
+                        )}
+                    </div>
+                </div>
+                <div className="text-right flex-shrink-0">
+                    <div className="text-lg font-bold text-emerald-400">
+                        {Math.min(100, progress.percent)}%
+                    </div>
+                </div>
+            </div>
+
+            {/* Progress Bar */}
+            <div className="mb-2">
+                <GoalProgressBar percent={progress.percent} height="sm" />
+            </div>
+
+            {/* Progress Details */}
+            <div className="flex items-center justify-between text-xs text-neutral-400 mb-2">
+                <span>
+                    {goal.type === 'cumulative'
+                        ? `${progress.currentValue} / ${goal.targetValue} ${goal.unit || ''}`
+                        : `${progress.currentValue} of ${goal.targetValue} days`}
+                </span>
+                <span>{goal.linkedHabitIds.length} {goal.linkedHabitIds.length === 1 ? 'habit' : 'habits'}</span>
+            </div>
+
+            {/* Today's Contribution */}
+            <div className="text-xs">
+                {todayContribution !== null && todayContribution > 0 ? (
+                    <span className="text-emerald-400 font-medium">
+                        Today: +{todayContribution} {goal.type === 'cumulative' ? goal.unit || '' : 'day'}
+                    </span>
+                ) : (
+                    <span className="text-neutral-500">No progress yet today</span>
+                )}
+            </div>
+        </button>
     );
 };
 
