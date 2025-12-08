@@ -79,7 +79,7 @@ export const WinArchivePage: React.FC<WinArchivePageProps> = ({ onViewGoal }) =>
             ) : (
                 /* Badge Grid */
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
-                    {data.map((goal) => (
+                    {data.map((goal, index) => (
                         <button
                             key={goal.id}
                             onClick={() => {
@@ -87,10 +87,14 @@ export const WinArchivePage: React.FC<WinArchivePageProps> = ({ onViewGoal }) =>
                                     onViewGoal(goal.id);
                                 }
                             }}
-                            className="group relative bg-neutral-800/50 border border-white/10 rounded-xl p-4 sm:p-6 hover:border-emerald-500/50 hover:bg-neutral-800 transition-all duration-200 text-left"
+                            className="group relative bg-neutral-800/50 border border-white/10 rounded-xl p-4 sm:p-6 hover:border-emerald-500/50 hover:bg-neutral-800 transition-all duration-200 text-left animate-fade-in-up"
+                            style={{
+                                animationDelay: `${index * 50}ms`,
+                                animationFillMode: 'both',
+                            }}
                         >
                             {/* Badge Image or Fallback */}
-                            <div className="mb-4 aspect-square w-full rounded-lg overflow-hidden bg-neutral-900/50 flex items-center justify-center">
+                            <div className="mb-4 aspect-square w-full rounded-lg overflow-hidden bg-neutral-900/50 flex items-center justify-center animate-scale-in">
                                 {goal.badgeImageUrl ? (
                                     <img
                                         src={goal.badgeImageUrl}
@@ -120,6 +124,39 @@ export const WinArchivePage: React.FC<WinArchivePageProps> = ({ onViewGoal }) =>
                     ))}
                 </div>
             )}
+
+            {/* Animations CSS */}
+            <style>{`
+                @keyframes fade-in-up {
+                    from {
+                        opacity: 0;
+                        transform: translateY(20px);
+                    }
+                    to {
+                        opacity: 1;
+                        transform: translateY(0);
+                    }
+                }
+
+                .animate-fade-in-up {
+                    animation: fade-in-up 0.5s ease-out;
+                }
+
+                @keyframes scale-in {
+                    from {
+                        opacity: 0;
+                        transform: scale(0.9);
+                    }
+                    to {
+                        opacity: 1;
+                        transform: scale(1);
+                    }
+                }
+
+                .animate-scale-in {
+                    animation: scale-in 0.4s ease-out;
+                }
+            `}</style>
         </div>
     );
 };

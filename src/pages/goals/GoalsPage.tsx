@@ -1,5 +1,5 @@
 import React from 'react';
-import { Plus } from 'lucide-react';
+import { Plus, Trophy } from 'lucide-react';
 import { useGoalsWithProgress } from '../../lib/useGoalsWithProgress';
 import { GoalCardStack } from '../../components/goals/GoalCardStack';
 import { Loader2, AlertCircle } from 'lucide-react';
@@ -8,9 +8,10 @@ interface GoalsPageProps {
     onCreateGoal?: () => void;
     onViewGoal?: (goalId: string) => void;
     onNavigateToCompleted?: (goalId: string) => void;
+    onViewWinArchive?: () => void;
 }
 
-export const GoalsPage: React.FC<GoalsPageProps> = ({ onCreateGoal, onViewGoal, onNavigateToCompleted }) => {
+export const GoalsPage: React.FC<GoalsPageProps> = ({ onCreateGoal, onViewGoal, onNavigateToCompleted, onViewWinArchive }) => {
     const { data, loading, error, refetch } = useGoalsWithProgress();
 
     if (loading) {
@@ -49,15 +50,26 @@ export const GoalsPage: React.FC<GoalsPageProps> = ({ onCreateGoal, onViewGoal, 
                     <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2">Goals</h1>
                     <p className="text-neutral-400 text-sm sm:text-base">Track your progress and achieve your goals</p>
                 </div>
-                {onCreateGoal && (
-                    <button
-                        onClick={onCreateGoal}
-                        className="flex items-center gap-2 px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-neutral-900 font-medium rounded-lg transition-colors text-sm sm:text-base"
-                    >
-                        <Plus size={18} />
-                        Create Goal
-                    </button>
-                )}
+                <div className="flex items-center gap-3">
+                    {onViewWinArchive && (
+                        <button
+                            onClick={onViewWinArchive}
+                            className="flex items-center gap-2 px-4 py-2 bg-neutral-700 hover:bg-neutral-600 text-white font-medium rounded-lg transition-colors text-sm sm:text-base"
+                        >
+                            <Trophy size={18} />
+                            View Win Archive
+                        </button>
+                    )}
+                    {onCreateGoal && (
+                        <button
+                            onClick={onCreateGoal}
+                            className="flex items-center gap-2 px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-neutral-900 font-medium rounded-lg transition-colors text-sm sm:text-base"
+                        >
+                            <Plus size={18} />
+                            Create Goal
+                        </button>
+                    )}
+                </div>
             </div>
 
             {data.length === 0 ? (

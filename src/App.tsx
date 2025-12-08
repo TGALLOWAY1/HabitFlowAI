@@ -134,6 +134,10 @@ const HabitTrackerContent: React.FC = () => {
             setCompletedGoalId(goalId);
             setView('goals');
           }}
+          onViewWinArchive={() => {
+            setSelectedGoalId(null);
+            setView('wins');
+          }}
         />
       ) : view === 'tracker' ? (
         <TrackerGrid
@@ -162,6 +166,9 @@ const HabitTrackerContent: React.FC = () => {
           onNavigateToCompleted={(goalId) => {
             setCompletedGoalId(goalId);
             setView('goals');
+          }}
+          onViewWinArchive={() => {
+            setView('wins');
           }}
         />
       )}

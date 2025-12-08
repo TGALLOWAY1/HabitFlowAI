@@ -11,9 +11,10 @@ interface GoalDetailPageProps {
     goalId: string;
     onBack?: () => void;
     onNavigateToCompleted?: (goalId: string) => void;
+    onViewWinArchive?: () => void;
 }
 
-export const GoalDetailPage: React.FC<GoalDetailPageProps> = ({ goalId, onBack, onNavigateToCompleted }) => {
+export const GoalDetailPage: React.FC<GoalDetailPageProps> = ({ goalId, onBack, onNavigateToCompleted, onViewWinArchive }) => {
     const { data, loading, error, refetch } = useGoalDetail(goalId);
     const { habits } = useHabitStore();
     const [showManualProgressModal, setShowManualProgressModal] = useState(false);
@@ -342,16 +343,16 @@ export const GoalDetailPage: React.FC<GoalDetailPageProps> = ({ goalId, onBack, 
                     {data.goal.completedAt && (
                         <button
                             onClick={() => {
-                                // TODO: Navigate to Win Archive page when implemented in M4
-                                // For now, navigate back to goals list
-                                if (onBack) {
+                                if (onViewWinArchive) {
+                                    onViewWinArchive();
+                                } else if (onBack) {
                                     onBack();
                                 }
                             }}
                             className="flex items-center justify-center gap-2 px-4 py-2 bg-amber-500/20 hover:bg-amber-500/30 text-amber-400 font-medium rounded-lg transition-colors border border-amber-500/30"
                         >
                             <Award size={18} />
-                            View this in your Win Archive
+                            View in Win Archive
                         </button>
                     )}
                     
