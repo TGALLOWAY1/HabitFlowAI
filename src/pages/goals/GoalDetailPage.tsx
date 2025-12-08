@@ -92,12 +92,11 @@ export const GoalDetailPage: React.FC<GoalDetailPageProps> = ({ goalId, onBack, 
         }
     };
 
-    // Handle edit goal (placeholder for future implementation)
+    // Handle edit goal (V1: Edit functionality not included in V1 scope)
     const handleEditGoal = () => {
-        // TODO: Navigate to goal edit page when implemented
+        // Future: Navigate to goal edit page (/goals/:id/edit)
         console.log('Edit goal:', goalId);
-        // For now, just show a message
-        alert('Goal editing is not yet implemented. This will navigate to /goals/:id/edit in the future.');
+        alert('Goal editing is not yet implemented. This feature is planned for a future release.');
     };
 
     // Detect when goal reaches 100% and automatically mark as completed

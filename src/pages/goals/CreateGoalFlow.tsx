@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { CreateGoalPage } from './CreateGoalPage';
 import { CreateGoalLinkHabits } from './CreateGoalLinkHabits';
 import { createGoal } from '../../lib/persistenceClient';
+import { invalidateAllGoalCaches } from '../../lib/goalDataCache';
 import { Loader2, AlertCircle } from 'lucide-react';
 
 interface CreateGoalFlowProps {

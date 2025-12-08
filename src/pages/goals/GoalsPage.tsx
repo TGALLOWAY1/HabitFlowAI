@@ -105,11 +105,13 @@ export const GoalsPage: React.FC<GoalsPageProps> = ({ onCreateGoal, onViewGoal, 
                         }
                     }}
                     onEdit={(goalId) => {
-                        // TODO: Navigate to goal edit page when implemented
+                        // V1: Edit functionality not included in V1 scope
+                        // Future: Navigate to goal edit page
                         console.log('Edit goal:', goalId);
                     }}
                     onAddManualProgress={(goalId) => {
-                        // TODO: Open manual progress input modal when implemented
+                        // V1: Manual progress is handled in GoalDetailPage
+                        // This callback is not used in the card stack view
                         console.log('Add manual progress for goal:', goalId);
                     }}
                     onNavigateToCompleted={onNavigateToCompleted}
