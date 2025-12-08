@@ -82,7 +82,7 @@ export const ActivityList: React.FC<ActivityListProps> = ({ onCreate, onEdit, on
                     <div className="grid gap-4">
                         {activities.map((activity) => {
                             const habitStepsCount = countHabitSteps(activity);
-                            const totalSteps = activity.steps.length;
+                            const totalSteps = activity.steps?.length ?? 0;
 
                             return (
                                 <div

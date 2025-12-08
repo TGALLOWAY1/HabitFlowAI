@@ -33,10 +33,14 @@ export const DailyCheckInModal: React.FC<DailyCheckInModalProps> = ({ isOpen, on
 
     // Load existing data
     useEffect(() => {
+        console.log('[DailyCheckInModal] useEffect - isOpen:', isOpen, 'today:', today, 'wellbeingLogs keys:', Object.keys(wellbeingLogs));
         if (isOpen && wellbeingLogs[today]) {
             const log = wellbeingLogs[today];
+            console.log('[DailyCheckInModal] Loading existing log for today:', log);
             if (log.morning) setMorningData(log.morning);
             if (log.evening) setEveningData(log.evening);
+        } else if (isOpen) {
+            console.log('[DailyCheckInModal] No log found for today:', today, 'Available dates:', Object.keys(wellbeingLogs));
         }
     }, [isOpen, wellbeingLogs, today]);
 
@@ -52,14 +56,16 @@ export const DailyCheckInModal: React.FC<DailyCheckInModalProps> = ({ isOpen, on
     const currentData = activeTab === 'morning' ? morningData : eveningData;
 
     const handleSave = async () => {
+        console.log('[DailyCheckInModal] handleSave called with:', { today, activeTab, currentData });
         try {
-            await logWellbeing(today, {
+            const result = await logWellbeing(today, {
                 date: today,
                 [activeTab]: currentData
             });
+            console.log('[DailyCheckInModal] logWellbeing completed:', result);
             onClose();
         } catch (error) {
-            console.error('Failed to save wellbeing log:', error);
+            console.error('[DailyCheckInModal] Failed to save wellbeing log:', error);
             // Still close modal even if API fails
             onClose();
         }
@@ -209,7 +215,12 @@ export const DailyCheckInModal: React.FC<DailyCheckInModalProps> = ({ isOpen, on
                 {/* Footer */}
                 <div className="p-4 border-t border-white/5 bg-neutral-800/50 flex justify-end">
                     <button
-                        onClick={handleSave}
+                        onClick={(e) => {
+                            console.log('[DailyCheckInModal] BUTTON CLICKED');
+                            e.preventDefault();
+                            handleSave();
+                        }}
+                        type="button"
                         className="flex items-center gap-2 px-6 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg font-medium transition-colors"
                     >
                         <Save size={18} />

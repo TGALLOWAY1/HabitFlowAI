@@ -1,7 +1,7 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { fetchGoalsWithProgress } from './persistenceClient';
 import type { GoalWithProgress } from '../models/persistenceTypes';
-import { getCachedGoalsWithProgress, setCachedGoalsWithProgress } from './goalDataCache';
+import { getCachedGoalsWithProgress, setCachedGoalsWithProgress, getCacheVersion } from './goalDataCache';
 
 /**
  * Hook to fetch goals with progress information.
@@ -30,6 +30,7 @@ export function useGoalsWithProgress() {
         return getCachedGoalsWithProgress() === null;
     });
     const [error, setError] = useState<string | null>(null);
+    const lastCacheVersionRef = useRef(getCacheVersion());
 
     const loadGoals = useCallback(async () => {
         // Check cache first
@@ -51,6 +52,8 @@ export function useGoalsWithProgress() {
             setCachedGoalsWithProgress(fetchedGoals);
             setGoals(fetchedGoals);
             setLoading(false);
+            // Update cache version ref to match current version
+            lastCacheVersionRef.current = getCacheVersion();
         } catch (err) {
             const errorMessage = err instanceof Error ? err.message : 'Failed to load goals';
             console.error('Error fetching goals with progress:', errorMessage);
@@ -58,6 +61,28 @@ export function useGoalsWithProgress() {
             setLoading(false);
         }
     }, []);
+
+    // Watch for cache invalidation by checking version periodically
+    useEffect(() => {
+        const checkCacheVersion = () => {
+            const currentVersion = getCacheVersion();
+            if (currentVersion !== lastCacheVersionRef.current) {
+                // Cache was invalidated, refetch
+                lastCacheVersionRef.current = currentVersion;
+                loadGoals();
+            }
+        };
+
+        // Check immediately
+        checkCacheVersion();
+
+        // Set up interval to check periodically (every 100ms)
+        const interval = setInterval(checkCacheVersion, 100);
+
+        return () => {
+            clearInterval(interval);
+        };
+    }, [loadGoals]);
 
     useEffect(() => {
         let cancelled = false;

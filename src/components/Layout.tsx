@@ -1,11 +1,18 @@
 import React from 'react';
 import { LayoutGrid, Settings, User } from 'lucide-react';
+import { useHabitStore } from '../store/HabitContext';
 
 interface LayoutProps {
     children: React.ReactNode;
 }
 
 export const Layout: React.FC<LayoutProps> = ({ children }) => {
+    const { refreshHabitsAndCategories } = useHabitStore();
+
+    const handleRefresh = async () => {
+        await refreshHabitsAndCategories();
+    };
+
     return (
         <div className="min-h-screen bg-neutral-900 text-white font-sans selection:bg-emerald-500/30">
             {/* Header */}
@@ -20,7 +27,11 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
                 </div>
 
                 <div className="flex items-center gap-4">
-                    <button className="p-2 hover:bg-white/5 rounded-full transition-colors text-neutral-400 hover:text-white">
+                    <button 
+                        onClick={handleRefresh}
+                        className="p-2 hover:bg-white/5 rounded-full transition-colors text-neutral-400 hover:text-white"
+                        title="Refresh Habits and Categories"
+                    >
                         <Settings size={20} />
                     </button>
                     <button className="w-8 h-8 bg-neutral-800 rounded-full flex items-center justify-center border border-white/10 text-neutral-400">

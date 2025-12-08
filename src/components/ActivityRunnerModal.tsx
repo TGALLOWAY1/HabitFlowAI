@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { X } from 'lucide-react';
 import type { Activity } from '../types';
 import { submitActivity, type SubmitActivityResponse } from '../lib/persistenceClient';
+import { useHabitStore } from '../store/HabitContext';
 
 type ActivityRunnerMode = 'habit' | 'image' | 'text';
 
@@ -16,6 +17,7 @@ export const ActivityRunnerModal: React.FC<ActivityRunnerModalProps> = ({
     activity,
     onClose,
 }) => {
+    const { refreshDayLogs } = useHabitStore();
     const [mode, setMode] = useState<ActivityRunnerMode>('habit');
     const [completedStepIds, setCompletedStepIds] = useState<Set<string>>(new Set());
     const [currentIndex, setCurrentIndex] = useState(0);
@@ -112,6 +114,9 @@ export const ActivityRunnerModal: React.FC<ActivityRunnerModalProps> = ({
             });
 
             setSubmitResult(result);
+
+            // Refresh habit day logs so newly-created DayLogs are visible
+            await refreshDayLogs();
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : 'Failed to submit activity';
             setSubmitError(errorMessage);

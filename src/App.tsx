@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { HabitProvider, useHabitStore } from './store/HabitContext';
 import { ActivityProvider } from './store/ActivityContext';
 import { Layout } from './components/Layout';
@@ -17,11 +17,52 @@ import { GoalDetailPage } from './pages/goals/GoalDetailPage';
 import { GoalCompletedPage } from './pages/goals/GoalCompletedPage';
 import { WinArchivePage } from './pages/goals/WinArchivePage';
 
+// Route type definition
+type AppRoute = "tracker" | "progress" | "activities" | "goals" | "wins";
+
+// Helper functions for URL syncing
+function parseRouteFromLocation(location: Location): AppRoute {
+  const params = new URLSearchParams(location.search);
+  const view = params.get("view");
+
+  switch (view) {
+    case "progress":
+    case "activities":
+    case "goals":
+    case "wins":
+    case "tracker":
+      return view;
+    default:
+      return "tracker"; // default view
+  }
+}
+
+function buildUrlForRoute(route: AppRoute): string {
+  const params = new URLSearchParams(window.location.search);
+  params.set("view", route);
+  return `${window.location.pathname}?${params.toString()}`;
+}
+
 const HabitTrackerContent: React.FC = () => {
-  const { categories, habits, logs, toggleHabit, updateLog } = useHabitStore();
-  const [activeCategoryId, setActiveCategoryId] = useState(categories[0]?.id || '');
+  const { categories, habits, logs, toggleHabit, updateLog, lastPersistenceError, clearPersistenceError } = useHabitStore();
+  const [activeCategoryId, setActiveCategoryId] = useState<string>('');
+
+  // Set default category to "Physical Health" when categories are loaded
+  useEffect(() => {
+    if (categories.length > 0 && !activeCategoryId) {
+      const physicalHealthCategory = categories.find(cat => 
+        cat.name.toLowerCase() === 'physical health'
+      );
+      if (physicalHealthCategory) {
+        setActiveCategoryId(physicalHealthCategory.id);
+      } else {
+        // Fallback to first category if "Physical Health" doesn't exist
+        setActiveCategoryId(categories[0].id);
+      }
+    }
+  }, [categories, activeCategoryId]);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [view, setView] = useState<'tracker' | 'progress' | 'activities' | 'goals' | 'wins'>('tracker');
+  const [view, setView] = useState<AppRoute>(() => parseRouteFromLocation(window.location));
   const [showCreateGoal, setShowCreateGoal] = useState(false);
   const [selectedGoalId, setSelectedGoalId] = useState<string | null>(null);
   const [completedGoalId, setCompletedGoalId] = useState<string | null>(null);
@@ -36,10 +77,54 @@ const HabitTrackerContent: React.FC = () => {
     activity?: Activity;
   }>({ isOpen: false });
 
+  // Initialize URL if not present
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (!params.has("view")) {
+      const initialRoute = parseRouteFromLocation(window.location);
+      const url = buildUrlForRoute(initialRoute);
+      window.history.replaceState({ view: initialRoute }, "", url);
+    }
+  }, []);
+
+  // Listen for browser back/forward navigation
+  useEffect(() => {
+    const handlePopState = () => {
+      const route = parseRouteFromLocation(window.location);
+      setView(route);
+    };
+
+    window.addEventListener("popstate", handlePopState);
+    return () => {
+      window.removeEventListener("popstate", handlePopState);
+    };
+  }, []);
+
+  // Navigation handler that updates state and browser history
+  const handleNavigate = (route: AppRoute) => {
+    setView(route);
+    const url = buildUrlForRoute(route);
+    window.history.pushState({ view: route }, "", url);
+  };
+
   const filteredHabits = habits.filter(h => h.categoryId === activeCategoryId && !h.archived);
 
   return (
     <div className="flex flex-col h-full gap-6">
+      {/* Error Banner */}
+      {lastPersistenceError && (
+        <div className="p-3 mb-2 text-sm text-red-100 bg-red-600/90 border border-red-500/50 rounded-lg flex items-center justify-between shadow-lg backdrop-blur-sm">
+          <span>{lastPersistenceError}</span>
+          <button
+            type="button"
+            className="ml-4 px-3 py-1 text-red-100 hover:text-white hover:bg-red-700/50 rounded transition-colors font-medium"
+            onClick={clearPersistenceError}
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
+
       <div className="flex flex-col gap-4">
         <div className="flex items-center justify-between">
           <h2 className="text-2xl font-bold text-white">
@@ -47,28 +132,28 @@ const HabitTrackerContent: React.FC = () => {
           </h2>
           <div className="flex items-center gap-2 bg-neutral-800 rounded-lg p-1">
             <button
-              onClick={() => setView('tracker')}
+              onClick={() => handleNavigate('tracker')}
               className={`p-2 rounded-md transition-colors ${view === 'tracker' ? 'bg-neutral-700 text-white' : 'text-neutral-400 hover:text-white'}`}
               title="Habits Tracker"
             >
               <Calendar size={20} />
             </button>
             <button
-              onClick={() => setView('progress')}
+              onClick={() => handleNavigate('progress')}
               className={`p-2 rounded-md transition-colors ${view === 'progress' ? 'bg-neutral-700 text-white' : 'text-neutral-400 hover:text-white'}`}
               title="Progress Dashboard"
             >
               <BarChart3 size={20} />
             </button>
             <button
-              onClick={() => setView('activities')}
+              onClick={() => handleNavigate('activities')}
               className={`p-2 rounded-md transition-colors ${view === 'activities' ? 'bg-neutral-700 text-white' : 'text-neutral-400 hover:text-white'}`}
               title="Activities"
             >
               <ClipboardList size={20} />
             </button>
             <button
-              onClick={() => setView('goals')}
+              onClick={() => handleNavigate('goals')}
               className={`p-2 rounded-md transition-colors ${view === 'goals' ? 'bg-neutral-700 text-white' : 'text-neutral-400 hover:text-white'}`}
               title="Goals"
             >
@@ -90,11 +175,11 @@ const HabitTrackerContent: React.FC = () => {
         <CreateGoalFlow
           onComplete={() => {
             setShowCreateGoal(false);
-            setView('goals');
+            handleNavigate('goals');
           }}
           onCancel={() => {
             setShowCreateGoal(false);
-            setView('goals');
+            handleNavigate('goals');
           }}
         />
       ) : completedGoalId ? (
@@ -102,24 +187,24 @@ const HabitTrackerContent: React.FC = () => {
           goalId={completedGoalId}
           onBack={() => {
             setCompletedGoalId(null);
-            setView('goals');
+            handleNavigate('goals');
           }}
           onAddBadge={(goalId) => {
             // Redirect to Win Archive after badge upload
             setCompletedGoalId(null);
-            setView('wins');
+            handleNavigate('wins');
           }}
           onViewGoalDetail={(goalId) => {
             setCompletedGoalId(null);
             setSelectedGoalId(goalId);
-            setView('goals');
+            handleNavigate('goals');
           }}
         />
       ) : view === 'wins' ? (
         <WinArchivePage
           onViewGoal={(goalId) => {
             setSelectedGoalId(goalId);
-            setView('goals');
+            handleNavigate('goals');
           }}
         />
       ) : selectedGoalId ? (
@@ -127,16 +212,16 @@ const HabitTrackerContent: React.FC = () => {
           goalId={selectedGoalId}
           onBack={() => {
             setSelectedGoalId(null);
-            setView('goals');
+            handleNavigate('goals');
           }}
           onNavigateToCompleted={(goalId) => {
             setSelectedGoalId(null);
             setCompletedGoalId(goalId);
-            setView('goals');
+            handleNavigate('goals');
           }}
           onViewWinArchive={() => {
             setSelectedGoalId(null);
-            setView('wins');
+            handleNavigate('wins');
           }}
         />
       ) : view === 'tracker' ? (
@@ -152,7 +237,7 @@ const HabitTrackerContent: React.FC = () => {
           onCreateGoal={() => setShowCreateGoal(true)}
           onViewGoal={(goalId) => {
             setSelectedGoalId(goalId);
-            setView('goals');
+            handleNavigate('goals');
           }}
         />
       ) : view === 'activities' ? (
@@ -167,14 +252,14 @@ const HabitTrackerContent: React.FC = () => {
           onCreateGoal={() => setShowCreateGoal(true)}
           onViewGoal={(goalId) => {
             setSelectedGoalId(goalId);
-            setView('goals');
+            handleNavigate('goals');
           }}
           onNavigateToCompleted={(goalId) => {
             setCompletedGoalId(goalId);
-            setView('goals');
+            handleNavigate('goals');
           }}
           onViewWinArchive={() => {
-            setView('wins');
+            handleNavigate('wins');
           }}
         />
       )}

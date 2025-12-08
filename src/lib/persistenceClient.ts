@@ -10,6 +10,7 @@ import type { GoalDetail, CompletedGoal, ProgressOverview } from '../types';
 import type { Activity } from '../types';
 
 import { API_BASE_URL } from './persistenceConfig';
+import { invalidateGoalDataCache } from './goalDataCache';
 
 /**
  * Get the current user ID.
@@ -323,8 +324,11 @@ export async function deleteDayLog(habitId: string, date: string): Promise<void>
  * @throws Error if API request fails
  */
 export async function fetchWellbeingLogs(): Promise<Record<string, DailyWellbeing>> {
-
+  console.log('[fetchWellbeingLogs] Sending GET request to /wellbeingLogs');
+  
   const response = await apiRequest<{ wellbeingLogs: Record<string, DailyWellbeing> }>('/wellbeingLogs');
+  
+  console.log('[fetchWellbeingLogs] Received response:', response);
   return response.wellbeingLogs;
 }
 
@@ -336,12 +340,14 @@ export async function fetchWellbeingLogs(): Promise<Record<string, DailyWellbein
  * @throws Error if API request fails
  */
 export async function saveWellbeingLog(log: DailyWellbeing): Promise<DailyWellbeing> {
-
+  console.log('[saveWellbeingLog] Sending POST request to /wellbeingLogs with:', log);
+  
   const response = await apiRequest<{ wellbeingLog: DailyWellbeing }>('/wellbeingLogs', {
     method: 'POST',
     body: JSON.stringify(log),
   });
 
+  console.log('[saveWellbeingLog] Received response:', response);
   return response.wellbeingLog;
 }
 
@@ -506,6 +512,9 @@ export async function createGoal(
     body: JSON.stringify(data),
   });
 
+  // Invalidate cache after successful creation
+  invalidateGoalDataCache();
+
   return response.goal;
 }
 
@@ -525,6 +534,9 @@ export async function updateGoal(
     method: 'PUT',
     body: JSON.stringify(patch),
   });
+
+  // Invalidate cache after successful update
+  invalidateGoalDataCache();
 
   return response.goal;
 }
@@ -552,6 +564,9 @@ export async function deleteGoal(id: string): Promise<void> {
   await apiRequest(`/goals/${id}`, {
     method: 'DELETE',
   });
+
+  // Invalidate cache after successful deletion
+  invalidateGoalDataCache();
 }
 
 /**
