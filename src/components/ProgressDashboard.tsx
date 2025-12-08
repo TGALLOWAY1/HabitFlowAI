@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useHabitStore } from '../store/HabitContext';
 import { useProgressOverview } from '../lib/useProgressOverview';
 import { Heatmap } from './Heatmap';
@@ -9,6 +9,7 @@ import { calculateHabitStats } from '../utils/analytics';
 import { getEstimatedCompletionDate } from '../utils/pace';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { AccomplishmentsLog } from './AccomplishmentsLog';
+import { format } from 'date-fns';
 
 interface ProgressDashboardProps {
     onCreateGoal?: () => void;
@@ -145,12 +146,45 @@ export const ProgressDashboard: React.FC<ProgressDashboardProps> = ({ onCreateGo
 };
 
 /**
+ * Get today's date in YYYY-MM-DD format.
+ */
+function getTodayDateString(): string {
+    return format(new Date(), 'yyyy-MM-dd');
+}
+
+/**
+ * Compute today's contribution to a goal from lastSevenDays data.
+ * 
+ * lastSevenDays is ordered with most recent first (index 0 = today).
+ * 
+ * @param progress - GoalProgress object with lastSevenDays array
+ * @param goalType - Goal type ('cumulative' or 'frequency')
+ * @returns Today's contribution value, or null if no data for today
+ */
+function getTodayContribution(progress: any, goalType: 'cumulative' | 'frequency'): number | null {
+    if (!progress.lastSevenDays || progress.lastSevenDays.length === 0) {
+        return null;
+    }
+
+    // lastSevenDays is ordered most recent first, so index 0 should be today
+    const todayDate = getTodayDateString();
+    const todayEntry = progress.lastSevenDays.find((day: any) => day.date === todayDate);
+    
+    if (!todayEntry) {
+        return null;
+    }
+
+    return todayEntry.value;
+}
+
+/**
  * Compact Goal Card for Progress Dashboard
  * 
  * A simplified version of GoalCard that shows:
  * - Title
  * - Progress bar with percent
  * - Inactivity warning badge (if present)
+ * - Today's contribution (if any)
  * - Clickable to navigate to goal detail
  */
 const CompactGoalCard: React.FC<{
@@ -158,6 +192,11 @@ const CompactGoalCard: React.FC<{
     onClick: () => void;
 }> = ({ goalWithProgress, onClick }) => {
     const { goal, progress } = goalWithProgress;
+    
+    // Compute today's contribution
+    const todayContribution = useMemo(() => {
+        return getTodayContribution(progress, goal.type);
+    }, [progress, goal.type]);
 
     return (
         <button
@@ -195,13 +234,24 @@ const CompactGoalCard: React.FC<{
             </div>
 
             {/* Progress Details */}
-            <div className="flex items-center justify-between text-xs text-neutral-400">
+            <div className="flex items-center justify-between text-xs text-neutral-400 mb-2">
                 <span>
                     {goal.type === 'cumulative'
                         ? `${progress.currentValue} / ${goal.targetValue} ${goal.unit || ''}`
                         : `${progress.currentValue} of ${goal.targetValue} days`}
                 </span>
                 <span>{goal.linkedHabitIds.length} {goal.linkedHabitIds.length === 1 ? 'habit' : 'habits'}</span>
+            </div>
+
+            {/* Today's Contribution */}
+            <div className="text-xs">
+                {todayContribution !== null && todayContribution > 0 ? (
+                    <span className="text-emerald-400 font-medium">
+                        Today: +{todayContribution} {goal.type === 'cumulative' ? goal.unit || '' : 'day'}
+                    </span>
+                ) : (
+                    <span className="text-neutral-500">No progress yet today</span>
+                )}
             </div>
         </button>
     );
