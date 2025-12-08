@@ -5,7 +5,8 @@
  * Handles connection lifecycle and error handling.
  */
 
-import { MongoClient, Db, MongoClientOptions } from 'mongodb';
+import { MongoClient, Db } from 'mongodb';
+import type { MongoClientOptions } from 'mongodb';
 import { getMongoDbUri, getMongoDbName } from '../config/env';
 
 // Singleton client instance
@@ -48,7 +49,7 @@ export async function getDb(): Promise<Db> {
 
   // Create new connection
   connectionPromise = connectToMongo();
-  
+
   try {
     const connectedClient = await connectionPromise;
     db = connectedClient.db(getMongoDbName());
@@ -101,20 +102,25 @@ async function connectToMongo(): Promise<MongoClient> {
 
   try {
     client = new MongoClient(uri, options);
-    
+
     // Test the connection
     await client.connect();
-    
+
     // Verify we can access the database
     await client.db(dbName).admin().ping();
-    
-    console.log(`Successfully connected to MongoDB database: ${dbName}`);
-    
+
+    // Log connection details for persistence verification
+    // Mask credentials but show host to prove it's not in-memory
+    const sanitizedUri = uri.replace(/\/\/([^:]+):([^@]+)@/, '//***:***@');
+    console.log(`✅ Successfully connected to MongoDB`);
+    console.log(`   Host: ${sanitizedUri}`);
+    console.log(`   Database: ${dbName}`);
+
     return client;
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     console.error('Failed to connect to MongoDB:', errorMessage);
-    
+
     // Clean up on failure
     if (client) {
       try {
@@ -124,7 +130,7 @@ async function connectToMongo(): Promise<MongoClient> {
       }
       client = null;
     }
-    
+
     throw new Error(
       `MongoDB connection failed: ${errorMessage}. ` +
       'Please check your MONGODB_URI and ensure MongoDB is running.'
