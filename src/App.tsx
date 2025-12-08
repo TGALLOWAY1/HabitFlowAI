@@ -15,6 +15,7 @@ import { GoalsPage } from './pages/goals/GoalsPage';
 import { CreateGoalFlow } from './pages/goals/CreateGoalFlow';
 import { GoalDetailPage } from './pages/goals/GoalDetailPage';
 import { GoalCompletedPage } from './pages/goals/GoalCompletedPage';
+import { WinArchivePage } from './pages/goals/WinArchivePage';
 
 const HabitTrackerContent: React.FC = () => {
   const { categories, habits, logs, toggleHabit, updateLog } = useHabitStore();
@@ -115,21 +116,12 @@ const HabitTrackerContent: React.FC = () => {
           }}
         />
       ) : view === 'wins' ? (
-        <div className="w-full max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
-          <div className="mb-6 sm:mb-8">
-            <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2">Win Archive</h1>
-            <p className="text-neutral-400 text-sm sm:text-base">Your completed goals and achievements</p>
-          </div>
-          <div className="text-center py-12 text-neutral-500">
-            <p>Win Archive page coming soon...</p>
-            <button
-              onClick={() => setView('goals')}
-              className="mt-4 px-4 py-2 bg-neutral-700 hover:bg-neutral-600 text-white rounded-lg transition-colors"
-            >
-              Back to Goals
-            </button>
-          </div>
-        </div>
+        <WinArchivePage
+          onViewGoal={(goalId) => {
+            setSelectedGoalId(goalId);
+            setView('goals');
+          }}
+        />
       ) : selectedGoalId ? (
         <GoalDetailPage
           goalId={selectedGoalId}
