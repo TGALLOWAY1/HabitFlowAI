@@ -81,6 +81,9 @@ export const CreateGoalFlow: React.FC<CreateGoalFlowProps> = ({
                 deadline: goalDraft.deadline,
             });
 
+            // Invalidate all goal caches to ensure fresh data on navigation
+            invalidateAllGoalCaches();
+
             // Success - redirect to goals page
             if (onComplete) {
                 onComplete();

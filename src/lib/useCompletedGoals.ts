@@ -1,14 +1,23 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { fetchCompletedGoals } from './persistenceClient';
 import type { CompletedGoal } from '../types';
+import { getCachedCompletedGoals, setCachedCompletedGoals } from './goalDataCache';
 
 /**
  * Hook to fetch completed goals for the Win Archive.
  * 
  * Returns loading state, error state, and the completed goals data.
- * Automatically fetches on mount.
+ * Automatically fetches on mount, but checks cache first to avoid redundant requests.
  * 
- * @returns Object with loading, error, and data properties
+ * Performance optimizations:
+ * - Checks cache before fetching
+ * - Memoizes data to prevent unnecessary re-renders
+ * - Uses useCallback for stable refetch function
+ * 
+ * TODO: Consider using React Query for more sophisticated caching, background refetching,
+ * and automatic invalidation on mutations.
+ * 
+ * @returns Object with loading, error, data, and refetch properties
  */
 export function useCompletedGoals(): {
     data?: CompletedGoal[];
@@ -16,15 +25,35 @@ export function useCompletedGoals(): {
     error?: Error;
     refetch: () => Promise<void>;
 } {
-    const [goals, setGoals] = useState<CompletedGoal[]>([]);
-    const [loading, setLoading] = useState<boolean>(true);
+    const [goals, setGoals] = useState<CompletedGoal[]>(() => {
+        // Initialize from cache if available (prevents initial loading flash)
+        const cached = getCachedCompletedGoals();
+        return cached || [];
+    });
+    const [loading, setLoading] = useState<boolean>(() => {
+        // Only show loading if cache is empty
+        return getCachedCompletedGoals() === null;
+    });
     const [error, setError] = useState<Error | undefined>(undefined);
 
-    const loadGoals = async () => {
-        setLoading(true);
+    const loadGoals = useCallback(async () => {
+        // Check cache first
+        const cached = getCachedCompletedGoals();
+        if (cached) {
+            setGoals(cached);
+            setLoading(false);
+            setError(undefined);
+            // Still fetch in background to ensure freshness (stale-while-revalidate pattern)
+            // but don't show loading state
+        } else {
+            setLoading(true);
+        }
+
         setError(undefined);
         try {
             const fetchedGoals = await fetchCompletedGoals();
+            // Update cache
+            setCachedCompletedGoals(fetchedGoals);
             setGoals(fetchedGoals);
             setLoading(false);
         } catch (err) {
@@ -33,7 +62,7 @@ export function useCompletedGoals(): {
             setError(error);
             setLoading(false);
         }
-    };
+    }, []);
 
     useEffect(() => {
         let cancelled = false;
@@ -48,12 +77,13 @@ export function useCompletedGoals(): {
         return () => {
             cancelled = true;
         };
-    }, []);
+    }, [loadGoals]);
 
-    return {
+    // Memoize return value to prevent unnecessary re-renders
+    return useMemo(() => ({
         data: goals.length > 0 ? goals : undefined,
         loading,
         error,
         refetch: loadGoals,
-    };
+    }), [goals, loading, error, loadGoals]);
 }

@@ -462,6 +462,10 @@ export async function submitActivity(
 
 /**
  * Goal Persistence Functions
+ * 
+ * Note: Mutations (create, update, delete) should invalidate the goal data cache
+ * to ensure fresh data on subsequent fetches. Cache invalidation is handled
+ * by the calling code after successful mutations.
  */
 
 /**

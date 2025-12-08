@@ -6,6 +6,7 @@ import { format, parseISO } from 'date-fns';
 import { GoalManualProgressModal } from '../../components/goals/GoalManualProgressModal';
 import { DeleteGoalConfirmModal } from '../../components/goals/DeleteGoalConfirmModal';
 import { deleteGoal, markGoalAsCompleted } from '../../lib/persistenceClient';
+import { invalidateGoalCaches, invalidateAllGoalCaches } from '../../lib/goalDataCache';
 import { GoalProgressBar, GoalStatusChip } from '../../components/goals/GoalSharedComponents';
 
 interface GoalDetailPageProps {
@@ -59,6 +60,8 @@ export const GoalDetailPage: React.FC<GoalDetailPageProps> = ({ goalId, onBack, 
         setDeleteError(null);
         try {
             await deleteGoal(goalId);
+            // Invalidate all goal caches since goal was deleted
+            invalidateAllGoalCaches();
             // Navigate back to goals list on success
             if (onBack) {
                 onBack();
@@ -108,6 +111,9 @@ export const GoalDetailPage: React.FC<GoalDetailPageProps> = ({ goalId, onBack, 
             
             markGoalAsCompleted(goalId)
                 .then(() => {
+                    // Invalidate caches since goal status changed
+                    invalidateGoalCaches(goalId);
+                    invalidateAllGoalCaches(); // Also invalidate completed goals cache
                     // Refetch to get updated goal data
                     return refetch();
                 })
