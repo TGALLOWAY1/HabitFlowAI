@@ -37,6 +37,9 @@ const CACHE_TTL = 30 * 1000;
 // In-memory cache store
 const cache = new Map<string, CacheEntry<any>>();
 
+// Cache version counter - increments on invalidation to trigger refetch in hooks
+let cacheVersion = 0;
+
 /**
  * Get cached data if it exists and is not stale.
  * 
@@ -88,6 +91,26 @@ export function invalidateCache(key: string): void {
  */
 export function invalidateAllGoalCaches(): void {
     cache.clear();
+    cacheVersion++;
+}
+
+/**
+ * Invalidate goal data cache (alias for invalidateAllGoalCaches).
+ * 
+ * This is a convenience function that clears all goal-related caches.
+ * Use this after any goal mutation to ensure fresh data.
+ */
+export function invalidateGoalDataCache(): void {
+    invalidateAllGoalCaches();
+}
+
+/**
+ * Get the current cache version.
+ * 
+ * This can be used as a dependency in hooks to trigger refetch when cache is invalidated.
+ */
+export function getCacheVersion(): number {
+    return cacheVersion;
 }
 
 /**

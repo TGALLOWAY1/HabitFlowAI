@@ -27,21 +27,41 @@ export async function upsertWellbeingLog(
   const db = await getDb();
   const collection = db.collection(COLLECTION_NAME);
 
+  // Ensure date field is present and is a string
+  if (!log.date || typeof log.date !== 'string') {
+    throw new Error(`Wellbeing log must have a valid date field (string in YYYY-MM-DD format). Received: ${JSON.stringify(log)}`);
+  }
+
   // Create document to store in MongoDB (includes userId)
+  // Explicitly ensure date is included as a string field
   const document = {
+    date: log.date, // Explicitly set date to ensure it's stored
     ...log,
     userId,
   };
 
   // Upsert (insert or update) using date as unique key
-  await collection.updateOne(
+  const result = await collection.updateOne(
     { date: log.date, userId },
     { $set: document },
     { upsert: true }
   );
 
+  // Verify the document was stored correctly by reading it back
+  const storedDoc = await collection.findOne({ date: log.date, userId });
+  if (!storedDoc) {
+    throw new Error(`Failed to verify wellbeing log was stored for date: ${log.date}`);
+  }
+
   // Return DailyWellbeing (without userId and _id)
-  const { _id, userId: _, ...wellbeingLog } = document;
+  const { _id, userId: _, ...wellbeingLog } = storedDoc;
+  
+  // Ensure date field is present in the returned object
+  if (!wellbeingLog.date) {
+    console.error(`Warning: Stored document missing date field. Document:`, storedDoc);
+    wellbeingLog.date = log.date; // Fallback to input date
+  }
+  
   return wellbeingLog as DailyWellbeing;
 }
 
@@ -61,12 +81,30 @@ export async function getWellbeingLogsByUser(userId: string): Promise<Record<str
     .toArray();
 
   // Convert array to Record keyed by date
+  // Ensure date field is present and in YYYY-MM-DD format
   const logs: Record<string, DailyWellbeing> = {};
   for (const doc of documents) {
     const { _id, userId: _, ...log } = doc;
-    logs[log.date] = log as DailyWellbeing;
+    
+    // Defensive check: ensure date field exists and is a string
+    if (!log.date || typeof log.date !== 'string') {
+      console.warn(`Wellbeing log document missing or invalid date field. Document keys: ${Object.keys(doc).join(', ')}. Document:`, JSON.stringify(doc, null, 2));
+      continue; // Skip documents without valid date
+    }
+    
+    // Ensure date is in YYYY-MM-DD format (normalize if needed)
+    const dateStr = log.date as string;
+    
+    // Ensure the log object has the date field explicitly set
+    const wellbeingLog: DailyWellbeing = {
+      ...log,
+      date: dateStr, // Explicitly set date to ensure it's present
+    } as DailyWellbeing;
+    
+    logs[dateStr] = wellbeingLog;
   }
 
+  console.log(`Retrieved ${Object.keys(logs).length} wellbeing logs for user ${userId}. Dates: ${Object.keys(logs).join(', ')}`);
   return logs;
 }
 

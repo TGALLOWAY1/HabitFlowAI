@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
 import type { Category, Habit, DayLog, DailyWellbeing } from '../types';
 import {
     fetchCategories,
@@ -33,6 +33,10 @@ interface HabitContextType {
     reorderCategories: (newOrder: Category[]) => Promise<void>;
     wellbeingLogs: Record<string, DailyWellbeing>;
     logWellbeing: (date: string, data: DailyWellbeing) => Promise<void>;
+    lastPersistenceError: string | null;
+    clearPersistenceError: () => void;
+    refreshDayLogs: () => Promise<void>;
+    refreshHabitsAndCategories: () => Promise<void>;
 }
 
 const HabitContext = createContext<HabitContextType | undefined>(undefined);
@@ -55,132 +59,147 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const [habits, setHabits] = useState<Habit[]>([]);
     const [logs, setLogs] = useState<Record<string, DayLog>>({});
     const [wellbeingLogs, setWellbeingLogs] = useState<Record<string, DailyWellbeing>>({});
+    const [lastPersistenceError, setLastPersistenceError] = useState<string | null>(null);
 
     // Use refs to prevent double execution in React StrictMode
-    const categoriesLoadedRef = useRef(false);
-    const habitsLoadedRef = useRef(false);
-    const logsLoadedRef = useRef(false);
-    const wellbeingLogsLoadedRef = useRef(false);
+    const initializedRef = useRef(false);
 
-    // Load categories from MongoDB on mount
+    // Helper function to load day logs
+    const loadLogsFromApi = useCallback(async () => {
+        try {
+            const apiLogs = await fetchDayLogs();
+            setLogs(apiLogs);
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+            console.error('Failed to fetch logs from API:', errorMessage);
+            setLastPersistenceError("Couldn't load habit logs. Some data may be missing.");
+        }
+    }, []);
+
+    // Helper function to load wellbeing logs
+    const loadWellbeingLogsFromApi = useCallback(async () => {
+        try {
+            console.log('[loadWellbeingLogsFromApi] Fetching wellbeing logs from API...');
+            const apiWellbeingLogs = await fetchWellbeingLogs();
+            console.log('[loadWellbeingLogsFromApi] Received wellbeing logs from API:', {
+                count: Object.keys(apiWellbeingLogs).length,
+                keys: Object.keys(apiWellbeingLogs),
+                logs: apiWellbeingLogs
+            });
+            
+            // Defensive: Ensure all logs have a valid date field and filter out any that don't
+            // Also ensure the Record keys match the date field in each log
+            const validatedLogs: Record<string, DailyWellbeing> = {};
+            for (const [key, log] of Object.entries(apiWellbeingLogs)) {
+                if (log && typeof log === 'object' && log.date && typeof log.date === 'string') {
+                    // Use log.date as the canonical key (not the Record key, in case they differ)
+                    validatedLogs[log.date] = log;
+                    console.log(`[loadWellbeingLogsFromApi] Validated log for date: ${log.date}`);
+                } else {
+                    console.warn(`[loadWellbeingLogsFromApi] Skipping wellbeing log with invalid or missing date field. Key: ${key}`, log);
+                }
+            }
+            
+            console.log('[loadWellbeingLogsFromApi] Setting validated logs:', {
+                count: Object.keys(validatedLogs).length,
+                dates: Object.keys(validatedLogs)
+            });
+            setWellbeingLogs(validatedLogs);
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+            console.error('[loadWellbeingLogsFromApi] Failed to fetch wellbeing logs from API:', errorMessage, error);
+            setLastPersistenceError("Couldn't load wellbeing logs. Some data may be missing.");
+        }
+    }, []);
+
+    // Refresh habits and categories helper (used by initial load and manual refresh)
+    const refreshHabitsAndCategories = useCallback(async () => {
+        try {
+            const [apiCategories, apiHabits] = await Promise.all([
+                fetchCategories(),
+                fetchHabits(),
+            ]);
+            setCategories(apiCategories);
+            setHabits(apiHabits);
+        } catch (error) {
+            console.error('Failed to refresh habits and categories', error);
+            setLastPersistenceError("Couldn't refresh habits and categories. Please try again.");
+        }
+    }, []);
+
+    // Initial load: categories, habits, logs, and wellbeing logs
+    // Each subsystem loads independently so one failure doesn't block others
     useEffect(() => {
+        console.log('[HabitContext] Initial load useEffect triggered. initializedRef.current:', initializedRef.current);
         // Prevent double execution in React StrictMode
-        if (categoriesLoadedRef.current) return;
-        categoriesLoadedRef.current = true;
+        if (initializedRef.current) {
+            console.log('[HabitContext] Already initialized, skipping');
+            return;
+        }
+        initializedRef.current = true;
+        console.log('[HabitContext] Starting initialization...');
 
-        let cancelled = false;
+        let isMounted = true;
 
-        const loadCategoriesFromApi = async () => {
+        const initialize = async () => {
+            console.log('[HabitContext] initialize() called');
             try {
-                const apiCategories = await fetchCategories();
-                if (cancelled) return;
-                setCategories(apiCategories);
+                // 1) Always try to load categories + habits first, using the known-good helper
+                if (isMounted) {
+                    console.log('[HabitContext] Loading categories and habits...');
+                    await refreshHabitsAndCategories();
+                    console.log('[HabitContext] Categories and habits loaded successfully');
+                } else {
+                    console.warn('[HabitContext] Skipping categories/habits - not mounted');
+                }
+
+                // 2) Load day logs independently
+                if (isMounted) {
+                    console.log('[HabitContext] Loading day logs...');
+                    await loadLogsFromApi();
+                    console.log('[HabitContext] Day logs loaded successfully');
+                } else {
+                    console.warn('[HabitContext] Skipping day logs - not mounted');
+                }
+
+                // 3) Load wellbeing logs independently
+                if (isMounted) {
+                    console.log('[HabitContext] Loading wellbeing logs...');
+                    await loadWellbeingLogsFromApi();
+                    console.log('[HabitContext] Wellbeing logs loaded successfully');
+                } else {
+                    console.warn('[HabitContext] Skipping wellbeing logs - not mounted');
+                }
+                console.log('[HabitContext] Initialization complete');
             } catch (error) {
-                if (cancelled) return;
-                const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-                console.error('Failed to fetch categories from API:', errorMessage);
+                console.error('[HabitContext] Error in initialize():', error);
+                throw error;
             }
         };
 
-        loadCategoriesFromApi();
+        initialize().catch(error => {
+            console.error('[HabitContext] Error during initialization:', error);
+        });
 
         return () => {
-            cancelled = true;
+            isMounted = false;
         };
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
-
-    // Load habits from MongoDB on mount
-    useEffect(() => {
-        // Prevent double execution in React StrictMode
-        if (habitsLoadedRef.current) return;
-        habitsLoadedRef.current = true;
-
-        let cancelled = false;
-
-        const loadHabitsFromApi = async () => {
-            try {
-                const apiHabits = await fetchHabits();
-                if (cancelled) return;
-                setHabits(apiHabits);
-            } catch (error) {
-                if (cancelled) return;
-                const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-                console.error('Failed to fetch habits from API:', errorMessage);
-            }
-        };
-
-        loadHabitsFromApi();
-
-        return () => {
-            cancelled = true;
-        };
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
-
-    // Load day logs from MongoDB on mount
-    useEffect(() => {
-        // Prevent double execution in React StrictMode
-        if (logsLoadedRef.current) return;
-        logsLoadedRef.current = true;
-
-        let cancelled = false;
-
-        const loadLogsFromApi = async () => {
-            try {
-                const apiLogs = await fetchDayLogs();
-                if (cancelled) return;
-                setLogs(apiLogs);
-            } catch (error) {
-                if (cancelled) return;
-                const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-                console.error('Failed to fetch logs from API:', errorMessage);
-            }
-        };
-
-        loadLogsFromApi();
-
-        return () => {
-            cancelled = true;
-        };
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
-
-    // Load wellbeing logs from MongoDB on mount
-    useEffect(() => {
-        // Prevent double execution in React StrictMode
-        if (wellbeingLogsLoadedRef.current) return;
-        wellbeingLogsLoadedRef.current = true;
-
-        let cancelled = false;
-
-        const loadWellbeingLogsFromApi = async () => {
-            try {
-                const apiWellbeingLogs = await fetchWellbeingLogs();
-                if (cancelled) return;
-                setWellbeingLogs(apiWellbeingLogs);
-            } catch (error) {
-                if (cancelled) return;
-                const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-                console.error('Failed to fetch wellbeing logs from API:', errorMessage);
-            }
-        };
-
-        loadWellbeingLogsFromApi();
-
-        return () => {
-            cancelled = true;
-        };
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+    }, [refreshHabitsAndCategories, loadLogsFromApi, loadWellbeingLogsFromApi]);
 
 
     const logWellbeing = async (date: string, data: DailyWellbeing) => {
+        console.log('[logWellbeing] FUNCTION CALLED with:', { date, data });
+        // Snapshot previous state for rollback
+        const previousWellbeingLogs = wellbeingLogs;
+
         // Merge with existing data for the date
+        // Ensure date is always set to the parameter value (not from data.date which might differ)
         const existing = wellbeingLogs[date] || { date };
         const mergedData: DailyWellbeing = {
             ...existing,
             ...data,
+            // Always use the date parameter as the canonical date key
+            date: date,
             // Deep merge morning/evening if provided, preserving the other if not
             morning: data.morning ? { ...existing.morning, ...data.morning } : existing.morning,
             evening: data.evening ? { ...existing.evening, ...data.evening } : existing.evening,
@@ -195,10 +214,19 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
         // Save to MongoDB
         try {
-            await saveWellbeingLog(mergedData);
+            console.log('[logWellbeing] Saving wellbeing log:', { date, mergedData });
+            const savedLog = await saveWellbeingLog(mergedData);
+            console.log('[logWellbeing] Successfully saved wellbeing log:', savedLog);
+            
+            // Verify the saved log has a date field
+            if (!savedLog.date) {
+                console.error('[logWellbeing] WARNING: Saved log missing date field:', savedLog);
+            }
         } catch (error) {
-            console.error('Failed to save wellbeing log to API:', error instanceof Error ? error.message : 'Unknown error');
-            // State already updated optimistically, just log error
+            console.error('[logWellbeing] Failed to save wellbeing log to API:', error instanceof Error ? error.message : 'Unknown error', error);
+            // Rollback to previous state
+            setWellbeingLogs(previousWellbeingLogs);
+            setLastPersistenceError("Some changes couldn't be saved. Please try again.");
         }
     };
 
@@ -226,6 +254,9 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     };
 
     const toggleHabit = async (habitId: string, date: string) => {
+        // Snapshot previous state for rollback
+        const previousLogs = logs;
+
         const key = `${habitId}-${date}`;
         const currentLog = logs[key];
 
@@ -254,7 +285,9 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 await saveDayLog(logToSave);
             } catch (error) {
                 console.error('Failed to save day log to API:', error instanceof Error ? error.message : 'Unknown error');
-                // State already updated optimistically, just log error
+                // Rollback to previous state
+                setLogs(previousLogs);
+                setLastPersistenceError("Some changes couldn't be saved. Please try again.");
             }
         } else if (currentLog) {
             // Delete from MongoDB
@@ -262,12 +295,17 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 await deleteDayLogApi(habitId, date);
             } catch (error) {
                 console.error('Failed to delete day log from API:', error instanceof Error ? error.message : 'Unknown error');
-                // State already updated optimistically, just log error
+                // Rollback to previous state
+                setLogs(previousLogs);
+                setLastPersistenceError("Some changes couldn't be saved. Please try again.");
             }
         }
     };
 
     const updateLog = async (habitId: string, date: string, value: number) => {
+        // Snapshot previous state for rollback
+        const previousLogs = logs;
+
         const key = `${habitId}-${date}`;
         const habit = habits.find(h => h.id === habitId);
         if (!habit) return;
@@ -287,7 +325,9 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             await saveDayLog(logToSave);
         } catch (error) {
             console.error('Failed to save day log to API:', error instanceof Error ? error.message : 'Unknown error');
-            // State already updated optimistically, just log error
+            // Rollback to previous state
+            setLogs(previousLogs);
+            setLastPersistenceError("Some changes couldn't be saved. Please try again.");
         }
     };
 
@@ -402,6 +442,20 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         }
     };
 
+    const clearPersistenceError = () => {
+        setLastPersistenceError(null);
+    };
+
+    const refreshDayLogs = async () => {
+        try {
+            const apiLogs = await fetchDayLogs();
+            setLogs(apiLogs);
+        } catch (error) {
+            console.error('Failed to refresh day logs', error);
+            // Optional: you may set lastPersistenceError here, but it's OK to just log for now.
+        }
+    };
+
 
     return (
         <HabitContext.Provider value={{
@@ -418,6 +472,10 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             importHabits,
             reorderCategories,
             logWellbeing,
+            lastPersistenceError,
+            clearPersistenceError,
+            refreshDayLogs,
+            refreshHabitsAndCategories,
         }}>
             {children}
         </HabitContext.Provider>

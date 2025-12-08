@@ -35,11 +35,15 @@ export const ProgressRings: React.FC = () => {
     };
 
     const getWeeklyData = (metric: 'depression' | 'anxiety' | 'energy') => {
+        // Generate last 7 days including today, with today as the last (rightmost) point
+        const todayDate = new Date();
         return Array.from({ length: 7 }).map((_, i) => {
-            const date = format(subDays(new Date(), 6 - i), 'yyyy-MM-dd');
+            // i=0: 6 days ago, i=1: 5 days ago, ..., i=6: today (0 days ago)
+            const dateObj = subDays(todayDate, 6 - i);
+            const date = format(dateObj, 'yyyy-MM-dd');
             return {
-                date: format(new Date(date), 'MMM d'),
-                day: format(new Date(date), 'EEE'),
+                date: format(dateObj, 'MMM d'),
+                day: format(dateObj, 'EEE'),
                 value: getDailyValue(date, metric)
             };
         });

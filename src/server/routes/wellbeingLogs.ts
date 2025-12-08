@@ -27,12 +27,17 @@ export async function getWellbeingLogs(req: Request, res: Response): Promise<voi
 
     const logs = await getWellbeingLogsByUser(userId);
 
+    console.log(`[getWellbeingLogs] Returning ${Object.keys(logs).length} wellbeing logs for user ${userId}. Dates: ${Object.keys(logs).join(', ')}`);
+    if (Object.keys(logs).length > 0) {
+      console.log(`[getWellbeingLogs] Sample log structure:`, JSON.stringify(Object.values(logs)[0], null, 2));
+    }
+
     res.status(200).json({
       wellbeingLogs: logs,
     });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    console.error('Error fetching wellbeing logs:', errorMessage);
+    console.error('[getWellbeingLogs] Error fetching wellbeing logs:', errorMessage);
     res.status(500).json({
       error: {
         code: 'INTERNAL_SERVER_ERROR',
@@ -80,7 +85,9 @@ export async function upsertWellbeingLogRoute(req: Request, res: Response): Prom
       ...(legacyFields.notes !== undefined && { notes: legacyFields.notes }),
     };
 
+    console.log(`[upsertWellbeingLogRoute] Upserting wellbeing log for date: ${date}, userId: ${userId}`);
     const result = await upsertWellbeingLog(log, userId);
+    console.log(`[upsertWellbeingLogRoute] Successfully upserted wellbeing log:`, JSON.stringify(result, null, 2));
 
     res.status(200).json({
       wellbeingLog: result,

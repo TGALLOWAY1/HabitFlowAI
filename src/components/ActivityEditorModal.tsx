@@ -25,6 +25,7 @@ export const ActivityEditorModal: React.FC<ActivityEditorModalProps> = ({
     const [steps, setSteps] = useState<ActivityStep[]>([]);
     const [validationError, setValidationError] = useState<string | null>(null);
     const [deleteConfirmStepId, setDeleteConfirmStepId] = useState<string | null>(null);
+    const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
     // Initialize state from initialActivity or prefillSteps
     useEffect(() => {
@@ -35,11 +36,13 @@ export const ActivityEditorModal: React.FC<ActivityEditorModalProps> = ({
             setTitle(initialActivity.title);
             setSteps(initialActivity.steps.map(step => ({ ...step })));
             setValidationError(null);
+            setHasUnsavedChanges(false);
         } else if (mode === 'create') {
             // Initialize with prefillSteps if provided, otherwise empty
             setTitle('');
             setSteps(prefillSteps ? prefillSteps.map(step => ({ ...step })) : []);
             setValidationError(null);
+            setHasUnsavedChanges(prefillSteps ? prefillSteps.length > 0 : false);
         }
     }, [isOpen, mode, initialActivity, prefillSteps]);
 
@@ -56,6 +59,7 @@ export const ActivityEditorModal: React.FC<ActivityEditorModalProps> = ({
             title: '',
         };
         setSteps([...steps, newStep]);
+        setHasUnsavedChanges(true);
     };
 
     const removeStep = (stepId: string) => {
@@ -68,10 +72,12 @@ export const ActivityEditorModal: React.FC<ActivityEditorModalProps> = ({
         }
         setSteps(steps.filter(s => s.id !== stepId));
         setDeleteConfirmStepId(null);
+        setHasUnsavedChanges(true);
     };
 
     const updateStep = (stepId: string, updates: Partial<ActivityStep>) => {
         setSteps(steps.map(s => (s.id === stepId ? { ...s, ...updates } : s)));
+        setHasUnsavedChanges(true);
     };
 
     const validate = (): { isValid: boolean; error: string | null } => {
@@ -138,6 +144,7 @@ export const ActivityEditorModal: React.FC<ActivityEditorModalProps> = ({
                     })),
                 });
             }
+            setHasUnsavedChanges(false);
             onClose();
         } catch (error) {
             console.error(`Failed to ${mode} activity:`, error);
@@ -145,15 +152,35 @@ export const ActivityEditorModal: React.FC<ActivityEditorModalProps> = ({
         }
     };
 
+    const handleRequestClose = () => {
+        if (hasUnsavedChanges) {
+            const confirmDiscard = window.confirm(
+                'You have unsaved changes. Discard them?'
+            );
+            if (!confirmDiscard) {
+                return;
+            }
+        }
+        onClose();
+    };
+
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+        <div 
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
+            onClick={(e) => {
+                // Close on backdrop click
+                if (e.target === e.currentTarget) {
+                    handleRequestClose();
+                }
+            }}
+        >
             <div className="w-full max-w-3xl max-h-[90vh] bg-neutral-900 border border-white/10 rounded-2xl shadow-2xl flex flex-col">
                 {/* Header */}
                 <div className="flex items-center justify-between p-6 border-b border-white/10">
                     <h3 className="text-xl font-bold text-white">
                         {mode === 'create' ? 'Create Activity' : 'Edit Activity'}
                     </h3>
-                    <button onClick={onClose} className="text-neutral-400 hover:text-white transition-colors">
+                    <button onClick={handleRequestClose} className="text-neutral-400 hover:text-white transition-colors">
                         <X size={20} />
                     </button>
                 </div>
@@ -169,7 +196,10 @@ export const ActivityEditorModal: React.FC<ActivityEditorModalProps> = ({
                             <input
                                 type="text"
                                 value={title}
-                                onChange={(e) => setTitle(e.target.value)}
+                                onChange={(e) => {
+                                    setTitle(e.target.value);
+                                    setHasUnsavedChanges(true);
+                                }}
                                 className="w-full bg-neutral-800 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-emerald-500"
                                 placeholder="e.g., Morning Routine"
                                 required
@@ -403,7 +433,7 @@ export const ActivityEditorModal: React.FC<ActivityEditorModalProps> = ({
                     <div className="p-6 border-t border-white/10 flex justify-end gap-3">
                         <button
                             type="button"
-                            onClick={onClose}
+                            onClick={handleRequestClose}
                             className="px-4 py-2 text-neutral-400 hover:text-white transition-colors"
                         >
                             Cancel
