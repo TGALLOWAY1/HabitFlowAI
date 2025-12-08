@@ -148,7 +148,13 @@ const HabitTrackerContent: React.FC = () => {
           onAddHabit={() => setIsModalOpen(true)}
         />
       ) : view === 'progress' ? (
-        <ProgressDashboard />
+        <ProgressDashboard
+          onCreateGoal={() => setShowCreateGoal(true)}
+          onViewGoal={(goalId) => {
+            setSelectedGoalId(goalId);
+            setView('goals');
+          }}
+        />
       ) : view === 'activities' ? (
         <ActivityList
           onCreate={() => setActivityEditorState({ isOpen: true, mode: 'create', activity: undefined })}

@@ -1,16 +1,23 @@
 import React, { useState } from 'react';
 import { useHabitStore } from '../store/HabitContext';
+import { useProgressOverview } from '../lib/useProgressOverview';
 import { Heatmap } from './Heatmap';
 import { ProgressRings } from './ProgressRings';
 import { DailyCheckInModal } from './DailyCheckInModal';
-import { Sun, Flame, Target, Activity, Clock, ChevronDown, ChevronRight } from 'lucide-react';
+import { Sun, Flame, Target, Activity, Clock, ChevronDown, ChevronRight, AlertTriangle, Plus, Loader2, AlertCircle } from 'lucide-react';
 import { calculateHabitStats } from '../utils/analytics';
 import { getEstimatedCompletionDate } from '../utils/pace';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { AccomplishmentsLog } from './AccomplishmentsLog';
 
-export const ProgressDashboard: React.FC = () => {
+interface ProgressDashboardProps {
+    onCreateGoal?: () => void;
+    onViewGoal?: (goalId: string) => void;
+}
+
+export const ProgressDashboard: React.FC<ProgressDashboardProps> = ({ onCreateGoal, onViewGoal }) => {
     const { habits, logs, categories } = useHabitStore();
+    const { data: progressData, loading: progressLoading, error: progressError } = useProgressOverview();
     const [isCheckInOpen, setIsCheckInOpen] = useState(false);
 
     const habitStats = habits.map(habit => {
@@ -44,6 +51,60 @@ export const ProgressDashboard: React.FC = () => {
             {/* Heatmap Section */}
             <div className="bg-neutral-900/50 rounded-2xl border border-white/5 p-6 backdrop-blur-sm">
                 <Heatmap />
+            </div>
+
+            {/* Goals Section */}
+            <div className="bg-neutral-900/50 rounded-2xl border border-white/5 p-6 backdrop-blur-sm">
+                <div className="flex items-center justify-between mb-6">
+                    <h3 className="text-lg font-semibold text-white">How your goals are progressing</h3>
+                </div>
+
+                {progressLoading ? (
+                    <div className="flex items-center justify-center py-8">
+                        <Loader2 className="text-emerald-500 animate-spin" size={24} />
+                    </div>
+                ) : progressError ? (
+                    <div className="p-4 bg-red-500/10 border border-red-500/50 rounded-lg flex items-start gap-3">
+                        <AlertCircle className="text-red-400 flex-shrink-0 mt-0.5" size={16} />
+                        <div className="flex-1">
+                            <div className="text-red-400 text-sm">{progressError.message}</div>
+                        </div>
+                    </div>
+                ) : !progressData || progressData.goalsWithProgress.length === 0 ? (
+                    <div className="text-center py-8">
+                        <div className="mb-4">
+                            <Target className="text-neutral-500 mx-auto" size={40} />
+                        </div>
+                        <p className="text-neutral-400 text-sm mb-4">
+                            No goals yet. Create one to turn your habits into long-term wins.
+                        </p>
+                        {onCreateGoal && (
+                            <button
+                                onClick={onCreateGoal}
+                                className="flex items-center gap-2 px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-neutral-900 font-medium rounded-lg transition-colors mx-auto text-sm"
+                            >
+                                <Plus size={16} />
+                                Create Goal
+                            </button>
+                        )}
+                    </div>
+                ) : (
+                    <div className="space-y-3">
+                        {progressData.goalsWithProgress
+                            .filter(({ goal }) => !goal.completedAt) // Only show active goals
+                            .map((goalWithProgress) => (
+                                <CompactGoalCard
+                                    key={goalWithProgress.goal.id}
+                                    goalWithProgress={goalWithProgress}
+                                    onClick={() => {
+                                        if (onViewGoal) {
+                                            onViewGoal(goalWithProgress.goal.id);
+                                        }
+                                    }}
+                                />
+                            ))}
+                    </div>
+                )}
             </div>
 
             {/* Habit Stats Grouped by Category */}
@@ -80,6 +141,69 @@ export const ProgressDashboard: React.FC = () => {
                 onClose={() => setIsCheckInOpen(false)}
             />
         </div>
+    );
+};
+
+/**
+ * Compact Goal Card for Progress Dashboard
+ * 
+ * A simplified version of GoalCard that shows:
+ * - Title
+ * - Progress bar with percent
+ * - Inactivity warning badge (if present)
+ * - Clickable to navigate to goal detail
+ */
+const CompactGoalCard: React.FC<{
+    goalWithProgress: { goal: any; progress: any };
+    onClick: () => void;
+}> = ({ goalWithProgress, onClick }) => {
+    const { goal, progress } = goalWithProgress;
+
+    return (
+        <button
+            onClick={onClick}
+            className="w-full text-left bg-neutral-800/50 border border-white/10 rounded-lg p-4 hover:border-emerald-500/50 hover:bg-neutral-800 transition-all duration-200 group"
+        >
+            <div className="flex items-start justify-between gap-4 mb-3">
+                <div className="flex-1 min-w-0">
+                    <h4 className="font-semibold text-white mb-1 group-hover:text-emerald-400 transition-colors truncate">
+                        {goal.title}
+                    </h4>
+                    <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-xs text-neutral-400 capitalize">{goal.type}</span>
+                        {progress.inactivityWarning && (
+                            <div className="flex items-center gap-1 px-2 py-0.5 bg-amber-500/20 border border-amber-500/30 rounded text-xs text-amber-400">
+                                <AlertTriangle size={12} />
+                                <span>Inactive</span>
+                            </div>
+                        )}
+                    </div>
+                </div>
+                <div className="text-right flex-shrink-0">
+                    <div className="text-lg font-bold text-emerald-400">
+                        {Math.min(100, progress.percent)}%
+                    </div>
+                </div>
+            </div>
+
+            {/* Progress Bar */}
+            <div className="w-full h-2 bg-neutral-700 rounded-full overflow-hidden mb-2">
+                <div
+                    className="h-full bg-emerald-500 transition-all duration-300"
+                    style={{ width: `${Math.min(100, progress.percent)}%` }}
+                />
+            </div>
+
+            {/* Progress Details */}
+            <div className="flex items-center justify-between text-xs text-neutral-400">
+                <span>
+                    {goal.type === 'cumulative'
+                        ? `${progress.currentValue} / ${goal.targetValue} ${goal.unit || ''}`
+                        : `${progress.currentValue} of ${goal.targetValue} days`}
+                </span>
+                <span>{goal.linkedHabitIds.length} {goal.linkedHabitIds.length === 1 ? 'habit' : 'habits'}</span>
+            </div>
+        </button>
     );
 };
 
