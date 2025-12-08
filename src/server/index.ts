@@ -13,6 +13,7 @@ import { getDayLogs, upsertDayLogRoute, getDayLogRoute, deleteDayLogRoute } from
 import { getWellbeingLogs, upsertWellbeingLogRoute, getWellbeingLogRoute, deleteWellbeingLogRoute } from './routes/wellbeingLogs';
 import { getActivities, getActivity, createActivityRoute, replaceActivityRoute, updateActivityRoute, deleteActivityRoute, submitActivityRoute } from './routes/activities';
 import { getGoals, getGoal, getGoalProgress, getGoalsWithProgress, getCompletedGoals, createGoalRoute, updateGoalRoute, deleteGoalRoute, createGoalManualLogRoute, getGoalManualLogsRoute, getGoalDetailRoute, uploadGoalBadgeRoute, uploadBadgeMiddleware } from './routes/goals';
+import { getProgressOverview } from './routes/progress';
 import { closeConnection } from './lib/mongoClient';
 
 // Assert MongoDB is enabled at startup (fail fast if misconfigured)
@@ -88,6 +89,9 @@ app.put('/api/activities/:id', replaceActivityRoute);
 app.patch('/api/activities/:id', updateActivityRoute);
 app.delete('/api/activities/:id', deleteActivityRoute);
 app.post('/api/activities/:id/submit', submitActivityRoute);
+
+// Progress routes
+app.get('/api/progress/overview', getProgressOverview);
 
 // Goal routes
 app.get('/api/goals', getGoals);
