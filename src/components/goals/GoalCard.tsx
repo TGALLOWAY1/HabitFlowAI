@@ -5,6 +5,18 @@ import { useHabitStore } from '../../store/HabitContext';
 import type { GoalWithProgress } from '../../models/persistenceTypes';
 import { InactivityCoachingPopup } from './InactivityCoachingPopup';
 import { markGoalAsCompleted } from '../../lib/persistenceClient';
+import { 
+    GoalProgressBar, 
+    GoalStatusChip, 
+    GoalMilestoneDots, 
+    GoalInactivityWarningBadge,
+    goalCardBaseClasses,
+    goalCardPaddingClasses,
+    goalCardHoverClasses,
+    goalTitleClasses,
+    goalSubtitleClasses,
+    goalMetadataClasses
+} from './GoalSharedComponents';
 
 interface GoalCardProps {
     goalWithProgress: GoalWithProgress;
@@ -154,10 +166,10 @@ export const GoalCard: React.FC<GoalCardProps> = ({
         : `${progress.currentValue} / ${goal.targetValue} days`;
 
     return (
-        <div className="bg-neutral-800/50 border border-white/10 rounded-lg overflow-hidden transition-all">
+        <div className={goalCardBaseClasses}>
             <button
                 onClick={onToggleExpand}
-                className="w-full p-4 sm:p-5 hover:bg-neutral-800/70 transition-colors text-left"
+                className={`w-full ${goalCardPaddingClasses} ${goalCardHoverClasses} transition-colors text-left`}
             >
                 {/* Collapsed View */}
                 {!isExpanded && (
@@ -165,34 +177,18 @@ export const GoalCard: React.FC<GoalCardProps> = ({
                         {/* Header: Title and Chevron */}
                         <div className="flex items-start justify-between gap-3">
                             <div className="flex-1 min-w-0">
-                                <h3 className="text-lg font-semibold text-white mb-2 truncate">
+                                <h3 className={`${goalTitleClasses} mb-2 truncate`}>
                                     {goal.title}
                                 </h3>
                                 
                                 {/* Progress Bar */}
-                                <div className="w-full h-2 bg-neutral-700 rounded-full overflow-hidden mb-2">
-                                    <div
-                                        className="h-full bg-emerald-500 transition-all"
-                                        style={{ width: `${Math.min(100, progress.percent)}%` }}
-                                    />
+                                <div className="mb-2">
+                                    <GoalProgressBar percent={progress.percent} height="sm" />
                                 </div>
 
                                 {/* Mini Milestone Dots */}
-                                <div className="flex items-center gap-1 mb-2">
-                                    {milestoneThresholds.map((threshold) => {
-                                        const isFilled = progress.percent >= threshold;
-                                        return (
-                                            <div
-                                                key={threshold}
-                                                className={`w-1.5 h-1.5 rounded-full transition-colors ${
-                                                    isFilled
-                                                        ? 'bg-emerald-500'
-                                                        : 'bg-neutral-600'
-                                                }`}
-                                                title={`${threshold}%`}
-                                            />
-                                        );
-                                    })}
+                                <div className="mb-2">
+                                    <GoalMilestoneDots percent={progress.percent} />
                                 </div>
 
                                 {/* Numerical Progress and Metadata Row */}
@@ -203,7 +199,7 @@ export const GoalCard: React.FC<GoalCardProps> = ({
                                     <span className="text-emerald-400 font-medium">
                                         {progress.percent}%
                                     </span>
-                                    <span className="text-neutral-500">
+                                    <span className={goalMetadataClasses}>
                                         {goal.linkedHabitIds.length} {goal.linkedHabitIds.length === 1 ? 'habit' : 'habits'}
                                     </span>
                                     {goal.deadline && (
@@ -215,13 +211,8 @@ export const GoalCard: React.FC<GoalCardProps> = ({
 
                                 {/* Inactivity Warning Badge */}
                                 {progress.inactivityWarning && (
-                                    <div
-                                        ref={warningBadgeRef}
-                                        onClick={handleWarningClick}
-                                        className="mt-2 flex items-center gap-1.5 px-2 py-1 bg-amber-500/10 border border-amber-500/30 rounded text-xs text-amber-400 cursor-pointer hover:bg-amber-500/20 transition-colors"
-                                    >
-                                        <AlertTriangle size={12} />
-                                        <span>No progress 4 of last 7 days</span>
+                                    <div ref={warningBadgeRef} className="mt-2">
+                                        <GoalInactivityWarningBadge onClick={handleWarningClick} />
                                     </div>
                                 )}
                             </div>
@@ -238,7 +229,7 @@ export const GoalCard: React.FC<GoalCardProps> = ({
                         <div className="flex items-center gap-3 flex-1 min-w-0">
                             <ChevronDown className="text-neutral-400 flex-shrink-0" size={20} />
                             <div className="flex-1 min-w-0">
-                                <h3 className="text-lg font-semibold text-white truncate">
+                                <h3 className={`${goalTitleClasses} truncate`}>
                                     {goal.title}
                                 </h3>
                             </div>
@@ -254,7 +245,7 @@ export const GoalCard: React.FC<GoalCardProps> = ({
                         <div>
                             <div className="text-neutral-400 text-sm font-medium mb-2">Linked Habits</div>
                             {linkedHabits.length === 0 ? (
-                                <div className="text-neutral-500 text-sm">No habits linked</div>
+                                <div className={goalSubtitleClasses}>No habits linked</div>
                             ) : (
                                 <div className="space-y-2">
                                     {linkedHabits.map((habit) => (
@@ -288,7 +279,7 @@ export const GoalCard: React.FC<GoalCardProps> = ({
 
                         {/* Milestone List */}
                         <div>
-                            <div className="text-neutral-400 text-sm font-medium mb-2">Milestones</div>
+                            <div className={`${goalSubtitleClasses} font-medium mb-2`}>Milestones</div>
                             <div className="space-y-2">
                                 {milestones.map((milestone) => {
                                     const milestoneValue = goal.type === 'cumulative'
@@ -301,7 +292,7 @@ export const GoalCard: React.FC<GoalCardProps> = ({
                                             className={`flex items-center justify-between p-2 rounded-lg transition-colors ${
                                                 milestone.reached
                                                     ? 'bg-emerald-500/10 border border-emerald-500/30'
-                                                    : 'bg-neutral-800/50 border border-white/5'
+                                                    : 'bg-neutral-800/50 border border-white/10'
                                             }`}
                                         >
                                             <div className="flex items-center gap-3">
@@ -327,7 +318,7 @@ export const GoalCard: React.FC<GoalCardProps> = ({
 
                         {/* Sparkline Placeholder */}
                         <div>
-                            <div className="text-neutral-400 text-sm font-medium mb-2">Last 7 Days</div>
+                            <div className={`${goalSubtitleClasses} font-medium mb-2`}>Last 7 Days</div>
                             <div className="flex items-end gap-1 h-16 bg-neutral-800/50 rounded-lg p-2">
                                 {progress.lastSevenDays.map((day) => {
                                     const heightPercent = (day.value / maxSparklineValue) * 100;

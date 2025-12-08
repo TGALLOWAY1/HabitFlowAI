@@ -6,6 +6,7 @@ import { format, parseISO } from 'date-fns';
 import { GoalManualProgressModal } from '../../components/goals/GoalManualProgressModal';
 import { DeleteGoalConfirmModal } from '../../components/goals/DeleteGoalConfirmModal';
 import { deleteGoal, markGoalAsCompleted } from '../../lib/persistenceClient';
+import { GoalProgressBar, GoalStatusChip } from '../../components/goals/GoalSharedComponents';
 
 interface GoalDetailPageProps {
     goalId: string;
@@ -227,13 +228,9 @@ export const GoalDetailPage: React.FC<GoalDetailPageProps> = ({ goalId, onBack, 
                                     {data.goal.type}
                                 </span>
                                 {/* Status Chip */}
-                                <span className={`px-2.5 py-1 rounded text-xs font-medium ${
-                                    data.goal.completedAt
-                                        ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                                        : 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
-                                }`}>
+                                <GoalStatusChip status={data.goal.completedAt ? 'completed' : 'active'}>
                                     {data.goal.completedAt ? 'Completed' : 'Active'}
-                                </span>
+                                </GoalStatusChip>
                                 {/* Completed Date Label */}
                                 {data.goal.completedAt && (
                                     <div className="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-500/10 border border-emerald-500/30 rounded text-xs text-emerald-400">
@@ -249,12 +246,10 @@ export const GoalDetailPage: React.FC<GoalDetailPageProps> = ({ goalId, onBack, 
 
                     {/* Main Progress Bar */}
                     <div className="space-y-3">
-                        <div className="w-full h-4 bg-neutral-700 rounded-full overflow-hidden">
-                            <div
-                                className="h-full bg-emerald-500 transition-all"
-                                style={{ width: `${Math.min(100, data.goal.completedAt ? 100 : data.progress.percent)}%` }}
-                            />
-                        </div>
+                        <GoalProgressBar 
+                            percent={data.goal.completedAt ? 100 : data.progress.percent} 
+                            height="lg" 
+                        />
 
                         {/* Numeric Progress */}
                         <div className="flex items-center justify-between">
@@ -302,7 +297,7 @@ export const GoalDetailPage: React.FC<GoalDetailPageProps> = ({ goalId, onBack, 
                                         className={`p-3 rounded-lg border transition-colors ${
                                             isReached
                                                 ? 'bg-emerald-500/10 border-emerald-500/30'
-                                                : 'bg-neutral-800/50 border-white/5'
+                                                : 'bg-neutral-800/50 border-white/10'
                                         }`}
                                     >
                                         <div className="flex items-start gap-2">

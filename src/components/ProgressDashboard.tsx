@@ -10,6 +10,7 @@ import { getEstimatedCompletionDate } from '../utils/pace';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { AccomplishmentsLog } from './AccomplishmentsLog';
 import { format } from 'date-fns';
+import { GoalProgressBar, GoalStatusChip, goalCardBaseClasses, goalTitleCompactClasses, goalMetadataClasses } from './goals/GoalSharedComponents';
 
 interface ProgressDashboardProps {
     onCreateGoal?: () => void;
@@ -201,20 +202,20 @@ const CompactGoalCard: React.FC<{
     return (
         <button
             onClick={onClick}
-            className="w-full text-left bg-neutral-800/50 border border-white/10 rounded-lg p-4 hover:border-emerald-500/50 hover:bg-neutral-800 transition-all duration-200 group"
+            className={`w-full text-left ${goalCardBaseClasses} p-4 hover:border-emerald-500/50 hover:bg-neutral-800 transition-all duration-200 group`}
         >
             <div className="flex items-start justify-between gap-4 mb-3">
                 <div className="flex-1 min-w-0">
-                    <h4 className="font-semibold text-white mb-1 group-hover:text-emerald-400 transition-colors truncate">
+                    <h4 className={`${goalTitleCompactClasses} mb-1 group-hover:text-emerald-400 transition-colors truncate`}>
                         {goal.title}
                     </h4>
                     <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-xs text-neutral-400 capitalize">{goal.type}</span>
+                        <span className={`${goalMetadataClasses} capitalize`}>{goal.type}</span>
                         {progress.inactivityWarning && (
-                            <div className="flex items-center gap-1 px-2 py-0.5 bg-amber-500/20 border border-amber-500/30 rounded text-xs text-amber-400">
-                                <AlertTriangle size={12} />
-                                <span>Inactive</span>
-                            </div>
+                            <GoalStatusChip status="warning">
+                                <AlertTriangle size={12} className="inline mr-1" />
+                                Inactive
+                            </GoalStatusChip>
                         )}
                     </div>
                 </div>
@@ -226,11 +227,8 @@ const CompactGoalCard: React.FC<{
             </div>
 
             {/* Progress Bar */}
-            <div className="w-full h-2 bg-neutral-700 rounded-full overflow-hidden mb-2">
-                <div
-                    className="h-full bg-emerald-500 transition-all duration-300"
-                    style={{ width: `${Math.min(100, progress.percent)}%` }}
-                />
+            <div className="mb-2">
+                <GoalProgressBar percent={progress.percent} height="sm" />
             </div>
 
             {/* Progress Details */}

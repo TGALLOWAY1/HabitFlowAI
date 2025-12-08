@@ -3,6 +3,7 @@ import { Trophy, Award, Calendar } from 'lucide-react';
 import { useCompletedGoals } from '../../lib/useCompletedGoals';
 import { format, parseISO } from 'date-fns';
 import { Loader2, AlertCircle } from 'lucide-react';
+import { goalCardBaseClasses } from '../../components/goals/GoalSharedComponents';
 
 interface WinArchivePageProps {
     onViewGoal?: (goalId: string) => void;
@@ -99,7 +100,7 @@ export const WinArchivePage: React.FC<WinArchivePageProps> = ({ onViewGoal }) =>
                                     onViewGoal(goal.id);
                                 }
                             }}
-                            className="group relative bg-neutral-800/50 border border-white/10 rounded-xl p-4 sm:p-6 hover:border-emerald-500/50 hover:bg-neutral-800 transition-all duration-200 text-left animate-fade-in-up"
+                            className={`group relative ${goalCardBaseClasses} rounded-xl p-4 sm:p-6 hover:border-emerald-500/50 hover:bg-neutral-800 transition-all duration-200 text-left animate-fade-in-up`}
                             style={{
                                 animationDelay: `${index * 50}ms`,
                                 animationFillMode: 'both',
