@@ -205,7 +205,7 @@ export const GoalCompletedPage: React.FC<GoalCompletedPageProps> = ({
                 onClose={() => setShowBadgeModal(false)}
                 goalId={goalId}
                 onSuccess={(badgeImageUrl) => {
-                    // Refetch goal data to get updated badge
+                    // Refetch goal data to get updated badge (allows badge replacement)
                     refetch();
                     
                     // Auto-redirect to Win Archive after 1 second

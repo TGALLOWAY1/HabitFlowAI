@@ -81,6 +81,7 @@ export const GoalDetailPage: React.FC<GoalDetailPageProps> = ({ goalId, onBack, 
     };
 
     // Detect when goal reaches 100% and automatically mark as completed
+    // This handles both habit log updates and manual progress logs that push progress over 100%
     useEffect(() => {
         if (!data || loading || isCompletingRef.current) return;
 

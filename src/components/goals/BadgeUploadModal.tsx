@@ -41,7 +41,10 @@ export const BadgeUploadModal: React.FC<BadgeUploadModalProps> = ({
 
     const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
-        if (!file) return;
+        if (!file) {
+            setError(null);
+            return;
+        }
 
         setError(null);
 
@@ -51,15 +54,29 @@ export const BadgeUploadModal: React.FC<BadgeUploadModalProps> = ({
             setError(validationError);
             setSelectedFile(null);
             setPreview(null);
+            // Clear the input so user can try again
+            if (fileInputRef.current) {
+                fileInputRef.current.value = '';
+            }
             return;
         }
 
         setSelectedFile(file);
 
-        // Create preview
+        // Create preview with error handling
         const reader = new FileReader();
         reader.onloadend = () => {
-            setPreview(reader.result as string);
+            if (reader.result) {
+                setPreview(reader.result as string);
+            }
+        };
+        reader.onerror = () => {
+            setError('Failed to read image file. Please try another file.');
+            setSelectedFile(null);
+            setPreview(null);
+            if (fileInputRef.current) {
+                fileInputRef.current.value = '';
+            }
         };
         reader.readAsDataURL(file);
     };
@@ -84,9 +101,18 @@ export const BadgeUploadModal: React.FC<BadgeUploadModalProps> = ({
 
             if (!response.ok) {
                 const errorData = await response.json().catch(() => ({}));
-                throw new Error(
-                    errorData.error?.message || 'Failed to upload badge'
-                );
+                const errorMessage = errorData.error?.message || 'Failed to upload badge';
+                
+                // Provide more specific error messages
+                if (response.status === 400) {
+                    throw new Error(errorMessage || 'Invalid file. Please select a PNG or JPG image under 10MB.');
+                } else if (response.status === 404) {
+                    throw new Error('Goal not found. Please refresh the page and try again.');
+                } else if (response.status === 500) {
+                    throw new Error('Server error. Please try again later.');
+                }
+                
+                throw new Error(errorMessage);
             }
 
             const data = await response.json();
