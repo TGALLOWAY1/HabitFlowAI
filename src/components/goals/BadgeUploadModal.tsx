@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { X, Loader2, AlertCircle, Image as ImageIcon, Upload } from 'lucide-react';
+import { invalidateGoalCaches } from '../../lib/goalDataCache';
 
 interface BadgeUploadModalProps {
     isOpen: boolean;
@@ -117,6 +118,9 @@ export const BadgeUploadModal: React.FC<BadgeUploadModalProps> = ({
 
             const data = await response.json();
             const badgeImageUrl = data.badgeImageUrl;
+
+            // Invalidate goal caches since badge was uploaded
+            invalidateGoalCaches(goalId);
 
             // Reset form
             setSelectedFile(null);

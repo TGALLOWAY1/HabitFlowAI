@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X, Loader2, AlertCircle } from 'lucide-react';
 import { createGoalManualLog } from '../../lib/persistenceClient';
+import { invalidateGoalCaches } from '../../lib/goalDataCache';
 
 interface GoalManualProgressModalProps {
     isOpen: boolean;
@@ -45,6 +46,9 @@ export const GoalManualProgressModal: React.FC<GoalManualProgressModalProps> = (
                 value: numValue,
                 loggedAt,
             });
+
+            // Invalidate goal caches since progress changed
+            invalidateGoalCaches(goalId);
 
             // Reset form
             setValue('');
