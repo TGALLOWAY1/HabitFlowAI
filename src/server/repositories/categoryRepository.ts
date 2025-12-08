@@ -27,6 +27,18 @@ export async function createCategory(
   const db = await getDb();
   const collection = db.collection(COLLECTION_NAME);
 
+  // Check for duplicate category name for this user
+  const existing = await collection.findOne({
+    userId,
+    name: data.name,
+  });
+
+  if (existing) {
+    // Return existing category instead of creating a duplicate
+    const { _id, userId: _, ...category } = existing;
+    return category as Category;
+  }
+
   // Generate ID (using UUID format to match frontend)
   const id = randomUUID();
 

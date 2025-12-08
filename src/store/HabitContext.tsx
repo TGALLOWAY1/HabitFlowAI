@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import type { Category, Habit, DayLog, DailyWellbeing } from '../types';
 import {
     fetchCategories,
@@ -56,8 +56,18 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const [logs, setLogs] = useState<Record<string, DayLog>>({});
     const [wellbeingLogs, setWellbeingLogs] = useState<Record<string, DailyWellbeing>>({});
 
+    // Use refs to prevent double execution in React StrictMode
+    const categoriesLoadedRef = useRef(false);
+    const habitsLoadedRef = useRef(false);
+    const logsLoadedRef = useRef(false);
+    const wellbeingLogsLoadedRef = useRef(false);
+
     // Load categories from MongoDB on mount
     useEffect(() => {
+        // Prevent double execution in React StrictMode
+        if (categoriesLoadedRef.current) return;
+        categoriesLoadedRef.current = true;
+
         let cancelled = false;
 
         const loadCategoriesFromApi = async () => {
@@ -82,6 +92,10 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     // Load habits from MongoDB on mount
     useEffect(() => {
+        // Prevent double execution in React StrictMode
+        if (habitsLoadedRef.current) return;
+        habitsLoadedRef.current = true;
+
         let cancelled = false;
 
         const loadHabitsFromApi = async () => {
@@ -106,6 +120,10 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     // Load day logs from MongoDB on mount
     useEffect(() => {
+        // Prevent double execution in React StrictMode
+        if (logsLoadedRef.current) return;
+        logsLoadedRef.current = true;
+
         let cancelled = false;
 
         const loadLogsFromApi = async () => {
@@ -130,6 +148,10 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     // Load wellbeing logs from MongoDB on mount
     useEffect(() => {
+        // Prevent double execution in React StrictMode
+        if (wellbeingLogsLoadedRef.current) return;
+        wellbeingLogsLoadedRef.current = true;
+
         let cancelled = false;
 
         const loadWellbeingLogsFromApi = async () => {
@@ -302,8 +324,14 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         categoriesToImport: Omit<Category, 'id'>[],
         habitsData: { categoryName: string; habit: Omit<Habit, 'id' | 'categoryId' | 'createdAt' | 'archived'> }[]
     ) => {
+        // Refresh data from API to ensure we have the latest state (prevents duplicates from stale local state)
+        const [latestCategories, latestHabits] = await Promise.all([
+            fetchCategories().catch(() => categories), // Fallback to local state if fetch fails
+            fetchHabits().catch(() => habits), // Fallback to local state if fetch fails
+        ]);
+
         // 1. Create Categories if they don't exist
-        let updatedCategories = [...categories];
+        let updatedCategories = [...latestCategories];
         const categoryMap = new Map<string, string>(); // Name -> ID
 
         // Map existing categories
@@ -326,14 +354,14 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             }
         }
 
-        // 2. Create Habits
-        let updatedHabits = [...habits];
+        // 2. Create Habits - use latest data from API to check for duplicates
+        let updatedHabits = [...latestHabits];
         let addedCount = 0;
         
         for (const { categoryName, habit } of habitsData) {
             const categoryId = categoryMap.get(categoryName);
             if (categoryId) {
-                // Check if habit already exists to avoid duplicates
+                // Check if habit already exists in the latest data to avoid duplicates
                 const exists = updatedHabits.some(h => h.name === habit.name && h.categoryId === categoryId);
                 if (!exists) {
                     try {
@@ -356,9 +384,9 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             }
         }
 
-        console.log(`Imported ${categoriesToImport.length} categories and ${addedCount} habits.`);
+        console.log(`Imported ${addedCount} new habits (${habitsData.length - addedCount} were duplicates).`);
 
-        // Update state
+        // Update state with fresh data
         setCategories(updatedCategories);
         setHabits(updatedHabits);
     };
