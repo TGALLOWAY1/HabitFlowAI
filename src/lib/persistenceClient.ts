@@ -6,7 +6,7 @@
  */
 
 import type { Category, Habit, DayLog, DailyWellbeing, Goal, GoalWithProgress, GoalManualLog } from '../models/persistenceTypes';
-import type { GoalDetail, CompletedGoal } from '../types';
+import type { GoalDetail, CompletedGoal, ProgressOverview } from '../types';
 import type { Activity } from '../types';
 
 import { API_BASE_URL } from './persistenceConfig';
@@ -562,6 +562,21 @@ export async function deleteGoal(id: string): Promise<void> {
 export async function fetchGoalsWithProgress(): Promise<GoalWithProgress[]> {
   const response = await apiRequest<{ goals: GoalWithProgress[] }>('/goals-with-progress');
   return response.goals;
+}
+
+/**
+ * Fetch progress overview combining habits and goals for today.
+ * 
+ * GET /api/progress/overview
+ * 
+ * Returns today's date, habit completion summaries, and all goals with progress.
+ * 
+ * @returns Promise<ProgressOverview> - Combined progress data
+ * @throws Error if API request fails
+ */
+export async function fetchProgressOverview(): Promise<ProgressOverview> {
+  const response = await apiRequest<ProgressOverview>('/progress/overview');
+  return response;
 }
 
 /**

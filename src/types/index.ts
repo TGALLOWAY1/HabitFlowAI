@@ -97,3 +97,19 @@ export interface GoalDetail {
     progress: GoalProgress;
     manualLogs: GoalManualLog[];
 }
+
+/**
+ * Progress Overview
+ * 
+ * Combined data for the Progress page, including today's habit completions
+ * and all goals with their progress.
+ */
+export interface ProgressOverview {
+    todayDate: string; // YYYY-MM-DD format
+    habitsToday: Array<{
+        habit: Habit;
+        completed: boolean;
+        value?: number; // Present if quantified habit has a value
+    }>;
+    goalsWithProgress: GoalWithProgress[];
+}
