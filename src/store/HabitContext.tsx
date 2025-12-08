@@ -86,7 +86,7 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 keys: Object.keys(apiWellbeingLogs),
                 logs: apiWellbeingLogs
             });
-            
+
             // Defensive: Ensure all logs have a valid date field and filter out any that don't
             // Also ensure the Record keys match the date field in each log
             const validatedLogs: Record<string, DailyWellbeing> = {};
@@ -99,7 +99,7 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                     console.warn(`[loadWellbeingLogsFromApi] Skipping wellbeing log with invalid or missing date field. Key: ${key}`, log);
                 }
             }
-            
+
             console.log('[loadWellbeingLogsFromApi] Setting validated logs:', {
                 count: Object.keys(validatedLogs).length,
                 dates: Object.keys(validatedLogs)
@@ -144,32 +144,22 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         const initialize = async () => {
             console.log('[HabitContext] initialize() called');
             try {
-                // 1) Always try to load categories + habits first, using the known-good helper
-                if (isMounted) {
-                    console.log('[HabitContext] Loading categories and habits...');
-                    await refreshHabitsAndCategories();
-                    console.log('[HabitContext] Categories and habits loaded successfully');
-                } else {
-                    console.warn('[HabitContext] Skipping categories/habits - not mounted');
-                }
+                // Fire all data fetches in parallel to ensure one slow/failed request doesn't block others
+                console.log('[HabitContext] Starting parallel data fetch...');
 
-                // 2) Load day logs independently
-                if (isMounted) {
-                    console.log('[HabitContext] Loading day logs...');
-                    await loadLogsFromApi();
-                    console.log('[HabitContext] Day logs loaded successfully');
-                } else {
-                    console.warn('[HabitContext] Skipping day logs - not mounted');
-                }
+                // We use Promise.allSettled so that if one fails, the others still succeed
+                const results = await Promise.allSettled([
+                    refreshHabitsAndCategories().then(() => console.log('[HabitContext] Habits/Categories loaded')),
+                    loadLogsFromApi().then(() => console.log('[HabitContext] Day logs loaded')),
+                    loadWellbeingLogsFromApi().then(() => console.log('[HabitContext] Wellbeing logs loaded'))
+                ]);
 
-                // 3) Load wellbeing logs independently
-                if (isMounted) {
-                    console.log('[HabitContext] Loading wellbeing logs...');
-                    await loadWellbeingLogsFromApi();
-                    console.log('[HabitContext] Wellbeing logs loaded successfully');
-                } else {
-                    console.warn('[HabitContext] Skipping wellbeing logs - not mounted');
-                }
+                results.forEach((result, index) => {
+                    if (result.status === 'rejected') {
+                        console.error(`[HabitContext] Fetch ${index} failed:`, result.reason);
+                    }
+                });
+
                 console.log('[HabitContext] Initialization complete');
             } catch (error) {
                 console.error('[HabitContext] Error in initialize():', error);
@@ -217,7 +207,7 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             console.log('[logWellbeing] Saving wellbeing log:', { date, mergedData });
             const savedLog = await saveWellbeingLog(mergedData);
             console.log('[logWellbeing] Successfully saved wellbeing log:', savedLog);
-            
+
             // Verify the saved log has a date field
             if (!savedLog.date) {
                 console.error('[logWellbeing] WARNING: Saved log missing date field:', savedLog);
@@ -262,7 +252,7 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
         let updatedLogs: Record<string, DayLog>;
         let logToSave: DayLog | null = null;
-        
+
         if (currentLog) {
             // Toggle off - delete log
             const { [key]: _, ...rest } = logs;
@@ -275,7 +265,7 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 [key]: logToSave,
             };
         }
-        
+
         // Optimistic update: update state immediately
         setLogs(updatedLogs);
 
@@ -397,7 +387,7 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         // 2. Create Habits - use latest data from API to check for duplicates
         let updatedHabits = [...latestHabits];
         let addedCount = 0;
-        
+
         for (const { categoryName, habit } of habitsData) {
             const categoryId = categoryMap.get(categoryName);
             if (categoryId) {

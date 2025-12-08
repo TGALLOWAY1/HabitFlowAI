@@ -5,10 +5,7 @@
  * Provides CRUD operations for habits with user-scoped queries.
  */
 
-import { ObjectId } from 'mongodb';
-import { randomUUID } from 'crypto';
 import { getDb } from '../lib/mongoClient';
-import { getMongoEnabled } from '../config';
 import type { Habit } from '../../models/persistenceTypes';
 
 const COLLECTION_NAME = 'habits';
@@ -42,7 +39,7 @@ export async function createHabit(
   }
 
   // Generate ID (using UUID format to match frontend)
-  const id = randomUUID();
+  const id = crypto.randomUUID();
   const createdAt = new Date().toISOString();
 
   // Create document to store in MongoDB (includes userId)
@@ -52,12 +49,17 @@ export async function createHabit(
     archived: false,
     createdAt,
     userId,
+    // Add explicitly to ensure it exists for _id destructuring if driver mutates
   };
 
   await collection.insertOne(document);
 
+  // Debug log for persistence verification (proof of life)
+  console.log(`[Persistence] Created habit '${data.name}' (ID: ${id}) for User: ${userId}`);
+
   // Return Habit (without userId and _id)
-  const { _id, userId: _, ...habit } = document;
+  // Cast to any to handle potential runtime _id addition by driver
+  const { _id, userId: _, ...habit } = document as any;
   return habit as Habit;
 }
 

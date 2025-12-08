@@ -5,9 +5,7 @@
  * Provides CRUD operations for day logs with user-scoped queries.
  */
 
-import { ObjectId } from 'mongodb';
 import { getDb } from '../lib/mongoClient';
-import { getMongoEnabled } from '../config';
 import type { DayLog } from '../../models/persistenceTypes';
 
 const COLLECTION_NAME = 'dayLogs';
@@ -51,15 +49,30 @@ export async function upsertDayLog(
     document.activityStepId = logAny.activityStepId;
   }
 
-  // Upsert (insert or update)
-  await collection.updateOne(
+  // Upsert (insert or update) using findOneAndUpdate to get the latest state
+  const result = await collection.findOneAndUpdate(
     { compositeKey, userId },
-    { $set: document },
-    { upsert: true }
+    {
+      $set: {
+        ...document,
+        updatedAt: new Date().toISOString()
+      },
+      $setOnInsert: {
+        createdAt: new Date().toISOString()
+      }
+    },
+    {
+      upsert: true,
+      returnDocument: 'after' // Return the modified document
+    }
   );
 
+  if (!result) {
+    throw new Error('Failed to upsert day log');
+  }
+
   // Return DayLog (without userId, compositeKey, and _id)
-  const { _id, userId: _, compositeKey: __, ...dayLog } = document;
+  const { _id, userId: _, compositeKey: __, ...dayLog } = result;
   return dayLog as DayLog;
 }
 

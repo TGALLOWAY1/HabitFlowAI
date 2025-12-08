@@ -15,7 +15,7 @@ import {
   deleteHabit,
 } from '../repositories/habitRepository';
 import { getActivitiesByUser, updateActivity } from '../repositories/activityRepository';
-import type { Habit, Activity, ActivityStep } from '../../models/persistenceTypes';
+import type { Habit, ActivityStep } from '../../models/persistenceTypes';
 
 /**
  * Get all habits for the current user.
@@ -339,7 +339,7 @@ export async function deleteHabitRoute(req: Request, res: Response): Promise<voi
     let convertedStepsCount = 0;
     try {
       const activities = await getActivitiesByUser(userId);
-      
+
       for (const activity of activities) {
         // Check if any steps reference this habit
         const hasReferencingSteps = activity.steps.some(

@@ -4,7 +4,8 @@
  * Starts the Express server to handle API routes for MongoDB persistence.
  */
 
-import express, { Express } from 'express';
+import express from 'express';
+import type { Express } from 'express';
 import './config/env'; // Load environment variables first
 import { assertMongoEnabled } from './config';
 import { getCategories, createCategoryRoute, getCategory, updateCategoryRoute, deleteCategoryRoute, reorderCategoriesRoute } from './routes/categories';
@@ -22,6 +23,8 @@ assertMongoEnabled();
 const app: Express = express();
 const PORT = process.env.PORT || 3000;
 
+import { userIdMiddleware } from './middleware/auth';
+
 // Middleware
 app.use(express.json());
 
@@ -32,22 +35,18 @@ app.use('/uploads', express.static('public/uploads'));
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');
   res.header('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-User-Id');
+
   if (req.method === 'OPTIONS') {
     res.sendStatus(200);
     return;
   }
-  
+
   next();
 });
 
-// Temporary: Add userId to request (simulating auth middleware)
-// TODO: Replace with actual authentication middleware
-app.use((req, res, next) => {
-  (req as any).userId = 'anonymous-user'; // Default user ID until auth is implemented
-  next();
-});
+// Authentication Middleware
+app.use(userIdMiddleware);
 
 // API Routes
 // Note: Specific routes (like /reorder) must come before parameterized routes (like /:id)
@@ -110,7 +109,7 @@ app.put('/api/goals/:id', updateGoalRoute);
 app.delete('/api/goals/:id', deleteGoalRoute);
 
 // Health check endpoint
-app.get('/api/health', (req, res) => {
+app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 

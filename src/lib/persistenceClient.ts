@@ -12,16 +12,32 @@ import type { Activity } from '../types';
 import { API_BASE_URL } from './persistenceConfig';
 import { invalidateGoalDataCache } from './goalDataCache';
 
+
+
 /**
- * Get the current user ID.
+ * Get or create a persistent user ID.
  * 
- * TODO: Replace with actual authentication token/session.
- * For now, returns a placeholder that should match backend expectations.
+ * Generates a UUID and stores it in localStorage to ensure the same user ID
+ * is used across browser sessions and refreshes.
  */
-function getUserId(): string {
-  // TODO: Extract from auth token, session, or user context
-  // For now, using a placeholder
-  return 'anonymous-user';
+function getOrCreateUserId(): string {
+  if (typeof window === 'undefined') {
+    return 'server-side-rendering-placeholder';
+  }
+
+  const STORAGE_KEY = 'habitflow_user_id';
+  let userId = localStorage.getItem(STORAGE_KEY);
+
+  if (!userId) {
+    // Generate new ID if none exists
+    userId = crypto.randomUUID();
+    localStorage.setItem(STORAGE_KEY, userId);
+    console.log('[Auth] Generated new persistent User ID:', userId);
+  } else {
+    // console.debug('[Auth] Using existing User ID:', userId);
+  }
+
+  return userId;
 }
 
 /**
@@ -32,23 +48,27 @@ async function apiRequest<T>(
   options: RequestInit = {}
 ): Promise<T> {
   const url = `${API_BASE_URL}${endpoint}`;
-  
+
+  // Get persistent user ID
+  const userId = getOrCreateUserId();
+
   try {
     const response = await fetch(url, {
       ...options,
       headers: {
         'Content-Type': 'application/json',
+        'X-User-Id': userId, // Send identity header
         ...options.headers,
       },
     });
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      
+
       // Handle feature flag disabled (501)
       if (response.status === 501) {
         throw new Error(
-          errorData.error?.message || 
+          errorData.error?.message ||
           'MongoDB persistence is disabled on the server'
         );
       }
@@ -56,7 +76,7 @@ async function apiRequest<T>(
       // Handle validation errors (400)
       if (response.status === 400) {
         throw new Error(
-          errorData.error?.message || 
+          errorData.error?.message ||
           'Invalid request data'
         );
       }
@@ -64,14 +84,14 @@ async function apiRequest<T>(
       // Handle not found (404)
       if (response.status === 404) {
         throw new Error(
-          errorData.error?.message || 
+          errorData.error?.message ||
           'Resource not found'
         );
       }
 
       // Handle other errors
       throw new Error(
-        errorData.error?.message || 
+        errorData.error?.message ||
         `API request failed: ${response.status} ${response.statusText}`
       );
     }
@@ -325,9 +345,9 @@ export async function deleteDayLog(habitId: string, date: string): Promise<void>
  */
 export async function fetchWellbeingLogs(): Promise<Record<string, DailyWellbeing>> {
   console.log('[fetchWellbeingLogs] Sending GET request to /wellbeingLogs');
-  
+
   const response = await apiRequest<{ wellbeingLogs: Record<string, DailyWellbeing> }>('/wellbeingLogs');
-  
+
   console.log('[fetchWellbeingLogs] Received response:', response);
   return response.wellbeingLogs;
 }
@@ -341,7 +361,7 @@ export async function fetchWellbeingLogs(): Promise<Record<string, DailyWellbein
  */
 export async function saveWellbeingLog(log: DailyWellbeing): Promise<DailyWellbeing> {
   console.log('[saveWellbeingLog] Sending POST request to /wellbeingLogs with:', log);
-  
+
   const response = await apiRequest<{ wellbeingLog: DailyWellbeing }>('/wellbeingLogs', {
     method: 'POST',
     body: JSON.stringify(log),
