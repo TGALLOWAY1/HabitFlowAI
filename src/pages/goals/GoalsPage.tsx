@@ -77,12 +77,13 @@ export const GoalsPage: React.FC<GoalsPageProps> = ({ onCreateGoal, onViewGoal, 
                     <div className="max-w-md mx-auto">
                         <div className="mb-6">
                             <div className="w-16 h-16 mx-auto bg-neutral-800 rounded-full flex items-center justify-center mb-4">
-                                <Plus className="text-neutral-500" size={32} />
+                                <Plus className="text-emerald-400" size={32} />
                             </div>
                         </div>
-                        <h2 className="text-xl font-semibold text-white mb-2">No goals yet</h2>
+                        <h2 className="text-xl font-semibold text-white mb-2">Start Your Journey</h2>
                         <p className="text-neutral-400 mb-6 text-sm sm:text-base">
-                            Create your first goal to start tracking progress and building momentum.
+                            Create your first goal to turn your daily habits into meaningful achievements. 
+                            Every small step counts toward something bigger.
                         </p>
                         {onCreateGoal && (
                             <button
@@ -90,7 +91,7 @@ export const GoalsPage: React.FC<GoalsPageProps> = ({ onCreateGoal, onViewGoal, 
                                 className="flex items-center gap-2 px-6 py-3 bg-emerald-500 hover:bg-emerald-400 text-neutral-900 font-medium rounded-lg transition-colors mx-auto text-sm sm:text-base"
                             >
                                 <Plus size={18} />
-                                Create Goal
+                                Create Your First Goal
                             </button>
                         )}
                     </div>

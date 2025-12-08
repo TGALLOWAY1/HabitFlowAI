@@ -1,3 +1,19 @@
+/**
+ * Goal Detail Page
+ * 
+ * Displays comprehensive details for a single goal including:
+ * - Progress tracking and visualization
+ * - Linked habits
+ * - Milestones
+ * - Recent progress history
+ * - Manual progress logging (cumulative goals only)
+ * 
+ * Completed Goals Display Policy:
+ * - Completed goals are shown with a "Completed" status chip
+ * - Manual progress UI is hidden for completed goals
+ * - Manual progress UI is hidden for frequency goals (only cumulative goals support manual logging)
+ * - Completed goals can be viewed in the Win Archive
+ */
 import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { useGoalDetail } from '../../lib/useGoalDetail';
 import { useHabitStore } from '../../store/HabitContext';
@@ -158,11 +174,35 @@ export const GoalDetailPage: React.FC<GoalDetailPageProps> = ({ goalId, onBack, 
                         Back to Goals
                     </button>
                 )}
-                <div className="p-4 bg-red-500/10 border border-red-500/50 rounded-lg flex items-start gap-3">
-                    <AlertCircle className="text-red-400 flex-shrink-0 mt-0.5" size={20} />
-                    <div className="flex-1">
-                        <div className="text-red-400 font-medium mb-1">Error</div>
-                        <div className="text-red-300 text-sm">{error.message}</div>
+                <div className="p-6 bg-red-500/10 border border-red-500/50 rounded-lg">
+                    <div className="flex items-start gap-3 mb-4">
+                        <AlertCircle className="text-red-400 flex-shrink-0 mt-0.5" size={20} />
+                        <div className="flex-1">
+                            <div className="text-red-400 font-medium mb-1">Unable to Load Goal</div>
+                            <div className="text-red-300 text-sm mb-3">
+                                {error.message || 'Something went wrong while loading this goal. Please try again.'}
+                            </div>
+                            <p className="text-neutral-400 text-xs">
+                                This might be a temporary issue. Click retry to try loading the goal again.
+                            </p>
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                        <button
+                            onClick={() => refetch()}
+                            className="flex items-center gap-2 px-4 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 font-medium rounded-lg transition-colors border border-red-500/30 text-sm"
+                        >
+                            <Loader2 size={16} className="animate-spin" />
+                            Retry
+                        </button>
+                        {onBack && (
+                            <button
+                                onClick={onBack}
+                                className="px-4 py-2 bg-neutral-700 hover:bg-neutral-600 text-white font-medium rounded-lg transition-colors text-sm"
+                            >
+                                Back to Goals
+                            </button>
+                        )}
                     </div>
                 </div>
             </div>

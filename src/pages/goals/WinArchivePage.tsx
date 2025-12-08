@@ -80,12 +80,15 @@ export const WinArchivePage: React.FC<WinArchivePageProps> = ({ onViewGoal }) =>
                     <div className="max-w-md mx-auto">
                         <div className="mb-6">
                             <div className="w-20 h-20 mx-auto bg-neutral-800 rounded-full flex items-center justify-center mb-4">
-                                <Trophy className="text-neutral-500" size={40} />
+                                <Trophy className="text-amber-400/50" size={40} />
                             </div>
                         </div>
-                        <h2 className="text-xl font-semibold text-white mb-2">Your archive is empty</h2>
-                        <p className="text-neutral-400 text-sm sm:text-base">
-                            Your first win will appear here!
+                        <h2 className="text-xl font-semibold text-white mb-2">Your Win Archive Awaits</h2>
+                        <p className="text-neutral-400 text-sm sm:text-base mb-2">
+                            Every completed goal becomes a badge of achievement here.
+                        </p>
+                        <p className="text-neutral-500 text-sm">
+                            Complete your first goal to see it celebrated in your archive!
                         </p>
                     </div>
                 </div>

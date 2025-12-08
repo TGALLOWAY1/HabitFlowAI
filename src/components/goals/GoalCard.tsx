@@ -1,3 +1,16 @@
+/**
+ * Goal Card Component
+ * 
+ * Displays a single goal in a collapsible card format.
+ * 
+ * Inactivity Warning Policy:
+ * - Inactivity warning badge only appears when progress.inactivityWarning is true
+ * - This ensures warnings are only shown when the backend has detected actual inactivity
+ * 
+ * Manual Progress Policy:
+ * - Manual progress UI is not shown in GoalCard (only in GoalDetailPage)
+ * - Manual progress is only available for cumulative goals, not frequency goals
+ */
 import React, { useMemo, useState, useRef, useEffect } from 'react';
 import { ChevronDown, ChevronRight, AlertTriangle, Check, ExternalLink, Edit, Plus } from 'lucide-react';
 import { format, parseISO } from 'date-fns';

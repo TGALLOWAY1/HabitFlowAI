@@ -75,10 +75,11 @@ export const ProgressDashboard: React.FC<ProgressDashboardProps> = ({ onCreateGo
                 ) : !progressData || progressData.goalsWithProgress.length === 0 ? (
                     <div className="text-center py-8">
                         <div className="mb-4">
-                            <Target className="text-neutral-500 mx-auto" size={40} />
+                            <Target className="text-emerald-400/50 mx-auto" size={40} />
                         </div>
+                        <h4 className="text-white font-medium mb-2">No goals yet</h4>
                         <p className="text-neutral-400 text-sm mb-4">
-                            No goals yet. Create one to turn your habits into long-term wins.
+                            Create a goal to turn your daily habits into meaningful long-term achievements.
                         </p>
                         {onCreateGoal && (
                             <button
@@ -86,12 +87,18 @@ export const ProgressDashboard: React.FC<ProgressDashboardProps> = ({ onCreateGo
                                 className="flex items-center gap-2 px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-neutral-900 font-medium rounded-lg transition-colors mx-auto text-sm"
                             >
                                 <Plus size={16} />
-                                Create Goal
+                                Create Your First Goal
                             </button>
                         )}
                     </div>
                 ) : (
                     <div className="space-y-3">
+                        {/* 
+                            Completed Goals Display Policy:
+                            We hide completed goals from the active goals list on the Progress page.
+                            Completed goals are accessible via the Win Archive.
+                            This keeps the Progress page focused on active, in-progress goals.
+                        */}
                         {progressData.goalsWithProgress
                             .filter(({ goal }) => !goal.completedAt) // Only show active goals
                             .map((goalWithProgress) => (
