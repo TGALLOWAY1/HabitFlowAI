@@ -40,6 +40,11 @@ export interface Habit {
     archived: boolean;
     createdAt: string;
     pace?: string | null; // Estimated completion date
+
+    // Calendar View Fields
+    assignedDays?: number[]; // 0=Sun, 6=Sat
+    scheduledTime?: string; // HH:mm
+    durationMinutes?: number;
 }
 
 export interface DayLog {

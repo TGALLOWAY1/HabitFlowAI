@@ -128,6 +128,25 @@ export interface Habit {
      * or calculated in the application layer, not stored in the database.
      */
     pace?: string | null;
+
+    /**
+     * Optional: Assigned days of the week for weekly habits.
+     * 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+     * Used for calendar visualization and potentially notifications.
+     */
+    assignedDays?: number[];
+
+    /**
+     * Optional: Preferred time of day for the habit (e.g., "09:00").
+     * Used for calendar visualization.
+     */
+    scheduledTime?: string;
+
+    /**
+     * Optional: Duration in minutes for the habit (default: 30).
+     * Used for calendar visualization.
+     */
+    durationMinutes?: number;
 }
 
 /**
