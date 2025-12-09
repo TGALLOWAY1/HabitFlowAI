@@ -2,9 +2,26 @@ import React, { useMemo, useState } from 'react';
 import { format, eachDayOfInterval, subDays, isToday } from 'date-fns';
 import type { Habit, DayLog } from '../types';
 import { cn } from '../utils/cn';
-import { Check, Plus, Trash2 } from 'lucide-react';
+import { Check, Plus, Trash2, GripVertical, Pencil } from 'lucide-react';
 import { NumericInputPopover } from './NumericInputPopover';
 import { useHabitStore } from '../store/HabitContext';
+import {
+    DndContext,
+    closestCenter,
+    KeyboardSensor,
+    PointerSensor,
+    useSensor,
+    useSensors,
+    type DragEndEvent,
+} from '@dnd-kit/core';
+import {
+    arrayMove,
+    SortableContext,
+    sortableKeyboardCoordinates,
+    verticalListSortingStrategy,
+    useSortable,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 interface TrackerGridProps {
     habits: Habit[];
@@ -12,10 +29,153 @@ interface TrackerGridProps {
     onToggle: (habitId: string, date: string) => Promise<void>;
     onUpdateValue: (habitId: string, date: string, value: number) => Promise<void>;
     onAddHabit: () => void;
+    onEditHabit: (habit: Habit) => void;
 }
 
-export const TrackerGrid: React.FC<TrackerGridProps> = ({ habits, logs, onToggle, onUpdateValue, onAddHabit }) => {
-    const { deleteHabit } = useHabitStore();
+// Sortable Item Component
+const SortableHabitRow = ({
+    habit,
+    logs,
+    dates,
+    handleCellClick,
+    deleteHabit,
+    deleteConfirmId,
+    setDeleteConfirmId,
+    onEditHabit
+}: {
+    habit: Habit;
+    logs: Record<string, DayLog>;
+    dates: Date[];
+    handleCellClick: (e: React.MouseEvent, habit: Habit, dateStr: string, log?: DayLog) => void;
+    deleteHabit: (id: string) => Promise<void>;
+    deleteConfirmId: string | null;
+    setDeleteConfirmId: (id: string | null) => void;
+    onEditHabit: (habit: Habit) => void;
+}) => {
+    const {
+        attributes,
+        listeners,
+        setNodeRef,
+        transform,
+        transition,
+        isDragging,
+    } = useSortable({ id: habit.id });
+
+    const style = {
+        transform: CSS.Transform.toString(transform),
+        transition,
+        zIndex: isDragging ? 50 : 'auto',
+        position: isDragging ? 'relative' as const : undefined,
+    };
+
+    return (
+        <div
+            ref={setNodeRef}
+            style={style}
+            className={cn(
+                "flex border-b border-white/5 transition-colors group bg-neutral-900/50", // Added bg to prevent transparency during drag
+                isDragging && "shadow-xl ring-1 ring-emerald-500/50 z-50 bg-neutral-900"
+            )}
+        >
+            <div className="w-64 flex-shrink-0 p-4 border-r border-white/5 flex items-center justify-between group-hover:bg-white/[0.02] transition-colors relative">
+                <div className="flex items-center gap-3">
+                    {/* Drag Handle */}
+                    <button
+                        {...attributes}
+                        {...listeners}
+                        className="text-neutral-600 hover:text-neutral-400 cursor-grab active:cursor-grabbing p-1 -ml-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                        title="Drag to reorder"
+                    >
+                        <GripVertical size={16} />
+                    </button>
+
+                    <div className="flex flex-col">
+                        <span className="font-medium text-neutral-200">{habit.name}</span>
+                        {habit.goal.target && (
+                            <span className="text-xs text-neutral-500 mt-1">
+                                Goal: {habit.goal.target} {habit.goal.unit}
+                            </span>
+                        )}
+                    </div>
+                </div>
+
+                {/* Action Buttons (Visible on Hover) */}
+                <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-20">
+                    <button
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            onEditHabit(habit);
+                        }}
+                        className="p-1.5 rounded-lg hover:bg-neutral-800 text-neutral-500 hover:text-white transition-colors"
+                        title="Edit Habit"
+                    >
+                        <Pencil size={14} />
+                    </button>
+                    <button
+                        onClick={async (e) => {
+                            e.stopPropagation();
+                            if (deleteConfirmId === habit.id) {
+                                try {
+                                    await deleteHabit(habit.id);
+                                    setDeleteConfirmId(null);
+                                } catch (error) {
+                                    console.error('Failed to delete habit:', error);
+                                }
+                            } else {
+                                setDeleteConfirmId(habit.id);
+                                setTimeout(() => setDeleteConfirmId(null), 5000);
+                            }
+                        }}
+                        className={cn(
+                            "p-1.5 rounded-lg transition-all",
+                            deleteConfirmId === habit.id
+                                ? "bg-red-500/20 text-red-400 opacity-100"
+                                : "hover:bg-neutral-800 text-neutral-500 hover:text-red-400"
+                        )}
+                        title={deleteConfirmId === habit.id ? "Click again to delete" : "Delete Habit"}
+                    >
+                        <Trash2 size={14} />
+                    </button>
+                </div>
+            </div>
+
+            <div className="flex">
+                {dates.map((date) => {
+                    const dateStr = format(date, 'yyyy-MM-dd');
+                    const log = logs[`${habit.id}-${dateStr}`];
+                    const isCompleted = log?.completed;
+
+                    return (
+                        <div
+                            key={dateStr}
+                            className="w-16 flex-shrink-0 border-r border-white/5 flex items-center justify-center p-2"
+                        >
+                            <button
+                                onClick={(e) => handleCellClick(e, habit, dateStr, log)}
+                                className={cn(
+                                    "w-10 h-10 rounded-lg flex items-center justify-center transition-all duration-200",
+                                    isCompleted
+                                        ? "bg-emerald-500 text-neutral-900 shadow-[0_0_15px_rgba(16,185,129,0.4)] scale-90"
+                                        : "bg-neutral-800/50 text-transparent hover:bg-neutral-800 hover:text-neutral-600 border border-white/5 hover:border-white/10"
+                                )}
+                            >
+                                {habit.goal.type === 'number' && log?.value ? (
+                                    <span className="text-xs font-bold">{log.value}</span>
+                                ) : (
+                                    <Check size={20} strokeWidth={3} className={cn("transition-transform duration-200", isCompleted ? "scale-100" : "scale-50")} />
+                                )}
+                            </button>
+                        </div>
+                    );
+                })}
+            </div>
+        </div>
+    );
+};
+
+
+export const TrackerGrid: React.FC<TrackerGridProps> = ({ habits, logs, onToggle, onUpdateValue, onAddHabit, onEditHabit }) => {
+    const { deleteHabit, reorderHabits } = useHabitStore();
     const [popoverState, setPopoverState] = useState<{
         isOpen: boolean;
         habitId: string;
@@ -42,6 +202,32 @@ export const TrackerGrid: React.FC<TrackerGridProps> = ({ habits, logs, onToggle
         });
         return interval.reverse(); // Show Today first, then Yesterday, etc.
     }, []);
+
+    const sensors = useSensors(
+        useSensor(PointerSensor, {
+            activationConstraint: {
+                distance: 8, // Must drag 8px to start, allows clicking
+            },
+        }),
+        useSensor(KeyboardSensor, {
+            coordinateGetter: sortableKeyboardCoordinates,
+        })
+    );
+
+    const handleDragEnd = (event: DragEndEvent) => {
+        const { active, over } = event;
+
+        if (over && active.id !== over.id) {
+            const oldIndex = habits.findIndex((h) => h.id === active.id);
+            const newIndex = habits.findIndex((h) => h.id === over.id);
+
+            // Create new array of IDs
+            const newOrder = arrayMove(habits, oldIndex, newIndex).map(h => h.id);
+
+            // Optimistic update via store
+            reorderHabits(newOrder);
+        }
+    };
 
     const handleCellClick = (e: React.MouseEvent, habit: Habit, dateStr: string, log?: DayLog) => {
         if (habit.goal.type === 'number') {
@@ -91,78 +277,30 @@ export const TrackerGrid: React.FC<TrackerGridProps> = ({ habits, logs, onToggle
 
             {/* Habit Rows */}
             <div className="overflow-y-auto flex-1 scrollbar-thin scrollbar-thumb-neutral-700 scrollbar-track-transparent">
-                {habits.map((habit) => (
-                    <div key={habit.id} className="flex border-b border-white/5 hover:bg-white/[0.02] transition-colors group">
-                        <div className="w-64 flex-shrink-0 p-4 border-r border-white/5 flex items-center justify-between group-hover:bg-white/[0.02] transition-colors relative">
-                            <div className="flex flex-col">
-                                <span className="font-medium text-neutral-200">{habit.name}</span>
-                                {habit.goal.target && (
-                                    <span className="text-xs text-neutral-500 mt-1">
-                                        Goal: {habit.goal.target} {habit.goal.unit}
-                                    </span>
-                                )}
-                            </div>
-
-                            {/* Delete Button (Visible on Hover) */}
-                            <button
-                                onClick={async (e) => {
-                                    e.stopPropagation();
-                                    if (deleteConfirmId === habit.id) {
-                                        try {
-                                            await deleteHabit(habit.id);
-                                            setDeleteConfirmId(null);
-                                        } catch (error) {
-                                            console.error('Failed to delete habit:', error);
-                                        }
-                                    } else {
-                                        setDeleteConfirmId(habit.id);
-                                        setTimeout(() => setDeleteConfirmId(null), 5000);
-                                    }
-                                }}
-                                className={cn(
-                                    "p-2 rounded-lg transition-all absolute right-2 opacity-0 group-hover:opacity-100 z-20",
-                                    deleteConfirmId === habit.id
-                                        ? "bg-red-500/20 text-red-400 opacity-100"
-                                        : "hover:bg-neutral-800 text-neutral-500 hover:text-red-400"
-                                )}
-                                title={deleteConfirmId === habit.id ? "Click again to delete" : "Delete Habit"}
-                            >
-                                <Trash2 size={16} />
-                            </button>
-                        </div>
-
-                        <div className="flex">
-                            {dates.map((date) => {
-                                const dateStr = format(date, 'yyyy-MM-dd');
-                                const log = logs[`${habit.id}-${dateStr}`];
-                                const isCompleted = log?.completed;
-
-                                return (
-                                    <div
-                                        key={dateStr}
-                                        className="w-16 flex-shrink-0 border-r border-white/5 flex items-center justify-center p-2"
-                                    >
-                                        <button
-                                            onClick={(e) => handleCellClick(e, habit, dateStr, log)}
-                                            className={cn(
-                                                "w-10 h-10 rounded-lg flex items-center justify-center transition-all duration-200",
-                                                isCompleted
-                                                    ? "bg-emerald-500 text-neutral-900 shadow-[0_0_15px_rgba(16,185,129,0.4)] scale-90"
-                                                    : "bg-neutral-800/50 text-transparent hover:bg-neutral-800 hover:text-neutral-600 border border-white/5 hover:border-white/10"
-                                            )}
-                                        >
-                                            {habit.goal.type === 'number' && log?.value ? (
-                                                <span className="text-xs font-bold">{log.value}</span>
-                                            ) : (
-                                                <Check size={20} strokeWidth={3} className={cn("transition-transform duration-200", isCompleted ? "scale-100" : "scale-50")} />
-                                            )}
-                                        </button>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    </div>
-                ))}
+                <DndContext
+                    sensors={sensors}
+                    collisionDetection={closestCenter}
+                    onDragEnd={handleDragEnd}
+                >
+                    <SortableContext
+                        items={habits.map(h => h.id)}
+                        strategy={verticalListSortingStrategy}
+                    >
+                        {habits.map((habit) => (
+                            <SortableHabitRow
+                                key={habit.id}
+                                habit={habit}
+                                logs={logs}
+                                dates={dates}
+                                handleCellClick={handleCellClick}
+                                deleteHabit={deleteHabit}
+                                deleteConfirmId={deleteConfirmId}
+                                setDeleteConfirmId={setDeleteConfirmId}
+                                onEditHabit={onEditHabit}
+                            />
+                        ))}
+                    </SortableContext>
+                </DndContext>
 
                 {/* Add Habit Row */}
                 <div className="flex border-b border-white/5">

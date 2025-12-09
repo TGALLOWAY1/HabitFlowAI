@@ -10,7 +10,7 @@ import { ActivityList } from './components/ActivityList';
 import { ActivityEditorModal } from './components/ActivityEditorModal';
 import { ActivityRunnerModal } from './components/ActivityRunnerModal';
 import { BarChart3, Calendar, ClipboardList, Target } from 'lucide-react';
-import type { Activity, ActivityStep } from './types';
+import type { Activity, ActivityStep, Habit } from './types';
 import { GoalsPage } from './pages/goals/GoalsPage';
 import { CreateGoalFlow } from './pages/goals/CreateGoalFlow';
 import { GoalDetailPage } from './pages/goals/GoalDetailPage';
@@ -50,7 +50,7 @@ const HabitTrackerContent: React.FC = () => {
   // Set default category to "Physical Health" when categories are loaded
   useEffect(() => {
     if (categories.length > 0 && !activeCategoryId) {
-      const physicalHealthCategory = categories.find(cat => 
+      const physicalHealthCategory = categories.find(cat =>
         cat.name.toLowerCase() === 'physical health'
       );
       if (physicalHealthCategory) {
@@ -62,6 +62,7 @@ const HabitTrackerContent: React.FC = () => {
     }
   }, [categories, activeCategoryId]);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingHabit, setEditingHabit] = useState<Habit | null>(null);
   const [view, setView] = useState<AppRoute>(() => parseRouteFromLocation(window.location));
   const [showCreateGoal, setShowCreateGoal] = useState(false);
   const [selectedGoalId, setSelectedGoalId] = useState<string | null>(null);
@@ -230,7 +231,14 @@ const HabitTrackerContent: React.FC = () => {
           logs={logs}
           onToggle={toggleHabit}
           onUpdateValue={updateLog}
-          onAddHabit={() => setIsModalOpen(true)}
+          onAddHabit={() => {
+            setEditingHabit(null);
+            setIsModalOpen(true);
+          }}
+          onEditHabit={(habit) => {
+            setEditingHabit(habit);
+            setIsModalOpen(true);
+          }}
         />
       ) : view === 'progress' ? (
         <ProgressDashboard
@@ -266,8 +274,12 @@ const HabitTrackerContent: React.FC = () => {
 
       <AddHabitModal
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        onClose={() => {
+          setIsModalOpen(false);
+          setEditingHabit(null);
+        }}
         categoryId={activeCategoryId}
+        initialData={editingHabit}
       />
 
       <ActivityEditorModal

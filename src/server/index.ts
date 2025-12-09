@@ -9,7 +9,7 @@ import type { Express } from 'express';
 import './config/env'; // Load environment variables first
 import { assertMongoEnabled } from './config';
 import { getCategories, createCategoryRoute, getCategory, updateCategoryRoute, deleteCategoryRoute, reorderCategoriesRoute } from './routes/categories';
-import { getHabits, createHabitRoute, getHabit, updateHabitRoute, deleteHabitRoute } from './routes/habits';
+import { getHabits, createHabitRoute, getHabit, updateHabitRoute, deleteHabitRoute, reorderHabitsRoute } from './routes/habits';
 import { getDayLogs, upsertDayLogRoute, getDayLogRoute, deleteDayLogRoute } from './routes/dayLogs';
 import { getWellbeingLogs, upsertWellbeingLogRoute, getWellbeingLogRoute, deleteWellbeingLogRoute } from './routes/wellbeingLogs';
 import { getActivities, getActivity, createActivityRoute, replaceActivityRoute, updateActivityRoute, deleteActivityRoute, submitActivityRoute } from './routes/activities';
@@ -62,6 +62,7 @@ app.delete('/api/categories/:id', deleteCategoryRoute);
 // Habit routes
 app.get('/api/habits', getHabits);
 app.post('/api/habits', createHabitRoute);
+app.patch('/api/habits/reorder', reorderHabitsRoute);
 app.get('/api/habits/:id', getHabit);
 app.patch('/api/habits/:id', updateHabitRoute);
 app.delete('/api/habits/:id', deleteHabitRoute);

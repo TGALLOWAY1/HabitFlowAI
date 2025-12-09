@@ -67,7 +67,7 @@ export async function createHabit(
  * Get all habits for a user.
  * 
  * @param userId - User ID to filter habits
- * @returns Array of habits for the user
+ * @returns Array of habits for the user, sorted by order (asc) then createdAt (asc)
  */
 export async function getHabitsByUser(userId: string): Promise<Habit[]> {
 
@@ -76,6 +76,9 @@ export async function getHabitsByUser(userId: string): Promise<Habit[]> {
 
   const documents = await collection
     .find({ userId })
+    // Sort by 'order' ascending (null/undefined values come LAST by default in Mongo via sorting logic issues, 
+    // but in JS sort they might be first/last. Use explicit sort.)
+    .sort({ order: 1, createdAt: 1 })
     .toArray();
 
   // Remove MongoDB _id and userId before returning
@@ -99,6 +102,7 @@ export async function getHabitsByCategory(
 
   const documents = await collection
     .find({ categoryId, userId })
+    .sort({ order: 1, createdAt: 1 })
     .toArray();
 
   // Remove MongoDB _id and userId before returning
@@ -181,5 +185,40 @@ export async function deleteHabit(
   const result = await collection.deleteOne({ id, userId });
 
   return result.deletedCount > 0;
+}
+
+/**
+ * Reorder habits.
+ * Updates the 'order' field for a list of habits.
+ * 
+ * @param userId - User ID to verify ownership
+ * @param habitIds - Array of habit IDs in the desired order
+ * @returns True if successful
+ */
+export async function reorderHabits(
+  userId: string,
+  habitIds: string[]
+): Promise<boolean> {
+  const db = await getDb();
+  const collection = db.collection(COLLECTION_NAME);
+
+  // Use bulkWrite for efficiency
+  // Map over the explicit order of IDs provided
+  const operations = habitIds.map((id, index) => ({
+    updateOne: {
+      filter: { id, userId },
+      update: { $set: { order: index } }
+    }
+  }));
+
+  if (operations.length === 0) return true;
+
+  try {
+    await collection.bulkWrite(operations);
+    return true;
+  } catch (error) {
+    console.error('Failed to reorder habits:', error);
+    return false;
+  }
 }
 
