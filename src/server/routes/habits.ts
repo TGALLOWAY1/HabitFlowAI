@@ -13,6 +13,7 @@ import {
   getHabitById,
   updateHabit,
   deleteHabit,
+  reorderHabits,
 } from '../repositories/habitRepository';
 import { getActivitiesByUser, updateActivity } from '../repositories/activityRepository';
 import type { Habit, ActivityStep } from '../../models/persistenceTypes';
@@ -373,7 +374,6 @@ export async function deleteHabitRoute(req: Request, res: Response): Promise<voi
     }
 
     res.status(200).json({
-      message: 'Habit deleted successfully',
       convertedStepsCount,
     });
   } catch (error) {
@@ -383,6 +383,57 @@ export async function deleteHabitRoute(req: Request, res: Response): Promise<voi
       error: {
         code: 'INTERNAL_SERVER_ERROR',
         message: 'Failed to delete habit',
+        details: process.env.NODE_ENV === 'development' ? errorMessage : undefined,
+      },
+    });
+  }
+}
+
+/**
+ * Reorder habits.
+ * 
+ * PATCH /api/habits/reorder
+ */
+export async function reorderHabitsRoute(req: Request, res: Response): Promise<void> {
+  try {
+
+    const { habits } = req.body;
+
+    if (!Array.isArray(habits) || !habits.every(id => typeof id === 'string')) {
+      res.status(400).json({
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'Habits must be an array of habit IDs',
+        },
+      });
+      return;
+    }
+
+    // TODO: Extract userId from authentication token/session
+    const userId = (req as any).userId || 'anonymous-user';
+
+    const success = await reorderHabits(userId, habits);
+
+    if (!success) {
+      res.status(500).json({
+        error: {
+          code: 'INTERNAL_SERVER_ERROR',
+          message: 'Failed to reorder habits',
+        },
+      });
+      return;
+    }
+
+    res.status(200).json({
+      message: 'Habits reordered successfully',
+    });
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error('Error reordering habits:', errorMessage);
+    res.status(500).json({
+      error: {
+        code: 'INTERNAL_SERVER_ERROR',
+        message: 'Failed to reorder habits',
         details: process.env.NODE_ENV === 'development' ? errorMessage : undefined,
       },
     });

@@ -284,6 +284,21 @@ export async function deleteHabit(id: string): Promise<void> {
 }
 
 /**
+ * Reorder habits.
+ * 
+ * @param habitIds - Array of habit IDs in new order
+ * @returns Promise<void>
+ * @throws Error if API request fails
+ */
+export async function reorderHabits(habitIds: string[]): Promise<void> {
+
+  await apiRequest<{ message: string }>('/habits/reorder', {
+    method: 'PATCH',
+    body: JSON.stringify({ habits: habitIds }),
+  });
+}
+
+/**
  * DayLog Persistence Functions
  */
 

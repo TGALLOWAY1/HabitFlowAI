@@ -14,6 +14,7 @@ import {
     deleteDayLog as deleteDayLogApi,
     fetchWellbeingLogs,
     saveWellbeingLog,
+    reorderHabits as reorderHabitsApi,
 } from '../lib/persistenceClient';
 
 interface HabitContextType {
@@ -22,6 +23,7 @@ interface HabitContextType {
     logs: Record<string, DayLog>; // Key: `${habitId}-${date}`
     addCategory: (category: Omit<Category, 'id'>) => Promise<void>;
     addHabit: (habit: Omit<Habit, 'id' | 'createdAt' | 'archived'>) => Promise<Habit>;
+    updateHabit: (id: string, patch: Partial<Omit<Habit, 'id' | 'createdAt'>>) => Promise<Habit>;
     toggleHabit: (habitId: string, date: string) => Promise<void>;
     updateLog: (habitId: string, date: string, value: number) => Promise<void>;
     deleteHabit: (id: string) => Promise<void>;
@@ -31,6 +33,7 @@ interface HabitContextType {
         habitsData: { categoryName: string; habit: Omit<Habit, 'id' | 'categoryId' | 'createdAt' | 'archived'> }[]
     ) => Promise<void>;
     reorderCategories: (newOrder: Category[]) => Promise<void>;
+    reorderHabits: (newOrderIds: string[]) => Promise<void>;
     wellbeingLogs: Record<string, DailyWellbeing>;
     logWellbeing: (date: string, data: DailyWellbeing) => Promise<void>;
     lastPersistenceError: string | null;
@@ -243,6 +246,18 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         }
     };
 
+    const updateHabit = async (id: string, patch: Partial<Omit<Habit, 'id' | 'createdAt'>>): Promise<Habit> => {
+        try {
+            const updatedHabit = await updateHabitApi(id, patch);
+            setHabits(habits.map(h => h.id === id ? updatedHabit : h));
+            return updatedHabit;
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+            console.error('Failed to update habit in API:', errorMessage);
+            throw error;
+        }
+    };
+
     const toggleHabit = async (habitId: string, date: string) => {
         // Snapshot previous state for rollback
         const previousLogs = logs;
@@ -432,6 +447,33 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         }
     };
 
+    const reorderHabits = async (newOrderIds: string[]) => {
+        // Snapshot previous state for rollback
+        const previousHabits = habits;
+
+        // Optimistic update
+        // We need to reorder the existing habit objects based on the new ID order
+        const habitMap = new Map(habits.map(h => [h.id, h]));
+        const reorderedHabits = newOrderIds
+            .map(id => habitMap.get(id))
+            .filter((h): h is Habit => h !== undefined);
+
+        // If there are any habits missing from the new order (shouldn't happen), append them
+        const processedIds = new Set(newOrderIds);
+        const remainingHabits = habits.filter(h => !processedIds.has(h.id));
+
+        setHabits([...reorderedHabits, ...remainingHabits]);
+
+        try {
+            await reorderHabitsApi(newOrderIds);
+        } catch (error) {
+            console.error('Failed to reorder habits in API:', error);
+            // Rollback
+            setHabits(previousHabits);
+            setLastPersistenceError("Failed to save new habit order.");
+        }
+    };
+
     const clearPersistenceError = () => {
         setLastPersistenceError(null);
     };
@@ -455,12 +497,14 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             wellbeingLogs,
             addCategory,
             addHabit,
+            updateHabit,
             toggleHabit,
             updateLog,
             deleteHabit,
             deleteCategory,
             importHabits,
             reorderCategories,
+            reorderHabits,
             logWellbeing,
             lastPersistenceError,
             clearPersistenceError,

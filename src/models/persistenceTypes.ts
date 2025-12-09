@@ -26,10 +26,10 @@ export interface Category {
      * This is the application-level primary key, not MongoDB's _id
      */
     id: string;
-    
+
     /** Display name of the category (e.g., "Physical Health") */
     name: string;
-    
+
     /** 
      * Tailwind CSS color class (e.g., "bg-emerald-500")
      * Format: Always a Tailwind class string, not a hex code
@@ -63,7 +63,7 @@ export interface HabitGoal {
      * Only used when type is 'number'
      */
     unit?: string;
-    
+
     /** 
      * Tracking frequency: 'daily', 'weekly', or 'total' (cumulative goal)
      * 'total' means the goal is cumulative across all time (e.g., "Run 100 miles total")
@@ -85,13 +85,13 @@ export interface Habit {
      * This is the application-level primary key, not MongoDB's _id
      */
     id: string;
-    
+
     /** Foreign key reference to Category.id */
     categoryId: string;
-    
+
     /** Display name of the habit (e.g., "Morning Jog") */
     name: string;
-    
+
     /** 
      * Optional description field
      * TODO: This field is defined in the type but never used in the UI.
@@ -101,16 +101,22 @@ export interface Habit {
      * Note: This field IS stored in MongoDB if provided, but frontend never sets it.
      */
     description?: string;
-    
+
     /** Goal configuration for this habit */
     goal: HabitGoal;
-    
+
     /** Whether the habit is archived (hidden from active tracking) */
     archived: boolean;
-    
+
     /** ISO 8601 timestamp of when the habit was created */
     createdAt: string;
-    
+
+    /** 
+     * Display order of the habit. Lower numbers appear first.
+     * Optional for backward compatibility (treated as infinity if missing).
+     */
+    order?: number;
+
     /** 
      * Estimated completion date (for cumulative goals)
      * 
@@ -138,7 +144,7 @@ export interface Habit {
 export interface DayLog {
     /** Foreign key reference to Habit.id */
     habitId: string;
-    
+
     /** 
      * Date in YYYY-MM-DD format (ISO date string)
      * Examples: "2025-01-27", "2024-12-25"
@@ -147,14 +153,14 @@ export interface DayLog {
      * field for efficient querying: `${habitId}-${date}`
      */
     date: string;
-    
+
     /** 
      * Tracked value for this day
      * - For boolean habits: 0 (not completed) or 1 (completed)
      * - For number habits: actual numeric value (e.g., 8 for 8 glasses)
      */
     value: number;
-    
+
     /** 
      * Whether the goal was met for this day
      * - For boolean habits: true if value > 0
@@ -164,13 +170,13 @@ export interface DayLog {
      * independently. The calculation logic is in HabitContext.tsx (lines 446, 412)
      */
     completed: boolean;
-    
+
     /** 
      * Optional: ID of the Activity that produced this log entry
      * Set when a habit is completed as part of an Activity workflow
      */
     activityId?: string;
-    
+
     /** 
      * Optional: ID of the ActivityStep within the Activity that produced this log
      * Set when a habit step in an Activity is completed
@@ -203,31 +209,31 @@ export interface ActivityStep {
      * Generated via crypto.randomUUID() (frontend) or randomUUID() (backend)
      */
     id: string;
-    
+
     /** Type of step: 'habit' (links to habit) or 'task' (standalone) */
     type: ActivityStepType;
-    
+
     /** Display title/name of the step */
     title: string;
-    
+
     /** Optional detailed instructions for the step */
     instruction?: string;
-    
+
     /** Optional image URL for visual guidance (used in Image View) */
     imageUrl?: string;
-    
+
     /** 
      * Optional duration in seconds for timer-based steps
      * Used for timers in Image View
      */
     durationSeconds?: number;
-    
+
     /** 
      * Foreign key reference to Habit.id
      * Required when type === 'habit', undefined for 'task' steps
      */
     habitId?: string;
-    
+
     /** 
      * Optional time estimate in minutes
      * Editable in Habit View for habit steps
@@ -251,23 +257,23 @@ export interface Activity {
      * This is the application-level primary key, not MongoDB's _id
      */
     id: string;
-    
+
     /** 
      * User ID to scope the activity to a specific user
      * Added at repository layer when inserting, stripped when returning
      * Currently uses placeholder 'anonymous-user' until authentication is implemented
      */
     userId: string;
-    
+
     /** Display title/name of the activity */
     title: string;
-    
+
     /** Array of steps that make up this activity */
     steps: ActivityStep[];
-    
+
     /** ISO 8601 timestamp of when the activity was created */
     createdAt: string;
-    
+
     /** ISO 8601 timestamp of when the activity was last updated */
     updatedAt: string;
 }
@@ -281,16 +287,16 @@ export interface Activity {
 export interface WellbeingSession {
     /** Depression level on a scale of 1-5 */
     depression: number;
-    
+
     /** Anxiety level on a scale of 1-5 */
     anxiety: number;
-    
+
     /** Energy level on a scale of 1-5 */
     energy: number;
-    
+
     /** Sleep score on a scale of 0-100 */
     sleepScore: number;
-    
+
     /** Optional free-text notes for this session */
     notes?: string;
 }
@@ -312,13 +318,13 @@ export interface DailyWellbeing {
      * This serves as the unique key for wellbeing logs (combined with userId in MongoDB)
      */
     date: string;
-    
+
     /** Optional morning check-in session */
     morning?: WellbeingSession;
-    
+
     /** Optional evening check-in session */
     evening?: WellbeingSession;
-    
+
     /** 
      * Legacy fields for backward compatibility
      * 
@@ -390,41 +396,41 @@ export interface Goal {
      * This is the application-level primary key, not MongoDB's _id
      */
     id: string;
-    
+
     /** Display title/name of the goal */
     title: string;
-    
+
     /** 
      * Type of goal: 'cumulative' (total value over time) or 'frequency' (recurring)
      * - 'cumulative': Track total progress toward a target (e.g., "Run 100 miles total")
      * - 'frequency': Track how often a goal is met (e.g., "Exercise 3 times per week")
      */
     type: 'cumulative' | 'frequency';
-    
+
     /** Target value to achieve (e.g., 100 for "100 miles", 3 for "3 times per week") */
     targetValue: number;
-    
+
     /** Optional unit label for display (e.g., 'miles', 'times', 'hours') */
     unit?: string;
-    
+
     /** 
      * Array of habit IDs that contribute to this goal
      * These should reference valid Habit.id values
      */
     linkedHabitIds: string[];
-    
+
     /** Optional deadline date in ISO 8601 format (YYYY-MM-DD) */
     deadline?: string;
-    
+
     /** ISO 8601 timestamp of when the goal was created */
     createdAt: string;
-    
+
     /** Optional ISO 8601 timestamp of when the goal was completed */
     completedAt?: string;
-    
+
     /** Optional free-text notes about the goal */
     notes?: string;
-    
+
     /** Optional URL to a badge/image associated with the goal */
     badgeImageUrl?: string;
 }
@@ -440,17 +446,17 @@ export type GoalsStorage = Goal[];
 export interface GoalProgress {
     /** Current value achieved toward the goal */
     currentValue: number;
-    
+
     /** Percentage of goal completion (0-100) */
     percent: number;
-    
+
     /** Array of progress data for the last 7 days (most recent first) */
     lastSevenDays: Array<{
         date: string; // YYYY-MM-DD format
         value: number; // Progress value for this day
         hasProgress: boolean; // Whether there was any progress on this day
     }>;
-    
+
     /** Whether the goal has an inactivity warning (≥4 days with no progress in last 7 days) */
     inactivityWarning: boolean;
 }
@@ -514,19 +520,19 @@ export type GoalManualLogsStorage = GoalManualLog[];
 export interface PersistenceSchema {
     /** Array of all categories */
     categories: CategoriesStorage;
-    
+
     /** Array of all habits */
     habits: HabitsStorage;
-    
+
     /** Record of all day logs, keyed by `${habitId}-${date}` */
     logs: DayLogsStorage;
-    
+
     /** Record of all wellbeing logs, keyed by date (YYYY-MM-DD) */
     wellbeingLogs: WellbeingLogsStorage;
-    
+
     /** Array of all activities */
     activities: ActivitiesStorage;
-    
+
     /** Array of all goals */
     goals: GoalsStorage;
 }
