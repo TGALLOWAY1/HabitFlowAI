@@ -9,16 +9,28 @@ import { ProgressDashboard } from './components/ProgressDashboard';
 import { ActivityList } from './components/ActivityList';
 import { ActivityEditorModal } from './components/ActivityEditorModal';
 import { ActivityRunnerModal } from './components/ActivityRunnerModal';
-import { BarChart3, Calendar, ClipboardList, Target } from 'lucide-react';
+import { BarChart3, Calendar, ClipboardList, Target, Clock } from 'lucide-react';
 import type { Activity, ActivityStep, Habit } from './types';
 import { GoalsPage } from './pages/goals/GoalsPage';
 import { CreateGoalFlow } from './pages/goals/CreateGoalFlow';
 import { GoalDetailPage } from './pages/goals/GoalDetailPage';
 import { GoalCompletedPage } from './pages/goals/GoalCompletedPage';
 import { WinArchivePage } from './pages/goals/WinArchivePage';
+import { CalendarView } from './components/CalendarView';
 
-// Route type definition
-type AppRoute = "tracker" | "progress" | "activities" | "goals" | "wins";
+// Simple router state
+type AppRoute = 'tracker' | 'progress' | 'activities' | 'goals' | 'calendar' | 'wins';
+
+// Helper to determine initial route from URL
+const getInitialRoute = (): AppRoute => {
+  if (typeof window === 'undefined') return 'tracker';
+  const path = window.location.pathname;
+  if (path === '/progress') return 'progress';
+  if (path === '/activities') return 'activities';
+  if (path === '/goals') return 'goals';
+  if (path === '/calendar') return 'calendar';
+  return 'tracker';
+};
 
 // Helper functions for URL syncing
 function parseRouteFromLocation(location: Location): AppRoute {
@@ -31,7 +43,8 @@ function parseRouteFromLocation(location: Location): AppRoute {
     case "goals":
     case "wins":
     case "tracker":
-      return view;
+    case "calendar":
+      return view as AppRoute;
     default:
       return "tracker"; // default view
   }
@@ -138,6 +151,13 @@ const HabitTrackerContent: React.FC = () => {
               title="Habits Tracker"
             >
               <Calendar size={20} />
+            </button>
+            <button
+              onClick={() => handleNavigate('calendar')}
+              className={`p-2 rounded-md transition-colors ${view === 'calendar' ? 'bg-neutral-700 text-white' : 'text-neutral-400 hover:text-white'}`}
+              title="Weekly Calendar"
+            >
+              <Clock size={20} />
             </button>
             <button
               onClick={() => handleNavigate('progress')}
@@ -255,6 +275,11 @@ const HabitTrackerContent: React.FC = () => {
           onCreateFromHabits={(prefillSteps) => setActivityEditorState({ isOpen: true, mode: 'create', activity: undefined, prefillSteps })}
           onStart={(activity) => setActivityRunnerState({ isOpen: true, activity })}
         />
+
+        // ... (in HabitTrackerContent return)
+
+      ) : view === 'calendar' ? (
+        <CalendarView />
       ) : (
         <GoalsPage
           onCreateGoal={() => setShowCreateGoal(true)}

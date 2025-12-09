@@ -64,7 +64,7 @@ export async function createHabitRoute(req: Request, res: Response): Promise<voi
   try {
 
     // Validate request body
-    const { name, categoryId, goal, description } = req.body;
+    const { name, categoryId, goal, description, assignedDays, scheduledTime, durationMinutes } = req.body;
 
     if (!name || typeof name !== 'string' || name.trim().length === 0) {
       res.status(400).json({
@@ -105,6 +105,9 @@ export async function createHabitRoute(req: Request, res: Response): Promise<voi
         categoryId,
         goal,
         description: description?.trim(),
+        assignedDays,
+        scheduledTime,
+        durationMinutes: durationMinutes || 30, // Default to 30 mins if not provided
       },
       userId
     );
@@ -185,7 +188,7 @@ export async function updateHabitRoute(req: Request, res: Response): Promise<voi
   try {
 
     const { id } = req.params;
-    const { name, categoryId, goal, description, archived } = req.body;
+    const { name, categoryId, goal, description, archived, assignedDays, scheduledTime, durationMinutes } = req.body;
 
     if (!id) {
       res.status(400).json({
@@ -254,6 +257,37 @@ export async function updateHabitRoute(req: Request, res: Response): Promise<voi
         return;
       }
       patch.archived = archived;
+    }
+
+    if (assignedDays !== undefined) {
+      if (!Array.isArray(assignedDays) || !assignedDays.every(d => typeof d === 'number')) {
+        res.status(400).json({
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: 'Assigned days must be an array of numbers',
+          },
+        });
+        return;
+      }
+      patch.assignedDays = assignedDays;
+    }
+
+    if (scheduledTime !== undefined) {
+      // Basic regex validation for HH:mm could be added here
+      patch.scheduledTime = scheduledTime;
+    }
+
+    if (durationMinutes !== undefined) {
+      if (typeof durationMinutes !== 'number' || durationMinutes <= 0) {
+        res.status(400).json({
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: 'Duration must be a positive number',
+          },
+        });
+        return;
+      }
+      patch.durationMinutes = durationMinutes;
     }
 
     if (Object.keys(patch).length === 0) {

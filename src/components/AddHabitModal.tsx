@@ -17,7 +17,19 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
     const [name, setName] = useState('');
     const [target, setTarget] = useState('');
     const [unit, setUnit] = useState('');
-    const [isCumulative, setIsCumulative] = useState(false);
+
+    // Frequency State: 'daily' | 'weekly' | 'total'
+    const [frequency, setFrequency] = useState<'daily' | 'weekly' | 'total'>('daily');
+
+    // Assigned Days for Weekly habits (0=Sun, 6=Sat)
+    const [assignedDays, setAssignedDays] = useState<number[]>([]);
+
+    // Scheduled Time for Weekly habits
+    const [scheduledTime, setScheduledTime] = useState('');
+    const [durationMinutes, setDurationMinutes] = useState('30');
+    const [description, setDescription] = useState('');
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
     const [selectedCategoryId, setSelectedCategoryId] = useState(categoryId || '');
 
     // Reset or Initialize form when opening
@@ -28,14 +40,23 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                 setName(initialData.name);
                 setTarget(initialData.goal.target ? String(initialData.goal.target) : '');
                 setUnit(initialData.goal.unit || '');
-                setIsCumulative(initialData.goal.frequency === 'total');
+                setFrequency(initialData.goal.frequency);
+                setFrequency(initialData.goal.frequency);
+                setAssignedDays(initialData.assignedDays || []);
+                setScheduledTime(initialData.scheduledTime || '');
+                setDurationMinutes(initialData.durationMinutes?.toString() || '30');
+                setDescription(initialData.description || '');
                 setSelectedCategoryId(initialData.categoryId);
             } else {
                 // Add Mode
                 setName('');
                 setTarget('');
                 setUnit('');
-                setIsCumulative(false);
+                setFrequency('daily');
+                setAssignedDays([]);
+                setScheduledTime('');
+                setDurationMinutes('30');
+                setDescription('');
                 if (categoryId) setSelectedCategoryId(categoryId);
                 else if (categories.length > 0) setSelectedCategoryId(categories[0].id);
             }
@@ -46,37 +67,53 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (!name.trim()) return;
+
+        setIsSubmitting(true);
         try {
             const goalConfig = {
                 type: (target ? 'number' : 'boolean') as 'number' | 'boolean',
                 target: target ? Number(target) : undefined,
                 unit: unit || undefined,
-                frequency: (isCumulative ? 'total' : 'daily') as 'total' | 'daily',
+                frequency: frequency,
+            };
+
+            const habitData = {
+                name,
+                categoryId: selectedCategoryId,
+                goal: goalConfig,
+                assignedDays: frequency === 'weekly' ? assignedDays : undefined,
+                scheduledTime: frequency === 'weekly' && scheduledTime ? scheduledTime : undefined,
+                durationMinutes: frequency === 'weekly' && durationMinutes ? Number(durationMinutes) : undefined,
+                description: description || undefined,
             };
 
             if (initialData) {
                 // Update existing
-                await updateHabit(initialData.id, {
-                    name,
-                    categoryId: selectedCategoryId,
-                    goal: goalConfig,
-                });
+                await updateHabit(initialData.id, habitData);
             } else {
                 // Create new
-                await addHabit({
-                    categoryId: selectedCategoryId,
-                    name,
-                    goal: goalConfig,
-                });
+                await addHabit(habitData);
             }
             onClose();
         } catch (error) {
             console.error('Failed to save habit:', error);
-            onClose();
+            // Optionally keep the modal open or show an error message
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
+    const toggleAssignedDay = (dayIndex: number) => {
+        setAssignedDays(prev =>
+            prev.includes(dayIndex)
+                ? prev.filter(d => d !== dayIndex)
+                : [...prev, dayIndex].sort()
+        );
+    };
+
     const isEditMode = !!initialData;
+    const daysOfWeek = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
@@ -118,16 +155,39 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                         </select>
                     </div>
 
+                    {/* Frequency Selection */}
+                    <div>
+                        <label className="block text-sm font-medium text-neutral-400 mb-2">Tracking Frequency</label>
+                        <div className="grid grid-cols-3 gap-2">
+                            {(['daily', 'weekly', 'total'] as const).map((freq) => (
+                                <button
+                                    key={freq}
+                                    type="button"
+                                    onClick={() => setFrequency(freq)}
+                                    className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors border ${frequency === freq
+                                        ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/50'
+                                        : 'bg-neutral-800 text-neutral-400 border-white/5 hover:bg-neutral-700'
+                                        }`}
+                                >
+                                    {freq.charAt(0).toUpperCase() + freq.slice(1)}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
                     {/* Goal Configuration */}
                     <div className="grid grid-cols-2 gap-4">
                         <div>
-                            <label className="block text-sm font-medium text-neutral-400 mb-1">Target (Optional)</label>
+                            <label className="block text-sm font-medium text-neutral-400 mb-1">
+                                {frequency === 'weekly' ? 'Times per Week' : 'Target (Optional)'}
+                            </label>
                             <input
                                 type="number"
                                 value={target}
                                 onChange={(e) => setTarget(e.target.value)}
                                 className="w-full bg-neutral-800 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-emerald-500"
-                                placeholder="e.g., 30"
+                                placeholder={frequency === 'weekly' ? "e.g., 3" : "e.g., 30"}
+                                required={frequency === 'weekly'} // Required for weekly quota
                             />
                         </div>
                         <div>
@@ -137,24 +197,76 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                                 value={unit}
                                 onChange={(e) => setUnit(e.target.value)}
                                 className="w-full bg-neutral-800 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-emerald-500"
-                                placeholder="e.g., mins"
+                                placeholder={frequency === 'weekly' ? "e.g., times" : "e.g., mins"}
                             />
                         </div>
                     </div>
 
-                    {/* Cumulative Toggle */}
+                    {/* Assigned Days (Weekly Only) */}
+                    {frequency === 'weekly' && (
+                        <div>
+                            <label className="block text-sm font-medium text-neutral-400 mb-2">
+                                Assigned Days (Optional Calendar View)
+                            </label>
+                            <div className="flex justify-between gap-1">
+                                {daysOfWeek.map((day, index) => {
+                                    const isSelected = assignedDays.includes(index);
+                                    return (
+                                        <button
+                                            key={index}
+                                            type="button"
+                                            onClick={() => toggleAssignedDay(index)}
+                                            className={`w-9 h-9 rounded-lg text-sm font-medium transition-all ${isSelected
+                                                ? 'bg-emerald-500 text-neutral-900 shadow-lg shadow-emerald-500/20'
+                                                : 'bg-neutral-800 text-neutral-400 hover:bg-neutral-700'
+                                                }`}
+                                        >
+                                            {day}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                            <p className="text-xs text-neutral-500 mt-2">
+                                * These days will show up on your calendar, but you can complete the habit on any day.
+                            </p>
+                        </div>
+                    )}
+
+                    {/* Time & Duration (Weekly Only) */}
+                    {frequency === 'weekly' && (
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-sm font-medium text-neutral-400 mb-1">Preferred Time</label>
+                                <input
+                                    type="time"
+                                    value={scheduledTime}
+                                    onChange={(e) => setScheduledTime(e.target.value)}
+                                    className="w-full bg-neutral-800 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-emerald-500"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-neutral-400 mb-1">Duration (mins)</label>
+                                <input
+                                    type="number"
+                                    min="5"
+                                    step="5"
+                                    value={durationMinutes}
+                                    onChange={(e) => setDurationMinutes(e.target.value)}
+                                    className="w-full bg-neutral-800 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-emerald-500"
+                                />
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Description (Optional) */}
                     <div>
-                        <label className="flex items-center gap-2 text-sm font-medium text-neutral-400 cursor-pointer">
-                            <input
-                                type="checkbox"
-                                checked={isCumulative}
-                                className="rounded border-neutral-700 bg-neutral-800 text-emerald-500 focus:ring-emerald-500"
-                                onChange={(e) => {
-                                    setIsCumulative(e.target.checked);
-                                }}
-                            />
-                            <span>Is this a cumulative goal? <span className="text-neutral-500 text-xs">(e.g. Run 100 miles total)</span></span>
-                        </label>
+                        <label className="block text-sm font-medium text-neutral-400 mb-1">Description (Optional)</label>
+                        <textarea
+                            value={description}
+                            onChange={(e) => setDescription(e.target.value)}
+                            className="w-full bg-neutral-800 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-emerald-500 h-24 resize-none"
+                            placeholder="Add notes about your habit..."
+                        />
                     </div>
 
                     {/* Actions */}
