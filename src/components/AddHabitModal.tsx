@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { X, Shield, ShieldAlert } from 'lucide-react';
+import { X, Shield, CheckCircle2, Calculator } from 'lucide-react';
 import { useHabitStore } from '../store/HabitContext';
 import type { Habit } from '../models/persistenceTypes';
 
 interface AddHabitModalProps {
     isOpen: boolean;
     onClose: () => void;
-    categoryId?: string; // Optional now, as we might default to first category or use initialData
-    initialData?: Habit | null; // If provided, we are in Edit mode
+    categoryId?: string;
+    initialData?: Habit | null;
 }
 
 export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, categoryId, initialData }) => {
@@ -15,33 +15,37 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
 
     // Form State
     const [name, setName] = useState('');
-    const [target, setTarget] = useState('');
+
+    // Goal Configuration
+    const [goalType, setGoalType] = useState<'boolean' | 'number'>('boolean');
+    const [target, setTarget] = useState(''); // Numeric target (e.g. 50 reps or 3 times)
     const [unit, setUnit] = useState('');
 
-    // Frequency State: 'daily' | 'weekly' | 'total'
+    // Frequency
     const [frequency, setFrequency] = useState<'daily' | 'weekly' | 'total'>('daily');
 
-    // Assigned Days for Weekly habits (0=Sun, 6=Sat)
+    // Assigned Days (Weekly)
     const [assignedDays, setAssignedDays] = useState<number[]>([]);
 
-    // Scheduled Time for Weekly habits
+    // Scheduling
     const [scheduledTime, setScheduledTime] = useState('');
     const [durationMinutes, setDurationMinutes] = useState('30');
     const [nonNegotiable, setNonNegotiable] = useState(false);
+
+    // Metadata
     const [description, setDescription] = useState('');
+    const [selectedCategoryId, setSelectedCategoryId] = useState(categoryId || '');
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    const [selectedCategoryId, setSelectedCategoryId] = useState(categoryId || '');
-
-    // Reset or Initialize form when opening
+    // Initialize/Reset
     useEffect(() => {
         if (isOpen) {
             if (initialData) {
                 // Edit Mode
                 setName(initialData.name);
+                setGoalType(initialData.goal.type || 'boolean'); // Default to boolean if missing
                 setTarget(initialData.goal.target ? String(initialData.goal.target) : '');
                 setUnit(initialData.goal.unit || '');
-                setFrequency(initialData.goal.frequency);
                 setFrequency(initialData.goal.frequency);
                 setAssignedDays(initialData.assignedDays || []);
                 setScheduledTime(initialData.scheduledTime || '');
@@ -52,6 +56,7 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
             } else {
                 // Add Mode
                 setName('');
+                setGoalType('boolean');
                 setTarget('');
                 setUnit('');
                 setFrequency('daily');
@@ -60,11 +65,37 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                 setDurationMinutes('30');
                 setNonNegotiable(false);
                 setDescription('');
-                if (categoryId) setSelectedCategoryId(categoryId);
-                else if (categories.length > 0) setSelectedCategoryId(categories[0].id);
+
+                // Robust Category Selection Default
+                if (categoryId && categories.some(c => c.id === categoryId)) {
+                    // 1. Use passed categoryId if it exists in the list
+                    setSelectedCategoryId(categoryId);
+                } else if (categories.length > 0) {
+                    // 2. Default to first category if passed ID is invalid or missing
+                    setSelectedCategoryId(categories[0].id);
+                } else {
+                    // 3. Fallback (shouldn't happen if categories exist)
+                    setSelectedCategoryId('');
+                }
             }
         }
     }, [isOpen, initialData, categoryId, categories]);
+
+    // Auto-sync target for Boolean Weekly habits
+    useEffect(() => {
+        if (frequency === 'weekly' && goalType === 'boolean') {
+            // For boolean weekly habits, target is simply the number of days to complete it
+            // If assigned days are selected, target = number of days
+            if (assignedDays.length > 0) {
+                setTarget(String(assignedDays.length));
+            } else {
+                // If no days selected yet, keep current target or default?
+                // Better to clear it or let user type if we allowed typing, but we want to automate it.
+                // If they haven't selected days, maybe target is 0 or empty?
+                // Let's default to empty implies "Select days"
+            }
+        }
+    }, [assignedDays, frequency, goalType]);
 
     if (!isOpen) return null;
 
@@ -74,9 +105,15 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
 
         setIsSubmitting(true);
         try {
+            // Ensure target is set correctly for boolean weekly
+            let finalTarget = target ? Number(target) : undefined;
+            if (frequency === 'weekly' && goalType === 'boolean' && assignedDays.length > 0) {
+                finalTarget = assignedDays.length;
+            }
+
             const goalConfig = {
-                type: (target ? 'number' : 'boolean') as 'number' | 'boolean',
-                target: target ? Number(target) : undefined,
+                type: goalType,
+                target: finalTarget,
                 unit: unit || undefined,
                 frequency: frequency,
             };
@@ -93,16 +130,13 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
             };
 
             if (initialData) {
-                // Update existing
                 await updateHabit(initialData.id, habitData);
             } else {
-                // Create new
                 await addHabit(habitData);
             }
             onClose();
         } catch (error) {
             console.error('Failed to save habit:', error);
-            // Optionally keep the modal open or show an error message
         } finally {
             setIsSubmitting(false);
         }
@@ -121,7 +155,7 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-            <div className="w-full max-w-md bg-neutral-900 border border-white/10 rounded-2xl p-6 shadow-2xl">
+            <div className="w-full max-w-md bg-neutral-900 border border-white/10 rounded-2xl p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
                 <div className="flex items-center justify-between mb-6">
                     <h3 className="text-xl font-bold text-white">
                         {isEditMode ? 'Edit Habit' : 'Add New Habit'}
@@ -131,54 +165,40 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                     </button>
                 </div>
 
-                <form onSubmit={handleSubmit} className="space-y-4">
-                    {/* Name Input */}
-                    <div>
-                        <label className="block text-sm font-medium text-neutral-400 mb-1">Habit Name</label>
-                        <input
-                            type="text"
-                            value={name}
-                            onChange={(e) => setName(e.target.value)}
-                            className="w-full bg-neutral-800 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-emerald-500"
-                            placeholder="e.g., Read Books"
-                            required
-                        />
-                    </div>
-
-                    {/* Non-Negotiable Toggle */}
-                    <div className="bg-neutral-800/50 border border-white/5 rounded-lg p-3 flex items-center justify-between group cursor-pointer hover:bg-neutral-800 transition-colors"
-                        onClick={() => setNonNegotiable(!nonNegotiable)}>
-                        <div className="flex items-center gap-3">
-                            <div className={`p-2 rounded-lg transition-colors ${nonNegotiable ? 'bg-yellow-500/20 text-yellow-400' : 'bg-neutral-700/50 text-neutral-500'}`}>
-                                <Shield size={20} />
-                            </div>
-                            <div>
-                                <h4 className={`font-medium transition-colors ${nonNegotiable ? 'text-yellow-400' : 'text-neutral-300'}`}>Non-Negotiable</h4>
-                                <p className="text-xs text-neutral-500">Essential habit. Highlighted with a Priority Ring.</p>
-                            </div>
+                <form onSubmit={handleSubmit} className="space-y-5">
+                    {/* 1. Basic Info */}
+                    <div className="space-y-4">
+                        <div>
+                            <label className="block text-sm font-medium text-neutral-400 mb-1">Habit Name</label>
+                            <input
+                                type="text"
+                                value={name}
+                                onChange={(e) => setName(e.target.value)}
+                                className="w-full bg-neutral-800 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-emerald-500"
+                                placeholder="e.g., Morning Jog"
+                                required
+                            />
                         </div>
-                        <div className={`w-12 h-6 rounded-full p-1 transition-colors ${nonNegotiable ? 'bg-yellow-500' : 'bg-neutral-700'}`}>
-                            <div className={`w-4 h-4 rounded-full bg-white shadow-sm transition-transform ${nonNegotiable ? 'translate-x-6' : 'translate-x-0'}`} />
+
+                        <div>
+                            <label className="block text-sm font-medium text-neutral-400 mb-1">Category</label>
+                            <select
+                                value={selectedCategoryId}
+                                onChange={(e) => setSelectedCategoryId(e.target.value)}
+                                className="w-full bg-neutral-800 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-emerald-500 appearance-none"
+                            >
+                                {categories.map(cat => (
+                                    <option key={cat.id} value={cat.id}>{cat.name}</option>
+                                ))}
+                            </select>
                         </div>
                     </div>
 
-                    {/* Category Selection */}
-                    <div>
-                        <label className="block text-sm font-medium text-neutral-400 mb-1">Category</label>
-                        <select
-                            value={selectedCategoryId}
-                            onChange={(e) => setSelectedCategoryId(e.target.value)}
-                            className="w-full bg-neutral-800 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-emerald-500 appearance-none"
-                        >
-                            {categories.map(cat => (
-                                <option key={cat.id} value={cat.id}>{cat.name}</option>
-                            ))}
-                        </select>
-                    </div>
+                    {/* 2. Frequency & Type */}
+                    <div className="space-y-3">
+                        <label className="block text-sm font-medium text-neutral-400">Tracking Style</label>
 
-                    {/* Frequency Selection */}
-                    <div>
-                        <label className="block text-sm font-medium text-neutral-400 mb-2">Tracking Frequency</label>
+                        {/* Frequency Selector */}
                         <div className="grid grid-cols-3 gap-2">
                             {(['daily', 'weekly', 'total'] as const).map((freq) => (
                                 <button
@@ -194,104 +214,197 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                                 </button>
                             ))}
                         </div>
+
+                        {/* Goal Type Toggle */}
+                        <div className="grid grid-cols-2 gap-2 mt-2">
+                            <button
+                                type="button"
+                                onClick={() => setGoalType('boolean')}
+                                className={`flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors border ${goalType === 'boolean'
+                                    ? 'bg-blue-500/20 text-blue-400 border-blue-500/50'
+                                    : 'bg-neutral-800 text-neutral-400 border-white/5 hover:bg-neutral-700'
+                                    }`}
+                            >
+                                <CheckCircle2 size={16} />
+                                Simple (Done/Not Done)
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setGoalType('number')}
+                                className={`flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors border ${goalType === 'number'
+                                    ? 'bg-amber-500/20 text-amber-400 border-amber-500/50'
+                                    : 'bg-neutral-800 text-neutral-400 border-white/5 hover:bg-neutral-700'
+                                    }`}
+                            >
+                                <Calculator size={16} />
+                                Numeric (Amount)
+                            </button>
+                        </div>
                     </div>
 
-                    {/* Goal Configuration */}
-                    <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-sm font-medium text-neutral-400 mb-1">
-                                {frequency === 'weekly' ? 'Times per Week' : 'Target (Optional)'}
-                            </label>
-                            <input
-                                type="number"
-                                value={target}
-                                onChange={(e) => setTarget(e.target.value)}
-                                className="w-full bg-neutral-800 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-emerald-500"
-                                placeholder={frequency === 'weekly' ? "e.g., 3" : "e.g., 30"}
-                                required={frequency === 'weekly'} // Required for weekly quota
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-neutral-400 mb-1">Unit</label>
-                            <input
-                                type="text"
-                                value={unit}
-                                onChange={(e) => setUnit(e.target.value)}
-                                className="w-full bg-neutral-800 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-emerald-500"
-                                placeholder={frequency === 'weekly' ? "e.g., times" : "e.g., mins"}
-                            />
-                        </div>
-                    </div>
-
-                    {/* Assigned Days (Weekly Only) */}
+                    {/* 3. Specific Configuration based on Weekly/Type */}
                     {frequency === 'weekly' && (
-                        <div>
-                            <label className="block text-sm font-medium text-neutral-400 mb-2">
-                                Assigned Days (Optional Calendar View)
-                            </label>
-                            <div className="flex justify-between gap-1">
-                                {daysOfWeek.map((day, index) => {
-                                    const isSelected = assignedDays.includes(index);
-                                    return (
-                                        <button
-                                            key={index}
-                                            type="button"
-                                            onClick={() => toggleAssignedDay(index)}
-                                            className={`w-9 h-9 rounded-lg text-sm font-medium transition-all ${isSelected
-                                                ? 'bg-emerald-500 text-neutral-900 shadow-lg shadow-emerald-500/20'
-                                                : 'bg-neutral-800 text-neutral-400 hover:bg-neutral-700'
-                                                }`}
-                                        >
-                                            {day}
-                                        </button>
-                                    );
-                                })}
+                        <div className="space-y-4 pt-2 border-t border-white/5">
+                            {/* Assigned Days */}
+                            <div>
+                                <label className="block text-sm font-medium text-neutral-400 mb-2">
+                                    Assigned Days {goalType === 'boolean' && <span className="text-emerald-400">(Auto-calculates goal)</span>}
+                                </label>
+                                <div className="flex justify-between gap-1">
+                                    {daysOfWeek.map((day, index) => {
+                                        const isSelected = assignedDays.includes(index);
+                                        return (
+                                            <button
+                                                key={index}
+                                                type="button"
+                                                onClick={() => toggleAssignedDay(index)}
+                                                className={`w-9 h-9 rounded-lg text-sm font-medium transition-all ${isSelected
+                                                    ? 'bg-emerald-500 text-neutral-900 shadow-lg shadow-emerald-500/20'
+                                                    : 'bg-neutral-800 text-neutral-400 hover:bg-neutral-700'
+                                                    }`}
+                                            >
+                                                {day}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
                             </div>
-                            <p className="text-xs text-neutral-500 mt-2">
-                                * These days will show up on your calendar, but you can complete the habit on any day.
-                            </p>
+
+                            {/* Target Logic */}
+                            {goalType === 'boolean' ? (
+                                <div className="bg-neutral-800/50 rounded-lg p-3 border border-white/5">
+                                    <div className="flex justify-between items-center text-sm">
+                                        <span className="text-neutral-400">Weekly Goal:</span>
+                                        <span className="text-white font-medium">
+                                            {assignedDays.length > 0 ? `${assignedDays.length} times / week` : 'Select days above'}
+                                        </span>
+                                    </div>
+                                </div>
+                            ) : (
+                                // Numeric Goal
+                                <div className="grid grid-cols-2 gap-4 animate-in fade-in slide-in-from-top-2">
+                                    <div>
+                                        <label className="block text-sm font-medium text-neutral-400 mb-1">Weekly Target</label>
+                                        <input
+                                            type="number"
+                                            value={target}
+                                            onChange={(e) => setTarget(e.target.value)}
+                                            className="w-full bg-neutral-800 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-emerald-500"
+                                            placeholder="e.g. 50"
+                                            required
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-neutral-400 mb-1">Unit</label>
+                                        <input
+                                            type="text"
+                                            value={unit}
+                                            onChange={(e) => setUnit(e.target.value)}
+                                            className="w-full bg-neutral-800 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-emerald-500"
+                                            placeholder="e.g. reps"
+                                            required
+                                        />
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Time & Duration */}
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-neutral-400 mb-1">Preferred Time</label>
+                                    <input
+                                        type="time"
+                                        value={scheduledTime}
+                                        onChange={(e) => setScheduledTime(e.target.value)}
+                                        className="w-full bg-neutral-800 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-emerald-500"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-neutral-400 mb-1">Duration (mins)</label>
+                                    <input
+                                        type="number"
+                                        min="5"
+                                        step="5"
+                                        value={durationMinutes}
+                                        onChange={(e) => setDurationMinutes(e.target.value)}
+                                        className="w-full bg-neutral-800 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-emerald-500"
+                                    />
+                                </div>
+                            </div>
                         </div>
                     )}
 
-                    {/* Time & Duration (Weekly Only) */}
-                    {frequency === 'weekly' && (
-                        <div className="grid grid-cols-2 gap-4">
+                    {/* 4. Configuration for Daily/Total (Legacy support mostly) */}
+                    {frequency !== 'weekly' && (
+                        <div className="grid grid-cols-2 gap-4 pt-2 border-t border-white/5">
                             <div>
-                                <label className="block text-sm font-medium text-neutral-400 mb-1">Preferred Time</label>
-                                <input
-                                    type="time"
-                                    value={scheduledTime}
-                                    onChange={(e) => setScheduledTime(e.target.value)}
-                                    className="w-full bg-neutral-800 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-emerald-500"
-                                />
+                                <label className="block text-sm font-medium text-neutral-400 mb-1">
+                                    {goalType === 'number' ? 'Target Amount' : 'Times per Day?'}
+                                </label>
+                                {goalType === 'boolean' ? (
+                                    <div className="text-sm text-neutral-500 py-3 italic">
+                                        Standard daily completion
+                                    </div>
+                                ) : (
+                                    <input
+                                        type="number"
+                                        value={target}
+                                        onChange={(e) => setTarget(e.target.value)}
+                                        className="w-full bg-neutral-800 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-emerald-500"
+                                        placeholder="e.g. 10"
+                                        required
+                                    />
+                                )}
                             </div>
-                            <div>
-                                <label className="block text-sm font-medium text-neutral-400 mb-1">Duration (mins)</label>
-                                <input
-                                    type="number"
-                                    min="5"
-                                    step="5"
-                                    value={durationMinutes}
-                                    onChange={(e) => setDurationMinutes(e.target.value)}
-                                    className="w-full bg-neutral-800 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-emerald-500"
-                                />
-                            </div>
+                            {goalType === 'number' && (
+                                <div>
+                                    <label className="block text-sm font-medium text-neutral-400 mb-1">Unit</label>
+                                    <input
+                                        type="text"
+                                        value={unit}
+                                        onChange={(e) => setUnit(e.target.value)}
+                                        className="w-full bg-neutral-800 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-emerald-500"
+                                        placeholder="e.g. pages"
+                                    />
+                                </div>
+                            )}
                         </div>
                     )}
 
-                    {/* Description (Optional) */}
-                    <div>
-                        <label className="block text-sm font-medium text-neutral-400 mb-1">Description (Optional)</label>
-                        <textarea
-                            value={description}
-                            onChange={(e) => setDescription(e.target.value)}
-                            className="w-full bg-neutral-800 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-emerald-500 h-24 resize-none"
-                            placeholder="Add notes about your habit..."
-                        />
+                    {/* 5. Extras */}
+                    <div className="space-y-4 pt-2 border-t border-white/5">
+                        {/* Non-Negotiable Toggle */}
+                        <div className="bg-neutral-800/50 border border-white/5 rounded-lg p-3 flex items-center justify-between group cursor-pointer hover:bg-neutral-800 transition-colors"
+                            onClick={() => setNonNegotiable(!nonNegotiable)}>
+                            <div className="flex items-center gap-3">
+                                <div className={`p-2 rounded-lg transition-colors ${nonNegotiable ? 'bg-yellow-500/20 text-yellow-400' : 'bg-neutral-700/50 text-neutral-500'}`}>
+                                    <Shield size={20} />
+                                </div>
+                                <div>
+                                    <h4 className={`font-medium transition-colors ${nonNegotiable ? 'text-yellow-400' : 'text-neutral-300'}`}>Non-Negotiable</h4>
+                                    <p className="text-xs text-neutral-500">Essential habit. Highlighted with a Priority Ring.</p>
+                                </div>
+                            </div>
+                            <div className={`w-12 h-6 rounded-full p-1 transition-colors ${nonNegotiable ? 'bg-yellow-500' : 'bg-neutral-700'}`}>
+                                <div className={`w-4 h-4 rounded-full bg-white shadow-sm transition-transform ${nonNegotiable ? 'translate-x-6' : 'translate-x-0'}`} />
+                            </div>
+                        </div>
+
+                        {/* Description */}
+                        <div>
+                            <label className="block text-sm font-medium text-neutral-400 mb-1">Description (Optional)</label>
+                            <textarea
+                                value={description}
+                                onChange={(e) => setDescription(e.target.value)}
+                                className="w-full bg-neutral-800 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-emerald-500 h-20 resize-none"
+                                placeholder="Add notes about your habit..."
+                            />
+                        </div>
                     </div>
+
 
                     {/* Actions */}
-                    <div className="pt-4 flex justify-end gap-3">
+                    <div className="pt-2 flex justify-end gap-3">
                         <button
                             type="button"
                             onClick={onClose}
@@ -301,7 +414,8 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                         </button>
                         <button
                             type="submit"
-                            className="px-4 py-2 bg-emerald-500 text-neutral-900 font-medium rounded-lg hover:bg-emerald-400 transition-colors"
+                            disabled={isSubmitting || (frequency === 'weekly' && goalType === 'boolean' && assignedDays.length === 0)}
+                            className="px-4 py-2 bg-emerald-500 text-neutral-900 font-medium rounded-lg hover:bg-emerald-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             {isEditMode ? 'Save Changes' : 'Create Habit'}
                         </button>
