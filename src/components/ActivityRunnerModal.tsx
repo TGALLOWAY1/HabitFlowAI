@@ -17,9 +17,10 @@ export const ActivityRunnerModal: React.FC<ActivityRunnerModalProps> = ({
     activity,
     onClose,
 }) => {
-    const { refreshDayLogs } = useHabitStore();
+    const { refreshDayLogs, habits } = useHabitStore();
     const [mode, setMode] = useState<ActivityRunnerMode>('habit');
     const [completedStepIds, setCompletedStepIds] = useState<Set<string>>(new Set());
+    const [stepValues, setStepValues] = useState<Record<string, number>>({});
     const [currentIndex, setCurrentIndex] = useState(0);
     const [submitting, setSubmitting] = useState(false);
     const [submitError, setSubmitError] = useState<string | null>(null);
@@ -48,10 +49,24 @@ export const ActivityRunnerModal: React.FC<ActivityRunnerModalProps> = ({
         });
     };
 
+    const handleValueChange = (stepId: string, valueStr: string) => {
+        const val = parseFloat(valueStr);
+        setStepValues(prev => ({
+            ...prev,
+            [stepId]: isNaN(val) ? 0 : val
+        }));
+
+        // Auto-check the box if a valid number > 0 is entered
+        if (!isNaN(val) && val > 0) {
+            setCompletedStepIds(prev => new Set(prev).add(stepId));
+        }
+    };
+
     // Reset all state when modal closes
     useEffect(() => {
         if (!isOpen) {
             setCompletedStepIds(new Set());
+            setStepValues({});
             setSubmitError(null);
             setSubmitResult(null);
             setMode('habit');
@@ -110,6 +125,7 @@ export const ActivityRunnerModal: React.FC<ActivityRunnerModalProps> = ({
             const result = await submitActivity(activity.id, {
                 mode,
                 completedStepIds: Array.from(completedStepIds),
+                stepValues,
                 submittedAt: new Date().toISOString(),
             });
 
@@ -149,8 +165,8 @@ export const ActivityRunnerModal: React.FC<ActivityRunnerModalProps> = ({
                                 type="button"
                                 onClick={() => setMode('habit')}
                                 className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${mode === 'habit'
-                                        ? 'bg-emerald-500 text-neutral-900'
-                                        : 'bg-neutral-700 text-neutral-300 hover:bg-neutral-600'
+                                    ? 'bg-emerald-500 text-neutral-900'
+                                    : 'bg-neutral-700 text-neutral-300 hover:bg-neutral-600'
                                     }`}
                             >
                                 Checklist
@@ -159,8 +175,8 @@ export const ActivityRunnerModal: React.FC<ActivityRunnerModalProps> = ({
                                 type="button"
                                 onClick={() => setMode('image')}
                                 className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${mode === 'image'
-                                        ? 'bg-emerald-500 text-neutral-900'
-                                        : 'bg-neutral-700 text-neutral-300 hover:bg-neutral-600'
+                                    ? 'bg-emerald-500 text-neutral-900'
+                                    : 'bg-neutral-700 text-neutral-300 hover:bg-neutral-600'
                                     }`}
                             >
                                 Images
@@ -169,8 +185,8 @@ export const ActivityRunnerModal: React.FC<ActivityRunnerModalProps> = ({
                                 type="button"
                                 onClick={() => setMode('text')}
                                 className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${mode === 'text'
-                                        ? 'bg-emerald-500 text-neutral-900'
-                                        : 'bg-neutral-700 text-neutral-300 hover:bg-neutral-600'
+                                    ? 'bg-emerald-500 text-neutral-900'
+                                    : 'bg-neutral-700 text-neutral-300 hover:bg-neutral-600'
                                     }`}
                             >
                                 Text
@@ -189,32 +205,54 @@ export const ActivityRunnerModal: React.FC<ActivityRunnerModalProps> = ({
                                 ) : (
                                     <>
                                         <div className="space-y-2">
-                                            {checklistSteps.map((step) => (
-                                                <label
-                                                    key={step.id}
-                                                    className="flex items-center gap-3 p-3 bg-neutral-800/50 border border-white/5 rounded-lg hover:bg-neutral-800/70 transition-colors cursor-pointer"
-                                                >
-                                                    <input
-                                                        type="checkbox"
-                                                        checked={completedStepIds.has(step.id)}
-                                                        onChange={() => toggleStep(step.id)}
-                                                        className="w-5 h-5 rounded border-neutral-700 bg-neutral-800 text-emerald-500 focus:ring-emerald-500 cursor-pointer"
-                                                    />
-                                                    <div className="flex-1">
-                                                        <div className="flex items-center justify-between">
-                                                            <div className="text-white font-medium">{step.title}</div>
-                                                            {step.type === 'habit' && (
-                                                                <span className="text-xs px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400">Habit</span>
+                                            {checklistSteps.map((step) => {
+                                                const habit = step.type === 'habit' ? habits.find(h => h.id === step.habitId) : null;
+                                                const isQuantitative = habit?.goal?.type === 'number';
+
+                                                return (
+                                                    <label
+                                                        key={step.id}
+                                                        className="flex items-center gap-3 p-3 bg-neutral-800/50 border border-white/5 rounded-lg hover:bg-neutral-800/70 transition-colors cursor-pointer"
+                                                    >
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={completedStepIds.has(step.id)}
+                                                            onChange={() => toggleStep(step.id)}
+                                                            className="w-5 h-5 rounded border-neutral-700 bg-neutral-800 text-emerald-500 focus:ring-emerald-500 cursor-pointer"
+                                                        />
+                                                        <div className="flex-1">
+                                                            <div className="flex items-center justify-between">
+                                                                <div className="text-white font-medium">{step.title}</div>
+                                                                {isQuantitative ? (
+                                                                    <div
+                                                                        className="flex items-center gap-2"
+                                                                        onClick={(e) => e.preventDefault()} // Prevent label toggle on input click
+                                                                    >
+                                                                        <input
+                                                                            type="number"
+                                                                            step="any"
+                                                                            placeholder={habit?.goal?.target ? `${habit.goal.target}` : '0'}
+                                                                            value={stepValues[step.id] || ''}
+                                                                            onChange={(e) => handleValueChange(step.id, e.target.value)}
+                                                                            className="w-20 bg-neutral-900 border border-white/10 rounded px-2 py-1 text-sm text-white focus:border-emerald-500 focus:outline-none text-right"
+                                                                        />
+                                                                        {habit?.goal?.unit && (
+                                                                            <span className="text-xs text-neutral-500">{habit.goal.unit}</span>
+                                                                        )}
+                                                                    </div>
+                                                                ) : step.type === 'habit' && (
+                                                                    <span className="text-xs px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400">Habit</span>
+                                                                )}
+                                                            </div>
+                                                            {step.timeEstimateMinutes && (
+                                                                <div className="text-sm text-neutral-400 mt-1">
+                                                                    ~{step.timeEstimateMinutes} min
+                                                                </div>
                                                             )}
                                                         </div>
-                                                        {step.timeEstimateMinutes && (
-                                                            <div className="text-sm text-neutral-400 mt-1">
-                                                                ~{step.timeEstimateMinutes} min
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                </label>
-                                            ))}
+                                                    </label>
+                                                );
+                                            })}
                                         </div>
                                         <div className="text-sm text-neutral-400 pt-2">
                                             Completed {completedStepIds.size} of {checklistSteps.length} steps
@@ -332,8 +370,8 @@ export const ActivityRunnerModal: React.FC<ActivityRunnerModalProps> = ({
                                                         type="button"
                                                         onClick={() => toggleStep(currentStep.id)}
                                                         className={`px-6 py-2 rounded-lg font-medium transition-colors ${completedStepIds.has(currentStep.id)
-                                                                ? 'bg-neutral-700 text-neutral-300 hover:bg-neutral-600'
-                                                                : 'bg-emerald-500 text-neutral-900 hover:bg-emerald-400'
+                                                            ? 'bg-neutral-700 text-neutral-300 hover:bg-neutral-600'
+                                                            : 'bg-emerald-500 text-neutral-900 hover:bg-emerald-400'
                                                             }`}
                                                     >
                                                         {completedStepIds.has(currentStep.id) ? 'Undo' : 'Mark done'}

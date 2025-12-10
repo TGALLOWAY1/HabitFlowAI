@@ -223,6 +223,7 @@ const SortableWeeklyHabitRow = ({
     habit,
     logs,
     onToggleToday,
+    onOpenPopover,
     deleteHabit,
     deleteConfirmId,
     setDeleteConfirmId,
@@ -231,6 +232,7 @@ const SortableWeeklyHabitRow = ({
     habit: Habit;
     logs: Record<string, DayLog>; // All logs passed in, we filter inside
     onToggleToday: (habit: Habit) => void;
+    onOpenPopover: (e: React.MouseEvent, habit: Habit, date: string, currentValue: number) => void;
     deleteHabit: (id: string) => Promise<void>;
     deleteConfirmId: string | null;
     setDeleteConfirmId: (id: string | null) => void;
@@ -253,34 +255,54 @@ const SortableWeeklyHabitRow = ({
     };
 
     // Calculate Weekly Progress
-    const { currentCount, target, isCompletedToday } = useMemo(() => {
+    const { currentCount, target, isCompletedToday, todayLogValue } = useMemo(() => {
         const today = new Date();
         const start = startOfWeek(today, { weekStartsOn: 1 }); // Monday start
         const end = endOfWeek(today, { weekStartsOn: 1 });
 
         let count = 0;
         let completedToday = false;
+        let todayVal = 0;
         const todayStr = format(today, 'yyyy-MM-dd');
+        const isQuantitative = habit.goal.type === 'number';
 
         // Iterate logs to find matches for this habit in range
         Object.values(logs).forEach(log => {
             if (log.habitId === habit.id) {
                 const logDate = parseISO(log.date);
-                if (isWithinInterval(logDate, { start, end }) && log.completed) {
-                    count++;
+                if (isWithinInterval(logDate, { start, end })) {
+                    // For quantitative, sum the values. For boolean, count completed.
+                    if (isQuantitative) {
+                        count += (log.value || 0);
+                    } else if (log.completed) {
+                        count++;
+                    }
                 }
-                if (log.date === todayStr && log.completed) {
-                    completedToday = true;
+                if (log.date === todayStr) {
+                    todayVal = log.value || 0;
+                    if (log.completed || (isQuantitative && todayVal > 0)) {
+                        completedToday = true;
+                    }
                 }
             }
         });
 
+        // For quantitative, target is the numeric target. For boolean, it's the frequency (e.g. 3 times/week).
+        // Wait, habit.goal.target IS the target.
+        // If frequency is 'weekly', target usually means "times per week" for boolean.
+        // For quantitative 'weekly', target means "total units per week".
+        const goalTarget = habit.goal.target || 3;
+
         return {
             currentCount: count,
-            target: habit.goal.target || 3, // Default fallback
-            isCompletedToday: completedToday
+            target: goalTarget,
+            isCompletedToday: completedToday,
+            todayLogValue: todayVal
         };
-    }, [habit.id, habit.goal.target, logs]);
+    }, [habit.id, habit.goal.target, habit.goal.type, logs]);
+
+    const isQuantitative = habit.goal.type === 'number';
+    const progressPercent = Math.min(100, Math.max(0, (currentCount / target) * 100));
 
     const priorityRingClass = habit.nonNegotiable
         ? isCompletedToday
@@ -314,7 +336,8 @@ const SortableWeeklyHabitRow = ({
                     <div className="flex flex-col">
                         <span className="font-medium text-neutral-200">{habit.name}</span>
                         <span className="text-xs text-neutral-500 mt-1 flex items-center gap-2">
-                            Weekly Goal: {currentCount} / {target}
+                            {/* Display e.g. "Weekly Goal: 25 / 50 reps" or "Weekly Goal: 3 / 5" */}
+                            Weekly Goal: {Math.round(currentCount * 10) / 10} / {target} {habit.goal.unit}
                             {currentCount >= target && <Trophy size={12} className="text-yellow-500" />}
                         </span>
                     </div>
@@ -331,26 +354,44 @@ const SortableWeeklyHabitRow = ({
 
             {/* Main Content Area */}
             <div className="flex-1 flex items-center justify-between p-4">
-                {/* Progress Visuals (Circles) */}
-                <div className="flex items-center gap-1">
-                    {Array.from({ length: target }).map((_, i) => (
-                        <div
-                            key={i}
-                            className={cn(
-                                "w-3 h-3 rounded-full transition-all",
-                                i < currentCount
-                                    ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]"
-                                    : "bg-neutral-800 border border-white/10"
-                            )}
-                        />
-                    ))}
+                {/* Progress Visuals */}
+                <div className="flex items-center gap-1 flex-1 mr-8">
+                    {isQuantitative ? (
+                        // Progress Bar for Quantitative
+                        <div className="w-full h-3 bg-neutral-800 border border-white/10 rounded-full overflow-hidden relative">
+                            <div
+                                className="h-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)] transition-all duration-500 ease-out"
+                                style={{ width: `${progressPercent}%` }}
+                            />
+                        </div>
+                    ) : (
+                        // Circles for Boolean
+                        Array.from({ length: target }).map((_, i) => (
+                            <div
+                                key={i}
+                                className={cn(
+                                    "w-3 h-3 rounded-full transition-all",
+                                    i < currentCount
+                                        ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]"
+                                        : "bg-neutral-800 border border-white/10"
+                                )}
+                            />
+                        ))
+                    )}
                 </div>
 
-                {/* Mark Done Button */}
+                {/* Mark Done / Log Value Button */}
                 <button
-                    onClick={() => onToggleToday(habit)}
+                    onClick={(e) => {
+                        if (isQuantitative) {
+                            const todayStr = format(new Date(), 'yyyy-MM-dd');
+                            onOpenPopover(e, habit, todayStr, todayLogValue);
+                        } else {
+                            onToggleToday(habit);
+                        }
+                    }}
                     className={cn(
-                        "flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all",
+                        "flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all min-w-[140px] justify-center",
                         isCompletedToday
                             ? habit.nonNegotiable
                                 ? "bg-yellow-500 text-neutral-900 shadow-[0_0_15px_rgba(234,179,8,0.3)] animate-gold-burst"
@@ -361,12 +402,21 @@ const SortableWeeklyHabitRow = ({
                     {isCompletedToday ? (
                         <>
                             <Check size={18} strokeWidth={2.5} />
-                            <span>Done Today</span>
+                            <span>{isQuantitative ? `${todayLogValue} ${habit.goal.unit || ''}` : 'Done Today'}</span>
                         </>
                     ) : (
                         <>
-                            <div className="w-4 h-4 rounded-full border-2 border-current" />
-                            <span>Mark Done</span>
+                            {isQuantitative ? (
+                                <span className="flex items-center gap-2">
+                                    <Plus size={16} />
+                                    Log {habit.goal.unit || 'Value'}
+                                </span>
+                            ) : (
+                                <>
+                                    <div className="w-4 h-4 rounded-full border-2 border-current" />
+                                    <span>Mark Done</span>
+                                </>
+                            )}
                         </>
                     )}
                 </button>
@@ -570,6 +620,17 @@ export const TrackerGrid: React.FC<TrackerGridProps> = ({ habits, logs, onToggle
                                             habit={habit}
                                             logs={logs}
                                             onToggleToday={handleToggleToday}
+                                            onOpenPopover={(e, habit, date, val) => {
+                                                const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                                                setPopoverState({
+                                                    isOpen: true,
+                                                    habitId: habit.id,
+                                                    date: date,
+                                                    initialValue: val,
+                                                    unit: habit.goal.unit,
+                                                    position: { top: rect.bottom + 8, left: rect.left - 40 }, // Center-ish
+                                                });
+                                            }}
                                             deleteHabit={deleteHabit}
                                             deleteConfirmId={deleteConfirmId}
                                             setDeleteConfirmId={setDeleteConfirmId}
