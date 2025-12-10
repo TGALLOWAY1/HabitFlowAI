@@ -1,7 +1,9 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import type { Activity } from '../types';
+import type { ActivityLog } from '../models/persistenceTypes';
 import {
     fetchActivities,
+    fetchActivityLogs, // Import new fetch function
     createActivity as createActivityApi,
     updateActivity as updateActivityApi,
     deleteActivity as deleteActivityApi,
@@ -9,6 +11,7 @@ import {
 
 interface ActivityContextType {
     activities: Activity[];
+    activityLogs: Record<string, ActivityLog>; // Add to context interface
     loading: boolean;
     error?: string;
     refreshActivities: () => Promise<void>;
@@ -33,6 +36,7 @@ export const ActivityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
     // All state starts empty and is loaded from MongoDB via API on mount
     const [activities, setActivities] = useState<Activity[]>([]);
+    const [activityLogs, setActivityLogs] = useState<Record<string, ActivityLog>>({});
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<string | undefined>(undefined);
 
@@ -44,9 +48,13 @@ export const ActivityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             setLoading(true);
             setError(undefined);
             try {
-                const apiActivities = await fetchActivities();
+                const [apiActivities, apiLogs] = await Promise.all([
+                    fetchActivities(),
+                    fetchActivityLogs(),
+                ]);
                 if (cancelled) return;
                 setActivities(apiActivities);
+                setActivityLogs(apiLogs);
                 setLoading(false);
             } catch (err) {
                 if (cancelled) return;
@@ -69,8 +77,12 @@ export const ActivityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         setLoading(true);
         setError(undefined);
         try {
-            const apiActivities = await fetchActivities();
+            const [apiActivities, apiLogs] = await Promise.all([
+                fetchActivities(),
+                fetchActivityLogs(),
+            ]);
             setActivities(apiActivities);
+            setActivityLogs(apiLogs);
             setLoading(false);
         } catch (err) {
             const errorMessage = err instanceof Error ? err.message : 'Unknown error';
@@ -126,6 +138,7 @@ export const ActivityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         <ActivityContext.Provider
             value={{
                 activities,
+                activityLogs,
                 loading,
                 error,
                 refreshActivities,

@@ -31,8 +31,8 @@ export const ActivityRunnerModal: React.FC<ActivityRunnerModalProps> = ({
     const steps = allSteps; // Alias for consistency with existing code
     const currentStep = steps[currentIndex] ?? null;
 
-    const habitSteps = useMemo(
-        () => activity?.steps.filter(step => step.type === 'habit') ?? [],
+    const checklistSteps = useMemo(
+        () => activity?.steps ?? [],
         [activity]
     );
 
@@ -67,7 +67,7 @@ export const ActivityRunnerModal: React.FC<ActivityRunnerModalProps> = ({
     }, [activity, mode]);
 
     const handleCompleteStep = () => {
-        if (currentStep?.type === 'habit' && currentStep.id) {
+        if (currentStep?.id) {
             setCompletedStepIds(prev => {
                 const next = new Set(prev);
                 next.add(currentStep.id);
@@ -148,33 +148,30 @@ export const ActivityRunnerModal: React.FC<ActivityRunnerModalProps> = ({
                             <button
                                 type="button"
                                 onClick={() => setMode('habit')}
-                                className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                                    mode === 'habit'
+                                className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${mode === 'habit'
                                         ? 'bg-emerald-500 text-neutral-900'
                                         : 'bg-neutral-700 text-neutral-300 hover:bg-neutral-600'
-                                }`}
+                                    }`}
                             >
                                 Checklist
                             </button>
                             <button
                                 type="button"
                                 onClick={() => setMode('image')}
-                                className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                                    mode === 'image'
+                                className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${mode === 'image'
                                         ? 'bg-emerald-500 text-neutral-900'
                                         : 'bg-neutral-700 text-neutral-300 hover:bg-neutral-600'
-                                }`}
+                                    }`}
                             >
                                 Images
                             </button>
                             <button
                                 type="button"
                                 onClick={() => setMode('text')}
-                                className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                                    mode === 'text'
+                                className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${mode === 'text'
                                         ? 'bg-emerald-500 text-neutral-900'
                                         : 'bg-neutral-700 text-neutral-300 hover:bg-neutral-600'
-                                }`}
+                                    }`}
                             >
                                 Text
                             </button>
@@ -185,14 +182,14 @@ export const ActivityRunnerModal: React.FC<ActivityRunnerModalProps> = ({
                     <div className="flex-1 overflow-y-auto p-6">
                         {mode === 'habit' && (
                             <div className="space-y-4">
-                                {habitSteps.length === 0 ? (
+                                {checklistSteps.length === 0 ? (
                                     <div className="text-neutral-400 text-center py-12">
-                                        This activity has no habit steps; nothing to track in checklist mode.
+                                        This activity has no steps.
                                     </div>
                                 ) : (
                                     <>
                                         <div className="space-y-2">
-                                            {habitSteps.map((step) => (
+                                            {checklistSteps.map((step) => (
                                                 <label
                                                     key={step.id}
                                                     className="flex items-center gap-3 p-3 bg-neutral-800/50 border border-white/5 rounded-lg hover:bg-neutral-800/70 transition-colors cursor-pointer"
@@ -204,7 +201,12 @@ export const ActivityRunnerModal: React.FC<ActivityRunnerModalProps> = ({
                                                         className="w-5 h-5 rounded border-neutral-700 bg-neutral-800 text-emerald-500 focus:ring-emerald-500 cursor-pointer"
                                                     />
                                                     <div className="flex-1">
-                                                        <div className="text-white font-medium">{step.title}</div>
+                                                        <div className="flex items-center justify-between">
+                                                            <div className="text-white font-medium">{step.title}</div>
+                                                            {step.type === 'habit' && (
+                                                                <span className="text-xs px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400">Habit</span>
+                                                            )}
+                                                        </div>
                                                         {step.timeEstimateMinutes && (
                                                             <div className="text-sm text-neutral-400 mt-1">
                                                                 ~{step.timeEstimateMinutes} min
@@ -215,7 +217,7 @@ export const ActivityRunnerModal: React.FC<ActivityRunnerModalProps> = ({
                                             ))}
                                         </div>
                                         <div className="text-sm text-neutral-400 pt-2">
-                                            Completed {completedStepIds.size} of {habitSteps.length} habit steps
+                                            Completed {completedStepIds.size} of {checklistSteps.length} steps
                                         </div>
                                     </>
                                 )}
@@ -288,7 +290,7 @@ export const ActivityRunnerModal: React.FC<ActivityRunnerModalProps> = ({
 
                                         {/* Summary */}
                                         <div className="text-sm text-neutral-400 pt-2 border-t border-white/5">
-                                            Completed {completedStepIds.size} of {habitSteps.length} habit steps
+                                            Completed {completedStepIds.size} of {checklistSteps.length} steps
                                         </div>
                                     </>
                                 )}
@@ -323,17 +325,16 @@ export const ActivityRunnerModal: React.FC<ActivityRunnerModalProps> = ({
                                                 </div>
                                             )}
 
-                                            {/* Habit Step Toggle */}
-                                            {currentStep?.type === 'habit' && currentStep.id && (
+                                            {/* Step Toggle */}
+                                            {currentStep?.id && (
                                                 <div className="flex justify-center">
                                                     <button
                                                         type="button"
                                                         onClick={() => toggleStep(currentStep.id)}
-                                                        className={`px-6 py-2 rounded-lg font-medium transition-colors ${
-                                                            completedStepIds.has(currentStep.id)
+                                                        className={`px-6 py-2 rounded-lg font-medium transition-colors ${completedStepIds.has(currentStep.id)
                                                                 ? 'bg-neutral-700 text-neutral-300 hover:bg-neutral-600'
                                                                 : 'bg-emerald-500 text-neutral-900 hover:bg-emerald-400'
-                                                        }`}
+                                                            }`}
                                                     >
                                                         {completedStepIds.has(currentStep.id) ? 'Undo' : 'Mark done'}
                                                     </button>
@@ -363,7 +364,7 @@ export const ActivityRunnerModal: React.FC<ActivityRunnerModalProps> = ({
 
                                         {/* Summary */}
                                         <div className="text-sm text-neutral-400 pt-2 border-t border-white/5 text-center">
-                                            Completed {completedStepIds.size} of {habitSteps.length} habit steps
+                                            Completed {completedStepIds.size} of {checklistSteps.length} steps
                                         </div>
                                     </>
                                 )}
@@ -400,7 +401,7 @@ export const ActivityRunnerModal: React.FC<ActivityRunnerModalProps> = ({
                         <button
                             type="button"
                             onClick={handleSubmitActivity}
-                            disabled={!activity || completedStepIds.size === 0 || submitting}
+                            disabled={!activity || (checklistSteps.length > 0 && completedStepIds.size === 0) || submitting}
                             className="px-4 py-2 bg-emerald-500 text-neutral-900 font-medium rounded-lg hover:bg-emerald-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             {submitting ? 'Submitting...' : 'Submit Activity'}

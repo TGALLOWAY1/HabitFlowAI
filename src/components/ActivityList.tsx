@@ -14,7 +14,7 @@ interface ActivityListProps {
 }
 
 export const ActivityList: React.FC<ActivityListProps> = ({ onCreate, onEdit, onCreateFromHabits, onStart }) => {
-    const { activities, loading, error, deleteActivity } = useActivityStore();
+    const { activities, activityLogs, loading, error, deleteActivity } = useActivityStore();
     const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
     const [isCreateFromHabitsOpen, setIsCreateFromHabitsOpen] = useState(false);
 
@@ -84,11 +84,26 @@ export const ActivityList: React.FC<ActivityListProps> = ({ onCreate, onEdit, on
                             const habitStepsCount = countHabitSteps(activity);
                             const totalSteps = activity.steps?.length ?? 0;
 
+                            // Check if activity is completed today
+                            // Note: we use local date string matching the format stored in DB (YYYY-MM-DD)
+                            const today = new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD
+                            const completedLog = activityLogs[`${activity.id}-${today}`];
+                            const isCompleted = !!completedLog;
+
                             return (
                                 <div
                                     key={activity.id}
-                                    className="group relative bg-neutral-800/50 border border-white/5 rounded-lg p-4 hover:bg-neutral-800/70 transition-colors"
+                                    className={cn(
+                                        "group relative bg-neutral-800/50 border border-white/5 rounded-lg p-4 hover:bg-neutral-800/70 transition-colors",
+                                        activity.nonNegotiable && !isCompleted && "ring-1 ring-yellow-500 shadow-[0_0_10px_rgba(234,179,8,0.2)]",
+                                        isCompleted && "ring-1 ring-emerald-500 bg-emerald-500/5 hover:bg-emerald-500/10"
+                                    )}
                                 >
+                                    {isCompleted && (
+                                        <div className="absolute top-2 right-2 text-emerald-500">
+                                            <Sparkles size={16} className="fill-emerald-500/20" />
+                                        </div>
+                                    )}
                                     <div className="flex items-start justify-between gap-4">
                                         <div className="flex-1">
                                             <h3 className="text-lg font-medium text-white mb-2">{activity.title}</h3>
@@ -97,6 +112,11 @@ export const ActivityList: React.FC<ActivityListProps> = ({ onCreate, onEdit, on
                                                 {habitStepsCount > 0 && (
                                                     <span className="text-emerald-400">
                                                         {habitStepsCount} {habitStepsCount === 1 ? 'habit step' : 'habit steps'}
+                                                    </span>
+                                                )}
+                                                {isCompleted && (
+                                                    <span className="text-emerald-400 font-medium flex items-center gap-1">
+                                                        Completed Today
                                                     </span>
                                                 )}
                                             </div>

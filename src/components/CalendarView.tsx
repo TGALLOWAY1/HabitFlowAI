@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { format, startOfWeek, addDays, eachDayOfInterval, isSameDay } from 'date-fns';
 import { ChevronLeft, ChevronRight, Clock, Calendar as CalendarIcon, Check } from 'lucide-react';
+import { cn } from '../utils/cn';
 import { DndContext, useDraggable, useDroppable, DragOverlay, MouseSensor, TouchSensor, useSensor, useSensors } from '@dnd-kit/core';
 import type { DragEndEvent } from '@dnd-kit/core';
 import { useHabitStore } from '../store/HabitContext';
@@ -156,20 +157,28 @@ export const CalendarView: React.FC = () => {
     };
 
     // Render Event Block (extracted for re-use in DragOverlay if needed)
-    const renderEventBlock = (habit: Habit, style?: React.CSSProperties) => (
-        <div
-            className="rounded px-2 py-1 bg-emerald-500/20 border border-emerald-500/50 hover:bg-emerald-500/30 transition-colors cursor-move group overflow-hidden z-20 hover:shadow-lg hover:scale-[1.02] active:scale-95 duration-100 h-full w-full"
-            style={style}
-            title={`${habit.name} (${habit.scheduledTime})`}
-        >
-            <div className="text-xs font-medium text-emerald-100 truncate">
-                {habit.name}
+    const renderEventBlock = (habit: Habit, style?: React.CSSProperties) => {
+        const isNonNegotiable = habit.nonNegotiable;
+        return (
+            <div
+                className={cn(
+                    "rounded px-2 py-1 transition-colors cursor-move group overflow-hidden z-20 hover:shadow-lg hover:scale-[1.02] active:scale-95 duration-100 h-full w-full border",
+                    isNonNegotiable
+                        ? "bg-emerald-500/20 border-yellow-500 shadow-[0_0_8px_rgba(234,179,8,0.4)]"
+                        : "bg-emerald-500/20 border-emerald-500/50 hover:bg-emerald-500/30"
+                )}
+                style={style}
+                title={`${habit.name} (${habit.scheduledTime})${isNonNegotiable ? ' - Non-Negotiable' : ''}`}
+            >
+                <div className={cn("text-xs font-medium truncate", isNonNegotiable ? "text-yellow-100" : "text-emerald-100")}>
+                    {habit.name}
+                </div>
+                <div className="text-[10px] text-emerald-300/80 truncate">
+                    {habit.scheduledTime} ({habit.durationMinutes}m)
+                </div>
             </div>
-            <div className="text-[10px] text-emerald-300/80 truncate">
-                {habit.scheduledTime} ({habit.durationMinutes}m)
-            </div>
-        </div>
-    );
+        );
+    };
 
     return (
         <DndContext sensors={sensors} onDragEnd={handleDragEnd}>

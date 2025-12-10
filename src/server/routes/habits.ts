@@ -64,7 +64,7 @@ export async function createHabitRoute(req: Request, res: Response): Promise<voi
   try {
 
     // Validate request body
-    const { name, categoryId, goal, description, assignedDays, scheduledTime, durationMinutes } = req.body;
+    const { name, categoryId, goal, description, assignedDays, scheduledTime, durationMinutes, nonNegotiable, nonNegotiableDays, deadline } = req.body;
 
     if (!name || typeof name !== 'string' || name.trim().length === 0) {
       res.status(400).json({
@@ -108,6 +108,9 @@ export async function createHabitRoute(req: Request, res: Response): Promise<voi
         assignedDays,
         scheduledTime,
         durationMinutes: durationMinutes || 30, // Default to 30 mins if not provided
+        nonNegotiable,
+        nonNegotiableDays,
+        deadline,
       },
       userId
     );
@@ -188,7 +191,7 @@ export async function updateHabitRoute(req: Request, res: Response): Promise<voi
   try {
 
     const { id } = req.params;
-    const { name, categoryId, goal, description, archived, assignedDays, scheduledTime, durationMinutes } = req.body;
+    const { name, categoryId, goal, description, archived, assignedDays, scheduledTime, durationMinutes, nonNegotiable, nonNegotiableDays, deadline } = req.body;
 
     if (!id) {
       res.status(400).json({
@@ -288,6 +291,27 @@ export async function updateHabitRoute(req: Request, res: Response): Promise<voi
         return;
       }
       patch.durationMinutes = durationMinutes;
+    }
+
+    if (nonNegotiable !== undefined) {
+      patch.nonNegotiable = !!nonNegotiable;
+    }
+
+    if (nonNegotiableDays !== undefined) {
+      if (!Array.isArray(nonNegotiableDays)) {
+        res.status(400).json({
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: 'nonNegotiableDays must be an array of numbers',
+          },
+        });
+        return;
+      }
+      patch.nonNegotiableDays = nonNegotiableDays;
+    }
+
+    if (deadline !== undefined) {
+      patch.deadline = deadline;
     }
 
     if (Object.keys(patch).length === 0) {

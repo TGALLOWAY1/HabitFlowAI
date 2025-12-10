@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Plus, Trash2 } from 'lucide-react';
+import { X, Plus, Trash2, Shield } from 'lucide-react';
 import { useActivityStore } from '../store/ActivityContext';
 import { useHabitStore } from '../store/HabitContext';
 import type { Activity, ActivityStep, ActivityStepType } from '../types';
@@ -23,6 +23,7 @@ export const ActivityEditorModal: React.FC<ActivityEditorModalProps> = ({
     const { habits } = useHabitStore();
     const [title, setTitle] = useState('');
     const [steps, setSteps] = useState<ActivityStep[]>([]);
+    const [nonNegotiable, setNonNegotiable] = useState(false);
     const [validationError, setValidationError] = useState<string | null>(null);
     const [deleteConfirmStepId, setDeleteConfirmStepId] = useState<string | null>(null);
     const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
@@ -34,13 +35,15 @@ export const ActivityEditorModal: React.FC<ActivityEditorModalProps> = ({
         if (mode === 'edit' && initialActivity) {
             // Clone activity data for editing
             setTitle(initialActivity.title);
-            setSteps(initialActivity.steps.map(step => ({ ...step })));
+            setSteps((initialActivity.steps || []).map(step => ({ ...step })));
+            setNonNegotiable(initialActivity.nonNegotiable || false);
             setValidationError(null);
             setHasUnsavedChanges(false);
         } else if (mode === 'create') {
             // Initialize with prefillSteps if provided, otherwise empty
             setTitle('');
             setSteps(prefillSteps ? prefillSteps.map(step => ({ ...step })) : []);
+            setNonNegotiable(false);
             setValidationError(null);
             setHasUnsavedChanges(prefillSteps ? prefillSteps.length > 0 : false);
         }
@@ -128,6 +131,7 @@ export const ActivityEditorModal: React.FC<ActivityEditorModalProps> = ({
                         habitId: step.habitId || undefined,
                         timeEstimateMinutes: step.timeEstimateMinutes,
                     })),
+                    nonNegotiable,
                 });
             } else if (mode === 'edit' && initialActivity) {
                 await updateActivity(initialActivity.id, {
@@ -142,6 +146,7 @@ export const ActivityEditorModal: React.FC<ActivityEditorModalProps> = ({
                         habitId: step.habitId || undefined,
                         timeEstimateMinutes: step.timeEstimateMinutes,
                     })),
+                    nonNegotiable,
                 });
             }
             setHasUnsavedChanges(false);
@@ -165,7 +170,7 @@ export const ActivityEditorModal: React.FC<ActivityEditorModalProps> = ({
     };
 
     return (
-        <div 
+        <div
             className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
             onClick={(e) => {
                 // Close on backdrop click
@@ -206,6 +211,26 @@ export const ActivityEditorModal: React.FC<ActivityEditorModalProps> = ({
                             />
                         </div>
 
+                        {/* Non-Negotiable Toggle */}
+                        <div className="bg-neutral-800/50 border border-white/5 rounded-lg p-3 flex items-center justify-between group cursor-pointer hover:bg-neutral-800 transition-colors"
+                            onClick={() => {
+                                setNonNegotiable(!nonNegotiable);
+                                setHasUnsavedChanges(true);
+                            }}>
+                            <div className="flex items-center gap-3">
+                                <div className={`p-2 rounded-lg transition-colors ${nonNegotiable ? 'bg-yellow-500/20 text-yellow-400' : 'bg-neutral-700/50 text-neutral-500'}`}>
+                                    <Shield size={20} />
+                                </div>
+                                <div>
+                                    <h4 className={`font-medium transition-colors ${nonNegotiable ? 'text-yellow-400' : 'text-neutral-300'}`}>Non-Negotiable</h4>
+                                    <p className="text-xs text-neutral-500">Highlight this activity as essential.</p>
+                                </div>
+                            </div>
+                            <div className={`w-12 h-6 rounded-full p-1 transition-colors ${nonNegotiable ? 'bg-yellow-500' : 'bg-neutral-700'}`}>
+                                <div className={`w-4 h-4 rounded-full bg-white shadow-sm transition-transform ${nonNegotiable ? 'translate-x-6' : 'translate-x-0'}`} />
+                            </div>
+                        </div>
+
                         {/* Steps Editor */}
                         <div>
                             <div className="flex items-center justify-between mb-4">
@@ -233,17 +258,16 @@ export const ActivityEditorModal: React.FC<ActivityEditorModalProps> = ({
                                             <button
                                                 type="button"
                                                 onClick={() => removeStep(step.id)}
-                                                className={`p-1.5 rounded transition-colors ${
-                                                    deleteConfirmStepId === step.id
-                                                        ? 'bg-red-500/20 text-red-400'
-                                                        : 'text-neutral-500 hover:text-red-400 hover:bg-red-500/10'
-                                                }`}
+                                                className={`p-1.5 rounded transition-colors ${deleteConfirmStepId === step.id
+                                                    ? 'bg-red-500/20 text-red-400'
+                                                    : 'text-neutral-500 hover:text-red-400 hover:bg-red-500/10'
+                                                    }`}
                                                 title={
                                                     deleteConfirmStepId === step.id
                                                         ? 'Click again to confirm deletion'
                                                         : step.type === 'habit'
-                                                        ? 'Remove Step (requires confirmation)'
-                                                        : 'Remove Step'
+                                                            ? 'Remove Step (requires confirmation)'
+                                                            : 'Remove Step'
                                                 }
                                             >
                                                 <Trash2 size={16} />
@@ -264,11 +288,10 @@ export const ActivityEditorModal: React.FC<ActivityEditorModalProps> = ({
                                                             habitId: step.habitId || undefined, // Keep existing if present, otherwise undefined
                                                         });
                                                     }}
-                                                    className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                                                        step.type === 'habit'
-                                                            ? 'bg-emerald-500 text-neutral-900'
-                                                            : 'bg-neutral-700 text-neutral-300 hover:bg-neutral-600'
-                                                    }`}
+                                                    className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${step.type === 'habit'
+                                                        ? 'bg-emerald-500 text-neutral-900'
+                                                        : 'bg-neutral-700 text-neutral-300 hover:bg-neutral-600'
+                                                        }`}
                                                 >
                                                     Habit
                                                 </button>
@@ -282,11 +305,10 @@ export const ActivityEditorModal: React.FC<ActivityEditorModalProps> = ({
                                                             // Keep: title, instruction, imageUrl, timeEstimateMinutes
                                                         });
                                                     }}
-                                                    className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                                                        step.type === 'task'
-                                                            ? 'bg-emerald-500 text-neutral-900'
-                                                            : 'bg-neutral-700 text-neutral-300 hover:bg-neutral-600'
-                                                    }`}
+                                                    className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${step.type === 'task'
+                                                        ? 'bg-emerald-500 text-neutral-900'
+                                                        : 'bg-neutral-700 text-neutral-300 hover:bg-neutral-600'
+                                                        }`}
                                                 >
                                                     Task
                                                 </button>
@@ -325,11 +347,10 @@ export const ActivityEditorModal: React.FC<ActivityEditorModalProps> = ({
                                                 <select
                                                     value={step.habitId || ''}
                                                     onChange={(e) => updateStep(step.id, { habitId: e.target.value })}
-                                                    className={`w-full bg-neutral-800 border rounded-lg px-4 py-2 text-white focus:outline-none ${
-                                                        !step.habitId?.trim()
-                                                            ? 'border-red-500/50 focus:border-red-500'
-                                                            : 'border-white/10 focus:border-emerald-500'
-                                                    }`}
+                                                    className={`w-full bg-neutral-800 border rounded-lg px-4 py-2 text-white focus:outline-none ${!step.habitId?.trim()
+                                                        ? 'border-red-500/50 focus:border-red-500'
+                                                        : 'border-white/10 focus:border-emerald-500'
+                                                        }`}
                                                     required
                                                 >
                                                     <option value="">Select a habit...</option>

@@ -123,13 +123,32 @@ const SortableHabitRow = ({
         position: isDragging ? 'relative' as const : undefined,
     };
 
+    // Non-Negotiable Logic
+    const today = new Date();
+    const todayStr = format(today, 'yyyy-MM-dd');
+    const todayLog = logs[`${habit.id}-${todayStr}`];
+    const isCompletedToday = todayLog?.completed;
+
+    const isNonNegotiableToday = useMemo(() => {
+        if (!habit.nonNegotiable) return false;
+        if (!habit.nonNegotiableDays || habit.nonNegotiableDays.length === 0) return true; // All days if not specified
+        return habit.nonNegotiableDays.includes(today.getDay());
+    }, [habit.nonNegotiable, habit.nonNegotiableDays]);
+
+    const priorityRingClass = isNonNegotiableToday
+        ? isCompletedToday
+            ? "ring-1 ring-yellow-500 shadow-[0_0_10px_rgba(234,179,8,0.2)]" // Completed: Solid Gold
+            : "ring-1 ring-yellow-500 shadow-[0_0_15px_rgba(234,179,8,0.4)] animate-pulse" // Active: Pulsing
+        : "";
+
     return (
         <div
             ref={setNodeRef}
             style={style}
             className={cn(
                 "flex border-b border-white/5 transition-colors group bg-neutral-900/50",
-                isDragging && "shadow-xl ring-1 ring-emerald-500/50 z-50 bg-neutral-900"
+                isDragging && "shadow-xl ring-1 ring-emerald-500/50 z-50 bg-neutral-900",
+                priorityRingClass
             )}
         >
             <div className="w-64 flex-shrink-0 p-4 border-r border-white/5 flex items-center justify-between group-hover:bg-white/[0.02] transition-colors relative">
@@ -178,7 +197,9 @@ const SortableHabitRow = ({
                                 className={cn(
                                     "w-10 h-10 rounded-lg flex items-center justify-center transition-all duration-200",
                                     isCompleted
-                                        ? "bg-emerald-500 text-neutral-900 shadow-[0_0_15px_rgba(16,185,129,0.4)] scale-90"
+                                        ? habit.nonNegotiable
+                                            ? "bg-yellow-500 text-neutral-900 shadow-[0_0_15px_rgba(234,179,8,0.4)] animate-gold-burst"
+                                            : "bg-emerald-500 text-neutral-900 shadow-[0_0_15px_rgba(16,185,129,0.4)] scale-90"
                                         : "bg-neutral-800/50 text-transparent hover:bg-neutral-800 hover:text-neutral-600 border border-white/5 hover:border-white/10"
                                 )}
                             >
@@ -261,6 +282,12 @@ const SortableWeeklyHabitRow = ({
         };
     }, [habit.id, habit.goal.target, logs]);
 
+    const priorityRingClass = habit.nonNegotiable
+        ? isCompletedToday
+            ? "ring-1 ring-yellow-500 shadow-[0_0_10px_rgba(234,179,8,0.2)]"
+            : "ring-1 ring-yellow-500 shadow-[0_0_15px_rgba(234,179,8,0.4)] animate-pulse"
+        : "";
+
     return (
         <div
             ref={setNodeRef}
@@ -268,7 +295,8 @@ const SortableWeeklyHabitRow = ({
             // Use flex row layout similar to SortableHabitRow instead of padding wrapper
             className={cn(
                 "flex border-b border-white/5 transition-colors group bg-neutral-900/50 hover:bg-white/[0.02]",
-                isDragging && "shadow-xl ring-1 ring-emerald-500/50 z-50 bg-neutral-900"
+                isDragging && "shadow-xl ring-1 ring-emerald-500/50 z-50 bg-neutral-900",
+                priorityRingClass
             )}
         >
             {/* Sidebar: Matches Daily Row width and layout */}
@@ -324,7 +352,9 @@ const SortableWeeklyHabitRow = ({
                     className={cn(
                         "flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all",
                         isCompletedToday
-                            ? "bg-emerald-500 text-neutral-900 shadow-[0_0_15px_rgba(16,185,129,0.3)]"
+                            ? habit.nonNegotiable
+                                ? "bg-yellow-500 text-neutral-900 shadow-[0_0_15px_rgba(234,179,8,0.3)] animate-gold-burst"
+                                : "bg-emerald-500 text-neutral-900 shadow-[0_0_15px_rgba(16,185,129,0.3)]"
                             : "bg-neutral-800 text-neutral-400 hover:text-white hover:bg-neutral-700 border border-white/5"
                     )}
                 >
