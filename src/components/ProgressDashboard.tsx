@@ -177,7 +177,7 @@ function getTodayContribution(progress: any, goalType: 'cumulative' | 'frequency
     // lastSevenDays is ordered most recent first, so index 0 should be today
     const todayDate = getTodayDateString();
     const todayEntry = progress.lastSevenDays.find((day: any) => day.date === todayDate);
-    
+
     if (!todayEntry) {
         return null;
     }
@@ -200,7 +200,7 @@ const CompactGoalCard: React.FC<{
     onClick: () => void;
 }> = ({ goalWithProgress, onClick }) => {
     const { goal, progress } = goalWithProgress;
-    
+
     // Compute today's contribution
     const todayContribution = useMemo(() => {
         return getTodayContribution(progress, goal.type);
