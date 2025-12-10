@@ -488,6 +488,7 @@ export async function submitActivity(
   payload: {
     mode: 'habit' | 'image' | 'text';
     completedStepIds: string[];
+    stepValues?: Record<string, number>;
     submittedAt?: string;
     dateOverride?: string;
   }

@@ -577,6 +577,20 @@ export async function submitActivityRoute(req: Request, res: Response): Promise<
       }
     }
 
+    // Validate stepValues if provided
+    if (req.body.stepValues !== undefined && (typeof req.body.stepValues !== 'object' || Array.isArray(req.body.stepValues))) {
+      res.status(400).json({
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'stepValues must be an object mapping step IDs to numbers',
+        },
+      });
+      return;
+    }
+
+    // Cast stepValues safely
+    const stepValues = (req.body.stepValues || {}) as Record<string, number>;
+
     // TODO: Extract userId from authentication token/session
     const userId = (req as any).userId || 'anonymous-user';
 
@@ -623,12 +637,16 @@ export async function submitActivityRoute(req: Request, res: Response): Promise<
     let createdOrUpdatedCount = 0;
 
     for (const step of validHabitSteps) {
+      // Determine value: use provided stepValue if available, otherwise default to 1 (binary completion)
+      const explicitValue = stepValues[step.id];
+      const value = (typeof explicitValue === 'number' && !isNaN(explicitValue)) ? explicitValue : 1;
+
       // Create DayLog as plain object to ensure all fields are included
       const dayLog = {
         habitId: step.habitId!,
         date: logDate,
-        value: 1, // Boolean completion (1 = completed)
-        completed: true, // Repository will recalculate, but we set it for clarity
+        value,
+        completed: true, // Repository check should theoretically handle this based on logic, but explicit helps
         activityId: activity.id, // Explicitly include activity metadata
         activityStepId: step.id, // Explicitly include activity metadata
       } as DayLog;
