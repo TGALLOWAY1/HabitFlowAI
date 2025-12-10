@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Clock, Calendar, Check } from 'lucide-react';
+import { X, Clock, Calendar, Check, Shield } from 'lucide-react';
 import type { Habit } from '../models/persistenceTypes';
 
 interface WeeklyHabitEditModalProps {
@@ -13,6 +13,7 @@ export const WeeklyHabitEditModal: React.FC<WeeklyHabitEditModalProps> = ({ habi
     const [assignedDays, setAssignedDays] = useState<number[]>([]);
     const [time, setTime] = useState('');
     const [duration, setDuration] = useState(30);
+    const [nonNegotiable, setNonNegotiable] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
 
     useEffect(() => {
@@ -20,6 +21,7 @@ export const WeeklyHabitEditModal: React.FC<WeeklyHabitEditModalProps> = ({ habi
             setAssignedDays(habit.assignedDays || []);
             setTime(habit.scheduledTime || '');
             setDuration(habit.durationMinutes || 30);
+            setNonNegotiable(habit.nonNegotiable || false);
         }
     }, [habit]);
 
@@ -33,7 +35,8 @@ export const WeeklyHabitEditModal: React.FC<WeeklyHabitEditModalProps> = ({ habi
             await onSave(habit.id, {
                 assignedDays,
                 scheduledTime: time,
-                durationMinutes: duration
+                durationMinutes: duration,
+                nonNegotiable
             });
             onClose();
         } catch (error) {
@@ -115,6 +118,23 @@ export const WeeklyHabitEditModal: React.FC<WeeklyHabitEditModalProps> = ({ habi
                                     {d}
                                 </button>
                             ))}
+                        </div>
+                    </div>
+
+                    {/* Non-Negotiable Toggle */}
+                    <div className="bg-neutral-800/50 border border-white/5 rounded-lg p-3 flex items-center justify-between group cursor-pointer hover:bg-neutral-800 transition-colors"
+                        onClick={() => setNonNegotiable(!nonNegotiable)}>
+                        <div className="flex items-center gap-3">
+                            <div className={`p-2 rounded-lg transition-colors ${nonNegotiable ? 'bg-yellow-500/20 text-yellow-400' : 'bg-neutral-700/50 text-neutral-500'}`}>
+                                <Shield size={20} />
+                            </div>
+                            <div>
+                                <h4 className={`font-medium transition-colors ${nonNegotiable ? 'text-yellow-400' : 'text-neutral-300'}`}>Non-Negotiable</h4>
+                                <p className="text-xs text-neutral-500">Essential habit.</p>
+                            </div>
+                        </div>
+                        <div className={`w-12 h-6 rounded-full p-1 transition-colors ${nonNegotiable ? 'bg-yellow-500' : 'bg-neutral-700'}`}>
+                            <div className={`w-4 h-4 rounded-full bg-white shadow-sm transition-transform ${nonNegotiable ? 'translate-x-6' : 'translate-x-0'}`} />
                         </div>
                     </div>
 

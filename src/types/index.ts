@@ -45,6 +45,11 @@ export interface Habit {
     assignedDays?: number[]; // 0=Sun, 6=Sat
     scheduledTime?: string; // HH:mm
     durationMinutes?: number;
+
+    // Non-Negotiable Fields
+    nonNegotiable?: boolean;
+    nonNegotiableDays?: number[]; // 0=Sun, 6=Sat
+    deadline?: string; // HH:mm
 }
 
 export interface DayLog {
@@ -76,12 +81,15 @@ export interface Activity {
     steps: ActivityStep[];
     createdAt: string;
     updatedAt: string;
+    nonNegotiable?: boolean;
 }
 
 export type Theme = 'dark' | 'light';
 
 // Re-export Goal and GoalProgress from persistenceTypes for frontend use
-export type { Goal, GoalProgress, GoalWithProgress, GoalManualLog } from '../models/persistenceTypes';
+// Re-export Goal and GoalProgress from persistenceTypes for frontend use
+import type { Goal, GoalProgress, GoalWithProgress, GoalManualLog } from '../models/persistenceTypes';
+export type { Goal, GoalProgress, GoalWithProgress, GoalManualLog };
 
 /**
  * Completed Goal

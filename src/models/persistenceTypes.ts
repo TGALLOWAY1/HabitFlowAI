@@ -147,6 +147,24 @@ export interface Habit {
      * Used for calendar visualization.
      */
     durationMinutes?: number;
+
+    /**
+     * Optional: Whether the habit is non-negotiable.
+     * Non-negotiable habits typically have a distinct visual style (Priority Ring).
+     */
+    nonNegotiable?: boolean;
+
+    /**
+     * Optional: Specific days where the habit is non-negotiable.
+     * 0 = Sunday, 1 = Monday, etc.
+     * If undefined but nonNegotiable is true, it is non-negotiable on ALL assigned days (or every day for daily habits).
+     */
+    nonNegotiableDays?: number[];
+
+    /**
+     * Optional: Deadline time (HH:MM) for non-negotiable habits.
+     */
+    deadline?: string;
 }
 
 /**
@@ -295,6 +313,33 @@ export interface Activity {
 
     /** ISO 8601 timestamp of when the activity was last updated */
     updatedAt: string;
+
+    /**
+     * Optional: Whether the activity is non-negotiable.
+     * If true, displayed with a Priority Ring in the activity list.
+     */
+    nonNegotiable?: boolean;
+}
+
+/**
+ * ActivityLog Entity
+ * 
+ * Storage Key: 'activityLogs'
+ * Storage Format: Record<string, ActivityLog> (object keyed by composite key)
+ * 
+ * Composite Key: `${activityId}-${date}`
+ * 
+ * Represents a record that an activity was completed on a specific day.
+ */
+export interface ActivityLog {
+    /** Foreign key reference to Activity.id */
+    activityId: string;
+
+    /** Date in YYYY-MM-DD format */
+    date: string;
+
+    /** ISO 8601 timestamp of when the activity was completed */
+    completedAt: string;
 }
 
 /**
@@ -399,6 +444,9 @@ export type WellbeingLogsStorage = Record<string, DailyWellbeing>;
 
 /** Activities stored as an array */
 export type ActivitiesStorage = Activity[];
+
+/** ActivityLogs stored as a record with composite keys */
+export type ActivityLogsStorage = Record<string, ActivityLog>;
 
 /**
  * Goal Entity
@@ -554,6 +602,9 @@ export interface PersistenceSchema {
 
     /** Array of all goals */
     goals: GoalsStorage;
+
+    /** Record of all activity logs */
+    activityLogs: ActivityLogsStorage;
 }
 
 
@@ -571,5 +622,6 @@ export const MONGO_COLLECTIONS = {
     ACTIVITIES: 'activities',
     GOALS: 'goals',
     GOAL_MANUAL_LOGS: 'goalManualLogs',
+    ACTIVITY_LOGS: 'activityLogs',
 } as const;
 

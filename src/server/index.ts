@@ -13,6 +13,7 @@ import { getHabits, createHabitRoute, getHabit, updateHabitRoute, deleteHabitRou
 import { getDayLogs, upsertDayLogRoute, getDayLogRoute, deleteDayLogRoute } from './routes/dayLogs';
 import { getWellbeingLogs, upsertWellbeingLogRoute, getWellbeingLogRoute, deleteWellbeingLogRoute } from './routes/wellbeingLogs';
 import { getActivities, getActivity, createActivityRoute, replaceActivityRoute, updateActivityRoute, deleteActivityRoute, submitActivityRoute } from './routes/activities';
+import { getActivityLogs } from './routes/activityLogs';
 import { getGoals, getGoal, getGoalProgress, getGoalsWithProgress, getCompletedGoals, createGoalRoute, updateGoalRoute, deleteGoalRoute, createGoalManualLogRoute, getGoalManualLogsRoute, getGoalDetailRoute, uploadGoalBadgeRoute, uploadBadgeMiddleware } from './routes/goals';
 import { getProgressOverview } from './routes/progress';
 import { closeConnection } from './lib/mongoClient';
@@ -89,6 +90,9 @@ app.put('/api/activities/:id', replaceActivityRoute);
 app.patch('/api/activities/:id', updateActivityRoute);
 app.delete('/api/activities/:id', deleteActivityRoute);
 app.post('/api/activities/:id/submit', submitActivityRoute);
+
+// Activity Log routes
+app.get('/api/activityLogs', getActivityLogs);
 
 // Progress routes
 app.get('/api/progress/overview', getProgressOverview);

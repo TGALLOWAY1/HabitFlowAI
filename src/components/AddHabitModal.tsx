@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X } from 'lucide-react';
+import { X, Shield, ShieldAlert } from 'lucide-react';
 import { useHabitStore } from '../store/HabitContext';
 import type { Habit } from '../models/persistenceTypes';
 
@@ -27,6 +27,7 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
     // Scheduled Time for Weekly habits
     const [scheduledTime, setScheduledTime] = useState('');
     const [durationMinutes, setDurationMinutes] = useState('30');
+    const [nonNegotiable, setNonNegotiable] = useState(false);
     const [description, setDescription] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -45,6 +46,7 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                 setAssignedDays(initialData.assignedDays || []);
                 setScheduledTime(initialData.scheduledTime || '');
                 setDurationMinutes(initialData.durationMinutes?.toString() || '30');
+                setNonNegotiable(initialData.nonNegotiable || false);
                 setDescription(initialData.description || '');
                 setSelectedCategoryId(initialData.categoryId);
             } else {
@@ -56,6 +58,7 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                 setAssignedDays([]);
                 setScheduledTime('');
                 setDurationMinutes('30');
+                setNonNegotiable(false);
                 setDescription('');
                 if (categoryId) setSelectedCategoryId(categoryId);
                 else if (categories.length > 0) setSelectedCategoryId(categories[0].id);
@@ -85,6 +88,7 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                 assignedDays: frequency === 'weekly' ? assignedDays : undefined,
                 scheduledTime: frequency === 'weekly' && scheduledTime ? scheduledTime : undefined,
                 durationMinutes: frequency === 'weekly' && durationMinutes ? Number(durationMinutes) : undefined,
+                nonNegotiable,
                 description: description || undefined,
             };
 
@@ -139,6 +143,23 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                             placeholder="e.g., Read Books"
                             required
                         />
+                    </div>
+
+                    {/* Non-Negotiable Toggle */}
+                    <div className="bg-neutral-800/50 border border-white/5 rounded-lg p-3 flex items-center justify-between group cursor-pointer hover:bg-neutral-800 transition-colors"
+                        onClick={() => setNonNegotiable(!nonNegotiable)}>
+                        <div className="flex items-center gap-3">
+                            <div className={`p-2 rounded-lg transition-colors ${nonNegotiable ? 'bg-yellow-500/20 text-yellow-400' : 'bg-neutral-700/50 text-neutral-500'}`}>
+                                <Shield size={20} />
+                            </div>
+                            <div>
+                                <h4 className={`font-medium transition-colors ${nonNegotiable ? 'text-yellow-400' : 'text-neutral-300'}`}>Non-Negotiable</h4>
+                                <p className="text-xs text-neutral-500">Essential habit. Highlighted with a Priority Ring.</p>
+                            </div>
+                        </div>
+                        <div className={`w-12 h-6 rounded-full p-1 transition-colors ${nonNegotiable ? 'bg-yellow-500' : 'bg-neutral-700'}`}>
+                            <div className={`w-4 h-4 rounded-full bg-white shadow-sm transition-transform ${nonNegotiable ? 'translate-x-6' : 'translate-x-0'}`} />
+                        </div>
                     </div>
 
                     {/* Category Selection */}

@@ -5,7 +5,7 @@
  * All persistent data is stored in MongoDB via this client.
  */
 
-import type { Category, Habit, DayLog, DailyWellbeing, Goal, GoalWithProgress, GoalManualLog } from '../models/persistenceTypes';
+import type { Category, Habit, DayLog, DailyWellbeing, Goal, GoalWithProgress, GoalManualLog, ActivityLog } from '../models/persistenceTypes';
 import type { GoalDetail, CompletedGoal, ProgressOverview } from '../types';
 import type { Activity } from '../types';
 
@@ -499,6 +499,17 @@ export async function submitActivity(
   });
 
   return response;
+}
+
+/**
+ * Fetch all activity logs for the current user.
+ * 
+ * @returns Promise<Record<string, ActivityLog>> - Record of activity logs keyed by `${activityId}-${date}`
+ * @throws Error if API request fails
+ */
+export async function fetchActivityLogs(): Promise<Record<string, ActivityLog>> {
+  const response = await apiRequest<{ activityLogs: Record<string, ActivityLog> }>('/activityLogs');
+  return response.activityLogs;
 }
 
 /**

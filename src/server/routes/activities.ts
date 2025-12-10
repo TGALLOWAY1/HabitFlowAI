@@ -14,7 +14,8 @@ import {
   deleteActivity,
 } from '../repositories/activityRepository';
 import { upsertDayLog } from '../repositories/dayLogRepository';
-import type { Activity, ActivityStep, DayLog } from '../../models/persistenceTypes';
+import { saveActivityLog } from '../repositories/activityLogRepository';
+import type { Activity, ActivityStep, DayLog, ActivityLog } from '../../models/persistenceTypes';
 
 /**
  * Validate an ActivityStep object.
@@ -100,15 +101,9 @@ export async function getActivities(req: Request, res: Response): Promise<void> 
 
     const activities = await getActivitiesByUser(userId);
 
-    // Return simplified list (id, title, steps count)
-    const activitiesList = activities.map(activity => ({
-      id: activity.id,
-      title: activity.title,
-      stepsCount: activity.steps.length,
-    }));
-
+    // Return full list including steps
     res.status(200).json({
-      activities: activitiesList,
+      activities,
     });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
@@ -182,7 +177,7 @@ export async function getActivity(req: Request, res: Response): Promise<void> {
 export async function createActivityRoute(req: Request, res: Response): Promise<void> {
   try {
     // Validate request body
-    const { title, steps } = req.body;
+    const { title, steps, nonNegotiable } = req.body;
 
     if (!title || typeof title !== 'string' || title.trim().length === 0) {
       res.status(400).json({
@@ -223,6 +218,7 @@ export async function createActivityRoute(req: Request, res: Response): Promise<
       {
         title: title.trim(),
         steps: steps as ActivityStep[],
+        nonNegotiable,
       },
       userId
     );
@@ -341,7 +337,7 @@ export async function replaceActivityRoute(req: Request, res: Response): Promise
 export async function updateActivityRoute(req: Request, res: Response): Promise<void> {
   try {
     const { id } = req.params;
-    const { title, steps } = req.body;
+    const { title, steps, nonNegotiable } = req.body;
 
     if (!id) {
       res.status(400).json({
@@ -392,6 +388,10 @@ export async function updateActivityRoute(req: Request, res: Response): Promise<
         return;
       }
       patch.steps = steps as ActivityStep[];
+    }
+
+    if (nonNegotiable !== undefined) {
+      patch.nonNegotiable = !!nonNegotiable;
     }
 
     if (Object.keys(patch).length === 0) {
@@ -493,7 +493,7 @@ export async function deleteActivityRoute(req: Request, res: Response): Promise<
  */
 function deriveDateString(dateInput?: string | Date): string {
   let date: Date;
-  
+
   if (dateInput) {
     if (typeof dateInput === 'string') {
       date = new Date(dateInput);
@@ -508,7 +508,7 @@ function deriveDateString(dateInput?: string | Date): string {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, '0');
   const day = String(date.getDate()).padStart(2, '0');
-  
+
   return `${year}-${month}-${day}`;
 }
 
@@ -637,7 +637,16 @@ export async function submitActivityRoute(req: Request, res: Response): Promise<
       createdOrUpdatedCount++;
     }
 
+    // Save ActivityLog to record completion of the activity itself
+    const activityLog: ActivityLog = {
+      activityId: activity.id,
+      date: logDate,
+      completedAt: submittedAt ? new Date(submittedAt).toISOString() : new Date().toISOString(),
+    };
+    await saveActivityLog(activityLog, userId);
+
     res.status(200).json({
+      message: 'Activity submitted successfully',
       createdOrUpdatedCount,
       completedHabitStepIds,
       totalHabitStepsInActivity,
