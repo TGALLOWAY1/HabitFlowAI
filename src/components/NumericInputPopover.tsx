@@ -24,7 +24,10 @@ export const NumericInputPopover: React.FC<NumericInputPopoverProps> = ({
     useEffect(() => {
         if (isOpen) {
             setValue(initialValue.toString());
-            setTimeout(() => inputRef.current?.focus(), 50);
+            setTimeout(() => {
+                inputRef.current?.focus();
+                inputRef.current?.select();
+            }, 50);
         }
     }, [isOpen, initialValue]);
 

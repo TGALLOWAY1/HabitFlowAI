@@ -18,10 +18,10 @@ import { useHabitStore } from '../../store/HabitContext';
 import type { GoalWithProgress } from '../../models/persistenceTypes';
 import { InactivityCoachingPopup } from './InactivityCoachingPopup';
 import { markGoalAsCompleted } from '../../lib/persistenceClient';
-import { 
-    GoalProgressBar, 
-    GoalStatusChip, 
-    GoalMilestoneDots, 
+import {
+    GoalProgressBar,
+    GoalStatusChip,
+    GoalMilestoneDots,
     GoalInactivityWarningBadge,
     goalCardBaseClasses,
     goalCardPaddingClasses,
@@ -56,7 +56,7 @@ export const GoalCard: React.FC<GoalCardProps> = ({
     const { habits } = useHabitStore();
     const [showCoachingPopup, setShowCoachingPopup] = useState(false);
     const warningBadgeRef = useRef<HTMLDivElement>(null);
-    
+
     // Track previous state to prevent infinite loops
     const previousPercentRef = useRef<number | null>(null);
     const previousCompletedAtRef = useRef<string | null | undefined>(null);
@@ -128,15 +128,15 @@ export const GoalCard: React.FC<GoalCardProps> = ({
         // 2. Goal is not already completed (completedAt is null/undefined)
         // 3. We haven't already triggered completion (prevent infinite loop)
         // 4. Progress actually changed (prevent duplicate triggers)
-        const shouldComplete = 
-            currentPercent >= 100 && 
-            !currentCompletedAt && 
+        const shouldComplete =
+            currentPercent >= 100 &&
+            !currentCompletedAt &&
             (previousPercent === null || previousPercent < 100) &&
             (previousCompletedAt === null || previousCompletedAt === undefined);
 
         if (shouldComplete) {
             isCompletingRef.current = true;
-            
+
             markGoalAsCompleted(goal.id)
                 .then(() => {
                     // Refetch goals list if callback provided
@@ -193,7 +193,7 @@ export const GoalCard: React.FC<GoalCardProps> = ({
                                 <h3 className={`${goalTitleClasses} mb-2 truncate`}>
                                     {goal.title}
                                 </h3>
-                                
+
                                 {/* Progress Bar */}
                                 <div className="mb-2">
                                     <GoalProgressBar percent={progress.percent} height="sm" />
@@ -298,15 +298,14 @@ export const GoalCard: React.FC<GoalCardProps> = ({
                                     const milestoneValue = goal.type === 'cumulative'
                                         ? `${milestone.value.toFixed(1)} ${goal.unit || ''} of ${goal.targetValue} ${goal.unit || ''}`
                                         : `${milestone.value.toFixed(0)} days of ${goal.targetValue} days`;
-                                    
+
                                     return (
                                         <div
                                             key={milestone.percent}
-                                            className={`flex items-center justify-between p-2 rounded-lg transition-colors ${
-                                                milestone.reached
+                                            className={`flex items-center justify-between p-2 rounded-lg transition-colors ${milestone.reached
                                                     ? 'bg-emerald-500/10 border border-emerald-500/30'
                                                     : 'bg-neutral-800/50 border border-white/10'
-                                            }`}
+                                                }`}
                                         >
                                             <div className="flex items-center gap-3">
                                                 {milestone.reached ? (
@@ -342,11 +341,10 @@ export const GoalCard: React.FC<GoalCardProps> = ({
                                             title={`${day.date}: ${day.value} ${goal.unit || ''}`}
                                         >
                                             <div
-                                                className={`w-full rounded-t transition-all ${
-                                                    day.hasProgress
+                                                className={`w-full rounded-t transition-all ${day.hasProgress
                                                         ? 'bg-emerald-500'
                                                         : 'bg-neutral-600'
-                                                }`}
+                                                    }`}
                                                 style={{ height: `${Math.max(4, heightPercent)}%` }}
                                             />
                                             <div className="text-[8px] text-neutral-500 leading-tight">
@@ -366,7 +364,7 @@ export const GoalCard: React.FC<GoalCardProps> = ({
 
                         {/* Actions */}
                         <div className="flex flex-wrap gap-2 pt-2 border-t border-white/5">
-                            {goal.type === 'cumulative' && onAddManualProgress && (
+                            {onAddManualProgress && (
                                 <button
                                     onClick={(e) => {
                                         e.stopPropagation();
