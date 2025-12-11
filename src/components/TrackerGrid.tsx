@@ -186,6 +186,8 @@ const SortableHabitRow = ({
                     const dateStr = format(date, 'yyyy-MM-dd');
                     const log = logs[`${habit.id}-${dateStr}`];
                     const isCompleted = log?.completed;
+                    const hasValue = habit.goal.type === 'number' && typeof log?.value === 'number' && log.value > 0;
+                    const isPartial = hasValue && !isCompleted;
 
                     return (
                         <div
@@ -194,13 +196,16 @@ const SortableHabitRow = ({
                         >
                             <button
                                 onClick={(e) => handleCellClick(e, habit, dateStr, log)}
+                                onDoubleClick={(e) => handleCellClick(e, habit, dateStr, log)}
                                 className={cn(
                                     "w-10 h-10 rounded-lg flex items-center justify-center transition-all duration-200",
                                     isCompleted
                                         ? habit.nonNegotiable
                                             ? "bg-yellow-500 text-neutral-900 shadow-[0_0_15px_rgba(234,179,8,0.4)] animate-gold-burst"
                                             : "bg-emerald-500 text-neutral-900 shadow-[0_0_15px_rgba(16,185,129,0.4)] scale-90"
-                                        : "bg-neutral-800/50 text-transparent hover:bg-neutral-800 hover:text-neutral-600 border border-white/5 hover:border-white/10"
+                                        : isPartial
+                                            ? "bg-blue-500 text-neutral-900 shadow-[0_0_15px_rgba(59,130,246,0.4)] scale-95" // Partial: Blue, visible text
+                                            : "bg-neutral-800/50 text-transparent hover:bg-neutral-800 hover:text-neutral-600 border border-white/5 hover:border-white/10"
                                 )}
                             >
                                 {habit.goal.type === 'number' && log?.value ? (
