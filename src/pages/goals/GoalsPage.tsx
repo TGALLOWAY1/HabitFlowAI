@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Plus, Trophy } from 'lucide-react';
 import { useGoalsWithProgress } from '../../lib/useGoalsWithProgress';
-import { GoalCardStack } from '../../components/goals/GoalCardStack';
+import { GoalGridCard } from '../../components/goals/GoalGridCard';
 import { Loader2, AlertCircle } from 'lucide-react';
 import { GoalManualProgressModal } from '../../components/goals/GoalManualProgressModal';
 import { EditGoalModal } from '../../components/goals/EditGoalModal';
@@ -107,22 +107,27 @@ export const GoalsPage: React.FC<GoalsPageProps> = ({ onCreateGoal, onViewGoal, 
                     </div>
                 </div>
             ) : (
-                <GoalCardStack
-                    goals={data}
-                    onViewDetails={(goalId) => {
-                        if (onViewGoal) {
-                            onViewGoal(goalId);
-                        }
-                    }}
-                    onEdit={(goalId) => {
-                        setEditingGoalId(goalId);
-                    }}
-                    onAddManualProgress={(goalId) => {
-                        setManualProgressGoalId(goalId);
-                    }}
-                    onNavigateToCompleted={onNavigateToCompleted}
-                    onRefetch={refetch}
-                />
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {data.map((goalWithProgress) => (
+                        <GoalGridCard
+                            key={goalWithProgress.goal.id}
+                            goalWithProgress={goalWithProgress}
+                            onViewDetails={(goalId) => {
+                                if (onViewGoal) {
+                                    onViewGoal(goalId);
+                                }
+                            }}
+                            onEdit={(goalId) => {
+                                setEditingGoalId(goalId);
+                            }}
+                            onAddManualProgress={(goalId, event) => {
+                                event.preventDefault(); // Stop propagation
+                                setManualProgressGoalId(goalId);
+                            }}
+                            onNavigateToCompleted={onNavigateToCompleted}
+                        />
+                    ))}
+                </div>
             )}
 
             {/* Modals */}

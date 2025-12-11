@@ -524,6 +524,13 @@ export interface GoalProgress {
         hasProgress: boolean; // Whether there was any progress on this day
     }>;
 
+    /** Array of progress data for the last 30 days (most recent first), used for sparklines and heatmaps */
+    lastThirtyDays: Array<{
+        date: string; // YYYY-MM-DD format
+        value: number; // Progress value for this day
+        hasProgress: boolean; // Whether there was any progress on this day
+    }>;
+
     /** Whether the goal has an inactivity warning (≥4 days with no progress in last 7 days) */
     inactivityWarning: boolean;
 }

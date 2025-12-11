@@ -164,10 +164,10 @@ export function computeFullGoalProgress(
   allLogs: DayLog[],
   manualLogs: GoalManualLog[] = []
 ): GoalProgress {
-  // Get date range for last 7 days (most recent first)
-  const last7Days: string[] = [];
-  for (let i = 0; i < 7; i++) {
-    last7Days.push(getDateString(i));
+  // Get date range for last 30 days (most recent first)
+  const last30Days: string[] = [];
+  for (let i = 0; i < 30; i++) {
+    last30Days.push(getDateString(i));
   }
 
   // Build map of logs by date for efficient lookup
@@ -217,8 +217,8 @@ export function computeFullGoalProgress(
     ? Math.min(100, Math.round((currentValue / goal.targetValue) * 100))
     : 0;
 
-  // Compute last 7 days data
-  const lastSevenDaysData = last7Days.map(date => {
+  // Compute last 30 days data
+  const lastThirtyDaysData = last30Days.map(date => {
     const dayLogs = logsByDate.get(date) || [];
     let dayValue = 0;
     let hasProgress = false;
@@ -244,7 +244,10 @@ export function computeFullGoalProgress(
     };
   });
 
-  // Compute inactivity warning (≥4 days without progress)
+  // Extract last 7 days from the 30-day set for backward compatibility/specific UI needs
+  const lastSevenDaysData = lastThirtyDaysData.slice(0, 7);
+
+  // Compute inactivity warning (≥4 days without progress in the last 7 days)
   const daysWithoutProgress = lastSevenDaysData.filter(day => !day.hasProgress).length;
   const inactivityWarning = daysWithoutProgress >= 4;
 
@@ -252,6 +255,7 @@ export function computeFullGoalProgress(
     currentValue,
     percent,
     lastSevenDays: lastSevenDaysData,
+    lastThirtyDays: lastThirtyDaysData,
     inactivityWarning,
   };
 }
@@ -270,7 +274,7 @@ export async function computeGoalsWithProgress(
   const { getGoalsByUser } = await import('../repositories/goalRepository');
   const { getDayLogsByHabit } = await import('../repositories/dayLogRepository');
   const { getGoalManualLogsByGoals } = await import('../repositories/goalManualLogRepository');
-  
+
   // Fetch all goals for the user
   const goals = await getGoalsByUser(userId);
 
@@ -295,7 +299,7 @@ export async function computeGoalsWithProgress(
   const allManualLogs = cumulativeGoalIds.length > 0
     ? await getGoalManualLogsByGoals(cumulativeGoalIds, userId)
     : [];
-  
+
   // Build map of manual logs by goal ID
   const manualLogsByGoalId = new Map<string, GoalManualLog[]>();
   for (const manualLog of allManualLogs) {
@@ -307,7 +311,7 @@ export async function computeGoalsWithProgress(
 
   // Compute progress for each goal
   const results: Array<{ goal: Goal; progress: GoalProgress }> = [];
-  
+
   for (const goal of goals) {
     // Collect all logs for this goal's linked habits
     const goalLogs: DayLog[] = [];
@@ -323,7 +327,7 @@ export async function computeGoalsWithProgress(
 
     // Compute full progress
     const progress = computeFullGoalProgress(goal, goalLogs, goalManualLogs);
-    
+
     results.push({
       goal,
       progress,
