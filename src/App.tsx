@@ -21,17 +21,6 @@ import { CalendarView } from './components/CalendarView';
 // Simple router state
 type AppRoute = 'tracker' | 'progress' | 'activities' | 'goals' | 'calendar' | 'wins';
 
-// Helper to determine initial route from URL
-const getInitialRoute = (): AppRoute => {
-  if (typeof window === 'undefined') return 'tracker';
-  const path = window.location.pathname;
-  if (path === '/progress') return 'progress';
-  if (path === '/activities') return 'activities';
-  if (path === '/goals') return 'goals';
-  if (path === '/calendar') return 'calendar';
-  return 'tracker';
-};
-
 // Helper functions for URL syncing
 function parseRouteFromLocation(location: Location): AppRoute {
   const params = new URLSearchParams(location.search);
@@ -50,10 +39,19 @@ function parseRouteFromLocation(location: Location): AppRoute {
   }
 }
 
-function buildUrlForRoute(route: AppRoute): string {
-  const params = new URLSearchParams(window.location.search);
-  params.set("view", route);
-  return `${window.location.pathname}?${params.toString()}`;
+function buildUrlForRoute(route: AppRoute, params: Record<string, string> = {}): string {
+  const searchParams = new URLSearchParams(window.location.search);
+  searchParams.set("view", route);
+
+  // Clear any existing ID params to prevent leakage between views
+  searchParams.delete("goalId");
+
+  // Set new params
+  Object.entries(params).forEach(([key, value]) => {
+    searchParams.set(key, value);
+  });
+
+  return `${window.location.pathname}?${searchParams.toString()}`;
 }
 
 const HabitTrackerContent: React.FC = () => {
@@ -76,9 +74,15 @@ const HabitTrackerContent: React.FC = () => {
   }, [categories, activeCategoryId]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingHabit, setEditingHabit] = useState<Habit | null>(null);
+
+  // Initial State from URL
   const [view, setView] = useState<AppRoute>(() => parseRouteFromLocation(window.location));
+  const [selectedGoalId, setSelectedGoalId] = useState<string | null>(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get("goalId");
+  });
+
   const [showCreateGoal, setShowCreateGoal] = useState(false);
-  const [selectedGoalId, setSelectedGoalId] = useState<string | null>(null);
   const [completedGoalId, setCompletedGoalId] = useState<string | null>(null);
   const [activityEditorState, setActivityEditorState] = useState<{
     isOpen: boolean;
@@ -105,7 +109,9 @@ const HabitTrackerContent: React.FC = () => {
   useEffect(() => {
     const handlePopState = () => {
       const route = parseRouteFromLocation(window.location);
+      const params = new URLSearchParams(window.location.search);
       setView(route);
+      setSelectedGoalId(params.get("goalId"));
     };
 
     window.addEventListener("popstate", handlePopState);
@@ -115,10 +121,22 @@ const HabitTrackerContent: React.FC = () => {
   }, []);
 
   // Navigation handler that updates state and browser history
-  const handleNavigate = (route: AppRoute) => {
+  const handleNavigate = (route: AppRoute, params: Record<string, string> = {}) => {
     setView(route);
-    const url = buildUrlForRoute(route);
-    window.history.pushState({ view: route }, "", url);
+
+    // Update ephemeral state based on route
+    if (params.goalId) {
+      setSelectedGoalId(params.goalId);
+    } else if (route !== 'goals') {
+      // Clear selected goal if navigating away or back to main list
+      setSelectedGoalId(null);
+    } else if (route === 'goals' && !params.goalId) {
+      // Explicitly clearing goal ID when going back to goal list
+      setSelectedGoalId(null);
+    }
+
+    const url = buildUrlForRoute(route, params);
+    window.history.pushState({ view: route, ...params }, "", url);
   };
 
   const filteredHabits = habits.filter(h => h.categoryId === activeCategoryId && !h.archived);
@@ -210,38 +228,35 @@ const HabitTrackerContent: React.FC = () => {
             setCompletedGoalId(null);
             handleNavigate('goals');
           }}
-          onAddBadge={(goalId) => {
+          onAddBadge={() => {
             // Redirect to Win Archive after badge upload
             setCompletedGoalId(null);
             handleNavigate('wins');
           }}
           onViewGoalDetail={(goalId) => {
             setCompletedGoalId(null);
-            setSelectedGoalId(goalId);
-            handleNavigate('goals');
+            handleNavigate('goals', { goalId });
           }}
         />
       ) : view === 'wins' ? (
         <WinArchivePage
           onViewGoal={(goalId) => {
-            setSelectedGoalId(goalId);
-            handleNavigate('goals');
+            handleNavigate('goals', { goalId });
           }}
         />
       ) : selectedGoalId ? (
         <GoalDetailPage
           goalId={selectedGoalId}
           onBack={() => {
-            setSelectedGoalId(null);
             handleNavigate('goals');
           }}
           onNavigateToCompleted={(goalId) => {
+            // First clear selected goal so we don't render detail page
             setSelectedGoalId(null);
             setCompletedGoalId(goalId);
             handleNavigate('goals');
           }}
           onViewWinArchive={() => {
-            setSelectedGoalId(null);
             handleNavigate('wins');
           }}
         />
@@ -264,8 +279,7 @@ const HabitTrackerContent: React.FC = () => {
         <ProgressDashboard
           onCreateGoal={() => setShowCreateGoal(true)}
           onViewGoal={(goalId) => {
-            setSelectedGoalId(goalId);
-            handleNavigate('goals');
+            handleNavigate('goals', { goalId });
           }}
         />
       ) : view === 'activities' ? (
@@ -284,8 +298,7 @@ const HabitTrackerContent: React.FC = () => {
         <GoalsPage
           onCreateGoal={() => setShowCreateGoal(true)}
           onViewGoal={(goalId) => {
-            setSelectedGoalId(goalId);
-            handleNavigate('goals');
+            handleNavigate('goals', { goalId });
           }}
           onNavigateToCompleted={(goalId) => {
             setCompletedGoalId(goalId);

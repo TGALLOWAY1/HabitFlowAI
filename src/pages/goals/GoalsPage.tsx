@@ -1,8 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Plus, Trophy } from 'lucide-react';
 import { useGoalsWithProgress } from '../../lib/useGoalsWithProgress';
 import { GoalCardStack } from '../../components/goals/GoalCardStack';
 import { Loader2, AlertCircle } from 'lucide-react';
+import { GoalManualProgressModal } from '../../components/goals/GoalManualProgressModal';
+import { EditGoalModal } from '../../components/goals/EditGoalModal';
 
 interface GoalsPageProps {
     onCreateGoal?: () => void;
@@ -13,6 +15,14 @@ interface GoalsPageProps {
 
 export const GoalsPage: React.FC<GoalsPageProps> = ({ onCreateGoal, onViewGoal, onNavigateToCompleted, onViewWinArchive }) => {
     const { data, loading, error, refetch } = useGoalsWithProgress();
+    const [manualProgressGoalId, setManualProgressGoalId] = useState<string | null>(null);
+    const [editingGoalId, setEditingGoalId] = useState<string | null>(null);
+
+    // Helpers to find goal for modals
+    const getGoalById = (id: string | null) => {
+        if (!id) return null;
+        return data.find(g => g.goal.id === id) || null;
+    };
 
     if (loading) {
         return (
@@ -82,7 +92,7 @@ export const GoalsPage: React.FC<GoalsPageProps> = ({ onCreateGoal, onViewGoal, 
                         </div>
                         <h2 className="text-xl font-semibold text-white mb-2">Start Your Journey</h2>
                         <p className="text-neutral-400 mb-6 text-sm sm:text-base">
-                            Create your first goal to turn your daily habits into meaningful achievements. 
+                            Create your first goal to turn your daily habits into meaningful achievements.
                             Every small step counts toward something bigger.
                         </p>
                         {onCreateGoal && (
@@ -105,19 +115,42 @@ export const GoalsPage: React.FC<GoalsPageProps> = ({ onCreateGoal, onViewGoal, 
                         }
                     }}
                     onEdit={(goalId) => {
-                        // V1: Edit functionality not included in V1 scope
-                        // Future: Navigate to goal edit page
-                        console.log('Edit goal:', goalId);
+                        setEditingGoalId(goalId);
                     }}
                     onAddManualProgress={(goalId) => {
-                        // V1: Manual progress is handled in GoalDetailPage
-                        // This callback is not used in the card stack view
-                        console.log('Add manual progress for goal:', goalId);
+                        setManualProgressGoalId(goalId);
                     }}
                     onNavigateToCompleted={onNavigateToCompleted}
                     onRefetch={refetch}
                 />
             )}
+
+            {/* Modals */}
+            {manualProgressGoalId && (() => {
+                const goal = getGoalById(manualProgressGoalId);
+                if (!goal) return null;
+                return (
+                    <GoalManualProgressModal
+                        isOpen={true}
+                        onClose={() => setManualProgressGoalId(null)}
+                        goalWithProgress={goal}
+                        onSuccess={refetch}
+                    />
+                );
+            })()}
+
+            {editingGoalId && (() => {
+                const goal = getGoalById(editingGoalId);
+                if (!goal) return null;
+                return (
+                    <EditGoalModal
+                        isOpen={true}
+                        onClose={() => setEditingGoalId(null)}
+                        goalWithProgress={goal}
+                        onSuccess={refetch}
+                    />
+                );
+            })()}
         </div>
     );
 };

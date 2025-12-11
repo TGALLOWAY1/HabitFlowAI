@@ -21,6 +21,7 @@ import { Loader2, AlertCircle, ArrowLeft, Check, Plus, Edit, Trash2, Trophy, Awa
 import { format, parseISO } from 'date-fns';
 import { GoalManualProgressModal } from '../../components/goals/GoalManualProgressModal';
 import { DeleteGoalConfirmModal } from '../../components/goals/DeleteGoalConfirmModal';
+import { EditGoalModal } from '../../components/goals/EditGoalModal';
 import { deleteGoal, markGoalAsCompleted } from '../../lib/persistenceClient';
 import { invalidateGoalCaches, invalidateAllGoalCaches } from '../../lib/goalDataCache';
 import { GoalProgressBar, GoalStatusChip } from '../../components/goals/GoalSharedComponents';
@@ -36,10 +37,9 @@ export const GoalDetailPage: React.FC<GoalDetailPageProps> = ({ goalId, onBack, 
     const { data, loading, error, refetch } = useGoalDetail(goalId);
     const { habits } = useHabitStore();
     const [showManualProgressModal, setShowManualProgressModal] = useState(false);
+    const [showEditModal, setShowEditModal] = useState(false);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-    const [deleteError, setDeleteError] = useState<string | null>(null);
-    const [isDeleting, setIsDeleting] = useState(false);
-    
+
     // Track previous state to prevent infinite loops
     const previousPercentRef = useRef<number | null>(null);
     const previousCompletedAtRef = useRef<string | null | undefined>(null);
@@ -60,6 +60,35 @@ export const GoalDetailPage: React.FC<GoalDetailPageProps> = ({ goalId, onBack, 
             .filter((habit): habit is NonNullable<typeof habit> => habit !== undefined);
     }, [data, habitMap]);
 
+    // Calculate progress stats
+    const lastSevenDays = useMemo(() => data?.progress.lastSevenDays || [], [data]);
+    const maxValue = useMemo(() => {
+        if (lastSevenDays.length === 0) return 1;
+        const max = Math.max(...lastSevenDays.map(day => day.value));
+        return max > 0 ? max : 1;
+    }, [lastSevenDays]);
+
+    // Calculate milestones status
+    const milestonesWithStatus = useMemo(() => {
+        if (!data) return [];
+        const { goal, progress } = data;
+
+        const milestones = [
+            { percent: 25, label: 'Quarter', value: goal.targetValue * 0.25 },
+            { percent: 50, label: 'Halfway', value: goal.targetValue * 0.5 },
+            { percent: 75, label: 'Almost there', value: goal.targetValue * 0.75 },
+            { percent: 100, label: 'Goal!', value: goal.targetValue },
+        ];
+
+        // Cap progress at 100% for completed goals
+        const displayPercent = goal.completedAt ? 100 : progress.percent;
+
+        return milestones.map(milestone => ({
+            ...milestone,
+            reached: displayPercent >= milestone.percent,
+        }));
+    }, [data]);
+
     // Format deadline for display
     const formatDeadline = (deadline: string): string => {
         try {
@@ -72,8 +101,6 @@ export const GoalDetailPage: React.FC<GoalDetailPageProps> = ({ goalId, onBack, 
 
     // Handle delete goal
     const handleDeleteGoal = async () => {
-        setIsDeleting(true);
-        setDeleteError(null);
         try {
             await deleteGoal(goalId);
             // Invalidate all goal caches since goal was deleted
@@ -83,20 +110,14 @@ export const GoalDetailPage: React.FC<GoalDetailPageProps> = ({ goalId, onBack, 
                 onBack();
             }
         } catch (err) {
-            const errorMessage = err instanceof Error ? err.message : 'Failed to delete goal';
-            setDeleteError(errorMessage);
             console.error('Error deleting goal:', err);
             throw err; // Re-throw so modal can handle it
-        } finally {
-            setIsDeleting(false);
         }
     };
 
     // Handle edit goal (V1: Edit functionality not included in V1 scope)
     const handleEditGoal = () => {
-        // Future: Navigate to goal edit page (/goals/:id/edit)
-        console.log('Edit goal:', goalId);
-        alert('Goal editing is not yet implemented. This feature is planned for a future release.');
+        setShowEditModal(true);
     };
 
     // Detect when goal reaches 100% and automatically mark as completed
@@ -115,15 +136,15 @@ export const GoalDetailPage: React.FC<GoalDetailPageProps> = ({ goalId, onBack, 
         // 2. Goal is not already completed (completedAt is null/undefined)
         // 3. We haven't already triggered completion (prevent infinite loop)
         // 4. Progress actually changed (prevent duplicate triggers)
-        const shouldComplete = 
-            currentPercent >= 100 && 
-            !currentCompletedAt && 
+        const shouldComplete =
+            currentPercent >= 100 &&
+            !currentCompletedAt &&
             (previousPercent === null || previousPercent < 100) &&
             (previousCompletedAt === null || previousCompletedAt === undefined);
 
         if (shouldComplete) {
             isCompletingRef.current = true;
-            
+
             markGoalAsCompleted(goalId)
                 .then(() => {
                     // Invalidate caches since goal status changed
@@ -291,9 +312,9 @@ export const GoalDetailPage: React.FC<GoalDetailPageProps> = ({ goalId, onBack, 
 
                     {/* Main Progress Bar */}
                     <div className="space-y-3">
-                        <GoalProgressBar 
-                            percent={data.goal.completedAt ? 100 : data.progress.percent} 
-                            height="lg" 
+                        <GoalProgressBar
+                            percent={data.goal.completedAt ? 100 : data.progress.percent}
+                            height="lg"
                         />
 
                         {/* Numeric Progress */}
@@ -313,37 +334,23 @@ export const GoalDetailPage: React.FC<GoalDetailPageProps> = ({ goalId, onBack, 
                     <div className="pt-4">
                         <div className="text-neutral-400 text-sm font-medium mb-3">Milestones</div>
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                            {useMemo(() => {
-                                const milestones = [
-                                    { percent: 25, label: 'Quarter', value: data.goal.targetValue * 0.25 },
-                                    { percent: 50, label: 'Halfway', value: data.goal.targetValue * 0.5 },
-                                    { percent: 75, label: 'Almost there', value: data.goal.targetValue * 0.75 },
-                                    { percent: 100, label: 'Goal!', value: data.goal.targetValue },
-                                ];
-                                // Cap progress at 100% for completed goals
-                                const displayPercent = data.goal.completedAt ? 100 : data.progress.percent;
-                                return milestones.map(milestone => ({
-                                    ...milestone,
-                                    reached: displayPercent >= milestone.percent,
-                                }));
-                            }, [data.goal.targetValue, data.progress.percent, data.goal.completedAt]).map((milestone) => {
+                            {milestonesWithStatus.map((milestone) => {
                                 // For completed goals, mark 100% milestone as reached even if progress < 100
                                 const isReached = data.goal.completedAt && milestone.percent === 100
                                     ? true
                                     : milestone.reached;
-                                
+
                                 const milestoneValue = data.goal.type === 'cumulative'
                                     ? `${milestone.value.toFixed(1)} ${data.goal.unit || ''} of ${data.goal.targetValue} ${data.goal.unit || ''}`
                                     : `${milestone.value.toFixed(0)} days of ${data.goal.targetValue} days`;
-                                
+
                                 return (
                                     <div
                                         key={milestone.percent}
-                                        className={`p-3 rounded-lg border transition-colors ${
-                                            isReached
-                                                ? 'bg-emerald-500/10 border-emerald-500/30'
-                                                : 'bg-neutral-800/50 border-white/10'
-                                        }`}
+                                        className={`p-3 rounded-lg border transition-colors ${isReached
+                                            ? 'bg-emerald-500/10 border-emerald-500/30'
+                                            : 'bg-neutral-800/50 border-white/10'
+                                            }`}
                                     >
                                         <div className="flex items-start gap-2">
                                             {isReached ? (
@@ -369,8 +376,8 @@ export const GoalDetailPage: React.FC<GoalDetailPageProps> = ({ goalId, onBack, 
 
                 {/* Action Buttons Row */}
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-                    {/* Manual Progress Button (only for cumulative, active goals) */}
-                    {data.goal.type === 'cumulative' && !data.goal.completedAt && (
+                    {/* Manual Progress Button (only for active goals) */}
+                    {!data.goal.completedAt && (
                         <button
                             onClick={() => setShowManualProgressModal(true)}
                             className="flex items-center justify-center gap-2 px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-neutral-900 font-medium rounded-lg transition-colors"
@@ -379,7 +386,7 @@ export const GoalDetailPage: React.FC<GoalDetailPageProps> = ({ goalId, onBack, 
                             Log progress manually
                         </button>
                     )}
-                    
+
                     {/* Win Archive Button (only for completed goals) */}
                     {data.goal.completedAt && (
                         <button
@@ -396,7 +403,7 @@ export const GoalDetailPage: React.FC<GoalDetailPageProps> = ({ goalId, onBack, 
                             View in Win Archive
                         </button>
                     )}
-                    
+
                     {/* Spacer for layout when neither button shows */}
                     {data.goal.type !== 'cumulative' && !data.goal.completedAt && <div />}
                 </div>
@@ -405,12 +412,15 @@ export const GoalDetailPage: React.FC<GoalDetailPageProps> = ({ goalId, onBack, 
                 <div className="bg-neutral-800/50 border border-white/10 rounded-lg p-4 sm:p-6">
                     <div className="text-neutral-400 text-sm font-medium mb-4">Recent Progress</div>
                     {(() => {
-                        const lastSevenDays = data.progress.lastSevenDays;
-                        const maxValue = useMemo(() => {
-                            if (lastSevenDays.length === 0) return 1;
-                            const max = Math.max(...lastSevenDays.map(day => day.value));
-                            return max > 0 ? max : 1;
-                        }, [lastSevenDays]);
+                        // Use outer scope variables: lastSevenDays, maxValue
+
+                        if (lastSevenDays.length === 0) {
+                            return (
+                                <div className="text-neutral-500 text-sm text-center py-4">
+                                    No progress in the last 7 days.
+                                </div>
+                            );
+                        }
 
                         const totalValue = lastSevenDays.reduce((sum, day) => sum + day.value, 0);
                         const hasAnyProgress = totalValue > 0;
@@ -456,11 +466,10 @@ export const GoalDetailPage: React.FC<GoalDetailPageProps> = ({ goalId, onBack, 
                                             >
                                                 <div className="flex-1 w-full flex items-end">
                                                     <div
-                                                        className={`w-full rounded-t transition-all min-h-[2px] ${
-                                                            day.hasProgress
-                                                                ? 'bg-emerald-500'
-                                                                : 'bg-neutral-700'
-                                                        }`}
+                                                        className={`w-full rounded-t transition-all min-h-[2px] ${day.hasProgress
+                                                            ? 'bg-emerald-500'
+                                                            : 'bg-neutral-700'
+                                                            }`}
                                                         style={{ height: `${Math.max(2, heightPercent)}%` }}
                                                     />
                                                 </div>
@@ -525,7 +534,7 @@ export const GoalDetailPage: React.FC<GoalDetailPageProps> = ({ goalId, onBack, 
                     <div className="text-neutral-400 text-sm font-medium mb-4">Linked Habits</div>
                     {linkedHabits.length === 0 ? (
                         <div className="text-neutral-500 text-sm">
-                            No habits linked — this goal relies on manual progress only.
+                            No habits linked.
                         </div>
                     ) : (
                         <div className="space-y-2">
@@ -568,8 +577,17 @@ export const GoalDetailPage: React.FC<GoalDetailPageProps> = ({ goalId, onBack, 
                 <GoalManualProgressModal
                     isOpen={showManualProgressModal}
                     onClose={() => setShowManualProgressModal(false)}
-                    goalId={goalId}
-                    unit={data.goal.unit}
+                    goalWithProgress={data}
+                    onSuccess={refetch}
+                />
+            )}
+
+            {/* Edit Goal Modal */}
+            {data && (
+                <EditGoalModal
+                    isOpen={showEditModal}
+                    onClose={() => setShowEditModal(false)}
+                    goalWithProgress={data}
                     onSuccess={refetch}
                 />
             )}
@@ -580,7 +598,6 @@ export const GoalDetailPage: React.FC<GoalDetailPageProps> = ({ goalId, onBack, 
                     isOpen={showDeleteConfirm}
                     onClose={() => {
                         setShowDeleteConfirm(false);
-                        setDeleteError(null);
                     }}
                     onConfirm={handleDeleteGoal}
                     goalTitle={data.goal.title}
