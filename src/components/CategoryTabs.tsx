@@ -32,6 +32,7 @@ interface SortableCategoryPillProps {
     isActive: boolean;
     onSelect: () => void;
     onDelete: (e: React.MouseEvent) => void;
+    onRename: (newName: string) => Promise<void>;
     deleteConfirmId: string | null;
 }
 
@@ -40,6 +41,7 @@ const SortableCategoryPill: React.FC<SortableCategoryPillProps> = ({
     isActive,
     onSelect,
     onDelete,
+    onRename,
     deleteConfirmId,
 }) => {
     const {
@@ -51,11 +53,73 @@ const SortableCategoryPill: React.FC<SortableCategoryPillProps> = ({
         isDragging,
     } = useSortable({ id: category.id });
 
+    const [isEditing, setIsEditing] = React.useState(false);
+    const [editName, setEditName] = React.useState(category.name);
+
+    // Update local state if prop changes
+    React.useEffect(() => {
+        setEditName(category.name);
+    }, [category.name]);
+
     const style = {
         transform: CSS.Transform.toString(transform),
         transition,
         zIndex: isDragging ? 50 : 'auto',
     };
+
+    const handleSubmit = async () => {
+        const trimmed = editName.trim();
+        if (trimmed && trimmed !== category.name) {
+            try {
+                await onRename(trimmed);
+            } catch (error) {
+                console.error('Failed to rename category:', error);
+                setEditName(category.name); // Revert on failure
+            }
+        } else {
+            setEditName(category.name); // Revert if empty or unchanged
+        }
+        setIsEditing(false);
+    };
+
+    if (isEditing) {
+        return (
+            <div
+                ref={setNodeRef}
+                style={style}
+                {...attributes}
+                {...listeners}
+                className="relative group touch-none"
+            >
+                <form
+                    onSubmit={(e) => {
+                        e.preventDefault();
+                        handleSubmit();
+                    }}
+                    className="flex items-center"
+                >
+                    <input
+                        autoFocus
+                        type="text"
+                        value={editName}
+                        onChange={(e) => setEditName(e.target.value)}
+                        onBlur={handleSubmit}
+                        onKeyDown={(e) => {
+                            if (e.key === 'Escape') {
+                                setEditName(category.name);
+                                setIsEditing(false);
+                                e.stopPropagation();
+                            }
+                            // Stop event propagation to prevent dnd conflicts
+                            e.stopPropagation();
+                        }}
+                        onPointerDown={(e) => e.stopPropagation()}
+                        className="px-4 py-2 rounded-full bg-neutral-800 text-white text-sm font-medium border border-emerald-500 outline-none w-auto min-w-[100px]"
+                    />
+                </form>
+            </div>
+        );
+    }
 
     return (
         <div
@@ -64,6 +128,10 @@ const SortableCategoryPill: React.FC<SortableCategoryPillProps> = ({
             {...attributes}
             {...listeners}
             className="relative group touch-none"
+            onDoubleClick={(e) => {
+                e.stopPropagation();
+                setIsEditing(true);
+            }}
         >
             <button
                 onClick={onSelect}
@@ -100,7 +168,7 @@ export const CategoryTabs: React.FC<CategoryTabsProps> = ({
     activeCategoryId,
     onSelectCategory,
 }) => {
-    const { addCategory, importHabits, deleteCategory, reorderCategories } = useHabitStore();
+    const { addCategory, importHabits, deleteCategory, reorderCategories, updateCategory } = useHabitStore();
     const [isAdding, setIsAdding] = React.useState(false);
     const [newCategoryName, setNewCategoryName] = React.useState('');
     const [deleteConfirmId, setDeleteConfirmId] = React.useState<string | null>(null);
@@ -171,6 +239,9 @@ export const CategoryTabs: React.FC<CategoryTabsProps> = ({
                             category={category}
                             isActive={activeCategoryId === category.id}
                             onSelect={() => onSelectCategory(category.id)}
+                            onRename={async (newName) => {
+                                await updateCategory(category.id, { name: newName });
+                            }}
                             deleteConfirmId={deleteConfirmId}
                             onDelete={async (e) => {
                                 e.stopPropagation();

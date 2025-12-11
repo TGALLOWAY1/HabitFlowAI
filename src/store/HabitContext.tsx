@@ -15,6 +15,7 @@ import {
     fetchWellbeingLogs,
     saveWellbeingLog,
     reorderHabits as reorderHabitsApi,
+    updateCategory as updateCategoryApi,
 } from '../lib/persistenceClient';
 
 interface HabitContextType {
@@ -40,6 +41,7 @@ interface HabitContextType {
     clearPersistenceError: () => void;
     refreshDayLogs: () => Promise<void>;
     refreshHabitsAndCategories: () => Promise<void>;
+    updateCategory: (id: string, patch: Partial<Omit<Category, 'id'>>) => Promise<void>;
 }
 
 const HabitContext = createContext<HabitContextType | undefined>(undefined);
@@ -142,8 +144,6 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         initializedRef.current = true;
         console.log('[HabitContext] Starting initialization...');
 
-        let isMounted = true;
-
         const initialize = async () => {
             console.log('[HabitContext] initialize() called');
             try {
@@ -174,9 +174,6 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             console.error('[HabitContext] Error during initialization:', error);
         });
 
-        return () => {
-            isMounted = false;
-        };
     }, [refreshHabitsAndCategories, loadLogsFromApi, loadWellbeingLogsFromApi]);
 
 
@@ -230,6 +227,17 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : 'Unknown error';
             console.error('Failed to save category to API:', errorMessage);
+            throw error;
+        }
+    };
+
+    const updateCategory = async (id: string, patch: Partial<Omit<Category, 'id'>>) => {
+        try {
+            const updatedCategory = await updateCategoryApi(id, patch);
+            setCategories(categories.map(c => c.id === id ? updatedCategory : c));
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+            console.error('Failed to update category in API:', errorMessage);
             throw error;
         }
     };
@@ -496,6 +504,7 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             logs,
             wellbeingLogs,
             addCategory,
+            updateCategory,
             addHabit,
             updateHabit,
             toggleHabit,
