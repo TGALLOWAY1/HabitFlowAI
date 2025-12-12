@@ -15,8 +15,7 @@ import {
   deleteHabit,
   reorderHabits,
 } from '../repositories/habitRepository';
-import { getActivitiesByUser, updateActivity } from '../repositories/activityRepository';
-import type { Habit, ActivityStep } from '../../models/persistenceTypes';
+import type { Habit } from '../../models/persistenceTypes';
 
 /**
  * Get all habits for the current user.
@@ -436,45 +435,8 @@ export async function deleteHabitRoute(req: Request, res: Response): Promise<voi
       return;
     }
 
-    // Convert Activity habit steps to tasks (best-effort)
-    let convertedStepsCount = 0;
-    try {
-      const activities = await getActivitiesByUser(userId);
-
-      for (const activity of activities) {
-        // Check if any steps reference this habit
-        const hasReferencingSteps = activity.steps.some(
-          step => step.type === 'habit' && step.habitId === id
-        );
-
-        if (hasReferencingSteps) {
-          // Transform steps: convert habit steps referencing this habit to tasks
-          const updatedSteps: ActivityStep[] = activity.steps.map(step => {
-            if (step.type === 'habit' && step.habitId === id) {
-              // Convert to task step
-              const { habitId, ...stepWithoutHabitId } = step;
-              convertedStepsCount++;
-              return {
-                ...stepWithoutHabitId,
-                type: 'task' as const,
-              };
-            }
-            return step;
-          });
-
-          // Update the activity
-          await updateActivity(activity.id, userId, { steps: updatedSteps });
-        }
-      }
-    } catch (error) {
-      // Best-effort: log error but don't break habit deletion
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      console.error('Error updating activities when deleting habit:', errorMessage);
-      // Continue - habit deletion was successful
-    }
-
     res.status(200).json({
-      convertedStepsCount,
+      message: 'Habit deleted successfully',
     });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';

@@ -215,46 +215,35 @@ export interface DayLog {
     completed: boolean;
 
     /** 
-     * Optional: ID of the Activity that produced this log entry
-     * Set when a habit is completed as part of an Activity workflow
+     * Optional: Source of the habit completion
+     * - 'manual': User clicked the checkbox in the habit list
+     * - 'routine': Auto-completed by finishing a routine
      */
-    activityId?: string;
+    source?: 'manual' | 'routine';
 
     /** 
-     * Optional: ID of the ActivityStep within the Activity that produced this log
-     * Set when a habit step in an Activity is completed
+     * Optional: ID of the Routine that produced this log entry
+     * Set when a habit is completed via a routine
      */
-    activityStepId?: string;
+    routineId?: string;
 }
 
-/**
- * ActivityStep Type
- * 
- * Type discriminator for activity steps.
- * - 'habit': Step that links to an existing habit
- * - 'task': Standalone task step with its own content
- */
-export type ActivityStepType = 'habit' | 'task';
 
 /**
- * ActivityStep Entity
+ * RoutineStep Entity
  * 
- * Embedded within Activity entity.
- * Represents a single step in an activity workflow.
+ * Embedded within Routine entity.
+ * Represents a single step in a routine workflow.
  * 
- * Steps can be either:
- * - Habit steps: Link to an existing habit for tracking
- * - Task steps: Standalone tasks with instructions, images, or timers
+ * Steps are now purely instructional/guiding content.
+ * They do NOT directly link to habits for tracking (habit completion is handled at the Routine level).
  */
-export interface ActivityStep {
+export interface RoutineStep {
     /** 
-     * Unique identifier for this step within the activity
+     * Unique identifier for this step within the routine
      * Generated via crypto.randomUUID() (frontend) or randomUUID() (backend)
      */
     id: string;
-
-    /** Type of step: 'habit' (links to habit) or 'task' (standalone) */
-    type: ActivityStepType;
 
     /** Display title/name of the step */
     title: string;
@@ -262,89 +251,74 @@ export interface ActivityStep {
     /** Optional detailed instructions for the step */
     instruction?: string;
 
-    /** Optional image URL for visual guidance (used in Image View) */
+    /** Optional image URL for visual guidance */
     imageUrl?: string;
 
     /** 
      * Optional duration in seconds for timer-based steps
-     * Used for timers in Image View
+     * Renamed from durationSeconds to timerSeconds for consistency with usage
      */
-    durationSeconds?: number;
-
-    /** 
-     * Foreign key reference to Habit.id
-     * Required when type === 'habit', undefined for 'task' steps
-     */
-    habitId?: string;
-
-    /** 
-     * Optional time estimate in minutes
-     * Editable in Habit View for habit steps
-     */
-    timeEstimateMinutes?: number;
+    timerSeconds?: number;
 }
 
 /**
- * Activity Entity
+ * Routine Entity
  * 
- * Storage Key: 'activities'
- * Storage Format: Activity[] (array of Activity objects)
+ * Storage Key: 'routines'
+ * Storage Format: Routine[] (array of Routine objects)
  * 
- * Represents a structured workflow or routine composed of multiple steps.
- * Activities guide users through a sequence of habits and tasks, providing
- * a structured way to complete related actions together.
+ * Represents a structured workflow designed to support one or more habits.
+ * "Doing the work" (Routine) is separate from "Tracking the outcome" (Habit).
  */
-export interface Activity {
+export interface Routine {
     /** 
-     * Unique identifier, generated via crypto.randomUUID() (frontend) or randomUUID() (backend)
-     * This is the application-level primary key, not MongoDB's _id
+     * Unique identifier
+     * This is the application-level primary key
      */
     id: string;
 
     /** 
-     * User ID to scope the activity to a specific user
-     * Added at repository layer when inserting, stripped when returning
-     * Currently uses placeholder 'anonymous-user' until authentication is implemented
+     * User ID to scope the routine to a specific user
      */
     userId: string;
 
-    /** Display title/name of the activity */
+    /** Display title/name of the routine */
     title: string;
 
-    /** Array of steps that make up this activity */
-    steps: ActivityStep[];
+    /** 
+     * IDs of habits that this routine is "in service of".
+     * Completing this routine can offer to mark these habits as complete.
+     */
+    linkedHabitIds: string[];
 
-    /** ISO 8601 timestamp of when the activity was created */
+    /** Array of steps that make up this routine */
+    steps: RoutineStep[];
+
+    /** ISO 8601 timestamp of when the routine was created */
     createdAt: string;
 
-    /** ISO 8601 timestamp of when the activity was last updated */
+    /** ISO 8601 timestamp of when the routine was last updated */
     updatedAt: string;
-
-    /**
-     * Optional: Whether the activity is non-negotiable.
-     * If true, displayed with a Priority Ring in the activity list.
-     */
-    nonNegotiable?: boolean;
 }
 
 /**
- * ActivityLog Entity
+ * RoutineLog Entity (formerly ActivityLog)
  * 
- * Storage Key: 'activityLogs'
- * Storage Format: Record<string, ActivityLog> (object keyed by composite key)
+ * Storage Key: 'routineLogs'
+ * Storage Format: Record<string, RoutineLog> (object keyed by composite key)
  * 
- * Composite Key: `${activityId}-${date}`
+ * Composite Key: `${routineId}-${date}`
  * 
- * Represents a record that an activity was completed on a specific day.
+ * Represents a record that a routine was completed on a specific day.
  */
-export interface ActivityLog {
-    /** Foreign key reference to Activity.id */
-    activityId: string;
+export interface RoutineLog {
+    /** Foreign key reference to Routine.id */
+    routineId: string;
 
     /** Date in YYYY-MM-DD format */
     date: string;
 
-    /** ISO 8601 timestamp of when the activity was completed */
+    /** ISO 8601 timestamp of when the routine was completed */
     completedAt: string;
 }
 
@@ -448,11 +422,11 @@ export type DayLogsStorage = Record<string, DayLog>;
  */
 export type WellbeingLogsStorage = Record<string, DailyWellbeing>;
 
-/** Activities stored as an array */
-export type ActivitiesStorage = Activity[];
+/** Routines stored as an array */
+export type RoutinesStorage = Routine[];
 
-/** ActivityLogs stored as a record with composite keys */
-export type ActivityLogsStorage = Record<string, ActivityLog>;
+/** RoutineLogs stored as a record with composite keys */
+export type RoutineLogsStorage = Record<string, RoutineLog>;
 
 /**
  * Goal Entity
@@ -597,7 +571,7 @@ export type GoalManualLogsStorage = GoalManualLog[];
  * - habits → 'habits' collection
  * - logs → 'dayLogs' collection
  * - wellbeingLogs → 'wellbeingLogs' collection
- * - activities → 'activities' collection
+ * - routines → 'routines' collection
  * 
  * All MongoDB documents are scoped by userId (currently 'anonymous-user' placeholder).
  */
@@ -614,14 +588,14 @@ export interface PersistenceSchema {
     /** Record of all wellbeing logs, keyed by date (YYYY-MM-DD) */
     wellbeingLogs: WellbeingLogsStorage;
 
-    /** Array of all activities */
-    activities: ActivitiesStorage;
+    /** Array of all routines */
+    routines: RoutinesStorage;
 
     /** Array of all goals */
     goals: GoalsStorage;
 
-    /** Record of all activity logs */
-    activityLogs: ActivityLogsStorage;
+    /** Record of all routine logs */
+    routineLogs: RoutineLogsStorage;
 }
 
 
@@ -636,9 +610,10 @@ export const MONGO_COLLECTIONS = {
     HABITS: 'habits',
     DAY_LOGS: 'dayLogs',
     WELLBEING_LOGS: 'wellbeingLogs',
-    ACTIVITIES: 'activities',
+    ROUTINES: 'routines',
     GOALS: 'goals',
     GOAL_MANUAL_LOGS: 'goalManualLogs',
-    ACTIVITY_LOGS: 'activityLogs',
+    ROUTINE_LOGS: 'routineLogs',
 } as const;
+
 

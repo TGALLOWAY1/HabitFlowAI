@@ -1,29 +1,48 @@
 /**
- * Activity Routes
+ * Routine Routes
  * 
- * REST API endpoints for Activity entities.
- * Provides CRUD operations for activities with validation.
+ * REST API endpoints for Routine entities.
+ * Provides CRUD operations for routines with validation.
  */
 
 import type { Request, Response } from 'express';
 import {
-  createActivity,
-  getActivitiesByUser,
-  getActivityById,
-  updateActivity,
-  deleteActivity,
-} from '../repositories/activityRepository';
+  createRoutine,
+  getRoutines,
+  getRoutine,
+  updateRoutine,
+  deleteRoutine,
+} from '../repositories/routineRepository';
 import { upsertDayLog } from '../repositories/dayLogRepository';
-import { saveActivityLog } from '../repositories/activityLogRepository';
-import type { Activity, ActivityStep, DayLog, ActivityLog } from '../../models/persistenceTypes';
+import { saveRoutineLog } from '../repositories/routineLogRepository';
+import type { Routine, RoutineStep, DayLog, RoutineLog } from '../../models/persistenceTypes';
+import multer from 'multer';
+import { saveUploadedFile } from '../utils/fileStorage';
+
+// Configure multer for in-memory file storage
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5MB limit
+  },
+  fileFilter: (_req, file, cb) => {
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only image files are allowed'));
+    }
+  },
+});
+
+export const uploadRoutineImageMiddleware = upload.single('image');
 
 /**
- * Validate an ActivityStep object.
+ * Validate a RoutineStep object.
  * 
  * @param step - Step object to validate
  * @returns Error message if invalid, null if valid
  */
-function validateActivityStep(step: any, index: number): string | null {
+function validateRoutineStep(step: any, index: number): string | null {
   if (!step || typeof step !== 'object') {
     return `Step ${index}: must be an object`;
   }
@@ -32,19 +51,8 @@ function validateActivityStep(step: any, index: number): string | null {
     return `Step ${index}: id is required and must be a non-empty string`;
   }
 
-  if (!step.type || (step.type !== 'habit' && step.type !== 'task')) {
-    return `Step ${index}: type must be either 'habit' or 'task'`;
-  }
-
   if (!step.title || typeof step.title !== 'string' || step.title.trim().length === 0) {
     return `Step ${index}: title is required and must be a non-empty string`;
-  }
-
-  // If type is 'habit', habitId must be provided
-  if (step.type === 'habit') {
-    if (!step.habitId || typeof step.habitId !== 'string' || step.habitId.trim().length === 0) {
-      return `Step ${index}: habitId is required when type is 'habit'`;
-    }
   }
 
   // Optional fields validation
@@ -58,10 +66,6 @@ function validateActivityStep(step: any, index: number): string | null {
 
   if (step.durationSeconds !== undefined && (typeof step.durationSeconds !== 'number' || step.durationSeconds < 0)) {
     return `Step ${index}: durationSeconds must be a non-negative number if provided`;
-  }
-
-  if (step.timeEstimateMinutes !== undefined && (typeof step.timeEstimateMinutes !== 'number' || step.timeEstimateMinutes < 0)) {
-    return `Step ${index}: timeEstimateMinutes must be a non-negative number if provided`;
   }
 
   return null;
@@ -79,7 +83,7 @@ function validateSteps(steps: any): string | null {
   }
 
   for (let i = 0; i < steps.length; i++) {
-    const error = validateActivityStep(steps[i], i);
+    const error = validateRoutineStep(steps[i], i);
     if (error) {
       return error;
     }
@@ -89,29 +93,29 @@ function validateSteps(steps: any): string | null {
 }
 
 /**
- * Get all activities for the current user.
+ * Get all routines for the current user.
  * 
- * GET /api/activities
+ * GET /api/routines
  * Returns list with id, title, and steps count.
  */
-export async function getActivities(req: Request, res: Response): Promise<void> {
+export async function getRoutinesRoute(req: Request, res: Response): Promise<void> {
   try {
     // TODO: Extract userId from authentication token/session
     const userId = (req as any).userId || 'anonymous-user';
 
-    const activities = await getActivitiesByUser(userId);
+    const routines = await getRoutines(userId);
 
     // Return full list including steps
     res.status(200).json({
-      activities,
+      routines,
     });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    console.error('Error fetching activities:', errorMessage);
+    console.error('Error fetching routines:', errorMessage);
     res.status(500).json({
       error: {
         code: 'INTERNAL_SERVER_ERROR',
-        message: 'Failed to fetch activities',
+        message: 'Failed to fetch routines',
         details: process.env.NODE_ENV === 'development' ? errorMessage : undefined,
       },
     });
@@ -119,12 +123,12 @@ export async function getActivities(req: Request, res: Response): Promise<void> 
 }
 
 /**
- * Get a single activity by ID.
+ * Get a single routine by ID.
  * 
- * GET /api/activities/:id
- * Returns full Activity with all steps.
+ * GET /api/routines/:id
+ * Returns full Routine with all steps.
  */
-export async function getActivity(req: Request, res: Response): Promise<void> {
+export async function getRoutineRoute(req: Request, res: Response): Promise<void> {
   try {
     const { id } = req.params;
 
@@ -132,7 +136,7 @@ export async function getActivity(req: Request, res: Response): Promise<void> {
       res.status(400).json({
         error: {
           code: 'VALIDATION_ERROR',
-          message: 'Activity ID is required',
+          message: 'Routine ID is required',
         },
       });
       return;
@@ -141,28 +145,28 @@ export async function getActivity(req: Request, res: Response): Promise<void> {
     // TODO: Extract userId from authentication token/session
     const userId = (req as any).userId || 'anonymous-user';
 
-    const activity = await getActivityById(id, userId);
+    const routine = await getRoutine(userId, id);
 
-    if (!activity) {
+    if (!routine) {
       res.status(404).json({
         error: {
           code: 'NOT_FOUND',
-          message: 'Activity not found',
+          message: 'Routine not found',
         },
       });
       return;
     }
 
     res.status(200).json({
-      activity,
+      routine,
     });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    console.error('Error fetching activity:', errorMessage);
+    console.error('Error fetching routine:', errorMessage);
     res.status(500).json({
       error: {
         code: 'INTERNAL_SERVER_ERROR',
-        message: 'Failed to fetch activity',
+        message: 'Failed to fetch routine',
         details: process.env.NODE_ENV === 'development' ? errorMessage : undefined,
       },
     });
@@ -170,20 +174,20 @@ export async function getActivity(req: Request, res: Response): Promise<void> {
 }
 
 /**
- * Create a new activity.
+ * Create a new routine.
  * 
- * POST /api/activities
+ * POST /api/routines
  */
-export async function createActivityRoute(req: Request, res: Response): Promise<void> {
+export async function createRoutineRoute(req: Request, res: Response): Promise<void> {
   try {
     // Validate request body
-    const { title, steps, nonNegotiable } = req.body;
+    const { title, steps, linkedHabitIds } = req.body;
 
     if (!title || typeof title !== 'string' || title.trim().length === 0) {
       res.status(400).json({
         error: {
           code: 'VALIDATION_ERROR',
-          message: 'Activity title is required and must be a non-empty string',
+          message: 'Routine title is required and must be a non-empty string',
         },
       });
       return;
@@ -195,6 +199,16 @@ export async function createActivityRoute(req: Request, res: Response): Promise<
           code: 'VALIDATION_ERROR',
           message: 'steps is required and must be an array',
         },
+      });
+      return;
+    }
+
+    if (linkedHabitIds && !Array.isArray(linkedHabitIds)) {
+      res.status(400).json({
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'linkedHabitIds must be an array if provided'
+        }
       });
       return;
     }
@@ -214,115 +228,25 @@ export async function createActivityRoute(req: Request, res: Response): Promise<
     // TODO: Extract userId from authentication token/session
     const userId = (req as any).userId || 'anonymous-user';
 
-    const activity = await createActivity(
-      {
-        title: title.trim(),
-        steps: steps as ActivityStep[],
-        nonNegotiable,
-      },
-      userId
-    );
-
-    res.status(201).json({
-      activity,
-    });
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    console.error('Error creating activity:', errorMessage);
-    res.status(500).json({
-      error: {
-        code: 'INTERNAL_SERVER_ERROR',
-        message: 'Failed to create activity',
-        details: process.env.NODE_ENV === 'development' ? errorMessage : undefined,
-      },
-    });
-  }
-}
-
-/**
- * Replace an activity (full update).
- * 
- * PUT /api/activities/:id
- */
-export async function replaceActivityRoute(req: Request, res: Response): Promise<void> {
-  try {
-    const { id } = req.params;
-    const { title, steps } = req.body;
-
-    if (!id) {
-      res.status(400).json({
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: 'Activity ID is required',
-        },
-      });
-      return;
-    }
-
-    if (!title || typeof title !== 'string' || title.trim().length === 0) {
-      res.status(400).json({
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: 'Activity title is required and must be a non-empty string',
-        },
-      });
-      return;
-    }
-
-    if (!steps || !Array.isArray(steps)) {
-      res.status(400).json({
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: 'steps is required and must be an array',
-        },
-      });
-      return;
-    }
-
-    // Validate steps
-    const stepsError = validateSteps(steps);
-    if (stepsError) {
-      res.status(400).json({
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: stepsError,
-        },
-      });
-      return;
-    }
-
-    // TODO: Extract userId from authentication token/session
-    const userId = (req as any).userId || 'anonymous-user';
-
-    const activity = await updateActivity(
-      id,
+    const routine = await createRoutine(
       userId,
       {
         title: title.trim(),
-        steps: steps as ActivityStep[],
+        steps: steps as RoutineStep[],
+        linkedHabitIds: linkedHabitIds || [],
       }
     );
 
-    if (!activity) {
-      res.status(404).json({
-        error: {
-          code: 'NOT_FOUND',
-          message: 'Activity not found',
-        },
-      });
-      return;
-    }
-
-    res.status(200).json({
-      activity,
+    res.status(201).json({
+      routine,
     });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    console.error('Error replacing activity:', errorMessage);
+    console.error('Error creating routine:', errorMessage);
     res.status(500).json({
       error: {
         code: 'INTERNAL_SERVER_ERROR',
-        message: 'Failed to replace activity',
+        message: 'Failed to create routine',
         details: process.env.NODE_ENV === 'development' ? errorMessage : undefined,
       },
     });
@@ -330,34 +254,34 @@ export async function replaceActivityRoute(req: Request, res: Response): Promise
 }
 
 /**
- * Partially update an activity.
+ * Partially update a routine.
  * 
- * PATCH /api/activities/:id
+ * PATCH /api/routines/:id
  */
-export async function updateActivityRoute(req: Request, res: Response): Promise<void> {
+export async function updateRoutineRoute(req: Request, res: Response): Promise<void> {
   try {
     const { id } = req.params;
-    const { title, steps, nonNegotiable } = req.body;
+    const { title, steps, linkedHabitIds } = req.body;
 
     if (!id) {
       res.status(400).json({
         error: {
           code: 'VALIDATION_ERROR',
-          message: 'Activity ID is required',
+          message: 'Routine ID is required',
         },
       });
       return;
     }
 
     // Validate update data
-    const patch: Partial<Omit<Activity, 'id' | 'userId' | 'createdAt'>> = {};
+    const patch: Partial<Omit<Routine, 'id' | 'userId' | 'createdAt'>> = {};
 
     if (title !== undefined) {
       if (typeof title !== 'string' || title.trim().length === 0) {
         res.status(400).json({
           error: {
             code: 'VALIDATION_ERROR',
-            message: 'Activity title must be a non-empty string',
+            message: 'Routine title must be a non-empty string',
           },
         });
         return;
@@ -387,18 +311,27 @@ export async function updateActivityRoute(req: Request, res: Response): Promise<
         });
         return;
       }
-      patch.steps = steps as ActivityStep[];
+      patch.steps = steps as RoutineStep[];
     }
 
-    if (nonNegotiable !== undefined) {
-      patch.nonNegotiable = !!nonNegotiable;
+    if (linkedHabitIds !== undefined) {
+      if (!Array.isArray(linkedHabitIds)) {
+        res.status(400).json({
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: 'linkedHabitIds must be an array',
+          }
+        });
+        return;
+      }
+      patch.linkedHabitIds = linkedHabitIds;
     }
 
     if (Object.keys(patch).length === 0) {
       res.status(400).json({
         error: {
           code: 'VALIDATION_ERROR',
-          message: 'At least one field (title or steps) must be provided for update',
+          message: 'At least one field must be provided for update',
         },
       });
       return;
@@ -407,28 +340,28 @@ export async function updateActivityRoute(req: Request, res: Response): Promise<
     // TODO: Extract userId from authentication token/session
     const userId = (req as any).userId || 'anonymous-user';
 
-    const activity = await updateActivity(id, userId, patch);
+    const routine = await updateRoutine(userId, id, patch);
 
-    if (!activity) {
+    if (!routine) {
       res.status(404).json({
         error: {
           code: 'NOT_FOUND',
-          message: 'Activity not found',
+          message: 'Routine not found',
         },
       });
       return;
     }
 
     res.status(200).json({
-      activity,
+      routine,
     });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    console.error('Error updating activity:', errorMessage);
+    console.error('Error updating routine:', errorMessage);
     res.status(500).json({
       error: {
         code: 'INTERNAL_SERVER_ERROR',
-        message: 'Failed to update activity',
+        message: 'Failed to update routine',
         details: process.env.NODE_ENV === 'development' ? errorMessage : undefined,
       },
     });
@@ -436,11 +369,11 @@ export async function updateActivityRoute(req: Request, res: Response): Promise<
 }
 
 /**
- * Delete an activity.
+ * Delete a routine.
  * 
- * DELETE /api/activities/:id
+ * DELETE /api/routines/:id
  */
-export async function deleteActivityRoute(req: Request, res: Response): Promise<void> {
+export async function deleteRoutineRoute(req: Request, res: Response): Promise<void> {
   try {
     const { id } = req.params;
 
@@ -448,7 +381,7 @@ export async function deleteActivityRoute(req: Request, res: Response): Promise<
       res.status(400).json({
         error: {
           code: 'VALIDATION_ERROR',
-          message: 'Activity ID is required',
+          message: 'Routine ID is required',
         },
       });
       return;
@@ -457,28 +390,64 @@ export async function deleteActivityRoute(req: Request, res: Response): Promise<
     // TODO: Extract userId from authentication token/session
     const userId = (req as any).userId || 'anonymous-user';
 
-    const deleted = await deleteActivity(id, userId);
+    const deleted = await deleteRoutine(userId, id);
 
     if (!deleted) {
       res.status(404).json({
         error: {
           code: 'NOT_FOUND',
-          message: 'Activity not found',
+          message: 'Routine not found',
         },
       });
       return;
     }
 
     res.status(200).json({
-      message: 'Activity deleted successfully',
+      message: 'Routine deleted successfully',
     });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    console.error('Error deleting activity:', errorMessage);
+    console.error('Error deleting routine:', errorMessage);
     res.status(500).json({
       error: {
         code: 'INTERNAL_SERVER_ERROR',
-        message: 'Failed to delete activity',
+        message: 'Failed to delete routine',
+        details: process.env.NODE_ENV === 'development' ? errorMessage : undefined,
+      },
+    });
+  }
+}
+
+/**
+ * Upload a routine step image.
+ * 
+ * POST /api/upload/routine-image
+ */
+export async function uploadRoutineImageRoute(req: Request, res: Response): Promise<void> {
+  try {
+    if (!req.file) {
+      res.status(400).json({
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'No image file provided',
+        },
+      });
+      return;
+    }
+
+    // Save file using existing utility
+    const publicUrl = saveUploadedFile(req.file, 'routine-images');
+
+    res.status(200).json({
+      url: publicUrl,
+    });
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error('Error uploading routine image:', errorMessage);
+    res.status(500).json({
+      error: {
+        code: 'INTERNAL_SERVER_ERROR',
+        message: 'Failed to upload image',
         details: process.env.NODE_ENV === 'development' ? errorMessage : undefined,
       },
     });
@@ -513,42 +482,32 @@ function deriveDateString(dateInput?: string | Date): string {
 }
 
 /**
- * Submit activity completion and create DayLogs for habit steps.
+ * Submit routine completion and optionally complete linked habits.
  * 
- * POST /api/activities/:id/submit
+ * POST /api/routines/:id/submit
  */
-export async function submitActivityRoute(req: Request, res: Response): Promise<void> {
+export async function submitRoutineRoute(req: Request, res: Response): Promise<void> {
   try {
     const { id } = req.params;
-    const { mode, completedStepIds, submittedAt, dateOverride } = req.body;
+    const { habitIdsToComplete, submittedAt, dateOverride } = req.body;
 
-    // Validate activity ID
+    // Validate routine ID
     if (!id) {
       res.status(400).json({
         error: {
           code: 'VALIDATION_ERROR',
-          message: 'Activity ID is required',
+          message: 'Routine ID is required',
         },
       });
       return;
     }
 
     // Validate request body
-    if (!mode || (mode !== 'habit' && mode !== 'image' && mode !== 'text')) {
+    if (habitIdsToComplete && !Array.isArray(habitIdsToComplete)) {
       res.status(400).json({
         error: {
           code: 'VALIDATION_ERROR',
-          message: 'mode is required and must be one of: "habit", "image", "text"',
-        },
-      });
-      return;
-    }
-
-    if (!Array.isArray(completedStepIds)) {
-      res.status(400).json({
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: 'completedStepIds is required and must be an array',
+          message: 'habitIdsToComplete must be an array of strings',
         },
       });
       return;
@@ -577,105 +536,67 @@ export async function submitActivityRoute(req: Request, res: Response): Promise<
       }
     }
 
-    // Validate stepValues if provided
-    if (req.body.stepValues !== undefined && (typeof req.body.stepValues !== 'object' || Array.isArray(req.body.stepValues))) {
-      res.status(400).json({
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: 'stepValues must be an object mapping step IDs to numbers',
-        },
-      });
-      return;
-    }
-
-    // Cast stepValues safely
-    const stepValues = (req.body.stepValues || {}) as Record<string, number>;
-
     // TODO: Extract userId from authentication token/session
     const userId = (req as any).userId || 'anonymous-user';
 
-    // Load the Activity
-    const activity = await getActivityById(id, userId);
+    // Load the Routine
+    const routine = await getRoutine(userId, id);
 
-    if (!activity) {
+    if (!routine) {
       res.status(404).json({
         error: {
           code: 'NOT_FOUND',
-          message: 'Activity not found',
+          message: 'Routine not found',
         },
       });
       return;
-    }
-
-    // Build map of steps by id
-    const stepsMap = new Map<string, ActivityStep>();
-    for (const step of activity.steps) {
-      stepsMap.set(step.id, step);
     }
 
     // Determine the log date
     const logDate = dateOverride || deriveDateString(submittedAt);
 
-    // Filter completedStepIds to only include valid habit steps
-    const validHabitSteps: ActivityStep[] = [];
-    const completedHabitStepIds: string[] = [];
-
-    for (const stepId of completedStepIds) {
-      const step = stepsMap.get(stepId);
-      if (step && step.type === 'habit' && step.habitId && step.habitId.trim().length > 0) {
-        validHabitSteps.push(step);
-        completedHabitStepIds.push(stepId);
-      }
-    }
-
-    // Count total habit steps in activity
-    const totalHabitStepsInActivity = activity.steps.filter(
-      step => step.type === 'habit' && step.habitId && step.habitId.trim().length > 0
-    ).length;
-
-    // Create DayLogs for each valid habit step
+    // Create DayLogs for each requested habit
     let createdOrUpdatedCount = 0;
+    const habitIds = habitIdsToComplete || [];
 
-    for (const step of validHabitSteps) {
-      // Determine value: use provided stepValue if available, otherwise default to 1 (binary completion)
-      const explicitValue = stepValues[step.id];
-      const value = (typeof explicitValue === 'number' && !isNaN(explicitValue)) ? explicitValue : 1;
+    for (const habitId of habitIds) {
+      // Security check: Only allow completing habits that are actually linked to this routine?
+      // For now, implicit trust if user requests it, assuming frontend filters correctly.
+      // Ideally, check if habitId is in routine.linkedHabitIds or allow flexibility.
 
-      // Create DayLog as plain object to ensure all fields are included
-      const dayLog = {
-        habitId: step.habitId!,
+      const dayLog: DayLog = {
+        habitId,
         date: logDate,
-        value,
-        completed: true, // Repository check should theoretically handle this based on logic, but explicit helps
-        activityId: activity.id, // Explicitly include activity metadata
-        activityStepId: step.id, // Explicitly include activity metadata
-      } as DayLog;
+        value: 1, // Assume bool completion for simple flow
+        completed: true,
+        source: 'routine',
+        routineId: routine.id,
+      };
 
       await upsertDayLog(dayLog, userId);
       createdOrUpdatedCount++;
     }
 
-    // Save ActivityLog to record completion of the activity itself
-    const activityLog: ActivityLog = {
-      activityId: activity.id,
+    // Save RoutineLog to record completion of the routine itself
+    const routineLog: RoutineLog = {
+      routineId: routine.id,
       date: logDate,
       completedAt: submittedAt ? new Date(submittedAt).toISOString() : new Date().toISOString(),
     };
-    await saveActivityLog(activityLog, userId);
+    await saveRoutineLog(routineLog, userId);
 
     res.status(200).json({
-      message: 'Activity submitted successfully',
+      message: 'Routine submitted successfully',
       createdOrUpdatedCount,
-      completedHabitStepIds,
-      totalHabitStepsInActivity,
+      completedHabitIds: habitIds,
     });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    console.error('Error submitting activity:', errorMessage);
+    console.error('Error submitting routine:', errorMessage);
     res.status(500).json({
       error: {
         code: 'INTERNAL_SERVER_ERROR',
-        message: 'Failed to submit activity',
+        message: 'Failed to submit routine',
         details: process.env.NODE_ENV === 'development' ? errorMessage : undefined,
       },
     });

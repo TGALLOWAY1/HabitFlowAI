@@ -64,32 +64,13 @@ export interface DayLog {
     date: string; // YYYY-MM-DD
     value: number; // 0 or 1 for boolean, actual value for number
     completed: boolean;
-    activityId?: string; // which Activity produced this log (if any)
-    activityStepId?: string; // which step within that Activity
+    source?: 'manual' | 'routine';
+    routineId?: string;
 }
 
-export type ActivityStepType = 'habit' | 'task';
-
-export interface ActivityStep {
-    id: string;
-    type: ActivityStepType;
-    title: string;
-    instruction?: string;
-    imageUrl?: string;
-    durationSeconds?: number;
-    habitId?: string; // required when type === 'habit'
-    timeEstimateMinutes?: number;
-}
-
-export interface Activity {
-    id: string;
-    userId: string;
-    title: string;
-    steps: ActivityStep[];
-    createdAt: string;
-    updatedAt: string;
-    nonNegotiable?: boolean;
-}
+// Re-export Routine types
+import type { Routine, RoutineStep } from '../models/persistenceTypes';
+export type { Routine, RoutineStep };
 
 export type Theme = 'dark' | 'light';
 

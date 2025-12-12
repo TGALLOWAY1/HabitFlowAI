@@ -1,10 +1,11 @@
 import React, { useMemo, useState } from 'react';
 import { format, eachDayOfInterval, subDays, isToday, startOfWeek, endOfWeek, isWithinInterval, parseISO } from 'date-fns';
-import type { Habit, DayLog } from '../types';
+import { type Habit, type DayLog, type Routine } from '../types';
 import { cn } from '../utils/cn';
-import { Check, Plus, Trash2, GripVertical, Pencil, Trophy } from 'lucide-react';
+import { Check, Plus, Trash2, GripVertical, Pencil, Trophy, Play } from 'lucide-react';
 import { NumericInputPopover } from './NumericInputPopover';
 import { useHabitStore } from '../store/HabitContext';
+import { useRoutineStore } from '../store/RoutineContext';
 import { computeBundleStatus, getBundleStats } from '../utils/habitUtils';
 import {
     DndContext,
@@ -31,6 +32,7 @@ interface TrackerGridProps {
     onUpdateValue: (habitId: string, date: string, value: number) => Promise<void>;
     onAddHabit: () => void;
     onEditHabit: (habit: Habit) => void;
+    onRunRoutine?: (routine: Routine) => void;
 }
 
 // --- Shared Components ---
@@ -40,52 +42,71 @@ const HabitActionButtons = ({
     onEdit,
     onDelete,
     deleteConfirmId,
-    setDeleteConfirmId
+    setDeleteConfirmId,
+    onRunRoutine
 }: {
     habit: Habit,
     onEdit: () => void,
     onDelete: (id: string) => Promise<void>,
     deleteConfirmId: string | null,
-    setDeleteConfirmId: (id: string | null) => void
-}) => (
-    <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-20">
-        <button
-            onClick={(e) => {
-                e.stopPropagation();
-                onEdit();
-            }}
-            className="p-1.5 rounded-lg hover:bg-neutral-800 text-neutral-500 hover:text-white transition-colors"
-            title="Edit Habit"
-        >
-            <Pencil size={14} />
-        </button>
-        <button
-            onClick={async (e) => {
-                e.stopPropagation();
-                if (deleteConfirmId === habit.id) {
-                    try {
-                        await onDelete(habit.id);
-                        setDeleteConfirmId(null);
-                    } catch (error) {
-                        console.error('Failed to delete habit:', error);
-                    }
-                } else {
-                    setDeleteConfirmId(habit.id);
-                    setTimeout(() => setDeleteConfirmId(null), 5000);
-                }
-            }}
-            className={cn(
-                "p-1.5 rounded-lg transition-all",
-                deleteConfirmId === habit.id
-                    ? "bg-red-500/20 text-red-400 opacity-100"
-                    : "hover:bg-neutral-800 text-neutral-500 hover:text-red-400"
+    setDeleteConfirmId: (id: string | null) => void,
+    onRunRoutine?: (routine: Routine) => void
+}) => {
+    const { routines } = useRoutineStore();
+    const linkedRoutines = routines.filter(r => r.linkedHabitIds?.includes(habit.id));
+
+    return (
+        <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-20">
+            {linkedRoutines.length > 0 && onRunRoutine && (
+                <button
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        onRunRoutine(linkedRoutines[0]);
+                    }}
+                    className="p-1.5 rounded-lg hover:bg-neutral-800 text-emerald-500 hover:text-emerald-400 transition-colors"
+                    title={`Run Routine: ${linkedRoutines[0].title}`}
+                >
+                    <Play size={14} />
+                </button>
             )}
-            title={deleteConfirmId === habit.id ? "Click again to delete" : "Delete Habit"}
-        >
-            <Trash2 size={14} />
-        </button>
-    </div>
-);
+            <button
+                onClick={(e) => {
+                    e.stopPropagation();
+                    onEdit();
+                }}
+                className="p-1.5 rounded-lg hover:bg-neutral-800 text-neutral-500 hover:text-white transition-colors"
+                title="Edit Habit"
+            >
+                <Pencil size={14} />
+            </button>
+            <button
+                onClick={async (e) => {
+                    e.stopPropagation();
+                    if (deleteConfirmId === habit.id) {
+                        try {
+                            await onDelete(habit.id);
+                            setDeleteConfirmId(null);
+                        } catch (error) {
+                            console.error('Failed to delete habit:', error);
+                        }
+                    } else {
+                        setDeleteConfirmId(habit.id);
+                        setTimeout(() => setDeleteConfirmId(null), 5000);
+                    }
+                }}
+                className={cn(
+                    "p-1.5 rounded-lg transition-all",
+                    deleteConfirmId === habit.id
+                        ? "bg-red-500/20 text-red-400 opacity-100"
+                        : "hover:bg-neutral-800 text-neutral-500 hover:text-red-400"
+                )}
+                title={deleteConfirmId === habit.id ? "Click again to delete" : "Delete Habit"}
+            >
+                <Trash2 size={14} />
+            </button>
+        </div>
+    );
+};
 
 // --- Daily Habit Row ---
 
@@ -111,6 +132,7 @@ interface HabitRowContentProps {
     // Computed status for bundles
     bundleStatus?: { completed: boolean; value: number };
     onToggle: (habitId: string, date: string) => Promise<void>;
+    onRunRoutine?: (routine: Routine) => void;
 }
 
 const HabitRowContent = ({
@@ -132,7 +154,8 @@ const HabitRowContent = ({
     setNodeRef,
     style,
     bundleStatus,
-    onToggle
+    onToggle,
+    onRunRoutine
 }: HabitRowContentProps) => {
 
     // Non-Negotiable Logic
@@ -212,6 +235,7 @@ const HabitRowContent = ({
                     onDelete={deleteHabit}
                     deleteConfirmId={deleteConfirmId}
                     setDeleteConfirmId={setDeleteConfirmId}
+                    onRunRoutine={onRunRoutine}
                 />
 
                 {/* Bundle Expand/Collapse "Drawer Handle" */}
@@ -368,7 +392,8 @@ const SortableHabitRow = ({
     deleteConfirmId,
     setDeleteConfirmId,
     onEditHabit,
-    onToggle
+    onToggle,
+    onRunRoutine
 }: {
     habit: Habit;
     allHabits: Habit[];
@@ -382,6 +407,7 @@ const SortableHabitRow = ({
     setDeleteConfirmId: (id: string | null) => void;
     onEditHabit: (habit: Habit) => void;
     onToggle: (habitId: string, date: string) => Promise<void>;
+    onRunRoutine?: (routine: Routine) => void;
 }) => {
     const {
         attributes,
@@ -447,6 +473,7 @@ const SortableHabitRow = ({
                 setNodeRef={setNodeRef}
                 style={style}
                 onToggle={onToggle}
+                onRunRoutine={onRunRoutine}
             />
 
             {/* Child Rows - Rendered when expanded */}
@@ -468,6 +495,7 @@ const SortableHabitRow = ({
                     onToggle={onToggle}
                     // No drag props
                     style={{ transition }} // Maintain transition if needed
+                    onRunRoutine={onRunRoutine}
                 />
             ))}
         </div>
@@ -495,6 +523,7 @@ interface WeeklyHabitRowContentProps {
     isDragging?: boolean;
     setNodeRef?: (node: HTMLElement | null) => void;
     style?: React.CSSProperties;
+    onRunRoutine?: (routine: Routine) => void;
 }
 
 const WeeklyHabitRowContent = ({
@@ -514,7 +543,8 @@ const WeeklyHabitRowContent = ({
     listeners,
     isDragging,
     setNodeRef,
-    style
+    style,
+    onRunRoutine
 }: WeeklyHabitRowContentProps) => {
 
     // Calculate Weekly Progress
@@ -624,6 +654,7 @@ const WeeklyHabitRowContent = ({
                     onDelete={deleteHabit}
                     deleteConfirmId={deleteConfirmId}
                     setDeleteConfirmId={setDeleteConfirmId}
+                    onRunRoutine={onRunRoutine}
                 />
 
                 {/* Bundle Expand/Collapse "Drawer Handle" */}
@@ -724,7 +755,8 @@ const SortableWeeklyHabitRow = ({
     deleteHabit,
     deleteConfirmId,
     setDeleteConfirmId,
-    onEditHabit
+    onEditHabit,
+    onRunRoutine
 }: {
     habit: Habit;
     allHabits: Habit[];
@@ -737,6 +769,7 @@ const SortableWeeklyHabitRow = ({
     deleteConfirmId: string | null;
     setDeleteConfirmId: (id: string | null) => void;
     onEditHabit: (habit: Habit) => void;
+    onRunRoutine?: (routine: Routine) => void;
 }) => {
     const {
         attributes,
@@ -787,6 +820,7 @@ const SortableWeeklyHabitRow = ({
                 isDragging={isDragging}
                 setNodeRef={setNodeRef}
                 style={style}
+                onRunRoutine={onRunRoutine}
             />
 
             {/* Child Rows */}
@@ -807,13 +841,14 @@ const SortableWeeklyHabitRow = ({
                     onOpenPopover={onOpenPopover}
                     // No drag props
                     style={{ transition }}
+                    onRunRoutine={onRunRoutine}
                 />
             ))}
         </div>
     );
 };
 
-export const TrackerGrid: React.FC<TrackerGridProps> = ({ habits, logs, onToggle, onUpdateValue, onAddHabit, onEditHabit }) => {
+export const TrackerGrid: React.FC<TrackerGridProps> = ({ habits, logs, onToggle, onUpdateValue, onAddHabit, onEditHabit, onRunRoutine }) => {
     const { deleteHabit, reorderHabits } = useHabitStore();
     const [popoverState, setPopoverState] = useState<{
         isOpen: boolean;
@@ -1024,6 +1059,7 @@ export const TrackerGrid: React.FC<TrackerGridProps> = ({ habits, logs, onToggle
                                             setDeleteConfirmId={setDeleteConfirmId}
                                             onEditHabit={onEditHabit}
                                             onToggle={onToggle}
+                                            onRunRoutine={onRunRoutine}
                                         />
                                     ))}
                                 </SortableContext>
@@ -1073,6 +1109,7 @@ export const TrackerGrid: React.FC<TrackerGridProps> = ({ habits, logs, onToggle
                                             deleteConfirmId={deleteConfirmId}
                                             setDeleteConfirmId={setDeleteConfirmId}
                                             onEditHabit={onEditHabit}
+                                            onRunRoutine={onRunRoutine}
                                         />
                                     ))}
                                 </SortableContext>

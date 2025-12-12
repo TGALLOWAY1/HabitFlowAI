@@ -5,9 +5,8 @@
  * All persistent data is stored in MongoDB via this client.
  */
 
-import type { Category, Habit, DayLog, DailyWellbeing, Goal, GoalWithProgress, GoalManualLog, ActivityLog } from '../models/persistenceTypes';
+import type { Category, Habit, DayLog, DailyWellbeing, Goal, GoalWithProgress, GoalManualLog, Routine, RoutineLog } from '../models/persistenceTypes';
 import type { GoalDetail, CompletedGoal, ProgressOverview } from '../types';
-import type { Activity } from '../types';
 
 import { API_BASE_URL } from './persistenceConfig';
 import { invalidateGoalDataCache } from './goalDataCache';
@@ -387,114 +386,146 @@ export async function saveWellbeingLog(log: DailyWellbeing): Promise<DailyWellbe
 }
 
 /**
- * Activity Persistence Functions
+ * Routine Persistence Functions
  */
 
 /**
- * Fetch all activities for the current user.
+ * Fetch all routines for the current user.
  * 
- * @returns Promise<Activity[]> - Array of activities
+ * @returns Promise<Routine[]> - Array of routines
  * @throws Error if API request fails
  */
-export async function fetchActivities(): Promise<Activity[]> {
+export async function fetchRoutines(): Promise<Routine[]> {
 
-  const response = await apiRequest<{ activities: Activity[] }>('/activities');
-  return response.activities;
+  const response = await apiRequest<{ routines: Routine[] }>('/routines');
+  return response.routines;
 }
 
 /**
- * Get a single activity by ID.
+ * Get a single routine by ID.
  * 
- * @param id - Activity ID
- * @returns Promise<Activity> - Activity if found
- * @throws Error if API request fails or activity not found
+ * @param id - Routine ID
+ * @returns Promise<Routine> - Routine if found
+ * @throws Error if API request fails or routine not found
  */
-export async function fetchActivity(id: string): Promise<Activity> {
+export async function fetchRoutine(id: string): Promise<Routine> {
 
-  const response = await apiRequest<{ activity: Activity }>(`/activities/${id}`);
-  return response.activity;
+  const response = await apiRequest<{ routine: Routine }>(`/routines/${id}`);
+  return response.routine;
 }
 
 /**
- * Create a new activity.
+ * Create a new routine.
  * 
- * @param activity - Activity data (without id, createdAt, updatedAt)
- * @returns Promise<Activity> - Created activity with generated ID
+ * @param routine - Routine data (without id, createdAt, updatedAt)
+ * @returns Promise<Routine> - Created routine with generated ID
  * @throws Error if API request fails
  */
-export async function createActivity(
-  activity: Omit<Activity, 'id' | 'createdAt' | 'updatedAt' | 'userId'>
-): Promise<Activity> {
+export async function createRoutine(
+  routine: Omit<Routine, 'id' | 'createdAt' | 'updatedAt' | 'userId'>
+): Promise<Routine> {
 
-  const response = await apiRequest<{ activity: Activity }>('/activities', {
+  const response = await apiRequest<{ routine: Routine }>('/routines', {
     method: 'POST',
-    body: JSON.stringify(activity),
+    body: JSON.stringify(routine),
   });
 
-  return response.activity;
+  return response.routine;
 }
 
 /**
- * Update an activity.
+ * Update a routine.
  * 
- * @param id - Activity ID
- * @param patch - Partial activity data to update
- * @returns Promise<Activity> - Updated activity
- * @throws Error if API request fails or activity not found
+ * @param id - Routine ID
+ * @param patch - Partial routine data to update
+ * @returns Promise<Routine> - Updated routine
+ * @throws Error if API request fails or routine not found
  */
-export async function updateActivity(
+export async function updateRoutine(
   id: string,
-  patch: Partial<Omit<Activity, 'id' | 'createdAt' | 'updatedAt' | 'userId'>>
-): Promise<Activity> {
+  patch: Partial<Omit<Routine, 'id' | 'createdAt' | 'updatedAt' | 'userId'>>
+): Promise<Routine> {
 
-  const response = await apiRequest<{ activity: Activity }>(`/activities/${id}`, {
+  const response = await apiRequest<{ routine: Routine }>(`/routines/${id}`, {
     method: 'PATCH',
     body: JSON.stringify(patch),
   });
 
-  return response.activity;
+  return response.routine;
 }
 
 /**
- * Delete an activity.
+ * Upload a routine image.
  * 
- * @param id - Activity ID
- * @returns Promise<void>
- * @throws Error if API request fails or activity not found
+ * @param file - The image file to upload
+ * @returns The public URL of the uploaded image
  */
-export async function deleteActivity(id: string): Promise<void> {
+export async function uploadRoutineImage(file: File): Promise<string> {
+  const url = `${API_BASE_URL}/upload/routine-image`;
+  const userId = getOrCreateUserId();
 
-  await apiRequest<{ message: string }>(`/activities/${id}`, {
+  const formData = new FormData();
+  formData.append('image', file);
+
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'X-User-Id': userId,
+        // Content-Type is left undefined so browser sets it with boundary for FormData
+      },
+      body: formData,
+    });
+
+    if (!response.ok) {
+      throw new Error(`Upload failed: ${response.status} ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    return data.url;
+  } catch (error) {
+    console.error('Error uploading routine image:', error);
+    throw error;
+  }
+}
+
+/**
+ * Delete a routine.
+ * 
+ * @param id - Routine ID
+ * @returns Promise<void>
+ * @throws Error if API request fails or routine not found
+ */
+export async function deleteRoutine(id: string): Promise<void> {
+
+  await apiRequest<{ message: string }>(`/routines/${id}`, {
     method: 'DELETE',
   });
 }
 
 /**
- * Submit activity completion and create DayLogs for habit steps.
+ * Submit routine completion and possibly complete linked habits.
  * 
- * @param id - Activity ID
- * @param payload - Submission payload with mode, completedStepIds, and optional fields
- * @returns Promise<SubmitActivityResponse> - Response with created/updated count and step IDs
- * @throws Error if API request fails or activity not found
+ * @param id - Routine ID
+ * @param payload - Submission payload with habitIdsToComplete, and optional fields
+ * @returns Promise<SubmitRoutineResponse> - Response with created/updated count and step IDs
+ * @throws Error if API request fails or routine not found
  */
-export interface SubmitActivityResponse {
+export interface SubmitRoutineResponse {
   createdOrUpdatedCount: number;
-  completedHabitStepIds: string[];
-  totalHabitStepsInActivity: number;
+  completedHabitIds: string[];
 }
 
-export async function submitActivity(
+export async function submitRoutine(
   id: string,
   payload: {
-    mode: 'habit' | 'image' | 'text';
-    completedStepIds: string[];
-    stepValues?: Record<string, number>;
+    habitIdsToComplete?: string[];
     submittedAt?: string;
     dateOverride?: string;
   }
-): Promise<SubmitActivityResponse> {
+): Promise<SubmitRoutineResponse> {
 
-  const response = await apiRequest<SubmitActivityResponse>(`/activities/${id}/submit`, {
+  const response = await apiRequest<SubmitRoutineResponse>(`/routines/${id}/submit`, {
     method: 'POST',
     body: JSON.stringify(payload),
   });
@@ -503,14 +534,14 @@ export async function submitActivity(
 }
 
 /**
- * Fetch all activity logs for the current user.
+ * Fetch all routine logs for the current user.
  * 
- * @returns Promise<Record<string, ActivityLog>> - Record of activity logs keyed by `${activityId}-${date}`
+ * @returns Promise<Record<string, RoutineLog>> - Record of routine logs keyed by `${routineId}-${date}`
  * @throws Error if API request fails
  */
-export async function fetchActivityLogs(): Promise<Record<string, ActivityLog>> {
-  const response = await apiRequest<{ activityLogs: Record<string, ActivityLog> }>('/activityLogs');
-  return response.activityLogs;
+export async function fetchRoutineLogs(): Promise<Record<string, RoutineLog>> {
+  const response = await apiRequest<{ routineLogs: Record<string, RoutineLog> }>('/routineLogs');
+  return response.routineLogs;
 }
 
 /**

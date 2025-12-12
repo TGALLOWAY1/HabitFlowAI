@@ -1,16 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { HabitProvider, useHabitStore } from './store/HabitContext';
-import { ActivityProvider } from './store/ActivityContext';
+import { RoutineProvider } from './store/RoutineContext';
 import { Layout } from './components/Layout';
 import { CategoryTabs } from './components/CategoryTabs';
 import { TrackerGrid } from './components/TrackerGrid';
 import { AddHabitModal } from './components/AddHabitModal';
 import { ProgressDashboard } from './components/ProgressDashboard';
-import { ActivityList } from './components/ActivityList';
-import { ActivityEditorModal } from './components/ActivityEditorModal';
-import { ActivityRunnerModal } from './components/ActivityRunnerModal';
+import { RoutineList } from './components/RoutineList';
+import { RoutineEditorModal } from './components/RoutineEditorModal';
+import { RoutineRunnerModal } from './components/RoutineRunnerModal';
 import { BarChart3, Calendar, ClipboardList, Target, Clock } from 'lucide-react';
-import type { Activity, ActivityStep, Habit } from './types';
+import type { Routine, Habit } from './types';
 import { GoalsPage } from './pages/goals/GoalsPage';
 import { CreateGoalFlow } from './pages/goals/CreateGoalFlow';
 import { GoalDetailPage } from './pages/goals/GoalDetailPage';
@@ -19,7 +19,7 @@ import { WinArchivePage } from './pages/goals/WinArchivePage';
 import { CalendarView } from './components/CalendarView';
 
 // Simple router state
-type AppRoute = 'tracker' | 'progress' | 'activities' | 'goals' | 'calendar' | 'wins';
+type AppRoute = 'tracker' | 'progress' | 'routines' | 'goals' | 'calendar' | 'wins';
 
 // Helper functions for URL syncing
 function parseRouteFromLocation(location: Location): AppRoute {
@@ -28,7 +28,7 @@ function parseRouteFromLocation(location: Location): AppRoute {
 
   switch (view) {
     case "progress":
-    case "activities":
+    case "routines": // Renamed from activities
     case "goals":
     case "wins":
     case "tracker":
@@ -84,15 +84,17 @@ const HabitTrackerContent: React.FC = () => {
 
   const [showCreateGoal, setShowCreateGoal] = useState(false);
   const [completedGoalId, setCompletedGoalId] = useState<string | null>(null);
-  const [activityEditorState, setActivityEditorState] = useState<{
+
+  // Routine State
+  const [routineEditorState, setRoutineEditorState] = useState<{
     isOpen: boolean;
     mode: 'create' | 'edit';
-    activity?: Activity;
-    prefillSteps?: ActivityStep[];
+    routine?: Routine;
   }>({ isOpen: false, mode: 'create' });
-  const [activityRunnerState, setActivityRunnerState] = useState<{
+
+  const [routineRunnerState, setRoutineRunnerState] = useState<{
     isOpen: boolean;
-    activity?: Activity;
+    routine?: Routine;
   }>({ isOpen: false });
 
   // Initialize URL if not present
@@ -160,7 +162,7 @@ const HabitTrackerContent: React.FC = () => {
       <div className="flex flex-col gap-4">
         <div className="flex items-center justify-between">
           <h2 className="text-2xl font-bold text-white">
-            {view === 'tracker' ? 'Habits' : view === 'progress' ? 'Habit Tracking' : view === 'activities' ? 'Activities' : 'Goals'}
+            {view === 'tracker' ? 'Habits' : view === 'progress' ? 'Habit Tracking' : view === 'routines' ? 'Routines' : 'Goals'}
           </h2>
           <div className="flex items-center gap-2 bg-neutral-800 rounded-lg p-1">
             <button
@@ -185,9 +187,9 @@ const HabitTrackerContent: React.FC = () => {
               <BarChart3 size={20} />
             </button>
             <button
-              onClick={() => handleNavigate('activities')}
-              className={`p-2 rounded-md transition-colors ${view === 'activities' ? 'bg-neutral-700 text-white' : 'text-neutral-400 hover:text-white'}`}
-              title="Activities"
+              onClick={() => handleNavigate('routines')}
+              className={`p-2 rounded-md transition-colors ${view === 'routines' ? 'bg-neutral-700 text-white' : 'text-neutral-400 hover:text-white'}`}
+              title="Routines"
             >
               <ClipboardList size={20} />
             </button>
@@ -274,6 +276,7 @@ const HabitTrackerContent: React.FC = () => {
             setEditingHabit(habit);
             setIsModalOpen(true);
           }}
+          onRunRoutine={(routine) => setRoutineRunnerState({ isOpen: true, routine })}
         />
       ) : view === 'progress' ? (
         <ProgressDashboard
@@ -282,16 +285,12 @@ const HabitTrackerContent: React.FC = () => {
             handleNavigate('goals', { goalId });
           }}
         />
-      ) : view === 'activities' ? (
-        <ActivityList
-          onCreate={() => setActivityEditorState({ isOpen: true, mode: 'create', activity: undefined })}
-          onEdit={(activity) => setActivityEditorState({ isOpen: true, mode: 'edit', activity })}
-          onCreateFromHabits={(prefillSteps) => setActivityEditorState({ isOpen: true, mode: 'create', activity: undefined, prefillSteps })}
-          onStart={(activity) => setActivityRunnerState({ isOpen: true, activity })}
+      ) : view === 'routines' ? (
+        <RoutineList
+          onCreate={() => setRoutineEditorState({ isOpen: true, mode: 'create', routine: undefined })}
+          onEdit={(routine) => setRoutineEditorState({ isOpen: true, mode: 'edit', routine })}
+          onStart={(routine) => setRoutineRunnerState({ isOpen: true, routine })}
         />
-
-        // ... (in HabitTrackerContent return)
-
       ) : view === 'calendar' ? (
         <CalendarView />
       ) : (
@@ -320,18 +319,17 @@ const HabitTrackerContent: React.FC = () => {
         initialData={editingHabit}
       />
 
-      <ActivityEditorModal
-        isOpen={activityEditorState.isOpen}
-        mode={activityEditorState.mode}
-        initialActivity={activityEditorState.activity}
-        prefillSteps={activityEditorState.prefillSteps}
-        onClose={() => setActivityEditorState({ ...activityEditorState, isOpen: false })}
+      <RoutineEditorModal
+        isOpen={routineEditorState.isOpen}
+        mode={routineEditorState.mode}
+        initialRoutine={routineEditorState.routine}
+        onClose={() => setRoutineEditorState({ ...routineEditorState, isOpen: false })}
       />
 
-      <ActivityRunnerModal
-        isOpen={activityRunnerState.isOpen}
-        activity={activityRunnerState.activity}
-        onClose={() => setActivityRunnerState({ isOpen: false })}
+      <RoutineRunnerModal
+        isOpen={routineRunnerState.isOpen}
+        routine={routineRunnerState.routine}
+        onClose={() => setRoutineRunnerState({ isOpen: false })}
       />
     </div>
   );
@@ -340,11 +338,11 @@ const HabitTrackerContent: React.FC = () => {
 function App() {
   return (
     <HabitProvider>
-      <ActivityProvider>
+      <RoutineProvider>
         <Layout>
           <HabitTrackerContent />
         </Layout>
-      </ActivityProvider>
+      </RoutineProvider>
     </HabitProvider>
   );
 }
