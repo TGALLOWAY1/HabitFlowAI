@@ -4,11 +4,11 @@
  * Routes for fetching progress overview data combining habits and goals.
  */
 
-import { Request, Response } from 'express';
+import type { Request, Response } from 'express';
 import { getHabitsByUser } from '../repositories/habitRepository';
 import { getDayLogsByUser } from '../repositories/dayLogRepository';
 import { computeGoalsWithProgress } from '../utils/goalProgressUtils';
-import type { Habit, Goal, GoalProgress, DayLog } from '../../models/persistenceTypes';
+// import type { Habit, Goal, GoalProgress, DayLog } from '../../models/persistenceTypes';
 
 /**
  * Get today's date in YYYY-MM-DD format.
@@ -41,7 +41,7 @@ export async function getProgressOverview(req: Request, res: Response): Promise<
 
     // Fetch all habits for the user
     const habits = await getHabitsByUser(userId);
-    
+
     // Filter out archived habits
     const activeHabits = habits.filter(h => !h.archived);
 
@@ -56,7 +56,7 @@ export async function getProgressOverview(req: Request, res: Response): Promise<
 
       // Determine completion status
       const completed = todayLog?.completed || false;
-      
+
       // Get value if quantified habit
       const value = todayLog?.value !== undefined ? todayLog.value : undefined;
 

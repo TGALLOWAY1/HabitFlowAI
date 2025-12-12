@@ -9,7 +9,7 @@
  */
 
 import React from 'react';
-import { AlertTriangle, Check } from 'lucide-react';
+import { AlertTriangle } from 'lucide-react';
 
 /**
  * Shared progress bar component.
@@ -26,10 +26,10 @@ interface ProgressBarProps {
     className?: string;
 }
 
-export const GoalProgressBar: React.FC<ProgressBarProps> = ({ 
-    percent, 
+export const GoalProgressBar: React.FC<ProgressBarProps> = ({
+    percent,
     height = 'sm',
-    className = '' 
+    className = ''
 }) => {
     const heightClass = {
         sm: 'h-2',   // 8px - for compact cards
@@ -60,13 +60,13 @@ interface StatusChipProps {
     className?: string;
 }
 
-export const GoalStatusChip: React.FC<StatusChipProps> = ({ 
-    status, 
+export const GoalStatusChip: React.FC<StatusChipProps> = ({
+    status,
     children,
-    className = '' 
+    className = ''
 }) => {
     const baseClasses = 'px-2.5 py-1 rounded text-xs font-medium';
-    
+
     const statusClasses = {
         active: 'bg-blue-500/20 text-blue-400 border border-blue-500/30',
         completed: 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30',
@@ -90,9 +90,9 @@ interface MilestoneDotsProps {
     className?: string;
 }
 
-export const GoalMilestoneDots: React.FC<MilestoneDotsProps> = ({ 
-    percent, 
-    className = '' 
+export const GoalMilestoneDots: React.FC<MilestoneDotsProps> = ({
+    percent,
+    className = ''
 }) => {
     const milestoneThresholds = Array.from({ length: 11 }, (_, i) => i * 10);
 
@@ -103,11 +103,10 @@ export const GoalMilestoneDots: React.FC<MilestoneDotsProps> = ({
                 return (
                     <div
                         key={threshold}
-                        className={`w-1.5 h-1.5 rounded-full transition-colors ${
-                            isFilled
+                        className={`w-1.5 h-1.5 rounded-full transition-colors ${isFilled
                                 ? 'bg-emerald-500'
                                 : 'bg-neutral-600'
-                        }`}
+                            }`}
                         title={`${threshold}%`}
                     />
                 );
@@ -124,16 +123,15 @@ interface InactivityWarningBadgeProps {
     className?: string;
 }
 
-export const GoalInactivityWarningBadge: React.FC<InactivityWarningBadgeProps> = ({ 
+export const GoalInactivityWarningBadge: React.FC<InactivityWarningBadgeProps> = ({
     onClick,
-    className = '' 
+    className = ''
 }) => {
     return (
         <div
             onClick={onClick}
-            className={`flex items-center gap-1.5 px-2 py-1 bg-amber-500/10 border border-amber-500/30 rounded text-xs text-amber-400 ${
-                onClick ? 'cursor-pointer hover:bg-amber-500/20 transition-colors' : ''
-            } ${className}`}
+            className={`flex items-center gap-1.5 px-2 py-1 bg-amber-500/10 border border-amber-500/30 rounded text-xs text-amber-400 ${onClick ? 'cursor-pointer hover:bg-amber-500/20 transition-colors' : ''
+                } ${className}`}
         >
             <AlertTriangle size={12} />
             <span>No progress 4 of last 7 days</span>

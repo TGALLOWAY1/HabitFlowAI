@@ -5,7 +5,7 @@
  * Provides CRUD operations for goals with user-scoped queries.
  */
 
-import { ObjectId } from 'mongodb';
+// import { ObjectId } from 'mongodb';
 import { randomUUID } from 'crypto';
 import { getDb } from '../lib/mongoClient';
 import { MONGO_COLLECTIONS, type Goal } from '../../models/persistenceTypes';
@@ -37,7 +37,7 @@ export async function createGoal(
     ...data,
     createdAt,
     userId,
-  };
+  } as any;
 
   await collection.insertOne(document);
 
@@ -62,7 +62,10 @@ export async function getGoalsByUser(userId: string): Promise<Goal[]> {
     .toArray();
 
   // Remove MongoDB _id and userId before returning
-  return documents.map(({ _id, userId: _, ...goal }) => goal as Goal);
+  return documents.map((doc: any) => {
+    const { _id, userId: _, ...goal } = doc;
+    return goal as Goal;
+  });
 }
 
 /**
@@ -77,7 +80,7 @@ export async function getCompletedGoalsByUser(userId: string): Promise<Goal[]> {
   const collection = db.collection(COLLECTION_NAME);
 
   const documents = await collection
-    .find({ 
+    .find({
       userId,
       completedAt: { $exists: true, $ne: null } // Only goals with completedAt set
     })
@@ -85,7 +88,10 @@ export async function getCompletedGoalsByUser(userId: string): Promise<Goal[]> {
     .toArray();
 
   // Remove MongoDB _id and userId before returning
-  return documents.map(({ _id, userId: _, ...goal }) => goal as Goal);
+  return documents.map((doc: any) => {
+    const { _id, userId: _, ...goal } = doc;
+    return goal as Goal;
+  });
 }
 
 /**
@@ -110,7 +116,7 @@ export async function getGoalById(
   }
 
   // Remove MongoDB _id and userId before returning
-  const { _id, userId: _, ...goal } = document;
+  const { _id, userId: _, ...goal } = document as any;
   return goal as Goal;
 }
 
@@ -142,7 +148,7 @@ export async function updateGoal(
   }
 
   // Remove MongoDB _id and userId before returning
-  const { _id, userId: _, ...goal } = result;
+  const { _id, userId: _, ...goal } = result as any;
   return goal as Goal;
 }
 
@@ -177,6 +183,6 @@ export function validateHabitIds(habitIds: any[]): boolean {
   if (!Array.isArray(habitIds)) {
     return false;
   }
-  
+
   return habitIds.every(id => typeof id === 'string' && id.trim().length > 0);
 }

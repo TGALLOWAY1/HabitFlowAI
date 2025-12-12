@@ -474,14 +474,18 @@ export interface Goal {
     title: string;
 
     /** 
-     * Type of goal: 'cumulative' (total value over time) or 'frequency' (recurring)
+     * Type of goal: 'cumulative', 'frequency', or 'onetime'
      * - 'cumulative': Track total progress toward a target (e.g., "Run 100 miles total")
      * - 'frequency': Track how often a goal is met (e.g., "Exercise 3 times per week")
+     * - 'onetime': A specific event or binary outcome (e.g., "Pass AWS Exam")
      */
-    type: 'cumulative' | 'frequency';
+    type: 'cumulative' | 'frequency' | 'onetime';
 
-    /** Target value to achieve (e.g., 100 for "100 miles", 3 for "3 times per week") */
-    targetValue: number;
+    /** 
+     * Target value to achieve (e.g., 100 for "100 miles", 3 for "3 times per week")
+     * Optional for 'onetime' goals (which are binary)
+     */
+    targetValue?: number;
 
     /** Optional unit label for display (e.g., 'miles', 'times', 'hours') */
     unit?: string;

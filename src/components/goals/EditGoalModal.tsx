@@ -25,7 +25,7 @@ export const EditGoalModal: React.FC<EditGoalModalProps> = ({
     // Form State
     const [title, setTitle] = useState(goal.title);
     const [description, setDescription] = useState(goal.notes || '');
-    const [targetValue, setTargetValue] = useState(goal.targetValue.toString());
+    const [targetValue, setTargetValue] = useState(goal.targetValue?.toString() || '');
     const [unit, setUnit] = useState(goal.unit || '');
     const [selectedHabitIds, setSelectedHabitIds] = useState<string[]>(goal.linkedHabitIds);
     const [deadline, setDeadline] = useState(goal.deadline || '');
@@ -39,7 +39,7 @@ export const EditGoalModal: React.FC<EditGoalModalProps> = ({
         if (isOpen) {
             setTitle(goal.title);
             setDescription(goal.notes || '');
-            setTargetValue(goal.targetValue.toString());
+            setTargetValue(goal.targetValue?.toString() || '');
             setUnit(goal.unit || '');
             setSelectedHabitIds(goal.linkedHabitIds);
             setDeadline(goal.deadline || '');
@@ -60,8 +60,14 @@ export const EditGoalModal: React.FC<EditGoalModalProps> = ({
         }
 
         const numTarget = parseFloat(targetValue);
-        if (goal.type === 'cumulative' && (isNaN(numTarget) || numTarget <= 0)) {
+        // Only validate target value for cumulative/frequency goals
+        if (goal.type !== 'onetime' && (isNaN(numTarget) || numTarget <= 0)) {
             setError('Target value must be a positive number');
+            return;
+        }
+
+        if (goal.type === 'onetime' && !deadline) {
+            setError('Event Date is required for One-Time goals');
             return;
         }
 
@@ -76,8 +82,8 @@ export const EditGoalModal: React.FC<EditGoalModalProps> = ({
             await updateGoal(goal.id, {
                 title,
                 notes: description,
-                targetValue: numTarget,
-                unit,
+                targetValue: goal.type === 'onetime' ? undefined : numTarget,
+                unit: goal.type === 'onetime' ? undefined : unit,
                 linkedHabitIds: selectedHabitIds,
                 deadline: deadline || undefined,
             });
@@ -164,44 +170,49 @@ export const EditGoalModal: React.FC<EditGoalModalProps> = ({
                         {/* Target & Deadline Params */}
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             {/* Target - Only for cumulative or frequency number goals */}
-                            <div>
-                                <label className="block text-sm font-medium text-neutral-300 mb-2">
-                                    Target Value
-                                </label>
-                                <input
-                                    type="number"
-                                    value={targetValue}
-                                    onChange={(e) => setTargetValue(e.target.value)}
-                                    className="w-full bg-neutral-800 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-emerald-500"
-                                    min="1"
-                                    step="any"
-                                />
-                            </div>
+                            {goal.type !== 'onetime' && (
+                                <>
+                                    <div>
+                                        <label className="block text-sm font-medium text-neutral-300 mb-2">
+                                            Target Value
+                                        </label>
+                                        <input
+                                            type="number"
+                                            value={targetValue}
+                                            onChange={(e) => setTargetValue(e.target.value)}
+                                            className="w-full bg-neutral-800 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-emerald-500"
+                                            min="1"
+                                            step="any"
+                                        />
+                                    </div>
 
-                            {/* Unit */}
-                            <div>
-                                <label className="block text-sm font-medium text-neutral-300 mb-2">
-                                    Unit Label
-                                </label>
-                                <input
-                                    type="text"
-                                    value={unit}
-                                    onChange={(e) => setUnit(e.target.value)}
-                                    className="w-full bg-neutral-800 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-emerald-500"
-                                    placeholder="e.g., books, miles"
-                                />
-                            </div>
+                                    {/* Unit */}
+                                    <div>
+                                        <label className="block text-sm font-medium text-neutral-300 mb-2">
+                                            Unit Label
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={unit}
+                                            onChange={(e) => setUnit(e.target.value)}
+                                            className="w-full bg-neutral-800 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-emerald-500"
+                                            placeholder="e.g., books, miles"
+                                        />
+                                    </div>
+                                </>
+                            )}
 
                             {/* Deadline */}
-                            <div className="sm:col-span-2">
+                            <div className={goal.type === 'onetime' ? "sm:col-span-2" : "sm:col-span-2"}>
                                 <label className="block text-sm font-medium text-neutral-300 mb-2">
-                                    Deadline (Optional)
+                                    {goal.type === 'onetime' ? 'Event Date' : 'Deadline (Optional)'}
                                 </label>
                                 <input
                                     type="date"
                                     value={deadline}
                                     onChange={(e) => setDeadline(e.target.value)}
                                     className="w-full bg-neutral-800 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-emerald-500"
+                                    required={goal.type === 'onetime'}
                                 />
                             </div>
                         </div>

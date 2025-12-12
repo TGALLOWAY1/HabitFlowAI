@@ -38,7 +38,7 @@ export async function createActivity(
     userId,
     createdAt,
     updatedAt,
-  };
+  } as any;
 
   await collection.insertOne(document);
 
@@ -63,7 +63,10 @@ export async function getActivitiesByUser(userId: string): Promise<Activity[]> {
     .toArray();
 
   // Remove MongoDB _id and userId before returning
-  return documents.map(({ _id, userId: _, ...activity }) => activity as Activity);
+  return documents.map((doc: any) => {
+    const { _id, userId: _, ...activity } = doc;
+    return activity as Activity;
+  });
 }
 
 /**
@@ -88,7 +91,7 @@ export async function getActivityById(
   }
 
   // Remove MongoDB _id and userId before returning
-  const { _id, userId: _, ...activity } = document;
+  const { _id, userId: _, ...activity } = document as any;
   return activity as Activity;
 }
 
@@ -126,7 +129,7 @@ export async function updateActivity(
   }
 
   // Remove MongoDB _id and userId before returning
-  const { _id, userId: _, ...activity } = result;
+  const { _id, userId: _, ...activity } = result as any;
   return activity as Activity;
 }
 

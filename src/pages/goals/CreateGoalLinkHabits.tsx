@@ -5,7 +5,7 @@ import { HabitCreationInlineModal } from '../../components/HabitCreationInlineMo
 
 interface GoalDraft {
     title: string;
-    type: 'cumulative' | 'frequency';
+    type: 'cumulative' | 'frequency' | 'onetime';
     targetValue: number;
     unit?: string;
     deadline?: string;
@@ -40,8 +40,8 @@ export const CreateGoalLinkHabits: React.FC<CreateGoalLinkHabitsProps> = ({
     const availableHabits = useMemo(() => {
         return habits
             .filter(h => !h.archived)
-            .filter(h => 
-                searchQuery === '' || 
+            .filter(h =>
+                searchQuery === '' ||
                 h.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                 categoryMap.get(h.categoryId)?.toLowerCase().includes(searchQuery.toLowerCase())
             );
@@ -78,15 +78,21 @@ export const CreateGoalLinkHabits: React.FC<CreateGoalLinkHabitsProps> = ({
         <div className="w-full max-w-2xl mx-auto">
             <div className="mb-8">
                 <h1 className="text-3xl font-bold text-white mb-2">Link Habits</h1>
-                <p className="text-neutral-400">Select habits that contribute to this goal</p>
+                <p className="text-neutral-400">
+                    {goalDraft.type === 'onetime'
+                        ? 'Select preparation habits for this event'
+                        : 'Select habits that contribute to this goal'}
+                </p>
             </div>
 
             {/* Goal Summary */}
             <div className="mb-6 p-4 bg-neutral-800/50 border border-white/10 rounded-lg">
                 <div className="text-sm text-neutral-400 mb-1">Goal</div>
                 <div className="text-white font-medium">{goalDraft.title}</div>
-                <div className="text-xs text-neutral-500 mt-1">
-                    {goalDraft.type === 'cumulative' ? 'Cumulative' : 'Frequency'} • Target: {goalDraft.targetValue} {goalDraft.unit || ''}
+                <div className="text-xs text-neutral-500 mt-1 capitalize">
+                    {goalDraft.type === 'onetime'
+                        ? `One-Time Event • ${goalDraft.deadline}`
+                        : `${goalDraft.type} • Target: ${goalDraft.targetValue} ${goalDraft.unit || ''}`}
                 </div>
             </div>
 
@@ -182,11 +188,10 @@ export const CreateGoalLinkHabits: React.FC<CreateGoalLinkHabitsProps> = ({
                         type="button"
                         onClick={handleNext}
                         disabled={selectedHabitIds.size === 0 || isSubmitting}
-                        className={`flex items-center gap-2 px-6 py-2 rounded-lg font-medium transition-colors ${
-                            selectedHabitIds.size > 0 && !isSubmitting
+                        className={`flex items-center gap-2 px-6 py-2 rounded-lg font-medium transition-colors ${selectedHabitIds.size > 0 && !isSubmitting
                                 ? 'bg-emerald-500 hover:bg-emerald-400 text-neutral-900'
                                 : 'bg-neutral-800 text-neutral-500 cursor-not-allowed'
-                        }`}
+                            }`}
                     >
                         {isSubmitting ? 'Creating...' : 'Create Goal'}
                         {!isSubmitting && <ArrowRight size={18} />}

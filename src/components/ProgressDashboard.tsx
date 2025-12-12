@@ -166,10 +166,10 @@ function getTodayDateString(): string {
  * lastSevenDays is ordered with most recent first (index 0 = today).
  * 
  * @param progress - GoalProgress object with lastSevenDays array
- * @param goalType - Goal type ('cumulative' or 'frequency')
+ * @param progress - GoalProgress object with lastSevenDays array
  * @returns Today's contribution value, or null if no data for today
  */
-function getTodayContribution(progress: any, goalType: 'cumulative' | 'frequency'): number | null {
+function getTodayContribution(progress: any): number | null {
     if (!progress.lastSevenDays || progress.lastSevenDays.length === 0) {
         return null;
     }
@@ -203,8 +203,8 @@ const CompactGoalCard: React.FC<{
 
     // Compute today's contribution
     const todayContribution = useMemo(() => {
-        return getTodayContribution(progress, goal.type);
-    }, [progress, goal.type]);
+        return getTodayContribution(progress);
+    }, [progress]);
 
     return (
         <button
@@ -243,7 +243,9 @@ const CompactGoalCard: React.FC<{
                 <span>
                     {goal.type === 'cumulative'
                         ? `${progress.currentValue} / ${goal.targetValue} ${goal.unit || ''}`
-                        : `${progress.currentValue} of ${goal.targetValue} days`}
+                        : goal.type === 'frequency'
+                            ? `${progress.currentValue} of ${goal.targetValue} days`
+                            : goal.completedAt ? 'Completed' : 'In Progress'}
                 </span>
                 <span>{goal.linkedHabitIds.length} {goal.linkedHabitIds.length === 1 ? 'habit' : 'habits'}</span>
             </div>

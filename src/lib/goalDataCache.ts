@@ -22,7 +22,7 @@
  * - Stale-while-revalidate: shows cached data immediately, fetches fresh data in background
  */
 
-import type { GoalWithProgress, Goal } from '../models/persistenceTypes';
+import type { GoalWithProgress } from '../models/persistenceTypes';
 import type { GoalDetail, CompletedGoal, ProgressOverview } from '../types';
 
 // Cache entry with timestamp

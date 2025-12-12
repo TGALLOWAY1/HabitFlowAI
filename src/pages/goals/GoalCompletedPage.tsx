@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { Trophy, Sparkles, Award, Image } from 'lucide-react';
+import { Trophy, Sparkles, Image } from 'lucide-react';
 import { useGoalDetail } from '../../lib/useGoalDetail';
 import { format, parseISO, differenceInDays } from 'date-fns';
 import { Loader2 } from 'lucide-react';
@@ -17,11 +17,11 @@ interface GoalCompletedPageProps {
  * Displays confetti animation and goal completion details.
  * This is the first screen users see when they finish a goal.
  */
-export const GoalCompletedPage: React.FC<GoalCompletedPageProps> = ({ 
-    goalId, 
-    onBack, 
+export const GoalCompletedPage: React.FC<GoalCompletedPageProps> = ({
+    goalId,
+    onBack,
     onAddBadge,
-    onViewGoalDetail 
+    onViewGoalDetail
 }) => {
     const { data, loading, refetch } = useGoalDetail(goalId);
     const [showConfetti, setShowConfetti] = useState(true);
@@ -57,7 +57,7 @@ export const GoalCompletedPage: React.FC<GoalCompletedPageProps> = ({
     }
 
     const { goal } = data;
-    
+
     // Calculate time span
     const timeSpan = useMemo(() => {
         if (!goal.createdAt || !goal.completedAt) return null;
@@ -72,11 +72,11 @@ export const GoalCompletedPage: React.FC<GoalCompletedPageProps> = ({
     }, [goal.createdAt, goal.completedAt]);
 
     // Format dates for display
-    const createdDateFormatted = goal.createdAt 
-        ? format(parseISO(goal.createdAt), 'MMM d, yyyy') 
+    const createdDateFormatted = goal.createdAt
+        ? format(parseISO(goal.createdAt), 'MMM d, yyyy')
         : '';
-    const completedDateFormatted = goal.completedAt 
-        ? format(parseISO(goal.completedAt), 'MMM d, yyyy') 
+    const completedDateFormatted = goal.completedAt
+        ? format(parseISO(goal.completedAt), 'MMM d, yyyy')
         : '';
 
     // Get habit count
@@ -141,14 +141,16 @@ export const GoalCompletedPage: React.FC<GoalCompletedPageProps> = ({
 
                 {/* Summary Stats */}
                 <div className="max-w-lg mx-auto mb-10 space-y-4">
-                    {/* Target Value and Unit */}
-                    <div className="p-4 bg-neutral-800/50 border border-white/10 rounded-lg">
-                        <div className="text-neutral-400 text-sm mb-1">Target</div>
-                        <div className="text-2xl font-bold text-white">
-                            {goal.targetValue}
-                            {goal.unit && <span className="text-emerald-400"> {goal.unit}</span>}
+                    {/* Target Value and Unit - Hide for OneTime */}
+                    {goal.type !== 'onetime' && goal.targetValue && (
+                        <div className="p-4 bg-neutral-800/50 border border-white/10 rounded-lg">
+                            <div className="text-neutral-400 text-sm mb-1">Target</div>
+                            <div className="text-2xl font-bold text-white">
+                                {goal.targetValue}
+                                {goal.unit && <span className="text-emerald-400"> {goal.unit}</span>}
+                            </div>
                         </div>
-                    </div>
+                    )}
 
                     {/* Time Span */}
                     {timeSpan !== null && createdDateFormatted && completedDateFormatted && (
@@ -182,7 +184,7 @@ export const GoalCompletedPage: React.FC<GoalCompletedPageProps> = ({
                         <Image size={20} />
                         Add your badge
                     </button>
-                    
+
                     {/* Secondary CTA: Skip for now */}
                     <button
                         onClick={() => {
@@ -204,10 +206,10 @@ export const GoalCompletedPage: React.FC<GoalCompletedPageProps> = ({
                 isOpen={showBadgeModal}
                 onClose={() => setShowBadgeModal(false)}
                 goalId={goalId}
-                onSuccess={(badgeImageUrl) => {
+                onSuccess={() => {
                     // Refetch goal data to get updated badge (allows badge replacement)
                     refetch();
-                    
+
                     // Auto-redirect to Win Archive after 1 second
                     setTimeout(() => {
                         if (onAddBadge) {

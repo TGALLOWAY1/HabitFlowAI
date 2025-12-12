@@ -44,9 +44,16 @@ export const GoalGridCard: React.FC<GoalGridCardProps> = ({
                         </h3>
                         {/* Description / Metadata - Left aligned below title */}
                         <div className="text-xs text-neutral-400 flex items-center gap-1.5 font-medium">
-                            <span className="capitalize">{goal.type}</span>
+                            <span className="capitalize">{goal.type === 'onetime' ? 'One-Time Event' : goal.type}</span>
                             {goal.type === 'cumulative' && <span>• {goal.targetValue} {goal.unit} total</span>}
                             {goal.type === 'frequency' && <span>• {goal.targetValue}x {goal.unit}/week</span>}
+                            {goal.type === 'onetime' && (
+                                <span>
+                                    • {goal.deadline
+                                        ? new Date(goal.deadline).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
+                                        : 'No Date'}
+                                </span>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -56,7 +63,7 @@ export const GoalGridCard: React.FC<GoalGridCardProps> = ({
 
                     {/* Actions - Hover only */}
                     <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-neutral-900/80 backdrop-blur-sm rounded-lg ml-1">
-                        {!goal.completedAt && (
+                        {!goal.completedAt && goal.type === 'cumulative' && (
                             <button
                                 onClick={(e) => {
                                     e.stopPropagation();
@@ -85,31 +92,47 @@ export const GoalGridCard: React.FC<GoalGridCardProps> = ({
             {/* Visuals Body */}
             <div className="px-4 py-2 flex-1 flex flex-col gap-1">
 
-                {/* 1. Heatmap (Full Width) */}
-                <div className="w-full">
-                    <MiniHeatmap
-                        data={historyData}
-                        goalType={goal.type}
-                        targetValue={goal.targetValue}
-                    />
-                </div>
-
-                {/* 2. Progress Bar (Compact, with tooltip) */}
-                <div
-                    className="w-full mt-2 mb-1 group/progress relative"
-                    title={`Progress: ${progress.percent}%`}
-                >
-                    {/* Bar Container */}
-                    <div className="h-1.5 w-full bg-neutral-800 rounded-full overflow-hidden">
-                        <div
-                            className={`h-full rounded-full transition-all duration-500 ease-out ${progress.percent >= 100
-                                    ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.3)]'
-                                    : 'bg-emerald-500'
-                                }`}
-                            style={{ width: `${Math.min(100, progress.percent)}%` }}
+                {/* 1. Heatmap (Full Width) - Hide for OneTime */}
+                {goal.type !== 'onetime' && (
+                    <div className="w-full">
+                        <MiniHeatmap
+                            data={historyData}
+                            goalType={goal.type}
+                            targetValue={goal.targetValue || 0}
                         />
                     </div>
-                </div>
+                )}
+
+                {/* 2. Progress Bar (Compact, with tooltip) - Hide for OneTime */}
+                {goal.type !== 'onetime' && (
+                    <div
+                        className="w-full mt-2 mb-1 group/progress relative"
+                        title={`Progress: ${progress.percent}%`}
+                    >
+                        {/* Bar Container */}
+                        <div className="h-1.5 w-full bg-neutral-800 rounded-full overflow-hidden">
+                            <div
+                                className={`h-full rounded-full transition-all duration-500 ease-out ${progress.percent >= 100
+                                    ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.3)]'
+                                    : 'bg-emerald-500'
+                                    }`}
+                                style={{ width: `${Math.min(100, progress.percent)}%` }}
+                            />
+                        </div>
+                    </div>
+                )}
+
+                {/* OneTime Goal Status Placeholder */}
+                {goal.type === 'onetime' && (
+                    <div className="flex-1 flex items-center justify-center py-4">
+                        <div className={`px-3 py-1 rounded-full text-xs font-medium border ${goal.completedAt
+                            ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
+                            : 'bg-neutral-800 text-neutral-400 border-white/5'
+                            }`}>
+                            {goal.completedAt ? 'Completed' : 'Goal in Progress'}
+                        </div>
+                    </div>
+                )}
             </div>
 
             {/* Footer / Status */}

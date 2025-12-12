@@ -5,9 +5,9 @@
  */
 
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
-import express, { Express } from 'express';
+import express, { type Express } from 'express';
 import request from 'supertest';
-import type { Activity, ActivityStep } from '../../../models/persistenceTypes';
+// import type { Activity, ActivityStep } from '../../../models/persistenceTypes';
 
 // Set environment variables BEFORE importing modules that use them
 if (!process.env.MONGODB_URI) {
@@ -47,7 +47,7 @@ describe('Activity Routes', () => {
     app.use(express.json());
 
     // Add userId to request (simulating auth middleware)
-    app.use((req, res, next) => {
+    app.use((req, _res, next) => {
       (req as any).userId = TEST_USER_ID;
       next();
     });
@@ -316,7 +316,7 @@ describe('Activity Routes', () => {
       // Try to access with different user
       const otherUserApp = express();
       otherUserApp.use(express.json());
-      otherUserApp.use((req, res, next) => {
+      otherUserApp.use((req, _res, next) => {
         (req as any).userId = OTHER_USER_ID;
         next();
       });
@@ -494,7 +494,7 @@ describe('Activity Routes', () => {
       // Try to delete with different user
       const otherUserApp = express();
       otherUserApp.use(express.json());
-      otherUserApp.use((req, res, next) => {
+      otherUserApp.use((req, _res, next) => {
         (req as any).userId = OTHER_USER_ID;
         next();
       });
