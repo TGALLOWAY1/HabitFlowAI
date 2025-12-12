@@ -17,6 +17,7 @@ import { getRoutineLogs } from './routes/routineLogs';
 import { getGoals, getGoal, getGoalProgress, getGoalsWithProgress, getCompletedGoals, createGoalRoute, updateGoalRoute, deleteGoalRoute, createGoalManualLogRoute, getGoalManualLogsRoute, getGoalDetailRoute, uploadGoalBadgeRoute, uploadBadgeMiddleware } from './routes/goals';
 import { getProgressOverview } from './routes/progress';
 import { getEntriesRoute, createEntryRoute, getEntryRoute, updateEntryRoute, deleteEntryRoute } from './routes/journal';
+import { getTasksRoute, createTaskRoute, updateTaskRoute, deleteTaskRoute } from './routes/tasks';
 import { closeConnection } from './lib/mongoClient';
 
 // Assert MongoDB is enabled at startup (fail fast if misconfigured)
@@ -121,6 +122,12 @@ app.get('/api/goals/:id/manual-logs', getGoalManualLogsRoute);
 app.get('/api/goals/:id', getGoal);
 app.put('/api/goals/:id', updateGoalRoute);
 app.delete('/api/goals/:id', deleteGoalRoute);
+
+// Task routes
+app.get('/api/tasks', getTasksRoute);
+app.post('/api/tasks', createTaskRoute);
+app.patch('/api/tasks/:id', updateTaskRoute);
+app.delete('/api/tasks/:id', deleteTaskRoute);
 
 // Health check endpoint
 app.get('/api/health', (_req, res) => {
