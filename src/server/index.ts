@@ -16,6 +16,7 @@ import { getRoutinesRoute, getRoutineRoute, createRoutineRoute, updateRoutineRou
 import { getRoutineLogs } from './routes/routineLogs';
 import { getGoals, getGoal, getGoalProgress, getGoalsWithProgress, getCompletedGoals, createGoalRoute, updateGoalRoute, deleteGoalRoute, createGoalManualLogRoute, getGoalManualLogsRoute, getGoalDetailRoute, uploadGoalBadgeRoute, uploadBadgeMiddleware } from './routes/goals';
 import { getProgressOverview } from './routes/progress';
+import { getEntriesRoute, createEntryRoute, getEntryRoute, updateEntryRoute, deleteEntryRoute } from './routes/journal';
 import { closeConnection } from './lib/mongoClient';
 
 // Assert MongoDB is enabled at startup (fail fast if misconfigured)
@@ -97,6 +98,13 @@ app.get('/api/routineLogs', getRoutineLogs);
 
 // Progress routes
 app.get('/api/progress/overview', getProgressOverview);
+
+// Journal routes
+app.get('/api/journal', getEntriesRoute);
+app.post('/api/journal', createEntryRoute);
+app.get('/api/journal/:id', getEntryRoute);
+app.patch('/api/journal/:id', updateEntryRoute);
+app.delete('/api/journal/:id', deleteEntryRoute);
 
 // Goal routes
 app.get('/api/goals', getGoals);
