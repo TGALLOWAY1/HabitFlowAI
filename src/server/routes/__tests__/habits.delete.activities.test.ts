@@ -5,9 +5,9 @@
  */
 
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
-import express, { Express } from 'express';
+import express, { type Express } from 'express';
 import request from 'supertest';
-import type { Activity } from '../../../models/persistenceTypes';
+// import type { Activity } from '../../../models/persistenceTypes';
 
 // Set environment variables BEFORE importing modules that use them
 if (!process.env.MONGODB_URI) {
@@ -41,7 +41,7 @@ describe('Habit Delete - Activity Conversion', () => {
     app.use(express.json());
 
     // Add userId to request (simulating auth middleware)
-    app.use((req, res, next) => {
+    app.use((req, _res, next) => {
       (req as any).userId = TEST_USER_ID;
       next();
     });
@@ -126,7 +126,7 @@ describe('Habit Delete - Activity Conversion', () => {
       // Verify activity has habit steps
       const activities = await getActivitiesByUser(TEST_USER_ID);
       const activityBeforeDelete = activities.find(a => a.id === activityId);
-      
+
       expect(activityBeforeDelete).toBeDefined();
       expect(activityBeforeDelete?.steps.filter(s => s.type === 'habit' && s.habitId === habitId)).toHaveLength(2);
 
@@ -142,7 +142,7 @@ describe('Habit Delete - Activity Conversion', () => {
       const activityAfterDelete = activitiesAfter.find(a => a.id === activityId);
 
       expect(activityAfterDelete).toBeDefined();
-      
+
       // Check that habit steps were converted to tasks
       const step1 = activityAfterDelete!.steps.find(s => s.id === 'step-1');
       const step3 = activityAfterDelete!.steps.find(s => s.id === 'step-3');

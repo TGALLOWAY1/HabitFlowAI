@@ -6,7 +6,7 @@
  */
 
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
-import { MongoClient, Db } from 'mongodb';
+import { MongoClient } from 'mongodb';
 import type { DayLog } from '../../../models/persistenceTypes';
 
 // Set environment variables BEFORE importing modules that use them
@@ -29,7 +29,7 @@ import { getDb, closeConnection } from '../../lib/mongoClient';
 // Use test database
 const TEST_DB_NAME = 'habitflowai_test';
 const TEST_USER_ID = 'test-user-123';
-const OTHER_USER_ID = 'other-user-456';
+// const OTHER_USER_ID = 'other-user-456';
 
 // Store original env values
 let originalDbName: string | undefined;
@@ -37,7 +37,7 @@ let originalUseMongo: string | undefined;
 let testClient: MongoClient | null = null;
 
 describe('DayLogRepository', () => {
-  let testDb: Db;
+  // let testDb: Db;
 
   beforeAll(async () => {
     // Use test database (env vars already set at top of file)
@@ -45,8 +45,9 @@ describe('DayLogRepository', () => {
     process.env.MONGODB_DB_NAME = TEST_DB_NAME;
 
     // Get test database
-    testDb = await getDb();
-    
+    // Get test database
+    await getDb();
+
     // Get client from MongoDB URI for cleanup
     const uri = process.env.MONGODB_URI;
     if (uri) {
@@ -62,7 +63,7 @@ describe('DayLogRepository', () => {
       await adminDb.dropDatabase();
       await testClient.close();
     }
-    
+
     await closeConnection();
 
     // Restore original env
@@ -226,7 +227,7 @@ describe('DayLogRepository', () => {
       expect(Object.keys(logs)).toHaveLength(2);
       const log1Key = 'habit-1-2025-01-27';
       const log2Key = 'habit-2-2025-01-27';
-      
+
       expect(logs[log1Key]?.activityId).toBe('activity-1');
       expect(logs[log1Key]?.activityStepId).toBe('step-1');
       expect(logs[log2Key]?.activityId).toBeUndefined();
@@ -261,7 +262,7 @@ describe('DayLogRepository', () => {
       expect(Object.keys(logs)).toHaveLength(2);
       const log1Key = 'habit-123-2025-01-27';
       const log2Key = 'habit-123-2025-01-28';
-      
+
       expect(logs[log1Key]?.activityId).toBe('activity-1');
       expect(logs[log2Key]?.activityId).toBeUndefined();
     });

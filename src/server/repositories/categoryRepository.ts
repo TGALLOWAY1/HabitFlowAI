@@ -5,7 +5,7 @@
  * MongoDB is the only persistence layer.
  */
 
-import { ObjectId } from 'mongodb';
+// import { ObjectId } from 'mongodb';
 import { randomUUID } from 'crypto';
 import { getDb } from '../lib/mongoClient';
 import type { Category } from '../../models/persistenceTypes';
@@ -47,7 +47,7 @@ export async function createCategory(
     id,
     ...data,
     userId,
-  };
+  } as any;
 
   await collection.insertOne(document);
 
@@ -72,7 +72,10 @@ export async function getCategoriesByUser(userId: string): Promise<Category[]> {
     .toArray();
 
   // Remove MongoDB _id and userId before returning
-  return documents.map(({ _id, userId: _, ...category }) => category as Category);
+  return documents.map((doc: any) => {
+    const { _id, userId: _, ...category } = doc;
+    return category as Category;
+  });
 }
 
 /**
@@ -97,7 +100,7 @@ export async function getCategoryById(
   }
 
   // Remove MongoDB _id and userId before returning
-  const { _id, userId: _, ...category } = document;
+  const { _id, userId: _, ...category } = document as any;
   return category as Category;
 }
 
@@ -129,7 +132,7 @@ export async function updateCategory(
   }
 
   // Remove MongoDB _id and userId before returning
-  const { _id, userId: _, ...category } = result;
+  const { _id, userId: _, ...category } = result as any;
   return category as Category;
 }
 

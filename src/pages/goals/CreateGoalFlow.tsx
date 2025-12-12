@@ -14,7 +14,7 @@ type Step = 'details' | 'habits';
 
 interface GoalDraft {
     title: string;
-    type: 'cumulative' | 'frequency';
+    type: 'cumulative' | 'frequency' | 'onetime';
     targetValue: number;
     unit?: string;
     deadline?: string;
@@ -26,7 +26,6 @@ export const CreateGoalFlow: React.FC<CreateGoalFlowProps> = ({
 }) => {
     const [currentStep, setCurrentStep] = useState<Step>('details');
     const [goalDraft, setGoalDraft] = useState<GoalDraft | null>(null);
-    const [selectedHabitIds, setSelectedHabitIds] = useState<string[]>([]);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
@@ -42,7 +41,6 @@ export const CreateGoalFlow: React.FC<CreateGoalFlowProps> = ({
     };
 
     const handleStep2Next = (habitIds: string[]) => {
-        setSelectedHabitIds(habitIds);
         // Trigger final submission
         handleFinalSubmit(habitIds);
     };
@@ -59,9 +57,16 @@ export const CreateGoalFlow: React.FC<CreateGoalFlowProps> = ({
             return;
         }
 
-        if (goalDraft.targetValue <= 0) {
-            setError('Target value must be greater than 0.');
-            return;
+        if (goalDraft.type === 'onetime') {
+            if (!goalDraft.deadline) {
+                setError('Event date is required for One-Time goals.');
+                return;
+            }
+        } else {
+            if (goalDraft.targetValue <= 0) {
+                setError('Target value must be greater than 0.');
+                return;
+            }
         }
 
         if (!habitIds || habitIds.length === 0) {

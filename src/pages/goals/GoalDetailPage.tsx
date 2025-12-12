@@ -73,6 +73,8 @@ export const GoalDetailPage: React.FC<GoalDetailPageProps> = ({ goalId, onBack, 
         if (!data) return [];
         const { goal, progress } = data;
 
+        if (goal.type === 'onetime' || !goal.targetValue) return [];
+
         const milestones = [
             { percent: 25, label: 'Quarter', value: goal.targetValue * 0.25 },
             { percent: 50, label: 'Halfway', value: goal.targetValue * 0.5 },
@@ -126,6 +128,10 @@ export const GoalDetailPage: React.FC<GoalDetailPageProps> = ({ goalId, onBack, 
         if (!data || loading || isCompletingRef.current) return;
 
         const { goal, progress } = data;
+
+        // Disable auto-completion for OneTime goals
+        if (goal.type === 'onetime') return;
+
         const currentPercent = progress.percent;
         const currentCompletedAt = goal.completedAt;
         const previousPercent = previousPercentRef.current;
@@ -322,7 +328,9 @@ export const GoalDetailPage: React.FC<GoalDetailPageProps> = ({ goalId, onBack, 
                             <div className="text-white font-medium text-sm sm:text-base">
                                 {data.goal.type === 'cumulative'
                                     ? `${data.progress.currentValue} / ${data.goal.targetValue} ${data.goal.unit || ''}`
-                                    : `${data.progress.currentValue} of ${data.goal.targetValue} days`}
+                                    : data.goal.type === 'frequency'
+                                        ? `${data.progress.currentValue} of ${data.goal.targetValue} days`
+                                        : data.goal.completedAt ? 'Completed' : 'In Progress'}
                             </div>
                             <div className="text-emerald-400 font-semibold text-sm sm:text-base">
                                 {data.goal.completedAt ? 100 : data.progress.percent}%
@@ -330,60 +338,92 @@ export const GoalDetailPage: React.FC<GoalDetailPageProps> = ({ goalId, onBack, 
                         </div>
                     </div>
 
-                    {/* Milestones Row */}
-                    <div className="pt-4">
-                        <div className="text-neutral-400 text-sm font-medium mb-3">Milestones</div>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                            {milestonesWithStatus.map((milestone) => {
-                                // For completed goals, mark 100% milestone as reached even if progress < 100
-                                const isReached = data.goal.completedAt && milestone.percent === 100
-                                    ? true
-                                    : milestone.reached;
+                    {/* Milestones Row - Hide if empty (OneTime goals) */}
+                    {milestonesWithStatus.length > 0 && (
+                        <div className="pt-4">
+                            <div className="text-neutral-400 text-sm font-medium mb-3">Milestones</div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                                {milestonesWithStatus.map((milestone) => {
+                                    // For completed goals, mark 100% milestone as reached even if progress < 100
+                                    const isReached = data.goal.completedAt && milestone.percent === 100
+                                        ? true
+                                        : milestone.reached;
 
-                                const milestoneValue = data.goal.type === 'cumulative'
-                                    ? `${milestone.value.toFixed(1)} ${data.goal.unit || ''} of ${data.goal.targetValue} ${data.goal.unit || ''}`
-                                    : `${milestone.value.toFixed(0)} days of ${data.goal.targetValue} days`;
+                                    const milestoneValue = data.goal.type === 'cumulative'
+                                        ? `${milestone.value.toFixed(1)} ${data.goal.unit || ''} of ${data.goal.targetValue} ${data.goal.unit || ''}`
+                                        : `${milestone.value.toFixed(0)} days of ${data.goal.targetValue} days`;
 
-                                return (
-                                    <div
-                                        key={milestone.percent}
-                                        className={`p-3 rounded-lg border transition-colors ${isReached
-                                            ? 'bg-emerald-500/10 border-emerald-500/30'
-                                            : 'bg-neutral-800/50 border-white/10'
-                                            }`}
-                                    >
-                                        <div className="flex items-start gap-2">
-                                            {isReached ? (
-                                                <Check className="text-emerald-400 flex-shrink-0 mt-0.5" size={18} />
-                                            ) : (
-                                                <div className="w-4 h-4 rounded-full border-2 border-neutral-600 flex-shrink-0 mt-0.5" />
-                                            )}
-                                            <div className="flex-1 min-w-0">
-                                                <div className="text-white text-sm font-medium mb-1">
-                                                    {milestone.percent}% • {milestone.label}
-                                                </div>
-                                                <div className="text-neutral-400 text-xs leading-tight">
-                                                    {milestoneValue}
+                                    return (
+                                        <div
+                                            key={milestone.percent}
+                                            className={`p-3 rounded-lg border transition-colors ${isReached
+                                                ? 'bg-emerald-500/10 border-emerald-500/30'
+                                                : 'bg-neutral-800/50 border-white/10'
+                                                }`}
+                                        >
+                                            <div className="flex items-start gap-2">
+                                                {isReached ? (
+                                                    <Check className="text-emerald-400 flex-shrink-0 mt-0.5" size={18} />
+                                                ) : (
+                                                    <div className="w-4 h-4 rounded-full border-2 border-neutral-600 flex-shrink-0 mt-0.5" />
+                                                )}
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="text-white text-sm font-medium mb-1">
+                                                        {milestone.percent}% • {milestone.label}
+                                                    </div>
+                                                    <div className="text-neutral-400 text-xs leading-tight">
+                                                        {milestoneValue}
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
-                                    </div>
-                                );
-                            })}
+                                    );
+                                })}
+                            </div>
                         </div>
-                    </div>
+                    )}
                 </div>
 
                 {/* Action Buttons Row */}
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-                    {/* Manual Progress Button (only for active goals) */}
-                    {!data.goal.completedAt && (
+                    {/* Manual Progress Button (only for active cumulative goals) */}
+                    {!data.goal.completedAt && data.goal.type === 'cumulative' && (
                         <button
                             onClick={() => setShowManualProgressModal(true)}
                             className="flex items-center justify-center gap-2 px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-neutral-900 font-medium rounded-lg transition-colors"
                         >
                             <Plus size={18} />
                             Log progress manually
+                        </button>
+                    )}
+
+                    {/* Mark as Complete Button (only for active onetime goals) */}
+                    {!data.goal.completedAt && data.goal.type === 'onetime' && (
+                        <button
+                            onClick={() => {
+                                // Manual completion triggering
+                                if (isCompletingRef.current) return;
+                                isCompletingRef.current = true;
+                                markGoalAsCompleted(goalId)
+                                    .then(() => {
+                                        invalidateGoalCaches(goalId);
+                                        invalidateAllGoalCaches();
+                                        return refetch();
+                                    })
+                                    .then(() => {
+                                        if (onNavigateToCompleted) {
+                                            onNavigateToCompleted(goalId);
+                                        }
+                                    })
+                                    .catch((err) => {
+                                        console.error(err);
+                                        isCompletingRef.current = false;
+                                    });
+                            }}
+                            className="flex items-center justify-center gap-2 px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-neutral-900 font-medium rounded-lg transition-colors"
+                        >
+                            <Check size={18} />
+                            Mark as Completed
                         </button>
                     )}
 

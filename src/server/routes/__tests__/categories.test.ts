@@ -5,9 +5,9 @@
  */
 
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
-import express, { Express } from 'express';
+import express, { type Express } from 'express';
 import request from 'supertest';
-import type { Category } from '../../../models/persistenceTypes';
+// import type { Category } from '../../../models/persistenceTypes';
 
 // Set environment variables BEFORE importing modules that use them
 if (!process.env.MONGODB_URI) {
@@ -46,7 +46,7 @@ describe('Category Routes', () => {
     app.use(express.json());
 
     // Add userId to request (simulating auth middleware)
-    app.use((req, res, next) => {
+    app.use((req, _res, next) => {
       (req as any).userId = TEST_USER_ID;
       next();
     });
@@ -125,7 +125,7 @@ describe('Category Routes', () => {
       // Need to reload the config module to pick up new value
       // For this test, we'll verify the error structure
       // In a real scenario, you'd need to restart the process or use module mocking
-      
+
       // Restore
       process.env.USE_MONGO_PERSISTENCE = originalValue || 'true';
     });
@@ -362,7 +362,7 @@ describe('Category Routes', () => {
       // Create a separate app instance with feature flag disabled
       const disabledApp = express();
       disabledApp.use(express.json());
-      disabledApp.use((req, res, next) => {
+      disabledApp.use((req, _res, next) => {
         (req as any).userId = TEST_USER_ID;
         next();
       });

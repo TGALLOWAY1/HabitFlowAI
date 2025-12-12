@@ -228,7 +228,8 @@ export function computeFullGoalProgress(
     const manualValue = manualLogs.reduce((sum, log) => sum + log.value, 0);
     currentValue = habitValue + manualValue;
   } else {
-    // Frequency: count unique days where any linked habit was completed
+    // Frequency OR OneTime: count unique days where any linked habit was completed
+    // For OneTime goals, this metrics helps track "preparation sessions"
     const completedDates = new Set<string>();
     for (const log of allLogs) {
       if (log.completed) {
@@ -239,9 +240,17 @@ export function computeFullGoalProgress(
   }
 
   // Calculate percentage
-  const percent = goal.targetValue > 0
-    ? Math.min(100, Math.round((currentValue / goal.targetValue) * 100))
-    : 0;
+  let percent = 0;
+  if (goal.type === 'onetime') {
+    // OneTime goals are binary: 0% or 100% based on completedAt
+    percent = goal.completedAt ? 100 : 0;
+  } else {
+    // Cumulative or Frequency
+    // Ensure targetValue exists and is > 0 to avoid division by zero/undefined
+    percent = (goal.targetValue && goal.targetValue > 0)
+      ? Math.min(100, Math.round((currentValue / goal.targetValue) * 100))
+      : 0;
+  }
 
   // Compute last 30 days data
   const lastThirtyDaysData = last30Days.map(date => {
@@ -258,6 +267,7 @@ export function computeFullGoalProgress(
       dayValue = habitValue + manualValue;
       hasProgress = dayValue > 0;
     } else {
+      // Frequency OR OneTime
       // Check if any log was completed on this day
       hasProgress = dayLogs.some(log => log.completed);
       dayValue = hasProgress ? 1 : 0;
@@ -275,7 +285,9 @@ export function computeFullGoalProgress(
 
   // Compute inactivity warning (≥4 days without progress in the last 7 days)
   const daysWithoutProgress = lastSevenDaysData.filter(day => !day.hasProgress).length;
-  const inactivityWarning = daysWithoutProgress >= 4;
+
+  // Only show inactivity warning if goal is NOT completed
+  const inactivityWarning = !goal.completedAt && daysWithoutProgress >= 4;
 
   return {
     currentValue,

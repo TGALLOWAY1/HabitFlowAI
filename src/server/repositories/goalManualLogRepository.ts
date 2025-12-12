@@ -14,7 +14,7 @@
  * - Manual logs are user-scoped (filtered by userId)
  */
 
-import { ObjectId } from 'mongodb';
+// import { ObjectId } from 'mongodb';
 import { randomUUID } from 'crypto';
 import { getDb } from '../lib/mongoClient';
 import { MONGO_COLLECTIONS, type GoalManualLog } from '../../models/persistenceTypes';
@@ -50,7 +50,7 @@ export async function createGoalManualLog(
     loggedAt,
     createdAt,
     userId,
-  };
+  } as any;
 
   await collection.insertOne(document);
 
@@ -80,7 +80,10 @@ export async function getGoalManualLogsByGoal(
     .toArray();
 
   // Return logs without MongoDB _id and userId
-  return logs.map(({ _id, userId: _, ...log }) => log as GoalManualLog);
+  return logs.map((log: any) => {
+    const { _id, userId: _, ...data } = log;
+    return data as GoalManualLog;
+  });
 }
 
 /**
@@ -108,7 +111,10 @@ export async function getGoalManualLogsByGoals(
     .toArray();
 
   // Return logs without MongoDB _id and userId
-  return logs.map(({ _id, userId: _, ...log }) => log as GoalManualLog);
+  return logs.map((log: any) => {
+    const { _id, userId: _, ...data } = log;
+    return data as GoalManualLog;
+  });
 }
 
 /**

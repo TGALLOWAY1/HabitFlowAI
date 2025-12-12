@@ -12,7 +12,7 @@
  * - Manual progress is only available for cumulative goals, not frequency goals
  */
 import React, { useMemo, useState, useRef, useEffect } from 'react';
-import { ChevronDown, ChevronRight, AlertTriangle, Check, ExternalLink, Edit, Plus } from 'lucide-react';
+import { ChevronDown, ChevronRight, Check, ExternalLink, Edit, Plus } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { useHabitStore } from '../../store/HabitContext';
 import type { GoalWithProgress } from '../../models/persistenceTypes';
@@ -20,7 +20,6 @@ import { InactivityCoachingPopup } from './InactivityCoachingPopup';
 import { markGoalAsCompleted } from '../../lib/persistenceClient';
 import {
     GoalProgressBar,
-    GoalStatusChip,
     GoalMilestoneDots,
     GoalInactivityWarningBadge,
     goalCardBaseClasses,
@@ -93,8 +92,10 @@ export const GoalCard: React.FC<GoalCardProps> = ({
         setShowCoachingPopup(true);
     };
 
-    // Calculate milestone values
+    // Calculate milestone values (only for cumulative/frequency)
     const milestones = useMemo(() => {
+        if (goal.type === 'onetime' || !goal.targetValue) return [];
+
         const milestones = [
             { percent: 25, label: 'Quarter', value: goal.targetValue * 0.25 },
             { percent: 50, label: 'Halfway', value: goal.targetValue * 0.5 },
@@ -105,7 +106,7 @@ export const GoalCard: React.FC<GoalCardProps> = ({
             ...milestone,
             reached: progress.currentValue >= milestone.value,
         }));
-    }, [goal.targetValue, progress.currentValue]);
+    }, [goal.targetValue, progress.currentValue, goal.type]);
 
     // Calculate max value for sparkline scaling
     const maxSparklineValue = useMemo(() => {
@@ -117,6 +118,9 @@ export const GoalCard: React.FC<GoalCardProps> = ({
     // Detect when goal reaches 100% and automatically mark as completed
     useEffect(() => {
         if (isCompletingRef.current) return;
+
+        // Disable auto-completion for OneTime goals - user must mark manually
+        if (goal.type === 'onetime') return;
 
         const currentPercent = progress.percent;
         const currentCompletedAt = goal.completedAt;
@@ -158,7 +162,7 @@ export const GoalCard: React.FC<GoalCardProps> = ({
         // Update refs for next comparison
         previousPercentRef.current = currentPercent;
         previousCompletedAtRef.current = currentCompletedAt;
-    }, [goal.id, goal.completedAt, progress.percent, onNavigateToCompleted, onRefetch]);
+    }, [goal.id, goal.completedAt, progress.percent, onNavigateToCompleted, onRefetch, goal.type]);
 
     // Format deadline for display
     const formatDeadline = (deadline: string): string => {
@@ -171,12 +175,17 @@ export const GoalCard: React.FC<GoalCardProps> = ({
     };
 
     // Generate milestone dots (0%, 10%, 20%, ..., 100%)
-    const milestoneThresholds = Array.from({ length: 11 }, (_, i) => i * 10);
+    // const milestoneThresholds = Array.from({ length: 11 }, (_, i) => i * 10);
 
     // Determine numerical progress display
-    const progressText = goal.type === 'cumulative'
-        ? `${progress.currentValue} / ${goal.targetValue} ${goal.unit || ''}`
-        : `${progress.currentValue} / ${goal.targetValue} days`;
+    let progressText = '';
+    if (goal.type === 'cumulative') {
+        progressText = `${progress.currentValue} / ${goal.targetValue} ${goal.unit || ''}`;
+    } else if (goal.type === 'frequency') {
+        progressText = `${progress.currentValue} / ${goal.targetValue} days`;
+    } else { // onetime
+        progressText = goal.completedAt ? 'Completed' : 'In Progress';
+    }
 
     return (
         <div className={goalCardBaseClasses}>
@@ -194,15 +203,19 @@ export const GoalCard: React.FC<GoalCardProps> = ({
                                     {goal.title}
                                 </h3>
 
-                                {/* Progress Bar */}
-                                <div className="mb-2">
-                                    <GoalProgressBar percent={progress.percent} height="sm" />
-                                </div>
+                                {/* Progress Bar - Hide for OneTime */}
+                                {goal.type !== 'onetime' && (
+                                    <div className="mb-2">
+                                        <GoalProgressBar percent={progress.percent} height="sm" />
+                                    </div>
+                                )}
 
-                                {/* Mini Milestone Dots */}
-                                <div className="mb-2">
-                                    <GoalMilestoneDots percent={progress.percent} />
-                                </div>
+                                {/* Mini Milestone Dots - Hide for OneTime */}
+                                {goal.type !== 'onetime' && (
+                                    <div className="mb-2">
+                                        <GoalMilestoneDots percent={progress.percent} />
+                                    </div>
+                                )}
 
                                 {/* Numerical Progress and Metadata Row */}
                                 <div className="flex items-center gap-3 flex-wrap text-sm">
@@ -290,43 +303,45 @@ export const GoalCard: React.FC<GoalCardProps> = ({
                             )}
                         </div>
 
-                        {/* Milestone List */}
-                        <div>
-                            <div className={`${goalSubtitleClasses} font-medium mb-2`}>Milestones</div>
-                            <div className="space-y-2">
-                                {milestones.map((milestone) => {
-                                    const milestoneValue = goal.type === 'cumulative'
-                                        ? `${milestone.value.toFixed(1)} ${goal.unit || ''} of ${goal.targetValue} ${goal.unit || ''}`
-                                        : `${milestone.value.toFixed(0)} days of ${goal.targetValue} days`;
+                        {/* Milestone List - Hide for OneTime */}
+                        {goal.type !== 'onetime' && milestones.length > 0 && (
+                            <div>
+                                <div className={`${goalSubtitleClasses} font-medium mb-2`}>Milestones</div>
+                                <div className="space-y-2">
+                                    {milestones.map((milestone) => {
+                                        const milestoneValue = goal.type === 'cumulative'
+                                            ? `${milestone.value.toFixed(1)} ${goal.unit || ''} of ${goal.targetValue} ${goal.unit || ''}`
+                                            : `${milestone.value.toFixed(0)} days of ${goal.targetValue} days`;
 
-                                    return (
-                                        <div
-                                            key={milestone.percent}
-                                            className={`flex items-center justify-between p-2 rounded-lg transition-colors ${milestone.reached
+                                        return (
+                                            <div
+                                                key={milestone.percent}
+                                                className={`flex items-center justify-between p-2 rounded-lg transition-colors ${milestone.reached
                                                     ? 'bg-emerald-500/10 border border-emerald-500/30'
                                                     : 'bg-neutral-800/50 border border-white/10'
-                                                }`}
-                                        >
-                                            <div className="flex items-center gap-3">
-                                                {milestone.reached ? (
-                                                    <Check className="text-emerald-400 flex-shrink-0" size={16} />
-                                                ) : (
-                                                    <div className="w-4 h-4 rounded-full border-2 border-neutral-600 flex-shrink-0" />
-                                                )}
-                                                <div>
-                                                    <div className="text-white text-sm font-medium">
-                                                        {milestone.percent}% • {milestone.label}
-                                                    </div>
-                                                    <div className="text-neutral-400 text-xs">
-                                                        {milestoneValue}
+                                                    }`}
+                                            >
+                                                <div className="flex items-center gap-3">
+                                                    {milestone.reached ? (
+                                                        <Check className="text-emerald-400 flex-shrink-0" size={16} />
+                                                    ) : (
+                                                        <div className="w-4 h-4 rounded-full border-2 border-neutral-600 flex-shrink-0" />
+                                                    )}
+                                                    <div>
+                                                        <div className="text-white text-sm font-medium">
+                                                            {milestone.percent}% • {milestone.label}
+                                                        </div>
+                                                        <div className="text-neutral-400 text-xs">
+                                                            {milestoneValue}
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </div>
-                                        </div>
-                                    );
-                                })}
+                                        );
+                                    })}
+                                </div>
                             </div>
-                        </div>
+                        )}
 
                         {/* Sparkline Placeholder */}
                         <div>
@@ -342,8 +357,8 @@ export const GoalCard: React.FC<GoalCardProps> = ({
                                         >
                                             <div
                                                 className={`w-full rounded-t transition-all ${day.hasProgress
-                                                        ? 'bg-emerald-500'
-                                                        : 'bg-neutral-600'
+                                                    ? 'bg-emerald-500'
+                                                    : 'bg-neutral-600'
                                                     }`}
                                                 style={{ height: `${Math.max(4, heightPercent)}%` }}
                                             />
@@ -364,7 +379,7 @@ export const GoalCard: React.FC<GoalCardProps> = ({
 
                         {/* Actions */}
                         <div className="flex flex-wrap gap-2 pt-2 border-t border-white/5">
-                            {onAddManualProgress && (
+                            {onAddManualProgress && goal.type === 'cumulative' && (
                                 <button
                                     onClick={(e) => {
                                         e.stopPropagation();

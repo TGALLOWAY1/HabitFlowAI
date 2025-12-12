@@ -155,7 +155,7 @@ const HabitRowContent = ({
             : "ring-1 ring-yellow-500 shadow-[0_0_15px_rgba(234,179,8,0.4)] animate-pulse" // Active: Pulsing
         : "";
 
-    const indentClass = depth > 0 ? `ml-${depth * 6}` : ""; // Tailwind arbitrary values or standard spacing? using padding style is safer.
+    // const indentClass = depth > 0 ? `ml-${depth * 6}` : ""; // Tailwind arbitrary values or standard spacing? using padding style is safer.
 
     return (
         <div
@@ -898,7 +898,8 @@ export const TrackerGrid: React.FC<TrackerGridProps> = ({ habits, logs, onToggle
             // No, habits have an order.
 
             // Get all roots in new order
-            const newRoots = arrayMove(dailyHabits, oldDailyIndex, newDailyIndex);
+            // const newRoots = arrayMove(dailyHabits, oldDailyIndex, newDailyIndex);
+            arrayMove(dailyHabits, oldDailyIndex, newDailyIndex);
 
             // Construct full list: newRoots + weeklyRoots + children (appended or interleaved?)
             // If children order matters, we should probably keep them.

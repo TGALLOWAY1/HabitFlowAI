@@ -5,9 +5,9 @@
  */
 
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
-import express, { Express } from 'express';
+import express, { type Express } from 'express';
 import request from 'supertest';
-import type { Activity } from '../../../models/persistenceTypes';
+// import type { Activity } from '../../../models/persistenceTypes';
 
 // Set environment variables BEFORE importing modules that use them
 if (!process.env.MONGODB_URI) {
@@ -27,7 +27,7 @@ import { getDb, closeConnection } from '../../lib/mongoClient';
 // Use test database
 const TEST_DB_NAME = 'habitflowai_test';
 const TEST_USER_ID = 'test-user-123';
-const OTHER_USER_ID = 'other-user-456';
+// const OTHER_USER_ID = 'other-user-456';
 
 // Store original env values
 let originalDbName: string | undefined;
@@ -46,7 +46,7 @@ describe('Activity Submit Routes', () => {
     app.use(express.json());
 
     // Add userId to request (simulating auth middleware)
-    app.use((req, res, next) => {
+    app.use((req, _res, next) => {
       (req as any).userId = TEST_USER_ID;
       next();
     });
@@ -118,7 +118,7 @@ describe('Activity Submit Routes', () => {
 
       // Verify DayLogs were created
       const today = new Date().toISOString().split('T')[0];
-      
+
       // Check database directly to verify fields are stored
       const testDb = await getDb();
       const storedLog1 = await testDb.collection('dayLogs').findOne({
@@ -126,11 +126,11 @@ describe('Activity Submit Routes', () => {
         date: today,
         userId: TEST_USER_ID,
       });
-      
+
       expect(storedLog1).toBeDefined();
       expect(storedLog1?.activityId).toBe(activityId);
       expect(storedLog1?.activityStepId).toBe('step-1');
-      
+
       // Now check via repository
       const log1 = await getDayLog('habit-1', today, TEST_USER_ID);
       const log2 = await getDayLog('habit-2', today, TEST_USER_ID);
@@ -212,12 +212,12 @@ describe('Activity Submit Routes', () => {
       // prevents invalid steps, we'll test with a step that has empty habitId string.
       // But validation also prevents that. So let's test the filtering logic differently:
       // Create activity with valid steps, then verify only those with habitId are processed.
-      
+
       // Actually, we can't create an activity with a habit step without habitId due to validation.
       // So this test verifies that the submit endpoint correctly filters steps that exist
       // but don't have a valid habitId (though this shouldn't happen in practice due to validation).
       // Let's test with a valid activity and verify the filtering works correctly.
-      
+
       const createResponse = await request(app)
         .post('/api/activities')
         .send({
@@ -315,7 +315,7 @@ describe('Activity Submit Routes', () => {
         .expect(201);
 
       const activityId = createResponse.body.activity.id;
-      
+
       // Get today's date before submitting
       const today = new Date().toISOString().split('T')[0];
 
