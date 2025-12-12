@@ -1,0 +1,118 @@
+/**
+ * Journal API Client
+ * 
+ * Frontend client for communicating with the Journal API endpoints.
+ */
+
+import { API_BASE_URL } from '../lib/persistenceConfig';
+import type { JournalEntry } from '../models/persistenceTypes';
+
+/**
+ * Get or create a persistent user ID.
+ * Helper duplicated from persistenceClient.ts to avoid circular deps or heavy refactoring
+ * for now. Ideally this moves to a shared auth/identity util.
+ */
+function getOrCreateUserId(): string {
+    if (typeof window === 'undefined') {
+        return 'server-side-rendering-placeholder';
+    }
+
+    const STORAGE_KEY = 'habitflow_user_id';
+    let userId = localStorage.getItem(STORAGE_KEY);
+
+    if (!userId) {
+        userId = crypto.randomUUID();
+        localStorage.setItem(STORAGE_KEY, userId);
+    }
+
+    return userId;
+}
+
+/**
+ * Make an API request with error handling.
+ */
+async function apiRequest<T>(
+    endpoint: string,
+    options: RequestInit = {}
+): Promise<T> {
+    const url = `${API_BASE_URL}${endpoint}`;
+    const userId = getOrCreateUserId();
+
+    try {
+        const response = await fetch(url, {
+            ...options,
+            headers: {
+                'Content-Type': 'application/json',
+                'X-User-Id': userId,
+                ...options.headers,
+            },
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(
+                errorData.error?.message ||
+                `API request failed: ${response.status} ${response.statusText}`
+            );
+        }
+
+        return await response.json();
+    } catch (error) {
+        if (error instanceof Error) {
+            throw error;
+        }
+        throw new Error('Unknown error occurred during API request');
+    }
+}
+
+/**
+ * Fetch all journal entries.
+ */
+export async function fetchEntries(): Promise<JournalEntry[]> {
+    const response = await apiRequest<{ entries: JournalEntry[] }>('/journal');
+    return response.entries;
+}
+
+/**
+ * Create a new journal entry.
+ */
+export async function createEntry(
+    data: Omit<JournalEntry, 'id' | 'createdAt' | 'updatedAt' | 'userId'>
+): Promise<JournalEntry> {
+    const response = await apiRequest<{ entry: JournalEntry }>('/journal', {
+        method: 'POST',
+        body: JSON.stringify(data)
+    });
+    return response.entry;
+}
+
+/**
+ * Get a single journal entry by ID.
+ */
+export async function fetchEntry(id: string): Promise<JournalEntry> {
+    const response = await apiRequest<{ entry: JournalEntry }>(`/journal/${id}`);
+    return response.entry;
+}
+
+/**
+ * Update a journal entry.
+ */
+export async function updateEntry(
+    id: string,
+    patch: Partial<Omit<JournalEntry, 'id' | 'createdAt' | 'userId'>>
+): Promise<JournalEntry> {
+    const response = await apiRequest<{ entry: JournalEntry }>(`/journal/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify(patch)
+    });
+    return response.entry;
+}
+
+/**
+ * Delete a journal entry.
+ */
+export async function deleteEntry(id: string): Promise<void> {
+    await apiRequest<{ message: string }>(`/journal/${id}`, {
+        method: 'DELETE'
+    });
+}

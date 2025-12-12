@@ -323,6 +323,62 @@ export interface RoutineLog {
 }
 
 /**
+ * Journal Entry Entity
+ * 
+ * Storage Key: 'journalEntries'
+ * Storage Format: JournalEntry[] (array of JournalEntry objects)
+ * 
+ * Represents a single journal entry based on a template.
+ */
+export interface JournalEntry {
+    /** 
+     * Unique identifier
+     */
+    id: string;
+
+    /** Foreign key reference to User (for future multi-user support) */
+    userId: string;
+
+    /** 
+     * ID of the template used (e.g., 'morning-primer', 'free-write') 
+     */
+    templateId: string;
+
+    /** 
+     * The specific variant/mode used for this entry
+     * - 'standard': Default questions
+     * - 'deep': Extended questions
+     * - 'free': No structure
+     */
+    mode: 'standard' | 'deep' | 'free';
+
+    /**
+     * The persona active for this entry (e.g., "The Strategic Coach")
+     * Captured at time of writing in case templates change.
+     */
+    persona?: string;
+
+    /**
+     * The actual content of the entry.
+     * Keyed by prompt ID (or 'free-write' for unstructured).
+     * Value is the user's answer.
+     */
+    content: Record<string, string>;
+
+    /** date in YYYY-MM-DD format */
+    date: string;
+
+    /** ISO 8601 timestamp of when the entry was created */
+    createdAt: string;
+
+    /** ISO 8601 timestamp of when the entry was last updated */
+    updatedAt: string;
+}
+
+/** Journal Entries stored as an array */
+export type JournalEntriesStorage = JournalEntry[];
+
+/**
  * WellbeingSession Entity
  * 
  * Embedded within DailyWellbeing entity.
@@ -596,6 +652,9 @@ export interface PersistenceSchema {
 
     /** Record of all routine logs */
     routineLogs: RoutineLogsStorage;
+
+    /** Record of all journal entries */
+    journalEntries: JournalEntriesStorage;
 }
 
 
@@ -614,6 +673,7 @@ export const MONGO_COLLECTIONS = {
     GOALS: 'goals',
     GOAL_MANUAL_LOGS: 'goalManualLogs',
     ROUTINE_LOGS: 'routineLogs',
+    JOURNAL_ENTRIES: 'journalEntries',
 } as const;
 
 

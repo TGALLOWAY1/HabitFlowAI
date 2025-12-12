@@ -9,7 +9,7 @@ import { ProgressDashboard } from './components/ProgressDashboard';
 import { RoutineList } from './components/RoutineList';
 import { RoutineEditorModal } from './components/RoutineEditorModal';
 import { RoutineRunnerModal } from './components/RoutineRunnerModal';
-import { BarChart3, Calendar, ClipboardList, Target, Clock } from 'lucide-react';
+import { BarChart3, Calendar, ClipboardList, Target, Clock, BookOpenText } from 'lucide-react';
 import type { Routine, Habit } from './types';
 import { GoalsPage } from './pages/goals/GoalsPage';
 import { CreateGoalFlow } from './pages/goals/CreateGoalFlow';
@@ -17,9 +17,10 @@ import { GoalDetailPage } from './pages/goals/GoalDetailPage';
 import { GoalCompletedPage } from './pages/goals/GoalCompletedPage';
 import { WinArchivePage } from './pages/goals/WinArchivePage';
 import { CalendarView } from './components/CalendarView';
+import { JournalPage } from './pages/JournalPage';
 
 // Simple router state
-type AppRoute = 'tracker' | 'progress' | 'routines' | 'goals' | 'calendar' | 'wins';
+type AppRoute = 'tracker' | 'progress' | 'routines' | 'goals' | 'calendar' | 'wins' | 'journal';
 
 // Helper functions for URL syncing
 function parseRouteFromLocation(location: Location): AppRoute {
@@ -33,6 +34,7 @@ function parseRouteFromLocation(location: Location): AppRoute {
     case "wins":
     case "tracker":
     case "calendar":
+    case "journal":
       return view as AppRoute;
     default:
       return "tracker"; // default view
@@ -162,7 +164,7 @@ const HabitTrackerContent: React.FC = () => {
       <div className="flex flex-col gap-4">
         <div className="flex items-center justify-between">
           <h2 className="text-2xl font-bold text-white">
-            {view === 'tracker' ? 'Habits' : view === 'progress' ? 'Habit Tracking' : view === 'routines' ? 'Routines' : 'Goals'}
+            {view === 'tracker' ? 'Habits' : view === 'progress' ? 'Habit Tracking' : view === 'routines' ? 'Routines' : view === 'journal' ? 'Journal' : 'Goals'}
           </h2>
           <div className="flex items-center gap-2 bg-neutral-800 rounded-lg p-1">
             <button
@@ -199,6 +201,13 @@ const HabitTrackerContent: React.FC = () => {
               title="Goals"
             >
               <Target size={20} />
+            </button>
+            <button
+              onClick={() => handleNavigate('journal')}
+              className={`p-2 rounded-md transition-colors ${view === 'journal' ? 'bg-neutral-700 text-white' : 'text-neutral-400 hover:text-white'}`}
+              title="Journal"
+            >
+              <BookOpenText size={20} />
             </button>
           </div>
         </div>
@@ -293,6 +302,8 @@ const HabitTrackerContent: React.FC = () => {
         />
       ) : view === 'calendar' ? (
         <CalendarView />
+      ) : view === 'journal' ? (
+        <JournalPage />
       ) : (
         <GoalsPage
           onCreateGoal={() => setShowCreateGoal(true)}
