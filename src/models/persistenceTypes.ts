@@ -674,6 +674,7 @@ export const MONGO_COLLECTIONS = {
     GOAL_MANUAL_LOGS: 'goalManualLogs',
     ROUTINE_LOGS: 'routineLogs',
     JOURNAL_ENTRIES: 'journalEntries',
+    TASKS: 'tasks',
 } as const;
 
 

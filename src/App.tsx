@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { HabitProvider, useHabitStore } from './store/HabitContext';
 import { RoutineProvider } from './store/RoutineContext';
+import { TaskProvider } from './context/TaskContext';
 import { Layout } from './components/Layout';
 import { CategoryTabs } from './components/CategoryTabs';
 import { TrackerGrid } from './components/TrackerGrid';
@@ -9,7 +10,7 @@ import { ProgressDashboard } from './components/ProgressDashboard';
 import { RoutineList } from './components/RoutineList';
 import { RoutineEditorModal } from './components/RoutineEditorModal';
 import { RoutineRunnerModal } from './components/RoutineRunnerModal';
-import { BarChart3, Calendar, ClipboardList, Target, Clock, BookOpenText } from 'lucide-react';
+import { BarChart3, Calendar, ClipboardList, Target, Clock, BookOpenText, CheckSquare } from 'lucide-react';
 import type { Routine, Habit } from './types';
 import { GoalsPage } from './pages/goals/GoalsPage';
 import { CreateGoalFlow } from './pages/goals/CreateGoalFlow';
@@ -17,10 +18,12 @@ import { GoalDetailPage } from './pages/goals/GoalDetailPage';
 import { GoalCompletedPage } from './pages/goals/GoalCompletedPage';
 import { WinArchivePage } from './pages/goals/WinArchivePage';
 import { CalendarView } from './components/CalendarView';
+
 import { JournalPage } from './pages/JournalPage';
+import { TasksPage } from './pages/TasksPage';
 
 // Simple router state
-type AppRoute = 'tracker' | 'progress' | 'routines' | 'goals' | 'calendar' | 'wins' | 'journal';
+type AppRoute = 'tracker' | 'progress' | 'routines' | 'goals' | 'calendar' | 'wins' | 'journal' | 'tasks';
 
 // Helper functions for URL syncing
 function parseRouteFromLocation(location: Location): AppRoute {
@@ -35,6 +38,7 @@ function parseRouteFromLocation(location: Location): AppRoute {
     case "tracker":
     case "calendar":
     case "journal":
+    case "tasks":
       return view as AppRoute;
     default:
       return "tracker"; // default view
@@ -164,7 +168,7 @@ const HabitTrackerContent: React.FC = () => {
       <div className="flex flex-col gap-4">
         <div className="flex items-center justify-between">
           <h2 className="text-2xl font-bold text-white">
-            {view === 'tracker' ? 'Habits' : view === 'progress' ? 'Habit Tracking' : view === 'routines' ? 'Routines' : view === 'journal' ? 'Journal' : 'Goals'}
+            {view === 'tracker' ? 'Habits' : view === 'progress' ? 'Habit Tracking' : view === 'routines' ? 'Routines' : view === 'journal' ? 'Journal' : view === 'tasks' ? 'Tasks' : 'Goals'}
           </h2>
           <div className="flex items-center gap-2 bg-neutral-800 rounded-lg p-1">
             <button
@@ -173,6 +177,13 @@ const HabitTrackerContent: React.FC = () => {
               title="Habits Tracker"
             >
               <Calendar size={20} />
+            </button>
+            <button
+              onClick={() => handleNavigate('tasks')}
+              className={`p-2 rounded-md transition-colors ${view === 'tasks' ? 'bg-neutral-700 text-white' : 'text-neutral-400 hover:text-white'}`}
+              title="Tasks (Minimal)"
+            >
+              <CheckSquare size={20} />
             </button>
             <button
               onClick={() => handleNavigate('calendar')}
@@ -304,6 +315,8 @@ const HabitTrackerContent: React.FC = () => {
         <CalendarView />
       ) : view === 'journal' ? (
         <JournalPage />
+      ) : view === 'tasks' ? (
+        <TasksPage />
       ) : (
         <GoalsPage
           onCreateGoal={() => setShowCreateGoal(true)}
@@ -350,9 +363,11 @@ function App() {
   return (
     <HabitProvider>
       <RoutineProvider>
-        <Layout>
-          <HabitTrackerContent />
-        </Layout>
+        <TaskProvider>
+          <Layout>
+            <HabitTrackerContent />
+          </Layout>
+        </TaskProvider>
       </RoutineProvider>
     </HabitProvider>
   );
