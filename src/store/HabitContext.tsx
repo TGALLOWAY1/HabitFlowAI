@@ -245,7 +245,8 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const addHabit = async (habit: Omit<Habit, 'id' | 'createdAt' | 'archived'>): Promise<Habit> => {
         try {
             const newHabit = await saveHabit(habit);
-            setHabits([...habits, newHabit]);
+            // Updating state with functional update to ensure latest state
+            setHabits(prev => [...prev, newHabit]);
             return newHabit;
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : 'Unknown error';
@@ -257,7 +258,7 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const updateHabit = async (id: string, patch: Partial<Omit<Habit, 'id' | 'createdAt'>>): Promise<Habit> => {
         try {
             const updatedHabit = await updateHabitApi(id, patch);
-            setHabits(habits.map(h => h.id === id ? updatedHabit : h));
+            setHabits(prev => prev.map(h => h.id === id ? updatedHabit : h));
             return updatedHabit;
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : 'Unknown error';

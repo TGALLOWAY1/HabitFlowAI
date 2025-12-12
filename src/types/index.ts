@@ -39,6 +39,13 @@ export interface Habit {
     goal: HabitGoal;
     archived: boolean;
     createdAt: string;
+
+    // Bundle fields
+    type?: 'boolean' | 'number' | 'time' | 'bundle'; // Optional for backward compatibility
+    subHabitIds?: string[]; // IDs of habits in this bundle
+    bundleParentId?: string; // ID of the parent bundle (if any)
+    order?: number; // Display order
+
     pace?: string | null; // Estimated completion date
 
     // Calendar View Fields
