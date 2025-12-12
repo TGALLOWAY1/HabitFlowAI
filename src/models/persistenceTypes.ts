@@ -129,6 +129,12 @@ export interface Habit {
      */
     pace?: string | null;
 
+    // Bundle fields
+    type?: 'boolean' | 'number' | 'time' | 'bundle'; // Optional for backward compatibility
+    subHabitIds?: string[]; // IDs of habits in this bundle
+    bundleParentId?: string; // ID of the parent bundle (if any)
+
+
     /**
      * Optional: Assigned days of the week for weekly habits.
      * 0 = Sunday, 1 = Monday, ..., 6 = Saturday

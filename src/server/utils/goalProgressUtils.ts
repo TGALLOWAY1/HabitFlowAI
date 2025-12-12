@@ -5,6 +5,7 @@
  */
 
 import { getGoalById } from '../repositories/goalRepository';
+import { getHabitsByUser } from '../repositories/habitRepository';
 import { getDayLogsByHabit } from '../repositories/dayLogRepository';
 import { getGoalManualLogsByGoal } from '../repositories/goalManualLogRepository';
 import type { Goal, GoalProgress, DayLog, GoalManualLog } from '../../models/persistenceTypes';
@@ -24,19 +25,38 @@ function getDateString(daysAgo: number): string {
   return `${year}-${month}-${day}`;
 }
 
+
+
 /**
- * Check if a date string is within the last N days.
+ * Helper to resolve bundle IDs to their sub-habit IDs.
+ * If a habit is a bundle, returns its subHabitIds.
+ * If a habit is not a bundle, returns the habit ID itself.
  * 
- * @param dateStr - Date string in YYYY-MM-DD format
- * @param days - Number of days to look back
- * @returns True if date is within the last N days
+ * @param habitIds - List of habit IDs to resolve
+ * @param userId - User ID
+ * @returns Array of resolved habit IDs (flattened)
  */
-function isWithinLastDays(dateStr: string, days: number): boolean {
-  const date = new Date(dateStr);
-  const now = new Date();
-  const diffTime = now.getTime() - date.getTime();
-  const diffDays = diffTime / (1000 * 60 * 60 * 24);
-  return diffDays >= 0 && diffDays <= days;
+async function resolveBundleIds(habitIds: string[], userId: string): Promise<string[]> {
+  const resolvedIds = new Set<string>();
+
+  // We need to check the type of each habit.
+  // Optimization: Fetch all habits for the user once if the list is long, 
+  // but for single goal computation, fetching individually or getting all is fine.
+  // Let's just fetch all habits for the user to be safe and efficient for multiple checks.
+  const allHabits = await getHabitsByUser(userId);
+  const habitMap = new Map(allHabits.map(h => [h.id, h]));
+
+  for (const id of habitIds) {
+    const habit = habitMap.get(id);
+    if (habit?.type === 'bundle' && habit.subHabitIds) {
+      // Add all sub-habits
+      habit.subHabitIds.forEach(subId => resolvedIds.add(subId));
+    } else {
+      resolvedIds.add(id);
+    }
+  }
+
+  return Array.from(resolvedIds);
 }
 
 /**
@@ -59,9 +79,12 @@ export async function computeGoalProgress(
     return null;
   }
 
+  // Resolve any bundles in linkedHabitIds to their sub-habits
+  const resolvedHabitIds = await resolveBundleIds(goal.linkedHabitIds, userId);
+
   // Fetch all logs for linked habits
   const allLogs: DayLog[] = [];
-  for (const habitId of goal.linkedHabitIds) {
+  for (const habitId of resolvedHabitIds) {
     const habitLogs = await getDayLogsByHabit(habitId, userId);
     // Convert Record to array
     const logsArray = Object.values(habitLogs);
@@ -104,9 +127,12 @@ export async function getGoalInactivity(
     last7Days.push(getDateString(i));
   }
 
+  // Resolve any bundles in linkedHabitIds to their sub-habits
+  const resolvedHabitIds = await resolveBundleIds(goal.linkedHabitIds, userId);
+
   // Fetch all logs for linked habits
   const allLogs: DayLog[] = [];
-  for (const habitId of goal.linkedHabitIds) {
+  for (const habitId of resolvedHabitIds) {
     const habitLogs = await getDayLogsByHabit(habitId, userId);
     // Convert Record to array
     const logsArray = Object.values(habitLogs);
@@ -278,11 +304,32 @@ export async function computeGoalsWithProgress(
   // Fetch all goals for the user
   const goals = await getGoalsByUser(userId);
 
-  // Collect all unique habit IDs from all goals
+  // Fetch all habits for the user to resolve bundles
+  const { getHabitsByUser } = await import('../repositories/habitRepository');
+  const allHabits = await getHabitsByUser(userId);
+  const habitMap = new Map(allHabits.map(h => [h.id, h]));
+
+  // Collect all unique habit IDs from all goals, resolving bundles
   const allHabitIds = new Set<string>();
-  for (const goal of goals) {
+
+  // Helper to resolve a single goal's habits synchronously using the pre-fetched map
+  const getResolvedHabitsForGoal = (goal: Goal): string[] => {
+    const resolved = new Set<string>();
     for (const habitId of goal.linkedHabitIds) {
-      allHabitIds.add(habitId);
+      const habit = habitMap.get(habitId);
+      if (habit?.type === 'bundle' && habit.subHabitIds) {
+        habit.subHabitIds.forEach(subId => resolved.add(subId));
+      } else {
+        resolved.add(habitId);
+      }
+    }
+    return Array.from(resolved);
+  };
+
+  for (const goal of goals) {
+    const resolvedIds = getResolvedHabitsForGoal(goal);
+    for (const id of resolvedIds) {
+      allHabitIds.add(id);
     }
   }
 
@@ -315,7 +362,9 @@ export async function computeGoalsWithProgress(
   for (const goal of goals) {
     // Collect all logs for this goal's linked habits
     const goalLogs: DayLog[] = [];
-    for (const habitId of goal.linkedHabitIds) {
+    const resolvedIds = getResolvedHabitsForGoal(goal);
+
+    for (const habitId of resolvedIds) {
       const habitLogs = allLogsMap.get(habitId) || [];
       goalLogs.push(...habitLogs);
     }

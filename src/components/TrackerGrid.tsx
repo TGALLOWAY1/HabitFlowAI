@@ -5,6 +5,7 @@ import { cn } from '../utils/cn';
 import { Check, Plus, Trash2, GripVertical, Pencil, Trophy } from 'lucide-react';
 import { NumericInputPopover } from './NumericInputPopover';
 import { useHabitStore } from '../store/HabitContext';
+import { computeBundleStatus, getBundleStats } from '../utils/habitUtils';
 import {
     DndContext,
     closestCenter,
@@ -88,17 +89,12 @@ const HabitActionButtons = ({
 
 // --- Daily Habit Row ---
 
-const SortableHabitRow = ({
-    habit,
-    logs,
-    dates,
-    handleCellClick,
-    deleteHabit,
-    deleteConfirmId,
-    setDeleteConfirmId,
-    onEditHabit
-}: {
+interface HabitRowContentProps {
     habit: Habit;
+    depth: number;
+    isExpanded: boolean;
+    hasChildren: boolean;
+    onToggleExpand: () => void;
     logs: Record<string, DayLog>;
     dates: Date[];
     handleCellClick: (e: React.MouseEvent, habit: Habit, dateStr: string, log?: DayLog) => void;
@@ -106,28 +102,46 @@ const SortableHabitRow = ({
     deleteConfirmId: string | null;
     setDeleteConfirmId: (id: string | null) => void;
     onEditHabit: (habit: Habit) => void;
-}) => {
-    const {
-        attributes,
-        listeners,
-        setNodeRef,
-        transform,
-        transition,
-        isDragging,
-    } = useSortable({ id: habit.id });
+    // Drag & Drop props (optional, only for root)
+    attributes?: any;
+    listeners?: any;
+    isDragging?: boolean;
+    setNodeRef?: (node: HTMLElement | null) => void;
+    style?: React.CSSProperties;
+    // Computed status for bundles
+    bundleStatus?: { completed: boolean; value: number };
+    onToggle: (habitId: string, date: string) => Promise<void>;
+}
 
-    const style = {
-        transform: CSS.Transform.toString(transform),
-        transition,
-        zIndex: isDragging ? 50 : 'auto',
-        position: isDragging ? 'relative' as const : undefined,
-    };
+const HabitRowContent = ({
+    habit,
+    depth,
+    isExpanded,
+    hasChildren,
+    onToggleExpand,
+    logs,
+    dates,
+    handleCellClick,
+    deleteHabit,
+    deleteConfirmId,
+    setDeleteConfirmId,
+    onEditHabit,
+    attributes,
+    listeners,
+    isDragging,
+    setNodeRef,
+    style,
+    bundleStatus,
+    onToggle
+}: HabitRowContentProps) => {
 
     // Non-Negotiable Logic
     const today = new Date();
     const todayStr = format(today, 'yyyy-MM-dd');
     const todayLog = logs[`${habit.id}-${todayStr}`];
-    const isCompletedToday = todayLog?.completed;
+
+    // For bundles, we use the computed status if provided, otherwise the log status
+    const isCompletedToday = bundleStatus ? bundleStatus.completed : todayLog?.completed;
 
     const isNonNegotiableToday = useMemo(() => {
         if (!habit.nonNegotiable) return false;
@@ -141,6 +155,8 @@ const SortableHabitRow = ({
             : "ring-1 ring-yellow-500 shadow-[0_0_15px_rgba(234,179,8,0.4)] animate-pulse" // Active: Pulsing
         : "";
 
+    const indentClass = depth > 0 ? `ml-${depth * 6}` : ""; // Tailwind arbitrary values or standard spacing? using padding style is safer.
+
     return (
         <div
             ref={setNodeRef}
@@ -151,21 +167,39 @@ const SortableHabitRow = ({
                 priorityRingClass
             )}
         >
-            <div className="w-64 flex-shrink-0 p-4 border-r border-white/5 flex items-center justify-between group-hover:bg-white/[0.02] transition-colors relative">
-                <div className="flex items-center gap-3">
-                    <button
-                        {...attributes}
-                        {...listeners}
-                        className="text-neutral-600 hover:text-neutral-400 cursor-grab active:cursor-grabbing p-1 -ml-2 opacity-0 group-hover:opacity-100 transition-opacity"
-                        title="Drag to reorder"
-                    >
-                        <GripVertical size={16} />
-                    </button>
+            <div
+                className="w-64 flex-shrink-0 p-4 border-r border-white/5 flex items-center justify-between group-hover:bg-white/[0.02] transition-colors relative"
+                style={{ paddingLeft: `${16 + (depth * 24)}px` }} // Dynamic Indentation
+            >
+                <div className="flex items-center gap-3 overflow-hidden">
+                    {/* Drag Handle (Only for depth 0) */}
+                    {depth === 0 && (
+                        <button
+                            {...attributes}
+                            {...listeners}
+                            className="text-neutral-600 hover:text-neutral-400 cursor-grab active:cursor-grabbing p-1 -ml-2 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
+                            title="Drag to reorder"
+                        >
+                            <GripVertical size={16} />
+                        </button>
+                    )}
 
-                    <div className="flex flex-col">
-                        <span className="font-medium text-neutral-200">{habit.name}</span>
-                        {habit.goal.target && (
-                            <span className="text-xs text-neutral-500 mt-1">
+                    <div className="flex flex-col overflow-hidden">
+                        <div className="flex items-center gap-2">
+                            <span
+                                className={cn(
+                                    "font-medium truncate transition-colors",
+                                    depth > 0 ? "text-neutral-400 italic text-sm" : "text-neutral-200"
+                                )}
+                                title={habit.name}
+                            >
+                                {habit.name}
+                            </span>
+                            {/* Expand/Collapse Toggle Removed */}
+                            {/* {hasChildren && ( ... )} */}
+                        </div>
+                        {habit.goal.type === 'number' && habit.goal.target && (
+                            <span className="text-xs text-neutral-500 mt-1 truncate">
                                 Goal: {habit.goal.target} {habit.goal.unit}
                             </span>
                         )}
@@ -179,15 +213,79 @@ const SortableHabitRow = ({
                     deleteConfirmId={deleteConfirmId}
                     setDeleteConfirmId={setDeleteConfirmId}
                 />
+
+                {/* Bundle Expand/Collapse "Drawer Handle" */}
+                {hasChildren && (
+                    <div
+                        className="absolute bottom-0 left-0 right-0 h-[6px] cursor-pointer hover:bg-white/[0.03] transition-colors flex items-end justify-center pb-[2px] z-10"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            onToggleExpand();
+                        }}
+                        title={isExpanded ? "Click to Collapse Bundle" : "Click to Expand Bundle"}
+                    >
+                        <div
+                            className={cn(
+                                "w-12 h-1 rounded-full transition-all duration-300",
+                                isExpanded
+                                    ? "bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)]"
+                                    : "bg-neutral-700 hover:bg-blue-400"
+                            )}
+                        />
+                    </div>
+                )}
             </div>
 
             <div className="flex">
                 {dates.map((date) => {
                     const dateStr = format(date, 'yyyy-MM-dd');
-                    const log = logs[`${habit.id}-${dateStr}`];
-                    const isCompleted = log?.completed;
-                    const hasValue = habit.goal.type === 'number' && typeof log?.value === 'number' && log.value > 0;
+
+                    // Logic:
+                    // If bundle, current status is computed from children.
+                    // If regular habit, status is from logs.
+                    let isCompleted = false;
+                    let hasValue = false;
+                    let value = 0;
+                    let log = logs[`${habit.id}-${dateStr}`];
+
+                    if (habit.type === 'bundle' && hasChildren) {
+                        const status = computeBundleStatus(habit, logs, dateStr);
+                        isCompleted = status.completed;
+                        value = status.value;
+                        hasValue = value > 0;
+                    } else {
+                        isCompleted = log?.completed || false;
+                        hasValue = habit.goal.type === 'number' && typeof log?.value === 'number' && log.value > 0;
+                        value = log?.value || 0;
+                    }
+
                     const isPartial = hasValue && !isCompleted;
+
+                    const isInteractive = true; // Bundles are now interactive
+
+                    // Bundle Click Handler
+                    const handleBundleClick = (e: React.MouseEvent) => {
+                        e.stopPropagation();
+                        if (habit.type !== 'bundle') return;
+
+                        const stats = getBundleStats(habit, logs, dateStr);
+                        const childrenToToggle = habit.subHabitIds || [];
+                        const allDone = stats.isAllDone;
+
+                        // Toggle Logic: If ALL done, clear all. Else, complete remaining.
+                        childrenToToggle.forEach(childId => {
+                            const childLog = logs[`${childId}-${dateStr}`];
+                            const isChildDone = childLog?.completed;
+
+                            if (allDone) {
+                                // Turn OFF if on
+                                if (isChildDone) onToggle(childId, dateStr);
+                            } else {
+                                // Turn ON if off
+                                if (!isChildDone) onToggle(childId, dateStr);
+                            }
+                        });
+                    };
 
                     return (
                         <div
@@ -195,23 +293,59 @@ const SortableHabitRow = ({
                             className="w-16 flex-shrink-0 border-r border-white/5 flex items-center justify-center p-2"
                         >
                             <button
-                                onClick={(e) => handleCellClick(e, habit, dateStr, log)}
-                                onDoubleClick={(e) => handleCellClick(e, habit, dateStr, log)}
+                                onClick={habit.type === 'bundle' ? handleBundleClick : (isInteractive ? (e) => handleCellClick(e, habit, dateStr, log) : undefined)}
+                                onDoubleClick={isInteractive ? (e) => handleCellClick(e, habit, dateStr, log) : undefined}
+                                disabled={!isInteractive}
                                 className={cn(
-                                    "w-10 h-10 rounded-lg flex items-center justify-center transition-all duration-200",
-                                    isCompleted
-                                        ? habit.nonNegotiable
-                                            ? "bg-yellow-500 text-neutral-900 shadow-[0_0_15px_rgba(234,179,8,0.4)] animate-gold-burst"
-                                            : "bg-emerald-500 text-neutral-900 shadow-[0_0_15px_rgba(16,185,129,0.4)] scale-90"
-                                        : isPartial
-                                            ? "bg-blue-500 text-neutral-900 shadow-[0_0_15px_rgba(59,130,246,0.4)] scale-95" // Partial: Blue, visible text
-                                            : "bg-neutral-800/50 text-transparent hover:bg-neutral-800 hover:text-neutral-600 border border-white/5 hover:border-white/10"
+                                    "w-10 h-10 rounded-lg flex items-center justify-center transition-all duration-200 relative overflow-hidden",
+                                    habit.type === 'bundle'
+                                        ? "bg-neutral-800 border border-white/5 hover:bg-neutral-700 text-neutral-200"
+                                        : isCompleted
+                                            ? habit.nonNegotiable
+                                                ? "bg-yellow-500 text-neutral-900 shadow-[0_0_15px_rgba(234,179,8,0.4)] animate-gold-burst"
+                                                : "bg-emerald-500 text-neutral-900 shadow-[0_0_15px_rgba(16,185,129,0.4)] scale-90"
+                                            : isPartial
+                                                ? "bg-blue-500 text-neutral-900 shadow-[0_0_15px_rgba(59,130,246,0.4)] scale-95" // Partial
+                                                : "bg-neutral-800/50 text-transparent hover:bg-neutral-800 hover:text-neutral-600 border border-white/5 hover:border-white/10",
+                                    !isInteractive && isCompleted && "opacity-80 cursor-default",
+                                    !isInteractive && "cursor-default hover:bg-neutral-800/50 hover:text-transparent"
                                 )}
+                                title={habit.type === 'bundle' ? "Click to toggle all sub-habits" : (!isInteractive ? "Derived from sub-habits" : undefined)}
                             >
-                                {habit.goal.type === 'number' && log?.value ? (
-                                    <span className="text-xs font-bold">{log.value}</span>
+                                {habit.type === 'bundle' ? (
+                                    <>
+                                        {/* Bundle Progress Background */}
+                                        <div
+                                            className="absolute inset-0 bg-emerald-500/20 transition-all duration-500 pointer-events-none"
+                                            style={{
+                                                height: `${getBundleStats(habit, logs, dateStr).percent}%`,
+                                                bottom: 0,
+                                                top: 'auto'
+                                            }}
+                                        />
+                                        {/* Bundle Content */}
+                                        <span className="relative z-10 text-[10px] font-bold leading-tight flex flex-col items-center">
+                                            {getBundleStats(habit, logs, dateStr).isAllDone ? (
+                                                <Check size={18} strokeWidth={3} className="text-emerald-500" />
+                                            ) : (
+                                                getBundleStats(habit, logs, dateStr).completed > 0 ? (
+                                                    <>
+                                                        <span>{getBundleStats(habit, logs, dateStr).completed}</span>
+                                                        <span className="w-full h-[1px] bg-neutral-500/50 my-[1px]" />
+                                                        <span>{getBundleStats(habit, logs, dateStr).total}</span>
+                                                    </>
+                                                ) : (
+                                                    <span className="text-neutral-600 opacity-0 hover:opacity-100 transition-opacity text-xs">+</span>
+                                                )
+                                            )}
+                                        </span>
+                                    </>
                                 ) : (
-                                    <Check size={20} strokeWidth={3} className={cn("transition-transform duration-200", isCompleted ? "scale-100" : "scale-50")} />
+                                    habit.goal.type === 'number' && value > 0 ? (
+                                        <span className="text-xs font-bold">{value}</span>
+                                    ) : (
+                                        <Check size={20} strokeWidth={3} className={cn("transition-transform duration-200", isCompleted ? "scale-100" : "scale-50")} />
+                                    )
                                 )}
                             </button>
                         </div>
@@ -222,26 +356,32 @@ const SortableHabitRow = ({
     );
 };
 
-// --- Weekly Habit Row ---
-
-const SortableWeeklyHabitRow = ({
+const SortableHabitRow = ({
     habit,
+    allHabits,
+    expandedIds,
+    onToggleExpand,
     logs,
-    onToggleToday,
-    onOpenPopover,
+    dates,
+    handleCellClick,
     deleteHabit,
     deleteConfirmId,
     setDeleteConfirmId,
-    onEditHabit
+    onEditHabit,
+    onToggle
 }: {
     habit: Habit;
-    logs: Record<string, DayLog>; // All logs passed in, we filter inside
-    onToggleToday: (habit: Habit) => void;
-    onOpenPopover: (e: React.MouseEvent, habit: Habit, date: string, currentValue: number) => void;
+    allHabits: Habit[];
+    expandedIds: Set<string>;
+    onToggleExpand: (id: string) => void;
+    logs: Record<string, DayLog>;
+    dates: Date[];
+    handleCellClick: (e: React.MouseEvent, habit: Habit, dateStr: string, log?: DayLog) => void;
     deleteHabit: (id: string) => Promise<void>;
     deleteConfirmId: string | null;
     setDeleteConfirmId: (id: string | null) => void;
     onEditHabit: (habit: Habit) => void;
+    onToggle: (habitId: string, date: string) => Promise<void>;
 }) => {
     const {
         attributes,
@@ -258,6 +398,124 @@ const SortableWeeklyHabitRow = ({
         zIndex: isDragging ? 50 : 'auto',
         position: isDragging ? 'relative' as const : undefined,
     };
+
+    // Find children
+    const children = useMemo(() => {
+        if (habit.type !== 'bundle' || !habit.subHabitIds) return [];
+        // Map IDs to habit objects, preserving order
+        return habit.subHabitIds
+            .map(id => allHabits.find(h => h.id === id))
+            .filter((h): h is Habit => !!h);
+    }, [habit, allHabits]);
+
+    // DEBUG LOG
+    if (habit.type === 'bundle') {
+        console.log(`[SortableHabitRow] Bundle: ${habit.name} (${habit.id})`);
+        console.log(`  - subHabitIds:`, habit.subHabitIds);
+        console.log(`  - Resolved Children:`, children.length);
+        if (habit.subHabitIds && children.length !== habit.subHabitIds.length) {
+            console.warn(`  - MISMATCH: Expected ${habit.subHabitIds.length} children but found ${children.length}. Missing IDs?`);
+            habit.subHabitIds.forEach(id => {
+                if (!allHabits.find(h => h.id === id)) console.warn(`    - Missing Child ID: ${id}`);
+            });
+        }
+    }
+
+    const isExpanded = expandedIds.has(habit.id);
+    const hasChildren = children.length > 0;
+
+    return (
+        <div className="flex flex-col">
+            {/* Parent Row - Draggable/Sortable */}
+            <HabitRowContent
+                habit={habit}
+                depth={0}
+                isExpanded={isExpanded}
+                hasChildren={hasChildren}
+                onToggleExpand={() => onToggleExpand(habit.id)}
+                logs={logs}
+                dates={dates}
+                handleCellClick={handleCellClick}
+                deleteHabit={deleteHabit}
+                deleteConfirmId={deleteConfirmId}
+                setDeleteConfirmId={setDeleteConfirmId}
+                onEditHabit={onEditHabit}
+                // Drag props
+                attributes={attributes}
+                listeners={listeners}
+                isDragging={isDragging}
+                setNodeRef={setNodeRef}
+                style={style}
+                onToggle={onToggle}
+            />
+
+            {/* Child Rows - Rendered when expanded */}
+            {isExpanded && children.map(child => (
+                <HabitRowContent
+                    key={child.id}
+                    habit={child}
+                    depth={1}
+                    isExpanded={false}
+                    hasChildren={false} // Assume 1 level for MVP
+                    onToggleExpand={() => { }}
+                    logs={logs}
+                    dates={dates}
+                    handleCellClick={handleCellClick}
+                    deleteHabit={deleteHabit}
+                    deleteConfirmId={deleteConfirmId}
+                    setDeleteConfirmId={setDeleteConfirmId}
+                    onEditHabit={onEditHabit}
+                    onToggle={onToggle}
+                    // No drag props
+                    style={{ transition }} // Maintain transition if needed
+                />
+            ))}
+        </div>
+    );
+};
+
+// --- Weekly Habit Row ---
+
+interface WeeklyHabitRowContentProps {
+    habit: Habit;
+    depth: number;
+    isExpanded: boolean;
+    hasChildren: boolean;
+    onToggleExpand: () => void;
+    logs: Record<string, DayLog>;
+    onEditHabit: (habit: Habit) => void;
+    deleteHabit: (id: string) => Promise<void>;
+    deleteConfirmId: string | null;
+    setDeleteConfirmId: (id: string | null) => void;
+    onToggleToday: (habit: Habit) => void;
+    onOpenPopover: (e: React.MouseEvent, habit: Habit, date: string, currentValue: number) => void;
+    // Drag props
+    attributes?: any;
+    listeners?: any;
+    isDragging?: boolean;
+    setNodeRef?: (node: HTMLElement | null) => void;
+    style?: React.CSSProperties;
+}
+
+const WeeklyHabitRowContent = ({
+    habit,
+    depth,
+    isExpanded,
+    hasChildren,
+    onToggleExpand,
+    logs,
+    onEditHabit,
+    deleteHabit,
+    deleteConfirmId,
+    setDeleteConfirmId,
+    onToggleToday,
+    onOpenPopover,
+    attributes,
+    listeners,
+    isDragging,
+    setNodeRef,
+    style
+}: WeeklyHabitRowContentProps) => {
 
     // Calculate Weekly Progress
     const { currentCount, target, isCompletedToday, todayLogValue } = useMemo(() => {
@@ -292,10 +550,7 @@ const SortableWeeklyHabitRow = ({
             }
         });
 
-        // For quantitative, target is the numeric target. For boolean, it's the frequency (e.g. 3 times/week).
-        // Wait, habit.goal.target IS the target.
-        // If frequency is 'weekly', target usually means "times per week" for boolean.
-        // For quantitative 'weekly', target means "total units per week".
+        // Current Habit Goal Target logic
         const goalTarget = habit.goal.target || 3;
 
         return {
@@ -315,6 +570,10 @@ const SortableWeeklyHabitRow = ({
             : "ring-1 ring-yellow-500 shadow-[0_0_15px_rgba(234,179,8,0.4)] animate-pulse"
         : "";
 
+    // Indentation Style
+    // Using padding for indentation to match Daily Grid
+    const indentStyle = { paddingLeft: `${16 + (depth * 24)}px` };
+
     return (
         <div
             ref={setNodeRef}
@@ -326,23 +585,34 @@ const SortableWeeklyHabitRow = ({
                 priorityRingClass
             )}
         >
-            {/* Sidebar: Matches Daily Row width and layout */}
-            <div className="w-64 flex-shrink-0 p-4 border-r border-white/5 flex items-center justify-between relative">
+            {/* Sidebar: Matches Daily Row width and layout, but with dynamic indentation */}
+            <div
+                className="w-64 flex-shrink-0 p-4 border-r border-white/5 flex items-center justify-between relative"
+                style={indentStyle}
+            >
                 <div className="flex items-center gap-3">
-                    <button
-                        {...attributes}
-                        {...listeners}
-                        className="text-neutral-600 hover:text-neutral-400 cursor-grab active:cursor-grabbing p-1 -ml-2 opacity-0 group-hover:opacity-100 transition-opacity"
-                        title="Drag to reorder"
-                    >
-                        <GripVertical size={16} />
-                    </button>
+                    {/* Drag Handle (Only for depth 0) */}
+                    {depth === 0 && (
+                        <button
+                            {...attributes}
+                            {...listeners}
+                            className="text-neutral-600 hover:text-neutral-400 cursor-grab active:cursor-grabbing p-1 -ml-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                            title="Drag to reorder"
+                        >
+                            <GripVertical size={16} />
+                        </button>
+                    )}
 
                     <div className="flex flex-col">
-                        <span className="font-medium text-neutral-200">{habit.name}</span>
+                        <span className={cn(
+                            "font-medium transition-colors",
+                            depth > 0 ? "text-neutral-400 italic text-sm" : "text-neutral-200"
+                        )}>
+                            {habit.name}
+                        </span>
                         <span className="text-xs text-neutral-500 mt-1 flex items-center gap-2">
                             {/* Display e.g. "Weekly Goal: 25 / 50 reps" or "Weekly Goal: 3 / 5" */}
-                            Weekly Goal: {Math.round(currentCount * 10) / 10} / {target} {habit.goal.unit}
+                            Goal: {Math.round(currentCount * 10) / 10} / {target} {habit.goal.unit}
                             {currentCount >= target && <Trophy size={12} className="text-yellow-500" />}
                         </span>
                     </div>
@@ -355,6 +625,27 @@ const SortableWeeklyHabitRow = ({
                     deleteConfirmId={deleteConfirmId}
                     setDeleteConfirmId={setDeleteConfirmId}
                 />
+
+                {/* Bundle Expand/Collapse "Drawer Handle" */}
+                {hasChildren && (
+                    <div
+                        className="absolute bottom-0 left-0 right-0 h-[6px] cursor-pointer hover:bg-white/[0.03] transition-colors flex items-end justify-center pb-[2px] z-10"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            onToggleExpand();
+                        }}
+                        title={isExpanded ? "Click to Collapse Bundle" : "Click to Expand Bundle"}
+                    >
+                        <div
+                            className={cn(
+                                "w-12 h-1 rounded-full transition-all duration-300",
+                                isExpanded
+                                    ? "bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)]"
+                                    : "bg-neutral-700 hover:bg-blue-400"
+                            )}
+                        />
+                    </div>
+                )}
             </div>
 
             {/* Main Content Area */}
@@ -396,7 +687,7 @@ const SortableWeeklyHabitRow = ({
                         }
                     }}
                     className={cn(
-                        "flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all min-w-[140px] justify-center",
+                        "flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-medium transition-all min-w-[140px]",
                         isCompletedToday
                             ? habit.nonNegotiable
                                 ? "bg-yellow-500 text-neutral-900 shadow-[0_0_15px_rgba(234,179,8,0.3)] animate-gold-burst"
@@ -411,17 +702,8 @@ const SortableWeeklyHabitRow = ({
                         </>
                     ) : (
                         <>
-                            {isQuantitative ? (
-                                <span className="flex items-center gap-2">
-                                    <Plus size={16} />
-                                    Log {habit.goal.unit || 'Value'}
-                                </span>
-                            ) : (
-                                <>
-                                    <div className="w-4 h-4 rounded-full border-2 border-current" />
-                                    <span>Mark Done</span>
-                                </>
-                            )}
+                            <div className="w-4 h-4 rounded-full border-2 border-current" />
+                            <span>Mark Done</span>
                         </>
                     )}
                 </button>
@@ -430,6 +712,106 @@ const SortableWeeklyHabitRow = ({
     );
 };
 
+
+const SortableWeeklyHabitRow = ({
+    habit,
+    allHabits,
+    expandedIds,
+    onToggleExpand,
+    logs,
+    onToggleToday,
+    onOpenPopover,
+    deleteHabit,
+    deleteConfirmId,
+    setDeleteConfirmId,
+    onEditHabit
+}: {
+    habit: Habit;
+    allHabits: Habit[];
+    expandedIds: Set<string>;
+    onToggleExpand: (id: string) => void;
+    logs: Record<string, DayLog>; // All logs passed in, we filter inside
+    onToggleToday: (habit: Habit) => void;
+    onOpenPopover: (e: React.MouseEvent, habit: Habit, date: string, currentValue: number) => void;
+    deleteHabit: (id: string) => Promise<void>;
+    deleteConfirmId: string | null;
+    setDeleteConfirmId: (id: string | null) => void;
+    onEditHabit: (habit: Habit) => void;
+}) => {
+    const {
+        attributes,
+        listeners,
+        setNodeRef,
+        transform,
+        transition,
+        isDragging,
+    } = useSortable({ id: habit.id });
+
+    const style = {
+        transform: CSS.Transform.toString(transform),
+        transition,
+        zIndex: isDragging ? 50 : 'auto',
+        position: isDragging ? 'relative' as const : undefined,
+    };
+
+    // Find children
+    const children = useMemo(() => {
+        if (habit.type !== 'bundle' || !habit.subHabitIds) return [];
+        return habit.subHabitIds
+            .map(id => allHabits.find(h => h.id === id))
+            .filter((h): h is Habit => !!h);
+    }, [habit, allHabits]);
+
+    const isExpanded = expandedIds.has(habit.id);
+    const hasChildren = children.length > 0;
+
+    return (
+        <div className="flex flex-col">
+            {/* Parent Row */}
+            <WeeklyHabitRowContent
+                habit={habit}
+                depth={0}
+                isExpanded={isExpanded}
+                hasChildren={hasChildren}
+                onToggleExpand={() => onToggleExpand(habit.id)}
+                logs={logs}
+                onEditHabit={onEditHabit}
+                deleteHabit={deleteHabit}
+                deleteConfirmId={deleteConfirmId}
+                setDeleteConfirmId={setDeleteConfirmId}
+                onToggleToday={onToggleToday}
+                onOpenPopover={onOpenPopover}
+                // Drag Props
+                attributes={attributes}
+                listeners={listeners}
+                isDragging={isDragging}
+                setNodeRef={setNodeRef}
+                style={style}
+            />
+
+            {/* Child Rows */}
+            {isExpanded && children.map(child => (
+                <WeeklyHabitRowContent
+                    key={child.id}
+                    habit={child}
+                    depth={1}
+                    isExpanded={false}
+                    hasChildren={false} // 1 level deep
+                    onToggleExpand={() => { }}
+                    logs={logs}
+                    onEditHabit={onEditHabit}
+                    deleteHabit={deleteHabit}
+                    deleteConfirmId={deleteConfirmId}
+                    setDeleteConfirmId={setDeleteConfirmId}
+                    onToggleToday={onToggleToday}
+                    onOpenPopover={onOpenPopover}
+                    // No drag props
+                    style={{ transition }}
+                />
+            ))}
+        </div>
+    );
+};
 
 export const TrackerGrid: React.FC<TrackerGridProps> = ({ habits, logs, onToggle, onUpdateValue, onAddHabit, onEditHabit }) => {
     const { deleteHabit, reorderHabits } = useHabitStore();
@@ -449,10 +831,31 @@ export const TrackerGrid: React.FC<TrackerGridProps> = ({ habits, logs, onToggle
     });
 
     const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+    const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
 
-    // Initial Split
-    const dailyHabits = useMemo(() => habits.filter(h => h.goal.frequency === 'daily'), [habits]);
-    const weeklyHabits = useMemo(() => habits.filter(h => h.goal.frequency === 'weekly'), [habits]);
+    const toggleExpand = (id: string) => {
+        setExpandedIds(prev => {
+            const next = new Set(prev);
+            if (next.has(id)) next.delete(id);
+            else next.add(id);
+            return next;
+        });
+    };
+
+    // Filter Roots: Habits that are not children of any bundle
+    const rootHabits = useMemo(() => {
+        const childIds = new Set<string>();
+        habits.forEach(h => {
+            if (h.type === 'bundle' && h.subHabitIds) {
+                h.subHabitIds.forEach(id => childIds.add(id));
+            }
+        });
+        return habits.filter(h => !childIds.has(h.id));
+    }, [habits]);
+
+    // Initial Split based on Roots
+    const dailyHabits = useMemo(() => rootHabits.filter(h => h.goal.frequency === 'daily'), [rootHabits]);
+    const weeklyHabits = useMemo(() => rootHabits.filter(h => h.goal.frequency === 'weekly'), [rootHabits]);
 
     // Generate dates: Today + Last 13 days (Reverse Chronological)
     const dates = useMemo(() => {
@@ -486,12 +889,32 @@ export const TrackerGrid: React.FC<TrackerGridProps> = ({ habits, logs, onToggle
         if (oldDailyIndex !== -1 && newDailyIndex !== -1) {
             // Reordering Daily
             const newOrder = arrayMove(dailyHabits, oldDailyIndex, newDailyIndex).map(h => h.id);
-            // We need to preserve the relative order of weekly habits in the global list ideally,
-            // OR just send the IDs of the daily block reordered + weekly block.
-            // The backend takes a list of IDs and sets indices [0..N].
-            // So we should construct the full list: [...newDaily, ...weekly] (or whatever the global visual order is).
-            // Current rendering: Daily Block then Weekly Block.
-            const fullListIds = [...newOrder, ...weeklyHabits.map(h => h.id)];
+
+            // Reconstruct full list order:
+            // We want to preserve relations.
+            // Simplified strategy: Just send new order of roots + any remaining habits (children) to backend?
+            // Backend reorderHabits takes a list of IDs.
+            // If we only reorder roots, children will stick to their parents implicitly if we don't persist order for them?
+            // No, habits have an order.
+
+            // Get all roots in new order
+            const newRoots = arrayMove(dailyHabits, oldDailyIndex, newDailyIndex);
+
+            // Construct full list: newRoots + weeklyRoots + children (appended or interleaved?)
+            // If children order matters, we should probably keep them.
+            // Safest: Current reorder implementation just updates index.
+            // If we send ONLY roots, children might get pushed to end?
+            // We should send ALL habits.
+
+            // Let's preserve the relative order of non-moved items.
+            // This is complex.
+            // MVP: Just send IDs of daily roots first, then weekly roots?
+            // What about children? They need to be in the list too to have an index.
+
+            const rootIds = [...newOrder, ...weeklyHabits.map(h => h.id)];
+            const childIds = habits.filter(h => !rootIds.includes(h.id)).map(h => h.id);
+
+            const fullListIds = [...rootIds, ...childIds];
             reorderHabits(fullListIds);
             return;
         }
@@ -503,8 +926,10 @@ export const TrackerGrid: React.FC<TrackerGridProps> = ({ habits, logs, onToggle
         if (oldWeeklyIndex !== -1 && newWeeklyIndex !== -1) {
             // Reordering Weekly
             const newOrder = arrayMove(weeklyHabits, oldWeeklyIndex, newWeeklyIndex).map(h => h.id);
-            // Full list: [...daily, ...newWeekly]
-            const fullListIds = [...dailyHabits.map(h => h.id), ...newOrder];
+            const rootIds = [...dailyHabits.map(h => h.id), ...newOrder];
+            const childIds = habits.filter(h => !rootIds.includes(h.id)).map(h => h.id);
+            const fullListIds = [...rootIds, ...childIds];
+
             reorderHabits(fullListIds);
             return;
         }
@@ -587,6 +1012,9 @@ export const TrackerGrid: React.FC<TrackerGridProps> = ({ habits, logs, onToggle
                                         <SortableHabitRow
                                             key={habit.id}
                                             habit={habit}
+                                            allHabits={habits}
+                                            expandedIds={expandedIds}
+                                            onToggleExpand={toggleExpand}
                                             logs={logs}
                                             dates={dates}
                                             handleCellClick={handleCellClick}
@@ -594,6 +1022,7 @@ export const TrackerGrid: React.FC<TrackerGridProps> = ({ habits, logs, onToggle
                                             deleteConfirmId={deleteConfirmId}
                                             setDeleteConfirmId={setDeleteConfirmId}
                                             onEditHabit={onEditHabit}
+                                            onToggle={onToggle}
                                         />
                                     ))}
                                 </SortableContext>
@@ -623,6 +1052,9 @@ export const TrackerGrid: React.FC<TrackerGridProps> = ({ habits, logs, onToggle
                                         <SortableWeeklyHabitRow
                                             key={habit.id}
                                             habit={habit}
+                                            allHabits={habits}
+                                            expandedIds={expandedIds}
+                                            onToggleExpand={toggleExpand}
                                             logs={logs}
                                             onToggleToday={handleToggleToday}
                                             onOpenPopover={(e, habit, date, val) => {

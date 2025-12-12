@@ -64,7 +64,8 @@ export async function createHabitRoute(req: Request, res: Response): Promise<voi
   try {
 
     // Validate request body
-    const { name, categoryId, goal, description, assignedDays, scheduledTime, durationMinutes, nonNegotiable, nonNegotiableDays, deadline } = req.body;
+    // Validate request body
+    const { name, categoryId, goal, description, assignedDays, scheduledTime, durationMinutes, nonNegotiable, nonNegotiableDays, deadline, type, subHabitIds, bundleParentId, order } = req.body;
 
     if (!name || typeof name !== 'string' || name.trim().length === 0) {
       res.status(400).json({
@@ -111,6 +112,10 @@ export async function createHabitRoute(req: Request, res: Response): Promise<voi
         nonNegotiable,
         nonNegotiableDays,
         deadline,
+        type,
+        subHabitIds,
+        bundleParentId,
+        order,
       },
       userId
     );
@@ -191,7 +196,7 @@ export async function updateHabitRoute(req: Request, res: Response): Promise<voi
   try {
 
     const { id } = req.params;
-    const { name, categoryId, goal, description, archived, assignedDays, scheduledTime, durationMinutes, nonNegotiable, nonNegotiableDays, deadline } = req.body;
+    const { name, categoryId, goal, description, archived, assignedDays, scheduledTime, durationMinutes, nonNegotiable, nonNegotiableDays, deadline, type, subHabitIds, bundleParentId, order } = req.body;
 
     if (!id) {
       res.status(400).json({
@@ -312,6 +317,43 @@ export async function updateHabitRoute(req: Request, res: Response): Promise<voi
 
     if (deadline !== undefined) {
       patch.deadline = deadline;
+    }
+
+    if (type !== undefined) {
+      patch.type = type;
+    }
+
+    if (subHabitIds !== undefined) {
+      if (!Array.isArray(subHabitIds) || !subHabitIds.every(id => typeof id === 'string')) {
+        res.status(400).json({
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: 'subHabitIds must be an array of strings',
+          },
+        });
+        return;
+      }
+      patch.subHabitIds = subHabitIds;
+    }
+
+    if (bundleParentId !== undefined) {
+      // Allow setting to null/undefined to unlink? The patch is Partial<Omit...>. 
+      // If we pass null, it might be tricky depending on strictNullChecks. 
+      // Assuming it's typically a string or explicit null/undefined for removal.
+      patch.bundleParentId = bundleParentId;
+    }
+
+    if (order !== undefined) {
+      if (typeof order !== 'number') {
+        res.status(400).json({
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: 'Order must be a number',
+          },
+        });
+        return;
+      }
+      patch.order = order;
     }
 
     if (Object.keys(patch).length === 0) {
