@@ -1,36 +1,36 @@
 /**
- * ActivityLog Repository
+ * RoutineLog Repository
  * 
- * MongoDB data access layer for ActivityLog entities.
- * Tracks when activities are completed.
+ * MongoDB data access layer for RoutineLog entities.
+ * Tracks when routines are completed.
  */
 
 import { getDb } from '../lib/mongoClient';
-import type { ActivityLog } from '../../models/persistenceTypes';
+import { MONGO_COLLECTIONS, type RoutineLog } from '../../models/persistenceTypes';
 
-const COLLECTION_NAME = 'activityLogs';
+const COLLECTION_NAME = MONGO_COLLECTIONS.ROUTINE_LOGS;
 
 /**
- * Create or update an activity log.
+ * Create or update a routine log.
  * 
- * @param log - ActivityLog data
+ * @param log - RoutineLog data
  * @param userId - User ID to associate with the log
- * @returns Created/updated activity log
+ * @returns Created/updated routine log
  */
-export async function saveActivityLog(
-    log: ActivityLog,
+export async function saveRoutineLog(
+    log: RoutineLog,
     userId: string
-): Promise<ActivityLog> {
+): Promise<RoutineLog> {
 
     const db = await getDb();
     const collection = db.collection(COLLECTION_NAME);
 
     // Create composite key for query
-    const compositeKey = `${log.activityId}-${log.date}`;
+    const compositeKey = `${log.routineId}-${log.date}`;
 
     // Create document to store in MongoDB
     const document = {
-        activityId: log.activityId,
+        routineId: log.routineId,
         date: log.date,
         completedAt: log.completedAt,
         compositeKey, // Store composite key for efficient querying
@@ -56,21 +56,21 @@ export async function saveActivityLog(
     );
 
     if (!result) {
-        throw new Error('Failed to save activity log');
+        throw new Error('Failed to save routine log');
     }
 
-    // Return ActivityLog (without userId, compositeKey, and _id)
-    const { _id, userId: _, compositeKey: __, ...activityLog } = result;
-    return activityLog as ActivityLog;
+    // Return RoutineLog (without userId, compositeKey, and _id)
+    const { _id, userId: _, compositeKey: __, ...routineLog } = result;
+    return routineLog as RoutineLog;
 }
 
 /**
- * Get all activity logs for a user.
+ * Get all routine logs for a user.
  * 
  * @param userId - User ID to filter logs
- * @returns Record of activity logs keyed by `${activityId}-${date}`
+ * @returns Record of routine logs keyed by `${routineId}-${date}`
  */
-export async function getActivityLogsByUser(userId: string): Promise<Record<string, ActivityLog>> {
+export async function getRoutineLogsByUser(userId: string): Promise<Record<string, RoutineLog>> {
 
     const db = await getDb();
     const collection = db.collection(COLLECTION_NAME);
@@ -80,11 +80,12 @@ export async function getActivityLogsByUser(userId: string): Promise<Record<stri
         .toArray();
 
     // Convert array to Record with composite key
-    const logs: Record<string, ActivityLog> = {};
+    const logs: Record<string, RoutineLog> = {};
     for (const doc of documents) {
         const { _id, userId: _, compositeKey, ...log } = doc;
-        logs[compositeKey] = log as ActivityLog;
+        logs[compositeKey] = log as RoutineLog;
     }
 
     return logs;
 }
+

@@ -12,8 +12,8 @@ import { getCategories, createCategoryRoute, getCategory, updateCategoryRoute, d
 import { getHabits, createHabitRoute, getHabit, updateHabitRoute, deleteHabitRoute, reorderHabitsRoute } from './routes/habits';
 import { getDayLogs, upsertDayLogRoute, getDayLogRoute, deleteDayLogRoute } from './routes/dayLogs';
 import { getWellbeingLogs, upsertWellbeingLogRoute, getWellbeingLogRoute, deleteWellbeingLogRoute } from './routes/wellbeingLogs';
-import { getActivities, getActivity, createActivityRoute, replaceActivityRoute, updateActivityRoute, deleteActivityRoute, submitActivityRoute } from './routes/activities';
-import { getActivityLogs } from './routes/activityLogs';
+import { getRoutinesRoute, getRoutineRoute, createRoutineRoute, updateRoutineRoute, deleteRoutineRoute, submitRoutineRoute, uploadRoutineImageRoute, uploadRoutineImageMiddleware } from './routes/routines';
+import { getRoutineLogs } from './routes/routineLogs';
 import { getGoals, getGoal, getGoalProgress, getGoalsWithProgress, getCompletedGoals, createGoalRoute, updateGoalRoute, deleteGoalRoute, createGoalManualLogRoute, getGoalManualLogsRoute, getGoalDetailRoute, uploadGoalBadgeRoute, uploadBadgeMiddleware } from './routes/goals';
 import { getProgressOverview } from './routes/progress';
 import { closeConnection } from './lib/mongoClient';
@@ -82,17 +82,18 @@ app.put('/api/wellbeingLogs', upsertWellbeingLogRoute);
 app.get('/api/wellbeingLogs/:date', getWellbeingLogRoute);
 app.delete('/api/wellbeingLogs/:date', deleteWellbeingLogRoute);
 
-// Activity routes
-app.get('/api/activities', getActivities);
-app.post('/api/activities', createActivityRoute);
-app.get('/api/activities/:id', getActivity);
-app.put('/api/activities/:id', replaceActivityRoute);
-app.patch('/api/activities/:id', updateActivityRoute);
-app.delete('/api/activities/:id', deleteActivityRoute);
-app.post('/api/activities/:id/submit', submitActivityRoute);
+// Routine routes
+app.get('/api/routines', getRoutinesRoute);
+app.post('/api/routines', createRoutineRoute);
+// Upload route (must come before /:id)
+app.post('/api/upload/routine-image', uploadRoutineImageMiddleware, uploadRoutineImageRoute);
+app.get('/api/routines/:id', getRoutineRoute);
+app.patch('/api/routines/:id', updateRoutineRoute);
+app.delete('/api/routines/:id', deleteRoutineRoute);
+app.post('/api/routines/:id/submit', submitRoutineRoute);
 
-// Activity Log routes
-app.get('/api/activityLogs', getActivityLogs);
+// Routine Log routes
+app.get('/api/routineLogs', getRoutineLogs);
 
 // Progress routes
 app.get('/api/progress/overview', getProgressOverview);

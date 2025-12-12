@@ -126,44 +126,44 @@ describe('DayLogRepository', () => {
       expect(result.completed).toBe(true);
     });
 
-    it('should store day log with activity metadata', async () => {
+    it('should store day log with routine metadata', async () => {
       const log: DayLog = {
         habitId: 'habit-123',
         date: '2025-01-27',
         value: 1,
         completed: true,
-        activityId: 'activity-456',
-        activityStepId: 'step-789',
+        routineId: 'routine-456',
+        source: 'routine',
       };
 
       const result = await upsertDayLog(log, TEST_USER_ID);
 
-      expect(result.activityId).toBe('activity-456');
-      expect(result.activityStepId).toBe('step-789');
+      expect(result.routineId).toBe('routine-456');
+      expect(result.source).toBe('routine');
     });
 
-    it('should round-trip activity metadata correctly', async () => {
+    it('should round-trip routine metadata correctly', async () => {
       const log: DayLog = {
         habitId: 'habit-123',
         date: '2025-01-27',
         value: 1,
         completed: true,
-        activityId: 'activity-456',
-        activityStepId: 'step-789',
+        routineId: 'routine-456',
+        source: 'routine',
       };
 
-      // Upsert with activity metadata
+      // Upsert with routine metadata
       await upsertDayLog(log, TEST_USER_ID);
 
       // Retrieve and verify
       const retrieved = await getDayLog('habit-123', '2025-01-27', TEST_USER_ID);
 
       expect(retrieved).toBeDefined();
-      expect(retrieved?.activityId).toBe('activity-456');
-      expect(retrieved?.activityStepId).toBe('step-789');
+      expect(retrieved?.routineId).toBe('routine-456');
+      expect(retrieved?.source).toBe('routine');
     });
 
-    it('should work without activity metadata (backward compatibility)', async () => {
+    it('should work without routine metadata (backward compatibility)', async () => {
       const log: DayLog = {
         habitId: 'habit-123',
         date: '2025-01-27',
@@ -173,8 +173,8 @@ describe('DayLogRepository', () => {
 
       const result = await upsertDayLog(log, TEST_USER_ID);
 
-      expect(result.activityId).toBeUndefined();
-      expect(result.activityStepId).toBeUndefined();
+      expect(result.routineId).toBeUndefined();
+      expect(result.source).toBeUndefined();
     });
 
     it('should preserve compositeKey logic (habitId-date)', async () => {
@@ -183,7 +183,7 @@ describe('DayLogRepository', () => {
         date: '2025-01-27',
         value: 1,
         completed: true,
-        activityId: 'activity-456',
+        routineId: 'routine-456',
       };
 
       await upsertDayLog(log, TEST_USER_ID);
@@ -191,7 +191,7 @@ describe('DayLogRepository', () => {
       // Verify we can retrieve using the same habitId and date
       const retrieved = await getDayLog('habit-123', '2025-01-27', TEST_USER_ID);
       expect(retrieved).toBeDefined();
-      expect(retrieved?.activityId).toBe('activity-456');
+      expect(retrieved?.routineId).toBe('routine-456');
     });
   });
 
@@ -201,14 +201,14 @@ describe('DayLogRepository', () => {
       expect(logs).toEqual({});
     });
 
-    it('should return all logs for user with activity metadata', async () => {
+    it('should return all logs for user with routine metadata', async () => {
       const log1: DayLog = {
         habitId: 'habit-1',
         date: '2025-01-27',
         value: 1,
         completed: true,
-        activityId: 'activity-1',
-        activityStepId: 'step-1',
+        routineId: 'routine-1',
+        source: 'routine',
       };
 
       const log2: DayLog = {
@@ -216,7 +216,7 @@ describe('DayLogRepository', () => {
         date: '2025-01-27',
         value: 1,
         completed: true,
-        // No activity metadata
+        // No routine metadata
       };
 
       await upsertDayLog(log1, TEST_USER_ID);
@@ -228,22 +228,21 @@ describe('DayLogRepository', () => {
       const log1Key = 'habit-1-2025-01-27';
       const log2Key = 'habit-2-2025-01-27';
 
-      expect(logs[log1Key]?.activityId).toBe('activity-1');
-      expect(logs[log1Key]?.activityStepId).toBe('step-1');
-      expect(logs[log2Key]?.activityId).toBeUndefined();
-      expect(logs[log2Key]?.activityStepId).toBeUndefined();
+      expect(logs[log1Key]?.routineId).toBe('routine-1');
+      expect(logs[log1Key]?.source).toBe('routine');
+      expect(logs[log2Key]?.routineId).toBeUndefined();
     });
   });
 
   describe('getDayLogsByHabit', () => {
-    it('should return logs for specific habit with activity metadata', async () => {
+    it('should return logs for specific habit with routine metadata', async () => {
       const log1: DayLog = {
         habitId: 'habit-123',
         date: '2025-01-27',
         value: 1,
         completed: true,
-        activityId: 'activity-1',
-        activityStepId: 'step-1',
+        routineId: 'routine-1',
+        source: 'routine',
       };
 
       const log2: DayLog = {
@@ -251,7 +250,7 @@ describe('DayLogRepository', () => {
         date: '2025-01-28',
         value: 1,
         completed: true,
-        // No activity metadata
+        // No routine metadata
       };
 
       await upsertDayLog(log1, TEST_USER_ID);
@@ -263,20 +262,20 @@ describe('DayLogRepository', () => {
       const log1Key = 'habit-123-2025-01-27';
       const log2Key = 'habit-123-2025-01-28';
 
-      expect(logs[log1Key]?.activityId).toBe('activity-1');
-      expect(logs[log2Key]?.activityId).toBeUndefined();
+      expect(logs[log1Key]?.routineId).toBe('routine-1');
+      expect(logs[log2Key]?.routineId).toBeUndefined();
     });
   });
 
   describe('getDayLog', () => {
-    it('should return log with activity metadata', async () => {
+    it('should return log with routine metadata', async () => {
       const log: DayLog = {
         habitId: 'habit-123',
         date: '2025-01-27',
         value: 1,
         completed: true,
-        activityId: 'activity-456',
-        activityStepId: 'step-789',
+        routineId: 'routine-456',
+        source: 'routine',
       };
 
       await upsertDayLog(log, TEST_USER_ID);
@@ -284,11 +283,11 @@ describe('DayLogRepository', () => {
       const retrieved = await getDayLog('habit-123', '2025-01-27', TEST_USER_ID);
 
       expect(retrieved).toBeDefined();
-      expect(retrieved?.activityId).toBe('activity-456');
-      expect(retrieved?.activityStepId).toBe('step-789');
+      expect(retrieved?.routineId).toBe('routine-456');
+      expect(retrieved?.source).toBe('routine');
     });
 
-    it('should return log without activity metadata', async () => {
+    it('should return log without routine metadata', async () => {
       const log: DayLog = {
         habitId: 'habit-123',
         date: '2025-01-27',
@@ -301,20 +300,18 @@ describe('DayLogRepository', () => {
       const retrieved = await getDayLog('habit-123', '2025-01-27', TEST_USER_ID);
 
       expect(retrieved).toBeDefined();
-      expect(retrieved?.activityId).toBeUndefined();
-      expect(retrieved?.activityStepId).toBeUndefined();
+      expect(retrieved?.routineId).toBeUndefined();
     });
   });
 
   describe('deleteDayLog', () => {
-    it('should delete log with activity metadata', async () => {
+    it('should delete log with routine metadata', async () => {
       const log: DayLog = {
         habitId: 'habit-123',
         date: '2025-01-27',
         value: 1,
         completed: true,
-        activityId: 'activity-456',
-        activityStepId: 'step-789',
+        routineId: 'routine-456',
       };
 
       await upsertDayLog(log, TEST_USER_ID);
@@ -328,13 +325,13 @@ describe('DayLogRepository', () => {
   });
 
   describe('deleteDayLogsByHabit', () => {
-    it('should delete all logs for habit including those with activity metadata', async () => {
+    it('should delete all logs for habit including those with routine metadata', async () => {
       const log1: DayLog = {
         habitId: 'habit-123',
         date: '2025-01-27',
         value: 1,
         completed: true,
-        activityId: 'activity-1',
+        routineId: 'routine-1',
       };
 
       const log2: DayLog = {
@@ -342,7 +339,7 @@ describe('DayLogRepository', () => {
         date: '2025-01-28',
         value: 1,
         completed: true,
-        // No activity metadata
+        // No routine metadata
       };
 
       await upsertDayLog(log1, TEST_USER_ID);
