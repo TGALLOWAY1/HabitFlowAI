@@ -181,7 +181,8 @@ export async function getRoutineRoute(req: Request, res: Response): Promise<void
 export async function createRoutineRoute(req: Request, res: Response): Promise<void> {
   try {
     // Validate request body
-    const { title, steps, linkedHabitIds } = req.body;
+    // Validate request body
+    const { title, categoryId, steps, linkedHabitIds } = req.body;
 
     if (!title || typeof title !== 'string' || title.trim().length === 0) {
       res.status(400).json({
@@ -213,6 +214,16 @@ export async function createRoutineRoute(req: Request, res: Response): Promise<v
       return;
     }
 
+    if (categoryId && typeof categoryId !== 'string') {
+      res.status(400).json({
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'categoryId must be a string if provided'
+        }
+      });
+      return;
+    }
+
     // Validate steps
     const stepsError = validateSteps(steps);
     if (stepsError) {
@@ -232,6 +243,7 @@ export async function createRoutineRoute(req: Request, res: Response): Promise<v
       userId,
       {
         title: title.trim(),
+        categoryId: categoryId || undefined,
         steps: steps as RoutineStep[],
         linkedHabitIds: linkedHabitIds || [],
       }
@@ -261,7 +273,7 @@ export async function createRoutineRoute(req: Request, res: Response): Promise<v
 export async function updateRoutineRoute(req: Request, res: Response): Promise<void> {
   try {
     const { id } = req.params;
-    const { title, steps, linkedHabitIds } = req.body;
+    const { title, categoryId, steps, linkedHabitIds } = req.body;
 
     if (!id) {
       res.status(400).json({
@@ -287,6 +299,19 @@ export async function updateRoutineRoute(req: Request, res: Response): Promise<v
         return;
       }
       patch.title = title.trim();
+    }
+
+    if (categoryId !== undefined) {
+      if (categoryId !== null && typeof categoryId !== 'string') {
+        res.status(400).json({
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: 'Category ID must be a string or null',
+          },
+        });
+        return;
+      }
+      patch.categoryId = categoryId || undefined;
     }
 
     if (steps !== undefined) {

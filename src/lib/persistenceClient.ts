@@ -799,10 +799,26 @@ export async function updateHabitEntry(id: string, patch: Partial<HabitEntry>): 
  * @returns Promise<{ success: boolean, dayLog: DayLog | null }>
  */
 export async function deleteHabitEntry(id: string): Promise<{ success: boolean, dayLog: DayLog | null }> {
-  const response = await apiRequest<{ success: boolean, dayLog: DayLog | null }>(`/entries/${id}`, {
+  await apiRequest<{ message: string, dayLog: DayLog | null }>(`/entries/${id}`, {
     method: 'DELETE',
   });
-  return response;
+  return { success: true, dayLog: null }; // API doesn't return dayLog on delete yet but might later
+}
+
+/**
+ * Habit Potential Evidence Persistence Functions
+ */
+import type { HabitPotentialEvidence } from '../models/persistenceTypes';
+
+/**
+ * Fetch potential evidence for a given date.
+ * 
+ * @param date - Date in YYYY-MM-DD format
+ * @returns Promise<HabitPotentialEvidence[]>
+ */
+export async function fetchPotentialEvidence(date: string): Promise<HabitPotentialEvidence[]> {
+  const response = await apiRequest<{ evidence: HabitPotentialEvidence[] }>(`/evidence?date=${date}`);
+  return response.evidence || [];
 }
 
 /**

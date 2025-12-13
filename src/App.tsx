@@ -11,6 +11,8 @@ import { ProgressDashboard } from './components/ProgressDashboard';
 import { RoutineList } from './components/RoutineList';
 import { RoutineEditorModal } from './components/RoutineEditorModal';
 import { RoutineRunnerModal } from './components/RoutineRunnerModal';
+import { RoutinePreviewModal } from './components/RoutinePreviewModal';
+import { HabitHistoryModal } from './components/HabitHistoryModal';
 import { BarChart3, Calendar, ClipboardList, Target, Clock, BookOpenText, CheckSquare } from 'lucide-react';
 import type { Routine, Habit } from './types';
 import { GoalsPage } from './pages/goals/GoalsPage';
@@ -70,7 +72,7 @@ function buildUrlForRoute(route: AppRoute, params: Record<string, string> = {}):
 }
 
 const HabitTrackerContent: React.FC = () => {
-  const { categories, habits, logs, toggleHabit, updateLog, lastPersistenceError, clearPersistenceError } = useHabitStore();
+  const { categories, habits, logs, toggleHabit, updateLog, lastPersistenceError, clearPersistenceError, potentialEvidence } = useHabitStore();
   const [activeCategoryId, setActiveCategoryId] = useState<string>('');
 
   // Set default category to "Physical Health" when categories are loaded
@@ -89,6 +91,7 @@ const HabitTrackerContent: React.FC = () => {
   }, [categories, activeCategoryId]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingHabit, setEditingHabit] = useState<Habit | null>(null);
+  const [historyHabit, setHistoryHabit] = useState<Habit | null>(null);
 
   // Initial State from URL
   const [view, setView] = useState<AppRoute>(() => parseRouteFromLocation(window.location));
@@ -108,6 +111,11 @@ const HabitTrackerContent: React.FC = () => {
   }>({ isOpen: false, mode: 'create' });
 
   const [routineRunnerState, setRoutineRunnerState] = useState<{
+    isOpen: boolean;
+    routine?: Routine;
+  }>({ isOpen: false });
+
+  const [routinePreviewState, setRoutinePreviewState] = useState<{
     isOpen: boolean;
     routine?: Routine;
   }>({ isOpen: false });
@@ -342,6 +350,8 @@ const HabitTrackerContent: React.FC = () => {
               setIsModalOpen(true);
             }}
             onRunRoutine={(routine) => setRoutineRunnerState({ isOpen: true, routine })}
+            onViewHistory={(habit) => setHistoryHabit(habit)}
+            potentialEvidence={potentialEvidence}
           />
         ) : view === 'dashboard' ? (
           <ProgressDashboard
@@ -359,6 +369,7 @@ const HabitTrackerContent: React.FC = () => {
             onCreate={() => setRoutineEditorState({ isOpen: true, mode: 'create', routine: undefined })}
             onEdit={(routine) => setRoutineEditorState({ isOpen: true, mode: 'edit', routine })}
             onStart={(routine) => setRoutineRunnerState({ isOpen: true, routine })}
+            onPreview={(routine) => setRoutinePreviewState({ isOpen: true, routine })}
           />
         ) : view === 'calendar' ? (
           <CalendarView />
@@ -393,6 +404,13 @@ const HabitTrackerContent: React.FC = () => {
         initialData={editingHabit}
       />
 
+      {historyHabit && (
+        <HabitHistoryModal
+          habitId={historyHabit.id}
+          onClose={() => setHistoryHabit(null)}
+        />
+      )}
+
       <RoutineEditorModal
         isOpen={routineEditorState.isOpen}
         mode={routineEditorState.mode}
@@ -404,6 +422,16 @@ const HabitTrackerContent: React.FC = () => {
         isOpen={routineRunnerState.isOpen}
         routine={routineRunnerState.routine}
         onClose={() => setRoutineRunnerState({ isOpen: false })}
+      />
+
+      <RoutinePreviewModal
+        isOpen={routinePreviewState.isOpen}
+        routine={routinePreviewState.routine}
+        onClose={() => setRoutinePreviewState({ isOpen: false, routine: undefined })}
+        onStart={(routine) => {
+          setRoutinePreviewState({ isOpen: false, routine: undefined });
+          setRoutineRunnerState({ isOpen: true, routine });
+        }}
       />
     </div >
   );

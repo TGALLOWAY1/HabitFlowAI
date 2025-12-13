@@ -138,6 +138,10 @@ app.delete('/api/entries', deleteHabitEntriesForDayRoute); // Bulk delete via qu
 app.delete('/api/entries/:id', deleteHabitEntryRoute);
 app.patch('/api/entries/:id', updateHabitEntryRoute);
 
+// Habit Potential Evidence routes
+import habitPotentialEvidenceRoutes from './routes/habitPotentialEvidence';
+app.use('/api/evidence', habitPotentialEvidenceRoutes);
+
 
 
 // Health check endpoint

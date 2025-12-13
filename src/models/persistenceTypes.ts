@@ -286,6 +286,12 @@ export interface RoutineStep {
      * Renamed from durationSeconds to timerSeconds for consistency with usage
      */
     timerSeconds?: number;
+
+    /** 
+     * Optional: ID of the habit linked to this step.
+     * Reaching this step generates potential evidence for the habit.
+     */
+    linkedHabitId?: string;
 }
 
 /**
@@ -311,6 +317,9 @@ export interface Routine {
 
     /** Display title/name of the routine */
     title: string;
+
+    /** Optional category ID to group this routine and filter linked habits */
+    categoryId?: string;
 
     /** 
      * IDs of habits that this routine is "in service of".
@@ -703,6 +712,7 @@ export const MONGO_COLLECTIONS = {
     JOURNAL_ENTRIES: 'journalEntries',
     TASKS: 'tasks',
     HABIT_ENTRIES: 'habitEntries',
+    HABIT_POTENTIAL_EVIDENCE: 'habitPotentialEvidence',
 } as const;
 
 
@@ -779,7 +789,47 @@ export interface PersistenceSchema {
     goals: GoalsStorage;
     routineLogs: RoutineLogsStorage;
     journalEntries: JournalEntriesStorage;
+    habitPotentialEvidence: HabitPotentialEvidenceStatsStorage;
 }
+
+/**
+ * HabitPotentialEvidence Entity
+ * 
+ * Storage Key: 'habitPotentialEvidence'
+ * Storage Format: HabitPotentialEvidence[] (array of HabitPotentialEvidence documents)
+ * 
+ * Represents a signal that a user *might* have completed a habit, based on
+ * external context (like a routine step).
+ * 
+ * This is "Potential" evidence. It requires user confirmation to become a HabitEntry.
+ */
+export interface HabitPotentialEvidence {
+    /** Unique identifier */
+    id: string;
+
+    /** Foreign key reference to Habit.id */
+    habitId: string;
+
+    /** ID of the Routine that generated this evidence */
+    routineId: string;
+
+    /** ID of the specific Step that generated this evidence */
+    stepId: string;
+
+    /** 
+     * Date in YYYY-MM-DD format
+     * Used for querying evidence for a specific day
+     */
+    date: string;
+
+    /** ISO 8601 timestamp of when the evidence was generated */
+    timestamp: string;
+
+    /** Source type (currently only 'routine-step') */
+    source: 'routine-step';
+}
+
+export type HabitPotentialEvidenceStatsStorage = HabitPotentialEvidence[];
 
 
 
