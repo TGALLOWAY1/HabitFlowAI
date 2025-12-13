@@ -70,6 +70,7 @@ app.get('/api/habits/:id', getHabit);
 app.patch('/api/habits/:id', updateHabitRoute);
 app.delete('/api/habits/:id', deleteHabitRoute);
 
+
 // DayLog routes (habit tracking results)
 app.get('/api/dayLogs', getDayLogs);
 app.post('/api/dayLogs', upsertDayLogRoute);

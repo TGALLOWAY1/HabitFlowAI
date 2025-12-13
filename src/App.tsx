@@ -228,10 +228,8 @@ const HabitTrackerContent: React.FC = () => {
       {
         view === 'tracker' && (
           <div className="px-1">
-            <p className="text-neutral-500 text-sm max-w-lg leading-relaxed">
-              Habits are signals of the person you are becoming.
-              <br />
-              They measure consistency over time — not perfection in the moment.
+            <p className="text-neutral-500 text-sm leading-relaxed italic">
+              Habits are signals of the person you are becoming. They measure consistency over time — not perfection in the moment.
             </p>
           </div>
         )
@@ -240,10 +238,8 @@ const HabitTrackerContent: React.FC = () => {
       {
         view === 'goals' && (
           <div className="px-1">
-            <p className="text-neutral-500 text-sm max-w-lg leading-relaxed">
-              Goals provide direction, not judgment.
-              <br />
-              They exist to orient your effort — not to rush or constrain it.
+            <p className="text-neutral-500 text-sm leading-relaxed italic">
+              Goals provide direction, not judgment. They exist to orient your effort — not to rush or constrain it.
             </p>
           </div>
         )
@@ -252,10 +248,8 @@ const HabitTrackerContent: React.FC = () => {
       {
         view === 'routines' && (
           <div className="px-1">
-            <p className="text-neutral-500 text-sm max-w-lg leading-relaxed">
-              Routines are supportive structures, not tests of discipline.
-              <br />
-              They exist to reduce friction — not demand completion.
+            <p className="text-neutral-500 text-sm leading-relaxed italic">
+              Routines are supportive structures, not tests of discipline. They exist to reduce friction — not demand completion.
             </p>
           </div>
         )

@@ -57,6 +57,9 @@ export interface Habit {
     nonNegotiable?: boolean;
     nonNegotiableDays?: number[]; // 0=Sun, 6=Sat
     deadline?: string; // HH:mm
+
+    // Freeze Mechanics
+    freezeCount?: number; // Max 3
 }
 
 export interface DayLog {
@@ -66,6 +69,10 @@ export interface DayLog {
     completed: boolean;
     source?: 'manual' | 'routine';
     routineId?: string;
+
+    // Freeze Mechanics
+    isFrozen?: boolean;
+    freezeType?: 'manual' | 'auto' | 'soft';
 }
 
 // Re-export Routine types
@@ -111,6 +118,39 @@ export interface ProgressOverview {
         habit: Habit;
         completed: boolean;
         value?: number; // Present if quantified habit has a value
+        streak: number;
+        formattedStreak: string; // "3 day streak" or "5 weeks"
+
+        freezeStatus?: 'active' | 'used' | 'none'; // 'active' = currently frozen today
     }>;
     goalsWithProgress: GoalWithProgress[];
+    momentum: {
+        global: {
+            state: MomentumState;
+            activeDays: number;
+            trend: 'up' | 'down' | 'neutral';
+            copy: string;
+        };
+        category: Record<string, CategoryMomentumState>; // Keep simple for now or expand if needed
+    };
+}
+
+// Momentum Types
+export type GlobalMomentumState = 'Strong' | 'Steady' | 'Building' | 'Gentle Restart' | 'Ready';
+export type CategoryMomentumState = 'Strong' | 'Steady' | 'Building' | 'Paused';
+
+// Unified Momentum State for generic use (union of both)
+export type MomentumState = GlobalMomentumState | CategoryMomentumState;
+
+export interface MomentumConfig {
+    global: {
+        state: GlobalMomentumState;
+        copy: string;
+        activeDays: number;
+    };
+    categories: Record<string, {
+        state: CategoryMomentumState;
+        copy: string;
+        activeDays: number;
+    }>;
 }

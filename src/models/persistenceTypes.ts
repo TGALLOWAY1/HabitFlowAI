@@ -171,6 +171,15 @@ export interface Habit {
      * Optional: Deadline time (HH:MM) for non-negotiable habits.
      */
     deadline?: string;
+
+    /**
+     * Freeze inventory count for this habit.
+     * Max: 3
+     * Default: 3 (on creation)
+     * Decrements when a manual freeze is used.
+     * Increments (max 3) when a freeze is earned via global activity.
+     */
+    freezeCount?: number;
 }
 
 /**
@@ -226,6 +235,19 @@ export interface DayLog {
      * Set when a habit is completed via a routine
      */
     routineId?: string;
+
+    /** 
+     * Optional: Indicates if this day was frozen (streak protected)
+     */
+    isFrozen?: boolean;
+
+    /**
+     * Optional: The type of freeze applied
+     * - 'manual': User explicitly used a freeze (consumes inventory)
+     * - 'auto': System automatically applied freeze (consumes inventory)
+     * - 'soft': System applied grace (does NOT consume inventory)
+     */
+    freezeType?: 'manual' | 'auto' | 'soft';
 }
 
 

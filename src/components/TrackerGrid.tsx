@@ -2,10 +2,13 @@ import React, { useMemo, useState } from 'react';
 import { format, eachDayOfInterval, subDays, isToday, startOfWeek, endOfWeek, isWithinInterval, parseISO } from 'date-fns';
 import { type Habit, type DayLog, type Routine } from '../types';
 import { cn } from '../utils/cn';
-import { Check, Plus, Trash2, GripVertical, Pencil, Trophy, Play } from 'lucide-react';
+import { Check, Plus, Trash2, GripVertical, Pencil, Trophy, Play, Flame } from 'lucide-react';
+
 import { NumericInputPopover } from './NumericInputPopover';
 import { useHabitStore } from '../store/HabitContext';
 import { useRoutineStore } from '../store/RoutineContext';
+import { useProgressOverview } from '../lib/useProgressOverview';
+
 import { computeBundleStatus, getBundleStats } from '../utils/habitUtils';
 import {
     DndContext,
@@ -133,6 +136,7 @@ interface HabitRowContentProps {
     bundleStatus?: { completed: boolean; value: number };
     onToggle: (habitId: string, date: string) => Promise<void>;
     onRunRoutine?: (routine: Routine) => void;
+    streak?: number;
 }
 
 const HabitRowContent = ({
@@ -155,7 +159,8 @@ const HabitRowContent = ({
     style,
     bundleStatus,
     onToggle,
-    onRunRoutine
+    onRunRoutine,
+    streak
 }: HabitRowContentProps) => {
 
     // Non-Negotiable Logic
@@ -177,8 +182,6 @@ const HabitRowContent = ({
             ? "ring-1 ring-yellow-500 shadow-[0_0_10px_rgba(234,179,8,0.2)]" // Completed: Solid Gold
             : "ring-1 ring-yellow-500 shadow-[0_0_15px_rgba(234,179,8,0.4)] animate-pulse" // Active: Pulsing
         : "";
-
-    // const indentClass = depth > 0 ? `ml-${depth * 6}` : ""; // Tailwind arbitrary values or standard spacing? using padding style is safer.
 
     return (
         <div
@@ -218,14 +221,23 @@ const HabitRowContent = ({
                             >
                                 {habit.name}
                             </span>
-                            {/* Expand/Collapse Toggle Removed */}
-                            {/* {hasChildren && ( ... )} */}
                         </div>
-                        {habit.goal.type === 'number' && habit.goal.target && (
-                            <span className="text-xs text-neutral-500 mt-1 truncate">
-                                Goal: {habit.goal.target} {habit.goal.unit}
-                            </span>
-                        )}
+                        <div className="flex items-center gap-3 mt-1">
+                            {habit.goal.type === 'number' && habit.goal.target && (
+                                <span className="text-xs text-neutral-500 truncate">
+                                    Target: {habit.goal.target} {habit.goal.unit}
+                                </span>
+                            )}
+
+                            {/* Streak Display */}
+                            {streak !== undefined && streak > 0 && (
+                                <div className="flex items-center gap-1 text-[10px] text-orange-400 bg-orange-400/10 px-1.5 py-0.5 rounded-full border border-orange-400/20">
+                                    <Flame size={10} className="fill-orange-400" />
+                                    <span className="font-bold">{streak}</span>
+                                </div>
+                            )}
+
+                        </div>
                     </div>
                 </div>
 
@@ -287,6 +299,8 @@ const HabitRowContent = ({
 
                     const isInteractive = true; // Bundles are now interactive
 
+                    const isFrozen = log?.isFrozen;
+
                     // Bundle Click Handler
                     const handleBundleClick = (e: React.MouseEvent) => {
                         e.stopPropagation();
@@ -324,17 +338,27 @@ const HabitRowContent = ({
                                     "w-10 h-10 rounded-lg flex items-center justify-center transition-all duration-200 relative overflow-hidden",
                                     habit.type === 'bundle'
                                         ? "bg-neutral-800 border border-white/5 hover:bg-neutral-700 text-neutral-200"
-                                        : isCompleted
-                                            ? habit.nonNegotiable
-                                                ? "bg-yellow-500 text-neutral-900 shadow-[0_0_15px_rgba(234,179,8,0.4)] animate-gold-burst"
-                                                : "bg-emerald-500 text-neutral-900 shadow-[0_0_15px_rgba(16,185,129,0.4)] scale-90"
-                                            : isPartial
-                                                ? "bg-blue-500 text-neutral-900 shadow-[0_0_15px_rgba(59,130,246,0.4)] scale-95" // Partial
-                                                : "bg-neutral-800/50 text-transparent hover:bg-neutral-800 hover:text-neutral-600 border border-white/5 hover:border-white/10",
+                                        : isFrozen
+                                            ? "bg-sky-500/20 text-sky-400 border border-sky-500/30" // Frozen visual
+                                            : isCompleted
+                                                ? habit.nonNegotiable
+                                                    ? "bg-yellow-500 text-neutral-900 shadow-[0_0_15px_rgba(234,179,8,0.4)] animate-gold-burst"
+                                                    : "bg-emerald-500 text-neutral-900 shadow-[0_0_15px_rgba(16,185,129,0.4)] scale-90"
+                                                : isPartial
+                                                    ? "bg-blue-500 text-neutral-900 shadow-[0_0_15px_rgba(59,130,246,0.4)] scale-95" // Partial
+                                                    : "bg-neutral-800/50 text-transparent hover:bg-neutral-800 hover:text-neutral-600 border border-white/5 hover:border-white/10",
                                     !isInteractive && isCompleted && "opacity-80 cursor-default",
                                     !isInteractive && "cursor-default hover:bg-neutral-800/50 hover:text-transparent"
                                 )}
-                                title={habit.type === 'bundle' ? "Click to toggle all sub-habits" : (!isInteractive ? "Derived from sub-habits" : undefined)}
+                                title={
+                                    habit.type === 'bundle'
+                                        ? "Click to toggle all sub-habits"
+                                        : isFrozen
+                                            ? `Streak protected (${habit.freezeCount ?? 3} freezes left)`
+                                            : !isInteractive
+                                                ? "Derived from sub-habits"
+                                                : undefined
+                                }
                             >
                                 {habit.type === 'bundle' ? (
                                     <>
@@ -368,7 +392,7 @@ const HabitRowContent = ({
                                     habit.goal.type === 'number' && value > 0 ? (
                                         <span className="text-xs font-bold">{value}</span>
                                     ) : (
-                                        <Check size={20} strokeWidth={3} className={cn("transition-transform duration-200", isCompleted ? "scale-100" : "scale-50")} />
+                                        <Check size={20} strokeWidth={3} className={cn("transition-transform duration-200", isCompleted ? "scale-100" : isFrozen ? "scale-100 opacity-50" : "scale-50")} />
                                     )
                                 )}
                             </button>
@@ -393,7 +417,8 @@ const SortableHabitRow = ({
     setDeleteConfirmId,
     onEditHabit,
     onToggle,
-    onRunRoutine
+    onRunRoutine,
+    streak
 }: {
     habit: Habit;
     allHabits: Habit[];
@@ -408,6 +433,7 @@ const SortableHabitRow = ({
     onEditHabit: (habit: Habit) => void;
     onToggle: (habitId: string, date: string) => Promise<void>;
     onRunRoutine?: (routine: Routine) => void;
+    streak?: number;
 }) => {
     const {
         attributes,
@@ -433,19 +459,6 @@ const SortableHabitRow = ({
             .map(id => allHabits.find(h => h.id === id))
             .filter((h): h is Habit => !!h);
     }, [habit, allHabits]);
-
-    // DEBUG LOG
-    if (habit.type === 'bundle') {
-        console.log(`[SortableHabitRow] Bundle: ${habit.name} (${habit.id})`);
-        console.log(`  - subHabitIds:`, habit.subHabitIds);
-        console.log(`  - Resolved Children:`, children.length);
-        if (habit.subHabitIds && children.length !== habit.subHabitIds.length) {
-            console.warn(`  - MISMATCH: Expected ${habit.subHabitIds.length} children but found ${children.length}. Missing IDs?`);
-            habit.subHabitIds.forEach(id => {
-                if (!allHabits.find(h => h.id === id)) console.warn(`    - Missing Child ID: ${id}`);
-            });
-        }
-    }
 
     const isExpanded = expandedIds.has(habit.id);
     const hasChildren = children.length > 0;
@@ -474,6 +487,7 @@ const SortableHabitRow = ({
                 style={style}
                 onToggle={onToggle}
                 onRunRoutine={onRunRoutine}
+                streak={habit.type !== 'bundle' ? streak : undefined}
             />
 
             {/* Child Rows - Rendered when expanded */}
@@ -642,7 +656,7 @@ const WeeklyHabitRowContent = ({
                         </span>
                         <span className="text-xs text-neutral-500 mt-1 flex items-center gap-2">
                             {/* Display e.g. "Weekly Goal: 25 / 50 reps" or "Weekly Goal: 3 / 5" */}
-                            Goal: {Math.round(currentCount * 10) / 10} / {target} {habit.goal.unit}
+                            Target: {Math.round(currentCount * 10) / 10} / {target} {habit.goal.unit}
                             {currentCount >= target && <Trophy size={12} className="text-yellow-500" />}
                         </span>
                     </div>
@@ -850,6 +864,8 @@ const SortableWeeklyHabitRow = ({
 
 export const TrackerGrid: React.FC<TrackerGridProps> = ({ habits, logs, onToggle, onUpdateValue, onAddHabit, onEditHabit, onRunRoutine }) => {
     const { deleteHabit, reorderHabits } = useHabitStore();
+    const { data: progressData } = useProgressOverview();
+
     const [popoverState, setPopoverState] = useState<{
         isOpen: boolean;
         habitId: string;
@@ -902,6 +918,20 @@ export const TrackerGrid: React.FC<TrackerGridProps> = ({ habits, logs, onToggle
         return interval.reverse(); // Show Today first, then Yesterday, etc.
     }, []);
 
+    // Create a map for fast lookup of today's progress data
+    const habitProgressMap = useMemo(() => {
+        const map = new Map<string, { streak: number; freezeStatus?: string }>();
+        if (progressData?.habitsToday) {
+            progressData.habitsToday.forEach(h => {
+                map.set(h.habit.id, {
+                    streak: h.streak,
+                    freezeStatus: h.freezeStatus
+                });
+            });
+        }
+        return map;
+    }, [progressData]);
+
     const sensors = useSensors(
         useSensor(PointerSensor, {
             activationConstraint: {
@@ -915,64 +945,18 @@ export const TrackerGrid: React.FC<TrackerGridProps> = ({ habits, logs, onToggle
 
     const handleDragEnd = (event: DragEndEvent) => {
         const { active, over } = event;
-        if (!over || active.id === over.id) return;
-
-        // Try to find in daily list
-        const oldDailyIndex = dailyHabits.findIndex(h => h.id === active.id);
-        const newDailyIndex = dailyHabits.findIndex(h => h.id === over.id);
-
-        if (oldDailyIndex !== -1 && newDailyIndex !== -1) {
-            // Reordering Daily
-            const newOrder = arrayMove(dailyHabits, oldDailyIndex, newDailyIndex).map(h => h.id);
-
-            // Reconstruct full list order:
-            // We want to preserve relations.
-            // Simplified strategy: Just send new order of roots + any remaining habits (children) to backend?
-            // Backend reorderHabits takes a list of IDs.
-            // If we only reorder roots, children will stick to their parents implicitly if we don't persist order for them?
-            // No, habits have an order.
-
-            // Get all roots in new order
-            // const newRoots = arrayMove(dailyHabits, oldDailyIndex, newDailyIndex);
-            arrayMove(dailyHabits, oldDailyIndex, newDailyIndex);
-
-            // Construct full list: newRoots + weeklyRoots + children (appended or interleaved?)
-            // If children order matters, we should probably keep them.
-            // Safest: Current reorder implementation just updates index.
-            // If we send ONLY roots, children might get pushed to end?
-            // We should send ALL habits.
-
-            // Let's preserve the relative order of non-moved items.
-            // This is complex.
-            // MVP: Just send IDs of daily roots first, then weekly roots?
-            // What about children? They need to be in the list too to have an index.
-
-            const rootIds = [...newOrder, ...weeklyHabits.map(h => h.id)];
-            const childIds = habits.filter(h => !rootIds.includes(h.id)).map(h => h.id);
-
-            const fullListIds = [...rootIds, ...childIds];
-            reorderHabits(fullListIds);
-            return;
-        }
-
-        // Try find in weekly list
-        const oldWeeklyIndex = weeklyHabits.findIndex(h => h.id === active.id);
-        const newWeeklyIndex = weeklyHabits.findIndex(h => h.id === over.id);
-
-        if (oldWeeklyIndex !== -1 && newWeeklyIndex !== -1) {
-            // Reordering Weekly
-            const newOrder = arrayMove(weeklyHabits, oldWeeklyIndex, newWeeklyIndex).map(h => h.id);
-            const rootIds = [...dailyHabits.map(h => h.id), ...newOrder];
-            const childIds = habits.filter(h => !rootIds.includes(h.id)).map(h => h.id);
-            const fullListIds = [...rootIds, ...childIds];
-
-            reorderHabits(fullListIds);
-            return;
+        if (active.id !== over?.id) {
+            const oldIndex = habits.findIndex((h) => h.id === active.id);
+            const newIndex = habits.findIndex((h) => h.id === over?.id);
+            const newOrder = arrayMove(habits, oldIndex, newIndex).map(h => h.id);
+            reorderHabits(newOrder);
         }
     };
 
     const handleCellClick = (e: React.MouseEvent, habit: Habit, dateStr: string, log?: DayLog) => {
-        if (habit.goal.type === 'number') {
+        if (habit.goal.type === 'boolean') {
+            onToggle(habit.id, dateStr);
+        } else {
             const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
             setPopoverState({
                 isOpen: true,
@@ -980,11 +964,7 @@ export const TrackerGrid: React.FC<TrackerGridProps> = ({ habits, logs, onToggle
                 date: dateStr,
                 initialValue: log?.value || 0,
                 unit: habit.goal.unit,
-                position: { top: rect.bottom + 8, left: rect.left - 40 }, // Center-ish alignment
-            });
-        } else {
-            onToggle(habit.id, dateStr).catch(error => {
-                console.error('Failed to toggle habit:', error);
+                position: { top: rect.bottom + 8, left: rect.left - 40 }, // Center-ish
             });
         }
     };
@@ -994,8 +974,20 @@ export const TrackerGrid: React.FC<TrackerGridProps> = ({ habits, logs, onToggle
         onToggle(habit.id, todayStr);
     };
 
+    const handleOpenPopover = (e: React.MouseEvent, habit: Habit, date: string, val: number) => {
+        const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+        setPopoverState({
+            isOpen: true,
+            habitId: habit.id,
+            date: date,
+            initialValue: val,
+            unit: habit.goal.unit,
+            position: { top: rect.bottom + 8, left: rect.left - 40 },
+        });
+    };
+
     return (
-        <div className="flex-1 overflow-hidden flex flex-col bg-neutral-900/50 rounded-2xl border border-white/5 backdrop-blur-sm shadow-2xl relative">
+        <div className="w-full overflow-x-auto pb-20">
             <DndContext
                 sensors={sensors}
                 collisionDetection={closestCenter}
@@ -1044,24 +1036,28 @@ export const TrackerGrid: React.FC<TrackerGridProps> = ({ habits, logs, onToggle
                                     items={dailyHabits.map(h => h.id)}
                                     strategy={verticalListSortingStrategy}
                                 >
-                                    {dailyHabits.map((habit) => (
-                                        <SortableHabitRow
-                                            key={habit.id}
-                                            habit={habit}
-                                            allHabits={habits}
-                                            expandedIds={expandedIds}
-                                            onToggleExpand={toggleExpand}
-                                            logs={logs}
-                                            dates={dates}
-                                            handleCellClick={handleCellClick}
-                                            deleteHabit={deleteHabit}
-                                            deleteConfirmId={deleteConfirmId}
-                                            setDeleteConfirmId={setDeleteConfirmId}
-                                            onEditHabit={onEditHabit}
-                                            onToggle={onToggle}
-                                            onRunRoutine={onRunRoutine}
-                                        />
-                                    ))}
+                                    {dailyHabits.map((habit) => {
+                                        const progressInfo = habitProgressMap.get(habit.id);
+                                        return (
+                                            <SortableHabitRow
+                                                key={habit.id}
+                                                habit={habit}
+                                                allHabits={habits}
+                                                expandedIds={expandedIds}
+                                                onToggleExpand={toggleExpand}
+                                                logs={logs}
+                                                dates={dates}
+                                                handleCellClick={handleCellClick}
+                                                deleteHabit={deleteHabit}
+                                                deleteConfirmId={deleteConfirmId}
+                                                setDeleteConfirmId={setDeleteConfirmId}
+                                                onEditHabit={onEditHabit}
+                                                onToggle={onToggle}
+                                                onRunRoutine={onRunRoutine}
+                                                streak={progressInfo?.streak}
+                                            />
+                                        )
+                                    })}
                                 </SortableContext>
                             ) : (
                                 <div className="p-8 text-center text-neutral-500 text-sm italic">
@@ -1094,17 +1090,7 @@ export const TrackerGrid: React.FC<TrackerGridProps> = ({ habits, logs, onToggle
                                             onToggleExpand={toggleExpand}
                                             logs={logs}
                                             onToggleToday={handleToggleToday}
-                                            onOpenPopover={(e, habit, date, val) => {
-                                                const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-                                                setPopoverState({
-                                                    isOpen: true,
-                                                    habitId: habit.id,
-                                                    date: date,
-                                                    initialValue: val,
-                                                    unit: habit.goal.unit,
-                                                    position: { top: rect.bottom + 8, left: rect.left - 40 }, // Center-ish
-                                                });
-                                            }}
+                                            onOpenPopover={handleOpenPopover}
                                             deleteHabit={deleteHabit}
                                             deleteConfirmId={deleteConfirmId}
                                             setDeleteConfirmId={setDeleteConfirmId}

@@ -4,6 +4,7 @@ import { useProgressOverview } from '../lib/useProgressOverview';
 import { Heatmap } from './Heatmap';
 import { ProgressRings } from './ProgressRings';
 import { DailyCheckInModal } from './DailyCheckInModal';
+import { MomentumHeader } from './MomentumHeader';
 import { Sun, Flame, Target, Activity, Clock, ChevronDown, ChevronRight, Loader2 } from 'lucide-react';
 import { calculateHabitStats } from '../utils/analytics';
 import { getEstimatedCompletionDate } from '../utils/pace';
@@ -45,6 +46,11 @@ export const ProgressDashboard: React.FC<ProgressDashboardProps> = ({ onCreateGo
                     Daily Check-in
                 </button>
             </div>
+
+            {/* Momentum Header */}
+            {progressData?.momentum && (
+                <MomentumHeader globalMomentum={progressData.momentum.global} />
+            )}
 
             {/* Progress Rings */}
             <ProgressRings />
