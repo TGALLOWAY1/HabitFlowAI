@@ -4,7 +4,6 @@ import { useProgressOverview } from '../lib/useProgressOverview';
 import { Heatmap } from './Heatmap';
 import { ProgressRings } from './ProgressRings';
 import { DailyCheckInModal } from './DailyCheckInModal';
-import { MomentumHeader } from './MomentumHeader';
 import { Sun, Flame, Target, Activity, Clock, ChevronDown, ChevronRight, Loader2 } from 'lucide-react';
 import { calculateHabitStats } from '../utils/analytics';
 import { getEstimatedCompletionDate } from '../utils/pace';
@@ -47,10 +46,6 @@ export const ProgressDashboard: React.FC<ProgressDashboardProps> = ({ onCreateGo
                 </button>
             </div>
 
-            {/* Momentum Header */}
-            {progressData?.momentum && (
-                <MomentumHeader globalMomentum={progressData.momentum.global} />
-            )}
 
             {/* Progress Rings */}
             <ProgressRings />
@@ -206,10 +201,6 @@ export const ProgressDashboard: React.FC<ProgressDashboardProps> = ({ onCreateGo
 const CategorySection: React.FC<{ category: any, habits: any[] }> = ({ category, habits }) => {
     const [isExpanded, setIsExpanded] = useState(false);
 
-    const avgConsistency = Math.round(
-        habits.reduce((acc, h) => acc + h.stats.consistencyScore, 0) / habits.length
-    );
-
     // Extract color safely (assuming format 'bg-color-500')
     const colorMap: Record<string, string> = {
         'bg-emerald-500': 'text-emerald-500',
@@ -236,23 +227,12 @@ const CategorySection: React.FC<{ category: any, habits: any[] }> = ({ category,
                     <h3 className={`text-lg font-bold ${textColorClass}`}>
                         {category.name}
                     </h3>
-                    <span className="text-xs text-neutral-500 bg-neutral-800 px-2 py-0.5 rounded-full">
-                        {habits.length} habits
-                    </span>
                 </div>
 
                 <div className="flex items-center gap-4">
-                    <div className="text-right">
-                        <div className="text-sm font-medium text-white">{avgConsistency}%</div>
-                        <div className="text-xs text-neutral-500">Consistency</div>
-                    </div>
-                    {/* Mini Progress Bar for Summary */}
-                    <div className="w-24 h-1.5 bg-neutral-800 rounded-full overflow-hidden">
-                        <div
-                            className={`h-full ${category.color} opacity-80`}
-                            style={{ width: `${avgConsistency}%` }}
-                        />
-                    </div>
+                    <span className="text-xs text-neutral-500 bg-neutral-800 px-2 py-0.5 rounded-full">
+                        {habits.length} habits
+                    </span>
                 </div>
             </button>
 

@@ -5,6 +5,7 @@ import { TaskProvider } from './context/TaskContext';
 import { Layout } from './components/Layout';
 import { CategoryTabs } from './components/CategoryTabs';
 import { TrackerGrid } from './components/TrackerGrid';
+import { CategoryMomentumBanner } from './components/CategoryMomentumBanner';
 import { AddHabitModal } from './components/AddHabitModal';
 import { ProgressDashboard } from './components/ProgressDashboard';
 import { RoutineList } from './components/RoutineList';
@@ -261,6 +262,16 @@ const HabitTrackerContent: React.FC = () => {
             categories={categories}
             activeCategoryId={activeCategoryId}
             onSelectCategory={setActiveCategoryId}
+          />
+        )
+      }
+
+      {
+        view === 'tracker' && activeCategoryId && (
+          <CategoryMomentumBanner
+            categoryId={activeCategoryId}
+            habits={filteredHabits}
+            logs={logs}
           />
         )
       }

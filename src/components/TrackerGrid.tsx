@@ -864,7 +864,7 @@ const SortableWeeklyHabitRow = ({
 
 export const TrackerGrid: React.FC<TrackerGridProps> = ({ habits, logs, onToggle, onUpdateValue, onAddHabit, onEditHabit, onRunRoutine }) => {
     const { deleteHabit, reorderHabits } = useHabitStore();
-    const { data: progressData } = useProgressOverview();
+    const { data: progressData, refresh: refreshProgress } = useProgressOverview();
 
     const [popoverState, setPopoverState] = useState<{
         isOpen: boolean;
@@ -918,19 +918,38 @@ export const TrackerGrid: React.FC<TrackerGridProps> = ({ habits, logs, onToggle
         return interval.reverse(); // Show Today first, then Yesterday, etc.
     }, []);
 
-    // Create a map for fast lookup of today's progress data
+    // Create a map for fast lookup of today's progress data with OPTIMISTIC UPDATES
     const habitProgressMap = useMemo(() => {
         const map = new Map<string, { streak: number; freezeStatus?: string }>();
+        const todayStr = format(new Date(), 'yyyy-MM-dd');
+
         if (progressData?.habitsToday) {
             progressData.habitsToday.forEach(h => {
-                map.set(h.habit.id, {
-                    streak: h.streak,
+                const habitId = h.habit.id;
+                const logKey = `${habitId}-${todayStr}`;
+                const optimisticLog = logs[logKey];
+                const isOptimisticallyCompleted = optimisticLog?.completed || false;
+                const serverCompleted = h.completed;
+
+                let effectiveStreak = h.streak;
+
+                // Adjust streak based on disparity between server and optimistic state
+                if (isOptimisticallyCompleted && !serverCompleted) {
+                    // Client says done, server says not yet -> Increment streak
+                    effectiveStreak += 1;
+                } else if (!isOptimisticallyCompleted && serverCompleted && effectiveStreak > 0) {
+                    // Client says undid, server says done -> Decrement streak
+                    effectiveStreak -= 1;
+                }
+
+                map.set(habitId, {
+                    streak: effectiveStreak,
                     freezeStatus: h.freezeStatus
                 });
             });
         }
         return map;
-    }, [progressData]);
+    }, [progressData, logs]);
 
     const sensors = useSensors(
         useSensor(PointerSensor, {
@@ -955,7 +974,7 @@ export const TrackerGrid: React.FC<TrackerGridProps> = ({ habits, logs, onToggle
 
     const handleCellClick = (e: React.MouseEvent, habit: Habit, dateStr: string, log?: DayLog) => {
         if (habit.goal.type === 'boolean') {
-            onToggle(habit.id, dateStr);
+            handleToggle(habit.id, dateStr);
         } else {
             const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
             setPopoverState({
@@ -969,9 +988,17 @@ export const TrackerGrid: React.FC<TrackerGridProps> = ({ habits, logs, onToggle
         }
     };
 
-    const handleToggleToday = (habit: Habit) => {
+    const handleToggleToday = async (habit: Habit) => {
         const todayStr = format(new Date(), 'yyyy-MM-dd');
-        onToggle(habit.id, todayStr);
+        await onToggle(habit.id, todayStr);
+        // Refresh progress data to ensure streaks are synced eventually
+        refreshProgress();
+    };
+
+    // Modified onToggle wrapper to refresh progress
+    const handleToggle = async (habitId: string, date: string) => {
+        await onToggle(habitId, date);
+        refreshProgress();
     };
 
     const handleOpenPopover = (e: React.MouseEvent, habit: Habit, date: string, val: number) => {
@@ -1052,7 +1079,7 @@ export const TrackerGrid: React.FC<TrackerGridProps> = ({ habits, logs, onToggle
                                                 deleteConfirmId={deleteConfirmId}
                                                 setDeleteConfirmId={setDeleteConfirmId}
                                                 onEditHabit={onEditHabit}
-                                                onToggle={onToggle}
+                                                onToggle={handleToggle}
                                                 onRunRoutine={onRunRoutine}
                                                 streak={progressInfo?.streak}
                                             />
