@@ -55,11 +55,7 @@ export const GoalsPage: React.FC<GoalsPageProps> = ({ onCreateGoal, onViewGoal, 
 
     return (
         <div className="w-full max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
-            <div className="mb-6 sm:mb-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                <div>
-                    <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2">Goals</h1>
-                    <p className="text-neutral-400 text-sm sm:text-base">Track your progress and achieve your goals</p>
-                </div>
+            <div className="mb-6 sm:mb-8 flex flex-col sm:flex-row items-start sm:items-center justify-end gap-4">
                 <div className="flex items-center gap-3">
                     {onViewWinArchive && (
                         <button

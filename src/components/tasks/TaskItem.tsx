@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Check, Trash2, ArrowRight } from 'lucide-react';
+import { Check, Trash2, ArrowRight, ArrowLeft } from 'lucide-react';
 import type { Task } from '../../types/task';
 import { useTasks } from '../../context/TaskContext';
 
@@ -25,6 +25,10 @@ export const TaskItem: React.FC<TaskItemProps> = ({ task }) => {
 
     const handleMoveToToday = async () => {
         await updateTask(task.id, { listPlacement: 'today' });
+    };
+
+    const handleMoveToInbox = async () => {
+        await updateTask(task.id, { listPlacement: 'inbox' });
     };
 
     const isCompleted = task.status === 'completed';
@@ -61,6 +65,16 @@ export const TaskItem: React.FC<TaskItemProps> = ({ task }) => {
                         title="Move to Today"
                     >
                         <ArrowRight size={14} />
+                    </button>
+                )}
+
+                {task.listPlacement === 'today' && !isCompleted && (
+                    <button
+                        onClick={handleMoveToInbox}
+                        className="p-1.5 text-neutral-500 hover:text-amber-400 hover:bg-amber-500/10 rounded transition-colors"
+                        title="Move to Inbox"
+                    >
+                        <ArrowLeft size={14} />
                     </button>
                 )}
 

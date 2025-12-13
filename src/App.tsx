@@ -23,7 +23,7 @@ import { JournalPage } from './pages/JournalPage';
 import { TasksPage } from './pages/TasksPage';
 
 // Simple router state
-type AppRoute = 'tracker' | 'progress' | 'routines' | 'goals' | 'calendar' | 'wins' | 'journal' | 'tasks';
+type AppRoute = 'tracker' | 'dashboard' | 'routines' | 'goals' | 'calendar' | 'wins' | 'journal' | 'tasks';
 
 // Helper functions for URL syncing
 function parseRouteFromLocation(location: Location): AppRoute {
@@ -31,7 +31,9 @@ function parseRouteFromLocation(location: Location): AppRoute {
   const view = params.get("view");
 
   switch (view) {
-    case "progress":
+    case "dashboard":
+    case "progress": // Legacy support
+      return "dashboard";
     case "routines": // Renamed from activities
     case "goals":
     case "wins":
@@ -41,13 +43,18 @@ function parseRouteFromLocation(location: Location): AppRoute {
     case "tasks":
       return view as AppRoute;
     default:
-      return "tracker"; // default view
+      return "dashboard"; // default view
   }
 }
 
 function buildUrlForRoute(route: AppRoute, params: Record<string, string> = {}): string {
   const searchParams = new URLSearchParams(window.location.search);
-  searchParams.set("view", route);
+
+  if (route === 'dashboard') {
+    searchParams.delete("view");
+  } else {
+    searchParams.set("view", route);
+  }
 
   // Clear any existing ID params to prevent leakage between views
   searchParams.delete("goalId");
@@ -57,7 +64,8 @@ function buildUrlForRoute(route: AppRoute, params: Record<string, string> = {}):
     searchParams.set(key, value);
   });
 
-  return `${window.location.pathname}?${searchParams.toString()}`;
+  const queryString = searchParams.toString();
+  return queryString ? `${window.location.pathname}?${queryString}` : window.location.pathname;
 }
 
 const HabitTrackerContent: React.FC = () => {
@@ -103,15 +111,6 @@ const HabitTrackerContent: React.FC = () => {
     routine?: Routine;
   }>({ isOpen: false });
 
-  // Initialize URL if not present
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    if (!params.has("view")) {
-      const initialRoute = parseRouteFromLocation(window.location);
-      const url = buildUrlForRoute(initialRoute);
-      window.history.replaceState({ view: initialRoute }, "", url);
-    }
-  }, []);
 
   // Listen for browser back/forward navigation
   useEffect(() => {
@@ -166,11 +165,19 @@ const HabitTrackerContent: React.FC = () => {
       )}
 
       <div className="flex flex-col gap-4">
+        {/* Title Section */}
         <div className="flex items-center justify-between">
           <h2 className="text-2xl font-bold text-white">
-            {view === 'tracker' ? 'Habits' : view === 'progress' ? 'Habit Tracking' : view === 'routines' ? 'Routines' : view === 'journal' ? 'Journal' : view === 'tasks' ? 'Tasks' : 'Goals'}
+            {view === 'tracker' ? 'Habits' : view === 'dashboard' ? 'Dashboard' : view === 'routines' ? 'Routines' : view === 'journal' ? 'Journal' : view === 'tasks' ? 'Tasks' : 'Goals'}
           </h2>
           <div className="flex items-center gap-2 bg-neutral-800 rounded-lg p-1">
+            <button
+              onClick={() => handleNavigate('dashboard')}
+              className={`p-2 rounded-md transition-colors ${view === 'dashboard' ? 'bg-neutral-700 text-white' : 'text-neutral-400 hover:text-white'}`}
+              title="Dashboard"
+            >
+              <BarChart3 size={20} />
+            </button>
             <button
               onClick={() => handleNavigate('tracker')}
               className={`p-2 rounded-md transition-colors ${view === 'tracker' ? 'bg-neutral-700 text-white' : 'text-neutral-400 hover:text-white'}`}
@@ -191,13 +198,6 @@ const HabitTrackerContent: React.FC = () => {
               title="Weekly Calendar"
             >
               <Clock size={20} />
-            </button>
-            <button
-              onClick={() => handleNavigate('progress')}
-              className={`p-2 rounded-md transition-colors ${view === 'progress' ? 'bg-neutral-700 text-white' : 'text-neutral-400 hover:text-white'}`}
-              title="Progress Dashboard"
-            >
-              <BarChart3 size={20} />
             </button>
             <button
               onClick={() => handleNavigate('routines')}
@@ -222,116 +222,161 @@ const HabitTrackerContent: React.FC = () => {
             </button>
           </div>
         </div>
+      </div>
 
-        {view === 'tracker' && (
+
+      {
+        view === 'tracker' && (
+          <div className="px-1">
+            <p className="text-neutral-500 text-sm max-w-lg leading-relaxed">
+              Habits are signals of the person you are becoming.
+              <br />
+              They measure consistency over time — not perfection in the moment.
+            </p>
+          </div>
+        )
+      }
+
+      {
+        view === 'goals' && (
+          <div className="px-1">
+            <p className="text-neutral-500 text-sm max-w-lg leading-relaxed">
+              Goals provide direction, not judgment.
+              <br />
+              They exist to orient your effort — not to rush or constrain it.
+            </p>
+          </div>
+        )
+      }
+
+      {
+        view === 'routines' && (
+          <div className="px-1">
+            <p className="text-neutral-500 text-sm max-w-lg leading-relaxed">
+              Routines are supportive structures, not tests of discipline.
+              <br />
+              They exist to reduce friction — not demand completion.
+            </p>
+          </div>
+        )
+      }
+
+      {
+        view === 'tracker' && (
           <CategoryTabs
             categories={categories}
             activeCategoryId={activeCategoryId}
             onSelectCategory={setActiveCategoryId}
           />
-        )}
-      </div>
+        )
+      }
 
-      {showCreateGoal ? (
-        <CreateGoalFlow
-          onComplete={() => {
-            setShowCreateGoal(false);
-            handleNavigate('goals');
-          }}
-          onCancel={() => {
-            setShowCreateGoal(false);
-            handleNavigate('goals');
-          }}
-        />
-      ) : completedGoalId ? (
-        <GoalCompletedPage
-          goalId={completedGoalId}
-          onBack={() => {
-            setCompletedGoalId(null);
-            handleNavigate('goals');
-          }}
-          onAddBadge={() => {
-            // Redirect to Win Archive after badge upload
-            setCompletedGoalId(null);
-            handleNavigate('wins');
-          }}
-          onViewGoalDetail={(goalId) => {
-            setCompletedGoalId(null);
-            handleNavigate('goals', { goalId });
-          }}
-        />
-      ) : view === 'wins' ? (
-        <WinArchivePage
-          onViewGoal={(goalId) => {
-            handleNavigate('goals', { goalId });
-          }}
-        />
-      ) : selectedGoalId ? (
-        <GoalDetailPage
-          goalId={selectedGoalId}
-          onBack={() => {
-            handleNavigate('goals');
-          }}
-          onNavigateToCompleted={(goalId) => {
-            // First clear selected goal so we don't render detail page
-            setSelectedGoalId(null);
-            setCompletedGoalId(goalId);
-            handleNavigate('goals');
-          }}
-          onViewWinArchive={() => {
-            handleNavigate('wins');
-          }}
-        />
-      ) : view === 'tracker' ? (
-        <TrackerGrid
-          habits={filteredHabits}
-          logs={logs}
-          onToggle={toggleHabit}
-          onUpdateValue={updateLog}
-          onAddHabit={() => {
-            setEditingHabit(null);
-            setIsModalOpen(true);
-          }}
-          onEditHabit={(habit) => {
-            setEditingHabit(habit);
-            setIsModalOpen(true);
-          }}
-          onRunRoutine={(routine) => setRoutineRunnerState({ isOpen: true, routine })}
-        />
-      ) : view === 'progress' ? (
-        <ProgressDashboard
-          onCreateGoal={() => setShowCreateGoal(true)}
-          onViewGoal={(goalId) => {
-            handleNavigate('goals', { goalId });
-          }}
-        />
-      ) : view === 'routines' ? (
-        <RoutineList
-          onCreate={() => setRoutineEditorState({ isOpen: true, mode: 'create', routine: undefined })}
-          onEdit={(routine) => setRoutineEditorState({ isOpen: true, mode: 'edit', routine })}
-          onStart={(routine) => setRoutineRunnerState({ isOpen: true, routine })}
-        />
-      ) : view === 'calendar' ? (
-        <CalendarView />
-      ) : view === 'journal' ? (
-        <JournalPage />
-      ) : view === 'tasks' ? (
-        <TasksPage />
-      ) : (
-        <GoalsPage
-          onCreateGoal={() => setShowCreateGoal(true)}
-          onViewGoal={(goalId) => {
-            handleNavigate('goals', { goalId });
-          }}
-          onNavigateToCompleted={(goalId) => {
-            setCompletedGoalId(goalId);
-            handleNavigate('goals');
-          }}
-          onViewWinArchive={() => {
-            handleNavigate('wins');
-          }}
-        />
-      )}
+      {
+        showCreateGoal ? (
+          <CreateGoalFlow
+            onComplete={() => {
+              setShowCreateGoal(false);
+              handleNavigate('goals');
+            }}
+            onCancel={() => {
+              setShowCreateGoal(false);
+              handleNavigate('goals');
+            }}
+          />
+        ) : completedGoalId ? (
+          <GoalCompletedPage
+            goalId={completedGoalId}
+            onBack={() => {
+              setCompletedGoalId(null);
+              handleNavigate('goals');
+            }}
+            onAddBadge={() => {
+              // Redirect to Win Archive after badge upload
+              setCompletedGoalId(null);
+              handleNavigate('wins');
+            }}
+            onViewGoalDetail={(goalId) => {
+              setCompletedGoalId(null);
+              handleNavigate('goals', { goalId });
+            }}
+          />
+        ) : view === 'wins' ? (
+          <WinArchivePage
+            onViewGoal={(goalId) => {
+              handleNavigate('goals', { goalId });
+            }}
+          />
+        ) : selectedGoalId ? (
+          <GoalDetailPage
+            goalId={selectedGoalId}
+            onBack={() => {
+              handleNavigate('goals');
+            }}
+            onNavigateToCompleted={(goalId) => {
+              // First clear selected goal so we don't render detail page
+              setSelectedGoalId(null);
+              setCompletedGoalId(goalId);
+              handleNavigate('goals');
+            }}
+            onViewWinArchive={() => {
+              handleNavigate('wins');
+            }}
+          />
+        ) : view === 'tracker' ? (
+          <TrackerGrid
+            habits={filteredHabits}
+            logs={logs}
+            onToggle={toggleHabit}
+            onUpdateValue={updateLog}
+            onAddHabit={() => {
+              setEditingHabit(null);
+              setIsModalOpen(true);
+            }}
+            onEditHabit={(habit) => {
+              setEditingHabit(habit);
+              setIsModalOpen(true);
+            }}
+            onRunRoutine={(routine) => setRoutineRunnerState({ isOpen: true, routine })}
+          />
+        ) : view === 'dashboard' ? (
+          <ProgressDashboard
+            onCreateGoal={() => setShowCreateGoal(true)}
+            onViewGoal={(goalId) => {
+              handleNavigate('goals', { goalId });
+            }}
+            onSelectCategory={(categoryId) => {
+              setActiveCategoryId(categoryId);
+              handleNavigate('tracker');
+            }}
+          />
+        ) : view === 'routines' ? (
+          <RoutineList
+            onCreate={() => setRoutineEditorState({ isOpen: true, mode: 'create', routine: undefined })}
+            onEdit={(routine) => setRoutineEditorState({ isOpen: true, mode: 'edit', routine })}
+            onStart={(routine) => setRoutineRunnerState({ isOpen: true, routine })}
+          />
+        ) : view === 'calendar' ? (
+          <CalendarView />
+        ) : view === 'journal' ? (
+          <JournalPage />
+        ) : view === 'tasks' ? (
+          <TasksPage />
+        ) : (
+          <GoalsPage
+            onCreateGoal={() => setShowCreateGoal(true)}
+            onViewGoal={(goalId) => {
+              handleNavigate('goals', { goalId });
+            }}
+            onNavigateToCompleted={(goalId) => {
+              setCompletedGoalId(goalId);
+              handleNavigate('goals');
+            }}
+            onViewWinArchive={() => {
+              handleNavigate('wins');
+            }}
+          />
+        )
+      }
 
       <AddHabitModal
         isOpen={isModalOpen}
@@ -355,7 +400,7 @@ const HabitTrackerContent: React.FC = () => {
         routine={routineRunnerState.routine}
         onClose={() => setRoutineRunnerState({ isOpen: false })}
       />
-    </div>
+    </div >
   );
 };
 
