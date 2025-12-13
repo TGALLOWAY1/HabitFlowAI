@@ -130,6 +130,16 @@ app.post('/api/tasks', createTaskRoute);
 app.patch('/api/tasks/:id', updateTaskRoute);
 app.delete('/api/tasks/:id', deleteTaskRoute);
 
+// Habit Entry routes (History)
+import { getHabitEntriesRoute, createHabitEntryRoute, deleteHabitEntryRoute, updateHabitEntryRoute, deleteHabitEntriesForDayRoute } from './routes/habitEntries';
+app.get('/api/entries', getHabitEntriesRoute);
+app.post('/api/entries', createHabitEntryRoute);
+app.delete('/api/entries', deleteHabitEntriesForDayRoute); // Bulk delete via query params
+app.delete('/api/entries/:id', deleteHabitEntryRoute);
+app.patch('/api/entries/:id', updateHabitEntryRoute);
+
+
+
 // Health check endpoint
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });

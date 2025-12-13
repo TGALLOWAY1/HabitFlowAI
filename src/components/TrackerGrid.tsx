@@ -2,9 +2,10 @@ import React, { useMemo, useState } from 'react';
 import { format, eachDayOfInterval, subDays, isToday, startOfWeek, endOfWeek, isWithinInterval, parseISO } from 'date-fns';
 import { type Habit, type DayLog, type Routine } from '../types';
 import { cn } from '../utils/cn';
-import { Check, Plus, Trash2, GripVertical, Pencil, Trophy, Play, Flame } from 'lucide-react';
+import { Check, Plus, Trash2, GripVertical, Pencil, Trophy, Play, Flame, History } from 'lucide-react';
 
 import { NumericInputPopover } from './NumericInputPopover';
+import { HabitHistoryModal } from './HabitHistoryModal';
 import { useHabitStore } from '../store/HabitContext';
 import { useRoutineStore } from '../store/RoutineContext';
 import { useProgressOverview } from '../lib/useProgressOverview';
@@ -36,6 +37,7 @@ interface TrackerGridProps {
     onAddHabit: () => void;
     onEditHabit: (habit: Habit) => void;
     onRunRoutine?: (routine: Routine) => void;
+    onViewHistory: (habit: Habit) => void;
 }
 
 // --- Shared Components ---
@@ -43,6 +45,7 @@ interface TrackerGridProps {
 const HabitActionButtons = ({
     habit,
     onEdit,
+    onViewHistory,
     onDelete,
     deleteConfirmId,
     setDeleteConfirmId,
@@ -50,6 +53,7 @@ const HabitActionButtons = ({
 }: {
     habit: Habit,
     onEdit: () => void,
+    onViewHistory: () => void,
     onDelete: (id: string) => Promise<void>,
     deleteConfirmId: string | null,
     setDeleteConfirmId: (id: string | null) => void,
@@ -72,6 +76,16 @@ const HabitActionButtons = ({
                     <Play size={14} />
                 </button>
             )}
+            <button
+                onClick={(e) => {
+                    e.stopPropagation();
+                    onViewHistory();
+                }}
+                className="p-1.5 rounded-lg hover:bg-neutral-800 text-neutral-500 hover:text-white transition-colors"
+                title="View History"
+            >
+                <History size={14} />
+            </button>
             <button
                 onClick={(e) => {
                     e.stopPropagation();
@@ -127,8 +141,8 @@ interface HabitRowContentProps {
     setDeleteConfirmId: (id: string | null) => void;
     onEditHabit: (habit: Habit) => void;
     // Drag & Drop props (optional, only for root)
-    attributes?: any;
-    listeners?: any;
+    attributes?: any; // eslint-disable-line @typescript-eslint/no-explicit-any
+    listeners?: any; // eslint-disable-line @typescript-eslint/no-explicit-any
     isDragging?: boolean;
     setNodeRef?: (node: HTMLElement | null) => void;
     style?: React.CSSProperties;
@@ -137,6 +151,7 @@ interface HabitRowContentProps {
     onToggle: (habitId: string, date: string) => Promise<void>;
     onRunRoutine?: (routine: Routine) => void;
     streak?: number;
+    onViewHistory: (habit: Habit) => void;
 }
 
 const HabitRowContent = ({
@@ -160,7 +175,8 @@ const HabitRowContent = ({
     bundleStatus,
     onToggle,
     onRunRoutine,
-    streak
+    streak,
+    onViewHistory
 }: HabitRowContentProps) => {
 
     // Non-Negotiable Logic
@@ -175,7 +191,7 @@ const HabitRowContent = ({
         if (!habit.nonNegotiable) return false;
         if (!habit.nonNegotiableDays || habit.nonNegotiableDays.length === 0) return true; // All days if not specified
         return habit.nonNegotiableDays.includes(today.getDay());
-    }, [habit.nonNegotiable, habit.nonNegotiableDays]);
+    }, [habit.nonNegotiable, habit.nonNegotiableDays, today]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const priorityRingClass = isNonNegotiableToday
         ? isCompletedToday
@@ -248,6 +264,7 @@ const HabitRowContent = ({
                     deleteConfirmId={deleteConfirmId}
                     setDeleteConfirmId={setDeleteConfirmId}
                     onRunRoutine={onRunRoutine}
+                    onViewHistory={() => onViewHistory(habit)}
                 />
 
                 {/* Bundle Expand/Collapse "Drawer Handle" */}
@@ -282,7 +299,7 @@ const HabitRowContent = ({
                     let isCompleted = false;
                     let hasValue = false;
                     let value = 0;
-                    let log = logs[`${habit.id}-${dateStr}`];
+                    const log = logs[`${habit.id}-${dateStr}`];
 
                     if (habit.type === 'bundle' && hasChildren) {
                         const status = computeBundleStatus(habit, logs, dateStr);
@@ -418,7 +435,8 @@ const SortableHabitRow = ({
     onEditHabit,
     onToggle,
     onRunRoutine,
-    streak
+    streak,
+    onViewHistory
 }: {
     habit: Habit;
     allHabits: Habit[];
@@ -434,6 +452,7 @@ const SortableHabitRow = ({
     onToggle: (habitId: string, date: string) => Promise<void>;
     onRunRoutine?: (routine: Routine) => void;
     streak?: number;
+    onViewHistory: (habit: Habit) => void;
 }) => {
     const {
         attributes,
@@ -488,6 +507,7 @@ const SortableHabitRow = ({
                 onToggle={onToggle}
                 onRunRoutine={onRunRoutine}
                 streak={habit.type !== 'bundle' ? streak : undefined}
+                onViewHistory={onViewHistory}
             />
 
             {/* Child Rows - Rendered when expanded */}
@@ -510,6 +530,7 @@ const SortableHabitRow = ({
                     // No drag props
                     style={{ transition }} // Maintain transition if needed
                     onRunRoutine={onRunRoutine}
+                    onViewHistory={onViewHistory}
                 />
             ))}
         </div>
@@ -532,12 +553,13 @@ interface WeeklyHabitRowContentProps {
     onToggleToday: (habit: Habit) => void;
     onOpenPopover: (e: React.MouseEvent, habit: Habit, date: string, currentValue: number) => void;
     // Drag props
-    attributes?: any;
-    listeners?: any;
+    attributes?: any; // eslint-disable-line @typescript-eslint/no-explicit-any
+    listeners?: any; // eslint-disable-line @typescript-eslint/no-explicit-any
     isDragging?: boolean;
     setNodeRef?: (node: HTMLElement | null) => void;
     style?: React.CSSProperties;
     onRunRoutine?: (routine: Routine) => void;
+    onViewHistory: (habit: Habit) => void;
 }
 
 const WeeklyHabitRowContent = ({
@@ -558,7 +580,8 @@ const WeeklyHabitRowContent = ({
     isDragging,
     setNodeRef,
     style,
-    onRunRoutine
+    onRunRoutine,
+    onViewHistory
 }: WeeklyHabitRowContentProps) => {
 
     // Calculate Weekly Progress
@@ -669,6 +692,7 @@ const WeeklyHabitRowContent = ({
                     deleteConfirmId={deleteConfirmId}
                     setDeleteConfirmId={setDeleteConfirmId}
                     onRunRoutine={onRunRoutine}
+                    onViewHistory={() => onViewHistory(habit)}
                 />
 
                 {/* Bundle Expand/Collapse "Drawer Handle" */}
@@ -770,13 +794,14 @@ const SortableWeeklyHabitRow = ({
     deleteConfirmId,
     setDeleteConfirmId,
     onEditHabit,
-    onRunRoutine
+    onRunRoutine,
+    onViewHistory
 }: {
     habit: Habit;
     allHabits: Habit[];
     expandedIds: Set<string>;
     onToggleExpand: (id: string) => void;
-    logs: Record<string, DayLog>; // All logs passed in, we filter inside
+    logs: Record<string, DayLog>;
     onToggleToday: (habit: Habit) => void;
     onOpenPopover: (e: React.MouseEvent, habit: Habit, date: string, currentValue: number) => void;
     deleteHabit: (id: string) => Promise<void>;
@@ -784,6 +809,7 @@ const SortableWeeklyHabitRow = ({
     setDeleteConfirmId: (id: string | null) => void;
     onEditHabit: (habit: Habit) => void;
     onRunRoutine?: (routine: Routine) => void;
+    onViewHistory: (habit: Habit) => void;
 }) => {
     const {
         attributes,
@@ -835,6 +861,7 @@ const SortableWeeklyHabitRow = ({
                 setNodeRef={setNodeRef}
                 style={style}
                 onRunRoutine={onRunRoutine}
+                onViewHistory={onViewHistory}
             />
 
             {/* Child Rows */}
@@ -856,6 +883,7 @@ const SortableWeeklyHabitRow = ({
                     // No drag props
                     style={{ transition }}
                     onRunRoutine={onRunRoutine}
+                    onViewHistory={onViewHistory}
                 />
             ))}
         </div>
@@ -882,6 +910,7 @@ export const TrackerGrid: React.FC<TrackerGridProps> = ({ habits, logs, onToggle
     });
 
     const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+    const [historyModalHabitId, setHistoryModalHabitId] = useState<string | null>(null);
     const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
 
     const toggleExpand = (id: string) => {
@@ -1082,6 +1111,7 @@ export const TrackerGrid: React.FC<TrackerGridProps> = ({ habits, logs, onToggle
                                                 onToggle={handleToggle}
                                                 onRunRoutine={onRunRoutine}
                                                 streak={progressInfo?.streak}
+                                                onViewHistory={(h) => setHistoryModalHabitId(h.id)}
                                             />
                                         )
                                     })}
@@ -1123,6 +1153,7 @@ export const TrackerGrid: React.FC<TrackerGridProps> = ({ habits, logs, onToggle
                                             setDeleteConfirmId={setDeleteConfirmId}
                                             onEditHabit={onEditHabit}
                                             onRunRoutine={onRunRoutine}
+                                            onViewHistory={(h) => setHistoryModalHabitId(h.id)}
                                         />
                                     ))}
                                 </SortableContext>
@@ -1148,6 +1179,13 @@ export const TrackerGrid: React.FC<TrackerGridProps> = ({ habits, logs, onToggle
                 unit={popoverState.unit}
                 position={popoverState.position}
             />
+
+            {historyModalHabitId && (
+                <HabitHistoryModal
+                    habitId={historyModalHabitId}
+                    onClose={() => setHistoryModalHabitId(null)}
+                />
+            )}
         </div>
     );
 };

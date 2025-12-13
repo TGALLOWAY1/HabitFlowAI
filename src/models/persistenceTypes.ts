@@ -192,6 +192,11 @@ export interface Habit {
  * Date Format: YYYY-MM-DD (ISO date string)
  * 
  * Represents a single day's completion record for a specific habit.
+ * 
+ * // DEPRECATED SOURCE OF TRUTH: derived cache from HabitEntry.
+ * // This entity is now derived from HabitEntries and serves as a cache
+ * // for the dashboard/calendar UI. Do not write to this directly unless
+ * // recomputing from entries.
  */
 export interface DayLog {
     /** Foreign key reference to Habit.id */
@@ -697,6 +702,84 @@ export const MONGO_COLLECTIONS = {
     ROUTINE_LOGS: 'routineLogs',
     JOURNAL_ENTRIES: 'journalEntries',
     TASKS: 'tasks',
+    HABIT_ENTRIES: 'habitEntries',
 } as const;
+
+
+
+/**
+ * HabitEntry Entity (New Canonical Source of Truth)
+ * 
+ * Storage Key: 'habitEntries'
+ * Storage Format: HabitEntry[] (array of HabitEntry documents)
+ * 
+ * Represents a single granular event contributing to a habit.
+ * This is the SOURCE OF TRUTH. DayLogs are derived from these entries.
+ */
+export interface HabitEntry {
+    /** 
+     * Unique identifier
+     */
+    id: string;
+
+    /** Foreign key reference to Habit.id */
+    habitId: string;
+
+    /** 
+     * Timestamp of the entry (ISO 8601)
+     * For daily habits, this typically matches the date, but stores full time.
+     */
+    timestamp: string;
+
+    /** 
+     * Value contribution
+     * - For binary habits: usually 1
+     * - For numeric habits: the amount added (e.g., 50 pushups)
+     */
+    value: number;
+
+    /** 
+     * Source of the entry
+     * - 'manual': User clicked/typed
+     * - 'routine': From a routine completion
+     * - 'quick': Quick-add interface
+     * - 'import': Imported data
+     * - 'test': Test data
+     */
+    source: 'manual' | 'routine' | 'quick' | 'import' | 'test';
+
+    /** Optional: linked activity/routine ID */
+    routineId?: string;
+
+    /** Optional: derived day date (YYYY-MM-DD) for easier querying */
+    date: string;
+
+    /** Optional note */
+    note?: string;
+
+    /** Soft delete timestamp */
+    deletedAt?: string;
+
+    /** Creation timestamp */
+    createdAt: string;
+
+    /** Update timestamp */
+    updatedAt: string;
+}
+
+export type HabitEntriesStorage = HabitEntry[];
+
+export interface PersistenceSchema {
+    categories: CategoriesStorage;
+    habits: HabitsStorage;
+    logs: DayLogsStorage;
+    habitEntries: HabitEntriesStorage;
+    wellbeingLogs: WellbeingLogsStorage;
+    routines: RoutinesStorage;
+    goals: GoalsStorage;
+    routineLogs: RoutineLogsStorage;
+    journalEntries: JournalEntriesStorage;
+}
+
 
 

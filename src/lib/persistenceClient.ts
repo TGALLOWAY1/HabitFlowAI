@@ -5,7 +5,8 @@
  * All persistent data is stored in MongoDB via this client.
  */
 
-import type { Category, Habit, DayLog, DailyWellbeing, Goal, GoalWithProgress, GoalManualLog, Routine, RoutineLog } from '../models/persistenceTypes';
+import type { Category, Habit, DayLog, DailyWellbeing, Goal, GoalWithProgress, GoalManualLog, Routine, RoutineLog, HabitEntry } from '../models/persistenceTypes';
+
 import type { GoalDetail, CompletedGoal, ProgressOverview } from '../types';
 
 import { API_BASE_URL } from './persistenceConfig';
@@ -741,5 +742,80 @@ export async function createGoalManualLog(
     }
   );
   return response.log;
+}
+/**
+ * Habit Entry (History) Persistence Functions
+ */
+
+/**
+ * Fetch entries for a habit.
+ * 
+ * @param habitId - Habit ID
+ * @param date - Optional date filter
+ * @returns Promise<HabitEntry[]>
+ */
+export async function fetchHabitEntries(habitId: string, date?: string): Promise<HabitEntry[]> {
+  const url = date
+    ? `/entries?habitId=${habitId}&date=${date}`
+    : `/entries?habitId=${habitId}`;
+
+  const response = await apiRequest<{ entries: HabitEntry[] }>(url);
+  return response.entries;
+}
+
+/**
+ * Create a new habit entry.
+ * 
+ * @param data - Entry data
+ * @returns Promise<{ entry: HabitEntry, dayLog: DayLog | null }>
+ */
+export async function createHabitEntry(data: Partial<HabitEntry>): Promise<{ entry: HabitEntry, dayLog: DayLog | null }> {
+  const response = await apiRequest<{ entry: HabitEntry, dayLog: DayLog | null }>('/entries', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+  return response;
+}
+
+/**
+ * Update a habit entry.
+ * 
+ * @param id - Entry ID
+ * @param patch - Data to update
+ * @returns Promise<{ entry: HabitEntry, dayLog: DayLog | null }>
+ */
+export async function updateHabitEntry(id: string, patch: Partial<HabitEntry>): Promise<{ entry: HabitEntry, dayLog: DayLog | null }> {
+  const response = await apiRequest<{ entry: HabitEntry, dayLog: DayLog | null }>(`/entries/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(patch),
+  });
+  return response;
+}
+
+/**
+ * Delete a habit entry.
+ * 
+ * @param id - Entry ID
+ * @returns Promise<{ success: boolean, dayLog: DayLog | null }>
+ */
+export async function deleteHabitEntry(id: string): Promise<{ success: boolean, dayLog: DayLog | null }> {
+  const response = await apiRequest<{ success: boolean, dayLog: DayLog | null }>(`/entries/${id}`, {
+    method: 'DELETE',
+  });
+  return response;
+}
+
+/**
+ * Delete all entries for a habit on a specific day (Clear Day).
+ * 
+ * @param habitId 
+ * @param date 
+ * @returns Promise<{ success: boolean, dayLog: DayLog | null }>
+ */
+export async function clearHabitEntriesForDay(habitId: string, date: string): Promise<{ success: boolean, dayLog: DayLog | null }> {
+  const response = await apiRequest<{ success: boolean, dayLog: DayLog | null }>(`/entries?habitId=${habitId}&date=${date}`, {
+    method: 'DELETE',
+  });
+  return response;
 }
 
