@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import { X, ChevronLeft, ChevronRight, Check } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { X, ChevronLeft, ChevronRight, Check, Play, Pause, RotateCcw } from 'lucide-react';
 import type { Routine } from '../models/persistenceTypes';
-import { submitRoutine } from '../lib/persistenceClient'; // Function to be created
+import { submitRoutine } from '../lib/persistenceClient';
 import { useHabitStore } from '../store/HabitContext';
 
 interface RoutineRunnerModalProps {
@@ -15,12 +15,16 @@ export const RoutineRunnerModal: React.FC<RoutineRunnerModalProps> = ({
     routine,
     onClose,
 }) => {
-    const { habits, refreshDayLogs } = useHabitStore();
+    const { refreshDayLogs } = useHabitStore();
 
     const [currentStepIndex, setCurrentStepIndex] = useState(0);
     const [isCompletionView, setIsCompletionView] = useState(false);
-    const [selectedHabitIds, setSelectedHabitIds] = useState<Set<string>>(new Set());
     const [submitting, setSubmitting] = useState(false);
+
+    // Timer State
+    const [timeLeft, setTimeLeft] = useState<number | null>(null);
+    const [isTimerRunning, setIsTimerRunning] = useState(false);
+    const timerRef = useRef<NodeJS.Timeout | null>(null);
 
     const steps = routine?.steps || [];
     const currentStep = steps[currentStepIndex];
@@ -31,12 +35,42 @@ export const RoutineRunnerModal: React.FC<RoutineRunnerModalProps> = ({
         if (isOpen && routine) {
             setCurrentStepIndex(0);
             setIsCompletionView(false);
-            // Default select all linked habits
-            setSelectedHabitIds(new Set(routine.linkedHabitIds || []));
         }
     }, [isOpen, routine]);
 
-    // Timer logic could go here (useEffect with Interval)
+    // Initialize Timer when step changes
+    useEffect(() => {
+        if (currentStep?.timerSeconds) {
+            setTimeLeft(currentStep.timerSeconds);
+            setIsTimerRunning(false); // Wait for user to start
+        } else {
+            setTimeLeft(null);
+            setIsTimerRunning(false);
+        }
+    }, [currentStepIndex, currentStep]);
+
+    // Timer Logic
+    useEffect(() => {
+        if (isTimerRunning && timeLeft !== null && timeLeft > 0) {
+            timerRef.current = setInterval(() => {
+                setTimeLeft((prev) => {
+                    if (prev === null || prev <= 0) {
+                        setIsTimerRunning(false);
+                        return 0;
+                    }
+                    return prev - 1;
+                });
+            }, 1000);
+        } else {
+            if (timerRef.current) {
+                clearInterval(timerRef.current);
+            }
+        }
+        return () => {
+            if (timerRef.current) clearInterval(timerRef.current);
+        };
+    }, [isTimerRunning, timeLeft]);
+
 
     const handleNext = () => {
         if (isLastStep) {
@@ -54,41 +88,41 @@ export const RoutineRunnerModal: React.FC<RoutineRunnerModalProps> = ({
         }
     };
 
-    const toggleHabitSelection = (habitId: string) => {
-        setSelectedHabitIds(prev => {
-            const next = new Set(prev);
-            if (next.has(habitId)) {
-                next.delete(habitId);
-            } else {
-                next.add(habitId);
-            }
-            return next;
-        });
-    };
-
     const handleFinish = async () => {
         if (!routine) return;
         setSubmitting(true);
         try {
             await submitRoutine(routine.id, {
-                habitIdsToComplete: Array.from(selectedHabitIds),
                 submittedAt: new Date().toISOString()
             });
             await refreshDayLogs();
             onClose();
         } catch (error) {
             console.error('Failed to submit routine:', error);
-            // Could add error state/display here
         } finally {
             setSubmitting(false);
         }
+    };
+
+    const toggleTimer = () => setIsTimerRunning(!isTimerRunning);
+    const resetTimer = () => {
+        if (currentStep?.timerSeconds) {
+            setTimeLeft(currentStep.timerSeconds);
+            setIsTimerRunning(false);
+        }
+    };
+
+    const formatTime = (seconds: number) => {
+        const mins = Math.floor(seconds / 60);
+        const secs = seconds % 60;
+        return `${mins}:${secs.toString().padStart(2, '0')}`;
     };
 
     if (!isOpen || !routine) return null;
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
-            <div className="w-full max-w-4xl h-[80vh] bg-neutral-900 border border-white/10 rounded-2xl shadow-2xl flex flex-col overflow-hidden relative">
+            <div className="w-full max-w-4xl h-[85vh] bg-neutral-900 border border-white/10 rounded-2xl shadow-2xl flex flex-col overflow-hidden relative">
 
                 {/* Header / Progress Bar */}
                 <div className="absolute top-0 left-0 w-full z-10">
@@ -111,9 +145,9 @@ export const RoutineRunnerModal: React.FC<RoutineRunnerModalProps> = ({
                 </div>
 
                 {/* Main Content Area */}
-                <div className="flex-1 overflow-y-auto flex flex-col items-center justify-center p-8 mt-8">
+                <div className="flex-1 overflow-y-auto flex flex-col items-center justify-between p-8 pt-16 mt-4">
                     {isCompletionView ? (
-                        <div className="max-w-md w-full space-y-8 animate-fade-in-up">
+                        <div className="max-w-md w-full space-y-8 animate-fade-in-up my-auto">
                             <div className="text-center space-y-2">
                                 <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-emerald-500/20 text-emerald-400 mb-4">
                                     <Check size={32} strokeWidth={3} />
@@ -121,69 +155,66 @@ export const RoutineRunnerModal: React.FC<RoutineRunnerModalProps> = ({
                                 <h3 className="text-3xl font-bold text-white">All Done!</h3>
                                 <p className="text-neutral-400">Great job completing your routine.</p>
                             </div>
-
-                            {(routine.linkedHabitIds?.length ?? 0) > 0 && (
-                                <div className="bg-neutral-800/50 rounded-xl p-6 border border-white/5 space-y-4">
-                                    <h4 className="text-sm font-medium text-white/70 uppercase tracking-wider mb-2">
-                                        Mark linked habits as complete?
-                                    </h4>
-                                    <div className="space-y-2">
-                                        {routine.linkedHabitIds!.map(habitId => {
-                                            const habit = habits.find(h => h.id === habitId);
-                                            if (!habit) return null;
-                                            const isSelected = selectedHabitIds.has(habitId);
-                                            return (
-                                                <div
-                                                    key={habitId}
-                                                    onClick={() => toggleHabitSelection(habitId)}
-                                                    className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all ${isSelected
-                                                        ? 'bg-emerald-500/10 border-emerald-500/50'
-                                                        : 'bg-neutral-800 border-white/5 hover:bg-neutral-700'
-                                                        }`}
-                                                >
-                                                    <div className={`w-5 h-5 rounded flex items-center justify-center transition-colors ${isSelected ? 'bg-emerald-500 text-neutral-900' : 'bg-neutral-700'
-                                                        }`}>
-                                                        {isSelected && <Check size={14} strokeWidth={3} />}
-                                                    </div>
-                                                    <span className={isSelected ? 'text-white' : 'text-neutral-400'}>
-                                                        {habit.name}
-                                                    </span>
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-                                </div>
-                            )}
                         </div>
                     ) : (
-                        <div className="max-w-3xl w-full flex flex-col md:flex-row gap-8 items-center md:items-start animate-fade-in">
-                            {/* Step Image */}
-                            {currentStep?.imageUrl && (
-                                <div className="w-full md:w-1/2 aspect-video bg-neutral-800 rounded-xl overflow-hidden shadow-lg border border-white/5">
+                        <div className="max-w-2xl w-full flex flex-col items-center gap-6 animate-fade-in h-full">
+
+                            {/* TOP: Timer & Title */}
+                            <div className="text-center space-y-4 w-full">
+                                {timeLeft !== null && (
+                                    <div className="flex flex-col items-center gap-2">
+                                        <div className="text-6xl font-mono font-bold text-emerald-400 tabular-nums tracking-tight">
+                                            {formatTime(timeLeft)}
+                                        </div>
+                                        <div className="flex gap-2">
+                                            <button
+                                                onClick={toggleTimer}
+                                                className="px-6 py-2 bg-neutral-800 rounded-full text-white hover:bg-neutral-700 transition-colors flex items-center gap-2 font-medium"
+                                            >
+                                                {isTimerRunning ? (
+                                                    <><Pause size={18} fill="currentColor" /> Pause</>
+                                                ) : (
+                                                    <><Play size={18} fill="currentColor" /> Start</>
+                                                )}
+                                            </button>
+                                            <button
+                                                onClick={resetTimer}
+                                                className="p-2 bg-neutral-800 rounded-full text-neutral-400 hover:text-white hover:bg-neutral-700 transition-colors"
+                                                title="Reset Timer"
+                                            >
+                                                <RotateCcw size={18} />
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+                                <h3 className="text-2xl md:text-3xl font-bold text-white leading-tight">
+                                    {currentStep?.title}
+                                </h3>
+                            </div>
+
+                            {/* CENTER: Visual (Image or Placeholder) */}
+                            <div className={`w-full aspect-video max-h-[40vh] bg-neutral-800/50 rounded-2xl overflow-hidden shadow-lg border border-white/5 flex items-center justify-center relative flex-shrink-0 ${!currentStep?.imageUrl ? 'bg-neutral-900 border-dashed opacity-50' : ''}`}>
+                                {currentStep?.imageUrl ? (
                                     <img
                                         src={currentStep.imageUrl}
                                         alt={currentStep.title}
-                                        className="w-full h-full object-cover"
+                                        className="w-full h-full object-contain bg-black/40 backdrop-blur-sm"
                                     />
-                                </div>
-                            )}
-
-                            {/* Step Details */}
-                            <div className={`w-full ${currentStep?.imageUrl ? 'md:w-1/2' : 'md:w-full max-w-2xl text-center md:text-left'}`}>
-                                <h3 className="text-3xl md:text-4xl font-bold text-white mb-6 leading-tight">
-                                    {currentStep?.title}
-                                </h3>
-                                {currentStep?.instruction && (
-                                    <div className="prose prose-invert prose-lg text-neutral-300">
-                                        <p>{currentStep.instruction}</p>
-                                    </div>
-                                )}
-                                {currentStep?.timerSeconds && (
-                                    <div className="mt-8 inline-flex items-center gap-2 px-4 py-2 bg-neutral-800 rounded-full text-emerald-400 font-mono">
-                                        ⏱️ {Math.floor(currentStep.timerSeconds / 60)}:{(currentStep.timerSeconds % 60).toString().padStart(2, '0')}
+                                ) : (
+                                    <div className="text-neutral-700 text-6xl font-black opacity-20 select-none">
+                                        {currentStepIndex + 1}
                                     </div>
                                 )}
                             </div>
+
+                            {/* BOTTOM: Instructions */}
+                            {currentStep?.instruction && (
+                                <div className="w-full bg-neutral-800/50 rounded-xl p-5 border border-white/5 text-center">
+                                    <p className="text-neutral-200 text-lg whitespace-pre-wrap leading-relaxed">
+                                        {currentStep.instruction}
+                                    </p>
+                                </div>
+                            )}
                         </div>
                     )}
                 </div>
@@ -239,4 +270,3 @@ export const RoutineRunnerModal: React.FC<RoutineRunnerModalProps> = ({
         </div>
     );
 };
-

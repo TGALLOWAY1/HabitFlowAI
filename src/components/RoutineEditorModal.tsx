@@ -19,12 +19,14 @@ export const RoutineEditorModal: React.FC<RoutineEditorModalProps> = ({
     onClose,
 }) => {
     const { addRoutine, updateRoutine } = useRoutineStore();
-    const { habits } = useHabitStore();
+    const { categories, habits } = useHabitStore();
 
     // Form State
     const [title, setTitle] = useState('');
+    const [categoryId, setCategoryId] = useState<string | undefined>(undefined);
     const [steps, setSteps] = useState<RoutineStep[]>([]);
-    const [linkedHabitIds, setLinkedHabitIds] = useState<string[]>([]);
+    // linkedHabitIds are now derived from steps, so we don't need a separate state for editing them directly
+
 
     // UI State
     const [validationError, setValidationError] = useState<string | null>(null);
@@ -50,13 +52,13 @@ export const RoutineEditorModal: React.FC<RoutineEditorModalProps> = ({
 
         if (mode === 'edit' && initialRoutine) {
             setTitle(initialRoutine.title);
+            setCategoryId(initialRoutine.categoryId);
             setSteps(initialRoutine.steps ? initialRoutine.steps.map(s => ({ ...s })) : []);
-            setLinkedHabitIds(initialRoutine.linkedHabitIds || []);
             setExpandedStepId(null); // Collapse all initially
         } else {
             setTitle('');
+            setCategoryId(undefined);
             setSteps([]);
-            setLinkedHabitIds([]);
             setExpandedStepId(null);
         }
     }, [isOpen, mode, initialRoutine]);
@@ -82,13 +84,7 @@ export const RoutineEditorModal: React.FC<RoutineEditorModalProps> = ({
         if (expandedStepId === id) setExpandedStepId(null);
     };
 
-    const toggleHabitLink = (habitId: string) => {
-        setLinkedHabitIds(prev =>
-            prev.includes(habitId)
-                ? prev.filter(id => id !== habitId)
-                : [...prev, habitId]
-        );
-    };
+
 
     const validate = () => {
         if (!title.trim()) return "Routine title is required";
@@ -110,8 +106,10 @@ export const RoutineEditorModal: React.FC<RoutineEditorModalProps> = ({
         try {
             const routineData = {
                 title: title.trim(),
+                categoryId,
                 steps,
-                linkedHabitIds
+                // Derive linkedHabitIds from steps
+                linkedHabitIds: Array.from(new Set(steps.map(s => s.linkedHabitId).filter(Boolean))) as string[]
             };
 
             if (mode === 'create') {
@@ -147,15 +145,36 @@ export const RoutineEditorModal: React.FC<RoutineEditorModalProps> = ({
 
                     {/* Left: Routine Details & Steps */}
                     <div className="flex-1 overflow-y-auto p-8 border-r border-white/5 space-y-8">
-                        <div>
-                            <label className="block text-sm font-medium text-neutral-400 mb-2">Title</label>
-                            <input
-                                type="text"
-                                value={title}
-                                onChange={e => { setTitle(e.target.value); }}
-                                className="w-full bg-neutral-800 border border-white/10 rounded-lg px-4 py-3 text-lg text-white focus:outline-none focus:border-emerald-500 placeholder-neutral-600"
-                                placeholder="e.g., Morning Startup"
-                            />
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-neutral-400 mb-2">Title</label>
+                                <input
+                                    type="text"
+                                    value={title}
+                                    onChange={e => { setTitle(e.target.value); }}
+                                    className="w-full bg-neutral-800 border border-white/10 rounded-lg px-4 py-3 text-lg text-white focus:outline-none focus:border-emerald-500 placeholder-neutral-600"
+                                    placeholder="e.g., Morning Startup"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-neutral-400 mb-2">Category (Optional)</label>
+                                <select
+                                    value={categoryId || ''}
+                                    onChange={e => setCategoryId(e.target.value || undefined)}
+                                    className="w-full bg-neutral-800 border border-white/10 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-emerald-500"
+                                >
+                                    <option value="">-- No Category --</option>
+                                    {categories.map(cat => (
+                                        <option key={cat.id} value={cat.id}>
+                                            {cat.name}
+                                        </option>
+                                    ))}
+                                </select>
+                                <p className="text-xs text-neutral-500 mt-1">
+                                    Selecting a category limits linked habits to that category.
+                                </p>
+                            </div>
                         </div>
 
                         <div className="space-y-4">
@@ -241,9 +260,14 @@ export const RoutineEditorModal: React.FC<RoutineEditorModalProps> = ({
                                                             <Clock size={16} className="text-neutral-500" />
                                                             <input
                                                                 type="number"
-                                                                value={step.timerSeconds || ''}
-                                                                onChange={e => updateStep(step.id, { timerSeconds: parseInt(e.target.value) || undefined })}
-                                                                placeholder="Timer (s)"
+                                                                min="0"
+                                                                step="0.1"
+                                                                value={step.timerSeconds ? step.timerSeconds / 60 : ''}
+                                                                onChange={e => {
+                                                                    const val = parseFloat(e.target.value);
+                                                                    updateStep(step.id, { timerSeconds: isNaN(val) ? undefined : Math.max(0, Math.round(val * 60)) });
+                                                                }}
+                                                                placeholder="Min"
                                                                 className="bg-transparent w-20 text-sm focus:outline-none text-white placeholder-neutral-600"
                                                             />
                                                         </div>
@@ -283,6 +307,48 @@ export const RoutineEditorModal: React.FC<RoutineEditorModalProps> = ({
                                                             />
                                                         </div>
                                                     </div>
+
+                                                    {/* Image Preview */}
+                                                    {step.imageUrl && (
+                                                        <div className="mt-2 relative group w-full aspect-video bg-neutral-900 rounded-lg overflow-hidden border border-white/5">
+                                                            <img
+                                                                src={step.imageUrl}
+                                                                alt="Step preview"
+                                                                className="w-full h-full object-cover"
+                                                            />
+                                                            <button
+                                                                onClick={() => updateStep(step.id, { imageUrl: undefined })}
+                                                                className="absolute top-2 right-2 p-1.5 bg-black/50 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/70"
+                                                                title="Remove Image"
+                                                            >
+                                                                <X size={14} />
+                                                            </button>
+                                                        </div>
+                                                    )}
+
+                                                    {/* Linked Habit Selector */}
+                                                    <div className="pt-2">
+                                                        <label className="block text-xs font-medium text-neutral-500 mb-1 flex items-center gap-1">
+                                                            <Link2 size={12} /> Linked Habit (Optional)
+                                                        </label>
+                                                        <select
+                                                            value={step.linkedHabitId || ''}
+                                                            onChange={e => updateStep(step.id, { linkedHabitId: e.target.value || undefined })}
+                                                            className="w-full bg-neutral-900 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500"
+                                                        >
+                                                            <option value="">-- No Linked Habit --</option>
+                                                            {habits
+                                                                .filter(h => (!categoryId || h.categoryId === categoryId) && !h.archived)
+                                                                .map(habit => (
+                                                                    <option key={habit.id} value={habit.id}>
+                                                                        {habit.name}
+                                                                    </option>
+                                                                ))}
+                                                        </select>
+                                                        <p className="text-[10px] text-neutral-600 mt-1">
+                                                            Reaching this step will generate potential evidence for the selected habit.
+                                                        </p>
+                                                    </div>
                                                 </div>
                                             )}
                                         </div>
@@ -292,48 +358,8 @@ export const RoutineEditorModal: React.FC<RoutineEditorModalProps> = ({
                         </div>
                     </div>
 
-                    {/* Right: Linked Habits */}
-                    <div className="w-[320px] bg-neutral-900/50 p-6 flex flex-col border-l border-white/5">
-                        <div className="mb-6">
-                            <h3 className="text-sm font-bold text-white uppercase tracking-wider mb-2 flex items-center gap-2">
-                                <Link2 size={16} className="text-emerald-500" /> Linked Habits
-                            </h3>
-                            <p className="text-xs text-neutral-500 leading-relaxed">
-                                Select habits to be offered for completion when this routine finishes.
-                            </p>
-                        </div>
-
-                        <div className="flex-1 overflow-y-auto space-y-2 pr-2">
-                            {habits.map(habit => {
-                                const isLinked = linkedHabitIds.includes(habit.id);
-                                return (
-                                    <div
-                                        key={habit.id}
-                                        onClick={() => toggleHabitLink(habit.id)}
-                                        className={`p-3 rounded-lg border text-sm cursor-pointer transition-all ${isLinked
-                                            ? 'bg-emerald-500/10 border-emerald-500/50 text-white'
-                                            : 'bg-neutral-800/50 border-white/5 text-neutral-400 hover:bg-neutral-800'
-                                            }`}
-                                    >
-                                        <div className="flex items-center gap-3">
-                                            <div className={`w-4 h-4 rounded border flex items-center justify-center ${isLinked ? 'bg-emerald-500 border-emerald-500' : 'border-neutral-600'
-                                                }`}>
-                                                {isLinked && <Plus size={10} className="text-black" />}
-                                            </div>
-                                            <span className="font-medium truncate">{habit.name}</span>
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                            {habits.length === 0 && (
-                                <p className="text-neutral-500 text-sm italic text-center py-8">
-                                    No habits created yet.
-                                </p>
-                            )}
-                        </div>
-                    </div>
-
                 </div>
+
 
                 {/* Footer */}
                 <div className="p-6 border-t border-white/10 bg-neutral-900 flex justify-between items-center">

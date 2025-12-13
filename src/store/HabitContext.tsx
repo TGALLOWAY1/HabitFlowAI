@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
-import type { Category, Habit, DayLog, DailyWellbeing } from '../types';
+import type { Category, Habit, DayLog, DailyWellbeing, HabitPotentialEvidence } from '../types';
 import {
     fetchCategories,
     saveCategory,
@@ -19,6 +19,7 @@ import {
     clearHabitEntriesForDay,
     updateHabitEntry,
     deleteHabitEntry,
+    fetchPotentialEvidence,
 } from '../lib/persistenceClient';
 
 interface HabitContextType {
@@ -47,6 +48,7 @@ interface HabitContextType {
     updateCategory: (id: string, patch: Partial<Omit<Category, 'id'>>) => Promise<void>;
     updateHabitEntry: (id: string, patch: any) => Promise<void>; // eslint-disable-line @typescript-eslint/no-explicit-any
     deleteHabitEntry: (id: string) => Promise<void>;
+    potentialEvidence: HabitPotentialEvidence[];
 }
 
 const HabitContext = createContext<HabitContextType | undefined>(undefined);
@@ -69,6 +71,7 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const [habits, setHabits] = useState<Habit[]>([]);
     const [logs, setLogs] = useState<Record<string, DayLog>>({});
     const [wellbeingLogs, setWellbeingLogs] = useState<Record<string, DailyWellbeing>>({});
+    const [potentialEvidence, setPotentialEvidence] = useState<HabitPotentialEvidence[]>([]);
     const [lastPersistenceError, setLastPersistenceError] = useState<string | null>(null);
 
     // Use refs to prevent double execution in React StrictMode
@@ -137,6 +140,16 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         }
     }, []);
 
+    const fetchEvidenceForToday = useCallback(async () => {
+        try {
+            const today = new Date().toISOString().split('T')[0];
+            const evidence = await fetchPotentialEvidence(today);
+            setPotentialEvidence(evidence);
+        } catch (error) {
+            console.error('Failed to fetch potential evidence:', error);
+        }
+    }, []);
+
     // Initial load: categories, habits, logs, and wellbeing logs
     // Each subsystem loads independently so one failure doesn't block others
     useEffect(() => {
@@ -159,7 +172,8 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 const results = await Promise.allSettled([
                     refreshHabitsAndCategories().then(() => console.log('[HabitContext] Habits/Categories loaded')),
                     loadLogsFromApi().then(() => console.log('[HabitContext] Day logs loaded')),
-                    loadWellbeingLogsFromApi().then(() => console.log('[HabitContext] Wellbeing logs loaded'))
+                    loadWellbeingLogsFromApi().then(() => console.log('[HabitContext] Wellbeing logs loaded')),
+                    fetchEvidenceForToday().then(() => console.log('[HabitContext] Evidence loaded'))
                 ]);
 
                 results.forEach((result, index) => {
@@ -179,7 +193,7 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             console.error('[HabitContext] Error during initialization:', error);
         });
 
-    }, [refreshHabitsAndCategories, loadLogsFromApi, loadWellbeingLogsFromApi]);
+    }, [refreshHabitsAndCategories, loadLogsFromApi, loadWellbeingLogsFromApi, fetchEvidenceForToday]);
 
 
     const logWellbeing = async (date: string, data: DailyWellbeing) => {
@@ -575,8 +589,10 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             clearPersistenceError,
             refreshDayLogs,
             refreshHabitsAndCategories,
+            potentialEvidence,
         }}>
             {children}
         </HabitContext.Provider>
     );
 };
+

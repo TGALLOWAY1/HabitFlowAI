@@ -76,8 +76,8 @@ export interface DayLog {
 }
 
 // Re-export Routine types
-import type { Routine, RoutineStep } from '../models/persistenceTypes';
-export type { Routine, RoutineStep };
+import type { Routine, RoutineStep, HabitEntry, HabitPotentialEvidence } from '../models/persistenceTypes';
+export type { Routine, RoutineStep, HabitEntry, HabitPotentialEvidence };
 
 export type Theme = 'dark' | 'light';
 

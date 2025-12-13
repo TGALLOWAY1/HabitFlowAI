@@ -1,8 +1,8 @@
 import React, { useMemo, useState } from 'react';
 import { format, eachDayOfInterval, subDays, isToday, startOfWeek, endOfWeek, isWithinInterval, parseISO } from 'date-fns';
-import { type Habit, type DayLog, type Routine } from '../types';
+import { type Habit, type DayLog, type Routine, type HabitPotentialEvidence } from '../types';
 import { cn } from '../utils/cn';
-import { Check, Plus, Trash2, GripVertical, Pencil, Trophy, Play, Flame, History } from 'lucide-react';
+import { Check, Plus, Trash2, GripVertical, Pencil, Trophy, Play, Flame, History, Zap } from 'lucide-react';
 
 import { NumericInputPopover } from './NumericInputPopover';
 import { HabitHistoryModal } from './HabitHistoryModal';
@@ -38,6 +38,7 @@ interface TrackerGridProps {
     onEditHabit: (habit: Habit) => void;
     onRunRoutine?: (routine: Routine) => void;
     onViewHistory: (habit: Habit) => void;
+    potentialEvidence?: HabitPotentialEvidence[];
 }
 
 // --- Shared Components ---
@@ -152,6 +153,7 @@ interface HabitRowContentProps {
     onRunRoutine?: (routine: Routine) => void;
     streak?: number;
     onViewHistory: (habit: Habit) => void;
+    potentialEvidence?: HabitPotentialEvidence[];
 }
 
 const HabitRowContent = ({
@@ -176,7 +178,8 @@ const HabitRowContent = ({
     onToggle,
     onRunRoutine,
     streak,
-    onViewHistory
+    onViewHistory,
+    potentialEvidence
 }: HabitRowContentProps) => {
 
     // Non-Negotiable Logic
@@ -253,6 +256,13 @@ const HabitRowContent = ({
                                 </div>
                             )}
 
+                            {/* Potential Evidence Indicator */}
+                            {potentialEvidence && potentialEvidence.some(e => e.habitId === habit.id && e.date === todayStr) && !isCompletedToday && (
+                                <div className="flex items-center gap-1 text-[10px] text-purple-400 bg-purple-400/10 px-1.5 py-0.5 rounded-full border border-purple-400/20 animate-pulse" title="Routine Activity Detected: Verify completion">
+                                    <Zap size={10} className="fill-purple-400" />
+                                    <span className="font-bold">Routine Activity</span>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -436,7 +446,8 @@ const SortableHabitRow = ({
     onToggle,
     onRunRoutine,
     streak,
-    onViewHistory
+    onViewHistory,
+    potentialEvidence
 }: {
     habit: Habit;
     allHabits: Habit[];
@@ -453,6 +464,7 @@ const SortableHabitRow = ({
     onRunRoutine?: (routine: Routine) => void;
     streak?: number;
     onViewHistory: (habit: Habit) => void;
+    potentialEvidence?: HabitPotentialEvidence[];
 }) => {
     const {
         attributes,
@@ -508,6 +520,7 @@ const SortableHabitRow = ({
                 onRunRoutine={onRunRoutine}
                 streak={habit.type !== 'bundle' ? streak : undefined}
                 onViewHistory={onViewHistory}
+                potentialEvidence={potentialEvidence}
             />
 
             {/* Child Rows - Rendered when expanded */}
@@ -531,6 +544,7 @@ const SortableHabitRow = ({
                     style={{ transition }} // Maintain transition if needed
                     onRunRoutine={onRunRoutine}
                     onViewHistory={onViewHistory}
+                    potentialEvidence={potentialEvidence}
                 />
             ))}
         </div>
@@ -560,6 +574,7 @@ interface WeeklyHabitRowContentProps {
     style?: React.CSSProperties;
     onRunRoutine?: (routine: Routine) => void;
     onViewHistory: (habit: Habit) => void;
+    potentialEvidence?: HabitPotentialEvidence[];
 }
 
 const WeeklyHabitRowContent = ({
@@ -581,7 +596,8 @@ const WeeklyHabitRowContent = ({
     setNodeRef,
     style,
     onRunRoutine,
-    onViewHistory
+    onViewHistory,
+    potentialEvidence
 }: WeeklyHabitRowContentProps) => {
 
     // Calculate Weekly Progress
@@ -682,6 +698,14 @@ const WeeklyHabitRowContent = ({
                             Target: {Math.round(currentCount * 10) / 10} / {target} {habit.goal.unit}
                             {currentCount >= target && <Trophy size={12} className="text-yellow-500" />}
                         </span>
+
+                        {/* Potential Evidence Indicator (Weekly) */}
+                        {potentialEvidence && potentialEvidence.some(e => e.habitId === habit.id) && !isCompletedToday && (
+                            <div className="flex items-center gap-1 text-[10px] text-purple-400 bg-purple-400/10 px-1.5 py-0.5 rounded-full border border-purple-400/20 animate-pulse mt-1 w-fit" title="Routine Activity Detected">
+                                <Zap size={10} className="fill-purple-400" />
+                                <span className="font-bold">Routine Activity</span>
+                            </div>
+                        )}
                     </div>
                 </div>
 
@@ -761,7 +785,9 @@ const WeeklyHabitRowContent = ({
                             ? habit.nonNegotiable
                                 ? "bg-yellow-500 text-neutral-900 shadow-[0_0_15px_rgba(234,179,8,0.3)] animate-gold-burst"
                                 : "bg-emerald-500 text-neutral-900 shadow-[0_0_15px_rgba(16,185,129,0.3)]"
-                            : "bg-neutral-800 text-neutral-400 hover:text-white hover:bg-neutral-700 border border-white/5"
+                            : potentialEvidence && potentialEvidence.some(e => e.habitId === habit.id)
+                                ? "bg-purple-500/20 text-purple-300 border border-purple-500/50 hover:bg-purple-500/30 shadow-[0_0_10px_rgba(168,85,247,0.2)]" // Confirmation Style
+                                : "bg-neutral-800 text-neutral-400 hover:text-white hover:bg-neutral-700 border border-white/5"
                     )}
                 >
                     {isCompletedToday ? (
@@ -795,7 +821,8 @@ const SortableWeeklyHabitRow = ({
     setDeleteConfirmId,
     onEditHabit,
     onRunRoutine,
-    onViewHistory
+    onViewHistory,
+    potentialEvidence
 }: {
     habit: Habit;
     allHabits: Habit[];
@@ -810,6 +837,7 @@ const SortableWeeklyHabitRow = ({
     onEditHabit: (habit: Habit) => void;
     onRunRoutine?: (routine: Routine) => void;
     onViewHistory: (habit: Habit) => void;
+    potentialEvidence?: HabitPotentialEvidence[];
 }) => {
     const {
         attributes,
@@ -862,6 +890,7 @@ const SortableWeeklyHabitRow = ({
                 style={style}
                 onRunRoutine={onRunRoutine}
                 onViewHistory={onViewHistory}
+                potentialEvidence={potentialEvidence}
             />
 
             {/* Child Rows */}
@@ -884,13 +913,24 @@ const SortableWeeklyHabitRow = ({
                     style={{ transition }}
                     onRunRoutine={onRunRoutine}
                     onViewHistory={onViewHistory}
+                    potentialEvidence={potentialEvidence}
                 />
             ))}
         </div>
     );
 };
 
-export const TrackerGrid: React.FC<TrackerGridProps> = ({ habits, logs, onToggle, onUpdateValue, onAddHabit, onEditHabit, onRunRoutine }) => {
+export const TrackerGrid = ({
+    habits,
+    logs,
+    onToggle,
+    onUpdateValue,
+    onAddHabit,
+    onEditHabit,
+    onRunRoutine,
+    onViewHistory,
+    potentialEvidence
+}: TrackerGridProps) => {
     const { deleteHabit, reorderHabits } = useHabitStore();
     const { data: progressData, refresh: refreshProgress } = useProgressOverview();
 
@@ -1112,6 +1152,7 @@ export const TrackerGrid: React.FC<TrackerGridProps> = ({ habits, logs, onToggle
                                                 onRunRoutine={onRunRoutine}
                                                 streak={progressInfo?.streak}
                                                 onViewHistory={(h) => setHistoryModalHabitId(h.id)}
+                                                potentialEvidence={potentialEvidence}
                                             />
                                         )
                                     })}
@@ -1154,6 +1195,7 @@ export const TrackerGrid: React.FC<TrackerGridProps> = ({ habits, logs, onToggle
                                             onEditHabit={onEditHabit}
                                             onRunRoutine={onRunRoutine}
                                             onViewHistory={(h) => setHistoryModalHabitId(h.id)}
+                                            potentialEvidence={potentialEvidence}
                                         />
                                     ))}
                                 </SortableContext>
