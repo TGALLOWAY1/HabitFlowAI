@@ -10,12 +10,15 @@ import {
     updateHabit as updateHabitApi, // Reserved for future use
     deleteHabit as deleteHabitApi,
     fetchDayLogs,
-    saveDayLog,
-    deleteDayLog as deleteDayLogApi,
+
     fetchWellbeingLogs,
     saveWellbeingLog,
     reorderHabits as reorderHabitsApi,
     updateCategory as updateCategoryApi,
+    createHabitEntry,
+    clearHabitEntriesForDay,
+    updateHabitEntry,
+    deleteHabitEntry,
 } from '../lib/persistenceClient';
 
 interface HabitContextType {
@@ -42,6 +45,8 @@ interface HabitContextType {
     refreshDayLogs: () => Promise<void>;
     refreshHabitsAndCategories: () => Promise<void>;
     updateCategory: (id: string, patch: Partial<Omit<Category, 'id'>>) => Promise<void>;
+    updateHabitEntry: (id: string, patch: any) => Promise<void>; // eslint-disable-line @typescript-eslint/no-explicit-any
+    deleteHabitEntry: (id: string) => Promise<void>;
 }
 
 const HabitContext = createContext<HabitContextType | undefined>(undefined);
@@ -275,44 +280,60 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         const currentLog = logs[key];
 
         let updatedLogs: Record<string, DayLog>;
-        let logToSave: DayLog | null = null;
 
+        // Optimistic Update
         if (currentLog) {
             // Toggle off - delete log
-            const { [key]: _, ...rest } = logs;
+            const { [key]: _unused, ...rest } = logs; // eslint-disable-line @typescript-eslint/no-unused-vars
             updatedLogs = rest;
         } else {
             // Toggle on - create log
-            logToSave = { habitId, date, value: 1, completed: true };
+            // Temporary shape, will be overwritten by server response
+            const logToSave: DayLog = { habitId, date, value: 1, completed: true };
             updatedLogs = {
                 ...logs,
                 [key]: logToSave,
             };
         }
 
-        // Optimistic update: update state immediately
+        // Apply Optimistic update
         setLogs(updatedLogs);
 
-        // Save to MongoDB
-        if (logToSave) {
-            try {
-                await saveDayLog(logToSave);
-            } catch (error) {
-                console.error('Failed to save day log to API:', error instanceof Error ? error.message : 'Unknown error');
-                // Rollback to previous state
-                setLogs(previousLogs);
-                setLastPersistenceError("Some changes couldn't be saved. Please try again.");
+        try {
+            if (currentLog) {
+                // Delete all entries for this day (Clear Day)
+                const { dayLog } = await clearHabitEntriesForDay(habitId, date);
+
+                // If server returns a dayLog (e.g., partial delete?), update state
+                // If null, it confirms deletion
+                if (dayLog) {
+                    setLogs(prev => ({ ...prev, [key]: dayLog }));
+                } else {
+                    // Confirmed deletion, ensure it's gone
+                    setLogs(prev => {
+                        const { [key]: _unused, ...rest } = prev; // eslint-disable-line @typescript-eslint/no-unused-vars
+                        return rest;
+                    });
+                }
+            } else {
+                // Create Entry (Toggle On)
+                const { dayLog } = await createHabitEntry({
+                    habitId,
+                    date,
+                    value: 1,
+                    source: 'manual'
+                });
+
+                // Update state with server truth
+                if (dayLog) {
+                    setLogs(prev => ({ ...prev, [key]: dayLog }));
+                }
             }
-        } else if (currentLog) {
-            // Delete from MongoDB
-            try {
-                await deleteDayLogApi(habitId, date);
-            } catch (error) {
-                console.error('Failed to delete day log from API:', error instanceof Error ? error.message : 'Unknown error');
-                // Rollback to previous state
-                setLogs(previousLogs);
-                setLastPersistenceError("Some changes couldn't be saved. Please try again.");
-            }
+        } catch (error) {
+            console.error('Failed to toggle habit:', error instanceof Error ? error.message : 'Unknown error');
+            // Rollback to previous state
+            setLogs(previousLogs);
+            setLastPersistenceError("Failed to update habit status. Please try again.");
         }
     };
 
@@ -334,14 +355,46 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         // Optimistic update: update state immediately
         setLogs(updatedLogs);
 
-        // Save to MongoDB
         try {
-            await saveDayLog(logToSave);
+            // 1. Clear existing entries to enforce "Set Value" semantics
+            await clearHabitEntriesForDay(habitId, date);
+
+            // 2. Create new entry with total value
+            const { dayLog } = await createHabitEntry({
+                habitId,
+                date,
+                value,
+                source: 'manual'
+            });
+
+            if (dayLog) {
+                setLogs(prev => ({ ...prev, [key]: dayLog }));
+            }
         } catch (error) {
-            console.error('Failed to save day log to API:', error instanceof Error ? error.message : 'Unknown error');
+            console.error('Failed to update log:', error instanceof Error ? error.message : 'Unknown error');
             // Rollback to previous state
             setLogs(previousLogs);
-            setLastPersistenceError("Some changes couldn't be saved. Please try again.");
+            setLastPersistenceError("Failed to update log value. Please try again.");
+        }
+    };
+
+    const updateHabitEntryContext = async (id: string, patch: any) => { // eslint-disable-line @typescript-eslint/no-explicit-any
+        try {
+            await updateHabitEntry(id, patch);
+            await refreshDayLogs();
+        } catch (error) {
+            console.error('Failed to update habit entry:', error);
+            throw error;
+        }
+    };
+
+    const deleteHabitEntryContext = async (id: string) => {
+        try {
+            await deleteHabitEntry(id);
+            await refreshDayLogs();
+        } catch (error) {
+            console.error('Failed to delete habit entry:', error);
+            throw error;
         }
     };
 
@@ -385,7 +438,7 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         ]);
 
         // 1. Create Categories if they don't exist
-        let updatedCategories = [...latestCategories];
+        const updatedCategories = [...latestCategories];
         const categoryMap = new Map<string, string>(); // Name -> ID
 
         // Map existing categories
@@ -409,7 +462,7 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         }
 
         // 2. Create Habits - use latest data from API to check for duplicates
-        let updatedHabits = [...latestHabits];
+        const updatedHabits = [...latestHabits];
         let addedCount = 0;
 
         for (const { categoryName, habit } of habitsData) {
@@ -510,6 +563,8 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             updateHabit,
             toggleHabit,
             updateLog,
+            updateHabitEntry: updateHabitEntryContext,
+            deleteHabitEntry: deleteHabitEntryContext,
             deleteHabit,
             deleteCategory,
             importHabits,
