@@ -42,10 +42,8 @@ export const TasksPage: React.FC = () => {
         <div className="flex flex-col h-full gap-6">
             {/* Philosophy Header */}
             <div className="mb-2 px-1">
-                <p className="text-neutral-500 text-sm max-w-lg leading-relaxed">
-                    Tasks are transient obligations, not signals of growth.
-                    <br />
-                    Capture them here to clear your mind — not to measure your worth.
+                <p className="text-neutral-500 text-sm leading-relaxed italic">
+                    Tasks are transient obligations, not signals of growth. Capture them here to clear your mind — not to measure your worth.
                 </p>
             </div>
 

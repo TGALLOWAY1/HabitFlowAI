@@ -29,6 +29,7 @@ export function useProgressOverview(): {
     data?: ProgressOverview;
     loading: boolean;
     error?: Error;
+    refresh: () => void;
 } {
     const [data, setData] = useState<ProgressOverview | undefined>(() => {
         // Initialize from cache if available (prevents initial loading flash)
@@ -85,5 +86,21 @@ export function useProgressOverview(): {
         data,
         loading,
         error,
+        refresh: () => {
+            // Invalidate cache and trigger reload
+            // We can't easily force the effect to re-run without a state change,
+            // so we'll just call fetchProgressOverview directly and update state.
+            setLoading(true);
+            fetchProgressOverview()
+                .then(newData => {
+                    setCachedProgressOverview(newData);
+                    setData(newData);
+                    setLoading(false);
+                })
+                .catch(err => {
+                    console.error('Manual refresh failed', err);
+                    setLoading(false);
+                });
+        }
     }), [data, loading, error]);
 }

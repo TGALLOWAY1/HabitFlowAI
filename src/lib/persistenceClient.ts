@@ -298,8 +298,21 @@ export async function reorderHabits(habitIds: string[]): Promise<void> {
 }
 
 /**
- * DayLog Persistence Functions
+ * Manual Freeze.
+ * 
+ * POST /api/habits/:id/freeze
+ * 
+ * @param id - Habit ID
+ * @param date - Date to freeze (YYYY-MM-DD)
+ * @returns Promise<{ habit: Habit, log: DayLog, message: string }>
  */
+export async function freezeHabit(id: string, date: string): Promise<{ habit: Habit, log: DayLog, message: string }> {
+  const response = await apiRequest<{ habit: Habit, log: DayLog, message: string }>(`/habits/${id}/freeze`, {
+    method: 'POST',
+    body: JSON.stringify({ date }),
+  });
+  return response;
+}
 
 /**
  * Fetch all day logs for the current user.

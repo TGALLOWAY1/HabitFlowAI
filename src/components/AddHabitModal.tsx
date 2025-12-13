@@ -639,7 +639,7 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                             {goalType === 'boolean' ? (
                                 <div className="bg-neutral-800/50 rounded-lg p-3 border border-white/5">
                                     <div className="flex justify-between items-center text-sm">
-                                        <span className="text-neutral-400">Weekly Goal:</span>
+                                        <span className="text-neutral-400">Weekly Target:</span>
                                         <span className="text-white font-medium">
                                             {assignedDays.length > 0 ? `${assignedDays.length} times / week` : 'Select days above'}
                                         </span>

@@ -208,18 +208,11 @@ export async function deleteDayLogRoute(req: Request, res: Response): Promise<vo
 
     const deleted = await deleteDayLog(habitId, date, userId);
 
-    if (!deleted) {
-      res.status(404).json({
-        error: {
-          code: 'NOT_FOUND',
-          message: 'Day log not found',
-        },
-      });
-      return;
-    }
-
+    // Treat as idempotent success: Whether it was deleted or wasn't there, 
+    // the goal of "resource is gone" is achieved.
     res.status(200).json({
       message: 'Day log deleted successfully',
+      wasDeleted: deleted,
     });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
