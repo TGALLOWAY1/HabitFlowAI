@@ -31,8 +31,7 @@ export const RoutineList: React.FC<RoutineListProps> = ({ onCreate, onEdit, onSt
     return (
         <div className="flex-1 overflow-hidden flex flex-col bg-neutral-900/50 rounded-2xl border border-white/5 backdrop-blur-sm shadow-2xl">
             {/* Header */}
-            <div className="flex items-center justify-between p-6 border-b border-white/5">
-                <h2 className="text-2xl font-bold text-white">Routines</h2>
+            <div className="flex items-center justify-end p-6 border-b border-white/5">
                 <div className="flex items-center gap-3">
                     <button
                         onClick={onCreate}

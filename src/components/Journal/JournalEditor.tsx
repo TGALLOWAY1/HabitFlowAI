@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import type { JournalEntry } from '../../models/persistenceTypes';
 import { JOURNAL_TEMPLATES, FREE_WRITE_TEMPLATE } from '../../data/journalTemplates';
 import { createEntry, updateEntry } from '../../api/journal';
@@ -11,7 +11,7 @@ import {
 interface JournalEditorProps {
     existingEntry?: JournalEntry;
     onSave: () => void;
-    onCancel: () => void;
+    onCancel?: () => void;
 }
 
 // Map template IDs to Icons
@@ -107,7 +107,17 @@ export function JournalEditor({ existingEntry, onSave, onCancel }: JournalEditor
         if (Object.keys(content).length > 0) {
             if (!window.confirm('Are you sure you want to discard this entry?')) return;
         }
-        onCancel();
+        if (onCancel) {
+            onCancel();
+        } else {
+            // Default behavior if no cancel prop: just reset logic
+            // But usually this means we are in "Templates" tab.
+            // Resetting brings us back to selection.
+            setContent({});
+            setStep('selection');
+            setMode('standard');
+            setSelectedTemplateId('');
+        }
     };
 
 
@@ -120,9 +130,11 @@ export function JournalEditor({ existingEntry, onSave, onCancel }: JournalEditor
                         <h2 className="text-3xl font-bold text-white mb-2">New Journal Entry</h2>
                         <p className="text-white/40">Choose a template or start free-writing</p>
                     </div>
-                    <button onClick={onCancel} className="p-2 hover:bg-white/10 rounded-lg text-white/50 transition-colors">
-                        <X size={24} />
-                    </button>
+                    {onCancel && (
+                        <button onClick={onCancel} className="p-2 hover:bg-white/10 rounded-lg text-white/50 transition-colors">
+                            <X size={24} />
+                        </button>
+                    )}
                 </div>
 
                 <div className="overflow-y-auto pr-2 custom-scrollbar flex-1">

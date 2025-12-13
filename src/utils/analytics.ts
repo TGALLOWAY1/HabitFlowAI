@@ -84,3 +84,11 @@ export const calculateHabitStats = (habit: Habit, logs: Record<string, DayLog>):
         cumulativeValue,
     };
 };
+
+export const getHeatmapColor = (intensity: number) => {
+    if (intensity === 0) return 'bg-neutral-800/50';
+    if (intensity === 1) return 'bg-emerald-900/80';
+    if (intensity === 2) return 'bg-emerald-700';
+    if (intensity === 3) return 'bg-emerald-500';
+    return 'bg-emerald-400';
+};

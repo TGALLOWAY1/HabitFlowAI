@@ -46,7 +46,7 @@ const DiamondDot = (props: any) => {
     );
 };
 
-export const ProgressRings: React.FC = () => {
+export const ProgressRings: React.FC = React.memo(() => {
     const { habits, logs, wellbeingLogs } = useHabitStore();
     const today = format(new Date(), 'yyyy-MM-dd');
 
@@ -351,4 +351,4 @@ export const ProgressRings: React.FC = () => {
             </div>
         </div>
     );
-};
+});

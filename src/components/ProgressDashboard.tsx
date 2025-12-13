@@ -1,26 +1,29 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState } from 'react';
 import { useHabitStore } from '../store/HabitContext';
 import { useProgressOverview } from '../lib/useProgressOverview';
 import { Heatmap } from './Heatmap';
 import { ProgressRings } from './ProgressRings';
 import { DailyCheckInModal } from './DailyCheckInModal';
-import { Sun, Flame, Target, Activity, Clock, ChevronDown, ChevronRight, AlertTriangle, Plus, Loader2, AlertCircle } from 'lucide-react';
+import { Sun, Flame, Target, Activity, Clock, ChevronDown, ChevronRight, Loader2 } from 'lucide-react';
 import { calculateHabitStats } from '../utils/analytics';
 import { getEstimatedCompletionDate } from '../utils/pace';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
-import { AccomplishmentsLog } from './AccomplishmentsLog';
-import { format } from 'date-fns';
-import { GoalProgressBar, GoalStatusChip, goalCardBaseClasses, goalTitleCompactClasses, goalMetadataClasses } from './goals/GoalSharedComponents';
+import { GoalPulseCard } from './goals/GoalPulseCard';
+
+import { CategoryActivityRow } from './CategoryActivityRow';
 
 interface ProgressDashboardProps {
     onCreateGoal?: () => void;
     onViewGoal?: (goalId: string) => void;
+    onSelectCategory?: (categoryId: string) => void;
 }
 
-export const ProgressDashboard: React.FC<ProgressDashboardProps> = ({ onCreateGoal, onViewGoal }) => {
+export const ProgressDashboard: React.FC<ProgressDashboardProps> = ({ onCreateGoal, onViewGoal, onSelectCategory }) => {
     const { habits, logs, categories } = useHabitStore();
-    const { data: progressData, loading: progressLoading, error: progressError } = useProgressOverview();
+    const { data: progressData, loading: progressLoading } = useProgressOverview();
     const [isCheckInOpen, setIsCheckInOpen] = useState(false);
+    const [activityTab, setActivityTab] = useState<'overall' | 'category'>('overall');
+    const [heatmapRange, setHeatmapRange] = useState<'year' | '90d' | '30d'>('year');
+    const [categoryRange, setCategoryRange] = useState<'7d' | '14d' | '30d'>('14d');
 
     const habitStats = habits.map(habit => {
         const stats = calculateHabitStats(habit, logs);
@@ -28,11 +31,7 @@ export const ProgressDashboard: React.FC<ProgressDashboardProps> = ({ onCreateGo
         return { ...habit, stats, pace };
     });
 
-    const chartData = habitStats.map(h => ({
-        name: h.name,
-        completed: h.stats.totalCompletions,
-        consistency: h.stats.consistencyScore,
-    }));
+
 
     return (
         <div className="space-y-6 overflow-y-auto pb-20">
@@ -50,59 +49,119 @@ export const ProgressDashboard: React.FC<ProgressDashboardProps> = ({ onCreateGo
             {/* Progress Rings */}
             <ProgressRings />
 
-            {/* Heatmap Section */}
+            {/* Activity Heatmap Section */}
             <div className="bg-neutral-900/50 rounded-2xl border border-white/5 p-6 backdrop-blur-sm">
-                <Heatmap />
+                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6">
+                    <div className="flex items-center gap-4">
+                        <h3 className="text-xl font-bold text-white">Activity</h3>
+                        {activityTab === 'overall' ? (
+                            <select
+                                value={heatmapRange}
+                                onChange={(e) => setHeatmapRange(e.target.value as 'year' | '90d' | '30d')}
+                                className="bg-neutral-800 text-xs text-neutral-300 border border-white/5 rounded-md px-2 py-1 outline-none focus:ring-1 focus:ring-emerald-500/50"
+                            >
+                                <option value="year">Last Year</option>
+                                <option value="90d">Last 90 Days</option>
+                                <option value="30d">Last 30 Days</option>
+                            </select>
+                        ) : (
+                            <div className="flex bg-neutral-800 rounded-md p-0.5 border border-white/5">
+                                {(['7d', '14d', '30d'] as const).map((r) => (
+                                    <button
+                                        key={r}
+                                        onClick={() => setCategoryRange(r)}
+                                        className={`px-2 py-0.5 text-[10px] font-medium rounded transition-colors ${categoryRange === r
+                                            ? 'bg-neutral-700 text-white shadow-sm'
+                                            : 'text-neutral-400 hover:text-white'
+                                            }`}
+                                    >
+                                        {r}
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                    <div className="flex p-1 bg-neutral-800 rounded-lg self-start lg:self-auto">
+                        <button
+                            onClick={() => setActivityTab('overall')}
+                            className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all ${activityTab === 'overall'
+                                ? 'bg-neutral-700 text-white shadow-sm'
+                                : 'text-neutral-400 hover:text-white'
+                                }`}
+                        >
+                            Overall
+                        </button>
+                        <button
+                            onClick={() => setActivityTab('category')}
+                            className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all ${activityTab === 'category'
+                                ? 'bg-neutral-700 text-white shadow-sm'
+                                : 'text-neutral-400 hover:text-white'
+                                }`}
+                        >
+                            By Category
+                        </button>
+                    </div>
+                </div>
+
+                <div className="animate-in fade-in duration-300">
+                    {activityTab === 'overall' ? (
+                        <Heatmap range={heatmapRange} />
+                    ) : (
+                        <div className="space-y-3">
+                            {categories.map(category => {
+                                const catHabits = habits.filter(h => h.categoryId === category.id && !h.archived);
+                                if (catHabits.length === 0) return null;
+
+                                return (
+                                    <CategoryActivityRow
+                                        key={category.id}
+                                        category={category}
+                                        habits={catHabits}
+                                        range={categoryRange}
+                                        onClick={() => onSelectCategory && onSelectCategory(category.id)}
+                                    />
+                                );
+                            })}
+                        </div>
+                    )}
+                </div>
             </div>
 
-            {/* Goals Section */}
+            {/* Goals at a glance */}
             <div className="bg-neutral-900/50 rounded-2xl border border-white/5 p-6 backdrop-blur-sm">
-                <div className="flex items-center justify-between mb-6">
-                    <h3 className="text-lg font-semibold text-white">How your goals are progressing</h3>
+                <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-semibold text-white">Goals at a glance</h3>
+                    <button
+                        onClick={() => onViewGoal && onViewGoal('all')} // Use a safe fallback if 'all' isn't standard, but typically routing handles it. Or just rely on sidebar. 
+                        className="text-xs text-neutral-500 hover:text-white transition-colors"
+                    >
+                        View all
+                    </button>
                 </div>
 
                 {progressLoading ? (
-                    <div className="flex items-center justify-center py-8">
-                        <Loader2 className="text-emerald-500 animate-spin" size={24} />
-                    </div>
-                ) : progressError ? (
-                    <div className="p-4 bg-red-500/10 border border-red-500/50 rounded-lg flex items-start gap-3">
-                        <AlertCircle className="text-red-400 flex-shrink-0 mt-0.5" size={16} />
-                        <div className="flex-1">
-                            <div className="text-red-400 text-sm">{progressError.message}</div>
-                        </div>
+                    <div className="flex items-center justify-center py-4">
+                        <Loader2 className="text-emerald-500 animate-spin" size={20} />
                     </div>
                 ) : !progressData || progressData.goalsWithProgress.length === 0 ? (
-                    <div className="text-center py-8">
-                        <div className="mb-4">
-                            <Target className="text-emerald-400/50 mx-auto" size={40} />
-                        </div>
-                        <h4 className="text-white font-medium mb-2">No goals yet</h4>
-                        <p className="text-neutral-400 text-sm mb-4">
-                            Create a goal to turn your daily habits into meaningful long-term achievements.
-                        </p>
+                    <div className="text-center py-6">
+                        <h4 className="text-neutral-400 text-sm mb-2">No active goals</h4>
                         {onCreateGoal && (
                             <button
                                 onClick={onCreateGoal}
-                                className="flex items-center gap-2 px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-neutral-900 font-medium rounded-lg transition-colors mx-auto text-sm"
+                                className="text-emerald-500 hover:text-emerald-400 text-xs font-medium transition-colors"
                             >
-                                <Plus size={16} />
-                                Create Your First Goal
+                                + Add a goal
                             </button>
                         )}
                     </div>
                 ) : (
-                    <div className="space-y-3">
-                        {/* 
-                            Completed Goals Display Policy:
-                            We hide completed goals from the active goals list on the Progress page.
-                            Completed goals are accessible via the Win Archive.
-                            This keeps the Progress page focused on active, in-progress goals.
-                        */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                         {progressData.goalsWithProgress
-                            .filter(({ goal }) => !goal.completedAt) // Only show active goals
+                            .filter(({ goal }) => !goal.completedAt) // active only
+                            .slice(0, 4) // max 4
                             .map((goalWithProgress) => (
-                                <CompactGoalCard
+                                <GoalPulseCard
                                     key={goalWithProgress.goal.id}
                                     goalWithProgress={goalWithProgress}
                                     onClick={() => {
@@ -125,25 +184,8 @@ export const ProgressDashboard: React.FC<ProgressDashboardProps> = ({ onCreateGo
                 })}
             </div>
 
-            {/* Consistency Chart */}
-            <div className="bg-neutral-900/50 rounded-2xl border border-white/5 p-6 backdrop-blur-sm">
-                <h3 className="text-lg font-semibold text-white mb-6">Consistency Trends</h3>
-                <div className="h-64 w-full">
-                    <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={chartData}>
-                            <XAxis dataKey="name" stroke="#525252" fontSize={12} tickLine={false} axisLine={false} />
-                            <YAxis stroke="#525252" fontSize={12} tickLine={false} axisLine={false} />
-                            <Tooltip
-                                contentStyle={{ backgroundColor: '#171717', border: '1px solid #262626', borderRadius: '8px' }}
-                                itemStyle={{ color: '#e5e5e5' }}
-                            />
-                            <Bar dataKey="consistency" name="Consistency %" fill="#10b981" radius={[4, 4, 0, 0]} />
-                        </BarChart>
-                    </ResponsiveContainer>
-                </div>
-            </div>
 
-            <AccomplishmentsLog />
+
 
             <DailyCheckInModal
                 isOpen={isCheckInOpen}
@@ -153,116 +195,7 @@ export const ProgressDashboard: React.FC<ProgressDashboardProps> = ({ onCreateGo
     );
 };
 
-/**
- * Get today's date in YYYY-MM-DD format.
- */
-function getTodayDateString(): string {
-    return format(new Date(), 'yyyy-MM-dd');
-}
 
-/**
- * Compute today's contribution to a goal from lastSevenDays data.
- * 
- * lastSevenDays is ordered with most recent first (index 0 = today).
- * 
- * @param progress - GoalProgress object with lastSevenDays array
- * @param progress - GoalProgress object with lastSevenDays array
- * @returns Today's contribution value, or null if no data for today
- */
-function getTodayContribution(progress: any): number | null {
-    if (!progress.lastSevenDays || progress.lastSevenDays.length === 0) {
-        return null;
-    }
-
-    // lastSevenDays is ordered most recent first, so index 0 should be today
-    const todayDate = getTodayDateString();
-    const todayEntry = progress.lastSevenDays.find((day: any) => day.date === todayDate);
-
-    if (!todayEntry) {
-        return null;
-    }
-
-    return todayEntry.value;
-}
-
-/**
- * Compact Goal Card for Progress Dashboard
- * 
- * A simplified version of GoalCard that shows:
- * - Title
- * - Progress bar with percent
- * - Inactivity warning badge (if present)
- * - Today's contribution (if any)
- * - Clickable to navigate to goal detail
- */
-const CompactGoalCard: React.FC<{
-    goalWithProgress: { goal: any; progress: any };
-    onClick: () => void;
-}> = ({ goalWithProgress, onClick }) => {
-    const { goal, progress } = goalWithProgress;
-
-    // Compute today's contribution
-    const todayContribution = useMemo(() => {
-        return getTodayContribution(progress);
-    }, [progress]);
-
-    return (
-        <button
-            onClick={onClick}
-            className={`w-full text-left ${goalCardBaseClasses} p-4 hover:border-emerald-500/50 hover:bg-neutral-800 transition-all duration-200 group`}
-        >
-            <div className="flex items-start justify-between gap-4 mb-3">
-                <div className="flex-1 min-w-0">
-                    <h4 className={`${goalTitleCompactClasses} mb-1 group-hover:text-emerald-400 transition-colors truncate`}>
-                        {goal.title}
-                    </h4>
-                    <div className="flex items-center gap-2 flex-wrap">
-                        <span className={`${goalMetadataClasses} capitalize`}>{goal.type}</span>
-                        {progress.inactivityWarning && (
-                            <GoalStatusChip status="warning">
-                                <AlertTriangle size={12} className="inline mr-1" />
-                                Inactive
-                            </GoalStatusChip>
-                        )}
-                    </div>
-                </div>
-                <div className="text-right flex-shrink-0">
-                    <div className="text-lg font-bold text-emerald-400">
-                        {Math.min(100, progress.percent)}%
-                    </div>
-                </div>
-            </div>
-
-            {/* Progress Bar */}
-            <div className="mb-2">
-                <GoalProgressBar percent={progress.percent} height="sm" />
-            </div>
-
-            {/* Progress Details */}
-            <div className="flex items-center justify-between text-xs text-neutral-400 mb-2">
-                <span>
-                    {goal.type === 'cumulative'
-                        ? `${progress.currentValue} / ${goal.targetValue} ${goal.unit || ''}`
-                        : goal.type === 'frequency'
-                            ? `${progress.currentValue} of ${goal.targetValue} days`
-                            : goal.completedAt ? 'Completed' : 'In Progress'}
-                </span>
-                <span>{goal.linkedHabitIds.length} {goal.linkedHabitIds.length === 1 ? 'habit' : 'habits'}</span>
-            </div>
-
-            {/* Today's Contribution */}
-            <div className="text-xs">
-                {todayContribution !== null && todayContribution > 0 ? (
-                    <span className="text-emerald-400 font-medium">
-                        Today: +{todayContribution} {goal.type === 'cumulative' ? goal.unit || '' : 'day'}
-                    </span>
-                ) : (
-                    <span className="text-neutral-500">No progress yet today</span>
-                )}
-            </div>
-        </button>
-    );
-};
 
 const CategorySection: React.FC<{ category: any, habits: any[] }> = ({ category, habits }) => {
     const [isExpanded, setIsExpanded] = useState(false);
