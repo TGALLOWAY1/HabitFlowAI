@@ -334,6 +334,12 @@ const HabitTrackerContent: React.FC = () => {
             onViewWinArchive={() => {
               handleNavigate('wins');
             }}
+            onViewHabit={(habitId) => {
+              const habit = habits.find(h => h.id === habitId);
+              if (habit) {
+                setHistoryHabit(habit);
+              }
+            }}
           />
         ) : view === 'tracker' ? (
           <TrackerGrid
