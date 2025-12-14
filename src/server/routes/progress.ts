@@ -5,14 +5,14 @@
  */
 
 import type { Request, Response } from 'express';
+import { getHabitEntriesByUser } from '../repositories/habitEntryRepository';
+
 import { getHabitsByUser } from '../repositories/habitRepository';
-import { getDayLogsByUser } from '../repositories/dayLogRepository';
 import { computeGoalsWithProgress } from '../utils/goalProgressUtils';
 import { calculateGlobalMomentum, calculateCategoryMomentum, getMomentumCopy } from '../services/momentumService';
 import { calculateDailyStreak, calculateWeeklyStreak } from '../services/streakService';
 import { subDays, format } from 'date-fns';
 import type { MomentumState } from '../../types';
-// import type { Habit, Goal, GoalProgress, DayLog } from '../../models/persistenceTypes';
 
 /**
  * Get today's date in YYYY-MM-DD format.
@@ -25,16 +25,6 @@ function getTodayDateString(): string {
   return `${year}-${month}-${day}`;
 }
 
-/**
- * Get progress overview combining habits and goals for today.
- * 
- * GET /api/progress/overview
- * 
- * Returns:
- * - todayDate: Today's date in YYYY-MM-DD format
- * - habitsToday: Array of habit completion summaries for today
- * - goalsWithProgress: Array of goals with their progress data
- */
 export async function getProgressOverview(req: Request, res: Response): Promise<void> {
   try {
     // TODO: Extract userId from authentication token/session
@@ -49,29 +39,39 @@ export async function getProgressOverview(req: Request, res: Response): Promise<
     // Filter out archived habits
     const activeHabits = habits.filter(h => !h.archived);
 
-    // Fetch all day logs for the user (efficient single query)
-    const allLogs = await getDayLogsByUser(userId);
+    // Fetch all habit entries (Single-Source of Truth)
+    const habitEntries = await getHabitEntriesByUser(userId);
+
+    // Convert to Map for O(1) Lookup: Key = `${habitId}-${date}`
+    const allLogs: Record<string, any> = {};
+    habitEntries.forEach(entry => {
+      const key = `${entry.habitId}-${entry.date}`;
+      allLogs[key] = entry;
+    });
 
     // Build habitsToday array with completion status for today
     // Calculate Momentum (based on all logs, not just today)
-    const logsArray = Object.values(allLogs);
+    const logsArray = habitEntries;
 
     // [NEW] Process Auto-Freezes (Check Yesterday)
-    // This will persist new "frozen" logs if applicable. 
-    // We should ideally re-fetch logs or update our local logsArray if changes happened.
-    // For MVP efficiency: We call it, and if it modifies DB, the NEXT refresh will show it.
-    // Or we can assume it only affects yesterday, which allows streaks to be correct today.
-    // But since `logsArray` is already fetched, the streaks calculated below won't see the new freezes unless we re-fetch.
-    // Optimization: `processAutoFreezes` returns the new logs or we re-fetch.
-    // Let's implement quick re-fetch for safety.
     const { processAutoFreezes } = await import('../services/freezeService');
+    // Note: processAutoFreezes might expect DayLog[], check compat.
+    // Assuming it accepts array of logs. 
     await processAutoFreezes(activeHabits, allLogs, userId);
 
     // Re-fetch all logs to ensure streak calc uses latest freeze data
-    const updatedLogs = await getDayLogsByUser(userId);
-    const updatedLogsArray = Object.values(updatedLogs);
+    // Optimally, processAutoFreezes should return updates, but for now re-fetch
+    const updatedEntries = await getHabitEntriesByUser(userId);
+    const updatedLogsArray = updatedEntries;
 
-    const globalMomentum = calculateGlobalMomentum(updatedLogsArray);
+    // Re-build map
+    const updatedLogs: Record<string, any> = {};
+    updatedEntries.forEach(entry => {
+      const key = `${entry.habitId}-${entry.date}`;
+      updatedLogs[key] = entry;
+    });
+
+    const globalMomentum = calculateGlobalMomentum(updatedLogsArray as any[]);
 
     // Group habits by category for Category Momentum
     const categoryHabitMap: Record<string, string[]> = {};
@@ -82,7 +82,7 @@ export async function getProgressOverview(req: Request, res: Response): Promise<
 
     const categoryMomentum: Record<string, MomentumState> = {};
     Object.keys(categoryHabitMap).forEach(catId => {
-      const result = calculateCategoryMomentum(logsArray, categoryHabitMap[catId]);
+      const result = calculateCategoryMomentum(logsArray as any[], categoryHabitMap[catId]);
       categoryMomentum[catId] = result.state;
     });
 
@@ -93,7 +93,7 @@ export async function getProgressOverview(req: Request, res: Response): Promise<
     for (const habit of activeHabits) {
       // Find today's log for this habit
       const logKey = `${habit.id}-${todayDate}`;
-      const todayLog = allLogs[logKey];
+      const todayLog = updatedLogs[logKey];
 
       // Determine completion status
       const completed = todayLog?.completed || false;
@@ -104,9 +104,9 @@ export async function getProgressOverview(req: Request, res: Response): Promise<
       // Calculate Streak
       let streak = 0;
       if (habit.goal.frequency === 'weekly') {
-        streak = calculateWeeklyStreak(logsArray, habit.id);
+        streak = calculateWeeklyStreak(updatedLogsArray as any[], habit.id);
       } else {
-        streak = calculateDailyStreak(logsArray, habit.id);
+        streak = calculateDailyStreak(updatedLogsArray as any[], habit.id);
       }
 
       // Soft Freeze Check (Lazy Creation)
@@ -116,7 +116,7 @@ export async function getProgressOverview(req: Request, res: Response): Promise<
       // But if we want to PERSIST the soft freeze so it shows up in history/logs explicitly:
       // Check Yesterday Log.
       const yesterdayLogKey = `${habit.id}-${yesterdayDate}`;
-      const yesterdayLog = allLogs[yesterdayLogKey];
+      const yesterdayLog = updatedLogs[yesterdayLogKey];
 
       if (!yesterdayLog && habit.goal.frequency === 'daily') {
         // Missed yesterday (no log). Check eligibility.

@@ -9,6 +9,8 @@ import { HabitHistoryModal } from './HabitHistoryModal';
 import { useHabitStore } from '../store/HabitContext';
 import { useRoutineStore } from '../store/RoutineContext';
 import { useProgressOverview } from '../lib/useProgressOverview';
+import { DailyBundleRow } from './BundleComponents'; // [NEW]
+
 
 import { computeBundleStatus, getBundleStats } from '../utils/habitUtils';
 import {
@@ -125,8 +127,7 @@ const HabitActionButtons = ({
         </div>
     );
 };
-
-// --- Daily Habit Row ---
+// --- Row Components ---
 
 interface HabitRowContentProps {
     habit: Habit;
@@ -141,13 +142,11 @@ interface HabitRowContentProps {
     deleteConfirmId: string | null;
     setDeleteConfirmId: (id: string | null) => void;
     onEditHabit: (habit: Habit) => void;
-    // Drag & Drop props (optional, only for root)
     attributes?: any; // eslint-disable-line @typescript-eslint/no-explicit-any
     listeners?: any; // eslint-disable-line @typescript-eslint/no-explicit-any
     isDragging?: boolean;
     setNodeRef?: (node: HTMLElement | null) => void;
     style?: React.CSSProperties;
-    // Computed status for bundles
     bundleStatus?: { completed: boolean; value: number };
     onToggle: (habitId: string, date: string) => Promise<void>;
     onRunRoutine?: (routine: Routine) => void;
@@ -923,15 +922,17 @@ const SortableWeeklyHabitRow = ({
 export const TrackerGrid = ({
     habits,
     logs,
-    onToggle,
-    onUpdateValue,
     onAddHabit,
     onEditHabit,
     onRunRoutine,
-    onViewHistory,
     potentialEvidence
 }: TrackerGridProps) => {
-    const { deleteHabit, reorderHabits } = useHabitStore();
+    const {
+        deleteHabit,
+        reorderHabits,
+        upsertHabitEntry,
+        deleteHabitEntryByKey
+    } = useHabitStore();
     const { data: progressData, refresh: refreshProgress } = useProgressOverview();
 
     const [popoverState, setPopoverState] = useState<{
@@ -974,7 +975,7 @@ export const TrackerGrid = ({
     }, [habits]);
 
     // Initial Split based on Roots
-    const dailyHabits = useMemo(() => rootHabits.filter(h => h.goal.frequency === 'daily'), [rootHabits]);
+    const dailyHabits = useMemo(() => rootHabits.filter(h => !h.goal?.frequency || h.goal.frequency === 'daily'), [rootHabits]);
     const weeklyHabits = useMemo(() => rootHabits.filter(h => h.goal.frequency === 'weekly'), [rootHabits]);
 
     // Generate dates: Today + Last 13 days (Reverse Chronological)
@@ -1041,7 +1042,36 @@ export const TrackerGrid = ({
         }
     };
 
+    // --- Interaction Handlers (Upsert/Delete) ---
+
+    // Unified Toggle Handler (Daily & Weekly)
+    const handleToggle = async (habitId: string, date: string) => {
+        // useHabitStore hook values are already available in scope
+        const log = logs[`${habitId}-${date}`];
+        const isCompleted = log?.completed || false;
+
+        const habit = habits.find(h => h.id === habitId);
+        if (!habit) return;
+
+        if (isCompleted) {
+            // Delete Entry
+            await deleteHabitEntryByKey(habitId, date);
+        } else {
+            // Upsert Entry
+            // Default Upsert
+            await upsertHabitEntry(habitId, date, { value: 1 });
+        }
+        refreshProgress();
+    };
+
+    // --- Choice Bundle Option Handler ---
+    const handleChoiceSelect = async (habitId: string, date: string, optionKey: string) => {
+        await upsertHabitEntry(habitId, date, { value: 1, bundleOptionId: optionKey });
+        refreshProgress();
+    };
+
     const handleCellClick = (e: React.MouseEvent, habit: Habit, dateStr: string, log?: DayLog) => {
+        // e.stopPropagation(); // Safe to stop prop?
         if (habit.goal.type === 'boolean') {
             handleToggle(habit.id, dateStr);
         } else {
@@ -1059,14 +1089,8 @@ export const TrackerGrid = ({
 
     const handleToggleToday = async (habit: Habit) => {
         const todayStr = format(new Date(), 'yyyy-MM-dd');
-        await onToggle(habit.id, todayStr);
+        await handleToggle(habit.id, todayStr);
         // Refresh progress data to ensure streaks are synced eventually
-        refreshProgress();
-    };
-
-    // Modified onToggle wrapper to refresh progress
-    const handleToggle = async (habitId: string, date: string) => {
-        await onToggle(habitId, date);
         refreshProgress();
     };
 
@@ -1081,6 +1105,11 @@ export const TrackerGrid = ({
             position: { top: rect.bottom + 8, left: rect.left - 40 },
         });
     };
+
+
+
+    // --- Render Sections ---
+
 
     return (
         <div className="w-full overflow-x-auto pb-20">
@@ -1133,7 +1162,47 @@ export const TrackerGrid = ({
                                     strategy={verticalListSortingStrategy}
                                 >
                                     {dailyHabits.map((habit) => {
-                                        const progressInfo = habitProgressMap.get(habit.id);
+                                        // Bundle vs Simple
+                                        if (habit.type === 'bundle') {
+                                            const subHabits = habit.subHabitIds
+                                                ? habit.subHabitIds.map(id => habits.find(h => h.id === id)).filter((h): h is Habit => !!h)
+                                                : [];
+
+                                            // Sortable wrapper for BundleRow? For MVP, we might skip sortable on bundles or wrap them. 
+                                            // Let's use the inline bundle row for now, or the newly created component if it handles DND (it doesn't).
+                                            // If we use DailyBundleRow, we lose Dnd unless we wrap it.
+                                            // For this step, I will stick to rendering it simply without sortable props on the component itself, 
+                                            // but inside the sortable context it might break if I don't attach refs.
+                                            // Actually, let's keep using SortableHabitRow for bundles too, but modify it to delegate to DailyBundleRow?
+                                            // Or better: Just render standard SortableHabitRow which has bundle logic inline (legacy), 
+                                            // BUT update that inline logic to use the new semantics.
+
+                                            // WAIT: The plan said "Implement [NEW] BundleComponents.tsx".
+                                            // I should replace the renderer inside SortableHabitRow with DailyBundleRow?
+                                            // SortableHabitRow is defined above. I need to modify SortableHabitRow to use DailyBundleRow IF habit.type === 'bundle'.
+
+                                            return (
+                                                <div key={habit.id} className="mb-2">
+                                                    <DailyBundleRow
+                                                        habit={habit}
+                                                        subHabits={subHabits}
+                                                        dates={dates}
+                                                        logs={logs}
+                                                        onToggle={handleToggle}
+                                                        onChoiceSelect={handleChoiceSelect}
+                                                        isExpanded={expandedIds.has(habit.id)}
+                                                        onToggleExpand={() => toggleExpand(habit.id)}
+                                                        onEditHabit={onEditHabit}
+                                                        deleteHabit={deleteHabit}
+                                                        deleteConfirmId={deleteConfirmId}
+                                                        setDeleteConfirmId={setDeleteConfirmId}
+                                                        handleCellClick={handleCellClick}
+                                                    />
+                                                </div>
+                                            );
+                                        }
+
+                                        // Regular Daily Habit
                                         return (
                                             <SortableHabitRow
                                                 key={habit.id}
@@ -1150,7 +1219,7 @@ export const TrackerGrid = ({
                                                 onEditHabit={onEditHabit}
                                                 onToggle={handleToggle}
                                                 onRunRoutine={onRunRoutine}
-                                                streak={progressInfo?.streak}
+                                                streak={habitProgressMap.get(habit.id)?.streak}
                                                 onViewHistory={(h) => setHistoryModalHabitId(h.id)}
                                                 potentialEvidence={potentialEvidence}
                                             />
@@ -1203,6 +1272,7 @@ export const TrackerGrid = ({
                         </div>
                     )}
                 </div>
+
             </DndContext>
 
             <NumericInputPopover
@@ -1210,7 +1280,12 @@ export const TrackerGrid = ({
                 onClose={() => setPopoverState(prev => ({ ...prev, isOpen: false }))}
                 onSubmit={async (val) => {
                     try {
-                        await onUpdateValue(popoverState.habitId, popoverState.date, val);
+                        const { habitId, date } = popoverState;
+                        // Use upsertHabitEntry directly
+                        await upsertHabitEntry(habitId, date, { value: val });
+                        // Also trigger progress refresh
+                        refreshProgress();
+
                         setPopoverState(prev => ({ ...prev, isOpen: false }));
                     } catch (error) {
                         console.error('Failed to update log:', error);

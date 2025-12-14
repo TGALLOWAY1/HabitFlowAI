@@ -131,12 +131,24 @@ app.patch('/api/tasks/:id', updateTaskRoute);
 app.delete('/api/tasks/:id', deleteTaskRoute);
 
 // Habit Entry routes (History)
-import { getHabitEntriesRoute, createHabitEntryRoute, deleteHabitEntryRoute, updateHabitEntryRoute, deleteHabitEntriesForDayRoute } from './routes/habitEntries';
+import {
+  getHabitEntriesRoute,
+  createHabitEntryRoute,
+  deleteHabitEntryRoute,
+  updateHabitEntryRoute,
+  deleteHabitEntriesForDayRoute,
+  upsertHabitEntryRoute,
+  deleteHabitEntryByKeyRoute
+} from './routes/habitEntries';
+
 app.get('/api/entries', getHabitEntriesRoute);
 app.post('/api/entries', createHabitEntryRoute);
+app.put('/api/entries', upsertHabitEntryRoute); // Upsert (New)
+app.delete('/api/entries/key', deleteHabitEntryByKeyRoute); // Delete by Key (New)
 app.delete('/api/entries', deleteHabitEntriesForDayRoute); // Bulk delete via query params
 app.delete('/api/entries/:id', deleteHabitEntryRoute);
 app.patch('/api/entries/:id', updateHabitEntryRoute);
+
 
 // Habit Potential Evidence routes
 import habitPotentialEvidenceRoutes from './routes/habitPotentialEvidence';

@@ -153,7 +153,7 @@ const CategorySection: React.FC<{
     );
 };
 
-export const RoutineList: React.FC<RoutineListProps> = ({ onCreate, onEdit, onStart, onPreview }) => {
+export const RoutineList: React.FC<RoutineListProps> = ({ onCreate, onEdit, onPreview }) => {
     const { routines, loading, error, deleteRoutine } = useRoutineStore();
     const { categories } = useHabitStore();
 

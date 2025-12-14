@@ -250,3 +250,69 @@ export async function deleteHabitEntriesForDayRoute(req: Request, res: Response)
     }
 }
 
+
+/**
+ * Upsert a habit entry (Idempotent).
+ * PUT /api/entries
+ */
+export async function upsertHabitEntryRoute(req: Request, res: Response): Promise<void> {
+    try {
+        const userId = (req as any).userId || 'anonymous-user';
+        const { habitId, dateKey, ...data } = req.body;
+
+        if (!habitId || !dateKey) {
+            res.status(400).json({ error: 'habitId and dateKey are required' });
+            return;
+        }
+
+        const { upsertHabitEntry } = await import('../repositories/habitEntryRepository');
+
+        // 1. Upsert
+        const entry = await upsertHabitEntry(habitId, dateKey, userId, data);
+
+        // 2. Recompute DayLog (Legacy/Cache)
+        const updatedDayLog = await recomputeDayLogForHabit(habitId, dateKey, userId);
+
+        res.json({
+            entry,
+            dayLog: updatedDayLog
+        });
+
+    } catch (error) {
+        console.error('Error upserting entry:', error);
+        res.status(500).json({ error: 'Failed to upsert entry' });
+    }
+}
+
+/**
+ * Delete a habit entry by key.
+ * DELETE /api/entries/key?habitId=...&dateKey=...
+ */
+export async function deleteHabitEntryByKeyRoute(req: Request, res: Response): Promise<void> {
+    try {
+        const userId = (req as any).userId || 'anonymous-user';
+        const { habitId, dateKey } = req.query;
+
+        if (!habitId || typeof habitId !== 'string' || !dateKey || typeof dateKey !== 'string') {
+            res.status(400).json({ error: 'habitId and dateKey are required' });
+            return;
+        }
+
+        const { deleteHabitEntryByKey } = await import('../repositories/habitEntryRepository');
+
+        // 1. Delete
+        await deleteHabitEntryByKey(habitId, dateKey, userId);
+
+        // 2. Recompute
+        const updatedDayLog = await recomputeDayLogForHabit(habitId, dateKey, userId);
+
+        res.json({
+            success: true,
+            dayLog: updatedDayLog
+        });
+
+    } catch (error) {
+        console.error('Error deleting entry by key:', error);
+        res.status(500).json({ error: 'Failed to delete entry' });
+    }
+}

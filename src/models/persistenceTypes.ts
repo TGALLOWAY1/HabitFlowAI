@@ -180,6 +180,29 @@ export interface Habit {
      * Increments (max 3) when a freeze is earned via global activity.
      */
     freezeCount?: number;
+
+    /**
+     * New fields for Frequency & Bundles (Single-Entry MVP)
+     */
+    frequency?: 'daily' | 'weekly';
+    weeklyTarget?: number;
+
+    /**
+     * Bundle Configuration (Daily Only)
+     * - 'checklist': Parent completes when ALL children complete.
+     * - 'choice': Parent completes when ONE option is selected (stored in parent entry).
+     */
+    bundleType?: 'checklist' | 'choice';
+
+    /**
+     * Options for Choice Bundles.
+     * Note: These are NOT habits. They have no independent tracking.
+     */
+    bundleOptions?: Array<{
+        key: string;
+        label: string;
+        icon?: string;
+    }>;
 }
 
 /**
@@ -253,6 +276,12 @@ export interface DayLog {
      * - 'soft': System applied grace (does NOT consume inventory)
      */
     freezeType?: 'manual' | 'auto' | 'soft';
+
+    /**
+     * Optional: The specific option selected for a Choice Bundle
+     * Foreign key to Habit.bundleOptions[].key
+     */
+    bundleOptionId?: string;
 }
 
 
@@ -767,6 +796,9 @@ export interface HabitEntry {
     /** Optional note */
     note?: string;
 
+    /** Optional: The specific option selected for a Choice Bundle */
+    bundleOptionId?: string;
+
     /** Soft delete timestamp */
     deletedAt?: string;
 
@@ -775,6 +807,19 @@ export interface HabitEntry {
 
     /** Update timestamp */
     updatedAt: string;
+
+    /**
+     * Logical Date Key (YYYY-MM-DD)
+     * Represents the unique day this entry belongs to.
+     * Enforces Single-Entry Per Day constraint via (habitId, dateKey) uniqueness.
+     */
+    dateKey?: string;
+
+    /**
+     * Option Key for Choice Bundles
+     * If this entry represents a Choice Bundle completion, this stores which option was selected.
+     */
+    optionKey?: string;
 }
 
 export type HabitEntriesStorage = HabitEntry[];

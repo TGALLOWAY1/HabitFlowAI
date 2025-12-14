@@ -60,6 +60,19 @@ export interface Habit {
 
     // Freeze Mechanics
     freezeCount?: number; // Max 3
+
+    /**
+     * Frequency & Bundles (frontend aligned)
+     */
+    frequency?: 'daily' | 'weekly';
+    weeklyTarget?: number;
+
+    bundleType?: 'checklist' | 'choice';
+    bundleOptions?: Array<{
+        key: string;
+        label: string;
+        icon?: string;
+    }>;
 }
 
 export interface DayLog {
@@ -73,6 +86,9 @@ export interface DayLog {
     // Freeze Mechanics
     isFrozen?: boolean;
     freezeType?: 'manual' | 'auto' | 'soft';
+
+    /** Optional: Choice Bundle Option ID */
+    bundleOptionId?: string;
 }
 
 // Re-export Routine types

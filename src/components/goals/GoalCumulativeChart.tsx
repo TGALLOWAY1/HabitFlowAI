@@ -15,8 +15,7 @@ interface GoalCumulativeChartProps {
 export const GoalCumulativeChart: React.FC<GoalCumulativeChartProps> = ({
     data,
     color = "#10b981", // emerald-500
-    unit = "",
-    targetValue
+    unit = ""
 }) => {
     const chartData = useMemo(() => {
         // Sort by date ascending to ensure proper line graph
