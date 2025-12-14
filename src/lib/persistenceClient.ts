@@ -793,11 +793,52 @@ export async function updateHabitEntry(id: string, patch: Partial<HabitEntry>): 
 }
 
 /**
- * Delete a habit entry.
+ * Upsert a habit entry (Idempotent).
  * 
- * @param id - Entry ID
+ * @param habitId - Habit ID
+ * @param dateKey - Date Key (YYYY-MM-DD)
+ * @param data - Entry data (value, optionKey, etc.)
+ * @returns Promise<{ entry: HabitEntry, dayLog: DayLog | null }>
+ */
+export async function upsertHabitEntry(
+  habitId: string,
+  dateKey: string,
+  data: Partial<HabitEntry>
+): Promise<{ entry: HabitEntry, dayLog: DayLog | null }> {
+
+  const payload = {
+    habitId,
+    dateKey,
+    ...data
+  };
+
+  const response = await apiRequest<{ entry: HabitEntry, dayLog: DayLog | null }>('/entries', {
+    method: 'PUT',
+    body: JSON.stringify(payload),
+  });
+  return response;
+}
+
+/**
+ * Delete a habit entry by key.
+ * 
+ * @param habitId - Habit ID
+ * @param dateKey - Date Key
  * @returns Promise<{ success: boolean, dayLog: DayLog | null }>
  */
+export async function deleteHabitEntryByKey(
+  habitId: string,
+  dateKey: string
+): Promise<{ success: boolean, dayLog: DayLog | null }> {
+
+  const response = await apiRequest<{ success: boolean, dayLog: DayLog | null }>(
+    `/entries/key?habitId=${habitId}&dateKey=${dateKey}`,
+    {
+      method: 'DELETE',
+    }
+  );
+  return response;
+}
 export async function deleteHabitEntry(id: string): Promise<{ success: boolean, dayLog: DayLog | null }> {
   await apiRequest<{ message: string, dayLog: DayLog | null }>(`/entries/${id}`, {
     method: 'DELETE',

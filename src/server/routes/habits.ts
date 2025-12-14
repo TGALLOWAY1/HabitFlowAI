@@ -64,7 +64,11 @@ export async function createHabitRoute(req: Request, res: Response): Promise<voi
 
     // Validate request body
     // Validate request body
-    const { name, categoryId, goal, description, assignedDays, scheduledTime, durationMinutes, nonNegotiable, nonNegotiableDays, deadline, type, subHabitIds, bundleParentId, order } = req.body;
+    const {
+      name, categoryId, goal, description, assignedDays, scheduledTime, durationMinutes,
+      nonNegotiable, nonNegotiableDays, deadline, type, subHabitIds, bundleParentId, order,
+      bundleType, bundleOptions // Added bundle fields
+    } = req.body;
 
     if (!name || typeof name !== 'string' || name.trim().length === 0) {
       res.status(400).json({
@@ -115,6 +119,8 @@ export async function createHabitRoute(req: Request, res: Response): Promise<voi
         subHabitIds,
         bundleParentId,
         order,
+        bundleType,
+        bundleOptions,
       },
       userId
     );
@@ -195,7 +201,11 @@ export async function updateHabitRoute(req: Request, res: Response): Promise<voi
   try {
 
     const { id } = req.params;
-    const { name, categoryId, goal, description, archived, assignedDays, scheduledTime, durationMinutes, nonNegotiable, nonNegotiableDays, deadline, type, subHabitIds, bundleParentId, order } = req.body;
+    const {
+      name, categoryId, goal, description, archived, assignedDays, scheduledTime, durationMinutes,
+      nonNegotiable, nonNegotiableDays, deadline, type, subHabitIds, bundleParentId, order,
+      bundleType, bundleOptions // Added bundle fields
+    } = req.body;
 
     if (!id) {
       res.status(400).json({
@@ -353,6 +363,22 @@ export async function updateHabitRoute(req: Request, res: Response): Promise<voi
         return;
       }
       patch.order = order;
+    }
+
+    if (bundleType !== undefined) {
+      if (bundleType !== 'checklist' && bundleType !== 'choice') {
+        res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Invalid bundleType' } });
+        return;
+      }
+      patch.bundleType = bundleType;
+    }
+
+    if (bundleOptions !== undefined) {
+      if (!Array.isArray(bundleOptions)) {
+        res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'bundleOptions must be an array' } });
+        return;
+      }
+      patch.bundleOptions = bundleOptions;
     }
 
     if (Object.keys(patch).length === 0) {

@@ -20,6 +20,8 @@ import {
     updateHabitEntry,
     deleteHabitEntry,
     fetchPotentialEvidence,
+    upsertHabitEntry,
+    deleteHabitEntryByKey,
 } from '../lib/persistenceClient';
 
 interface HabitContextType {
@@ -48,6 +50,8 @@ interface HabitContextType {
     updateCategory: (id: string, patch: Partial<Omit<Category, 'id'>>) => Promise<void>;
     updateHabitEntry: (id: string, patch: any) => Promise<void>; // eslint-disable-line @typescript-eslint/no-explicit-any
     deleteHabitEntry: (id: string) => Promise<void>;
+    upsertHabitEntry: (habitId: string, dateKey: string, data?: any) => Promise<void>;
+    deleteHabitEntryByKey: (habitId: string, dateKey: string) => Promise<void>;
     potentialEvidence: HabitPotentialEvidence[];
 }
 
@@ -565,6 +569,48 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     };
 
 
+    const upsertHabitEntryContext = async (habitId: string, dateKey: string, data: any = {}) => {
+        try {
+            // Optimistic update logic could go here, but for now we rely on the server response
+            const { dayLog } = await upsertHabitEntry(habitId, dateKey, data);
+
+            // Update local state with the recomputed DayLog (legacy cache)
+            if (dayLog) {
+                setLogs(prev => ({
+                    ...prev,
+                    [`${habitId}-${dateKey}`]: dayLog
+                }));
+            }
+
+            // Re-fetch evidence or habits if needed?
+        } catch (error) {
+            console.error('Failed to upsert habit entry:', error);
+            setLastPersistenceError("Failed to save habit entry.");
+        }
+    };
+
+    const deleteHabitEntryByKeyContext = async (habitId: string, dateKey: string) => {
+        try {
+            const { dayLog } = await deleteHabitEntryByKey(habitId, dateKey);
+
+            // Update local state
+            setLogs(prev => {
+                const newLogs = { ...prev };
+                if (dayLog) {
+                    newLogs[`${habitId}-${dateKey}`] = dayLog;
+                } else {
+                    // Log deleted (unchecked) -> Remove from state
+                    delete newLogs[`${habitId}-${dateKey}`];
+                }
+                return newLogs;
+            });
+        } catch (error) {
+            console.error('Failed to delete habit entry:', error);
+            setLastPersistenceError("Failed to remove habit entry.");
+        }
+    };
+
+
     return (
         <HabitContext.Provider value={{
             categories,
@@ -590,9 +636,10 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             refreshDayLogs,
             refreshHabitsAndCategories,
             potentialEvidence,
+            upsertHabitEntry: upsertHabitEntryContext,
+            deleteHabitEntryByKey: deleteHabitEntryByKeyContext,
         }}>
             {children}
         </HabitContext.Provider>
     );
 };
-

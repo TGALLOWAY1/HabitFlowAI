@@ -7,6 +7,7 @@
 
 import { getDb } from '../lib/mongoClient';
 import type { HabitEntry } from '../../models/persistenceTypes';
+import { ObjectId } from 'mongodb';
 import { randomUUID } from 'crypto';
 
 const COLLECTION_NAME = 'habitEntries';
@@ -199,6 +200,111 @@ export async function deleteHabitEntriesForDay(
         }
     );
 
+
     return result.modifiedCount;
+}
+
+/**
+ * Upsert a habit entry for a specific date (create or update)
+ * @param habitId - Habit ID
+ * @param date - Date string YYYY-MM-DD
+ * @param userId - User ID
+ * @param updates - Updates to apply (value, completed, etc)
+ */
+export async function upsertHabitEntry(
+    habitId: string,
+    date: string,
+    userId: string,
+    updates: Partial<Omit<HabitEntry, 'id' | 'habitId' | 'date' | 'userId' | 'createdAt' | 'updatedAt'>>
+): Promise<HabitEntry> {
+    const db = await getDb();
+    const collection = db.collection(COLLECTION_NAME);
+
+    const now = new Date().toISOString();
+
+    // Check if exists (active)
+    const existing = await collection.findOne({
+        habitId,
+        date,
+        userId,
+        deletedAt: { $exists: false }
+    }) as unknown as HabitEntry | null;
+
+    if (existing) {
+        // Update
+        const patch = { ...updates, updatedAt: now };
+
+        await collection.updateOne(
+            { _id: new ObjectId((existing as any)._id) },
+            { $set: patch }
+        );
+        return { ...existing, ...patch };
+    } else {
+        // Create
+        // Need to explicitly cast 'completed' if it's not in the Omit, but it should be?
+        // Actually HabitEntry has 'completed', so Omit removes it? No, I omitted 'id'|'habitId'...
+        // Let's just cast updates to any to merge safely
+        const newEntry = {
+            _id: new ObjectId(),
+            id: new ObjectId().toHexString(),
+            habitId,
+            userId,
+            date,
+            value: updates.value || 0,
+            completed: (updates as any).completed || false,
+            createdAt: now,
+            updatedAt: now,
+            ...updates
+        } as HabitEntry;
+        await collection.insertOne(newEntry as any);
+        return newEntry;
+    }
+}
+
+/**
+ * Soft delete a single habit entry by key
+ */
+export async function deleteHabitEntryByKey(
+    habitId: string,
+    date: string,
+    userId: string
+): Promise<boolean> {
+    const db = await getDb();
+    const collection = db.collection(COLLECTION_NAME);
+
+    const result = await collection.updateOne(
+        { habitId, date, userId, deletedAt: { $exists: false } },
+        {
+            $set: {
+                deletedAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString()
+            }
+        }
+    );
+
+    return result.modifiedCount > 0;
+}
+
+/**
+ * Get all habit entries for a user.
+ * Essential for progress aggregation.
+ * 
+ * @param userId - User ID
+ * @returns Array of HabitEntry
+ */
+export async function getHabitEntriesByUser(
+    userId: string
+): Promise<HabitEntry[]> {
+    const db = await getDb();
+    const collection = db.collection(COLLECTION_NAME);
+
+    const documents = await collection
+        .find({ userId, deletedAt: { $exists: false } })
+        .toArray();
+
+    return documents.map(doc => {
+        const { _id, userId: _, ...entry } = doc;
+        return entry as HabitEntry;
+    });
 }
 

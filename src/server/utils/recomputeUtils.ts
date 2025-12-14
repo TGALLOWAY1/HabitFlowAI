@@ -84,6 +84,7 @@ export async function recomputeDayLogForHabit(
         completed,
         source, // derived
         routineId, // derived from latest
+        bundleOptionId: lastEntry?.bundleOptionId, // derived from latest
     };
 
     // 7. Upsert
