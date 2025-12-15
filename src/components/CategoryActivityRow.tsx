@@ -8,7 +8,7 @@ import { ChevronRight } from 'lucide-react';
 interface CategoryActivityRowProps {
     category: any;
     habits: any[];
-    range: '7d' | '14d' | '30d';
+    range: '7d' | '14d';
     onClick: () => void;
 }
 
@@ -19,7 +19,6 @@ export const CategoryActivityRow: React.FC<CategoryActivityRowProps> = React.mem
         const today = startOfDay(new Date());
         let daysToSubtract = 13; // default 14d (0-13)
         if (range === '7d') daysToSubtract = 6;
-        if (range === '30d') daysToSubtract = 29;
 
         const startDate = subDays(today, daysToSubtract);
         const dateRange = eachDayOfInterval({ start: startDate, end: today });

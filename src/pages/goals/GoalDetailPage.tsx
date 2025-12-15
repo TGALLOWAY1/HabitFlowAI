@@ -113,14 +113,15 @@ export const GoalDetailPage: React.FC<GoalDetailPageProps> = ({ goalId, onBack, 
             };
         });
 
-        return [...manual, ...fromHabits].sort((a, b) => a.date.localeCompare(b.date));
+        const combined = [...manual, ...fromHabits].filter(item => item.date);
+        return combined.sort((a, b) => (a.date || '').localeCompare(b.date || ''));
     }, [data, linkedHabitEntries, habitMap]);
 
     // Calculate Cumulative Data for Chart
     const cumulativeData = useMemo(() => {
         let total = 0;
-        // Sort ascending by date
-        const sorted = [...combinedEntries].sort((a, b) => a.date.localeCompare(b.date));
+        // Sort ascending by date safely
+        const sorted = [...combinedEntries].sort((a, b) => (a.date || '').localeCompare(b.date || ''));
 
         return sorted.map(entry => {
             total += entry.value;
