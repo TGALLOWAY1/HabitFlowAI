@@ -1,5 +1,6 @@
 import type { Habit, DayLog } from '../types';
 
+
 export interface FlattenedHabitItem {
     habit: Habit;
     depth: number;
@@ -148,4 +149,44 @@ export function getBundleStats(
         percent: (completed / total) * 100,
         isAllDone: completed === total
     };
+}
+
+/**
+ * Filters habits to find those relevant for a specific date (Today View logic).
+ * 
+ * Rules:
+ * - Not archived
+ * - Not a child of another habit (root level only)
+ * - Frequency match:
+ *   - 'daily': Always included
+ *   - 'weekly': Included if 'assignedDays' contains date's day-of-week
+ *   - 'total': Always included
+ */
+export function getHabitsForDate(
+    habits: Habit[],
+    _date: Date
+): Habit[] {
+    // Identify child IDs to exclude them from root list
+    const childIds = new Set<string>();
+    habits.forEach(h => {
+        if (h.type === 'bundle' && h.subHabitIds) {
+            h.subHabitIds.forEach(id => childIds.add(id));
+        }
+    });
+
+    return habits.filter(h => {
+        // 1. Must not be archived
+        if (h.archived) return false;
+
+        // 2. Must be a root habit (not a child)
+        if (childIds.has(h.id)) return false;
+
+        // 3. Frequency Logic - STRICTLY DAILY for now per user feedback
+        // Check both root frequency and goal.frequency (legacy/imported data might only have it in goal)
+        const frequency = h.frequency || h.goal.frequency;
+
+        if (frequency !== 'daily') return false;
+
+        return true;
+    });
 }

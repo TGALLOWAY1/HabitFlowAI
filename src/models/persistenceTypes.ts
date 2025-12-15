@@ -203,6 +203,10 @@ export interface Habit {
         label: string;
         icon?: string;
     }>;
+
+    // Day View Fields
+    pinned?: boolean; // For "Today's Focus"
+    timeEstimate?: number; // In minutes
 }
 
 /**

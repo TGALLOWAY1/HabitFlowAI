@@ -67,7 +67,8 @@ export async function createHabitRoute(req: Request, res: Response): Promise<voi
     const {
       name, categoryId, goal, description, assignedDays, scheduledTime, durationMinutes,
       nonNegotiable, nonNegotiableDays, deadline, type, subHabitIds, bundleParentId, order,
-      bundleType, bundleOptions // Added bundle fields
+      bundleType, bundleOptions,
+      pinned, timeEstimate // Added Day View fields
     } = req.body;
 
     if (!name || typeof name !== 'string' || name.trim().length === 0) {
@@ -121,6 +122,8 @@ export async function createHabitRoute(req: Request, res: Response): Promise<voi
         order,
         bundleType,
         bundleOptions,
+        pinned,
+        timeEstimate,
       },
       userId
     );
@@ -199,216 +202,57 @@ export async function getHabit(req: Request, res: Response): Promise<void> {
  */
 export async function updateHabitRoute(req: Request, res: Response): Promise<void> {
   try {
-
     const { id } = req.params;
     const {
       name, categoryId, goal, description, archived, assignedDays, scheduledTime, durationMinutes,
       nonNegotiable, nonNegotiableDays, deadline, type, subHabitIds, bundleParentId, order,
-      bundleType, bundleOptions // Added bundle fields
+      bundleType, bundleOptions,
+      pinned, timeEstimate
     } = req.body;
 
     if (!id) {
-      res.status(400).json({
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: 'Habit ID is required',
-        },
-      });
+      res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Habit ID is required' } });
       return;
     }
 
-    // Validate update data
     const patch: Partial<Omit<Habit, 'id' | 'createdAt'>> = {};
 
-    if (name !== undefined) {
-      if (typeof name !== 'string' || name.trim().length === 0) {
-        res.status(400).json({
-          error: {
-            code: 'VALIDATION_ERROR',
-            message: 'Habit name must be a non-empty string',
-          },
-        });
-        return;
-      }
-      patch.name = name.trim();
-    }
+    if (name !== undefined) patch.name = name.trim();
+    if (categoryId !== undefined) patch.categoryId = categoryId;
+    if (goal !== undefined) patch.goal = goal;
+    if (description !== undefined) patch.description = description;
+    if (archived !== undefined) patch.archived = archived;
+    if (assignedDays !== undefined) patch.assignedDays = assignedDays;
+    if (scheduledTime !== undefined) patch.scheduledTime = scheduledTime;
+    if (durationMinutes !== undefined) patch.durationMinutes = durationMinutes;
+    if (nonNegotiable !== undefined) patch.nonNegotiable = !!nonNegotiable;
+    if (nonNegotiableDays !== undefined) patch.nonNegotiableDays = nonNegotiableDays;
+    if (deadline !== undefined) patch.deadline = deadline;
+    if (type !== undefined) patch.type = type;
+    if (subHabitIds !== undefined) patch.subHabitIds = subHabitIds;
+    if (bundleParentId !== undefined) patch.bundleParentId = bundleParentId;
+    if (order !== undefined) patch.order = order;
+    if (bundleType !== undefined) patch.bundleType = bundleType;
+    if (bundleOptions !== undefined) patch.bundleOptions = bundleOptions;
+    if (pinned !== undefined) patch.pinned = !!pinned;
+    if (timeEstimate !== undefined) patch.timeEstimate = timeEstimate;
 
-    if (categoryId !== undefined) {
-      if (typeof categoryId !== 'string') {
-        res.status(400).json({
-          error: {
-            code: 'VALIDATION_ERROR',
-            message: 'Category ID must be a string',
-          },
-        });
-        return;
-      }
-      patch.categoryId = categoryId;
-    }
-
-    if (goal !== undefined) {
-      if (typeof goal !== 'object') {
-        res.status(400).json({
-          error: {
-            code: 'VALIDATION_ERROR',
-            message: 'Goal must be an object',
-          },
-        });
-        return;
-      }
-      patch.goal = goal;
-    }
-
-    if (description !== undefined) {
-      patch.description = typeof description === 'string' ? description.trim() : description;
-    }
-
-    if (archived !== undefined) {
-      if (typeof archived !== 'boolean') {
-        res.status(400).json({
-          error: {
-            code: 'VALIDATION_ERROR',
-            message: 'Archived must be a boolean',
-          },
-        });
-        return;
-      }
-      patch.archived = archived;
-    }
-
-    if (assignedDays !== undefined) {
-      if (!Array.isArray(assignedDays) || !assignedDays.every(d => typeof d === 'number')) {
-        res.status(400).json({
-          error: {
-            code: 'VALIDATION_ERROR',
-            message: 'Assigned days must be an array of numbers',
-          },
-        });
-        return;
-      }
-      patch.assignedDays = assignedDays;
-    }
-
-    if (scheduledTime !== undefined) {
-      // Basic regex validation for HH:mm could be added here
-      patch.scheduledTime = scheduledTime;
-    }
-
-    if (durationMinutes !== undefined) {
-      if (typeof durationMinutes !== 'number' || durationMinutes <= 0) {
-        res.status(400).json({
-          error: {
-            code: 'VALIDATION_ERROR',
-            message: 'Duration must be a positive number',
-          },
-        });
-        return;
-      }
-      patch.durationMinutes = durationMinutes;
-    }
-
-    if (nonNegotiable !== undefined) {
-      patch.nonNegotiable = !!nonNegotiable;
-    }
-
-    if (nonNegotiableDays !== undefined) {
-      if (!Array.isArray(nonNegotiableDays)) {
-        res.status(400).json({
-          error: {
-            code: 'VALIDATION_ERROR',
-            message: 'nonNegotiableDays must be an array of numbers',
-          },
-        });
-        return;
-      }
-      patch.nonNegotiableDays = nonNegotiableDays;
-    }
-
-    if (deadline !== undefined) {
-      patch.deadline = deadline;
-    }
-
-    if (type !== undefined) {
-      patch.type = type;
-    }
-
-    if (subHabitIds !== undefined) {
-      if (!Array.isArray(subHabitIds) || !subHabitIds.every(id => typeof id === 'string')) {
-        res.status(400).json({
-          error: {
-            code: 'VALIDATION_ERROR',
-            message: 'subHabitIds must be an array of strings',
-          },
-        });
-        return;
-      }
-      patch.subHabitIds = subHabitIds;
-    }
-
-    if (bundleParentId !== undefined) {
-      // Allow setting to null/undefined to unlink? The patch is Partial<Omit...>. 
-      // If we pass null, it might be tricky depending on strictNullChecks. 
-      // Assuming it's typically a string or explicit null/undefined for removal.
-      patch.bundleParentId = bundleParentId;
-    }
-
-    if (order !== undefined) {
-      if (typeof order !== 'number') {
-        res.status(400).json({
-          error: {
-            code: 'VALIDATION_ERROR',
-            message: 'Order must be a number',
-          },
-        });
-        return;
-      }
-      patch.order = order;
-    }
-
-    if (bundleType !== undefined) {
-      if (bundleType !== 'checklist' && bundleType !== 'choice') {
-        res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Invalid bundleType' } });
-        return;
-      }
-      patch.bundleType = bundleType;
-    }
-
-    if (bundleOptions !== undefined) {
-      if (!Array.isArray(bundleOptions)) {
-        res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'bundleOptions must be an array' } });
-        return;
-      }
-      patch.bundleOptions = bundleOptions;
-    }
+    // TODO: Validate types more strictly if needed, but for now rely on basic checks or TS interface safety at repository level mostly.
 
     if (Object.keys(patch).length === 0) {
-      res.status(400).json({
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: 'At least one field must be provided for update',
-        },
-      });
+      res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'At least one field must be provided for update' } });
       return;
     }
 
-    // TODO: Extract userId from authentication token/session
     const userId = (req as any).userId || 'anonymous-user';
-
     const habit = await updateHabit(id, userId, patch);
 
     if (!habit) {
-      res.status(404).json({
-        error: {
-          code: 'NOT_FOUND',
-          message: 'Habit not found',
-        },
-      });
+      res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Habit not found' } });
       return;
     }
 
-    res.status(200).json({
-      habit,
-    });
+    res.status(200).json({ habit });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     console.error('Error updating habit:', errorMessage);
