@@ -14,6 +14,7 @@ import { RoutineRunnerModal } from './components/RoutineRunnerModal';
 import { RoutinePreviewModal } from './components/RoutinePreviewModal';
 import { HabitHistoryModal } from './components/HabitHistoryModal';
 import { BarChart3, Calendar, ClipboardList, Target, Clock, BookOpenText, CheckSquare } from 'lucide-react';
+
 import type { Routine, Habit } from './types';
 import { GoalsPage } from './pages/goals/GoalsPage';
 import { CreateGoalFlow } from './pages/goals/CreateGoalFlow';
@@ -21,12 +22,14 @@ import { GoalDetailPage } from './pages/goals/GoalDetailPage';
 import { GoalCompletedPage } from './pages/goals/GoalCompletedPage';
 import { WinArchivePage } from './pages/goals/WinArchivePage';
 import { CalendarView } from './components/CalendarView';
+import { DayView } from './components/day-view/DayView';
 
 import { JournalPage } from './pages/JournalPage';
 import { TasksPage } from './pages/TasksPage';
 
 // Simple router state
-type AppRoute = 'tracker' | 'dashboard' | 'routines' | 'goals' | 'calendar' | 'wins' | 'journal' | 'tasks';
+type AppRoute = 'tracker' | 'dashboard' | 'routines' | 'goals' | 'calendar' | 'wins' | 'journal' | 'tasks' | 'day';
+
 
 // Helper functions for URL syncing
 function parseRouteFromLocation(location: Location): AppRoute {
@@ -39,13 +42,21 @@ function parseRouteFromLocation(location: Location): AppRoute {
       return "dashboard";
     case "routines": // Renamed from activities
     case "goals":
+    case "daily": // Legacy alias? or rename 'day' route to be internal state?
+      // User requested "Day View" to be part of "Habits" page.
+      // So 'day' route should redirect to 'tracker' with a param? 
+      // Let's just remove 'day' route entirely and handle it as state.
+      return "tracker";
     case "wins":
+
     case "tracker":
     case "calendar":
     case "journal":
     case "tasks":
-      return view as AppRoute;
+    case "day":
+      return "tracker"; // Redirect old 'day' view to tracker
     default:
+
       return "dashboard"; // default view
   }
 }
@@ -99,6 +110,10 @@ const HabitTrackerContent: React.FC = () => {
     const params = new URLSearchParams(window.location.search);
     return params.get("goalId");
   });
+
+  // Track View Mode: 'grid' or 'day'
+  const [trackerViewMode, setTrackerViewMode] = useState<'grid' | 'day'>('grid');
+
 
   const [showCreateGoal, setShowCreateGoal] = useState(false);
   const [completedGoalId, setCompletedGoalId] = useState<string | null>(null);
@@ -179,7 +194,29 @@ const HabitTrackerContent: React.FC = () => {
           <h2 className="text-2xl font-bold text-white">
             {view === 'tracker' ? 'Habits' : view === 'dashboard' ? 'Dashboard' : view === 'routines' ? 'Routines' : view === 'journal' ? 'Journal' : view === 'tasks' ? 'Tasks' : 'Goals'}
           </h2>
+
+          {/* Tracker View Toggles (Only visible on Habits page) */}
+          {view === 'tracker' && (
+            <div className="flex bg-neutral-800 p-0.5 rounded-lg mr-4">
+              <button
+                onClick={() => setTrackerViewMode('grid')}
+                className={`px-3 py-1 text-sm font-medium rounded-md transition-all ${trackerViewMode === 'grid' ? 'bg-neutral-600 text-white shadow-sm' : 'text-neutral-400 hover:text-white'}`}
+              >
+                Grid
+              </button>
+              <button
+                onClick={() => setTrackerViewMode('day')}
+                className={`px-3 py-1 text-sm font-medium rounded-md transition-all ${trackerViewMode === 'day' ? 'bg-neutral-600 text-white shadow-sm' : 'text-neutral-400 hover:text-white'}`}
+              >
+                Today
+              </button>
+            </div>
+          )}
+
           <div className="flex items-center gap-2 bg-neutral-800 rounded-lg p-1">
+            {/* Removed standalone Sun button to fix layout issues */}
+
+
             <button
               onClick={() => handleNavigate('dashboard')}
               className={`p-2 rounded-md transition-colors ${view === 'dashboard' ? 'bg-neutral-700 text-white' : 'text-neutral-400 hover:text-white'}`}
@@ -236,7 +273,7 @@ const HabitTrackerContent: React.FC = () => {
 
       {
         view === 'tracker' && (
-          <div className="px-1">
+          <div className="px-1 mb-2">
             <p className="text-neutral-500 text-sm leading-relaxed italic">
               Habits are signals of the person you are becoming. They measure consistency over time — not perfection in the moment.
             </p>
@@ -264,8 +301,9 @@ const HabitTrackerContent: React.FC = () => {
         )
       }
 
+
       {
-        view === 'tracker' && (
+        view === 'tracker' && trackerViewMode === 'grid' && (
           <CategoryTabs
             categories={categories}
             activeCategoryId={activeCategoryId}
@@ -275,7 +313,7 @@ const HabitTrackerContent: React.FC = () => {
       }
 
       {
-        view === 'tracker' && activeCategoryId && (
+        view === 'tracker' && activeCategoryId && trackerViewMode === 'grid' && (
           <CategoryMomentumBanner
             categoryId={activeCategoryId}
             habits={filteredHabits}
@@ -342,23 +380,27 @@ const HabitTrackerContent: React.FC = () => {
             }}
           />
         ) : view === 'tracker' ? (
-          <TrackerGrid
-            habits={filteredHabits}
-            logs={logs}
-            onToggle={toggleHabit}
-            onUpdateValue={updateLog}
-            onAddHabit={() => {
-              setEditingHabit(null);
-              setIsModalOpen(true);
-            }}
-            onEditHabit={(habit) => {
-              setEditingHabit(habit);
-              setIsModalOpen(true);
-            }}
-            onRunRoutine={(routine) => setRoutineRunnerState({ isOpen: true, routine })}
-            onViewHistory={(habit) => setHistoryHabit(habit)}
-            potentialEvidence={potentialEvidence}
-          />
+          trackerViewMode === 'grid' ? (
+            <TrackerGrid
+              habits={filteredHabits}
+              logs={logs}
+              onToggle={toggleHabit}
+              onUpdateValue={updateLog}
+              onAddHabit={() => {
+                setEditingHabit(null);
+                setIsModalOpen(true);
+              }}
+              onEditHabit={(habit) => {
+                setEditingHabit(habit);
+                setIsModalOpen(true);
+              }}
+              onRunRoutine={(routine) => setRoutineRunnerState({ isOpen: true, routine })}
+              onViewHistory={(habit) => setHistoryHabit(habit)}
+              potentialEvidence={potentialEvidence}
+            />
+          ) : (
+            <DayView />
+          )
         ) : view === 'dashboard' ? (
           <ProgressDashboard
             onCreateGoal={() => setShowCreateGoal(true)}
@@ -410,12 +452,14 @@ const HabitTrackerContent: React.FC = () => {
         initialData={editingHabit}
       />
 
-      {historyHabit && (
-        <HabitHistoryModal
-          habitId={historyHabit.id}
-          onClose={() => setHistoryHabit(null)}
-        />
-      )}
+      {
+        historyHabit && (
+          <HabitHistoryModal
+            habitId={historyHabit.id}
+            onClose={() => setHistoryHabit(null)}
+          />
+        )
+      }
 
       <RoutineEditorModal
         isOpen={routineEditorState.isOpen}

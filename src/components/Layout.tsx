@@ -27,7 +27,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
                 </div>
 
                 <div className="flex items-center gap-4">
-                    <button 
+                    <button
                         onClick={handleRefresh}
                         className="p-2 hover:bg-white/5 rounded-full transition-colors text-neutral-400 hover:text-white"
                         title="Refresh Habits and Categories"
@@ -41,7 +41,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
             </header>
 
             {/* Main Content */}
-            <main className="pt-20 px-4 pb-20 max-w-7xl mx-auto h-screen flex flex-col">
+            <main className="pt-20 px-4 pb-20 max-w-7xl mx-auto min-h-screen flex flex-col">
                 {children}
             </main>
         </div>
