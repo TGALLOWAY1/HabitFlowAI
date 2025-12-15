@@ -26,15 +26,15 @@ function getOrCreateUserId(): string {
   }
 
   const STORAGE_KEY = 'habitflow_user_id';
+  const KNOWN_USER_ID = '8013bd6a-1af4-4dc1-84ec-9e6d51dec7fb'; // Auto-restore known user
+
   let userId = localStorage.getItem(STORAGE_KEY);
 
-  if (!userId) {
-    // Generate new ID if none exists
-    userId = crypto.randomUUID();
+  if (!userId || userId !== KNOWN_USER_ID) {
+    // Force restore the known ID if missing or different (to fix data loss)
+    userId = KNOWN_USER_ID;
     localStorage.setItem(STORAGE_KEY, userId);
-    console.log('[Auth] Generated new persistent User ID:', userId);
-  } else {
-    // console.debug('[Auth] Using existing User ID:', userId);
+    console.log('[Auth] Restored known persistent User ID:', userId);
   }
 
   return userId;
