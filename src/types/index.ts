@@ -69,20 +69,30 @@ export interface Habit {
 
     bundleType?: 'checklist' | 'choice';
     bundleOptions?: Array<{
-        key: string;
+        id: string;
         label: string;
         icon?: string;
+        metricConfig?: {
+            mode: 'none' | 'required';
+            unit?: string;
+            step?: number;
+        };
+        key?: string; // Legacy
     }>;
 
     // Day View Fields
     pinned?: boolean; // For "Today's Focus"
     timeEstimate?: number; // In minutes
+
+    // Virtual Fields (Frontend Only)
+    isVirtual?: boolean;
+    associatedOptionId?: string; // Links a virtual habit back to its source option
 }
 
 export interface DayLog {
     habitId: string;
     date: string; // YYYY-MM-DD
-    value: number; // 0 or 1 for boolean, actual value for number
+    value?: number; // 0 or 1 for boolean, actual value for number, null for choice parents
     completed: boolean;
     source?: 'manual' | 'routine';
     routineId?: string;
@@ -93,6 +103,9 @@ export interface DayLog {
 
     /** Optional: Choice Bundle Option ID */
     bundleOptionId?: string;
+
+    /** Map of Option interactions (OptionID -> Value) */
+    completedOptions?: Record<string, number>;
 }
 
 // Re-export Routine types

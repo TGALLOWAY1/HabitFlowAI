@@ -199,9 +199,23 @@ export interface Habit {
      * Note: These are NOT habits. They have no independent tracking.
      */
     bundleOptions?: Array<{
-        key: string;
+        id: string;          // Stable UUID for the option
         label: string;
         icon?: string;
+        /**
+         * Optional: Metric configuration for this option.
+         * If 'mode' is 'required', user MUST enter a value when selecting this option.
+         */
+        metricConfig?: {
+            mode: 'none' | 'required';
+            unit?: string;     // e.g. "miles", "reps"
+            step?: number;     // e.g. 0.5, 5 (for UI increments)
+        };
+        /**
+         * Legacy key for backward compatibility.
+         * TODO: Remove after migration.
+         */
+        key?: string;
     }>;
 
     // Day View Fields
@@ -242,8 +256,9 @@ export interface DayLog {
      * Tracked value for this day
      * - For boolean habits: 0 (not completed) or 1 (completed)
      * - For number habits: actual numeric value (e.g., 8 for 8 glasses)
+     * - For Choice Parents: null/undefined (value is tracked in entries)
      */
-    value: number;
+    value?: number;
 
     /** 
      * Whether the goal was met for this day
@@ -281,11 +296,19 @@ export interface DayLog {
      */
     freezeType?: 'manual' | 'auto' | 'soft';
 
-    /**
-     * Optional: The specific option selected for a Choice Bundle
-     * Foreign key to Habit.bundleOptions[].key
+    /** 
+     * Optional: Choice Bundle Option ID 
+     * (Legacy/Single-Select)
      */
     bundleOptionId?: string;
+
+    /**
+     * Map of Option IDs to their values (or true if boolean) for Multi-Select Choice Habits.
+     * Use this to render the status of individual options in the Grid.
+     * Key: bundleOptionId
+     * Value: number (metric) or 1 (boolean/simple)
+     */
+    completedOptions?: Record<string, number>;
 }
 
 
@@ -595,6 +618,20 @@ export interface Goal {
      */
     linkedHabitIds: string[];
 
+    /**
+     * Optional: Granular linking for Choice Habits V2.
+     * Allows linking to specific options (e.g., "Run 5 miles" linked to "Running" option).
+     */
+    linkedTargets?: Array<
+        | { type: 'habit'; habitId: string }
+        | {
+            type: 'option';
+            parentHabitId: string;
+            bundleOptionId: string;
+            aggregation: 'days' | 'sum';
+        }
+    >;
+
     /** Optional deadline date in ISO 8601 format (YYYY-MM-DD) */
     deadline?: string;
 
@@ -778,8 +815,22 @@ export interface HabitEntry {
      * Value contribution
      * - For binary habits: usually 1
      * - For numeric habits: the amount added (e.g., 50 pushups)
+     * - For Choice V2: Optional. Required if option metric is required. undefined/null if option metric is none.
      */
-    value: number;
+    value?: number;
+
+    /**
+     * Choice Habit V2 Fields
+     */
+
+    /** ID of the specific option selected (for Choice Bundles) */
+    bundleOptionId?: string;
+
+    /** Snapshot of the option label at time of entry (for history resilience) */
+    bundleOptionLabel?: string;
+
+    /** Snapshot of the unit (e.g. "miles") at time of entry */
+    unitSnapshot?: string;
 
     /** 
      * Source of the entry
@@ -799,9 +850,6 @@ export interface HabitEntry {
 
     /** Optional note */
     note?: string;
-
-    /** Optional: The specific option selected for a Choice Bundle */
-    bundleOptionId?: string;
 
     /** Soft delete timestamp */
     deletedAt?: string;

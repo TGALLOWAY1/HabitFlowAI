@@ -24,7 +24,15 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
     const [searchTerm, setSearchTerm] = useState('');
 
     // Choice Bundle Options
-    const [bundleOptions, setBundleOptions] = useState<Array<{ key: string; label: string }>>([]);
+    const [bundleOptions, setBundleOptions] = useState<Array<{
+        id: string;
+        label: string;
+        key?: string; // Legacy preservation
+        metricConfig?: {
+            mode: 'none' | 'required';
+            unit?: string;
+        }
+    }>>([]);
     const [newOptionLabel, setNewOptionLabel] = useState('');
 
     // Pending Sub-Habits (Checklist Mode)
@@ -69,7 +77,14 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                 setName(initialData.name);
                 setHabitType(initialData.type === 'bundle' ? 'bundle' : 'regular');
                 setBundleMode(initialData.bundleType || (initialData.type === 'bundle' ? 'checklist' : null)); // Default to checklist for legacy
-                setBundleOptions(initialData.bundleOptions || []);
+                setBundleMode(initialData.bundleType || (initialData.type === 'bundle' ? 'checklist' : null)); // Default to checklist for legacy
+                // Map legacy options to new structure if needed (though backend types might already handle this, frontend state needs to match)
+                setBundleOptions(initialData.bundleOptions?.map(opt => ({
+                    id: opt.id || opt.key || crypto.randomUUID(), // Ensure ID
+                    label: opt.label,
+                    key: opt.key,
+                    metricConfig: opt.metricConfig
+                })) || []);
                 setSubHabitIds(initialData.subHabitIds || []);
                 setPendingSubHabits([]); // Clear pending on open
 
@@ -283,13 +298,46 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
     // --- Choice Bundle Option Handlers ---
     const handleAddOption = () => {
         if (!newOptionLabel.trim()) return;
-        const key = newOptionLabel.toLowerCase().replace(/\s+/g, '_') + '_' + Date.now();
-        setBundleOptions(prev => [...prev, { key, label: newOptionLabel.trim() }]);
+        // Use crypto.randomUUID for stable ID
+        const id = crypto.randomUUID();
+        setBundleOptions(prev => [...prev, {
+            id,
+            label: newOptionLabel.trim(),
+            metricConfig: { mode: 'none' } // Default to no metrics
+        }]);
         setNewOptionLabel('');
     };
 
-    const removeOption = (key: string) => {
-        setBundleOptions(prev => prev.filter(o => o.key !== key));
+    const removeOption = (id: string) => {
+        setBundleOptions(prev => prev.filter(o => o.id !== id));
+    };
+
+    const toggleOptionMetric = (id: string) => {
+        setBundleOptions(prev => prev.map(opt => {
+            if (opt.id !== id) return opt;
+            const newMode = opt.metricConfig?.mode === 'required' ? 'none' : 'required';
+            return {
+                ...opt,
+                metricConfig: {
+                    mode: newMode,
+                    unit: newMode === 'required' ? (opt.metricConfig?.unit || '') : undefined
+                }
+            };
+        }));
+    };
+
+    const updateOptionUnit = (id: string, unit: string) => {
+        setBundleOptions(prev => prev.map(opt => {
+            if (opt.id !== id) return opt;
+            return {
+                ...opt,
+                metricConfig: {
+                    ...opt.metricConfig,
+                    mode: 'required', // Ensure mode is required if setting unit? Or just update unit.
+                    unit: unit
+                }
+            };
+        }));
     };
 
     // Filter available habits for bundling
@@ -618,7 +666,7 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                         <div className="space-y-4 border-t border-white/5 pt-4 animate-in fade-in slide-in-from-top-2">
                             <div className="flex items-center justify-between">
                                 <label className="text-sm font-bold text-white">Options (Required)</label>
-                                <span className="text-xs text-neutral-500">At completion, you'll pick one.</span>
+                                <span className="text-xs text-neutral-500">Define your valid choices.</span>
                             </div>
 
                             {/* Add Option Input */}
@@ -630,7 +678,7 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                                     // Submit on Enter
                                     onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddOption(); } }}
                                     className="flex-1 bg-neutral-800 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-500"
-                                    placeholder="Add option (e.g. Read Book)..."
+                                    placeholder="Add option (e.g. Run, Bike, Swim)..."
                                 />
                                 <button
                                     type="button"
@@ -642,19 +690,55 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                                 </button>
                             </div>
 
-                            <div className="flex flex-wrap gap-2">
-                                {bundleOptions.map(opt => (
-                                    <div key={opt.key} className="flex items-center gap-2 pl-3 pr-2 py-1.5 bg-neutral-800 rounded-full border border-white/10 group">
-                                        <span className="text-sm text-neutral-300">{opt.label}</span>
-                                        <button
-                                            type="button"
-                                            onClick={() => removeOption(opt.key)}
-                                            className="p-0.5 rounded-full hover:bg-neutral-700 text-neutral-500 hover:text-white transition-colors"
-                                        >
-                                            <X size={12} />
-                                        </button>
-                                    </div>
-                                ))}
+                            {/* Options List */}
+                            <div className="space-y-2">
+                                {bundleOptions.map(opt => {
+                                    const isMetric = opt.metricConfig?.mode === 'required';
+                                    return (
+                                        <div key={opt.id} className="flex flex-col bg-neutral-800 rounded-lg border border-white/5 p-3 animate-in fade-in">
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex items-center gap-3">
+                                                    <span className="text-sm text-white font-medium">{opt.label}</span>
+
+                                                    {/* Metric Toggle */}
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => toggleOptionMetric(opt.id)}
+                                                        className={`text-xs px-2 py-1 rounded-md transition-colors ${isMetric
+                                                                ? 'bg-emerald-500/20 text-emerald-300'
+                                                                : 'bg-neutral-700/50 text-neutral-400 hover:text-neutral-300'
+                                                            }`}
+                                                    >
+                                                        {isMetric ? 'Tracked' : 'Simple'}
+                                                    </button>
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => removeOption(opt.id)}
+                                                    className="text-neutral-500 hover:text-red-400 transition-colors"
+                                                >
+                                                    <X size={14} />
+                                                </button>
+                                            </div>
+
+                                            {/* Metric Config (Inline) */}
+                                            {isMetric && (
+                                                <div className="mt-2 pl-2 border-l-2 border-emerald-500/20">
+                                                    <div className="flex items-center gap-2">
+                                                        <label className="text-xs text-neutral-500">Unit:</label>
+                                                        <input
+                                                            type="text"
+                                                            value={opt.metricConfig?.unit || ''}
+                                                            onChange={(e) => updateOptionUnit(opt.id, e.target.value)}
+                                                            className="bg-neutral-900 border border-white/10 rounded px-2 py-1 text-xs text-white focus:outline-none focus:border-emerald-500 w-24"
+                                                            placeholder="e.g. miles"
+                                                        />
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    );
+                                })}
                             </div>
                         </div>
                     )}
