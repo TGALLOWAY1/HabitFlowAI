@@ -23,17 +23,7 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
     const [showSubHabitSelect, setShowSubHabitSelect] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
 
-    // Choice Bundle Options
-    const [bundleOptions, setBundleOptions] = useState<Array<{
-        id: string;
-        label: string;
-        key?: string; // Legacy preservation
-        metricConfig?: {
-            mode: 'none' | 'required';
-            unit?: string;
-        }
-    }>>([]);
-    const [newOptionLabel, setNewOptionLabel] = useState('');
+
 
     // Pending Sub-Habits (Checklist Mode)
     const [pendingSubHabits, setPendingSubHabits] = useState<Array<{
@@ -43,6 +33,18 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
         target: string;
         unit: string;
     }>>([]);
+    // Pending Sub-Habits (Checklist Mode)
+    // removed duplicate declaration
+    // const [pendingSubHabits, setPendingSubHabits] = useState...
+    const [editingPendingId, setEditingPendingId] = useState<string | null>(null);
+    const [editingLinkedHabitId, setEditingLinkedHabitId] = useState<string | null>(null);
+    const [modifiedLinkedHabits, setModifiedLinkedHabits] = useState<Record<string, {
+        name: string;
+        goalType: 'boolean' | 'number';
+        target: string;
+        unit: string;
+    }>>({});
+
     const [newHabitName, setNewHabitName] = useState('');
     const [newHabitGoalType, setNewHabitGoalType] = useState<'boolean' | 'number'>('boolean');
     const [newHabitTarget, setNewHabitTarget] = useState('');
@@ -78,13 +80,7 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                 setHabitType(initialData.type === 'bundle' ? 'bundle' : 'regular');
                 setBundleMode(initialData.bundleType || (initialData.type === 'bundle' ? 'checklist' : null)); // Default to checklist for legacy
                 setBundleMode(initialData.bundleType || (initialData.type === 'bundle' ? 'checklist' : null)); // Default to checklist for legacy
-                // Map legacy options to new structure if needed (though backend types might already handle this, frontend state needs to match)
-                setBundleOptions(initialData.bundleOptions?.map(opt => ({
-                    id: opt.id || opt.key || crypto.randomUUID(), // Ensure ID
-                    label: opt.label,
-                    key: opt.key,
-                    metricConfig: opt.metricConfig
-                })) || []);
+
                 setSubHabitIds(initialData.subHabitIds || []);
                 setPendingSubHabits([]); // Clear pending on open
 
@@ -103,7 +99,7 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                 setName('');
                 setHabitType('regular');
                 setBundleMode(null);
-                setBundleOptions([]);
+
                 setSubHabitIds([]);
                 setPendingSubHabits([]);
                 setGoalType('boolean');
@@ -172,9 +168,13 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
 
         setIsSubmitting(true);
         try {
-            // Ensure target is set correctly for boolean weekly
-            let finalTarget = target ? Number(target) : undefined;
-            if (frequency === 'weekly' && goalType === 'boolean' && assignedDays.length > 0) {
+            // Ensure target is set correctly based on type
+            let finalTarget: number | undefined = undefined;
+
+            if (goalType === 'number') {
+                finalTarget = target ? Number(target) : undefined;
+            } else if (frequency === 'weekly' && goalType === 'boolean' && assignedDays.length > 0) {
+                // For boolean weekly, target is implied by assigned days
                 finalTarget = assignedDays.length;
             }
 
@@ -201,9 +201,9 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                 nonNegotiable,
                 description: description || undefined,
                 type: habitType === 'bundle' ? 'bundle' as const : undefined,
-                subHabitIds: habitType === 'bundle' && bundleMode === 'checklist' ? subHabitIds : undefined,
+                subHabitIds: habitType === 'bundle' ? subHabitIds : undefined,
                 bundleType: habitType === 'bundle' ? bundleMode || undefined : undefined,
-                bundleOptions: habitType === 'bundle' && bundleMode === 'choice' ? bundleOptions : undefined,
+                bundleOptions: undefined, // Deprecated: Always clear bundleOptions for new/updated bundles
             };
 
             let savedHabit: Habit;
@@ -221,8 +221,8 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                     categoryId: selectedCategoryId, // Inherit category
                     goal: {
                         type: pending.goalType,
-                        target: pending.target ? Number(pending.target) : undefined,
-                        unit: pending.unit || undefined,
+                        target: pending.goalType === 'number' && pending.target ? Number(pending.target) : undefined,
+                        unit: pending.goalType === 'number' ? pending.unit : undefined,
                         frequency: frequency, // Inherit frequency (daily/weekly)
                     },
                     assignedDays: frequency === 'weekly' ? assignedDays : undefined, // Inherit schedule
@@ -257,6 +257,21 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                 for (const childId of newlyLinkedExistingIds) {
                     await updateHabit(childId, { bundleParentId: savedHabit.id });
                 }
+
+                // Apply modifications to linked habits
+                const modifiedIds = Object.keys(modifiedLinkedHabits).filter(id => subHabitIds.includes(id));
+                for (const id of modifiedIds) {
+                    const mod = modifiedLinkedHabits[id];
+                    await updateHabit(id, {
+                        name: mod.name,
+                        goal: {
+                            type: mod.goalType,
+                            target: mod.goalType === 'number' && mod.target ? Number(mod.target) : undefined,
+                            unit: mod.goalType === 'number' ? mod.unit : undefined,
+                            frequency: frequency // Inherit bundle frequency
+                        }
+                    });
+                }
             }
 
             onClose();
@@ -276,13 +291,43 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
     const handleAddPendingSubHabit = () => {
         if (!newHabitName.trim()) return;
 
-        setPendingSubHabits(prev => [...prev, {
-            tempId: `temp - ${Date.now()} `,
-            name: newHabitName,
-            goalType: newHabitGoalType,
-            target: newHabitTarget,
-            unit: newHabitUnit
-        }]);
+        if (editingLinkedHabitId) {
+            // Update Existing Linked Habit (Locally)
+            setModifiedLinkedHabits(prev => ({
+                ...prev,
+                [editingLinkedHabitId]: {
+                    name: newHabitName,
+                    goalType: newHabitGoalType,
+                    target: newHabitTarget,
+                    unit: newHabitUnit
+                }
+            }));
+            setEditingLinkedHabitId(null);
+        } else if (editingPendingId) {
+            // Update Existing Pending Habit
+            setPendingSubHabits(prev => prev.map(p => {
+                if (p.tempId === editingPendingId) {
+                    return {
+                        ...p,
+                        name: newHabitName,
+                        goalType: newHabitGoalType,
+                        target: newHabitTarget,
+                        unit: newHabitUnit
+                    };
+                }
+                return p;
+            }));
+            setEditingPendingId(null);
+        } else {
+            // Create New
+            setPendingSubHabits(prev => [...prev, {
+                tempId: `temp - ${Date.now()} `,
+                name: newHabitName,
+                goalType: newHabitGoalType,
+                target: newHabitTarget,
+                unit: newHabitUnit
+            }]);
+        }
 
         // Reset form
         setNewHabitName('');
@@ -291,54 +336,49 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
         setNewHabitGoalType('boolean');
     };
 
+    const handleEditPendingSubHabit = (tempId: string) => {
+        const item = pendingSubHabits.find(p => p.tempId === tempId);
+        if (!item) return;
+
+        setNewHabitName(item.name);
+        setNewHabitGoalType(item.goalType);
+        setNewHabitTarget(item.target || '');
+        setNewHabitUnit(item.unit || '');
+        setEditingPendingId(tempId);
+        setEditingLinkedHabitId(null); // Clear other edit mode
+    };
+
+    const handleEditLinkedHabit = (id: string) => {
+        const h = habits.find(h => h.id === id);
+        if (!h) return;
+
+        // Check if we have local modifications first
+        const modified = modifiedLinkedHabits[id];
+
+        if (modified) {
+            setNewHabitName(modified.name);
+            setNewHabitGoalType(modified.goalType);
+            setNewHabitTarget(modified.target);
+            setNewHabitUnit(modified.unit);
+        } else {
+            setNewHabitName(h.name);
+            setNewHabitGoalType(h.goal.type);
+            // Handle target safely
+            let t = '';
+            if (h.goal.target) t = String(h.goal.target);
+            setNewHabitTarget(t);
+            setNewHabitUnit(h.goal.unit || '');
+        }
+
+        setEditingLinkedHabitId(id);
+        setEditingPendingId(null); // Clear other edit mode
+    };
+
     const removePendingSubHabit = (tempId: string) => {
         setPendingSubHabits(prev => prev.filter(p => p.tempId !== tempId));
     };
 
-    // --- Choice Bundle Option Handlers ---
-    const handleAddOption = () => {
-        if (!newOptionLabel.trim()) return;
-        // Use crypto.randomUUID for stable ID
-        const id = crypto.randomUUID();
-        setBundleOptions(prev => [...prev, {
-            id,
-            label: newOptionLabel.trim(),
-            metricConfig: { mode: 'none' } // Default to no metrics
-        }]);
-        setNewOptionLabel('');
-    };
 
-    const removeOption = (id: string) => {
-        setBundleOptions(prev => prev.filter(o => o.id !== id));
-    };
-
-    const toggleOptionMetric = (id: string) => {
-        setBundleOptions(prev => prev.map(opt => {
-            if (opt.id !== id) return opt;
-            const newMode = opt.metricConfig?.mode === 'required' ? 'none' : 'required';
-            return {
-                ...opt,
-                metricConfig: {
-                    mode: newMode,
-                    unit: newMode === 'required' ? (opt.metricConfig?.unit || '') : undefined
-                }
-            };
-        }));
-    };
-
-    const updateOptionUnit = (id: string, unit: string) => {
-        setBundleOptions(prev => prev.map(opt => {
-            if (opt.id !== id) return opt;
-            return {
-                ...opt,
-                metricConfig: {
-                    ...opt.metricConfig,
-                    mode: 'required', // Ensure mode is required if setting unit? Or just update unit.
-                    unit: unit
-                }
-            };
-        }));
-    };
 
     // Filter available habits for bundling
     const availableHabits = habits.filter(h =>
@@ -558,12 +598,16 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                         </div>
                     )}
 
-                    {/* Bundle Configuration - CONDITIONAL */}
-                    {habitType === 'bundle' && bundleMode === 'checklist' && (
+                    {/* Bundle Configuration - UNIFIED (Checklist + Choice) */}
+                    {habitType === 'bundle' && (bundleMode === 'checklist' || bundleMode === 'choice') && (
                         <div className="space-y-4 border-t border-white/5 pt-4 animate-in fade-in slide-in-from-top-2">
                             <div className="flex items-center justify-between">
-                                <label className="text-sm font-bold text-white">Checklist Items (Required)</label>
-                                <span className="text-xs text-neutral-500">Checking parent completes all children.</span>
+                                <label className="text-sm font-bold text-white">
+                                    {bundleMode === 'checklist' ? 'Checklist Items' : 'Choices'}
+                                </label>
+                                <span className="text-xs text-neutral-500">
+                                    {bundleMode === 'checklist' ? 'Checking parent completes all children.' : 'Select one valid option.'}
+                                </span>
                             </div>
 
                             {/* Existing Sub-Habits Linker */}
@@ -616,23 +660,66 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
 
                             {/* Create New Item */}
                             <div className="space-y-2">
-                                <label className="text-xs font-semibold text-neutral-500 uppercase tracking-wider">New Item</label>
-                                <div className="flex gap-2">
-                                    <input
-                                        type="text"
-                                        value={newHabitName}
-                                        onChange={(e) => setNewHabitName(e.target.value)}
-                                        className="flex-1 bg-neutral-800 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500"
-                                        placeholder="Item name (e.g. Floss)..."
-                                    />
-                                    <button
-                                        type="button"
-                                        onClick={handleAddPendingSubHabit}
-                                        disabled={!newHabitName.trim()}
-                                        className="px-3 py-2 bg-indigo-500/20 text-indigo-400 border border-indigo-500/50 rounded-lg text-sm font-medium hover:bg-indigo-500/30 transition-colors disabled:opacity-50"
-                                    >
-                                        Add
-                                    </button>
+                                <label className="text-xs font-semibold text-neutral-500 uppercase tracking-wider">New Child Habit</label>
+                                <div className="flex flex-col gap-2">
+                                    <div className="flex gap-2">
+                                        <input
+                                            type="text"
+                                            value={newHabitName}
+                                            onChange={(e) => setNewHabitName(e.target.value)}
+                                            className="flex-1 bg-neutral-800 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500"
+                                            placeholder="Item name (e.g. Floss)..."
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={handleAddPendingSubHabit}
+                                            disabled={!newHabitName.trim()}
+                                            className={`px-3 py-2 border rounded-lg text-sm font-medium transition-colors disabled:opacity-50 ${editingPendingId || editingLinkedHabitId
+                                                ? 'bg-amber-500/20 text-amber-400 border-amber-500/50 hover:bg-amber-500/30'
+                                                : 'bg-indigo-500/20 text-indigo-400 border-indigo-500/50 hover:bg-indigo-500/30'
+                                                }`}
+                                        >
+                                            {editingPendingId || editingLinkedHabitId ? 'Update' : 'Add'}
+                                        </button>
+                                    </div>
+
+                                    {/* Choice Mode: Optional Metric Config for New Items */}
+                                    {bundleMode === 'choice' && newHabitName.trim() && (
+                                        <div className="flex items-center gap-2 pl-1 animate-in fade-in pt-1">
+                                            <div className="flex bg-neutral-800 rounded-lg p-1 border border-white/5">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setNewHabitGoalType('boolean')}
+                                                    className={`text-xs px-3 py-1.5 rounded-md transition-all ${newHabitGoalType === 'boolean'
+                                                        ? 'bg-neutral-700 text-white shadow-sm'
+                                                        : 'text-neutral-500 hover:text-neutral-300'
+                                                        }`}
+                                                >
+                                                    Simple (Done/Not)
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setNewHabitGoalType('number')}
+                                                    className={`text-xs px-3 py-1.5 rounded-md transition-all ${newHabitGoalType === 'number'
+                                                        ? 'bg-neutral-700 text-white shadow-sm'
+                                                        : 'text-neutral-500 hover:text-neutral-300'
+                                                        }`}
+                                                >
+                                                    Tracked Amount
+                                                </button>
+                                            </div>
+
+                                            {newHabitGoalType === 'number' && (
+                                                <input
+                                                    type="text"
+                                                    value={newHabitUnit}
+                                                    onChange={(e) => setNewHabitUnit(e.target.value)}
+                                                    placeholder="Unit (e.g. miles)"
+                                                    className="bg-neutral-900 border border-white/10 rounded px-2 py-1.5 text-xs text-white w-24 animate-in fade-in slide-in-from-left-2"
+                                                />
+                                            )}
+                                        </div>
+                                    )}
                                 </div>
                             </div>
 
@@ -643,16 +730,87 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                                         Actually, let's just list them simply.
                                      */}
                                     <div className="p-2 space-y-1">
-                                        {/* Display logic omitted for brevity, focusing on pending list */}
+                                        {/* Pending List */}
                                         {pendingSubHabits.map(p => (
-                                            <div key={p.tempId} className="flex justify-between items-center p-2 bg-neutral-800 rounded border border-white/5">
-                                                <span className="text-sm text-white">{p.name}</span>
-                                                <button onClick={() => removePendingSubHabit(p.tempId)} className="text-neutral-500 hover:text-red-400"><X size={14} /></button>
+                                            <div key={p.tempId} className={`flex justify-between items-center p-2 rounded border transition-colors ${editingPendingId === p.tempId
+                                                ? 'bg-amber-500/10 border-amber-500/30'
+                                                : 'bg-neutral-800 border-white/5'
+                                                }`}>
+                                                <div
+                                                    className="flex items-center gap-2 flex-1 cursor-pointer"
+                                                    onClick={() => handleEditPendingSubHabit(p.tempId)}
+                                                >
+                                                    <span className={`text-sm ${editingPendingId === p.tempId ? 'text-amber-200' : 'text-white'}`}>{p.name}</span>
+                                                    {p.goalType === 'number' && (
+                                                        <span className="text-xs text-emerald-400 bg-emerald-500/10 px-1 rounded">
+                                                            {p.unit || 'units'}
+                                                        </span>
+                                                    )}
+                                                    {editingPendingId === p.tempId && (
+                                                        <span className="text-[10px] bg-amber-500/20 text-amber-300 px-1.5 py-0.5 rounded-full uppercase tracking-wider font-bold">
+                                                            Editing
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        removePendingSubHabit(p.tempId);
+                                                    }}
+                                                    className="text-neutral-500 hover:text-red-400 p-1"
+                                                >
+                                                    <X size={14} />
+                                                </button>
                                             </div>
                                         ))}
+                                        {/* Linked List (Summary) */}
                                         {subHabitIds.length > 0 && (
-                                            <div className="p-2 text-xs text-neutral-500 text-center border-t border-white/5 mt-2">
-                                                + {subHabitIds.length} existing habits linked
+                                            <div className="mt-2 space-y-1">
+                                                {/* We render simple list of linked IDs (names fetched if possible, else summary) */}
+                                                {subHabitIds.map(id => {
+                                                    const h = habits.find(h => h.id === id);
+                                                    // Check for local modifications to display
+                                                    const mod = modifiedLinkedHabits[id] || {};
+                                                    const displayName = mod.name || h?.name || 'Unknown Habit';
+                                                    const displayGoalType = mod.goalType || h?.goal?.type;
+                                                    const displayTarget = mod.target !== undefined ? mod.target : h?.goal?.target;
+                                                    const displayUnit = mod.unit !== undefined ? mod.unit : h?.goal?.unit;
+                                                    const isEditingThis = editingLinkedHabitId === id;
+
+                                                    return (
+                                                        <div key={id} className={`flex justify-between items-center p-2 rounded border transition-colors ${isEditingThis
+                                                            ? 'bg-amber-500/10 border-amber-500/30'
+                                                            : 'bg-indigo-500/10 border-indigo-500/20'
+                                                            }`}>
+                                                            <div
+                                                                className="flex items-center gap-2 flex-1 cursor-pointer"
+                                                                onClick={() => handleEditLinkedHabit(id)}
+                                                            >
+                                                                <span className={`text-sm ${isEditingThis ? 'text-amber-200' : 'text-indigo-200'}`}>{displayName}</span>
+                                                                {displayGoalType === 'number' && (
+                                                                    <span className="text-xs text-indigo-300 bg-indigo-400/20 px-1 rounded border border-indigo-400/30">
+                                                                        {displayTarget} {displayUnit}
+                                                                    </span>
+                                                                )}
+                                                                {/* Show modified indicator */}
+                                                                {(modifiedLinkedHabits[id] || isEditingThis) && (
+                                                                    <span className="text-[10px] bg-amber-500/20 text-amber-300 px-1.5 py-0.5 rounded-full uppercase tracking-wider font-bold">
+                                                                        {isEditingThis ? 'Editing' : 'Modified'}
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                            <button
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    toggleSubHabit(id);
+                                                                }}
+                                                                className="text-indigo-400 hover:text-indigo-200"
+                                                            >
+                                                                <X size={14} />
+                                                            </button>
+                                                        </div>
+                                                    );
+                                                })}
                                             </div>
                                         )}
                                     </div>
@@ -661,151 +819,130 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                         </div>
                     )}
 
-                    {/* CHOICE BUNDLE OPTIONS */}
-                    {habitType === 'bundle' && bundleMode === 'choice' && (
-                        <div className="space-y-4 border-t border-white/5 pt-4 animate-in fade-in slide-in-from-top-2">
-                            <div className="flex items-center justify-between">
-                                <label className="text-sm font-bold text-white">Options (Required)</label>
-                                <span className="text-xs text-neutral-500">Define your valid choices.</span>
-                            </div>
+                    {/* DEPRECATED: Old Choice Bundle Options Section Removed/Hidden in favor of Unified UI above */}
 
-                            {/* Add Option Input */}
-                            <div className="flex gap-2">
-                                <input
-                                    type="text"
-                                    value={newOptionLabel}
-                                    onChange={(e) => setNewOptionLabel(e.target.value)}
-                                    // Submit on Enter
-                                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddOption(); } }}
-                                    className="flex-1 bg-neutral-800 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-500"
-                                    placeholder="Add option (e.g. Run, Bike, Swim)..."
-                                />
-                                <button
-                                    type="button"
-                                    onClick={handleAddOption}
-                                    disabled={!newOptionLabel.trim()}
-                                    className="px-3 py-2 bg-amber-500/20 text-amber-400 border border-amber-500/50 rounded-lg text-sm font-medium hover:bg-amber-500/30 transition-colors disabled:opacity-50"
-                                >
-                                    Add
-                                </button>
-                            </div>
+                    {/* Legacy Choice Bundle Options Section Removed */}
 
-                            {/* Options List */}
-                            <div className="space-y-2">
-                                {bundleOptions.map(opt => {
-                                    const isMetric = opt.metricConfig?.mode === 'required';
-                                    return (
-                                        <div key={opt.id} className="flex flex-col bg-neutral-800 rounded-lg border border-white/5 p-3 animate-in fade-in">
-                                            <div className="flex items-center justify-between">
-                                                <div className="flex items-center gap-3">
-                                                    <span className="text-sm text-white font-medium">{opt.label}</span>
 
-                                                    {/* Metric Toggle */}
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => toggleOptionMetric(opt.id)}
-                                                        className={`text-xs px-2 py-1 rounded-md transition-colors ${isMetric
-                                                                ? 'bg-emerald-500/20 text-emerald-300'
-                                                                : 'bg-neutral-700/50 text-neutral-400 hover:text-neutral-300'
-                                                            }`}
-                                                    >
-                                                        {isMetric ? 'Tracked' : 'Simple'}
-                                                    </button>
-                                                </div>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => removeOption(opt.id)}
-                                                    className="text-neutral-500 hover:text-red-400 transition-colors"
-                                                >
-                                                    <X size={14} />
-                                                </button>
-                                            </div>
-
-                                            {/* Metric Config (Inline) */}
-                                            {isMetric && (
-                                                <div className="mt-2 pl-2 border-l-2 border-emerald-500/20">
-                                                    <div className="flex items-center gap-2">
-                                                        <label className="text-xs text-neutral-500">Unit:</label>
-                                                        <input
-                                                            type="text"
-                                                            value={opt.metricConfig?.unit || ''}
-                                                            onChange={(e) => updateOptionUnit(opt.id, e.target.value)}
-                                                            className="bg-neutral-900 border border-white/10 rounded px-2 py-1 text-xs text-white focus:outline-none focus:border-emerald-500 w-24"
-                                                            placeholder="e.g. miles"
-                                                        />
-                                                    </div>
-                                                </div>
-                                            )}
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Bundle Schedule Lock */}
-                    {habitType === 'bundle' && (
-                        <div className="pt-2">
-                            <label className="block text-sm font-medium text-neutral-400 mb-1">Schedule</label>
-                            <div className="flex items-center gap-2 px-3 py-2 bg-neutral-800/30 rounded-lg border border-white/5 text-neutral-500 text-sm cursor-not-allowed">
-                                <CheckSquare size={14} />
-                                Daily <span className="text-xs opacity-50">(Bundles are always daily)</span>
-                            </div>
-                        </div>
-                    )}
+                    {/* Bundle Schedule Lock - HIDDEN per user request */}
+                    {/* 
+                        habitType === 'bundle' && (
+                            <div className="pt-2"> ... </div>
+                        )
+                    */}
 
                     {/* 3. Specific Configuration based on Weekly/Type (Only if Regular or Weekly Bundle) */}
-                    {frequency === 'weekly' && (
-                        <div className="space-y-4 pt-2 border-t border-white/5">
-                            {/* Assigned Days */}
-                            <div>
-                                <label className="block text-sm font-medium text-neutral-400 mb-2">
-                                    Assigned Days {goalType === 'boolean' && <span className="text-emerald-400">(Auto-calculates goal)</span>}
-                                </label>
-                                <div className="flex justify-between gap-1">
-                                    {daysOfWeek.map((day, index) => {
-                                        const isSelected = assignedDays.includes(index);
-                                        return (
-                                            <button
-                                                key={index}
-                                                type="button"
-                                                onClick={() => toggleAssignedDay(index)}
-                                                className={`w-9 h-9 rounded-lg text-sm font-medium transition-all ${isSelected
-                                                    ? 'bg-emerald-500 text-neutral-900 shadow-lg shadow-emerald-500/20'
-                                                    : 'bg-neutral-800 text-neutral-400 hover:bg-neutral-700'
-                                                    }`}
-                                            >
-                                                {day}
-                                            </button>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-
-                            {/* Target Logic */}
-                            {goalType === 'boolean' ? (
-                                <div className="bg-neutral-800/50 rounded-lg p-3 border border-white/5">
-                                    <div className="flex justify-between items-center text-sm">
-                                        <span className="text-neutral-400">Weekly Target:</span>
-                                        <span className="text-white font-medium">
-                                            {assignedDays.length > 0 ? `${assignedDays.length} times / week` : 'Select days above'}
-                                        </span>
+                    {
+                        frequency === 'weekly' && (
+                            <div className="space-y-4 pt-2 border-t border-white/5">
+                                {/* Assigned Days */}
+                                <div>
+                                    <label className="block text-sm font-medium text-neutral-400 mb-2">
+                                        Assigned Days {goalType === 'boolean' && <span className="text-emerald-400">(Auto-calculates goal)</span>}
+                                    </label>
+                                    <div className="flex justify-between gap-1">
+                                        {daysOfWeek.map((day, index) => {
+                                            const isSelected = assignedDays.includes(index);
+                                            return (
+                                                <button
+                                                    key={index}
+                                                    type="button"
+                                                    onClick={() => toggleAssignedDay(index)}
+                                                    className={`w-9 h-9 rounded-lg text-sm font-medium transition-all ${isSelected
+                                                        ? 'bg-emerald-500 text-neutral-900 shadow-lg shadow-emerald-500/20'
+                                                        : 'bg-neutral-800 text-neutral-400 hover:bg-neutral-700'
+                                                        }`}
+                                                >
+                                                    {day}
+                                                </button>
+                                            );
+                                        })}
                                     </div>
                                 </div>
-                            ) : (
-                                // Numeric Goal
-                                <div className="grid grid-cols-2 gap-4 animate-in fade-in slide-in-from-top-2">
+
+                                {/* Target Logic */}
+                                {goalType === 'boolean' ? (
+                                    <div className="bg-neutral-800/50 rounded-lg p-3 border border-white/5">
+                                        <div className="flex justify-between items-center text-sm">
+                                            <span className="text-neutral-400">Weekly Target:</span>
+                                            <span className="text-white font-medium">
+                                                {assignedDays.length > 0 ? `${assignedDays.length} times / week` : 'Select days above'}
+                                            </span>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    // Numeric Goal
+                                    <div className="grid grid-cols-2 gap-4 animate-in fade-in slide-in-from-top-2">
+                                        <div>
+                                            <label className="block text-sm font-medium text-neutral-400 mb-1">Weekly Target</label>
+                                            <input
+                                                type="number"
+                                                value={target}
+                                                onChange={(e) => setTarget(e.target.value)}
+                                                className="w-full bg-neutral-800 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-emerald-500"
+                                                placeholder="e.g. 50"
+                                                required
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-neutral-400 mb-1">Unit</label>
+                                            <input
+                                                type="text"
+                                                value={unit}
+                                                onChange={(e) => setUnit(e.target.value)}
+                                                className="w-full bg-neutral-800 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-emerald-500"
+                                                placeholder="e.g. reps"
+                                                required
+                                            />
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Time & Duration */}
+                                <div className="grid grid-cols-2 gap-4">
                                     <div>
-                                        <label className="block text-sm font-medium text-neutral-400 mb-1">Weekly Target</label>
+                                        <label className="block text-sm font-medium text-neutral-400 mb-1">Preferred Time</label>
                                         <input
-                                            type="number"
-                                            value={target}
-                                            onChange={(e) => setTarget(e.target.value)}
+                                            type="time"
+                                            value={scheduledTime}
+                                            onChange={(e) => setScheduledTime(e.target.value)}
                                             className="w-full bg-neutral-800 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-emerald-500"
-                                            placeholder="e.g. 50"
-                                            required
                                         />
                                     </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-neutral-400 mb-1">Duration (mins)</label>
+                                        <input
+                                            type="number"
+                                            min="5"
+                                            step="5"
+                                            value={durationMinutes}
+                                            onChange={(e) => setDurationMinutes(e.target.value)}
+                                            className="w-full bg-neutral-800 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-emerald-500"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        )
+                    }
+
+                    {/* 4. Configuration for Daily/Total (Legacy support mostly) */}
+                    {
+                        habitType === 'regular' && frequency !== 'weekly' && goalType === 'number' && (
+                            <div className="grid grid-cols-2 gap-4 pt-2 border-t border-white/5">
+                                <div>
+                                    <label className="block text-sm font-medium text-neutral-400 mb-1">
+                                        Target Amount
+                                    </label>
+                                    <input
+                                        type="number"
+                                        value={target}
+                                        onChange={(e) => setTarget(e.target.value)}
+                                        className="w-full bg-neutral-800 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-emerald-500"
+                                        placeholder="e.g. 10"
+                                        required
+                                    />
+                                </div>
+                                {goalType === 'number' && (
                                     <div>
                                         <label className="block text-sm font-medium text-neutral-400 mb-1">Unit</label>
                                         <input
@@ -813,69 +950,13 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                                             value={unit}
                                             onChange={(e) => setUnit(e.target.value)}
                                             className="w-full bg-neutral-800 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-emerald-500"
-                                            placeholder="e.g. reps"
-                                            required
+                                            placeholder="e.g. pages"
                                         />
                                     </div>
-                                </div>
-                            )}
-
-                            {/* Time & Duration */}
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-sm font-medium text-neutral-400 mb-1">Preferred Time</label>
-                                    <input
-                                        type="time"
-                                        value={scheduledTime}
-                                        onChange={(e) => setScheduledTime(e.target.value)}
-                                        className="w-full bg-neutral-800 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-emerald-500"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-neutral-400 mb-1">Duration (mins)</label>
-                                    <input
-                                        type="number"
-                                        min="5"
-                                        step="5"
-                                        value={durationMinutes}
-                                        onChange={(e) => setDurationMinutes(e.target.value)}
-                                        className="w-full bg-neutral-800 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-emerald-500"
-                                    />
-                                </div>
+                                )}
                             </div>
-                        </div>
-                    )}
-
-                    {/* 4. Configuration for Daily/Total (Legacy support mostly) */}
-                    {habitType === 'regular' && frequency !== 'weekly' && goalType === 'number' && (
-                        <div className="grid grid-cols-2 gap-4 pt-2 border-t border-white/5">
-                            <div>
-                                <label className="block text-sm font-medium text-neutral-400 mb-1">
-                                    Target Amount
-                                </label>
-                                <input
-                                    type="number"
-                                    value={target}
-                                    onChange={(e) => setTarget(e.target.value)}
-                                    className="w-full bg-neutral-800 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-emerald-500"
-                                    placeholder="e.g. 10"
-                                    required
-                                />
-                            </div>
-                            {goalType === 'number' && (
-                                <div>
-                                    <label className="block text-sm font-medium text-neutral-400 mb-1">Unit</label>
-                                    <input
-                                        type="text"
-                                        value={unit}
-                                        onChange={(e) => setUnit(e.target.value)}
-                                        className="w-full bg-neutral-800 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-emerald-500"
-                                        placeholder="e.g. pages"
-                                    />
-                                </div>
-                            )}
-                        </div>
-                    )}
+                        )
+                    }
 
                     {/* 5. Extras */}
                     <div className="space-y-4 pt-2 border-t border-white/5">
@@ -896,16 +977,18 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                             </div>
                         </div>
 
-                        {/* Description */}
-                        <div>
-                            <label className="block text-sm font-medium text-neutral-400 mb-1">Description (Optional)</label>
-                            <textarea
-                                value={description}
-                                onChange={(e) => setDescription(e.target.value)}
-                                className="w-full bg-neutral-800 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-emerald-500 h-20 resize-none"
-                                placeholder="Add notes about your habit..."
-                            />
-                        </div>
+                        {/* Description - Hidden for Bundles */}
+                        {habitType !== 'bundle' && (
+                            <div>
+                                <label className="block text-sm font-medium text-neutral-400 mb-1">Description (Optional)</label>
+                                <textarea
+                                    value={description}
+                                    onChange={(e) => setDescription(e.target.value)}
+                                    className="w-full bg-neutral-800 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-emerald-500 h-20 resize-none"
+                                    placeholder="Add notes about your habit..."
+                                />
+                            </div>
+                        )}
                     </div>
 
 
@@ -921,19 +1004,18 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                         <button
                             type="submit"
                             disabled={
+                                !name.trim() ||
                                 isSubmitting ||
-                                (habitType === 'regular' && frequency === 'weekly' && goalType === 'boolean' && assignedDays.length === 0) ||
-                                (habitType === 'bundle' && !bundleMode) || // Must select mode
-                                (habitType === 'bundle' && bundleMode === 'checklist' && subHabitIds.length === 0 && pendingSubHabits.length === 0) || // Checklist must have items
-                                (habitType === 'bundle' && bundleMode === 'choice' && bundleOptions.length < 1) // Choice must have at least 1 option
+                                (habitType === 'bundle' && bundleMode === 'checklist' && subHabitIds.length === 0 && pendingSubHabits.length === 0) ||
+                                (habitType === 'bundle' && bundleMode === 'choice' && (subHabitIds.length + pendingSubHabits.length) < 1)
                             }
-                            className="px-4 py-2 bg-emerald-500 text-neutral-900 font-medium rounded-lg hover:bg-emerald-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-3 rounded-lg transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             {isEditMode ? 'Save Changes' : 'Create Habit'}
                         </button>
                     </div>
-                </form>
-            </div>
-        </div>
+                </form >
+            </div >
+        </div >
     );
 };
