@@ -18,6 +18,7 @@ interface GoalDraft {
     targetValue: number;
     unit?: string;
     deadline?: string;
+    categoryId?: string;
 }
 
 export const CreateGoalFlow: React.FC<CreateGoalFlowProps> = ({
@@ -85,6 +86,7 @@ export const CreateGoalFlow: React.FC<CreateGoalFlowProps> = ({
                 unit: goalDraft.unit,
                 linkedHabitIds: habitIds,
                 deadline: goalDraft.deadline,
+                categoryId: goalDraft.categoryId,
             });
 
             // Invalidate all goal caches to ensure fresh data on navigation

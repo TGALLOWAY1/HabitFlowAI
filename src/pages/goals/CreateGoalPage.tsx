@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { ArrowRight, Target, Repeat, CalendarCheck, Check } from 'lucide-react';
+import { ArrowRight, Target, Repeat, CalendarCheck, Check, Folder, Plus, X } from 'lucide-react'; // Added Plus, X icons
+import { useHabitStore } from '../../store/HabitContext'; // Import habit store for categories
 
 interface CreateGoalPageProps {
     onNext?: (data: {
@@ -8,6 +9,7 @@ interface CreateGoalPageProps {
         targetValue: number;
         unit?: string;
         deadline?: string;
+        categoryId?: string;
     }) => void;
 }
 
@@ -17,6 +19,13 @@ export const CreateGoalPage: React.FC<CreateGoalPageProps> = ({ onNext }) => {
     const [targetValue, setTargetValue] = useState('');
     const [unit, setUnit] = useState('');
     const [deadline, setDeadline] = useState('');
+    const [categoryId, setCategoryId] = useState('');
+    const { categories, addCategory } = useHabitStore();
+
+    // Inline Category Creation State
+    const [isCreatingCategory, setIsCreatingCategory] = useState(false);
+    const [newCategoryName, setNewCategoryName] = useState('');
+    const [isSubmittingCategory, setIsSubmittingCategory] = useState(false);
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -44,10 +53,32 @@ export const CreateGoalPage: React.FC<CreateGoalPageProps> = ({ onNext }) => {
             targetValue: targetValueNum,
             unit: type !== 'onetime' ? (unit.trim() || undefined) : undefined,
             deadline: deadline || undefined,
+            categoryId: categoryId || undefined, // Include category
         };
 
         if (onNext) {
             onNext(goalData);
+        }
+    };
+
+    const handleCreateCategory = async () => {
+        if (!newCategoryName.trim()) return;
+
+        setIsSubmittingCategory(true);
+        try {
+            // Default to emerald color if not specified
+            const newCat = await addCategory({
+                name: newCategoryName.trim(),
+                color: 'bg-emerald-500'
+            });
+
+            setCategoryId(newCat.id); // Auto-select new category
+            setIsCreatingCategory(false);
+            setNewCategoryName('');
+        } catch (err) {
+            console.error('Failed to create category inline:', err);
+        } finally {
+            setIsSubmittingCategory(false);
         }
     };
 
@@ -70,6 +101,87 @@ export const CreateGoalPage: React.FC<CreateGoalPageProps> = ({ onNext }) => {
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-8">
+
+                {/* Category Selection */}
+                <div className="space-y-3">
+                    <div className="flex justify-between items-center">
+                        <label className="block text-sm font-medium text-neutral-300">
+                            Category <span className="text-neutral-500 font-normal">(Optional, for Skill Tree)</span>
+                        </label>
+                        {!isCreatingCategory && (
+                            <button
+                                type="button"
+                                onClick={() => setIsCreatingCategory(true)}
+                                className="text-xs text-emerald-400 hover:text-emerald-300 flex items-center gap-1"
+                            >
+                                <Plus size={12} />
+                                New Category
+                            </button>
+                        )}
+                    </div>
+
+                    {isCreatingCategory ? (
+                        <div className="flex gap-2 animate-in slide-in-from-top-2 duration-200">
+                            <input
+                                type="text"
+                                value={newCategoryName}
+                                onChange={(e) => setNewCategoryName(e.target.value)}
+                                placeholder="New category name..."
+                                className="flex-1 bg-neutral-900 border border-emerald-500/50 rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-1 focus:ring-emerald-500/50"
+                                autoFocus
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                        e.preventDefault();
+                                        handleCreateCategory();
+                                    }
+                                }}
+                            />
+                            <button
+                                type="button"
+                                onClick={handleCreateCategory}
+                                disabled={!newCategoryName.trim() || isSubmittingCategory}
+                                className="bg-emerald-500 hover:bg-emerald-400 text-neutral-900 px-4 rounded-xl font-medium transition-colors disabled:opacity-50"
+                            >
+                                {isSubmittingCategory ? '...' : 'Save'}
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setIsCreatingCategory(false);
+                                    setNewCategoryName('');
+                                }}
+                                className="bg-neutral-800 hover:bg-neutral-700 text-neutral-400 px-3 rounded-xl transition-colors"
+                            >
+                                <X size={20} />
+                            </button>
+                        </div>
+                    ) : (
+                        <div className="relative">
+                            <select
+                                value={categoryId}
+                                onChange={(e) => {
+                                    if (e.target.value === 'new') {
+                                        setIsCreatingCategory(true);
+                                    } else {
+                                        setCategoryId(e.target.value);
+                                    }
+                                }}
+                                className="w-full bg-neutral-900/50 border border-white/10 rounded-xl pl-10 pr-4 py-3 text-white appearance-none focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/50 transition-all"
+                            >
+                                <option value="">Select a Category...</option>
+                                {categories.map(cat => (
+                                    <option key={cat.id} value={cat.id}>{cat.name}</option>
+                                ))}
+                                <option disabled>──────────</option>
+                                <option value="new">+ Create New Category</option>
+                            </select>
+                            <div className="absolute left-3 top-3.5 text-neutral-500 pointer-events-none">
+                                <Folder size={20} />
+                            </div>
+                        </div>
+                    )}
+                </div>
+
                 {/* Title */}
                 <div className="space-y-3">
                     <label className="block text-sm font-medium text-neutral-300">
@@ -95,8 +207,8 @@ export const CreateGoalPage: React.FC<CreateGoalPageProps> = ({ onNext }) => {
                             type="button"
                             onClick={() => setType('cumulative')}
                             className={`p-4 rounded-xl border text-left transition-all relative ${type === 'cumulative'
-                                    ? 'bg-emerald-500/10 border-emerald-500/50 ring-1 ring-emerald-500/20'
-                                    : 'bg-neutral-900/50 border-white/5 hover:border-white/10 hover:bg-neutral-800/50'
+                                ? 'bg-emerald-500/10 border-emerald-500/50 ring-1 ring-emerald-500/20'
+                                : 'bg-neutral-900/50 border-white/5 hover:border-white/10 hover:bg-neutral-800/50'
                                 }`}
                         >
                             <div className={`p-2 rounded-lg inline-flex mb-3 ${type === 'cumulative' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-neutral-800 text-neutral-400'
@@ -118,8 +230,8 @@ export const CreateGoalPage: React.FC<CreateGoalPageProps> = ({ onNext }) => {
                             type="button"
                             onClick={() => setType('frequency')}
                             className={`p-4 rounded-xl border text-left transition-all relative ${type === 'frequency'
-                                    ? 'bg-emerald-500/10 border-emerald-500/50 ring-1 ring-emerald-500/20'
-                                    : 'bg-neutral-900/50 border-white/5 hover:border-white/10 hover:bg-neutral-800/50'
+                                ? 'bg-emerald-500/10 border-emerald-500/50 ring-1 ring-emerald-500/20'
+                                : 'bg-neutral-900/50 border-white/5 hover:border-white/10 hover:bg-neutral-800/50'
                                 }`}
                         >
                             <div className={`p-2 rounded-lg inline-flex mb-3 ${type === 'frequency' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-neutral-800 text-neutral-400'
@@ -141,8 +253,8 @@ export const CreateGoalPage: React.FC<CreateGoalPageProps> = ({ onNext }) => {
                             type="button"
                             onClick={() => setType('onetime')}
                             className={`p-4 rounded-xl border text-left transition-all relative ${type === 'onetime'
-                                    ? 'bg-emerald-500/10 border-emerald-500/50 ring-1 ring-emerald-500/20'
-                                    : 'bg-neutral-900/50 border-white/5 hover:border-white/10 hover:bg-neutral-800/50'
+                                ? 'bg-emerald-500/10 border-emerald-500/50 ring-1 ring-emerald-500/20'
+                                : 'bg-neutral-900/50 border-white/5 hover:border-white/10 hover:bg-neutral-800/50'
                                 }`}
                         >
                             <div className={`p-2 rounded-lg inline-flex mb-3 ${type === 'onetime' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-neutral-800 text-neutral-400'
@@ -244,8 +356,8 @@ export const CreateGoalPage: React.FC<CreateGoalPageProps> = ({ onNext }) => {
                         type="submit"
                         disabled={!isFormValid}
                         className={`flex items-center gap-2 px-6 py-2 rounded-lg font-medium transition-colors ${isFormValid
-                                ? 'bg-emerald-500 hover:bg-emerald-400 text-neutral-900 shadow-lg shadow-emerald-500/20'
-                                : 'bg-neutral-800 text-neutral-500 cursor-not-allowed'
+                            ? 'bg-emerald-500 hover:bg-emerald-400 text-neutral-900 shadow-lg shadow-emerald-500/20'
+                            : 'bg-neutral-800 text-neutral-500 cursor-not-allowed'
                             }`}
                     >
                         Next: Link Habits

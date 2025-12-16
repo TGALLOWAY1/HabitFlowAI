@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Loader2, AlertCircle, Plus } from 'lucide-react';
+import { X, Loader2, AlertCircle, Plus, Folder } from 'lucide-react';
 import { updateGoal } from '../../lib/persistenceClient';
 import { useHabitStore } from '../../store/HabitContext';
 import type { GoalWithProgress } from '../../models/persistenceTypes';
@@ -20,7 +20,7 @@ export const EditGoalModal: React.FC<EditGoalModalProps> = ({
     onSuccess,
 }) => {
     const { goal } = goalWithProgress;
-    const { habits } = useHabitStore();
+    const { habits, categories, addCategory } = useHabitStore();
 
     // Form State
     const [title, setTitle] = useState(goal.title);
@@ -29,6 +29,12 @@ export const EditGoalModal: React.FC<EditGoalModalProps> = ({
     const [unit, setUnit] = useState(goal.unit || '');
     const [selectedHabitIds, setSelectedHabitIds] = useState<string[]>(goal.linkedHabitIds);
     const [deadline, setDeadline] = useState(goal.deadline || '');
+
+    // Category State
+    const [categoryId, setCategoryId] = useState(goal.categoryId || '');
+    const [isCreatingCategory, setIsCreatingCategory] = useState(false);
+    const [newCategoryName, setNewCategoryName] = useState('');
+    const [isSubmittingCategory, setIsSubmittingCategory] = useState(false);
 
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -43,11 +49,32 @@ export const EditGoalModal: React.FC<EditGoalModalProps> = ({
             setUnit(goal.unit || '');
             setSelectedHabitIds(goal.linkedHabitIds);
             setDeadline(goal.deadline || '');
+            setCategoryId(goal.categoryId || '');
             setError(null);
         }
     }, [isOpen, goal]);
 
     if (!isOpen) return null;
+
+    const handleCreateCategory = async () => {
+        if (!newCategoryName.trim()) return;
+
+        setIsSubmittingCategory(true);
+        try {
+            const newCat = await addCategory({
+                name: newCategoryName.trim(),
+                color: 'bg-emerald-500' // Default color
+            });
+
+            setCategoryId(newCat.id); // Auto-select new category
+            setIsCreatingCategory(false);
+            setNewCategoryName('');
+        } catch (err) {
+            console.error('Failed to create category inline:', err);
+        } finally {
+            setIsSubmittingCategory(false);
+        }
+    };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -86,6 +113,7 @@ export const EditGoalModal: React.FC<EditGoalModalProps> = ({
                 unit: goal.type === 'onetime' ? undefined : unit,
                 linkedHabitIds: selectedHabitIds,
                 deadline: deadline || undefined,
+                categoryId: categoryId || undefined,
             });
 
             // Invalidate cache
@@ -139,6 +167,86 @@ export const EditGoalModal: React.FC<EditGoalModalProps> = ({
                                 </div>
                             </div>
                         )}
+
+                        {/* Category Selection */}
+                        <div className="space-y-3">
+                            <div className="flex justify-between items-center">
+                                <label className="block text-sm font-medium text-neutral-300">
+                                    Category <span className="text-neutral-500 font-normal">(Optional, for Skill Tree)</span>
+                                </label>
+                                {!isCreatingCategory && (
+                                    <button
+                                        type="button"
+                                        onClick={() => setIsCreatingCategory(true)}
+                                        className="text-xs text-emerald-400 hover:text-emerald-300 flex items-center gap-1"
+                                    >
+                                        <Plus size={12} />
+                                        New Category
+                                    </button>
+                                )}
+                            </div>
+
+                            {isCreatingCategory ? (
+                                <div className="flex gap-2 animate-in slide-in-from-top-2 duration-200">
+                                    <input
+                                        type="text"
+                                        value={newCategoryName}
+                                        onChange={(e) => setNewCategoryName(e.target.value)}
+                                        placeholder="New category name..."
+                                        className="flex-1 bg-neutral-900 border border-emerald-500/50 rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-1 focus:ring-emerald-500/50"
+                                        autoFocus
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter') {
+                                                e.preventDefault();
+                                                handleCreateCategory();
+                                            }
+                                        }}
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={handleCreateCategory}
+                                        disabled={!newCategoryName.trim() || isSubmittingCategory}
+                                        className="bg-emerald-500 hover:bg-emerald-400 text-neutral-900 px-4 rounded-xl font-medium transition-colors disabled:opacity-50"
+                                    >
+                                        {isSubmittingCategory ? '...' : 'Save'}
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setIsCreatingCategory(false);
+                                            setNewCategoryName('');
+                                        }}
+                                        className="bg-neutral-800 hover:bg-neutral-700 text-neutral-400 px-3 rounded-xl transition-colors"
+                                    >
+                                        <X size={20} />
+                                    </button>
+                                </div>
+                            ) : (
+                                <div className="relative">
+                                    <select
+                                        value={categoryId}
+                                        onChange={(e) => {
+                                            if (e.target.value === 'new') {
+                                                setIsCreatingCategory(true);
+                                            } else {
+                                                setCategoryId(e.target.value);
+                                            }
+                                        }}
+                                        className="w-full bg-neutral-800 border border-white/10 rounded-lg pl-10 pr-4 py-3 text-white appearance-none focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all"
+                                    >
+                                        <option value="">Select a Category...</option>
+                                        {categories.map(cat => (
+                                            <option key={cat.id} value={cat.id}>{cat.name}</option>
+                                        ))}
+                                        <option disabled>──────────</option>
+                                        <option value="new">+ Create New Category</option>
+                                    </select>
+                                    <div className="absolute left-3 top-3.5 text-neutral-500 pointer-events-none">
+                                        <Folder size={20} />
+                                    </div>
+                                </div>
+                            )}
+                        </div>
 
                         {/* Title */}
                         <div>
@@ -306,3 +414,4 @@ export const EditGoalModal: React.FC<EditGoalModalProps> = ({
         </div>
     );
 };
+

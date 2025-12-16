@@ -149,7 +149,7 @@ export async function getGoalInactivity(
 
       if (goal.type === 'cumulative') {
         // For cumulative: any log with value > 0 counts as progress
-        hasProgress = log.value > 0;
+        hasProgress = (log.value ?? 0) > 0;
       } else {
         // For frequency: completed logs count as progress
         hasProgress = log.completed;
@@ -223,7 +223,7 @@ export function computeFullGoalProgress(
   let currentValue: number;
   if (goal.type === 'cumulative') {
     // Sum all habit log values
-    const habitValue = allLogs.reduce((sum, log) => sum + log.value, 0);
+    const habitValue = allLogs.reduce((sum, log) => sum + (log.value ?? 0), 0);
     // Sum all manual log values
     const manualValue = manualLogs.reduce((sum, log) => sum + log.value, 0);
     currentValue = habitValue + manualValue;
@@ -260,7 +260,7 @@ export function computeFullGoalProgress(
 
     if (goal.type === 'cumulative') {
       // Sum habit log values for this day
-      const habitValue = dayLogs.reduce((sum, log) => sum + log.value, 0);
+      const habitValue = dayLogs.reduce((sum, log) => sum + (log.value ?? 0), 0);
       // Sum manual log values for this day
       const dayManualLogs = manualLogsByDate.get(date) || [];
       const manualValue = dayManualLogs.reduce((sum, log) => sum + log.value, 0);

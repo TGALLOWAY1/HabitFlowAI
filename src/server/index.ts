@@ -18,6 +18,7 @@ import { getGoals, getGoal, getGoalProgress, getGoalsWithProgress, getCompletedG
 import { getProgressOverview } from './routes/progress';
 import { getEntriesRoute, createEntryRoute, getEntryRoute, updateEntryRoute, deleteEntryRoute } from './routes/journal';
 import { getTasksRoute, createTaskRoute, updateTaskRoute, deleteTaskRoute } from './routes/tasks';
+import { skillTreeRouter } from './routes/skillTree';
 import { closeConnection } from './lib/mongoClient';
 
 // Assert MongoDB is enabled at startup (fail fast if misconfigured)
@@ -129,6 +130,9 @@ app.get('/api/tasks', getTasksRoute);
 app.post('/api/tasks', createTaskRoute);
 app.patch('/api/tasks/:id', updateTaskRoute);
 app.delete('/api/tasks/:id', deleteTaskRoute);
+
+// Skill Tree routes
+app.use('/api/skill-tree', skillTreeRouter);
 
 // Habit Entry routes (History)
 import {

@@ -106,7 +106,7 @@ export const GoalDetailPage: React.FC<GoalDetailPageProps> = ({ goalId, onBack, 
             return {
                 id: entry.id,
                 date: entry.timestamp,
-                value: entry.value,
+                value: entry.value || 0, // Default to 0 if undefined
                 source: 'habit' as const,
                 habitName: habit?.name,
                 unit: habit?.goal.unit || data.goal.unit
