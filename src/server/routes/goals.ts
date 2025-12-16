@@ -124,6 +124,7 @@ function validateGoalData(data: any): string | null {
   return null;
 }
 
+
 /**
  * Get all goals for the current user.
  * 
@@ -535,6 +536,19 @@ export async function updateGoalRoute(req: Request, res: Response): Promise<void
       patch.badgeImageUrl = typeof req.body.badgeImageUrl === 'string' ? req.body.badgeImageUrl.trim() : req.body.badgeImageUrl || undefined;
     }
 
+    if (req.body.categoryId !== undefined) {
+      if (req.body.categoryId !== null && typeof req.body.categoryId !== 'string') {
+        res.status(400).json({
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: 'categoryId must be a string or null',
+          },
+        });
+        return;
+      }
+      patch.categoryId = req.body.categoryId || undefined;
+    }
+
     if (Object.keys(patch).length === 0) {
       res.status(400).json({
         error: {
@@ -825,7 +839,7 @@ export async function getGoalDetailRoute(req: Request, res: Response): Promise<v
       const logsArray = Object.values(habitLogs);
       for (const log of logsArray) {
         if (goal.type === 'cumulative') {
-          allLogs.push({ date: log.date, value: log.value });
+          allLogs.push({ date: log.date, value: log.value ?? 0 });
         } else {
           // For frequency goals, count completed logs as 1
           if (log.completed) {

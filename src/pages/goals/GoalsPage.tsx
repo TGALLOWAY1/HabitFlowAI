@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { Plus, Trophy } from 'lucide-react';
+import { Plus, Trophy, Target, TrendingUp, BookOpen } from 'lucide-react';
 import { useGoalsWithProgress } from '../../lib/useGoalsWithProgress';
 import { GoalGridCard } from '../../components/goals/GoalGridCard';
 import { Loader2, AlertCircle } from 'lucide-react';
 import { GoalManualProgressModal } from '../../components/goals/GoalManualProgressModal';
 import { EditGoalModal } from '../../components/goals/EditGoalModal';
+import { SkillTreeTab } from '../../components/SkillTree/SkillTreeTab';
 
 interface GoalsPageProps {
     onCreateGoal?: () => void;
@@ -13,10 +14,20 @@ interface GoalsPageProps {
     onViewWinArchive?: () => void;
 }
 
-export const GoalsPage: React.FC<GoalsPageProps> = ({ onCreateGoal, onViewGoal, onNavigateToCompleted, onViewWinArchive }) => {
+export const GoalsPage: React.FC<GoalsPageProps> = ({
+    onCreateGoal,
+    onViewGoal,
+    onNavigateToCompleted,
+    onViewWinArchive
+}) => {
     const { data, loading, error, refetch } = useGoalsWithProgress();
     const [manualProgressGoalId, setManualProgressGoalId] = useState<string | null>(null);
     const [editingGoalId, setEditingGoalId] = useState<string | null>(null);
+    const [activeTab, setActiveTab] = useState<'overview' | 'progress' | 'skills'>('overview');
+
+    // We don't need useHabitStore().goals here if using useGoalsWithProgress for overview
+    // But we might need it for other things? 
+    // Actually, let's just stick to local state for tabs.
 
     // Helpers to find goal for modals
     const getGoalById = (id: string | null) => {
@@ -55,75 +66,123 @@ export const GoalsPage: React.FC<GoalsPageProps> = ({ onCreateGoal, onViewGoal, 
 
     return (
         <div className="w-full max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
-            <div className="mb-6 sm:mb-8 flex flex-col sm:flex-row items-start sm:items-center justify-end gap-4">
+            <div className="mb-6 sm:mb-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div className="flex p-1 bg-neutral-800 rounded-lg overflow-x-auto">
+                    <button
+                        onClick={() => setActiveTab('overview')}
+                        className={`flex items-center gap-2 px-4 py-2 rounded-md transition-all whitespace-nowrap ${activeTab === 'overview'
+                            ? 'bg-neutral-700 shadow text-white'
+                            : 'text-neutral-400 hover:text-white'
+                            }`}
+                    >
+                        <Target size={16} />
+                        <span className="font-medium text-sm">Overview</span>
+                    </button>
+
+                    <button
+                        onClick={() => setActiveTab('progress')}
+                        className={`flex items-center gap-2 px-4 py-2 rounded-md transition-all whitespace-nowrap ${activeTab === 'progress'
+                            ? 'bg-neutral-700 shadow text-white'
+                            : 'text-neutral-400 hover:text-white'
+                            }`}
+                    >
+                        <TrendingUp size={16} />
+                        <span className="font-medium text-sm">Progress</span>
+                    </button>
+
+                    <button
+                        onClick={() => setActiveTab('skills')}
+                        className={`flex items-center gap-2 px-4 py-2 rounded-md transition-all whitespace-nowrap ${activeTab === 'skills'
+                            ? 'bg-neutral-700 shadow text-white'
+                            : 'text-neutral-400 hover:text-white'
+                            }`}
+                    >
+                        <BookOpen size={16} />
+                        <span className="font-medium text-sm">Skill Tree</span>
+                    </button>
+                </div>
+
                 <div className="flex items-center gap-3">
                     {onViewWinArchive && (
                         <button
                             onClick={onViewWinArchive}
-                            className="flex items-center gap-2 px-4 py-2 bg-neutral-700 hover:bg-neutral-600 text-white font-medium rounded-lg transition-colors text-sm sm:text-base"
+                            className="flex items-center gap-2 px-4 py-2 bg-neutral-700 hover:bg-neutral-600 text-white font-medium rounded-lg transition-colors text-sm sm:text-base whitespace-nowrap"
                         >
                             <Trophy size={18} />
-                            View Win Archive
+                            <span className="hidden sm:inline">Win Archive</span>
                         </button>
                     )}
                     {onCreateGoal && (
                         <button
                             onClick={onCreateGoal}
-                            className="flex items-center gap-2 px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-neutral-900 font-medium rounded-lg transition-colors text-sm sm:text-base"
+                            className="flex items-center gap-2 px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-neutral-900 font-medium rounded-lg transition-colors text-sm sm:text-base whitespace-nowrap"
                         >
                             <Plus size={18} />
-                            Create Goal
+                            <span className="hidden sm:inline">Create Goal</span>
                         </button>
                     )}
                 </div>
             </div>
 
-            {data.length === 0 ? (
-                <div className="text-center py-16 sm:py-20">
-                    <div className="max-w-md mx-auto">
-                        <div className="mb-6">
-                            <div className="w-16 h-16 mx-auto bg-neutral-800 rounded-full flex items-center justify-center mb-4">
-                                <Plus className="text-emerald-400" size={32} />
+            {/* Content Area */}
+            {activeTab === 'overview' && (
+                data.length === 0 ? (
+                    <div className="text-center py-16 sm:py-20">
+                        <div className="max-w-md mx-auto">
+                            <div className="mb-6">
+                                <div className="w-16 h-16 mx-auto bg-neutral-800 rounded-full flex items-center justify-center mb-4">
+                                    <Plus className="text-emerald-400" size={32} />
+                                </div>
                             </div>
+                            <h2 className="text-xl font-semibold text-white mb-2">Start Your Journey</h2>
+                            <p className="text-neutral-400 mb-6 text-sm sm:text-base">
+                                Create your first goal to turn your daily habits into meaningful achievements.
+                            </p>
+                            {onCreateGoal && (
+                                <button
+                                    onClick={onCreateGoal}
+                                    className="flex items-center gap-2 px-6 py-3 bg-emerald-500 hover:bg-emerald-400 text-neutral-900 font-medium rounded-lg transition-colors mx-auto text-sm sm:text-base"
+                                >
+                                    <Plus size={18} />
+                                    Create Your First Goal
+                                </button>
+                            )}
                         </div>
-                        <h2 className="text-xl font-semibold text-white mb-2">Start Your Journey</h2>
-                        <p className="text-neutral-400 mb-6 text-sm sm:text-base">
-                            Create your first goal to turn your daily habits into meaningful achievements.
-                            Every small step counts toward something bigger.
-                        </p>
-                        {onCreateGoal && (
-                            <button
-                                onClick={onCreateGoal}
-                                className="flex items-center gap-2 px-6 py-3 bg-emerald-500 hover:bg-emerald-400 text-neutral-900 font-medium rounded-lg transition-colors mx-auto text-sm sm:text-base"
-                            >
-                                <Plus size={18} />
-                                Create Your First Goal
-                            </button>
-                        )}
                     </div>
+                ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {data.map((goalWithProgress) => (
+                            <GoalGridCard
+                                key={goalWithProgress.goal.id}
+                                goalWithProgress={goalWithProgress}
+                                onViewDetails={(goalId) => {
+                                    if (onViewGoal) {
+                                        onViewGoal(goalId);
+                                    }
+                                }}
+                                onEdit={(goalId) => {
+                                    setEditingGoalId(goalId);
+                                }}
+                                onAddManualProgress={(goalId, event) => {
+                                    event.preventDefault(); // Stop propagation
+                                    setManualProgressGoalId(goalId);
+                                }}
+                                onNavigateToCompleted={onNavigateToCompleted}
+                            />
+                        ))}
+                    </div>
+                )
+            )}
+
+            {activeTab === 'progress' && (
+                <div className="text-center py-12 text-neutral-500">
+                    <TrendingUp className="mx-auto mb-4 opacity-50" size={48} />
+                    <p>Detailed Progress Views Coming Soon</p>
                 </div>
-            ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {data.map((goalWithProgress) => (
-                        <GoalGridCard
-                            key={goalWithProgress.goal.id}
-                            goalWithProgress={goalWithProgress}
-                            onViewDetails={(goalId) => {
-                                if (onViewGoal) {
-                                    onViewGoal(goalId);
-                                }
-                            }}
-                            onEdit={(goalId) => {
-                                setEditingGoalId(goalId);
-                            }}
-                            onAddManualProgress={(goalId, event) => {
-                                event.preventDefault(); // Stop propagation
-                                setManualProgressGoalId(goalId);
-                            }}
-                            onNavigateToCompleted={onNavigateToCompleted}
-                        />
-                    ))}
-                </div>
+            )}
+
+            {activeTab === 'skills' && (
+                <SkillTreeTab onCreateGoal={onCreateGoal || (() => { })} />
             )}
 
             {/* Modals */}

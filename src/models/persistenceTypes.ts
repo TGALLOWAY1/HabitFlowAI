@@ -471,6 +471,74 @@ export interface JournalEntry {
 export type JournalEntriesStorage = JournalEntry[];
 
 /**
+ * Identity Entity
+ * 
+ * Storage Key: 'identities'
+ * Storage Format: Identity[]
+ * 
+ * Represents a high-level identity area (e.g., "Physical Health", "Musician").
+ */
+export interface Identity {
+    /** Unique identifier */
+    id: string;
+
+    /** User ID owner */
+    userId: string;
+
+    /** Display name */
+    name: string;
+
+    /** Display order (lower = earlier) */
+    sortOrder: number;
+
+    /** Optional icon name or emoji */
+    icon?: string;
+
+    /** ISO 8601 timestamp */
+    createdAt: string;
+}
+
+/**
+ * Skill Entity
+ * 
+ * Storage Key: 'skills'
+ * Storage Format: Skill[]
+ * 
+ * Represents a learnable capability within an identity.
+ */
+export interface Skill {
+    /** Unique identifier */
+    id: string;
+
+    /** User ID owner */
+    userId: string;
+
+    /** ID of the parent Identity */
+    identityId: string;
+
+    /** Display name */
+    name: string;
+
+    /** IDs of habits that contribute to this skill */
+    habitIds: string[];
+
+    /** How progress is calculated */
+    progressMode: 'volume' | 'consistency' | 'hybrid';
+
+    /** Optional config for level thresholds */
+    levelConfig?: {
+        baseXp: number; // XP needed for first level
+        growthFactor: number; // Multiplier for subsequent levels
+    };
+
+    /** Display order */
+    sortOrder: number;
+
+    /** ISO 8601 timestamp */
+    createdAt: string;
+}
+
+/**
  * WellbeingSession Entity
  * 
  * Embedded within DailyWellbeing entity.
@@ -590,7 +658,16 @@ export interface Goal {
      * Unique identifier, generated via crypto.randomUUID() (frontend) or randomUUID() (backend)
      * This is the application-level primary key, not MongoDB's _id
      */
+    /** 
+     * Unique identifier
+     */
     id: string;
+
+    /** 
+     * ID of the Category this goal belongs to.
+     * Required for Skill Tree visualization.
+     */
+    categoryId?: string;
 
     /** Display title/name of the goal */
     title: string;
@@ -761,6 +838,12 @@ export interface PersistenceSchema {
 
     /** Record of all journal entries */
     journalEntries: JournalEntriesStorage;
+
+    /** Array of all identities */
+    identities: Identity[];
+
+    /** Array of all skills */
+    skills: Skill[];
 }
 
 
