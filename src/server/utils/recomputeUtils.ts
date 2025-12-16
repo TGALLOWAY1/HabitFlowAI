@@ -60,8 +60,12 @@ export async function recomputeDayLogForHabit(
         const completedOptions: Record<string, number> = {};
         for (const entry of entries) {
             if (entry.bundleOptionId) {
-                // Use entry value, or 1 if generic boolean
+                // Legacy Embedded Option
                 completedOptions[entry.bundleOptionId] = entry.value || 1;
+            } else if (entry.choiceChildHabitId) {
+                // New Child Habit Option
+                // We key by ID.
+                completedOptions[entry.choiceChildHabitId] = entry.value || 1;
             }
         }
     } else {
@@ -95,6 +99,8 @@ export async function recomputeDayLogForHabit(
         for (const entry of entries) {
             if (entry.bundleOptionId) {
                 completedOptionsMap[entry.bundleOptionId] = entry.value || 1;
+            } else if (entry.choiceChildHabitId) {
+                completedOptionsMap[entry.choiceChildHabitId] = entry.value || 1;
             }
         }
     }

@@ -493,7 +493,15 @@ const SortableHabitRow = ({
 
     // Find children
     const children = useMemo(() => {
-        // Option 1: Choice Habits (Virtual Children)
+        // Option 1: Unified Choice Bundles (Children as Habits)
+        // If subHabitIds are present, prioritize them over virtual options.
+        if (habit.subHabitIds && habit.subHabitIds.length > 0) {
+            return habit.subHabitIds
+                .map(id => allHabits.find(h => h.id === id))
+                .filter((h): h is Habit => !!h);
+        }
+
+        // Option 2: Legacy Choice Habits (Virtual Children)
         if (habit.bundleType === 'choice' && habit.bundleOptions) {
             return habit.bundleOptions.map(opt => {
                 const metricMode = opt.metricConfig?.mode || 'none';
@@ -1108,83 +1116,60 @@ export const TrackerGrid = ({
         refreshProgress();
     };
 
+    const handleOpenPopover = (e: React.MouseEvent, habit: Habit, date: string, val: number) => {
+        const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+        setPopoverState({
+            isOpen: true,
+            habitId: habit.id,
+            date: date,
+            initialValue: val,
+            unit: habit.goal.unit,
+            position: { top: rect.bottom + 8, left: rect.left - 40 },
+        });
+    };
+
     const handleCellClick = async (e: React.MouseEvent, habit: Habit, dateStr: string, log?: DayLog) => {
 
-        // Handle Virtual Choice Options
+        // Handle Unified Choice Children (Real Habits)
+        if (habit.bundleParentId && !habit.isVirtual) {
+            const parent = habits.find(h => h.id === habit.bundleParentId);
+            if (parent && parent.bundleType === 'choice') {
+                const parentLog = logs[`${parent.id}-${dateStr}`];
+                const isCompleted = parentLog?.completedOptions?.[habit.id] !== undefined;
+
+                if (isCompleted) {
+                    // CHECK GOAL TYPE
+                    if (habit.goal.type === 'number') {
+                        // Open Popover for numeric habits
+                        handleOpenPopover(e, habit, dateStr, parentLog?.completedOptions?.[habit.id] || 0);
+                    } else {
+                        // Direct upsert for boolean habits
+                        await upsertHabitEntry(parent.id, dateStr, {
+                            choiceChildHabitId: habit.id,
+                            value: 1
+                        });
+                        refreshProgress();
+                    }
+                    return;
+                }
+            }
+        }
+
+        // Handle Virtual Choice Options (Legacy)
         if (habit.isVirtual && habit.associatedOptionId && habit.bundleParentId) {
             e.stopPropagation();
 
-            // For virtual habits, 'log' passed here might be undefined or wrong because lookup uses virtual ID.
-            // We need to look up parent log to find current status.
             const parentLog = logs[`${habit.bundleParentId}-${dateStr}`];
-
-            // Check current status in parent log
             const currentOptionValue = parentLog?.completedOptions?.[habit.associatedOptionId];
             const isOptionCompleted = currentOptionValue !== undefined && currentOptionValue !== null;
 
             if (habit.goal.type === 'boolean') {
-                // Simple Toggle
                 if (isOptionCompleted) {
-                    // Delete entry (assumes unique entry per option/day)
-                    // We need 'deleteHabitEntry' logic but for specific option.
-                    // 'deleteHabitEntryByKey' deletes ALL entries for the habit/day.
-                    // Upsert with null/undefined value? No, that updates.
-                    // We need a specific call or just toggle.
-                    // PRD/Backend supports 'upsert'. If we want to 'uncheck', do we delete?
-                    // Yes. We need a way to delete specific option entry.
-                    // Current utils.toggle deletes whole day.
-                    // Workaround: Re-save with 'value: 0' and 'completed: false'?
-                    // Or implement 'deleteHabitEntryByOption'? 
-                    // Let's assume re-saving with 0 usually clears it or we need backend support.
-                    // Actually, 'upsertHabitEntry' adds new entry. It doesn't delete old ones.
-                    // To 'uncheck', we really want to delete.
-                    // I'll call delete but I need to know which ENTRY ID to delete?
-                    // Or backend needs 'deleteHabitEntry(habitId, date, optionId)'.
-                    // For now, I'll assume standard upsert toggle isn't fully supported for option-deletion 
-                    // without `deleteHabitEntry` refactor.
-                    // HOWEVER, `handleToggle` uses `deleteHabitEntryByKey` which clears the DAY.
-                    // For bundle option, we only want to clear THAT option.
-
-                    // Hack: Send negative value? No.
-                    // Real Fix: `upsertHabitEntry` won't "uncheck". 
-                    // I will fail to uncheck if I don't have delete logic.
-                    // Let's fallback to `handleOpenChoiceLog` if toggle is complex? 
-                    // No, user wants toggle.
-
-                    // I'll assume for MVP: Clicking creates entry. 
-                    // Clicking again... does nothing? That's bad UX.
-                    // I will assume standard API allows value=0 to be "incomplete"?
                     await upsertHabitEntry(habit.bundleParentId, dateStr, {
                         bundleOptionId: habit.associatedOptionId,
                         bundleOptionLabel: habit.name,
-                        value: 0, // Mark as 0/incomplete?
-                        completed: false // Explicitly mark incomplete
-                    });
-                    // Backend "upsert" creates a NEW entry. It doesn't delete old "True" entry.
-                    // But recompute logic usually takes "latest".
-                    // If latest is "completed: false", it counts as not done?
-                    // My recompute logic: `completedOptions` uses `entry.value || 1`.
-                    // If I send `value: 0`, `entry.value || 1` becomes `0 || 1` -> 1.
-                    // I need to send explicit 0 and update recompute to respect it?
-                    // Or just implement DELETE on backend.
-
-                    // Given constraints: I will map "Toggle" to "Open Log" if it's confusing, 
-                    // OR I'll assume users only CHECK things off.
-                    // But unchecking is vital.
-
-                    // Backend `deleteHabitEntryByKey` takes habitId + date.
-                    // I will implement a `deleteChoiceEntry` on frontend if I can find the ID?
-                    // I don't have the ID.
-                    // I will assume `handleCellClick` -> `handleOpenChoiceLog` for now if unchecking is hard?
-                    // No, "I want to see a drop down where a user can either check off the boxes".
-
-                    // I'll try to use `upsert` with a special flag? No.
-                    // I'll leave a TODO: Backend needs "Delete Option Entry".
-                    // For now, I'll just upsert { value: 1 }.
-                    await upsertHabitEntry(habit.bundleParentId, dateStr, {
-                        bundleOptionId: habit.associatedOptionId,
-                        bundleOptionLabel: habit.name,
-                        value: isOptionCompleted ? 0 : 1 // Toggling value to 0 might work if recompute respects it
+                        value: 0,
+                        completed: false
                     });
                 } else {
                     await upsertHabitEntry(habit.bundleParentId, dateStr, {
@@ -1195,7 +1180,6 @@ export const TrackerGrid = ({
                 }
                 refreshProgress();
             } else {
-                // Metric Virtual: Open Popover
                 const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
                 setPopoverState({
                     isOpen: true,
@@ -1210,19 +1194,13 @@ export const TrackerGrid = ({
             return;
         }
 
-        // Parent Bundle (Choice): Only expands (handled by row click usually, but if button clicked?)
-        // If row is clicked, it expands.
-        // If button is clicked... standard logic `handleBundleClick` handles it.
-        // Wait, line 369 checks `habit.type === 'bundle'`.
-        // If Choice: `handleCellClick` is called for parent if `isInteractive`.
-        // Parent Logic: If Choice, expand? or Open Modal?
-        // User requested: "Parent row to indicate you can expand/collapse".
-        // Use `handleToggleExpand`.
+        // Parent Bundle (Choice): Expand/Collapse
         if (habit.bundleType === 'choice') {
             toggleExpand(habit.id);
             return;
         }
 
+        // Standard Habit Logic
         if (habit.goal.type === 'boolean') {
             handleToggle(habit.id, dateStr);
         } else {
@@ -1248,17 +1226,7 @@ export const TrackerGrid = ({
         refreshProgress();
     };
 
-    const handleOpenPopover = (e: React.MouseEvent, habit: Habit, date: string, val: number) => {
-        const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-        setPopoverState({
-            isOpen: true,
-            habitId: habit.id,
-            date: date,
-            initialValue: val,
-            unit: habit.goal.unit,
-            position: { top: rect.bottom + 8, left: rect.left - 40 },
-        });
-    };
+
 
     return (
         <div className="w-full overflow-x-auto pb-20">
@@ -1433,3 +1401,5 @@ export const TrackerGrid = ({
         </div>
     );
 };
+
+export default TrackerGrid;

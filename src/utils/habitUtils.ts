@@ -160,21 +160,33 @@ export function computeBundleStatus(
         };
     }
 
-    let isCompleted = false;
-    let totalValue = 0;
+    // Choice Bundle: OR Logic (Any child completed)
+    if (habit.bundleType === 'choice') {
+        const isCompleted = habit.subHabitIds.some(subId => logs[`${subId}-${date}`]?.completed);
 
-    for (const subId of habit.subHabitIds) {
-        const log = logs[`${subId}-${date}`];
-        if (log?.completed) {
-            isCompleted = true; // OR logic
-        }
-        if (log?.value) {
-            totalValue += log.value; // Sum value (for cumulative view if needed)
-        }
+        let totalValue = 0;
+        habit.subHabitIds.forEach(subId => {
+            const val = logs[`${subId}-${date}`]?.value;
+            if (val) totalValue += val;
+        });
+
+        return { completed: isCompleted, value: totalValue };
     }
 
+    // Checklist Bundle: AND Logic (All children completed)
+    // Or Percentage? Usually "Done" means 100% for checklist logic in boolean context
+    const total = habit.subHabitIds.length;
+    let completedCount = 0;
+    let totalValue = 0;
+
+    habit.subHabitIds.forEach(subId => {
+        const log = logs[`${subId}-${date}`];
+        if (log?.completed) completedCount++;
+        if (log?.value) totalValue += log.value;
+    });
+
     return {
-        completed: isCompleted,
+        completed: total > 0 && completedCount === total,
         value: totalValue
     };
 }
@@ -204,8 +216,10 @@ export function getBundleStats(
     return {
         total,
         completed,
-        percent: (completed / total) * 100,
-        isAllDone: completed === total
+        percent: habit.bundleType === 'choice'
+            ? (completed > 0 ? 100 : 0)
+            : (completed / total) * 100,
+        isAllDone: habit.bundleType === 'choice' ? completed > 0 : completed === total
     };
 }
 

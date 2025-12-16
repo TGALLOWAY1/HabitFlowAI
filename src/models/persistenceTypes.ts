@@ -197,6 +197,7 @@ export interface Habit {
     /**
      * Options for Choice Bundles.
      * Note: These are NOT habits. They have no independent tracking.
+     * @deprecated Use subHabitIds for Choice Bundles (Child Habits) instead.
      */
     bundleOptions?: Array<{
         id: string;          // Stable UUID for the option
@@ -299,6 +300,7 @@ export interface DayLog {
     /** 
      * Optional: Choice Bundle Option ID 
      * (Legacy/Single-Select)
+     * @deprecated Use completedOptions or check choiceChildHabitId in entries
      */
     bundleOptionId?: string;
 
@@ -906,8 +908,16 @@ export interface HabitEntry {
      * Choice Habit V2 Fields
      */
 
-    /** ID of the specific option selected (for Choice Bundles) */
+    /** ID of the specific option selected (for Choice Bundles) 
+     * @deprecated Use choiceChildHabitId
+     */
     bundleOptionId?: string;
+
+    /**
+     * ID of the child habit selected (Unification Model).
+     * Used when bundleType='choice' and the choice is a real Habit.
+     */
+    choiceChildHabitId?: string;
 
     /** Snapshot of the option label at time of entry (for history resilience) */
     bundleOptionLabel?: string;
