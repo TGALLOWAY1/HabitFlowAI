@@ -3,8 +3,16 @@ export interface JournalPrompt {
     text: string;
 }
 
+export interface JournalCategory {
+    id: string;
+    title: string;
+    description: string;
+    icon?: string; // We'll map string to Lucide icon in the component
+}
+
 export interface JournalTemplate {
     id: string;
+    categoryId: string;
     title: string;
     description: string;
     persona: string;
@@ -15,9 +23,50 @@ export interface JournalTemplate {
     };
 }
 
+export const JOURNAL_CATEGORIES: JournalCategory[] = [
+    {
+        id: 'daily-structure',
+        title: 'Daily Structure',
+        description: 'Planning, review, and intention setting',
+        icon: 'Sunrise'
+    },
+    {
+        id: 'mental-health',
+        title: 'Mental & Emotional Health',
+        description: 'Processing emotions and reducing stress',
+        icon: 'Brain'
+    },
+    {
+        id: 'physical-health',
+        title: 'Physical Health',
+        description: 'Tracking body, movement, and fuel',
+        icon: 'Dumbbell'
+    },
+    {
+        id: 'habits',
+        title: 'Habits & Behavior',
+        description: 'Analyzing triggers and patterns',
+        icon: 'Microscope'
+    },
+    {
+        id: 'personal-growth',
+        title: 'Personal Growth',
+        description: 'Learning, challenges, and flow',
+        icon: 'Sprout'
+    },
+    {
+        id: 'relationships',
+        title: 'Relationships',
+        description: 'Connection, empathy, and gratitude',
+        icon: 'Users'
+    }
+];
+
 export const JOURNAL_TEMPLATES: JournalTemplate[] = [
+    // --- Daily Structure & Reflection ---
     {
         id: 'morning-primer',
+        categoryId: 'daily-structure',
         title: 'Morning Primer',
         description: 'Intention Setting',
         persona: 'The Strategic Coach',
@@ -32,6 +81,7 @@ export const JOURNAL_TEMPLATES: JournalTemplate[] = [
     },
     {
         id: 'daily-retrospective',
+        categoryId: 'daily-structure',
         title: 'Daily Retrospective',
         description: 'Evening Review',
         persona: 'The Reflective Mentor',
@@ -48,22 +98,11 @@ export const JOURNAL_TEMPLATES: JournalTemplate[] = [
             ]
         }
     },
-    {
-        id: 'deep-gratitude',
-        title: 'Deep Gratitude',
-        description: 'Positive Psychology',
-        persona: 'The Grounded Optimist',
-        tone: 'Warm, embodied',
-        prompts: {
-            standard: [
-                { id: 'three-things', text: 'Three specific things that went well today.' },
-                { id: 'cause', text: 'Why did they happen?' },
-                { id: 'sensation', text: 'How did they feel in my body?' }
-            ]
-        }
-    },
+
+    // --- Mental & Emotional Health ---
     {
         id: 'thought-detox',
+        categoryId: 'mental-health',
         title: 'Thought Detox',
         description: 'CBT & Emotional Regulation',
         persona: 'The Cognitive Reframer',
@@ -78,6 +117,7 @@ export const JOURNAL_TEMPLATES: JournalTemplate[] = [
     },
     {
         id: 'emotion-check-in',
+        categoryId: 'mental-health',
         title: 'Emotion Check-In',
         description: 'Variant of Thought Detox',
         persona: 'The Compassionate Therapist',
@@ -93,23 +133,27 @@ export const JOURNAL_TEMPLATES: JournalTemplate[] = [
         }
     },
     {
-        id: 'habit-scientist',
-        title: 'Habit Scientist',
-        description: 'Behavioral Analysis',
-        persona: 'The Curious Scientist',
-        tone: 'Neutral, analytical',
+        id: 'deep-gratitude',
+        categoryId: 'mental-health',
+        title: 'Deep Gratitude',
+        description: 'Positive Psychology',
+        persona: 'The Grounded Optimist',
+        tone: 'Warm, embodied',
         prompts: {
             standard: [
-                { id: 'observation', text: 'What habit did I succeed or struggle with today?' },
-                { id: 'trigger', text: 'What happened right before?' },
-                { id: 'adjustment', text: 'How can I adjust the cue tomorrow?' }
+                { id: 'three-things', text: 'Three specific things that went well today.' },
+                { id: 'cause', text: 'Why did they happen?' },
+                { id: 'sensation', text: 'How did they feel in my body?' }
             ]
         }
     },
+
+    // --- Physical Health ---
     {
         id: 'workout-log',
+        categoryId: 'physical-health',
         title: 'Workout Log',
-        description: 'Variant of Habit Scientist',
+        description: 'Performance Tracking',
         persona: 'Performance-Focused Personal Trainer',
         tone: 'Analytical, motivating',
         prompts: {
@@ -124,8 +168,9 @@ export const JOURNAL_TEMPLATES: JournalTemplate[] = [
     },
     {
         id: 'diet-journal',
+        categoryId: 'physical-health',
         title: 'Diet Journal',
-        description: 'Variant of Habit Scientist',
+        description: 'Mindful Eating',
         persona: 'Life Coach & Dietitian',
         tone: 'Compassionate, reframing',
         prompts: {
@@ -138,8 +183,26 @@ export const JOURNAL_TEMPLATES: JournalTemplate[] = [
             ]
         }
     },
+
+    // --- Habits & Behavior Change ---
+    {
+        id: 'habit-scientist',
+        categoryId: 'habits',
+        title: 'Habit Scientist',
+        description: 'Behavioral Analysis',
+        persona: 'The Curious Scientist',
+        tone: 'Neutral, analytical',
+        prompts: {
+            standard: [
+                { id: 'observation', text: 'What habit did I succeed or struggle with today?' },
+                { id: 'trigger', text: 'What happened right before?' },
+                { id: 'adjustment', text: 'How can I adjust the cue tomorrow?' }
+            ]
+        }
+    },
     {
         id: 'woop-session',
+        categoryId: 'habits',
         title: 'WOOP Session',
         description: 'Goal Overcoming',
         persona: 'The Strategic Realist',
@@ -153,10 +216,13 @@ export const JOURNAL_TEMPLATES: JournalTemplate[] = [
             ]
         }
     },
+
+    // --- Personal Growth ---
     {
         id: 'personal-growth',
+        categoryId: 'personal-growth',
         title: 'Personal Growth',
-        description: 'Variant of WOOP / Retrospective',
+        description: 'Learning & Flow',
         persona: 'Growth Mindset Coach',
         tone: 'Energetic, challenging',
         prompts: {
@@ -169,10 +235,13 @@ export const JOURNAL_TEMPLATES: JournalTemplate[] = [
             ]
         }
     },
+
+    // --- Relationships ---
     {
         id: 'relationship-journal',
+        categoryId: 'relationships',
         title: 'Relationship Journal',
-        description: 'Standalone Template',
+        description: 'Connection',
         persona: 'The Empathetic Listener',
         tone: 'Quiet, spacious',
         prompts: {
@@ -189,6 +258,7 @@ export const JOURNAL_TEMPLATES: JournalTemplate[] = [
 
 export const FREE_WRITE_TEMPLATE: JournalTemplate = {
     id: 'free-write',
+    categoryId: 'daily-structure', // Assign default category even if treated specially
     title: 'Free Write',
     description: 'Universal Option',
     persona: 'None',

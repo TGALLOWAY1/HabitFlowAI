@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { JournalEntry } from '../../models/persistenceTypes';
-import { JOURNAL_TEMPLATES, FREE_WRITE_TEMPLATE } from '../../data/journalTemplates';
+import { JOURNAL_TEMPLATES, FREE_WRITE_TEMPLATE, JOURNAL_CATEGORIES } from '../../data/journalTemplates';
 import { createEntry, updateEntry } from '../../api/journal';
 import {
     ChevronDown, ChevronUp, Save, X, Sparkles, ChevronLeft,
@@ -14,8 +14,14 @@ interface JournalEditorProps {
     onCancel?: () => void;
 }
 
-// Map template IDs to Icons
-const TEMPLATE_ICONS: Record<string, LucideIcon> = {
+// Map template/category IDs to Icons
+const ICONS: Record<string, LucideIcon> = {
+    'daily-structure': Sunrise,
+    'mental-health': Brain,
+    'physical-health': Dumbbell,
+    'habits': Microscope,
+    'personal-growth': Sprout,
+    'relationships': Users,
     'morning-primer': Sunrise,
     'daily-retrospective': Moon,
     'deep-gratitude': Heart,
@@ -25,37 +31,139 @@ const TEMPLATE_ICONS: Record<string, LucideIcon> = {
     'workout-log': Dumbbell,
     'diet-journal': Utensils,
     'woop-session': Target,
-    'personal-growth': Sprout,
+    'personal-growth-template': Sprout,
     'relationship-journal': Users,
     'free-write': PenLine
 };
 
+/**
+ * JournalEditor with Query Parameter Navigation support.
+ * Uses 'jView', 'jCat', 'jTmp' query params to persist state.
+ */
 export function JournalEditor({ existingEntry, onSave, onCancel }: JournalEditorProps) {
-    // State
-    const [step, setStep] = useState<'selection' | 'writing'>(existingEntry ? 'writing' : 'selection');
-    const [selectedTemplateId, setSelectedTemplateId] = useState<string>(existingEntry?.templateId || '');
+    // --- State Initialization ---
+    // We read from URL params on mount/render to determine state, but also keep local state for instant UI updates.
+
+    const getParams = () => new URLSearchParams(window.location.search);
+
+    const [step, setStep] = useState<'selection' | 'writing'>(() => {
+        if (existingEntry) return 'writing';
+        const params = getParams();
+        return params.get('jStep') === 'writing' ? 'writing' : 'selection';
+    });
+
+    // Selection View
+    const [selectionView, setSelectionView] = useState<'categories' | 'templates'>(() => {
+        const params = getParams();
+        return (params.get('jView') === 'templates' || params.get('jCat')) ? 'templates' : 'categories';
+    });
+
+    const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(() => {
+        return getParams().get('jCat');
+    });
+
+    // Editor State
+    const [selectedTemplateId, setSelectedTemplateId] = useState<string>(() => {
+        return existingEntry?.templateId || getParams().get('jTmp') || '';
+    });
+
+    // Mode, Content, Date are local ephemeral state (lost on refresh unless saved, or we could persist content to localStorage)
     const [mode, setMode] = useState<'standard' | 'deep' | 'free'>(existingEntry?.mode || 'standard');
     const [content, setContent] = useState<Record<string, string>>(existingEntry?.content || {});
     const [date, setDate] = useState<string>(existingEntry?.date || new Date().toISOString().split('T')[0]);
 
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    // Derived State
-    const currentTemplate = selectedTemplateId === 'free-write'
-        ? FREE_WRITE_TEMPLATE
-        : JOURNAL_TEMPLATES.find(t => t.id === selectedTemplateId);
+    // --- Synchronization ---
+
+    // Listen for PopState to detect Browser Back interactions or URL changes via App.tsx
+    useEffect(() => {
+        const handlePopState = () => {
+            if (existingEntry) return;
+
+            const params = new URLSearchParams(window.location.search);
+            const jStep = params.get('jStep');
+            const jView = params.get('jView');
+            const jCat = params.get('jCat');
+            const jTmp = params.get('jTmp');
+
+            if (jStep === 'writing') {
+                setStep('writing');
+                if (jTmp) setSelectedTemplateId(jTmp);
+            } else {
+                setStep('selection');
+                if (jView === 'templates' || jCat) {
+                    setSelectionView('templates');
+                    setSelectedCategoryId(jCat);
+                } else {
+                    setSelectionView('categories');
+                    setSelectedCategoryId(null);
+                }
+            }
+        };
+
+        window.addEventListener('popstate', handlePopState);
+        return () => window.removeEventListener('popstate', handlePopState);
+    }, [existingEntry]);
+
+    // --- Helpers to update URL ---
+    const updateUrl = (updates: Record<string, string | null>) => {
+        const params = new URLSearchParams(window.location.search);
+
+        Object.entries(updates).forEach(([key, value]) => {
+            if (value === null) {
+                params.delete(key);
+            } else {
+                params.set(key, value);
+            }
+        });
+
+        const newUrl = `${window.location.pathname}?${params.toString()}`;
+        // Push state so we can go "Forward" if we went back, or just add history
+        window.history.pushState({}, '', newUrl);
+    };
+
+    // --- Handlers ---
+
+    const handleSelectCategory = (categoryId: string) => {
+        updateUrl({
+            jView: 'templates',
+            jCat: categoryId,
+            jStep: null,
+            jTmp: null
+        });
+
+        setSelectedCategoryId(categoryId);
+        setSelectionView('templates');
+    };
+
+    const handleBackToCategories = () => {
+        // EXPLICIT NAVIGATION: Go to Categories View (Clear other params)
+        updateUrl({
+            jView: null,
+            jCat: null,
+            jStep: null,
+            jTmp: null
+            // Keep view=journal
+        });
+
+        setSelectionView('categories');
+        setSelectedCategoryId(null);
+    };
 
     const handleSelectTemplate = (id: string) => {
-        setSelectedTemplateId(id);
-        setMode(id === 'free-write' ? 'free' : 'standard');
+        updateUrl({
+            jStep: 'writing',
+            jTmp: id,
+        });
 
-        // Don't clear content if we're just checking them out, but here we transition view.
-        // If we want to preserve "draft" state when going back, we keep it in state.
         if (id !== selectedTemplateId) {
             setContent({});
         }
 
+        setSelectedTemplateId(id);
         setStep('writing');
+        setMode(id === 'free-write' ? 'free' : 'standard');
     };
 
     const handleBackToSelection = () => {
@@ -65,7 +173,21 @@ export function JournalEditor({ existingEntry, onSave, onCancel }: JournalEditor
             }
         }
         setContent({});
-        setStep('selection');
+
+        if (selectedTemplateId === 'free-write' || !selectedCategoryId) {
+            // Free write or missing category -> Go to Categories
+            handleBackToCategories();
+        } else {
+            // Go back to Template List for current Category
+            updateUrl({
+                jStep: null,
+                jTmp: null,
+                jView: 'templates',
+                jCat: selectedCategoryId
+            });
+            setStep('selection');
+            setSelectionView('templates');
+        }
     };
 
     const handleAnswerChange = (promptId: string, value: string) => {
@@ -80,7 +202,6 @@ export function JournalEditor({ existingEntry, onSave, onCancel }: JournalEditor
 
         try {
             setIsSubmitting(true);
-
             const payload = {
                 templateId: selectedTemplateId,
                 mode,
@@ -110,25 +231,51 @@ export function JournalEditor({ existingEntry, onSave, onCancel }: JournalEditor
         if (onCancel) {
             onCancel();
         } else {
-            // Default behavior if no cancel prop: just reset logic
-            // But usually this means we are in "Templates" tab.
-            // Resetting brings us back to selection.
             setContent({});
+
+            // Go to Root (Categories)
+            updateUrl({
+                jStep: null,
+                jView: null,
+                jCat: null,
+                jTmp: null
+            });
+
             setStep('selection');
+            setSelectionView('categories');
+            setSelectedCategoryId(null);
             setMode('standard');
             setSelectedTemplateId('');
         }
     };
 
 
-    // --- VIEW: TEMPLATE SELECTION ---
-    if (step === 'selection') {
+    // --- VIEW LOGIC ---
+    const effectiveStep = existingEntry ? 'writing' : step;
+
+    // Derived State
+    const currentTemplate = selectedTemplateId === 'free-write'
+        ? FREE_WRITE_TEMPLATE
+        : JOURNAL_TEMPLATES.find(t => t.id === selectedTemplateId);
+
+    const filteredTemplates = selectedCategoryId
+        ? JOURNAL_TEMPLATES.filter(t => t.categoryId === selectedCategoryId)
+        : [];
+
+    const selectedCategory = selectedCategoryId
+        ? JOURNAL_CATEGORIES.find(c => c.id === selectedCategoryId)
+        : null;
+
+
+    // --- RENDER ---
+
+    if (effectiveStep === 'selection' && selectionView === 'categories') {
         return (
             <div className="bg-zinc-900 border border-white/10 rounded-2xl p-6 md:p-8 shadow-2xl relative max-w-5xl mx-auto h-[80vh] flex flex-col">
                 <div className="flex justify-between items-start mb-8">
                     <div>
-                        <h2 className="text-3xl font-bold text-white mb-2">New Journal Entry</h2>
-                        <p className="text-white/40">Choose a template or start free-writing</p>
+                        <h2 className="text-3xl font-bold text-white mb-2">Journaling</h2>
+                        <p className="text-white/40">Choose a loose category or start free-writing.</p>
                     </div>
                     {onCancel && (
                         <button onClick={onCancel} className="p-2 hover:bg-white/10 rounded-lg text-white/50 transition-colors">
@@ -138,39 +285,39 @@ export function JournalEditor({ existingEntry, onSave, onCancel }: JournalEditor
                 </div>
 
                 <div className="overflow-y-auto pr-2 custom-scrollbar flex-1">
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {/* Free Write Card - First option */}
+                    <div className="mb-8">
                         <button
                             onClick={() => handleSelectTemplate('free-write')}
-                            className="text-left group flex flex-col p-6 bg-white/5 hover:bg-white/10 border border-white/5 hover:border-emerald-500/50 rounded-2xl transition-all duration-300 relative overflow-hidden"
+                            className="w-full text-left group flex items-center gap-6 p-6 bg-emerald-500/5 hover:bg-emerald-500/10 border border-emerald-500/20 hover:border-emerald-500/50 rounded-2xl transition-all duration-300"
                         >
-                            <div className="mb-4 text-emerald-400 p-3 bg-emerald-400/10 rounded-xl w-fit group-hover:scale-110 transition-transform">
-                                <PenLine size={28} />
+                            <div className="p-4 bg-emerald-500/20 rounded-xl text-emerald-400 group-hover:scale-110 transition-transform">
+                                <PenLine size={32} />
                             </div>
-                            <h3 className="text-xl font-bold text-white mb-2">Free Write</h3>
-                            <p className="text-white/50 text-sm leading-relaxed">Start with a blank page. No prompts, no structure.</p>
+                            <div>
+                                <h3 className="text-xl font-bold text-white mb-1">Quick Free Write</h3>
+                                <p className="text-emerald-200/60 text-sm">Just a blank page. No structure, no prompts.</p>
+                            </div>
                         </button>
+                    </div>
 
-                        {/* Standard Templates */}
-                        {JOURNAL_TEMPLATES.map(template => {
-                            const Icon = TEMPLATE_ICONS[template.id] || Brain;
+                    <h3 className="text-sm font-semibold text-white/30 uppercase tracking-widest mb-4">Categories</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {JOURNAL_CATEGORIES.map(category => {
+                            const Icon = ICONS[category.id] || Brain;
+                            const count = JOURNAL_TEMPLATES.filter(t => t.categoryId === category.id).length;
                             return (
                                 <button
-                                    key={template.id}
-                                    onClick={() => handleSelectTemplate(template.id)}
-                                    className="text-left group flex flex-col p-6 bg-white/5 hover:bg-white/10 border border-white/5 hover:border-emerald-500/50 rounded-2xl transition-all duration-300 relative overflow-hidden"
+                                    key={category.id}
+                                    onClick={() => handleSelectCategory(category.id)}
+                                    className="text-left group flex flex-col p-6 bg-white/5 hover:bg-white/10 border border-white/5 hover:border-white/20 rounded-2xl transition-all duration-300 relative overflow-hidden h-full"
                                 >
-                                    <div className="mb-4 text-emerald-400 p-3 bg-emerald-400/10 rounded-xl w-fit group-hover:scale-110 transition-transform">
+                                    <div className="mb-4 text-white/60 p-3 bg-white/5 rounded-xl w-fit group-hover:text-emerald-400 group-hover:bg-emerald-400/10 group-hover:scale-110 transition-all">
                                         <Icon size={28} />
                                     </div>
-                                    <h3 className="text-xl font-bold text-white mb-2 text-balance">{template.title}</h3>
-                                    <p className="text-white/50 text-sm leading-relaxed line-clamp-2">{template.description}</p>
-
-                                    {/* Persona badge on hover */}
-                                    <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <span className="text-[10px] uppercase tracking-wider font-semibold text-white/30 bg-white/5 px-2 py-1 rounded-full">
-                                            {template.persona}
-                                        </span>
+                                    <h3 className="text-xl font-bold text-white mb-2">{category.title}</h3>
+                                    <p className="text-white/50 text-sm leading-relaxed mb-4 flex-1">{category.description}</p>
+                                    <div className="flex items-center gap-2 text-xs font-medium text-white/30 group-hover:text-white/50 transition-colors pt-4 border-t border-white/5">
+                                        <span>{count} Templates</span>
                                     </div>
                                 </button>
                             );
@@ -181,17 +328,78 @@ export function JournalEditor({ existingEntry, onSave, onCancel }: JournalEditor
         );
     }
 
-    // --- VIEW: WRITING EDITOR ---
-    if (!currentTemplate) return null; // Should not happen
+    if (effectiveStep === 'selection' && selectionView === 'templates') {
+        return (
+            <div className="bg-zinc-900 border border-white/10 rounded-2xl p-6 md:p-8 shadow-2xl relative max-w-5xl mx-auto h-[80vh] flex flex-col">
+                <div className="flex justify-between items-start mb-6">
+                    <div className="flex items-center gap-4">
+                        <button
+                            onClick={handleBackToCategories}
+                            className="p-2 hover:bg-white/10 rounded-lg text-white/50 hover:text-white transition-colors"
+                        >
+                            <ChevronLeft size={24} />
+                        </button>
+                        <div>
+                            <h2 className="text-2xl font-bold text-white flex items-center gap-3">
+                                {(() => {
+                                    const Icon = selectedCategory ? (ICONS[selectedCategory.id] || Brain) : Brain;
+                                    return (
+                                        <>
+                                            <span className="text-emerald-400/80"><Icon size={24} /></span>
+                                            {selectedCategory?.title}
+                                        </>
+                                    );
+                                })()}
+                            </h2>
+                            <p className="text-white/40 text-sm mt-1">Select a template</p>
+                        </div>
+                    </div>
+                    {onCancel && (
+                        <button onClick={onCancel} className="p-2 hover:bg-white/10 rounded-lg text-white/50 transition-colors">
+                            <X size={24} />
+                        </button>
+                    )}
+                </div>
+
+                <div className="overflow-y-auto pr-2 custom-scrollbar flex-1">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {filteredTemplates.map(template => {
+                            const Icon = ICONS[template.id] || Brain;
+                            return (
+                                <button
+                                    key={template.id}
+                                    onClick={() => handleSelectTemplate(template.id)}
+                                    className="text-left group flex flex-col p-6 bg-white/5 hover:bg-white/10 border border-white/5 hover:border-emerald-500/50 rounded-2xl transition-all duration-300 relative overflow-hidden min-h-[180px]"
+                                >
+                                    <div className="flex justify-between items-start mb-4">
+                                        <div className="text-emerald-400 p-3 bg-emerald-400/10 rounded-xl w-fit group-hover:scale-110 transition-transform">
+                                            <Icon size={28} />
+                                        </div>
+                                    </div>
+
+                                    <h3 className="text-lg font-bold text-white mb-2 text-balance leading-tight">{template.title}</h3>
+                                    <p className="text-white/50 text-sm leading-relaxed line-clamp-2">{template.description}</p>
+                                </button>
+                            );
+                        })}
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    if (!currentTemplate) return null;
 
     const prompts = mode === 'deep' && currentTemplate.prompts.deep
         ? [...currentTemplate.prompts.standard, ...currentTemplate.prompts.deep]
         : currentTemplate.prompts.standard;
 
+    const WritingIcon = (selectedTemplateId === 'free-write')
+        ? PenLine
+        : (ICONS[selectedTemplateId] || ICONS[currentTemplate.categoryId] || Brain);
+
     return (
         <div className="bg-zinc-900 border border-white/10 rounded-2xl p-0 shadow-2xl relative max-w-4xl mx-auto h-[85vh] flex flex-col overflow-hidden">
-
-            {/* Sticky Header */}
             <div className="flex justify-between items-center px-6 py-4 border-b border-white/5 bg-zinc-900/95 backdrop-blur z-10">
                 <div className="flex items-center gap-4">
                     {!existingEntry && (
@@ -206,19 +414,13 @@ export function JournalEditor({ existingEntry, onSave, onCancel }: JournalEditor
                     <div className="h-6 w-px bg-white/10 mx-2 hidden md:block"></div>
                     <div>
                         <h2 className="text-lg font-bold text-white flex items-center gap-2">
-                            {selectedTemplateId !== 'free-write' && (
-                                <span className="text-emerald-400">
-                                    {(() => {
-                                        const Icon = TEMPLATE_ICONS[selectedTemplateId] || Brain;
-                                        return <Icon size={20} />;
-                                    })()}
-                                </span>
-                            )}
+                            <span className="text-emerald-400">
+                                <WritingIcon size={20} />
+                            </span>
                             {currentTemplate.title}
                         </h2>
                     </div>
                 </div>
-
                 <div className="flex items-center gap-3">
                     <input
                         type="date"
@@ -229,10 +431,7 @@ export function JournalEditor({ existingEntry, onSave, onCancel }: JournalEditor
                 </div>
             </div>
 
-            {/* Scrollable Content */}
             <div className="flex-1 overflow-y-auto custom-scrollbar p-6 md:p-8 space-y-8 bg-[#0a0a0a]">
-
-                {/* Persona / Context Header */}
                 {selectedTemplateId !== 'free-write' && (
                     <div className="bg-white/5 border border-white/5 rounded-xl p-4 flex items-start gap-4">
                         <div className="p-2 bg-emerald-500/10 rounded-lg">
@@ -258,7 +457,6 @@ export function JournalEditor({ existingEntry, onSave, onCancel }: JournalEditor
                     </div>
                 ) : (
                     <>
-                        {/* Prompts list */}
                         <div className="space-y-6">
                             {prompts.map((prompt) => (
                                 <div key={prompt.id} className="group animate-in fade-in slide-in-from-bottom-4 duration-500 fill-mode-backwards" style={{ animationDelay: `${prompts.indexOf(prompt) * 100}ms` }}>
@@ -274,8 +472,6 @@ export function JournalEditor({ existingEntry, onSave, onCancel }: JournalEditor
                                 </div>
                             ))}
                         </div>
-
-                        {/* Deep Mode Toggle at bottom */}
                         {currentTemplate.prompts.deep && (
                             <div className="flex justify-center pt-8 pb-4">
                                 <button
@@ -288,7 +484,7 @@ export function JournalEditor({ existingEntry, onSave, onCancel }: JournalEditor
                                     {mode === 'standard' ? (
                                         <>
                                             <Sparkles size={16} className={mode === 'standard' ? 'group-hover:animate-pulse' : ''} />
-                                            Active Deep Mode (More Prompts)
+                                            Active Deep Mode
                                             <ChevronDown size={16} />
                                         </>
                                     ) : (
@@ -304,7 +500,6 @@ export function JournalEditor({ existingEntry, onSave, onCancel }: JournalEditor
                 )}
             </div>
 
-            {/* Footer Actions */}
             <div className="px-6 py-4 border-t border-white/5 bg-zinc-900 flex justify-between items-center">
                 <button
                     onClick={handleDiscard}
