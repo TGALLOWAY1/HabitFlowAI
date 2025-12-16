@@ -50,9 +50,13 @@ function parseRouteFromLocation(location: Location): AppRoute {
     case "wins":
 
     case "tracker":
+      return "tracker";
     case "calendar":
+      return "calendar";
     case "journal":
+      return "journal";
     case "tasks":
+      return "tasks";
     case "day":
       return "tracker"; // Redirect old 'day' view to tracker
     default:
