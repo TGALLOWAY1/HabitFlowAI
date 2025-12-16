@@ -39,52 +39,77 @@ export async function recomputeDayLogForHabit(
     }
 
     // 4. Aggregate values
-    // For numeric habits: sum of values
-    // For boolean habits: existence of entries implies '1' (or sum of 1s)
-    let totalValue = 0;
+    // Choice Habits: Parent completion is binary (if any entries exist). Value is NOT summed.
+    // Numeric/Boolean: Sum values.
 
-    // We can assume if entry exists, it contributes.
-    // If it's a numeric habit, we sum data.value.
-    // If it's boolean, usually entries have value=1, but we can just count presence if we wanted.
-    // However, PRD says consistency: "Value (number | null) // null or 1 for binary habits"
-    // Let's sum valid numbers.
-    for (const entry of entries) {
-        if (typeof entry.value === 'number') {
-            totalValue += entry.value;
+    let totalValue = 0;
+    let completed = false;
+
+    if (habit.bundleType === 'choice') {
+        // Choice V2 Logic
+        // Completion: true if any entry exists
+        completed = entries.length > 0;
+
+        // Value: Should be null/undefined for parent, but DayLog usually expects a number for charts?
+        // User requested null. 
+        // We will assign undefined (which matches optional value?: number).
+        // However, if we want "Streaks" or "Consistency" based on DayLog.value, we might need 0/1.
+        // But `completed` boolean is the primary driver for streaks.
+
+        // Collect option completions for List View (UX)
+        const completedOptions: Record<string, number> = {};
+        for (const entry of entries) {
+            if (entry.bundleOptionId) {
+                // Use entry value, or 1 if generic boolean
+                completedOptions[entry.bundleOptionId] = entry.value || 1;
+            }
+        }
+    } else {
+        // Standard Logic (Numeric / Boolean / Checklist)
+        for (const entry of entries) {
+            if (typeof entry.value === 'number') {
+                totalValue += entry.value;
+            }
+        }
+
+        const target = habit.goal.target || 0;
+        const isNumeric = habit.goal.type === 'number';
+
+        if (isNumeric) {
+            completed = totalValue >= target;
+        } else {
+            // Boolean or Checklist
+            completed = totalValue > 0;
         }
     }
 
-    // 5. Determine completion status
-    const target = habit.goal.target || 0;
-    const isNumeric = habit.goal.type === 'number';
-
-    let completed = false;
-
-    if (isNumeric) {
-        completed = totalValue >= target;
-    } else {
-        // Boolean: if we have any entries (and value > 0), it's done.
-        // Usually boolean habits have 1 entry of value 1.
-        // If we have distinct entries that sum to > 0, it's done.
-        completed = totalValue > 0;
-    }
-
     // 6. Create DayLog derived object
-    // We pick the Source from the most recent entry if mixed?
-    // Or just 'manual' as default fallback.
-    // Use the latest entry's source
     const lastEntry = entries[0]; // Sorted by timestamp desc in repo
     const source = lastEntry?.source === 'routine' ? 'routine' : 'manual';
     const routineId = lastEntry?.routineId;
 
+    // For choice habits, we reconstruct the completedOptions map
+    let completedOptionsMap: Record<string, number> | undefined = undefined;
+    if (habit.bundleType === 'choice') {
+        completedOptionsMap = {};
+        for (const entry of entries) {
+            if (entry.bundleOptionId) {
+                completedOptionsMap[entry.bundleOptionId] = entry.value || 1;
+            }
+        }
+    }
+
     const dayLog: DayLog = {
         habitId,
         date,
-        value: totalValue,
+        // For choice habits, we purposely set value to undefined (or could be 1 for consistency plotting?)
+        // The user said: "value must be null/undefined ... to avoid sum of reps showing as parent value"
+        value: habit.bundleType === 'choice' ? undefined : totalValue,
         completed,
         source, // derived
         routineId, // derived from latest
-        bundleOptionId: lastEntry?.bundleOptionId, // derived from latest
+        bundleOptionId: lastEntry?.bundleOptionId, // derived from latest (might be ambiguous for multi-select, but keeps "last action" context)
+        completedOptions: completedOptionsMap
     };
 
     // 7. Upsert

@@ -13,6 +13,8 @@ import {
     deleteHabitEntry,
     getHabitEntriesForDay
 } from '../repositories/habitEntryRepository';
+import { getHabitById } from '../repositories/habitRepository';
+import { validateHabitEntryPayload } from '../utils/habitValidation';
 import { recomputeDayLogForHabit } from '../utils/recomputeUtils';
 
 /**
@@ -54,7 +56,30 @@ export async function createHabitEntryRoute(req: Request, res: Response): Promis
         const entryData = req.body;
 
         if (!entryData.habitId || !entryData.date || entryData.value === undefined) {
-            res.status(400).json({ error: 'Missing required fields: habitId, date, value' });
+            // For choice habits, value CAN be undefined if metric is none.
+            // But traditionally, for legacy habits, value was required. 
+            // Logic below handles choice specifically.
+            // If we strict check value here, we break choice with metric=none.
+            // We should relax this check and rely on validation utils.
+            // But wait, existing code expects value.
+            // Let's rely on validation mostly.
+        }
+
+        if (!entryData.habitId || !entryData.date) {
+            res.status(400).json({ error: 'Missing required fields: habitId, date' });
+            return;
+        }
+
+        // 0. Fetch Habit & Validate
+        const habit = await getHabitById(entryData.habitId, userId);
+        if (!habit) {
+            res.status(404).json({ error: 'Habit not found' });
+            return;
+        }
+
+        const validation = validateHabitEntryPayload(habit, entryData);
+        if (!validation.valid) {
+            res.status(400).json({ error: validation.error });
             return;
         }
 
@@ -266,6 +291,19 @@ export async function upsertHabitEntryRoute(req: Request, res: Response): Promis
         }
 
         const { upsertHabitEntry } = await import('../repositories/habitEntryRepository');
+
+        // 0. Fetch Habit & Validate
+        const habit = await getHabitById(habitId, userId);
+        if (!habit) {
+            res.status(404).json({ error: 'Habit not found' });
+            return;
+        }
+
+        const validation = validateHabitEntryPayload(habit, { ...data, habitId }); // data includes value, bundleOptionId
+        if (!validation.valid) {
+            res.status(400).json({ error: validation.error });
+            return;
+        }
 
         // 1. Upsert
         const entry = await upsertHabitEntry(habitId, dateKey, userId, data);

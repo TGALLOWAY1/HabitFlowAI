@@ -45,22 +45,72 @@ export function flattenHabitList(
     function process(habit: Habit, depth: number, isVisible: boolean, parentId?: string) {
         const isBundle = habit.type === 'bundle';
         const isExpanded = expandedIds.has(habit.id);
-        const children = (habit.subHabitIds || [])
+
+        // 1. Get Real Children (Checklist / Legacy)
+        let children = (habit.subHabitIds || [])
             .map(id => habitMap.get(id))
             .filter((h): h is Habit => !!h);
+
+        // 2. Get Virtual Children (Choice V2)
+        if (habit.bundleType === 'choice' && habit.bundleOptions) {
+            const virtualChildren: Habit[] = habit.bundleOptions.map(opt => {
+                const metricMode = opt.metricConfig?.mode || 'none';
+
+                // Map Metric Config to Habit Goal
+                // If required: number goal. If none: boolean goal.
+                const virtualGoal = {
+                    ...habit.goal, // inherited frequency/target? No, target is per-entry.
+                    type: metricMode === 'required' ? 'number' : 'boolean',
+                    unit: opt.metricConfig?.unit,
+                    target: 0 // Target is arbitrary here, we just want the UI type
+                } as any;
+
+                return {
+                    id: `virtual-${habit.id}-${opt.id}`, // Stable synthetic ID
+                    categoryId: habit.categoryId,
+                    name: opt.label,
+                    goal: virtualGoal,
+                    archived: false,
+                    createdAt: habit.createdAt,
+                    type: 'bundle-option-virtual' as any, // Or just 'boolean'/'number'? Let's keep 'bundle' or 'boolean' to not break renderers? 
+                    // Actually, let's use the GOAL type to drive the renderer (checkbox vs #). 
+                    // But we need to flag it as virtual.
+                    // Let's say type = 'boolean' or 'number' based on goal.
+                    // But `isVirtual` flag handles the "Italic" styling.
+
+                    // Actually, for TrackerGrid persistence, it relies on `isVirtual`.
+                    isVirtual: true,
+                    associatedOptionId: opt.id,
+                    bundleParentId: habit.id,
+
+                    // User Request: "Don't indent". 
+                    // We will pass the same depth as parent effectively? 
+                    // Or we let the flattener handle depth, and Grid suppresses indent.
+                } as Habit;
+            });
+
+            // Append virtual children
+            children = [...children, ...virtualChildren];
+        }
+
+        const hasChildren = isBundle && children.length > 0;
 
         result.push({
             habit,
             depth,
-            hasChildren: isBundle && children.length > 0,
+            hasChildren,
             isExpanded: isBundle && isExpanded,
             isVisible,
             parentBundleId: parentId
         });
 
-        if (isBundle && children.length > 0) {
-            // Sort children
-            children.sort((a, b) => (a.order ?? Infinity) - (b.order ?? Infinity));
+        if (hasChildren) {
+            // Sort children? Virtual ones are already option-order. Real ones need sort.
+            // If we mix them (unlikely), we might want safe sort.
+            // For now, assume Choice Bundle ONLY has virtual children.
+            if (habit.bundleType !== 'choice') {
+                children.sort((a, b) => (a.order ?? Infinity) - (b.order ?? Infinity));
+            }
 
             // If this bundle is NOT expanded, its children are NOT visible
             const childrenVisible = isVisible && isExpanded;
@@ -68,7 +118,15 @@ export function flattenHabitList(
             children.forEach(child => {
                 // Avoid infinite recursion safely
                 if (child.id !== habit.id) {
-                    process(child, depth + 1, childrenVisible, habit.id);
+                    // User requested "No Indentation" for choice options (virtual).
+                    // We can either pass `depth` (0 relative) or handle it in CSS.
+                    // Passing `depth` assumes same level.
+                    // Let's pass `depth` (same as parent) if virtual, `depth + 1` if real?
+                    // "Just make the text of the children habits italic... Don't indent them"
+                    // If we pass `depth`, it aligns with parent checkmarks.
+                    const nextDepth = child.isVirtual ? depth : depth + 1;
+
+                    process(child, nextDepth, childrenVisible, habit.id);
                 }
             });
         }
