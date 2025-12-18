@@ -57,7 +57,7 @@ export function computeHabitStatus(
                 isComplete: true,
                 currentValue: 1,
                 targetValue: 1,
-                selectedOption: option
+                selectedOption: option ? { ...option, key: option.key || '' } : undefined
             };
         }
         return {

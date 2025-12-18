@@ -105,6 +105,12 @@ export interface Habit {
     /** Goal configuration for this habit */
     goal: HabitGoal;
 
+    /** 
+     * Optional: ID of a parent Goal this habit contributes to.
+     * New feature for Weekly Habit Redesign (Goal Linking).
+     */
+    linkedGoalId?: string;
+
     /** Whether the habit is archived (hidden from active tracking) */
     archived: boolean;
 

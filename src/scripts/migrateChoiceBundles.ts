@@ -1,6 +1,6 @@
 
 import { MongoClient, ObjectId } from 'mongodb';
-import { Habit, HabitEntry, DayLog } from '../models/persistenceTypes.js';
+import type { Habit, HabitEntry } from '../models/persistenceTypes.js';
 
 // Configuration
 const MONGO_URI = process.env.VITE_MONGO_URI || 'mongodb://localhost:27017';
@@ -63,10 +63,7 @@ async function migrateChoiceBundles() {
                         createdAt: new Date().toISOString(), // Or inherit?
                         bundleParentId: bundle.id, // Link to parent
                         // Ensure minimal valid fields
-                        completions: 0,
-                        streak: 0,
-                        history: {},
-                        longestStreak: 0
+
                     };
 
                     await habitsCollection.insertOne(newChildHabit);

@@ -170,7 +170,7 @@ export const DayHabitRow = ({
                     {habit.bundleOptions?.map(option => (
                         <button
                             key={option.key}
-                            onClick={() => onChoiceSelect && onChoiceSelect(option.key)}
+                            onClick={() => onChoiceSelect && onChoiceSelect(option.key || '')}
                             className={cn(
                                 "px-3 py-1.5 rounded-md text-xs font-medium border transition-all",
                                 selectedChoice === option.key

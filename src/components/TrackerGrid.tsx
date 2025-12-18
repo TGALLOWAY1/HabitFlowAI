@@ -14,6 +14,7 @@ import { useProgressOverview } from '../lib/useProgressOverview';
 
 
 import { computeBundleStatus, getBundleStats } from '../utils/habitUtils';
+import { WeeklyHabitCard } from './WeeklyHabitCard';
 import {
     DndContext,
     closestCenter,
@@ -595,261 +596,8 @@ const SortableHabitRow = ({
 
 // --- Weekly Habit Row ---
 
-interface WeeklyHabitRowContentProps {
-    habit: Habit;
-    depth: number;
-    isExpanded: boolean;
-    hasChildren: boolean;
-    onToggleExpand: () => void;
-    logs: Record<string, DayLog>;
-    onEditHabit: (habit: Habit) => void;
-    deleteHabit: (id: string) => Promise<void>;
-    deleteConfirmId: string | null;
-    setDeleteConfirmId: (id: string | null) => void;
-    onToggleToday: (habit: Habit) => void;
-    onOpenPopover: (e: React.MouseEvent, habit: Habit, date: string, currentValue: number) => void;
-    // Drag props
-    attributes?: any; // eslint-disable-line @typescript-eslint/no-explicit-any
-    listeners?: any; // eslint-disable-line @typescript-eslint/no-explicit-any
-    isDragging?: boolean;
-    setNodeRef?: (node: HTMLElement | null) => void;
-    style?: React.CSSProperties;
-    onRunRoutine?: (routine: Routine) => void;
-    onViewHistory: (habit: Habit) => void;
-    potentialEvidence?: HabitPotentialEvidence[];
-}
-
-const WeeklyHabitRowContent = ({
-    habit,
-    depth,
-    isExpanded,
-    hasChildren,
-    onToggleExpand,
-    logs,
-    onEditHabit,
-    deleteHabit,
-    deleteConfirmId,
-    setDeleteConfirmId,
-    onToggleToday,
-    onOpenPopover,
-    attributes,
-    listeners,
-    isDragging,
-    setNodeRef,
-    style,
-    onRunRoutine,
-    onViewHistory,
-    potentialEvidence
-}: WeeklyHabitRowContentProps) => {
-
-    // Calculate Weekly Progress
-    const { currentCount, target, isCompletedToday, todayLogValue } = useMemo(() => {
-        const today = new Date();
-        const start = startOfWeek(today, { weekStartsOn: 1 }); // Monday start
-        const end = endOfWeek(today, { weekStartsOn: 1 });
-
-        let count = 0;
-        let completedToday = false;
-        let todayVal = 0;
-        const todayStr = format(today, 'yyyy-MM-dd');
-        const isQuantitative = habit.goal.type === 'number';
-
-        // Iterate logs to find matches for this habit in range
-        Object.values(logs).forEach(log => {
-            if (log.habitId === habit.id) {
-                const logDate = parseISO(log.date);
-                if (isWithinInterval(logDate, { start, end })) {
-                    // For quantitative, sum the values. For boolean, count completed.
-                    if (isQuantitative) {
-                        count += (log.value || 0);
-                    } else if (log.completed) {
-                        count++;
-                    }
-                }
-                if (log.date === todayStr) {
-                    todayVal = log.value || 0;
-                    if (log.completed || (isQuantitative && todayVal > 0)) {
-                        completedToday = true;
-                    }
-                }
-            }
-        });
-
-        // Current Habit Goal Target logic
-        const goalTarget = habit.goal.target || 3;
-
-        return {
-            currentCount: count,
-            target: goalTarget,
-            isCompletedToday: completedToday,
-            todayLogValue: todayVal
-        };
-    }, [habit.id, habit.goal.target, habit.goal.type, logs]);
-
-    const isQuantitative = habit.goal.type === 'number';
-    const progressPercent = Math.min(100, Math.max(0, (currentCount / target) * 100));
-
-    const priorityRingClass = habit.nonNegotiable
-        ? isCompletedToday
-            ? "ring-1 ring-yellow-500 shadow-[0_0_10px_rgba(234,179,8,0.2)]"
-            : "ring-1 ring-yellow-500 shadow-[0_0_15px_rgba(234,179,8,0.4)] animate-pulse"
-        : "";
-
-    // Indentation Style
-    // Using padding for indentation to match Daily Grid
-    const indentStyle = { paddingLeft: `${16 + (depth * 24)}px` };
-
-    return (
-        <div
-            ref={setNodeRef}
-            style={style}
-            // Use flex row layout similar to SortableHabitRow instead of padding wrapper
-            className={cn(
-                "flex border-b border-white/5 transition-colors group bg-neutral-900/50 hover:bg-white/[0.02]",
-                isDragging && "shadow-xl ring-1 ring-emerald-500/50 z-50 bg-neutral-900",
-                priorityRingClass
-            )}
-        >
-            {/* Sidebar: Matches Daily Row width and layout, but with dynamic indentation */}
-            <div
-                className="w-64 flex-shrink-0 p-4 border-r border-white/5 flex items-center justify-between relative"
-                style={indentStyle}
-            >
-                <div className="flex items-center gap-3">
-                    {/* Drag Handle (Only for depth 0) */}
-                    {depth === 0 && (
-                        <button
-                            {...attributes}
-                            {...listeners}
-                            className="text-neutral-600 hover:text-neutral-400 cursor-grab active:cursor-grabbing p-1 -ml-2 opacity-0 group-hover:opacity-100 transition-opacity"
-                            title="Drag to reorder"
-                        >
-                            <GripVertical size={16} />
-                        </button>
-                    )}
-
-                    <div className="flex flex-col">
-                        <span className={cn(
-                            "font-medium transition-colors",
-                            depth > 0 ? "text-neutral-400 italic text-sm" : "text-neutral-200"
-                        )}>
-                            {habit.name}
-                        </span>
-                        <span className="text-xs text-neutral-500 mt-1 flex items-center gap-2">
-                            {/* Display e.g. "Weekly Goal: 25 / 50 reps" or "Weekly Goal: 3 / 5" */}
-                            Target: {Math.round(currentCount * 10) / 10} / {target} {habit.goal.unit}
-                            {currentCount >= target && <Trophy size={12} className="text-yellow-500" />}
-                        </span>
-
-                        {/* Potential Evidence Indicator (Weekly) */}
-                        {potentialEvidence && potentialEvidence.some(e => e.habitId === habit.id) && !isCompletedToday && (
-                            <div className="flex items-center gap-1 text-[10px] text-purple-400 bg-purple-400/10 px-1.5 py-0.5 rounded-full border border-purple-400/20 animate-pulse mt-1 w-fit" title="Routine Activity Detected">
-                                <Zap size={10} className="fill-purple-400" />
-                                <span className="font-bold">Routine Activity</span>
-                            </div>
-                        )}
-                    </div>
-                </div>
-
-                <HabitActionButtons
-                    habit={habit}
-                    onEdit={() => onEditHabit(habit)}
-                    onDelete={deleteHabit}
-                    deleteConfirmId={deleteConfirmId}
-                    setDeleteConfirmId={setDeleteConfirmId}
-                    onRunRoutine={onRunRoutine}
-                    onViewHistory={() => onViewHistory(habit)}
-                />
-
-                {/* Bundle Expand/Collapse "Drawer Handle" */}
-                {hasChildren && (
-                    <div
-                        className="absolute bottom-0 left-0 right-0 h-[6px] cursor-pointer hover:bg-white/[0.03] transition-colors flex items-end justify-center pb-[2px] z-10"
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            onToggleExpand();
-                        }}
-                        title={isExpanded ? "Click to Collapse Bundle" : "Click to Expand Bundle"}
-                    >
-                        <div
-                            className={cn(
-                                "w-12 h-1 rounded-full transition-all duration-300",
-                                isExpanded
-                                    ? "bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)]"
-                                    : "bg-neutral-700 hover:bg-blue-400"
-                            )}
-                        />
-                    </div>
-                )}
-            </div>
-
-            {/* Main Content Area */}
-            <div className="flex-1 flex items-center justify-between p-4">
-                {/* Progress Visuals */}
-                <div className="flex items-center gap-1 flex-1 mr-8">
-                    {isQuantitative ? (
-                        // Progress Bar for Quantitative
-                        <div className="w-full h-3 bg-neutral-800 border border-white/10 rounded-full overflow-hidden relative">
-                            <div
-                                className="h-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)] transition-all duration-500 ease-out"
-                                style={{ width: `${progressPercent}%` }}
-                            />
-                        </div>
-                    ) : (
-                        // Circles for Boolean
-                        Array.from({ length: target }).map((_, i) => (
-                            <div
-                                key={i}
-                                className={cn(
-                                    "w-3 h-3 rounded-full transition-all",
-                                    i < currentCount
-                                        ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]"
-                                        : "bg-neutral-800 border border-white/10"
-                                )}
-                            />
-                        ))
-                    )}
-                </div>
-
-                {/* Mark Done / Log Value Button */}
-                <button
-                    onClick={(e) => {
-                        if (isQuantitative) {
-                            const todayStr = format(new Date(), 'yyyy-MM-dd');
-                            onOpenPopover(e, habit, todayStr, todayLogValue);
-                        } else {
-                            onToggleToday(habit);
-                        }
-                    }}
-                    className={cn(
-                        "flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-medium transition-all min-w-[140px]",
-                        isCompletedToday
-                            ? habit.nonNegotiable
-                                ? "bg-yellow-500 text-neutral-900 shadow-[0_0_15px_rgba(234,179,8,0.3)] animate-gold-burst"
-                                : "bg-emerald-500 text-neutral-900 shadow-[0_0_15px_rgba(16,185,129,0.3)]"
-                            : potentialEvidence && potentialEvidence.some(e => e.habitId === habit.id)
-                                ? "bg-purple-500/20 text-purple-300 border border-purple-500/50 hover:bg-purple-500/30 shadow-[0_0_10px_rgba(168,85,247,0.2)]" // Confirmation Style
-                                : "bg-neutral-800 text-neutral-400 hover:text-white hover:bg-neutral-700 border border-white/5"
-                    )}
-                >
-                    {isCompletedToday ? (
-                        <>
-                            <Check size={18} strokeWidth={2.5} />
-                            <span>{isQuantitative ? `${todayLogValue} ${habit.goal.unit || ''}` : 'Done Today'}</span>
-                        </>
-                    ) : (
-                        <>
-                            <div className="w-4 h-4 rounded-full border-2 border-current" />
-                            <span>Mark Done</span>
-                        </>
-                    )}
-                </button>
-            </div>
-        </div>
-    );
-};
-
-
+// SortableWeeklyHabitRow removed/commented out as it is replaced by WeeklyHabitCard
+/*
 const SortableWeeklyHabitRow = ({
     habit,
     allHabits,
@@ -910,7 +658,7 @@ const SortableWeeklyHabitRow = ({
 
     return (
         <div className="flex flex-col">
-            {/* Parent Row */}
+            {/* Parent Row }
             <WeeklyHabitRowContent
                 habit={habit}
                 depth={0}
@@ -935,7 +683,7 @@ const SortableWeeklyHabitRow = ({
                 potentialEvidence={potentialEvidence}
             />
 
-            {/* Child Rows */}
+            {/* Child Rows }
             {isExpanded && children.map(child => (
                 <WeeklyHabitRowContent
                     key={child.id}
@@ -961,6 +709,7 @@ const SortableWeeklyHabitRow = ({
         </div>
     );
 };
+*/
 
 // [REPLACED TRACKER GRID DEFINITION]
 export const TrackerGrid = ({
@@ -1095,9 +844,7 @@ export const TrackerGrid = ({
     };
 
     // Choice Log Handlers
-    const handleOpenChoiceLog = (habit: Habit, date: string) => {
-        setChoiceLogState({ habit, date });
-    };
+
 
     const handleChoiceSave = async (payload: {
         habitId: string;
@@ -1216,15 +963,7 @@ export const TrackerGrid = ({
         }
     };
 
-    const handleToggleToday = async (habit: Habit) => {
-        const todayStr = format(new Date(), 'yyyy-MM-dd');
-        if (habit.bundleType === 'choice') {
-            handleOpenChoiceLog(habit, todayStr);
-            return;
-        }
-        await handleToggle(habit.id, todayStr);
-        refreshProgress();
-    };
+
 
 
 
@@ -1305,45 +1044,71 @@ export const TrackerGrid = ({
                         )}
                     </div>
 
-                    {/* Weekly Habits Section */}
+                    {/* Weekly Habits Section - Redesigned as Cards */}
+
                     {weeklyHabits.length > 0 && (
-                        <div className="flex flex-col border-b border-white/5 last:border-0 h-fit">
-                            <div className="sticky top-0 z-10 bg-neutral-900/95 p-4 border-b border-white/5 backdrop-blur-sm">
-                                <h3 className="font-medium text-emerald-400 flex items-center gap-2">
-                                    <span>Weekly Habits</span>
-                                    <span className="text-xs text-neutral-500 font-normal ml-2">(Resets every Monday)</span>
+                        <div className="flex flex-col border-t border-white/5 mt-8 pt-8">
+                            <div className="px-6 mb-6">
+                                <h3 className="text-lg font-medium text-emerald-400 flex items-center gap-2">
+                                    <span>Weekly Progress</span>
+                                    <span className="text-xs text-neutral-500 font-normal px-2 py-0.5 rounded-full bg-neutral-800 border border-white/5">Resets Monday</span>
                                 </h3>
                             </div>
-                            <div className="flex-col">
-                                <SortableContext
-                                    items={weeklyHabits.map(h => h.id)}
-                                    strategy={verticalListSortingStrategy}
-                                >
-                                    {weeklyHabits.map((habit) => (
-                                        <SortableWeeklyHabitRow
-                                            key={habit.id}
-                                            habit={habit}
-                                            allHabits={habits}
-                                            expandedIds={expandedIds}
-                                            onToggleExpand={toggleExpand}
-                                            logs={logs}
-                                            onToggleToday={handleToggleToday}
-                                            onOpenPopover={handleOpenPopover}
-                                            deleteHabit={deleteHabit}
-                                            deleteConfirmId={deleteConfirmId}
-                                            setDeleteConfirmId={setDeleteConfirmId}
-                                            onEditHabit={onEditHabit}
-                                            onRunRoutine={onRunRoutine}
-                                            onViewHistory={(h) => setHistoryModalHabitId(h.id)}
-                                            potentialEvidence={potentialEvidence}
-                                        />
-                                    ))}
-                                </SortableContext>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 px-6">
+                                {weeklyHabits.map(habit => (
+                                    <WeeklyHabitCard
+                                        key={habit.id}
+                                        habit={habit}
+                                        logs={logs}
+                                        goals={progressData?.goalsWithProgress.map(g => g.goal)}
+                                        potentialEvidence={potentialEvidence?.some(e => e.habitId === habit.id)}
+                                        onToggle={(h) => handleToggle(h.id, format(new Date(), 'yyyy-MM-dd'))}
+                                        onLogValue={(e, h, val) => {
+                                            // Open popover for quantity inputs
+                                            handleOpenPopover(e, h, format(new Date(), 'yyyy-MM-dd'), val);
+                                        }}
+                                        onEdit={(h) => onEditHabit(h)}
+                                        onViewHistory={(h) => setHistoryModalHabitId(h.id)}
+                                        onDelete={(h) => setDeleteConfirmId(h.id)}
+                                    />
+                                ))}
                             </div>
                         </div>
                     )}
                 </div>
             </DndContext>
+
+            {/* Delete Confirmation Modal */}
+            {deleteConfirmId && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+                    <div className="bg-neutral-900 border border-white/10 rounded-xl p-6 w-full max-w-sm shadow-xl">
+                        <h3 className="text-lg font-bold text-white mb-2">Delete Habit?</h3>
+                        <p className="text-neutral-400 mb-6 text-sm">
+                            Are you sure you want to delete this habit? This action cannot be undone and all history will be lost.
+                        </p>
+                        <div className="flex gap-3 justify-end">
+                            <button
+                                onClick={() => setDeleteConfirmId(null)}
+                                className="px-4 py-2 text-sm font-medium text-neutral-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={async () => {
+                                    if (deleteConfirmId) {
+                                        await deleteHabit(deleteConfirmId);
+                                        setDeleteConfirmId(null);
+                                    }
+                                }}
+                                className="px-4 py-2 text-sm font-medium text-white bg-red-500/10 text-red-500 hover:bg-red-500/20 border border-red-500/20 rounded-lg transition-colors"
+                            >
+                                Delete
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Modals */}
             <NumericInputPopover
@@ -1351,16 +1116,13 @@ export const TrackerGrid = ({
                 onClose={() => setPopoverState(prev => ({ ...prev, isOpen: false }))}
                 onSubmit={async (val) => {
                     try {
-                        const { habitId, date, bundleOptionId } = popoverState;
-                        if (bundleOptionId) {
+                        const { habitId, date } = popoverState;
+                        // Use type assertion to access potential extra fields
+                        const state = popoverState as any;
+                        if (state.bundleOptionId) {
                             await upsertHabitEntry(habitId, date, {
                                 value: val,
-                                bundleOptionId,
-                                // Ideally label too, but popoverState doesn't have it.
-                                // We can rely on backend or add logic. For now, backend handles ID.
-                                // Wait, TrackerGrid handles label usually.
-                                // Refactoring popoverState to include label is complex for this chunk.
-                                // Assume ID is enough for basic functionality, or backend fetches label.
+                                bundleOptionId: state.bundleOptionId
                             });
                         } else {
                             await upsertHabitEntry(habitId, date, { value: val });
