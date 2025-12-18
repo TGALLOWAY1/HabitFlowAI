@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, CheckCircle2, ChevronRight, Hash } from 'lucide-react';
+import { X, CheckCircle2, Hash } from 'lucide-react';
 import type { Habit } from '../types';
 import { cn } from '../utils/cn';
 

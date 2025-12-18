@@ -1,0 +1,219 @@
+# 📘 PRD: HabitFlow — Habits ↔ Routines Integration
+
+## 1. 🎯 Purpose & Goals
+
+This feature defines how **Habits** and **(Routines)** are connected and launched together in HabitFlow.
+
+### Primary Goals
+- Make it **fast and intuitive** to start an Activity from a Habit
+- Allow **bidirectional linking**:
+  - Habits can suggest Routines
+  - Routines can reference and complete Habits
+- Support **mobile-first interactions** while maintaining parity on web
+- Reinforce HabitFlow’s philosophy:
+  > *Habits are the unit of consistency. Routines are the unit of execution.*
+
+### Non-Goals
+- Activities do not auto-complete habits without explicit user action
+- Activities are not evaluated for streaks or goals (habits are)
+
+---
+
+## 2. 🧠 Conceptual Model
+
+### Habit
+- A repeatable behavior tracked over time
+- Example: `Dog Bonding`, `Mobility`, `Music Practice`
+
+### Routine
+- A structured, multi-step routine
+- Example: `Dog Play Session`, `Morning Mobility Flow`
+- Routines contain **Steps**
+  - Habit Steps (trackable)
+  - Task Steps (non-trackable)
+
+A Habit may:
+- Exist independently
+- Be referenced by one or more Routines
+
+A Routine may:
+- Reference zero, one, or many Habits
+- Be launched from a Habit context or directly
+
+---
+
+## 3. 📱 Starting a Routine from a Habit (Primary UX)
+
+### 3.1 Mobile (iOS / Android)
+
+#### Interaction
+- **Long-press on a Habit card** from the Habit list
+
+#### Result: Quick Actions Sheet
+A bottom sheet appears with contextual actions:
+
+**Example: Habit = “Dog Bonding”**
+- ▶ Start Routine
+  - Play Fetch
+  - Training Session
+  - Enrichment Time
+- ➕ Add / Link Routine
+- ✏️ Edit Habit
+- 📊 View History
+
+#### Behavior Rules
+- If the habit has **linked routines**, show them first
+- If no routines are linked:
+  - Show “Create Routine from this Habit”
+- Tapping a routine launches it immediately
+- Completing Habit Steps inside the routine updates the habit normally
+
+---
+
+### 3.2 Web (Desktop)
+
+#### Interaction Options
+- **Right-click** on Habit card → Context menu
+- OR **“⋮” overflow menu** on the Habit card
+
+#### Menu Contents
+Same actions as mobile:
+- Start Routine (submenu if multiple)
+- Add / Link Routine
+- Edit Habit
+- View History
+
+#### UX Notes
+- Hover states reveal affordances
+- Keyboard accessible (important for power users)
+
+---
+
+## 4. 🔁 Linking Habits ↔ Routines (Bidirectional)  
+
+### 4.1 From Habit Creation / Editing
+
+#### Entry Point
+- Habit Create / Edit Modal
+
+#### New Section: “Related Routines”
+- Description:
+  > “Routines are optional routines that help you execute this habit.”
+
+#### Options
+- ➕ Create New Routine
+- 🔗 Link Existing Routine
+
+#### Create New Routine Flow
+1. User taps “Create Routine”
+2. Routine name is pre-filled:
+   - Example: `Dog Bonding Session`
+3. First step is auto-created:
+   - Habit Step linked to this habit
+4. User adds additional steps (habit or task)
+5. Save Routine
+
+#### Link Existing Routine Flow
+- Select from list of existing routines
+- System checks:
+  - Does the routine already reference this habit?
+  - If not, prompt:
+    > “Add this habit as a step in the routine?”
+
+---
+
+### 4.2 From Routine Creation / Editing
+
+#### Entry Point
+- Routine Create / Edit screen
+
+#### Step-Level Linking
+- When adding or editing a **Habit Step**:
+  - User must select or create a Habit
+- Habit category must be chosen if creating inline
+
+#### Routine-Level Summary
+- Show a summary list:
+  > “This routine contributes to: Dog Bonding, Training”
+
+---
+
+## 5. ▶ Routine Launch Context
+
+### Routine Metadata
+When a routine is launched, store optional context:
+- `source = habit | activity_list | routine_page`
+- `sourceHabitId?`
+
+This allows:
+- Better analytics
+- Future coaching insights
+- Smarter suggestions (“You usually start this from Dog Bonding”)
+
+---
+
+## 6. ✅ Completion Rules (Reminder)
+
+- Activities are **never all-or-nothing**
+- Only completed **Habit Steps** create habit completions
+- Task Steps are guidance only
+- Skipping is always allowed
+- No penalties, no streak loss
+
+---
+
+## 7. 🧩 Data Model Additions (Simplified)
+
+### Habit
+```ts
+Habit {
+  id: string
+  title: string
+  linkedRoutineIds?: string[]
+}
+
+Routine
+Routine {
+  id: string
+  title: string
+  steps: Step[]
+}
+HabitCompletion
+HabitCompletion {
+  habitId: string
+  completedAt: Date
+  routineId?: string
+  stepId?: string
+}
+
+8. 🔒 Edge Cases & Decisions
+Habit deleted
+Routines referencing it:
+Prompt: Convert step to Task OR remove step
+Routine deleted
+Habits remain untouched
+Multiple routines linked to one habit
+All appear in Quick Actions
+No prioritization initially (future enhancement)
+
+9. 🧭 MVP Scope
+Included
+Long-press / context menu Quick Actions
+Start Routine from Habit
+Link Routine from Habit creation/edit
+Link Habit from Routine creation/edit
+Mobile + Web parity
+Context-aware routine launch
+Deferred
+Routine recommendations
+Smart ordering of routines
+Analytics-driven suggestions
+Automation rules
+
+10. 🌱 Product Philosophy Reinforced
+This design:
+Reduces friction at the moment of action
+Encourages habit stacking without obligation
+Keeps habits simple and activities expressive
+Supports autonomy, flexibility, and self-trust
+You never fail an activity. You always learn how you actually show up.

@@ -113,7 +113,11 @@ export const HabitHistoryModal: React.FC<HabitHistoryModalProps> = ({ habitId, o
                                             {entry.date}
                                         </div>
                                         <div className="text-xs text-gray-500 dark:text-gray-400">
-                                            {new Date(entry.timestamp).toLocaleTimeString()} • {entry.source}
+                                            {(() => {
+                                                const d = new Date(entry.timestamp);
+                                                return isNaN(d.getTime()) ? '' : d.toLocaleTimeString();
+                                            })()}
+                                            {entry.source && ` • ${entry.source}`}
                                             {entry.bundleOptionLabel && (
                                                 <span className="block mt-1 font-medium text-emerald-600 dark:text-emerald-400">
                                                     Selected: {entry.bundleOptionLabel}

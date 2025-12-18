@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { ChevronDown, ChevronRight, CheckCircle2 } from 'lucide-react';
 import type { Category, Habit, DayLog } from '../../types';
 import { HabitGridCell } from './HabitGridCell';

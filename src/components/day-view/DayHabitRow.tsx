@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Check, Target, Clock, Pin, PinOff, Circle, GripVertical, ChevronDown, ChevronRight } from 'lucide-react';
+import React from 'react';
+import { Check, Target, Clock, Pin, PinOff, ChevronDown, ChevronRight } from 'lucide-react';
 import type { Habit, DayLog } from '../../types';
 import { cn } from '../../utils/cn';
 

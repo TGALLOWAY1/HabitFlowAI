@@ -1,8 +1,8 @@
-import React, { useMemo, useState } from 'react';
-import { format, eachDayOfInterval, subDays, isToday, startOfWeek, endOfWeek, isWithinInterval, parseISO } from 'date-fns';
+import React, { useMemo, useState, useEffect } from 'react';
+import { format, eachDayOfInterval, subDays, isToday } from 'date-fns';
 import { type Habit, type DayLog, type Routine, type HabitPotentialEvidence } from '../types';
 import { cn } from '../utils/cn';
-import { Check, Plus, Trash2, GripVertical, Pencil, Trophy, Play, Flame, History, Zap } from 'lucide-react';
+import { Check, Plus, Trash2, GripVertical, Pencil, Play, Flame, History, Zap, Link2 } from 'lucide-react';
 
 import { NumericInputPopover } from './NumericInputPopover';
 import { HabitHistoryModal } from './HabitHistoryModal';
@@ -163,6 +163,7 @@ interface HabitRowContentProps {
     streak?: number;
     onViewHistory: (habit: Habit) => void;
     potentialEvidence?: HabitPotentialEvidence[];
+    onContextMenu: (e: React.MouseEvent, habit: Habit) => void;
 }
 
 const HabitRowContent = ({
@@ -188,7 +189,8 @@ const HabitRowContent = ({
     onRunRoutine,
     streak,
     onViewHistory,
-    potentialEvidence
+    potentialEvidence,
+    onContextMenu
 }: HabitRowContentProps) => {
 
     // Non-Negotiable Logic
@@ -221,6 +223,7 @@ const HabitRowContent = ({
                 isDragging && "shadow-xl ring-1 ring-emerald-500/50 z-50 bg-neutral-900",
                 priorityRingClass
             )}
+            onContextMenu={(e) => onContextMenu(e, habit)}
         >
             <div
                 className="w-64 flex-shrink-0 p-4 border-r border-white/5 flex items-center justify-between group-hover:bg-white/[0.02] transition-colors relative"
@@ -268,9 +271,9 @@ const HabitRowContent = ({
 
                             {/* Potential Evidence Indicator */}
                             {potentialEvidence && potentialEvidence.some(e => e.habitId === habit.id && e.date === todayStr) && !isCompletedToday && (
-                                <div className="flex items-center gap-1 text-[10px] text-purple-400 bg-purple-400/10 px-1.5 py-0.5 rounded-full border border-purple-400/20 animate-pulse" title="Routine Activity Detected: Verify completion">
+                                <div className="flex items-center gap-1 text-[10px] text-purple-400 bg-purple-400/10 px-1.5 py-0.5 rounded-full border border-purple-400/20 animate-pulse" title="Routine Execution Detected: Verify completion">
                                     <Zap size={10} className="fill-purple-400" />
-                                    <span className="font-bold">Routine Activity</span>
+                                    <span className="font-bold">Routine Execution</span>
                                 </div>
                             )}
                         </div>
@@ -457,7 +460,8 @@ const SortableHabitRow = ({
     onRunRoutine,
     streak,
     onViewHistory,
-    potentialEvidence
+    potentialEvidence,
+    onContextMenu
 }: {
     habit: Habit;
     allHabits: Habit[];
@@ -475,6 +479,7 @@ const SortableHabitRow = ({
     streak?: number;
     onViewHistory: (habit: Habit) => void;
     potentialEvidence?: HabitPotentialEvidence[];
+    onContextMenu: (e: React.MouseEvent, habit: Habit) => void;
 }) => {
     const {
         attributes,
@@ -564,6 +569,7 @@ const SortableHabitRow = ({
                 streak={habit.type !== 'bundle' ? streak : undefined}
                 onViewHistory={onViewHistory}
                 potentialEvidence={potentialEvidence}
+                onContextMenu={onContextMenu}
             />
 
             {/* Child Rows - Rendered when expanded */}
@@ -588,6 +594,7 @@ const SortableHabitRow = ({
                     onRunRoutine={onRunRoutine}
                     onViewHistory={onViewHistory}
                     potentialEvidence={potentialEvidence}
+                    onContextMenu={onContextMenu}
                 />
             ))}
         </div>
@@ -681,6 +688,7 @@ const SortableWeeklyHabitRow = ({
                 onRunRoutine={onRunRoutine}
                 onViewHistory={onViewHistory}
                 potentialEvidence={potentialEvidence}
+                onContextMenu={onContextMenu}
             />
 
             {/* Child Rows }
@@ -718,7 +726,8 @@ export const TrackerGrid = ({
     onAddHabit,
     onEditHabit,
     onRunRoutine,
-    potentialEvidence
+    potentialEvidence,
+    onViewHistory
 }: TrackerGridProps) => {
     const {
         deleteHabit,
@@ -726,7 +735,30 @@ export const TrackerGrid = ({
         upsertHabitEntry,
         deleteHabitEntryByKey
     } = useHabitStore();
+    const { routines } = useRoutineStore(); // Ensure we have routines for context menu
     const { data: progressData, refresh: refreshProgress } = useProgressOverview();
+
+    const [contextMenu, setContextMenu] = useState<{
+        x: number;
+        y: number;
+        habitId: string;
+    } | null>(null);
+
+    // Close Context Menu on click elsewhere
+    useEffect(() => {
+        const handleClick = () => setContextMenu(null);
+        window.addEventListener('click', handleClick);
+        return () => window.removeEventListener('click', handleClick);
+    }, []);
+
+    const handleContextMenu = (e: React.MouseEvent, habit: Habit) => {
+        e.preventDefault();
+        setContextMenu({
+            x: e.clientX,
+            y: e.clientY,
+            habitId: habit.id
+        });
+    };
 
     const [popoverState, setPopoverState] = useState<{
         isOpen: boolean;
@@ -1034,6 +1066,7 @@ export const TrackerGrid = ({
                                         streak={habitProgressMap.get(habit.id)?.streak}
                                         onViewHistory={(h) => setHistoryModalHabitId(h.id)}
                                         potentialEvidence={potentialEvidence}
+                                        onContextMenu={handleContextMenu}
                                     />
                                 ))}
                             </SortableContext>
@@ -1144,6 +1177,71 @@ export const TrackerGrid = ({
                     habitId={historyModalHabitId}
                     onClose={() => setHistoryModalHabitId(null)}
                 />
+            )}
+
+            {/* Context Menu */}
+            {contextMenu && (
+                <div
+                    className="fixed z-50 bg-neutral-800 border border-white/10 rounded-lg shadow-xl p-1 min-w-[160px] animate-in fade-in zoom-in-95 duration-100"
+                    style={{ top: contextMenu.y, left: contextMenu.x }}
+                    onClick={(e) => e.stopPropagation()}
+                >
+                    {(() => {
+                        const habit = habits.find(h => h.id === contextMenu.habitId);
+                        if (!habit) return null;
+                        const linked = routines.filter(r => r.linkedHabitIds?.includes(habit.id));
+
+                        return (
+                            <div className="flex flex-col gap-1">
+                                <div className="px-2 py-1.5 text-xs font-semibold text-neutral-500 border-b border-white/5 mb-1">
+                                    {habit.name}
+                                </div>
+                                {linked.map(routine => (
+                                    <button
+                                        key={routine.id}
+                                        onClick={() => {
+                                            onRunRoutine?.(routine);
+                                            setContextMenu(null);
+                                        }}
+                                        className="flex items-center gap-2 px-2 py-1.5 text-sm text-emerald-400 hover:bg-neutral-700/50 rounded transition-colors text-left w-full"
+                                    >
+                                        <Play size={14} /> Start {routine.title}
+                                    </button>
+                                ))}
+
+                                <button
+                                    onClick={() => {
+                                        onEditHabit(habit);
+                                        setContextMenu(null);
+                                    }}
+                                    className="flex items-center gap-2 px-2 py-1.5 text-sm text-neutral-300 hover:bg-neutral-700/50 rounded transition-colors text-left w-full"
+                                >
+                                    <Link2 size={14} /> {linked.length > 0 ? 'Edit Links...' : 'Link Routine...'}
+                                </button>
+
+                                <button
+                                    onClick={() => {
+                                        onViewHistory(habit);
+                                        setContextMenu(null);
+                                    }}
+                                    className="flex items-center gap-2 px-2 py-1.5 text-sm text-neutral-300 hover:bg-neutral-700/50 rounded transition-colors text-left w-full"
+                                >
+                                    <History size={14} /> View History
+                                </button>
+
+                                <button
+                                    onClick={() => {
+                                        onEditHabit(habit);
+                                        setContextMenu(null);
+                                    }}
+                                    className="flex items-center gap-2 px-2 py-1.5 text-sm text-neutral-300 hover:bg-neutral-700/50 rounded transition-colors text-left w-full"
+                                >
+                                    <Pencil size={14} /> Edit Habit
+                                </button>
+                            </div>
+                        );
+                    })()}
+                </div>
             )}
 
             {/* Habit Choice Log Modal */}

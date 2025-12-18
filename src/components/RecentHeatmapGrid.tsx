@@ -35,24 +35,24 @@ export const RecentHeatmapGrid: React.FC<RecentHeatmapGridProps> = React.memo(({
             const dateStr = format(date, 'yyyy-MM-dd');
             const activeHabits = habits.filter(h => new Date(h.createdAt) <= date && !h.archived);
 
-            let activityCount = 0;
+            let completionCount = 0;
             const categoryIds = new Set<string>();
 
             if (activeHabits.length > 0) {
                 activeHabits.forEach(habit => {
                     const log = logs[`${habit.id}-${dateStr}`];
                     if (log?.completed) {
-                        activityCount++;
+                        completionCount++;
                         categoryIds.add(habit.categoryId);
                     }
                 });
             }
 
-            if (activityCount > maxDailyCount) maxDailyCount = activityCount;
+            if (completionCount > maxDailyCount) maxDailyCount = completionCount;
 
             return {
                 date,
-                count: activityCount,
+                count: completionCount,
                 categoryCount: categoryIds.size
             };
         });
@@ -116,7 +116,7 @@ export const RecentHeatmapGrid: React.FC<RecentHeatmapGridProps> = React.memo(({
                     <div
                         key={day.date.toISOString()}
                         data-tooltip-id="recent-heatmap-tooltip"
-                        data-tooltip-content={`${format(day.date, 'MMM d, yyyy')}: ${day.count} activities across ${day.categoryCount} categories`}
+                        data-tooltip-content={`${format(day.date, 'MMM d, yyyy')}: ${day.count} completions across ${day.categoryCount} categories`}
                         className={`${cellSizeClasses} ${getHeatmapColor(day.intensity)} transition-all hover:scale-105 hover:ring-2 hover:ring-white/20`}
                     />
                 ))}

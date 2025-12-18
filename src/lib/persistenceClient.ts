@@ -798,47 +798,45 @@ export async function updateHabitEntry(id: string, patch: Partial<HabitEntry>): 
  * @param habitId - Habit ID
  * @param dateKey - Date Key (YYYY-MM-DD)
  * @param data - Entry data (value, optionKey, etc.)
- * @returns Promise<{ entry: HabitEntry, dayLog: DayLog | null }>
  */
-export async function upsertHabitEntry(
-  habitId: string,
-  dateKey: string,
-  data: Partial<HabitEntry>
-): Promise<{ entry: HabitEntry, dayLog: DayLog | null }> {
-
-  const payload = {
-    habitId,
-    dateKey,
-    ...data
-  };
-
+export async function upsertHabitEntry(habitId: string, dateKey: string, data: any = {}): Promise<{ entry: HabitEntry, dayLog: DayLog | null }> {
+  // Use a specialized endpoint or just reuse create/update logic if not available via API
+  // For now, let's assume we use the POST /entries endpoint which handles upsert logic on server
   const response = await apiRequest<{ entry: HabitEntry, dayLog: DayLog | null }>('/entries', {
-    method: 'PUT',
-    body: JSON.stringify(payload),
+    method: 'POST',
+    body: JSON.stringify({ habitId, date: dateKey, ...data }),
   });
   return response;
 }
 
 /**
- * Delete a habit entry by key.
+ * Delete a habit entry by key (habitId + date).
  * 
  * @param habitId - Habit ID
  * @param dateKey - Date Key
- * @returns Promise<{ success: boolean, dayLog: DayLog | null }>
  */
-export async function deleteHabitEntryByKey(
-  habitId: string,
-  dateKey: string
-): Promise<{ success: boolean, dayLog: DayLog | null }> {
-
-  const response = await apiRequest<{ success: boolean, dayLog: DayLog | null }>(
-    `/entries/key?habitId=${habitId}&dateKey=${dateKey}`,
-    {
-      method: 'DELETE',
-    }
-  );
+export async function deleteHabitEntryByKey(habitId: string, dateKey: string): Promise<{ dayLog: DayLog | null }> {
+  const response = await apiRequest<{ dayLog: DayLog | null }>(`/entries/key/${habitId}/${dateKey}`, {
+    method: 'DELETE',
+  });
   return response;
 }
+
+
+/**
+ * Skill Tree Persistence Functions
+ */
+
+/**
+ * Fetch the Skill Tree data for the current user.
+ * 
+ * @returns Promise<any> - The full skill tree structure
+ */
+export async function fetchSkillTree(): Promise<any> {
+  const response = await apiRequest<any>('/skill-tree');
+  return response;
+}
+
 export async function deleteHabitEntry(id: string): Promise<{ success: boolean, dayLog: DayLog | null }> {
   await apiRequest<{ message: string, dayLog: DayLog | null }>(`/entries/${id}`, {
     method: 'DELETE',

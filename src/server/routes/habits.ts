@@ -68,7 +68,8 @@ export async function createHabitRoute(req: Request, res: Response): Promise<voi
       name, categoryId, goal, description, assignedDays, scheduledTime, durationMinutes,
       nonNegotiable, nonNegotiableDays, deadline, type, subHabitIds, bundleParentId, order,
       bundleType, bundleOptions,
-      pinned, timeEstimate // Added Day View fields
+      pinned, timeEstimate,
+      linkedGoalId, linkedRoutineIds
     } = req.body;
 
     if (!name || typeof name !== 'string' || name.trim().length === 0) {
@@ -124,6 +125,8 @@ export async function createHabitRoute(req: Request, res: Response): Promise<voi
         bundleOptions,
         pinned,
         timeEstimate,
+        linkedGoalId,
+        linkedRoutineIds,
       },
       userId
     );
@@ -207,7 +210,8 @@ export async function updateHabitRoute(req: Request, res: Response): Promise<voi
       name, categoryId, goal, description, archived, assignedDays, scheduledTime, durationMinutes,
       nonNegotiable, nonNegotiableDays, deadline, type, subHabitIds, bundleParentId, order,
       bundleType, bundleOptions,
-      pinned, timeEstimate
+      pinned, timeEstimate,
+      linkedGoalId, linkedRoutineIds
     } = req.body;
 
     if (!id) {
@@ -236,6 +240,8 @@ export async function updateHabitRoute(req: Request, res: Response): Promise<voi
     if (bundleOptions !== undefined) patch.bundleOptions = bundleOptions;
     if (pinned !== undefined) patch.pinned = !!pinned;
     if (timeEstimate !== undefined) patch.timeEstimate = timeEstimate;
+    if (linkedGoalId !== undefined) patch.linkedGoalId = linkedGoalId;
+    if (linkedRoutineIds !== undefined) patch.linkedRoutineIds = linkedRoutineIds;
 
     // TODO: Validate types more strictly if needed, but for now rely on basic checks or TS interface safety at repository level mostly.
 

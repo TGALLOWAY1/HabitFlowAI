@@ -111,6 +111,12 @@ export interface Habit {
      */
     linkedGoalId?: string;
 
+    /**
+     * Optional: IDs of routines that link to this habit.
+     * New feature for Bi-Directional Sync.
+     */
+    linkedRoutineIds?: string[];
+
     /** Whether the habit is archived (hidden from active tracking) */
     archived: boolean;
 

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { fetchSkillTree as fetchSkillTreeApi } from '../lib/persistenceClient';
 import type { SkillTreeData } from '../server/services/skillTreeService';
 
 /**
@@ -13,11 +14,7 @@ export function useSkillTreeQuery() {
     const fetchSkillTree = useCallback(async () => {
         try {
             setIsLoading(true);
-            const response = await fetch('/api/skill-tree');
-            if (!response.ok) {
-                throw new Error('Failed to fetch skill tree data');
-            }
-            const jsonData = await response.json();
+            const jsonData = await fetchSkillTreeApi();
             setData(jsonData);
             setError(null);
         } catch (err) {

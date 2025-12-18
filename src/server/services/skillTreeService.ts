@@ -67,16 +67,25 @@ export async function getSkillTree(userId: string): Promise<SkillTreeData> {
     // Create a lookup for habits
     const habitMap = new Map(habits.map(h => [h.id, h]));
 
-    // 2. Filter Goals that have a categoryId
-    const categorizedGoals = goals.filter(g => g.categoryId && categories.some(c => c.id === g.categoryId));
-
-    // 3. Group Goals by Category
+    // 3. Group Goals by Category (with Inference)
     const goalsByCategory = new Map<string, Goal[]>();
-    for (const goal of categorizedGoals) {
-        if (!goal.categoryId) continue;
-        const existing = goalsByCategory.get(goal.categoryId) || [];
-        existing.push(goal);
-        goalsByCategory.set(goal.categoryId, existing);
+    for (const goal of goals) {
+        let targetCategoryId = goal.categoryId;
+
+        // Inference: If Goal lacks category, try to inherit from first linked habit
+        if (!targetCategoryId && goal.linkedHabitIds.length > 0) {
+            const firstHabit = habitMap.get(goal.linkedHabitIds[0]);
+            if (firstHabit && firstHabit.categoryId) {
+                targetCategoryId = firstHabit.categoryId;
+            }
+        }
+
+        // Only include if we found a valid category that exists in the user's list
+        if (targetCategoryId && categories.some(c => c.id === targetCategoryId)) {
+            const existing = goalsByCategory.get(targetCategoryId) || [];
+            existing.push(goal);
+            goalsByCategory.set(targetCategoryId, existing);
+        }
     }
 
     // 4. Build Identity Nodes

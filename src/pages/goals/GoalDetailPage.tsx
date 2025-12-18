@@ -19,6 +19,8 @@ import { EditGoalModal } from '../../components/goals/EditGoalModal';
 import { deleteGoal, markGoalAsCompleted, fetchHabitEntries } from '../../lib/persistenceClient';
 import { invalidateAllGoalCaches } from '../../lib/goalDataCache';
 import { GoalStatusChip } from '../../components/goals/GoalSharedComponents';
+import { GoalTrendChart } from '../../components/goals/GoalTrendChart';
+
 import { GoalCumulativeChart } from '../../components/goals/GoalCumulativeChart';
 import { GoalWeeklySummary } from '../../components/goals/GoalWeeklySummary';
 import { GoalEntryList } from '../../components/goals/GoalEntryList';
@@ -32,7 +34,7 @@ interface GoalDetailPageProps {
     onViewHabit?: (habitId: string) => void;
 }
 
-type Tab = 'cumulative' | 'dayByDay';
+type Tab = 'cumulative' | 'dayByDay' | 'trend';
 
 export const GoalDetailPage: React.FC<GoalDetailPageProps> = ({ goalId, onBack, onNavigateToCompleted, onViewHabit }) => {
     const { data, loading, error, refetch } = useGoalDetail(goalId);
@@ -74,8 +76,11 @@ export const GoalDetailPage: React.FC<GoalDetailPageProps> = ({ goalId, onBack, 
 
             try {
                 const allEntries: HabitEntry[] = [];
+                console.log('[GoalDetail] Loading entries for habits:', data.goal.linkedHabitIds);
                 for (const habitId of data.goal.linkedHabitIds) {
+                    // Strict Aggregation: Fetch only HabitEntries (backfill handled DayLogs)
                     const entries = await fetchHabitEntries(habitId);
+                    console.log(`[GoalDetail] Fetched ${entries.length} entries for habit ${habitId}`, entries);
                     allEntries.push(...entries);
                 }
                 setLinkedHabitEntries(allEntries);
@@ -95,25 +100,52 @@ export const GoalDetailPage: React.FC<GoalDetailPageProps> = ({ goalId, onBack, 
 
         const manual = data.manualLogs.map(log => ({
             id: log.id,
-            date: log.loggedAt,
+            date: log.loggedAt, // Ensure this is also just YYYY-MM-DD if possible, or ISO is fine
             value: log.value,
             source: 'manual' as const,
             unit: data.goal.unit
         }));
 
-        const fromHabits = linkedHabitEntries.map(entry => {
-            const habit = habitMap.get(entry.habitId);
-            return {
-                id: entry.id,
-                date: entry.timestamp,
-                value: entry.value || 0, // Default to 0 if undefined
-                source: 'habit' as const,
-                habitName: habit?.name,
-                unit: habit?.goal.unit || data.goal.unit
-            };
-        });
+        const fromHabits = linkedHabitEntries
+            .filter(entry => {
+                const habit = habitMap.get(entry.habitId);
+                if (!habit) return false;
+
+                // Type-Based Aggregation Logic
+                if (data.goal.type === 'cumulative') {
+                    // 1. Exclude Boolean habits from Cumulative/Numeric goals
+                    if (habit.goal.type === 'boolean') {
+                        return false;
+                    }
+                    // 2. Include all Numeric habits
+                    return true;
+                }
+
+                // For other goal types (Frequency), accept everything
+                return true;
+            })
+            .map(entry => {
+                const habit = habitMap.get(entry.habitId);
+                // Use entry.date (YYYY-MM-DD) as the canonical date source.
+                // Fallback to timestamp split if needed, but entry.date is required.
+                const dateStr = entry.date || entry.timestamp.split('T')[0];
+
+                return {
+                    id: entry.id,
+                    date: dateStr,
+                    // Now that we filtered incompatible units, we can safely use value.
+                    // If value is undefined but unit matched (unlikely if strictly checked, but possible for some data shapes),
+                    // we might default to 0 or 1.
+                    // If goal is cumulative, we expect a number.
+                    value: entry.value !== undefined ? entry.value : (data.goal.type === 'frequency' ? 1 : 0),
+                    source: 'habit' as const,
+                    habitName: habit?.name,
+                    unit: habit?.goal.unit || data.goal.unit
+                };
+            });
 
         const combined = [...manual, ...fromHabits].filter(item => item.date);
+        console.log('[GoalDetail] Final combined entries:', combined);
         return combined.sort((a, b) => (a.date || '').localeCompare(b.date || ''));
     }, [data, linkedHabitEntries, habitMap]);
 
@@ -211,6 +243,9 @@ export const GoalDetailPage: React.FC<GoalDetailPageProps> = ({ goalId, onBack, 
     const { goal, progress } = data;
     const progressPercent = goal.completedAt ? 100 : progress.percent;
 
+    // Determine if Trend tab should be shown
+    const canShowTrend = goal.type === 'cumulative' && goal.deadline;
+
     return (
         <div className="w-full max-w-4xl mx-auto px-4 py-6 sm:px-6 lg:px-8 bg-[#0A0A0A] min-h-screen text-white">
             {/* Top Navigation */}
@@ -306,6 +341,17 @@ export const GoalDetailPage: React.FC<GoalDetailPageProps> = ({ goalId, onBack, 
                 >
                     Cumulative
                 </button>
+                {canShowTrend && (
+                    <button
+                        onClick={() => setActiveTab('trend')}
+                        className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === 'trend'
+                            ? 'border-emerald-500 text-emerald-400'
+                            : 'border-transparent text-neutral-400 hover:text-white'
+                            }`}
+                    >
+                        Trend
+                    </button>
+                )}
                 <button
                     onClick={() => setActiveTab('dayByDay')}
                     className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === 'dayByDay'
@@ -337,12 +383,32 @@ export const GoalDetailPage: React.FC<GoalDetailPageProps> = ({ goalId, onBack, 
                     </div>
                 )}
 
+                {activeTab === 'trend' && canShowTrend && (
+                    <div className="space-y-8 h-full">
+                        <div>
+                            <h3 className="text-neutral-400 text-sm font-medium mb-4 uppercase tracking-wider">Progress Trend</h3>
+                            <p className="text-neutral-500 text-sm mb-4">
+                                Solid line is your actual progress. Dashed line is the pace needed to reach your target by the deadline.
+                            </p>
+                            <GoalTrendChart
+                                data={cumulativeData}
+                                startDate={goal.createdAt}
+                                deadline={goal.deadline!}
+                                targetValue={goal.targetValue!}
+                                color="#10b981"
+                                unit={goal.unit}
+                            />
+                        </div>
+                    </div>
+                )}
+
                 {activeTab === 'dayByDay' && (
                     <div>
                         <GoalEntryList entries={combinedEntries} />
                     </div>
                 )}
             </div>
+
 
             {/* Linked Habits Section */}
             <div className="mt-12 pt-8 border-t border-white/10">

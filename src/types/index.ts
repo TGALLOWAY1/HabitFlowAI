@@ -38,6 +38,7 @@ export interface Habit {
     description?: string;
     goal: HabitGoal;
     linkedGoalId?: string; // Optional parent Goal ID
+    linkedRoutineIds?: string[]; // Optional linked Routines
     archived: boolean;
     createdAt: string;
 

@@ -19,7 +19,7 @@ export const RoutineEditorModal: React.FC<RoutineEditorModalProps> = ({
     onClose,
 }) => {
     const { addRoutine, updateRoutine } = useRoutineStore();
-    const { categories, habits } = useHabitStore();
+    const { categories, habits, updateHabit } = useHabitStore();
 
     // Form State
     const [title, setTitle] = useState('');
@@ -108,14 +108,44 @@ export const RoutineEditorModal: React.FC<RoutineEditorModalProps> = ({
                 title: title.trim(),
                 categoryId,
                 steps,
-                // Derive linkedHabitIds from steps
                 linkedHabitIds: Array.from(new Set(steps.map(s => s.linkedHabitId).filter(Boolean))) as string[]
             };
 
+            let savedRoutine: Routine;
             if (mode === 'create') {
-                await addRoutine(routineData);
+                savedRoutine = await addRoutine(routineData);
             } else if (initialRoutine) {
-                await updateRoutine(initialRoutine.id, routineData);
+                savedRoutine = await updateRoutine(initialRoutine.id, routineData);
+            } else {
+                throw new Error("No initial routine for edit mode");
+            }
+
+            // Bi-directional Sync: Update Linked Habits
+            // 1. Add Routine ID to newly linked Habits
+            const newLinkedHabitIds = routineData.linkedHabitIds;
+            const previousLinkedHabitIds = initialRoutine?.linkedHabitIds || [];
+
+            // Find valid habits (filter out any IDs that might not exist)
+            const validHabits = habits.filter(h => newLinkedHabitIds.includes(h.id));
+
+            // Add to new links
+            for (const habit of validHabits) {
+                if (!habit.linkedRoutineIds?.includes(savedRoutine.id)) {
+                    await updateHabit(habit.id, {
+                        linkedRoutineIds: [...(habit.linkedRoutineIds || []), savedRoutine.id]
+                    });
+                }
+            }
+
+            // 2. Remove Routine ID from unlinked Habits
+            const removedHabitIds = previousLinkedHabitIds.filter(id => !newLinkedHabitIds.includes(id));
+            for (const hId of removedHabitIds) {
+                const habit = habits.find(h => h.id === hId);
+                if (habit && habit.linkedRoutineIds?.includes(savedRoutine.id)) {
+                    await updateHabit(habit.id, {
+                        linkedRoutineIds: habit.linkedRoutineIds.filter(rid => rid !== savedRoutine.id)
+                    });
+                }
             }
             onClose();
         } catch (err) {

@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Check, Target, Clock, Pin, PinOff, Circle, GripVertical, ChevronDown, ChevronRight, MoreHorizontal, ListTodo, Disc } from 'lucide-react';
+import { useState } from 'react';
+import { Check, Target, Clock, Pin, PinOff, ListTodo, Disc } from 'lucide-react';
 import type { Habit, DayLog } from '../../types';
 import { cn } from '../../utils/cn';
 
@@ -69,7 +69,7 @@ export const HabitGridCell = ({
             {/* COLLAPSED ROW (Always Visible) */}
             <div
                 className="flex items-center gap-3 p-3 cursor-pointer"
-                onClick={(e) => {
+                onClick={() => {
                     // Prevent expansion if clicking specific controls?
                     // The whole row triggers expand, checkbox triggers toggle.
                     onExpand();

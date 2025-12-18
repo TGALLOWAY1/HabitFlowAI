@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { X, Shield, CheckCircle2, Calculator, Layers, CheckSquare, ChevronDown, ChevronRight, Search, Trophy, Calendar } from 'lucide-react';
+import { X, Shield, CheckCircle2, Calculator, Layers, CheckSquare, ChevronDown, ChevronRight, Search, Trophy, Calendar, Plus, Check } from 'lucide-react';
 import { useHabitStore } from '../store/HabitContext';
+import { useRoutineStore } from '../store/RoutineContext';
 import { useProgressOverview } from '../lib/useProgressOverview';
 import type { Habit } from '../models/persistenceTypes';
 import { cn } from '../utils/cn';
@@ -14,6 +15,7 @@ interface AddHabitModalProps {
 
 export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, categoryId, initialData }) => {
     const { addHabit, updateHabit, categories, habits } = useHabitStore();
+    const { routines, addRoutine, updateRoutine } = useRoutineStore();
 
     // Form State
     const [name, setName] = useState('');
@@ -63,7 +65,7 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
     // But we might want to keep it for "Daily" habits if we supported "Some days" (e.g. MWF).
     // PRD says "Daily: No change".
     // Let's keep it but hide it for weekly.
-    const [assignedDays, setAssignedDays] = useState<number[]>([]);
+
 
     // Scheduling
     const [scheduledTime, setScheduledTime] = useState('');
@@ -74,6 +76,10 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
     const [linkedGoalId, setLinkedGoalId] = useState<string | null>(null);
     const { data: progressData } = useProgressOverview();
     const availableGoals = progressData?.goalsWithProgress.map(g => g.goal) || [];
+
+    // Routine Linking
+    const [linkedRoutineIds, setLinkedRoutineIds] = useState<string[]>([]);
+    const [showRoutineSelect, setShowRoutineSelect] = useState(false);
 
     // Weekly Intent Type Helper
     const [weeklyIntent, setWeeklyIntent] = useState<'binary' | 'frequency' | 'quantity'>('binary');
@@ -101,9 +107,9 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                 setTarget(initialData.goal.target ? String(initialData.goal.target) : '');
                 setUnit(initialData.goal.unit || '');
                 setFrequency(initialData.goal.frequency);
-                setAssignedDays(initialData.assignedDays || []);
                 setScheduledTime(initialData.scheduledTime || '');
                 setLinkedGoalId(initialData.linkedGoalId || null);
+                setLinkedRoutineIds(initialData.linkedRoutineIds || []);
 
                 // Infer Weekly Intent
                 if (initialData.goal.frequency === 'weekly') {
@@ -128,9 +134,9 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                 setTarget('');
                 setUnit('');
                 setFrequency('daily');
-                setAssignedDays([]);
                 setScheduledTime('');
                 setLinkedGoalId(null);
+                setLinkedRoutineIds([]);
                 setWeeklyIntent('binary');
                 setDurationMinutes('30');
                 setNonNegotiable(false);
@@ -209,6 +215,7 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                 scheduledTime: scheduledTime || undefined,
                 durationMinutes: durationMinutes ? Number(durationMinutes) : undefined,
                 linkedGoalId: linkedGoalId || undefined,
+                linkedRoutineIds: linkedRoutineIds.length > 0 ? linkedRoutineIds : undefined,
                 nonNegotiable,
                 description: description || undefined,
                 type: habitType === 'bundle' ? 'bundle' as const : undefined,
@@ -285,11 +292,59 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                 }
             }
 
+
+
+            // Sync with Routines (Bi-directional)
+            // 1. Add this habit to newly linked routines
+            for (const rId of linkedRoutineIds) {
+                const routine = routines.find(r => r.id === rId);
+                if (routine && !routine.linkedHabitIds?.includes(savedHabit.id)) {
+                    await updateRoutine(rId, {
+                        linkedHabitIds: [...(routine.linkedHabitIds || []), savedHabit.id]
+                    });
+                }
+            }
+
+            // 2. Remove this habit from unlinked routines (if editing)
+            if (initialData?.linkedRoutineIds) {
+                const removedRoutineIds = initialData.linkedRoutineIds.filter(id => !linkedRoutineIds.includes(id));
+                for (const rId of removedRoutineIds) {
+                    const routine = routines.find(r => r.id === rId);
+                    if (routine && routine.linkedHabitIds?.includes(savedHabit.id)) {
+                        await updateRoutine(rId, {
+                            linkedHabitIds: routine.linkedHabitIds.filter(hId => hId !== savedHabit.id)
+                        });
+                    }
+                }
+            }
+
             onClose();
         } catch (error) {
             console.error('Failed to save habit:', error);
         } finally {
             setIsSubmitting(false);
+        }
+    };
+
+    const toggleRoutine = (id: string) => {
+        setLinkedRoutineIds(prev =>
+            prev.includes(id) ? prev.filter(r => r !== id) : [...prev, id]
+        );
+    };
+
+    const handleCreateRoutine = async () => {
+        // Create a new routine with the habit name + "Routine"
+        try {
+            const newRoutine = await addRoutine({
+                title: `${name || 'New Routine'} Routine`,
+                categoryId: selectedCategoryId || undefined,
+                steps: [],
+                linkedHabitIds: [] // Will link on save
+            });
+            setLinkedRoutineIds(prev => [...prev, newRoutine.id]);
+            setShowRoutineSelect(false);
+        } catch (e) {
+            console.error("Failed to create routine", e);
         }
     };
 
@@ -723,6 +778,88 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                             </select>
                             <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-500 pointer-events-none" />
                         </div>
+                    </div>
+
+                    {/* Routine Linker */}
+                    <div className="space-y-1">
+                        <label className="block text-sm font-medium text-neutral-400">Related Routines (Optional)</label>
+
+                        {/* List of Linked Routines */}
+                        {linkedRoutineIds.length > 0 && (
+                            <div className="flex flex-wrap gap-2 mb-2">
+                                {linkedRoutineIds.map(rId => {
+                                    const routine = routines.find(r => r.id === rId);
+                                    if (!routine) return null;
+                                    return (
+                                        <div key={rId} className="flex items-center gap-1 bg-indigo-500/20 text-indigo-300 px-2 py-1 rounded text-xs border border-indigo-500/30">
+                                            <span>{routine.title}</span>
+                                            <button
+                                                type="button"
+                                                onClick={() => toggleRoutine(rId)}
+                                                className="hover:text-white"
+                                            >
+                                                <X size={12} />
+                                            </button>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
+
+                        <div className="relative">
+                            <button
+                                type="button"
+                                onClick={() => setShowRoutineSelect(!showRoutineSelect)}
+                                className="w-full bg-neutral-800 border border-white/10 rounded-lg px-4 py-2 text-left text-neutral-400 hover:text-white hover:bg-neutral-800/80 transition-colors flex justify-between items-center"
+                            >
+                                <span className={linkedRoutineIds.length > 0 ? "text-white" : ""}>
+                                    {linkedRoutineIds.length > 0 ? "Add another routine..." : "Link or create a routine..."}
+                                </span>
+                                <ChevronDown size={16} />
+                            </button>
+
+                            {showRoutineSelect && (
+                                <div className="absolute z-10 w-full mt-1 bg-neutral-900 border border-white/10 rounded-lg shadow-xl overflow-hidden animate-in fade-in zoom-in-95">
+                                    <div className="p-2 border-b border-white/5">
+                                        <button
+                                            type="button"
+                                            onClick={handleCreateRoutine}
+                                            className="w-full flex items-center gap-2 p-2 rounded hover:bg-emerald-500/10 text-emerald-400 hover:text-emerald-300 transition-colors text-sm font-medium"
+                                        >
+                                            <Plus size={14} /> Create New Routine "{name || 'Check'}"
+                                        </button>
+                                    </div>
+                                    <div className="max-h-40 overflow-y-auto">
+                                        {routines.map(routine => (
+                                            <button
+                                                key={routine.id}
+                                                type="button"
+                                                onClick={() => {
+                                                    toggleRoutine(routine.id);
+                                                    setShowRoutineSelect(false);
+                                                }}
+                                                disabled={linkedRoutineIds.includes(routine.id)}
+                                                className={`w-full text-left px-4 py-2 text-sm transition-colors flex items-center justify-between ${linkedRoutineIds.includes(routine.id)
+                                                    ? 'bg-indigo-500/20 text-indigo-300 opacity-50 cursor-default'
+                                                    : 'text-neutral-300 hover:bg-neutral-800 hover:text-white'
+                                                    }`}
+                                            >
+                                                {routine.title}
+                                                {linkedRoutineIds.includes(routine.id) && <Check size={14} />}
+                                            </button>
+                                        ))}
+                                        {routines.length === 0 && (
+                                            <div className="p-4 text-center text-xs text-neutral-500">
+                                                No existing routines found.
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                        <p className="text-[10px] text-neutral-500">
+                            Checking off a linked routine will also offer to complete this habit.
+                        </p>
                     </div>
 
                     {/* Bundle Configuration - UNIFIED (Checklist + Choice) */}
