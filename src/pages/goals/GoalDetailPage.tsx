@@ -19,6 +19,8 @@ import { EditGoalModal } from '../../components/goals/EditGoalModal';
 import { deleteGoal, markGoalAsCompleted, fetchHabitEntries } from '../../lib/persistenceClient';
 import { invalidateAllGoalCaches } from '../../lib/goalDataCache';
 import { GoalStatusChip } from '../../components/goals/GoalSharedComponents';
+import { GoalTrendChart } from '../../components/goals/GoalTrendChart';
+
 import { GoalCumulativeChart } from '../../components/goals/GoalCumulativeChart';
 import { GoalWeeklySummary } from '../../components/goals/GoalWeeklySummary';
 import { GoalEntryList } from '../../components/goals/GoalEntryList';
@@ -32,7 +34,7 @@ interface GoalDetailPageProps {
     onViewHabit?: (habitId: string) => void;
 }
 
-type Tab = 'cumulative' | 'dayByDay';
+type Tab = 'cumulative' | 'dayByDay' | 'trend';
 
 export const GoalDetailPage: React.FC<GoalDetailPageProps> = ({ goalId, onBack, onNavigateToCompleted, onViewHabit }) => {
     const { data, loading, error, refetch } = useGoalDetail(goalId);
@@ -241,6 +243,9 @@ export const GoalDetailPage: React.FC<GoalDetailPageProps> = ({ goalId, onBack, 
     const { goal, progress } = data;
     const progressPercent = goal.completedAt ? 100 : progress.percent;
 
+    // Determine if Trend tab should be shown
+    const canShowTrend = goal.type === 'cumulative' && goal.deadline;
+
     return (
         <div className="w-full max-w-4xl mx-auto px-4 py-6 sm:px-6 lg:px-8 bg-[#0A0A0A] min-h-screen text-white">
             {/* Top Navigation */}
@@ -336,6 +341,17 @@ export const GoalDetailPage: React.FC<GoalDetailPageProps> = ({ goalId, onBack, 
                 >
                     Cumulative
                 </button>
+                {canShowTrend && (
+                    <button
+                        onClick={() => setActiveTab('trend')}
+                        className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === 'trend'
+                            ? 'border-emerald-500 text-emerald-400'
+                            : 'border-transparent text-neutral-400 hover:text-white'
+                            }`}
+                    >
+                        Trend
+                    </button>
+                )}
                 <button
                     onClick={() => setActiveTab('dayByDay')}
                     className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === 'dayByDay'
@@ -367,12 +383,32 @@ export const GoalDetailPage: React.FC<GoalDetailPageProps> = ({ goalId, onBack, 
                     </div>
                 )}
 
+                {activeTab === 'trend' && canShowTrend && (
+                    <div className="space-y-8 h-full">
+                        <div>
+                            <h3 className="text-neutral-400 text-sm font-medium mb-4 uppercase tracking-wider">Progress Trend</h3>
+                            <p className="text-neutral-500 text-sm mb-4">
+                                Solid line is your actual progress. Dashed line is the pace needed to reach your target by the deadline.
+                            </p>
+                            <GoalTrendChart
+                                data={cumulativeData}
+                                startDate={goal.createdAt}
+                                deadline={goal.deadline!}
+                                targetValue={goal.targetValue!}
+                                color="#10b981"
+                                unit={goal.unit}
+                            />
+                        </div>
+                    </div>
+                )}
+
                 {activeTab === 'dayByDay' && (
                     <div>
                         <GoalEntryList entries={combinedEntries} />
                     </div>
                 )}
             </div>
+
 
             {/* Linked Habits Section */}
             <div className="mt-12 pt-8 border-t border-white/10">
