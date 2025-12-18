@@ -1,6 +1,6 @@
 import React from 'react';
 import type { Habit } from '../../types';
-import { cn } from '../../utils/cn';
+
 import { HabitGridCell } from './HabitGridCell';
 import { Flame } from 'lucide-react';
 

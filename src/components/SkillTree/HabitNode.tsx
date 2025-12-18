@@ -1,4 +1,4 @@
-import React, { forwardRef } from 'react';
+import { forwardRef } from 'react';
 import { Activity, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import type { SkillTreeHabitNode } from '../../server/services/skillTreeService';
 

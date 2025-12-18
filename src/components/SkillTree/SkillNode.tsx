@@ -1,5 +1,5 @@
-import React, { forwardRef } from 'react';
-import { Target, Trophy } from 'lucide-react';
+import { forwardRef } from 'react';
+import { Trophy } from 'lucide-react';
 import type { SkillTreeSkillNode } from '../../server/services/skillTreeService';
 
 interface SkillNodeProps {

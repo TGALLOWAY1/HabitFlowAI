@@ -23,7 +23,7 @@ function calculateActiveDays(logs: DayLog[], windowSize: number = 7, referenceDa
 
         // Find if any log exists for this day that is completed
         // And matches the filter (e.g. specific category) if provided
-        const hasActivity = logs.some(log => {
+        const hasLogs = logs.some(log => {
             if (log.completed !== true) return false;
             if (!isSameDay(parseISO(log.date), dateToCheck)) return false;
 
@@ -33,7 +33,7 @@ function calculateActiveDays(logs: DayLog[], windowSize: number = 7, referenceDa
             return true;
         });
 
-        if (hasActivity) {
+        if (hasLogs) {
             activeDaysCount++;
         }
     }

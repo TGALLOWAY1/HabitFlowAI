@@ -6,7 +6,7 @@ import { ProgressRings } from './ProgressRings';
 import { DailyCheckInModal } from './DailyCheckInModal';
 import { Sun, Loader2 } from 'lucide-react';
 import { GoalPulseCard } from './goals/GoalPulseCard';
-import { CategoryActivityRow } from './CategoryActivityRow';
+import { CategoryCompletionRow } from './CategoryCompletionRow';
 
 interface ProgressDashboardProps {
     onCreateGoal?: () => void;
@@ -195,7 +195,7 @@ export const ProgressDashboard: React.FC<ProgressDashboardProps> = ({ onCreateGo
                                 if (catHabits.length === 0) return null;
 
                                 return (
-                                    <CategoryActivityRow
+                                    <CategoryCompletionRow
                                         key={category.id}
                                         category={category}
                                         habits={catHabits}

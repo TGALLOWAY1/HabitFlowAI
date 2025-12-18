@@ -5,7 +5,7 @@
  */
 
 import express from 'express';
-import type { Express } from 'express';
+import type { Express, Request, Response } from 'express';
 import './config/env'; // Load environment variables first
 import { assertMongoEnabled } from './config';
 import { getCategories, createCategoryRoute, getCategory, updateCategoryRoute, deleteCategoryRoute, reorderCategoriesRoute } from './routes/categories';
@@ -158,6 +158,18 @@ app.patch('/api/entries/:id', updateHabitEntryRoute);
 import habitPotentialEvidenceRoutes from './routes/habitPotentialEvidence';
 app.use('/api/evidence', habitPotentialEvidenceRoutes);
 
+// --- MIGRATION ROUTES ---
+import { backfillDayLogsToEntries } from './utils/migrationUtils';
+
+app.post('/api/admin/migrations/backfill-daylogs', async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).userId || 'anonymous-user'; // Or known ID
+    const result = await backfillDayLogsToEntries(userId);
+    res.json({ success: true, ...result });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
 
 // Health check endpoint

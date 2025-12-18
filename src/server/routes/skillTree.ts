@@ -11,6 +11,7 @@ const router = express.Router();
 router.get('/', async (req, res) => {
     try {
         const userId = (req as any).userId;
+        console.log(`[SkillTree API] Request from userId: ${userId}`);
         if (!userId) {
             res.status(401).json({ error: 'Unauthorized' });
             return;

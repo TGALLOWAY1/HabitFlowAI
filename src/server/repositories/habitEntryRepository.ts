@@ -61,6 +61,39 @@ export async function createHabitEntry(
  * @param userId - User ID
  * @returns Array of HabitEntry
  */
+/**
+ * Get habit entries by habit ID.
+ * 
+ * @param habitId - Habit ID
+ * @returns Array of HabitEntry
+ */
+export async function getHabitEntries(
+    habitId: string
+): Promise<HabitEntry[]> {
+
+    const db = await getDb();
+    const collection = db.collection(COLLECTION_NAME);
+
+    // Note: This fetches purely by habitId. Without userId scoping it might be unsafe if habit IDs aren't unique global UUIDs.
+    // Assuming habit IDs are unique UUIDs.
+    const documents = await collection
+        .find({ habitId, deletedAt: { $exists: false } })
+        .sort({ timestamp: -1 })
+        .toArray();
+
+    return documents.map(doc => {
+        const { _id, userId: _, ...entry } = doc;
+        return entry as HabitEntry;
+    });
+}
+
+/**
+ * Get habit entries by habit ID (Scoped to User).
+ * 
+ * @param habitId - Habit ID
+ * @param userId - User ID
+ * @returns Array of HabitEntry
+ */
 export async function getHabitEntriesByHabit(
     habitId: string,
     userId: string

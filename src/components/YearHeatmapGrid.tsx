@@ -25,24 +25,24 @@ export const YearHeatmapGrid: React.FC<YearHeatmapGridProps> = React.memo(({ hab
             const dateStr = format(date, 'yyyy-MM-dd');
             const activeHabits = habits.filter(h => new Date(h.createdAt) <= date && !h.archived);
 
-            let activityCount = 0;
+            let completionCount = 0;
             const categoryIds = new Set<string>();
 
             if (activeHabits.length > 0) {
                 activeHabits.forEach(habit => {
                     const log = logs[`${habit.id}-${dateStr}`];
                     if (log?.completed) {
-                        activityCount++;
+                        completionCount++;
                         categoryIds.add(habit.categoryId);
                     }
                 });
             }
 
-            if (activityCount > maxCount) maxCount = activityCount;
+            if (completionCount > maxCount) maxCount = completionCount;
 
             return {
                 date,
-                count: activityCount,
+                count: completionCount,
                 categoryCount: categoryIds.size
             };
         });
@@ -149,7 +149,7 @@ export const YearHeatmapGrid: React.FC<YearHeatmapGridProps> = React.memo(({ hab
                                 <div
                                     key={day.date.toISOString()}
                                     data-tooltip-id="heatmap-tooltip"
-                                    data-tooltip-content={`${format(day.date, 'MMM d, yyyy')}: ${day.count} activities across ${day.categoryCount} categories`}
+                                    data-tooltip-content={`${format(day.date, 'MMM d, yyyy')}: ${day.count} completions across ${day.categoryCount} categories`}
                                     className={`aspect-square w-full rounded-sm ${getHeatmapColor(day.intensity)} transition-all hover:ring-1 hover:ring-white/50`}
                                 />
                             ))}

@@ -35,19 +35,19 @@ export async function upsertDayLog(
     date: log.date,
     value: log.value,
     completed: log.completed,
+    source: log.source, // Explicitly store source
+    routineId: log.routineId, // Explicitly store routineId
     compositeKey, // Store composite key for efficient querying
     userId,
   };
 
-  // Add activity metadata if it exists in the log object
-  // Check property existence to ensure we capture it even if it's an optional field
+  // Legacy mapping: If legacy activityId exists and routineId is missing, map it.
   const logAny = log as any;
-  if (logAny.hasOwnProperty('activityId') && logAny.activityId != null) {
-    document.activityId = logAny.activityId;
+  if (!document.routineId && logAny.hasOwnProperty('activityId') && logAny.activityId != null) {
+    document.routineId = logAny.activityId;
   }
-  if (logAny.hasOwnProperty('activityStepId') && logAny.activityStepId != null) {
-    document.activityStepId = logAny.activityStepId;
-  }
+  // Remove legacy activityStepId handling as it's not in the new DayLog model
+
 
   // Upsert (insert or update) using findOneAndUpdate to get the latest state
   const result = await collection.findOneAndUpdate(

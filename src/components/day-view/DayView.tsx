@@ -1,11 +1,11 @@
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import { useHabitStore } from '../../store/HabitContext';
 import { getHabitsForDate } from '../../utils/habitUtils';
 import { PinnedHabitsStrip } from './PinnedHabitsStrip';
 import { DayCategorySection } from './DayCategorySection';
 import { format } from 'date-fns';
 import { Calendar } from 'lucide-react';
-import { cn } from '../../utils/cn';
+
 import type { Habit } from '../../types';
 
 export const DayView = () => {

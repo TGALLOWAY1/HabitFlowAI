@@ -74,8 +74,11 @@ export const GoalDetailPage: React.FC<GoalDetailPageProps> = ({ goalId, onBack, 
 
             try {
                 const allEntries: HabitEntry[] = [];
+                console.log('[GoalDetail] Loading entries for habits:', data.goal.linkedHabitIds);
                 for (const habitId of data.goal.linkedHabitIds) {
+                    // Strict Aggregation: Fetch only HabitEntries (backfill handled DayLogs)
                     const entries = await fetchHabitEntries(habitId);
+                    console.log(`[GoalDetail] Fetched ${entries.length} entries for habit ${habitId}`, entries);
                     allEntries.push(...entries);
                 }
                 setLinkedHabitEntries(allEntries);
@@ -95,25 +98,52 @@ export const GoalDetailPage: React.FC<GoalDetailPageProps> = ({ goalId, onBack, 
 
         const manual = data.manualLogs.map(log => ({
             id: log.id,
-            date: log.loggedAt,
+            date: log.loggedAt, // Ensure this is also just YYYY-MM-DD if possible, or ISO is fine
             value: log.value,
             source: 'manual' as const,
             unit: data.goal.unit
         }));
 
-        const fromHabits = linkedHabitEntries.map(entry => {
-            const habit = habitMap.get(entry.habitId);
-            return {
-                id: entry.id,
-                date: entry.timestamp,
-                value: entry.value || 0, // Default to 0 if undefined
-                source: 'habit' as const,
-                habitName: habit?.name,
-                unit: habit?.goal.unit || data.goal.unit
-            };
-        });
+        const fromHabits = linkedHabitEntries
+            .filter(entry => {
+                const habit = habitMap.get(entry.habitId);
+                if (!habit) return false;
+
+                // Type-Based Aggregation Logic
+                if (data.goal.type === 'cumulative') {
+                    // 1. Exclude Boolean habits from Cumulative/Numeric goals
+                    if (habit.goal.type === 'boolean') {
+                        return false;
+                    }
+                    // 2. Include all Numeric habits
+                    return true;
+                }
+
+                // For other goal types (Frequency), accept everything
+                return true;
+            })
+            .map(entry => {
+                const habit = habitMap.get(entry.habitId);
+                // Use entry.date (YYYY-MM-DD) as the canonical date source.
+                // Fallback to timestamp split if needed, but entry.date is required.
+                const dateStr = entry.date || entry.timestamp.split('T')[0];
+
+                return {
+                    id: entry.id,
+                    date: dateStr,
+                    // Now that we filtered incompatible units, we can safely use value.
+                    // If value is undefined but unit matched (unlikely if strictly checked, but possible for some data shapes),
+                    // we might default to 0 or 1.
+                    // If goal is cumulative, we expect a number.
+                    value: entry.value !== undefined ? entry.value : (data.goal.type === 'frequency' ? 1 : 0),
+                    source: 'habit' as const,
+                    habitName: habit?.name,
+                    unit: habit?.goal.unit || data.goal.unit
+                };
+            });
 
         const combined = [...manual, ...fromHabits].filter(item => item.date);
+        console.log('[GoalDetail] Final combined entries:', combined);
         return combined.sort((a, b) => (a.date || '').localeCompare(b.date || ''));
     }, [data, linkedHabitEntries, habitMap]);
 

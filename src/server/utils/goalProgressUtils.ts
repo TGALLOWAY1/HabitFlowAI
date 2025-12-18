@@ -97,8 +97,12 @@ export async function computeGoalProgress(
     manualLogs = await getGoalManualLogsByGoal(goalId, userId);
   }
 
+  // Fetch relevant habits for unit checking
+  const allHabits = await getHabitsByUser(userId);
+  const habitMap = new Map(allHabits.map(h => [h.id, h]));
+
   // Use the optimized function to compute full progress
-  return computeFullGoalProgress(goal, allLogs, manualLogs);
+  return computeFullGoalProgress(goal, allLogs, manualLogs, habitMap);
 }
 
 /**
@@ -185,10 +189,13 @@ export async function getGoalInactivity(
  * @param manualLogs - All manual logs for the goal (pre-fetched, only for cumulative goals)
  * @returns GoalProgress with currentValue, percent, lastSevenDays, and inactivityWarning
  */
+import type { Habit } from '../../models/persistenceTypes';
+
 export function computeFullGoalProgress(
   goal: Goal,
   allLogs: DayLog[],
-  manualLogs: GoalManualLog[] = []
+  manualLogs: GoalManualLog[] = [],
+  habitMap?: Map<string, Habit>
 ): GoalProgress {
   // Get date range for last 30 days (most recent first)
   const last30Days: string[] = [];
@@ -222,8 +229,28 @@ export function computeFullGoalProgress(
   // Compute current value
   let currentValue: number;
   if (goal.type === 'cumulative') {
-    // Sum all habit log values
-    const habitValue = allLogs.reduce((sum, log) => sum + (log.value ?? 0), 0);
+    // Sum all habit log values (STRICT AGGREGATION)
+    const habitValue = allLogs.reduce((sum, log) => {
+      // Strict Mode: Check if habit unit matches goal unit
+      // Strict Mode: Check if habit unit matches goal unit, BUT use Type-Based filtering for robustness
+      if (habitMap && goal.unit) {
+        const habit = habitMap.get(log.habitId);
+
+        // If habit not found, skip safely
+        if (!habit) return sum;
+
+        // Type-Based Aggregation Logic (Matching GoalDetailPage.tsx fix)
+        // 1. Exclude Boolean habits from Cumulative/Numeric goals
+        //    (Prevents checkboxes from adding +1 to 'miles')
+        if (habit.goal.type === 'boolean') {
+          return sum;
+        }
+
+        // 2. Include all Numeric habits regardless of unit typo (e.g. "mile" vs "miles")
+        //    We trust the user's link configuration here.
+      }
+      return sum + (log.value ?? 0);
+    }, 0);
     // Sum all manual log values
     const manualValue = manualLogs.reduce((sum, log) => sum + log.value, 0);
     currentValue = habitValue + manualValue;
@@ -259,8 +286,22 @@ export function computeFullGoalProgress(
     let hasProgress = false;
 
     if (goal.type === 'cumulative') {
-      // Sum habit log values for this day
-      const habitValue = dayLogs.reduce((sum, log) => sum + (log.value ?? 0), 0);
+      // Sum habit log values for this day (STRICT AGGREGATION)
+      const habitValue = dayLogs.reduce((sum, log) => {
+        if (habitMap && goal.unit) {
+          const habit = habitMap.get(log.habitId);
+
+          if (!habit) return sum;
+
+          // Type-Based Aggregation (Daily History Loop)
+          // 1. Exclude Boolean habits from Cumulative/Numeric goals
+          if (habit.goal.type === 'boolean') {
+            return sum;
+          }
+          // 2. Include all Numeric habits (ignore unit string mismatch)
+        }
+        return sum + (log.value ?? 0);
+      }, 0);
       // Sum manual log values for this day
       const dayManualLogs = manualLogsByDate.get(date) || [];
       const manualValue = dayManualLogs.reduce((sum, log) => sum + log.value, 0);
@@ -387,7 +428,7 @@ export async function computeGoalsWithProgress(
       : [];
 
     // Compute full progress
-    const progress = computeFullGoalProgress(goal, goalLogs, goalManualLogs);
+    const progress = computeFullGoalProgress(goal, goalLogs, goalManualLogs, habitMap);
 
     results.push({
       goal,
