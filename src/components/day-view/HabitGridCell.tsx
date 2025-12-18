@@ -155,7 +155,7 @@ export const HabitGridCell = ({
                             {habit.bundleOptions?.map(option => (
                                 <button
                                     key={option.key}
-                                    onClick={() => onChoiceSelect && onChoiceSelect(option.key)}
+                                    onClick={() => onChoiceSelect && onChoiceSelect(option.key || '')}
                                     className={cn(
                                         "px-2 py-1 rounded text-[10px] font-medium border transition-all",
                                         selectedChoice === option.key

@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { X, Loader2, AlertCircle, Plus, Folder } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { X, Loader2, AlertCircle, Plus, Folder, Search, Filter } from 'lucide-react';
 import { updateGoal } from '../../lib/persistenceClient';
 import { useHabitStore } from '../../store/HabitContext';
 import type { GoalWithProgress } from '../../models/persistenceTypes';
@@ -36,6 +36,10 @@ export const EditGoalModal: React.FC<EditGoalModalProps> = ({
     const [newCategoryName, setNewCategoryName] = useState('');
     const [isSubmittingCategory, setIsSubmittingCategory] = useState(false);
 
+    // Filter State
+    const [habitSearch, setHabitSearch] = useState('');
+    const [filterByGoalCategory, setFilterByGoalCategory] = useState(true);
+
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [isAddHabitOpen, setIsAddHabitOpen] = useState(false);
@@ -51,8 +55,30 @@ export const EditGoalModal: React.FC<EditGoalModalProps> = ({
             setDeadline(goal.deadline || '');
             setCategoryId(goal.categoryId || '');
             setError(null);
+            setHabitSearch('');
+            setFilterByGoalCategory(true);
         }
     }, [isOpen, goal]);
+
+    // Filtered Habits Logic (Moved above early return to satisfy Rules of Hooks)
+    const displayedHabits = useMemo(() => {
+        let filtered = habits;
+
+        // 1. Text Search
+        if (habitSearch.trim()) {
+            const query = habitSearch.toLowerCase();
+            filtered = filtered.filter(h =>
+                h.name.toLowerCase().includes(query)
+            );
+        }
+
+        // 2. Category Filter
+        if (filterByGoalCategory && categoryId) {
+            filtered = filtered.filter(h => h.categoryId === categoryId);
+        }
+
+        return filtered;
+    }, [habits, habitSearch, categoryId, filterByGoalCategory]);
 
     if (!isOpen) return null;
 
@@ -98,8 +124,17 @@ export const EditGoalModal: React.FC<EditGoalModalProps> = ({
             return;
         }
 
-        if (selectedHabitIds.length === 0) {
-            setError('At least one habit must be linked');
+        // --- FIX FOR GHOST HABIT IDs ---
+        // Filter out any IDs that don't exist in the current habits list.
+        // This removes deleted/stale habits that cause backend validation errors.
+        // We only filter if we have loaded habits to avoid accidental clearing.
+        let validSelectedIds = selectedHabitIds;
+        if (habits.length > 0) {
+            validSelectedIds = selectedHabitIds.filter(id => habits.some(h => h.id === id));
+        }
+
+        if (validSelectedIds.length === 0) {
+            setError('At least one valid habit must be linked');
             return;
         }
 
@@ -111,7 +146,7 @@ export const EditGoalModal: React.FC<EditGoalModalProps> = ({
                 notes: description,
                 targetValue: goal.type === 'onetime' ? undefined : numTarget,
                 unit: goal.type === 'onetime' ? undefined : unit,
-                linkedHabitIds: selectedHabitIds,
+                linkedHabitIds: validSelectedIds, // Use sanitized IDs
                 deadline: deadline || undefined,
                 categoryId: categoryId || undefined,
             });
@@ -328,7 +363,7 @@ export const EditGoalModal: React.FC<EditGoalModalProps> = ({
 
                         {/* Habit Selector */}
                         <div>
-                            <div className="flex items-center justify-between mb-2">
+                            <div className="flex items-center justify-between mb-4">
                                 <label className="block text-sm font-medium text-neutral-300">
                                     Linked Habits
                                 </label>
@@ -341,15 +376,69 @@ export const EditGoalModal: React.FC<EditGoalModalProps> = ({
                                     Create new habit
                                 </button>
                             </div>
+
+                            {/* Filter Bar */}
+                            <div className="flex gap-2 mb-3">
+                                <div className="relative flex-1">
+                                    <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500" />
+                                    <input
+                                        type="text"
+                                        value={habitSearch}
+                                        onChange={(e) => setHabitSearch(e.target.value)}
+                                        placeholder="Search habits..."
+                                        className="w-full bg-neutral-800/50 border border-white/10 rounded-lg pl-9 pr-3 py-2 text-sm text-white focus:outline-none focus:border-white/20"
+                                    />
+                                    {habitSearch && (
+                                        <button
+                                            type="button"
+                                            onClick={() => setHabitSearch('')}
+                                            className="absolute right-2 top-1/2 -translate-y-1/2 text-neutral-500 hover:text-white"
+                                        >
+                                            <X size={14} />
+                                        </button>
+                                    )}
+                                </div>
+                                {categoryId && (
+                                    <button
+                                        type="button"
+                                        onClick={() => setFilterByGoalCategory(!filterByGoalCategory)}
+                                        className={`px-3 py-2 rounded-lg border text-xs font-medium flex items-center gap-2 transition-colors ${filterByGoalCategory
+                                                ? 'bg-emerald-500/10 border-emerald-500/50 text-emerald-400'
+                                                : 'bg-neutral-800/50 border-white/10 text-neutral-400 hover:bg-neutral-800'
+                                            }`}
+                                        title="Only show habits in this goal's category"
+                                    >
+                                        <Filter size={14} />
+                                        Match Category
+                                    </button>
+                                )}
+                            </div>
+
                             <p className="text-neutral-400 text-xs mb-3">
-                                Select or unselect habits that contribute to this goal.
+                                {displayedHabits.length} habit{displayedHabits.length !== 1 ? 's' : ''} available
+                                {filterByGoalCategory && categoryId && ' (filtered by category)'}
                             </p>
 
                             <div className="space-y-2 max-h-60 overflow-y-auto border border-white/5 rounded-lg p-2 bg-neutral-800/20">
-                                {habits.length === 0 ? (
-                                    <div className="text-neutral-500 text-sm p-2 text-center">No habits available.</div>
+                                {displayedHabits.length === 0 ? (
+                                    <div className="text-neutral-500 text-sm p-4 text-center flex flex-col items-center gap-2">
+                                        <Search size={24} className="opacity-20" />
+                                        <p>No habits found matching your filters.</p>
+                                        {(habitSearch || filterByGoalCategory) && (
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    setHabitSearch('');
+                                                    setFilterByGoalCategory(false);
+                                                }}
+                                                className="text-emerald-400 text-xs hover:underline"
+                                            >
+                                                Clear all filters
+                                            </button>
+                                        )}
+                                    </div>
                                 ) : (
-                                    habits.map(habit => (
+                                    displayedHabits.map(habit => (
                                         <div
                                             key={habit.id}
                                             onClick={() => toggleHabitSelection(habit.id)}
@@ -368,6 +457,12 @@ export const EditGoalModal: React.FC<EditGoalModalProps> = ({
                                                 <div className="text-white text-sm font-medium">{habit.name}</div>
                                                 <div className="text-neutral-400 text-xs">{habit.goal.frequency} • {habit.goal.target} {habit.goal.unit}</div>
                                             </div>
+                                            {/* Category Tag (Visual confirmation) */}
+                                            {categories.find(c => c.id === habit.categoryId) && (
+                                                <div className="text-[10px] px-2 py-0.5 rounded bg-neutral-700 text-neutral-300">
+                                                    {categories.find(c => c.id === habit.categoryId)?.name}
+                                                </div>
+                                            )}
                                         </div>
                                     ))
                                 )}
@@ -414,4 +509,3 @@ export const EditGoalModal: React.FC<EditGoalModalProps> = ({
         </div>
     );
 };
-

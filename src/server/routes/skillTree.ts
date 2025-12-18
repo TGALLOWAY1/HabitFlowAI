@@ -8,10 +8,13 @@ const router = express.Router();
  * GET /api/skill-tree
  * Returns the full skill tree with aggregated progress metrics.
  */
-router.get('/', async (_req, res) => {
+router.get('/', async (req, res) => {
     try {
-        // Mock user ID for now - In real app, get from auth middleware
-        const userId = 'anonymous-user';
+        const userId = (req as any).userId;
+        if (!userId) {
+            res.status(401).json({ error: 'Unauthorized' });
+            return;
+        }
 
         const data = await getSkillTree(userId);
 

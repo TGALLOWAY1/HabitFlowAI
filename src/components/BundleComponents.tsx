@@ -269,7 +269,7 @@ const ChoiceCell: React.FC<{
                         <button
                             key={opt.key}
                             onClick={() => {
-                                onChoiceSelect(habit.id, dateStr, opt.key);
+                                onChoiceSelect(habit.id, dateStr, opt.key || '');
                                 setShowMenu(false);
                             }}
                             className={cn(
