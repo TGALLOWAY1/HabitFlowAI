@@ -26,9 +26,10 @@ import { DayView } from './components/day-view/DayView';
 
 import { JournalPage } from './pages/JournalPage';
 import { TasksPage } from './pages/TasksPage';
+import { DebugEntriesPage } from './pages/DebugEntriesPage';
 
 // Simple router state
-type AppRoute = 'tracker' | 'dashboard' | 'routines' | 'goals' | 'calendar' | 'wins' | 'journal' | 'tasks' | 'day';
+type AppRoute = 'tracker' | 'dashboard' | 'routines' | 'goals' | 'calendar' | 'wins' | 'journal' | 'tasks' | 'day' | 'debug-entries';
 
 
 // Helper functions for URL syncing
@@ -59,6 +60,8 @@ function parseRouteFromLocation(location: Location): AppRoute {
       return "tasks";
     case "day":
       return "tracker"; // Redirect old 'day' view to tracker
+    case "debug-entries":
+      return "debug-entries";
     default:
 
       return "dashboard"; // default view
@@ -429,6 +432,8 @@ const HabitTrackerContent: React.FC = () => {
           <JournalPage />
         ) : view === 'tasks' ? (
           <TasksPage />
+        ) : view === 'debug-entries' ? (
+          <DebugEntriesPage />
         ) : (
           <GoalsPage
             onCreateGoal={() => setShowCreateGoal(true)}
