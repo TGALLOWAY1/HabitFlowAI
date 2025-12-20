@@ -601,7 +601,8 @@ export async function submitRoutineRoute(req: Request, res: Response): Promise<v
         value: 1, // Assume bool completion for simple flow
         source: 'routine',
         routineId: routine.id,
-        dateKey: logDate, // Ensure dateKey matches date
+        dayKey: logDate, // Canonical dayKey
+        date: logDate, // Legacy alias
       });
 
       // Recompute DayLog to keep derived cache in sync

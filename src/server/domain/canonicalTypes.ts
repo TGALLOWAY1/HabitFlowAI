@@ -123,11 +123,13 @@ export interface ValidationResult {
  */
 export interface HabitEntryPayload {
     habitId: string;
-    date: string; // DayKey format (YYYY-MM-DD)
+    dayKey?: string; // DayKey format (YYYY-MM-DD) - preferred
+    date?: string; // DayKey format (YYYY-MM-DD) - legacy alias
     value?: number | null;
     source?: EntrySource;
     routineId?: string;
     timestamp?: string; // ISO 8601, defaults to now
+    timeZone?: string; // IANA timezone (required if deriving dayKey from timestamp)
     note?: string;
     bundleOptionId?: string;
     choiceChildHabitId?: string;

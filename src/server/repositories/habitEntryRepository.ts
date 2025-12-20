@@ -30,9 +30,17 @@ export async function createHabitEntry(
     const now = new Date().toISOString();
     const id = randomUUID();
 
+    // Ensure dayKey is present (required)
+    const dayKey = entry.dayKey || entry.date;
+    if (!dayKey) {
+        throw new Error('HabitEntry must have dayKey or date (legacy)');
+    }
+
     const newEntry: HabitEntry = {
         ...entry,
         id,
+        dayKey, // Store canonical dayKey
+        date: dayKey, // Keep date as legacy alias for backward compatibility
         createdAt: now,
         updatedAt: now,
     };
@@ -41,8 +49,8 @@ export async function createHabitEntry(
     const document = {
         ...newEntry,
         userId,
-        // Add date index for faster querying by day
-        date: entry.date,
+        dayKey, // Store canonical dayKey
+        date: dayKey, // Keep date as legacy alias for queries
     };
 
     const result = await collection.insertOne(document);
@@ -118,23 +126,27 @@ export async function getHabitEntriesByHabit(
  * Useful for recomputing daily logs.
  * 
  * @param habitId - Habit ID
- * @param date - Date string (YYYY-MM-DD)
+ * @param dayKey - DayKey string (YYYY-MM-DD) - canonical field
  * @param userId - User ID
  * @returns Array of HabitEntry
  */
 export async function getHabitEntriesForDay(
     habitId: string,
-    date: string,
+    dayKey: string,
     userId: string
 ): Promise<HabitEntry[]> {
     const db = await getDb();
     const collection = db.collection(COLLECTION_NAME);
 
+    // Query by dayKey (preferred) or date (legacy fallback)
     const documents = await collection
         .find({
             habitId,
             userId,
-            date,
+            $or: [
+                { dayKey },
+                { date: dayKey } // Legacy fallback
+            ],
             deletedAt: { $exists: false }
         })
         .toArray();
@@ -238,34 +250,42 @@ export async function deleteHabitEntriesForDay(
 }
 
 /**
- * Upsert a habit entry for a specific date (create or update)
+ * Upsert a habit entry for a specific dayKey (create or update)
  * @param habitId - Habit ID
- * @param date - Date string YYYY-MM-DD
+ * @param dayKey - DayKey string YYYY-MM-DD (canonical)
  * @param userId - User ID
- * @param updates - Updates to apply (value, completed, etc)
+ * @param updates - Updates to apply (value, source, etc)
  */
 export async function upsertHabitEntry(
     habitId: string,
-    date: string,
+    dayKey: string,
     userId: string,
-    updates: Partial<Omit<HabitEntry, 'id' | 'habitId' | 'date' | 'userId' | 'createdAt' | 'updatedAt'>>
+    updates: Partial<Omit<HabitEntry, 'id' | 'habitId' | 'dayKey' | 'date' | 'userId' | 'createdAt' | 'updatedAt'>>
 ): Promise<HabitEntry> {
     const db = await getDb();
     const collection = db.collection(COLLECTION_NAME);
 
     const now = new Date().toISOString();
 
-    // Check if exists (active)
+    // Check if exists (active) - query by dayKey (preferred) or date (legacy)
     const existing = await collection.findOne({
         habitId,
-        date,
+        $or: [
+            { dayKey },
+            { date: dayKey } // Legacy fallback
+        ],
         userId,
         deletedAt: { $exists: false }
     }) as unknown as HabitEntry | null;
 
     if (existing) {
-        // Update
-        const patch = { ...updates, updatedAt: now };
+        // Update - ensure dayKey is set
+        const patch = { 
+            ...updates, 
+            dayKey, // Ensure canonical dayKey is set
+            date: dayKey, // Keep date as legacy alias
+            updatedAt: now 
+        };
 
         await collection.updateOne(
             { _id: new ObjectId((existing as any)._id) },
@@ -273,18 +293,17 @@ export async function upsertHabitEntry(
         );
         return { ...existing, ...patch };
     } else {
-        // Create
-        // Need to explicitly cast 'completed' if it's not in the Omit, but it should be?
-        // Actually HabitEntry has 'completed', so Omit removes it? No, I omitted 'id'|'habitId'...
-        // Let's just cast updates to any to merge safely
+        // Create - ensure dayKey is set
         const newEntry = {
             _id: new ObjectId(),
-            id: new ObjectId().toHexString(),
+            id: randomUUID(),
             habitId,
             userId,
-            date,
-            value: updates.value || 0,
-            completed: (updates as any).completed || false,
+            dayKey, // Canonical dayKey
+            date: dayKey, // Legacy alias
+            value: updates.value ?? undefined,
+            timestamp: updates.timestamp || now,
+            source: updates.source || 'manual',
             createdAt: now,
             updatedAt: now,
             ...updates

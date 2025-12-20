@@ -83,15 +83,23 @@ export function validateHabitEntryPayloadStructure(payload: Partial<HabitEntryPa
         return { valid: false, error: 'habitId is required and must be a string' };
     }
 
-    if (!payload.date || typeof payload.date !== 'string') {
-        return { valid: false, error: 'date is required and must be a string (DayKey format: YYYY-MM-DD)' };
+    // dayKey or date (legacy) is required - but we'll normalize later, so just check format if provided
+    if (payload.dayKey && typeof payload.dayKey === 'string') {
+        const dayKeyValidation = validateDayKey(payload.dayKey);
+        if (!dayKeyValidation.valid) {
+            return dayKeyValidation;
+        }
     }
 
-    // Validate date is a valid DayKey
-    const dayKeyValidation = validateDayKey(payload.date);
-    if (!dayKeyValidation.valid) {
-        return dayKeyValidation;
+    if (payload.date && typeof payload.date === 'string') {
+        const dayKeyValidation = validateDayKey(payload.date);
+        if (!dayKeyValidation.valid) {
+            return { valid: false, error: `Invalid date format (legacy): ${dayKeyValidation.error}` };
+        }
     }
+
+    // If neither dayKey nor date is provided, we'll check for timestamp + timeZone in normalization
+    // Don't fail here - let normalization handle it
 
     // Validate source if provided
     if (payload.source !== undefined) {

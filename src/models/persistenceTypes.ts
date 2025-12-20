@@ -950,7 +950,17 @@ export interface HabitEntry {
     /** Optional: linked activity/routine ID */
     routineId?: string;
 
-    /** Optional: derived day date (YYYY-MM-DD) for easier querying */
+    /**
+     * DayKey (YYYY-MM-DD) - Canonical aggregation boundary
+     * Required: All entries must have a dayKey for aggregation.
+     * This is the primary field for day-based queries and grouping.
+     */
+    dayKey: string;
+
+    /** 
+     * Legacy date field (YYYY-MM-DD) - kept for backward compatibility
+     * @deprecated Use dayKey instead. This field is maintained as an alias for queries.
+     */
     date: string;
 
     /** Optional note */
@@ -966,9 +976,8 @@ export interface HabitEntry {
     updatedAt: string;
 
     /**
-     * Logical Date Key (YYYY-MM-DD)
-     * Represents the unique day this entry belongs to.
-     * Enforces Single-Entry Per Day constraint via (habitId, dateKey) uniqueness.
+     * Deprecated dateKey field (YYYY-MM-DD)
+     * @deprecated Use dayKey instead. This field is kept for backward compatibility only.
      */
     dateKey?: string;
 

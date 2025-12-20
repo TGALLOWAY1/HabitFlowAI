@@ -15,6 +15,7 @@ import { getHabitById } from '../repositories/habitRepository';
 import { validateHabitEntryPayload } from '../utils/habitValidation';
 import { recomputeDayLogForHabit } from '../utils/recomputeUtils';
 import { validateDayKey, assertTimeZone, validateHabitEntryPayloadStructure, assertNoStoredCompletion } from '../domain/canonicalValidators';
+import { normalizeHabitEntryPayload } from '../utils/dayKeyNormalization';
 
 /**
  * Get entry views for a habit (via truthQuery).
@@ -111,8 +112,23 @@ export async function createHabitEntryRoute(req: Request, res: Response): Promis
             return;
         }
 
-        if (!entryData.habitId || !entryData.date) {
-            res.status(400).json({ error: 'Missing required fields: habitId, date' });
+        // Normalize dayKey from various inputs (dayKey, date, or timestamp + timeZone)
+        const userTimeZone = (entryData.timeZone && typeof entryData.timeZone === 'string')
+            ? entryData.timeZone
+            : 'UTC'; // Default to UTC
+
+        let normalizedPayload;
+        try {
+            normalizedPayload = normalizeHabitEntryPayload(entryData, userTimeZone);
+        } catch (error) {
+            res.status(400).json({ 
+                error: error instanceof Error ? error.message : 'Failed to normalize dayKey' 
+            });
+            return;
+        }
+
+        if (!entryData.habitId) {
+            res.status(400).json({ error: 'Missing required field: habitId' });
             return;
         }
 
@@ -130,17 +146,23 @@ export async function createHabitEntryRoute(req: Request, res: Response): Promis
             return;
         }
 
-        // 1. Create Entry
+        // 1. Create Entry with normalized dayKey
         const newEntry = await createHabitEntry({
             ...entryData,
-            timestamp: entryData.timestamp || new Date().toISOString(), // Default to now if not provided
+            dayKey: normalizedPayload.dayKey,
+            date: normalizedPayload.dayKey, // Keep date as legacy alias for backward compatibility
+            timestamp: normalizedPayload.timestampUtc,
             source: entryData.source || 'manual' // Default source
         }, userId);
 
-        // 2. Recompute DayLog
+        // 2. Recompute DayLog (use dayKey, fallback to date for legacy)
+        const dayKeyForRecompute = newEntry.dayKey || newEntry.date;
+        if (!dayKeyForRecompute) {
+            throw new Error('Entry missing dayKey after creation');
+        }
         const updatedDayLog = await recomputeDayLogForHabit(
             newEntry.habitId,
-            newEntry.date,
+            dayKeyForRecompute,
             userId
         );
 
@@ -207,7 +229,13 @@ export async function deleteHabitEntryRoute(req: Request, res: Response): Promis
             return;
         }
 
-        const { habitId, date } = entry;
+        const { habitId, dayKey, date } = entry;
+        const dayKeyForRecompute = dayKey || date;
+
+        if (!dayKeyForRecompute) {
+            res.status(500).json({ error: 'Entry missing dayKey/date' });
+            return;
+        }
 
         // 1. Delete
         const deleted = await deleteHabitEntry(id, userId);
@@ -217,7 +245,7 @@ export async function deleteHabitEntryRoute(req: Request, res: Response): Promis
         }
 
         // 2. Recompute
-        const updatedDayLog = await recomputeDayLogForHabit(habitId, date, userId);
+        const updatedDayLog = await recomputeDayLogForHabit(habitId, dayKeyForRecompute, userId);
 
         res.json({
             success: true,
@@ -240,15 +268,6 @@ export async function updateHabitEntryRoute(req: Request, res: Response): Promis
         const { id } = req.params;
         const patch = req.body;
 
-        // Validate payload structure if date is being updated
-        if (patch.date) {
-            const dayKeyValidation = validateDayKey(patch.date);
-            if (!dayKeyValidation.valid) {
-                res.status(400).json({ error: dayKeyValidation.error });
-                return;
-            }
-        }
-
         // Ensure no stored completion flags
         const noCompletionValidation = assertNoStoredCompletion(patch);
         if (!noCompletionValidation.valid) {
@@ -256,8 +275,8 @@ export async function updateHabitEntryRoute(req: Request, res: Response): Promis
             return;
         }
 
-        // 1. Fetch old entry to capture old date before update
-        // This is necessary to recompute both old and new dates if date changes
+        // 1. Fetch old entry to capture old dayKey before update
+        // This is necessary to recompute both old and new dates if dayKey changes
         const { getDb } = await import('../lib/mongoClient');
         const db = await getDb();
         const oldEntry = await db.collection('habitEntries').findOne({ id, userId });
@@ -267,8 +286,32 @@ export async function updateHabitEntryRoute(req: Request, res: Response): Promis
             return;
         }
 
-        const oldDate = oldEntry.date;
+        const oldDayKey = oldEntry.dayKey || oldEntry.date;
         const habitId = oldEntry.habitId;
+
+        // Normalize dayKey if date/dayKey/timestamp is being updated
+        if (patch.date || patch.dayKey || patch.timestamp) {
+            const userTimeZone = (patch.timeZone && typeof patch.timeZone === 'string')
+                ? patch.timeZone
+                : 'UTC';
+
+            try {
+                const normalized = normalizeHabitEntryPayload({
+                    ...patch,
+                    timestamp: patch.timestamp || oldEntry.timestamp,
+                }, userTimeZone);
+
+                // Update patch with normalized dayKey
+                patch.dayKey = normalized.dayKey;
+                patch.date = normalized.dayKey; // Keep date as legacy alias
+                patch.timestamp = normalized.timestampUtc;
+            } catch (error) {
+                res.status(400).json({ 
+                    error: error instanceof Error ? error.message : 'Failed to normalize dayKey' 
+                });
+                return;
+            }
+        }
 
         // 2. Update entry
         const updatedEntry = await updateHabitEntry(id, userId, patch);
@@ -278,19 +321,19 @@ export async function updateHabitEntryRoute(req: Request, res: Response): Promis
             return;
         }
 
-        // 3. Recompute DayLogs for affected dates
-        const newDate = updatedEntry.date;
+        // 3. Recompute DayLogs for affected dayKeys
+        const newDayKey = updatedEntry.dayKey || updatedEntry.date;
 
-        if (oldDate !== newDate) {
-            // Date changed: recompute both old and new dates
-            // This ensures no stale completion/progress remains on the old date
+        if (oldDayKey !== newDayKey) {
+            // DayKey changed: recompute both old and new dayKeys
+            // This ensures no stale completion/progress remains on the old dayKey
             await Promise.all([
-                recomputeDayLogForHabit(habitId, oldDate, userId),
-                recomputeDayLogForHabit(habitId, newDate, userId)
+                recomputeDayLogForHabit(habitId, oldDayKey, userId),
+                recomputeDayLogForHabit(habitId, newDayKey, userId)
             ]);
 
-            // Recompute new date's DayLog for response
-            const newDayLog = await recomputeDayLogForHabit(habitId, newDate, userId);
+            // Recompute new dayKey's DayLog for response
+            const newDayLog = await recomputeDayLogForHabit(habitId, newDayKey, userId);
 
             // Return the new dayLog (old one is cleaned up if no entries remain)
             res.json({
@@ -298,10 +341,10 @@ export async function updateHabitEntryRoute(req: Request, res: Response): Promis
                 dayLog: newDayLog
             });
         } else {
-            // Date unchanged: recompute once (current behavior)
+            // DayKey unchanged: recompute once (current behavior)
             const updatedDayLog = await recomputeDayLogForHabit(
                 habitId,
-                newDate,
+                newDayKey,
                 userId
             );
 

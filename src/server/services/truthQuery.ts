@@ -188,18 +188,23 @@ export async function getEntryViewsForHabits(
  * @returns EntryView
  */
 function mapEntryToView(entry: HabitEntry, timeZone: string): EntryView {
-  // Derive dayKey: prefer dateKey, then date, then derive from timestamp
+  // Derive dayKey: prefer dayKey (canonical), then date (legacy), then dateKey (deprecated), then derive from timestamp
   let dayKey: DayKey;
   
-  if (entry.dateKey && isValidDayKey(entry.dateKey)) {
-    dayKey = entry.dateKey;
+  if (entry.dayKey && isValidDayKey(entry.dayKey)) {
+    // Canonical dayKey field (preferred)
+    dayKey = entry.dayKey;
   } else if (entry.date && isValidDayKey(entry.date)) {
+    // Legacy date field (backward compatibility)
     dayKey = entry.date;
+  } else if (entry.dateKey && isValidDayKey(entry.dateKey)) {
+    // Deprecated dateKey field (backward compatibility)
+    dayKey = entry.dateKey;
   } else {
-    // Derive from timestamp + timezone
+    // Derive from timestamp + timezone (fallback for legacy entries)
     // TODO: This should not happen in production - all entries should have dayKey
     console.warn(
-      `HabitEntry ${entry.id} missing dayKey/date. Deriving from timestamp ${entry.timestamp} in timezone ${timeZone}`
+      `HabitEntry ${entry.id} missing dayKey/date/dateKey. Deriving from timestamp ${entry.timestamp} in timezone ${timeZone}`
     );
     try {
       dayKey = formatDayKeyFromDate(new Date(entry.timestamp), timeZone);
