@@ -1130,3 +1130,285 @@ This section accumulates raw grep findings, code snippets, and observations that
 5. Completion state stored in DayLog `completed` field
 6. Multiple aggregation operations on DayLog arrays instead of HabitEntries
 
+---
+
+# Milestone B — Write Convergence Map
+
+**Milestone B purpose:**
+Identify every place the app writes "completion/progress" so we can converge all writes to HabitEntries.
+Ensure there are no hidden write paths that still create DayLogs or store completion flags.
+
+**Current date:** 2025-01-XX
+
+**How to update this file:**
+1. Document each write path with: file path + function, trigger (UI action), current write (endpoint/repo method), target write (HabitEntry upsert/delete), and notes
+2. Track provenance, value/unit, dayKey, timezone handling
+3. Mark paths that need migration vs paths already using HabitEntries
+
+---
+
+## Quick Check / Toggle on Day Grid
+
+**Where:**
+- `src/components/TrackerGrid.tsx:864` - `handleToggle()`
+- `src/store/HabitContext.tsx:298` - `toggleHabit()`
+
+**Trigger:**
+- User clicks checkbox/cell on day grid to toggle habit completion
+
+**Current write:**
+- `TrackerGrid.handleToggle()` → `deleteHabitEntryByKey()` or `upsertHabitEntry()` (line 871-873)
+- `HabitContext.toggleHabit()` → `clearHabitEntriesForDay()` or `createHabitEntry()` (line 328, 343)
+
+**Target write:**
+- ✅ Already using HabitEntry operations
+- `deleteHabitEntryByKey(habitId, date)` for toggle off
+- `upsertHabitEntry(habitId, date, { value: 1 })` for toggle on
+
+**Notes:**
+- Both paths now correctly use HabitEntry operations
+- `HabitContext.toggleHabit()` still maintains DayLog state for UI (derived cache)
+- DayLog is recomputed server-side after entry mutation
+- Value defaults to 1 for boolean habits
+- Uses date string (YYYY-MM-DD) as dayKey
+
+---
+
+## Numeric Entry Submit
+
+**Where:**
+- `src/components/TrackerGrid.tsx:1150` - `NumericInputPopover.onSubmit` handler
+- `src/store/HabitContext.tsx:363` - `updateLog()`
+
+**Trigger:**
+- User opens numeric input popover on grid cell and submits a value
+- User updates log value via context method
+
+**Current write:**
+- `TrackerGrid` → `upsertHabitEntry(habitId, date, { value: val })` (line 1161)
+- `HabitContext.updateLog()` → `clearHabitEntriesForDay()` then `createHabitEntry()` (line 383, 386)
+
+**Target write:**
+- ✅ Already using HabitEntry operations
+- `upsertHabitEntry(habitId, date, { value: number })` for numeric habits
+- Supports bundleOptionId for choice bundles (line 1156-1158)
+
+**Notes:**
+- `HabitContext.updateLog()` clears all entries for day first (enforces "Set Value" semantics)
+- Then creates single entry with total value
+- `TrackerGrid` uses upsert directly (idempotent)
+- Value comes from user input, unit from habit.goal.unit
+- Uses date string (YYYY-MM-DD) as dayKey
+
+---
+
+## Routine Execution "Confirm Completion"
+
+**Where:**
+- `src/components/RoutineRunnerModal.tsx:91` - `handleFinish()`
+- `src/lib/persistenceClient.ts:533` - `submitRoutine()`
+- `src/server/routes/routines.ts:514` - `submitRoutineRoute()`
+
+**Trigger:**
+- User completes routine runner modal and confirms habit completion
+
+**Current write:**
+- ⚠️ **LEGACY PATH:** `submitRoutineRoute()` → `upsertDayLog(dayLog, userId)` (line 601)
+- Creates DayLog directly, bypassing HabitEntry creation
+
+**Target write:**
+- Should use: `createHabitEntry()` or `upsertHabitEntry()` for each habitId in `habitIdsToComplete`
+- Then DayLog will be auto-recomputed via `recomputeDayLogForHabit()`
+
+**Notes:**
+- ⚠️ **CRITICAL:** This is a direct DayLog write that bypasses HabitEntry
+- Route accepts `habitIdsToComplete: string[]` array
+- Creates DayLog with `source: 'routine'` and `routineId: routine.id`
+- Value defaults to 1, completed: true
+- Uses `dateOverride` or derives from `submittedAt` timestamp
+- **Action Required:** Migrate to create HabitEntries instead of DayLogs
+
+---
+
+## Delete Entry Flows
+
+**Where:**
+- `src/store/HabitContext.tsx:414` - `deleteHabitEntryContext()`
+- `src/store/HabitContext.tsx:593` - `deleteHabitEntryByKeyContext()`
+- `src/lib/persistenceClient.ts:840` - `deleteHabitEntry()`
+- `src/lib/persistenceClient.ts:859` - `deleteHabitEntryByKey()`
+- `src/server/routes/habitEntries.ts:115` - `deleteHabitEntryRoute()`
+- `src/server/routes/habitEntries.ts:293` - `deleteHabitEntriesForDayRoute()`
+- `src/server/routes/habitEntries.ts:374` - `deleteHabitEntryByKeyRoute()`
+
+**Trigger:**
+- User deletes entry via UI (history modal, edit entry, etc.)
+- User toggles off completion (calls delete)
+
+**Current write:**
+- ✅ Already using HabitEntry operations
+- `deleteHabitEntry(id)` - Soft delete by entry ID
+- `deleteHabitEntryByKey(habitId, date)` - Soft delete by composite key
+- `deleteHabitEntriesForDay(habitId, date)` - Bulk soft delete for day
+
+**Target write:**
+- ✅ Already correct
+- All delete operations soft-delete HabitEntries
+- DayLog is auto-recomputed after deletion (may become null if no entries remain)
+
+**Notes:**
+- All delete operations are soft deletes (set `deletedAt` timestamp)
+- Server routes auto-trigger `recomputeDayLogForHabit()` after deletion
+- Frontend `HabitContext` refreshes DayLogs after delete operations
+- Uses date string (YYYY-MM-DD) as dayKey
+
+---
+
+## Edit Entry Flows
+
+**Where:**
+- `src/store/HabitContext.tsx:404` - `updateHabitEntryContext()`
+- `src/lib/persistenceClient.ts:828` - `updateHabitEntry()`
+- `src/server/routes/habitEntries.ts:190` - `updateHabitEntryRoute()`
+
+**Trigger:**
+- User edits entry value, date, or other fields via UI
+
+**Current write:**
+- ✅ Already using HabitEntry operations
+- `updateHabitEntry(id, patch)` - Updates existing entry by ID
+
+**Target write:**
+- ✅ Already correct
+- Updates HabitEntry directly
+- DayLog is auto-recomputed after update
+
+**Notes:**
+- ⚠️ **Edge Case:** If date changes, should recompute both old and new dates (currently only recomputes new date - line 226)
+- Patch can update: value, date, source, routineId, bundleOptionId, etc.
+- Server route auto-triggers `recomputeDayLogForHabit()` after update
+- Frontend refreshes DayLogs after update
+
+---
+
+## Choice Bundle Selection
+
+**Where:**
+- `src/components/TrackerGrid.tsx:881` - `handleChoiceSave()`
+
+**Trigger:**
+- User selects a choice option from a choice bundle habit
+
+**Current write:**
+- ✅ Already using HabitEntry operations
+- `upsertHabitEntry(habitId, date, { bundleOptionId, bundleOptionLabel, value, unitSnapshot })` (line 889)
+
+**Target write:**
+- ✅ Already correct
+- Creates/updates HabitEntry with choice-specific fields
+
+**Notes:**
+- Stores `bundleOptionId` and `bundleOptionLabel` in entry
+- Value can be null or number (depends on option type)
+- `unitSnapshot` preserves unit at time of entry
+- Uses date string (YYYY-MM-DD) as dayKey
+
+---
+
+## Goal Manual Progress
+
+**Where:**
+- `src/components/goals/GoalManualProgressModal.tsx:56` - `handleSubmit()`
+
+**Trigger:**
+- User manually logs progress for a goal (cumulative or frequency type)
+
+**Current write:**
+- For frequency goals: `toggleHabit(habit.id, date)` for each selected habit (line 88)
+- For cumulative goals: `createGoalManualLog(goal.id, { value, loggedAt })` (line 70)
+
+**Target write:**
+- ✅ Frequency goals already use HabitEntry operations (via `toggleHabit()`)
+- Cumulative goals use separate `goalManualLogs` collection (correct - not habit completion)
+
+**Notes:**
+- Frequency goals toggle linked habits (uses existing HabitEntry path)
+- Cumulative goals create GoalManualLog (separate entity, not HabitEntry)
+- GoalManualLog is merged with habit progress in goal computation
+- Uses date string (YYYY-MM-DD) as dayKey
+
+---
+
+## Bundle Click Handler (Checklist Bundles)
+
+**Where:**
+- `src/components/TrackerGrid.tsx:345` - `handleBundleClick()`
+
+**Trigger:**
+- User clicks on a checklist bundle habit cell
+
+**Current write:**
+- Calls `onToggle(childId, dateStr)` for each child habit (line 360, 363)
+- Which calls `handleToggle()` → HabitEntry operations
+
+**Target write:**
+- ✅ Already using HabitEntry operations (via toggle path)
+
+**Notes:**
+- If all children done: toggles all off
+- If not all done: toggles remaining on
+- Uses existing toggle path which creates/deletes HabitEntries
+- Uses date string (YYYY-MM-DD) as dayKey
+
+---
+
+## Legacy Direct DayLog Writes (Should Be Banned)
+
+**Where:**
+- `src/server/routes/routines.ts:601` - `submitRoutineRoute()` → `upsertDayLog()`
+- `src/server/routes/dayLogs.ts:61` - `upsertDayLogRoute()` - Direct API endpoint
+- `src/lib/persistenceClient.ts:339` - `saveDayLog()` - Frontend wrapper
+
+**Trigger:**
+- Routine submission (legacy path)
+- Direct API calls to `/api/dayLogs` endpoint
+
+**Current write:**
+- ⚠️ **LEGACY:** `upsertDayLog(dayLog, userId)` - Direct DayLog write
+- `POST /api/dayLogs` - Direct endpoint bypassing HabitEntries
+
+**Target write:**
+- Should be deprecated/removed
+- All writes should go through HabitEntry operations
+- DayLogs should only be written via `recomputeDayLogForHabit()` after entry mutations
+
+**Notes:**
+- ⚠️ **CRITICAL:** These paths create DayLogs without corresponding HabitEntries
+- ⚠️ **CRITICAL:** Can cause DayLogs and HabitEntries to become out of sync
+- `saveDayLog()` frontend function still exists but may not be used
+- `POST /api/dayLogs` endpoint should return 410 Gone
+- **Action Required:** Deprecate these paths and migrate callers to HabitEntry operations
+
+---
+
+## Summary
+
+**Paths Already Using HabitEntries:**
+1. ✅ Quick check/toggle on day grid
+2. ✅ Numeric entry submit
+3. ✅ Delete entry flows
+4. ✅ Edit entry flows
+5. ✅ Choice bundle selection
+6. ✅ Goal manual progress (frequency goals)
+7. ✅ Bundle click handler
+
+**Paths Still Using DayLog Writes:**
+1. ⚠️ Routine execution "confirm completion" - `submitRoutineRoute()` writes DayLog directly
+2. ⚠️ Legacy `/api/dayLogs` endpoint - Direct DayLog writes
+
+**Action Items:**
+1. **HIGH PRIORITY:** Migrate `submitRoutineRoute()` to create HabitEntries instead of DayLogs
+2. **HIGH PRIORITY:** Deprecate `POST /api/dayLogs` endpoint (return 410 Gone)
+3. **MEDIUM PRIORITY:** Remove or deprecate `saveDayLog()` frontend function
+4. **LOW PRIORITY:** Add validation to prevent DayLog writes without corresponding HabitEntries
+
