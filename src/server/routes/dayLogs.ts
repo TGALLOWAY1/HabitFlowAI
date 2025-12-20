@@ -73,7 +73,7 @@ export async function getDayLogs(req: Request, res: Response): Promise<void> {
  * 
  * Returns 410 Gone to indicate this endpoint is permanently removed.
  */
-export async function upsertDayLogRoute(req: Request, res: Response): Promise<void> {
+export async function upsertDayLogRoute(_req: Request, res: Response): Promise<void> {
   // Do not write DayLogs directly. DayLogs are derived from HabitEntries.
   res.status(410).json({
     error: 'DayLogs are deprecated. Write HabitEntries instead.',
@@ -149,7 +149,7 @@ export async function getDayLogRoute(req: Request, res: Response): Promise<void>
  * 
  * Returns 410 Gone to indicate this endpoint is permanently removed.
  */
-export async function deleteDayLogRoute(req: Request, res: Response): Promise<void> {
+export async function deleteDayLogRoute(_req: Request, res: Response): Promise<void> {
   // Do not delete DayLogs directly. DayLogs are derived from HabitEntries.
   res.status(410).json({
     error: 'DayLogs are deprecated. Delete HabitEntries instead.',

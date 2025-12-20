@@ -318,6 +318,10 @@ export async function freezeHabit(id: string, date: string): Promise<{ habit: Ha
 /**
  * Fetch all day logs for the current user.
  * 
+ * ⚠️ LEGACY: DayLogs are derived caches from HabitEntries.
+ * This function is kept temporarily for reading DayLogs (derived cache).
+ * Write operations should use HabitEntry endpoints instead.
+ * 
  * @param habitId - Optional habit ID to filter logs
  * @returns Promise<Record<string, DayLog>> - Record of day logs keyed by `${habitId}-${date}`
  * @throws Error if API request fails
@@ -329,37 +333,13 @@ export async function fetchDayLogs(habitId?: string): Promise<Record<string, Day
   return response.logs;
 }
 
-/**
- * Create or update a day log.
- * 
- * @param log - DayLog data
- * @returns Promise<DayLog> - Created/updated day log
- * @throws Error if API request fails
- */
-export async function saveDayLog(log: DayLog): Promise<DayLog> {
-
-  const response = await apiRequest<{ log: DayLog }>('/dayLogs', {
-    method: 'POST',
-    body: JSON.stringify(log),
-  });
-
-  return response.log;
-}
-
-/**
- * Delete a day log.
- * 
- * @param habitId - Habit ID
- * @param date - Date in YYYY-MM-DD format
- * @returns Promise<void>
- * @throws Error if API request fails
- */
-export async function deleteDayLog(habitId: string, date: string): Promise<void> {
-
-  await apiRequest<{ message: string }>(`/dayLogs/${habitId}/${date}`, {
-    method: 'DELETE',
-  });
-}
+// DayLog write functions removed:
+// - saveDayLog() - REMOVED: DayLogs are derived caches and must not be written directly.
+//   Use createHabitEntry() or upsertHabitEntry() instead.
+// - deleteDayLog() - REMOVED: DayLogs are derived caches and must not be deleted directly.
+//   Use deleteHabitEntryByKey() or clearHabitEntriesForDay() instead.
+// 
+// DayLogs will be automatically recomputed after HabitEntry mutations.
 
 /**
  * WellbeingLog Persistence Functions
