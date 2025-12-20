@@ -42,10 +42,16 @@ export async function getProgressOverview(req: Request, res: Response): Promise<
     // Fetch all habit entries (Single-Source of Truth)
     const habitEntries = await getHabitEntriesByUser(userId);
 
-    // Convert to Map for O(1) Lookup: Key = `${habitId}-${date}`
+    // Convert to Map for O(1) Lookup: Key = `${habitId}-${dayKey}`
+    // Use dayKey (canonical) with fallback to date for backward compatibility
     const allLogs: Record<string, any> = {};
     habitEntries.forEach(entry => {
-      const key = `${entry.habitId}-${entry.date}`;
+      const dayKey = entry.dayKey || entry.date;
+      if (!dayKey) {
+        console.warn(`[progress] Entry ${entry.id} missing dayKey and date, skipping`);
+        return;
+      }
+      const key = `${entry.habitId}-${dayKey}`;
       allLogs[key] = entry;
     });
 
@@ -65,9 +71,15 @@ export async function getProgressOverview(req: Request, res: Response): Promise<
     const updatedLogsArray = updatedEntries;
 
     // Re-build map
+    // Use dayKey (canonical) with fallback to date for backward compatibility
     const updatedLogs: Record<string, any> = {};
     updatedEntries.forEach(entry => {
-      const key = `${entry.habitId}-${entry.date}`;
+      const dayKey = entry.dayKey || entry.date;
+      if (!dayKey) {
+        console.warn(`[progress] Entry ${entry.id} missing dayKey and date, skipping`);
+        return;
+      }
+      const key = `${entry.habitId}-${dayKey}`;
       updatedLogs[key] = entry;
     });
 

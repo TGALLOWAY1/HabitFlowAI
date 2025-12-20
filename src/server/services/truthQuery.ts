@@ -110,11 +110,16 @@ export async function getEntryViewsForHabit(
   });
 
   // Sort: primary by dayKey asc, secondary by timestampUtc asc
+  // Guard against undefined dayKey or timestampUtc
   filteredViews.sort((a, b) => {
-    if (a.dayKey !== b.dayKey) {
-      return a.dayKey.localeCompare(b.dayKey);
+    const aDayKey = a.dayKey || '';
+    const bDayKey = b.dayKey || '';
+    if (aDayKey !== bDayKey) {
+      return aDayKey.localeCompare(bDayKey);
     }
-    return a.timestampUtc.localeCompare(b.timestampUtc);
+    const aTimestamp = a.timestampUtc || '';
+    const bTimestamp = b.timestampUtc || '';
+    return aTimestamp.localeCompare(bTimestamp);
   });
 
   return filteredViews;
@@ -170,11 +175,16 @@ export async function getEntryViewsForHabits(
   });
 
   // Sort: primary by dayKey asc, secondary by timestampUtc asc
+  // Guard against undefined dayKey or timestampUtc
   filteredViews.sort((a, b) => {
-    if (a.dayKey !== b.dayKey) {
-      return a.dayKey.localeCompare(b.dayKey);
+    const aDayKey = a.dayKey || '';
+    const bDayKey = b.dayKey || '';
+    if (aDayKey !== bDayKey) {
+      return aDayKey.localeCompare(bDayKey);
     }
-    return a.timestampUtc.localeCompare(b.timestampUtc);
+    const aTimestamp = a.timestampUtc || '';
+    const bTimestamp = b.timestampUtc || '';
+    return aTimestamp.localeCompare(bTimestamp);
   });
 
   return filteredViews;
@@ -235,7 +245,7 @@ function mapEntryToView(entry: HabitEntry, timeZone: string): EntryView {
   return {
     habitId: entry.habitId,
     dayKey,
-    timestampUtc: entry.timestamp,
+    timestampUtc: entry.timestamp || new Date().toISOString(), // Fallback to current time if missing
     value: entry.value ?? null,
     unit: entry.unitSnapshot,
     source,

@@ -65,7 +65,11 @@ export const GoalsPage: React.FC<GoalsPageProps> = ({
     }
 
     return (
-        <div className="w-full max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+        <div className={`w-full mx-auto py-6 sm:py-8 ${
+            activeTab === 'skills' 
+                ? 'max-w-[98vw] px-3 sm:px-4 lg:px-6' 
+                : 'max-w-4xl px-4 sm:px-6 lg:px-8'
+        }`}>
             <div className="mb-6 sm:mb-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div className="flex p-1 bg-neutral-800 rounded-lg overflow-x-auto">
                     <button
