@@ -1,18 +1,35 @@
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useHabitStore } from '../../store/HabitContext';
 import { getHabitsForDate } from '../../utils/habitUtils';
 import { PinnedHabitsStrip } from './PinnedHabitsStrip';
 import { DayCategorySection } from './DayCategorySection';
 import { format } from 'date-fns';
 import { Calendar } from 'lucide-react';
+import { fetchDayView } from '../../lib/persistenceClient';
+import { warnLegacyCompletionRead } from '../../utils/legacyReadWarning';
 
 import type { Habit } from '../../types';
+
+interface DayViewHabitStatus {
+    habit: Habit;
+    isComplete: boolean;
+    currentValue: number;
+    targetValue: number;
+    progressPercent: number;
+    weekComplete?: boolean;
+    completedChildrenCount?: number;
+    totalChildrenCount?: number;
+}
+
+interface DayViewData {
+    dayKey: string;
+    habits: DayViewHabitStatus[];
+}
 
 export const DayView = () => {
     const {
         habits,
         categories,
-        logs,
         toggleHabit,
         updateHabit,
         upsertHabitEntry,
@@ -23,6 +40,37 @@ export const DayView = () => {
     const today = new Date();
     const dateStr = format(today, 'yyyy-MM-dd');
     const displayDate = format(today, 'EEEE · MMM d');
+
+    // Day View state (from truthQuery)
+    const [dayViewData, setDayViewData] = useState<DayViewData | null>(null);
+    const [dayViewLoading, setDayViewLoading] = useState(true);
+    const [dayViewError, setDayViewError] = useState<string | null>(null);
+
+    // Fetch day view from truthQuery endpoint
+    useEffect(() => {
+        const loadDayView = async () => {
+            setDayViewLoading(true);
+            setDayViewError(null);
+            try {
+                // Default to UTC timezone for now - could be extracted from user preferences
+                const data = await fetchDayView(dateStr, 'UTC');
+                setDayViewData(data);
+            } catch (err) {
+                console.error('Failed to load day view:', err);
+                setDayViewError(err instanceof Error ? err.message : 'Failed to load day view');
+            } finally {
+                setDayViewLoading(false);
+            }
+        };
+
+        loadDayView();
+    }, [dateStr]);
+
+    // Create lookup map for habit statuses
+    const habitStatusMap = useMemo(() => {
+        if (!dayViewData) return new Map<string, DayViewHabitStatus>();
+        return new Map(dayViewData.habits.map(status => [status.habit.id, status]));
+    }, [dayViewData]);
 
     // 1. Filter Habits for Today (Root level, frequency match)
     const todaysHabits = useMemo(() => {
@@ -98,39 +146,58 @@ export const DayView = () => {
                 <p className="text-neutral-500 font-medium mt-1">{displayDate}</p>
             </div>
 
+            {/* Loading State */}
+            {dayViewLoading && (
+                <div className="flex items-center justify-center py-8">
+                    <p className="text-neutral-500">Loading...</p>
+                </div>
+            )}
+
+            {/* Error State */}
+            {dayViewError && (
+                <div className="flex items-center justify-center py-8">
+                    <p className="text-red-500">Error: {dayViewError}</p>
+                </div>
+            )}
+
             {/* Pinned / Focus Section */}
-            {pinnedHabits.length > 0 && (
+            {!dayViewLoading && !dayViewError && pinnedHabits.length > 0 && (
                 <PinnedHabitsStrip
                     habits={pinnedHabits}
                     onUnpin={handlePin}
                     onToggle={handleToggle}
-                    checkStatus={(id) => !!logs[`${id}-${dateStr}`]?.completed}
+                    checkStatus={(id) => {
+                        const status = habitStatusMap.get(id);
+                        return status?.isComplete ?? false;
+                    }}
                 />
             )}
 
             {/* Categories */}
-            <div className="flex flex-col gap-2">
-                {categories.map(cat => {
-                    const catHabits = groupedHabits.get(cat.id) || [];
-                    if (catHabits.length === 0) return null;
+            {!dayViewLoading && !dayViewError && (
+                <div className="flex flex-col gap-2">
+                    {categories.map(cat => {
+                        const catHabits = groupedHabits.get(cat.id) || [];
+                        if (catHabits.length === 0) return null;
 
-                    return (
-                        <DayCategorySection
-                            key={cat.id}
-                            category={cat}
-                            habits={catHabits}
-                            logs={logs}
-                            dateStr={dateStr}
-                            onToggle={handleToggle}
-                            onPin={handlePin}
-                            onUpdateEstimate={handleUpdateEstimate}
-                            allHabitsLookup={allHabitsLookup}
-                            onUpdateHabitEntry={upsertHabitEntry}
-                            deleteHabitEntryByKey={deleteHabitEntryByKey}
-                        />
-                    );
-                })}
-            </div>
+                        return (
+                            <DayCategorySection
+                                key={cat.id}
+                                category={cat}
+                                habits={catHabits}
+                                habitStatusMap={habitStatusMap}
+                                dateStr={dateStr}
+                                onToggle={handleToggle}
+                                onPin={handlePin}
+                                onUpdateEstimate={handleUpdateEstimate}
+                                allHabitsLookup={allHabitsLookup}
+                                onUpdateHabitEntry={upsertHabitEntry}
+                                deleteHabitEntryByKey={deleteHabitEntryByKey}
+                            />
+                        );
+                    })}
+                </div>
+            )}
 
             {/* Footer / Empty Space for scrolling */}
             <div className="h-12" />

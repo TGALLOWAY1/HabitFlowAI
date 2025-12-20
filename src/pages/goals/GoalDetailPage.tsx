@@ -66,7 +66,7 @@ export const GoalDetailPage: React.FC<GoalDetailPageProps> = ({ goalId, onBack, 
             .filter((habit): habit is NonNullable<typeof habit> => habit !== undefined);
     }, [data, habitMap]);
 
-    // Fetch Linked Habit Entries
+    // Fetch Linked Habit Entries (via truthQuery)
     useEffect(() => {
         const loadEntries = async () => {
             if (!data?.goal.linkedHabitIds.length) {
@@ -78,10 +78,24 @@ export const GoalDetailPage: React.FC<GoalDetailPageProps> = ({ goalId, onBack, 
                 const allEntries: HabitEntry[] = [];
                 console.log('[GoalDetail] Loading entries for habits:', data.goal.linkedHabitIds);
                 for (const habitId of data.goal.linkedHabitIds) {
-                    // Strict Aggregation: Fetch only HabitEntries (backfill handled DayLogs)
-                    const entries = await fetchHabitEntries(habitId);
+                    // Fetch via truthQuery endpoint (unified HabitEntries + legacy DayLogs)
+                    // Default to UTC timezone - could be extracted from user preferences
+                    const entries = await fetchHabitEntries(habitId, undefined, undefined, 'UTC');
                     console.log(`[GoalDetail] Fetched ${entries.length} entries for habit ${habitId}`, entries);
-                    allEntries.push(...entries);
+                    // Map EntryView to HabitEntry shape for compatibility
+                    allEntries.push(...entries.map((ev: any) => ({
+                        id: ev.id || `entry-${ev.habitId}-${ev.dayKey}`,
+                        habitId: ev.habitId,
+                        timestamp: ev.timestampUtc,
+                        date: ev.dayKey,
+                        dateKey: ev.dayKey,
+                        value: ev.value,
+                        source: ev.source,
+                        routineId: ev.provenance.routineId,
+                        deletedAt: ev.deletedAt,
+                        createdAt: ev.timestampUtc,
+                        updatedAt: ev.timestampUtc,
+                    })));
                 }
                 setLinkedHabitEntries(allEntries);
             } catch (err) {
