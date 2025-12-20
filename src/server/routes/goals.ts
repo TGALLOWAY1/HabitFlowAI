@@ -245,8 +245,14 @@ export async function getGoalsWithProgress(req: Request, res: Response): Promise
   try {
     // TODO: Extract userId from authentication token/session
     const userId = (req as any).userId || 'anonymous-user';
+    const { timeZone } = req.query;
 
-    const goalsWithProgress = await computeGoalsWithProgress(userId);
+    // Get timezone from query or default to UTC
+    const userTimeZone = (timeZone && typeof timeZone === 'string') ? timeZone : 'UTC';
+
+    // Use V2 computation (truthQuery-based)
+    const { computeGoalsWithProgressV2 } = await import('../utils/goalProgressUtilsV2');
+    const goalsWithProgress = await computeGoalsWithProgressV2(userId, userTimeZone);
 
     res.status(200).json({
       goals: goalsWithProgress,
@@ -265,13 +271,17 @@ export async function getGoalsWithProgress(req: Request, res: Response): Promise
 }
 
 /**
- * Get goal progress.
+ * Get goal progress (via truthQuery).
  * 
- * GET /api/goals/:id/progress
+ * GET /api/goals/:id/progress?timeZone=...
+ * 
+ * Computes goal progress from EntryViews via truthQuery (unified HabitEntries + legacy DayLogs).
+ * No longer reads DayLogs directly.
  */
 export async function getGoalProgress(req: Request, res: Response): Promise<void> {
   try {
     const { id } = req.params;
+    const { timeZone } = req.query;
 
     if (!id) {
       res.status(400).json({
@@ -286,7 +296,12 @@ export async function getGoalProgress(req: Request, res: Response): Promise<void
     // TODO: Extract userId from authentication token/session
     const userId = (req as any).userId || 'anonymous-user';
 
-    const progress = await computeGoalProgress(id, userId);
+    // Get timezone from query or default to UTC
+    const userTimeZone = (timeZone && typeof timeZone === 'string') ? timeZone : 'UTC';
+
+    // Use V2 computation (truthQuery-based)
+    const { computeGoalProgressV2 } = await import('../utils/goalProgressUtilsV2');
+    const progress = await computeGoalProgressV2(id, userId, userTimeZone);
 
     if (!progress) {
       res.status(404).json({

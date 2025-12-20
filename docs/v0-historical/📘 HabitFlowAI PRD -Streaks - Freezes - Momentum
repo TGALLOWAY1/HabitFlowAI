@@ -1,0 +1,436 @@
+> ⚠️ Status: Historical PRD (v0)
+>
+> This document reflects earlier design intent and may reference
+> legacy concepts or naming (e.g., Activity, DayLog).
+>
+> Canonical behavior is defined in:
+> /docs/canonical/Canonical Domain Rules.md
+
+
+# 📘 PRD — HabitFlow: Momentum, Streaks, Freezes, Weekly Logic & Goal Alignment
+
+## Status
+
+**Approved for implementation**
+
+---
+
+## 1. Purpose & Philosophy
+
+HabitFlow is designed to help users build consistency **without triggering all-or-nothing thinking**.
+This PRD formalizes systems that:
+
+* Reward engagement over perfection
+* Treat missed days as pauses, not failures
+* Encourage long-term identity change, not short-term compliance
+* Keep the dashboard emotionally safe and cognitively light
+
+Key design stance:
+
+> **Momentum > purity. Engagement > streak anxiety. Progress > pressure.**
+
+---
+
+## 2. Core Concepts (Definitions)
+
+### 2.1 Habit
+
+A recurring behavior tracked either:
+
+* **Daily**, or
+* **Weekly (quota-based)**
+
+Each habit belongs to exactly **one category** (e.g. Fitness, Learning).
+
+---
+
+### 2.2 Category
+
+A high-level life domain grouping habits.
+Categories are used for:
+
+* Identity framing
+* Category-level momentum feedback
+
+---
+
+### 2.3 Momentum
+
+A **descriptive indicator of recent engagement**, not a score.
+
+Momentum exists at two levels:
+
+1. **Global Momentum** — life-level
+2. **Category Momentum** — domain-level
+
+Momentum never penalizes, never breaks streaks, and never regresses progress.
+
+---
+
+### 2.4 Streak
+
+A measure of **continued engagement** with a habit.
+
+* Daily habits → streak measured in days
+* Weekly habits → streak measured in weeks
+
+Streaks are protected by **freeze mechanics** and **grace rules**.
+
+---
+
+### 2.5 Freeze
+
+A freeze protects a habit’s streak during a missed day/week.
+
+Freezes are:
+
+* Limited
+* Intentional
+* Supportive (never framed as failure prevention)
+
+---
+
+## 3. Dashboard UX (High-Level, Reference Only)
+
+The dashboard shows **no habit-level analytics**.
+
+### Dashboard displays:
+
+1. **Global Momentum Indicator** (single line of copy)
+2. **Today**
+
+   * Habits completed: X
+   * Habits remaining: Y
+3. **Optional Focus Habits**
+
+   * User-selected
+   * Checkbox + streak only
+
+### Dashboard explicitly does NOT show:
+
+* Consistency %
+* Per-habit history
+* Per-habit momentum
+* Failure states
+
+---
+
+## 4. Momentum System (Final)
+
+### 4.1 Global Momentum
+
+**Question answered:**
+
+> “Am I generally keeping my life together right now?”
+
+#### Logic
+
+* Rolling **7-day window**
+* A day counts if **at least one habit** (daily or weekly) is completed
+
+#### States
+
+| Days Active (last 7) | State          |
+| -------------------- | -------------- |
+| 6–7                  | Strong         |
+| 4–5                  | Steady         |
+| 2–3                  | Building       |
+| 1                    | Gentle Restart |
+| 0                    | Ready          |
+
+#### Copy (rotated, non-repeating)
+
+Each state has a phrase pool (examples):
+
+**Strong**
+
+* “You’re in a great rhythm”
+* “Momentum is strong right now”
+
+**Steady**
+
+* “You’ve got solid momentum”
+* “Nice follow-through this week”
+
+**Building**
+
+* “Momentum is building”
+* “You’re getting back into motion”
+
+**Gentle Restart**
+
+* “Welcome back”
+* “One step is enough to restart”
+
+**Ready**
+
+* “Ready when you are”
+* “No pressure — start anytime”
+
+---
+
+### 4.2 Category Momentum
+
+**Question answered:**
+
+> “Am I showing up in this area of my life?”
+
+#### Logic
+
+* Rolling **7-day window**
+* A day counts if **any habit in that category** is completed
+
+| Days Active | State    |
+| ----------- | -------- |
+| 5–7         | Strong   |
+| 3–4         | Steady   |
+| 1–2         | Building |
+| 0           | Paused   |
+
+#### Category Momentum Copy (examples)
+
+**Strong**
+
+* “Fitness momentum is strong”
+* “This area is well supported right now”
+
+**Steady**
+
+* “Momentum is holding here”
+* “You’re staying engaged”
+
+**Building**
+
+* “Momentum is starting to build”
+* “A few steps in the right direction”
+
+**Paused**
+
+* “This area has been quiet”
+* “Ready when you want to restart”
+
+📌 Category momentum is **informational only** and never affects streaks.
+
+---
+
+## 5. Freeze System
+
+### 5.1 Freeze Inventory Rules
+
+* Max freezes: **3**
+* Earn rate: **1 freeze per 7 days of any activity**
+* Cap enforced (cannot exceed 3)
+* Freezes are **per habit**, not global
+
+---
+
+### 5.2 Freeze Types
+
+#### Type A — Manual Freeze (Explicit)
+
+User action: *“Skip today → Protect my streak”*
+
+**Behavior**
+
+* Streak preserved
+* No completion recorded
+* Momentum unaffected
+* Freeze count −1
+
+**Copy**
+
+* “Streak protected”
+* “Pick this back up tomorrow”
+
+---
+
+#### Type B — Soft Freeze (Grace / No-Penalty)
+
+Automatically applied when:
+
+* Habit streak ≥ 3
+* Category momentum is **Strong or Steady**
+* User misses a day
+* No manual freeze used
+
+**Behavior**
+
+* Streak preserved
+* No freeze consumed
+* Habit marked as “paused”
+
+**UI Helper Copy**
+
+* “Paused — resume tomorrow to keep streak”
+
+This teaches:
+
+> Short pauses are part of consistency.
+
+---
+
+### 5.3 When Streaks Actually Break
+
+A streak breaks only if:
+
+* A day/week is missed
+* AND no soft freeze applies
+* AND no manual freeze is used
+
+Streak loss should be **rare, predictable, and non-traumatic**.
+
+---
+
+## 6. Daily Habits
+
+### Completion Rules
+
+* Checkbox per day
+* Counts toward:
+
+  * Habit streak
+  * Category momentum
+  * Global momentum
+  * Linked goals
+
+### Missed Day Behavior
+
+* Freeze logic applies
+* No negative feedback shown
+
+---
+
+## 7. Weekly Habits (Quota-Based)
+
+### Example
+
+**“Go to the gym 3× per week”**
+
+### Tracking Model
+
+Each week stores:
+
+* Target (e.g. 3)
+* Actual completions (0–N)
+* Completion state: Partial / Complete
+
+---
+
+### Weekly Streak Rules
+
+| Actual       | Outcome                                       |
+| ------------ | --------------------------------------------- |
+| ≥ Target     | Full completion → streak continues            |
+| 1–(Target−1) | Partial completion → streak continues         |
+| 0            | Missed week → streak pauses or freeze applies |
+
+### Key Principle
+
+> Weekly streaks represent **continued engagement**, not perfect execution.
+
+---
+
+### Weekly Copy
+
+**Full**
+
+* “Week complete — nice follow-through”
+
+**Partial**
+
+* “Partial week — still counts”
+* “You showed up this week”
+
+**Missed**
+
+* “This week was skipped”
+* “Pick it back up next week”
+
+---
+
+### “Shifted the Day” (Weekly Flexibility)
+
+If a user planned a day but completes on a different day:
+
+* Week still counts
+* Streak continues
+* Optional micro-copy:
+
+  * “Nice adjustment — flexibility counts”
+
+No penalties. No lateness concept.
+
+---
+
+## 8. Habits Page UX Rules (Current Scope)
+
+### Habits Page shows:
+
+* Habit cards
+* Checkbox (daily/weekly)
+* Streak count
+* Freeze availability indicator
+* Category momentum header
+
+### Habits Page does NOT include (for now):
+
+* Long history views
+* Heatmaps
+* Consistency %
+
+(Current 2-week checkbox view remains.)
+
+---
+
+## 9. Goals Alignment
+
+### Goal Philosophy
+
+> Goals reflect **directional progress**, not daily compliance.
+
+### Goal Progress Interpretation
+
+Instead of raw % alone, show **interpreted state**:
+
+| Recent Pattern          | Goal Copy                             |
+| ----------------------- | ------------------------------------- |
+| Regular activity        | “Progress is moving steadily”         |
+| Inconsistent but active | “Still on track — progress compounds” |
+| No recent activity      | “Paused for now — no rush”            |
+
+### Rules
+
+* Goals **never regress**
+* Goals pause, they do not fail
+* Habit misses do not create negative goal feedback
+
+---
+
+## 10. Non-Goals (Explicitly Out of Scope)
+
+* Per-habit momentum states
+* Punitive streak loss
+* Red/green failure UI
+* Habit history beyond 2 weeks (future consideration)
+* Goal penalties for missed habits
+
+---
+
+## 11. Success Criteria
+
+This system is successful if:
+
+* Users do not abandon habits after missed days
+* Streak loss feels rare and understandable
+* Dashboard feels calm, not demanding
+* Users re-engage after pauses instead of quitting
+* Language consistently reinforces resilience
+
+---
+
+## 12. Future Extensions (Not Implemented Yet)
+
+* Longer habit history views
+* Momentum trends over months
+* Goal-level momentum
+* Analytics surfaces (opt-in)

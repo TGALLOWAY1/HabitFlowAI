@@ -8,37 +8,69 @@
 import type { Request, Response } from 'express';
 import {
     createHabitEntry,
-    getHabitEntriesByHabit,
     updateHabitEntry,
     deleteHabitEntry,
-    getHabitEntriesForDay
 } from '../repositories/habitEntryRepository';
 import { getHabitById } from '../repositories/habitRepository';
 import { validateHabitEntryPayload } from '../utils/habitValidation';
 import { recomputeDayLogForHabit } from '../utils/recomputeUtils';
 
 /**
- * Get entries for a habit.
- * GET /api/entries?habitId=...&date=... (date optional)
+ * Get entry views for a habit (via truthQuery).
+ * GET /api/entries?habitId=...&startDayKey=...&endDayKey=...&timeZone=...
+ * 
+ * Returns EntryView[] from truthQuery (unified HabitEntries + legacy DayLogs).
+ * All history reads should use this endpoint.
  */
 export async function getHabitEntriesRoute(req: Request, res: Response): Promise<void> {
     try {
         const userId = (req as any).userId || 'anonymous-user';
-        const { habitId, date } = req.query;
+        const { habitId, startDayKey, endDayKey, timeZone } = req.query;
 
         if (!habitId || typeof habitId !== 'string') {
             res.status(400).json({ error: 'habitId is required' });
             return;
         }
 
-        let entries;
-        if (date && typeof date === 'string') {
-            entries = await getHabitEntriesForDay(habitId, date, userId);
-        } else {
-            entries = await getHabitEntriesByHabit(habitId, userId);
+        // timeZone is required for DayKey derivation
+        const userTimeZone = (timeZone && typeof timeZone === 'string') 
+            ? timeZone 
+            : 'UTC'; // Default to UTC if not provided
+
+        // Validate dayKeys if provided
+        if (startDayKey && typeof startDayKey === 'string') {
+            const { assertDayKey } = await import('../../domain/time/dayKey');
+            try {
+                assertDayKey(startDayKey);
+            } catch (error) {
+                res.status(400).json({ 
+                    error: `Invalid startDayKey format: ${error instanceof Error ? error.message : String(error)}` 
+                });
+                return;
+            }
         }
 
-        res.json({ entries });
+        if (endDayKey && typeof endDayKey === 'string') {
+            const { assertDayKey } = await import('../../domain/time/dayKey');
+            try {
+                assertDayKey(endDayKey);
+            } catch (error) {
+                res.status(400).json({ 
+                    error: `Invalid endDayKey format: ${error instanceof Error ? error.message : String(error)}` 
+                });
+                return;
+            }
+        }
+
+        // Fetch via truthQuery (unified HabitEntries + legacy DayLogs)
+        const { getEntryViewsForHabit } = await import('../services/truthQuery');
+        const entryViews = await getEntryViewsForHabit(habitId, userId, {
+            startDayKey: startDayKey as string | undefined,
+            endDayKey: endDayKey as string | undefined,
+            timeZone: userTimeZone,
+        });
+
+        res.json({ entries: entryViews });
     } catch (error) {
         console.error('Error fetching entries:', error);
         res.status(500).json({ error: 'Failed to fetch entries' });
@@ -221,10 +253,13 @@ export async function updateHabitEntryRoute(req: Request, res: Response): Promis
         if (oldDate !== newDate) {
             // Date changed: recompute both old and new dates
             // This ensures no stale completion/progress remains on the old date
-            const [oldDayLog, newDayLog] = await Promise.all([
+            await Promise.all([
                 recomputeDayLogForHabit(habitId, oldDate, userId),
                 recomputeDayLogForHabit(habitId, newDate, userId)
             ]);
+
+            // Recompute new date's DayLog for response
+            const newDayLog = await recomputeDayLogForHabit(habitId, newDate, userId);
 
             // Return the new dayLog (old one is cleaned up if no entries remain)
             res.json({

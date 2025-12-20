@@ -8,7 +8,7 @@ import type { Request, Response } from 'express';
 import { getHabitEntriesByUser } from '../repositories/habitEntryRepository';
 
 import { getHabitsByUser } from '../repositories/habitRepository';
-import { computeGoalsWithProgress } from '../utils/goalProgressUtils';
+// Note: computeGoalsWithProgress is now imported dynamically in getProgressOverview
 import { calculateGlobalMomentum, calculateCategoryMomentum, getMomentumCopy } from '../services/momentumService';
 import { calculateDailyStreak, calculateWeeklyStreak } from '../services/streakService';
 import { subDays, format } from 'date-fns';
@@ -152,8 +152,10 @@ export async function getProgressOverview(req: Request, res: Response): Promise<
       });
     }
 
-    // Fetch goals with progress (reuses efficient batch computation)
-    const goalsWithProgress = await computeGoalsWithProgress(userId);
+    // Fetch goals with progress (reuses efficient batch computation via truthQuery)
+    // Default to UTC timezone for now - could be extracted from user preferences
+    const { computeGoalsWithProgressV2 } = await import('../utils/goalProgressUtilsV2');
+    const goalsWithProgress = await computeGoalsWithProgressV2(userId, 'UTC');
 
     // Return combined response
     res.status(200).json({
