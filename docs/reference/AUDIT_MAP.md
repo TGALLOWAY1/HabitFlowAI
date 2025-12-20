@@ -32,19 +32,151 @@ All progress, history, and time-based data must ultimately trace back to HabitEn
 ### HabitEntry
 
 Current collections:
-- ...
+- `habitEntries` (MongoDB collection: `'habitEntries'`) - **Source of Truth**
+  - Location: `src/server/repositories/habitEntryRepository.ts` (line 13)
+  - Storage format: Array of HabitEntry documents
+  - Schema: `src/models/persistenceTypes.ts` (lines 896-980)
+  - Indexed by: `habitId`, `date`, `userId`, `deletedAt` (soft delete)
+- `dayLogs` (MongoDB collection: `'dayLogs'`) - **Derived Cache** ⚠️
+  - Location: `src/server/repositories/dayLogRepository.ts` (line 11)
+  - Storage format: Record<string, DayLog> with composite keys `${habitId}-${date}`
+  - Schema: `src/models/persistenceTypes.ts` (lines 255-325)
+  - **Status:** Marked as "DEPRECATED SOURCE OF TRUTH" in code comments
+  - **Derivation:** Computed from HabitEntries via `recomputeDayLogForHabit()` in `src/server/utils/recomputeUtils.ts`
 
 Read paths:
-- ...
+- **Backend Repository:**
+  - `getHabitEntries(habitId)` - `src/server/repositories/habitEntryRepository.ts:70` - ⚠️ No userId scoping
+  - `getHabitEntriesByHabit(habitId, userId)` - `src/server/repositories/habitEntryRepository.ts:97`
+  - `getHabitEntriesForDay(habitId, date, userId)` - `src/server/repositories/habitEntryRepository.ts:125`
+  - `getHabitEntriesByUser(userId)` - `src/server/repositories/habitEntryRepository.ts:328` - Used for progress aggregation
+- **Backend API Routes:**
+  - `GET /api/entries?habitId=...&date=...` - `src/server/routes/habitEntries.ts:24` - `getHabitEntriesRoute()`
+  - Returns entries filtered by habitId (and optionally date)
+- **Frontend Persistence Client:**
+  - `fetchHabitEntries(habitId, date?)` - `src/lib/persistenceClient.ts:757` - Calls `/api/entries`
+- **Frontend Components:**
+  - `GoalDetailPage.tsx:48` - Fetches linked habit entries for goal progress
+  - `HabitHistoryModal.tsx:28` - Fetches entries for history view
+- **Entry→DayLog Adapters (Derivation Logic):**
+  - `recomputeDayLogForHabit(habitId, date, userId)` - `src/server/utils/recomputeUtils.ts:20`
+    - Reads: `getHabitEntriesForDay()` to fetch entries
+    - Aggregates entries into DayLog structure
+    - Writes: `upsertDayLog()` or `deleteDayLog()` based on entry count
+    - Called automatically after every entry mutation (create/update/delete)
+- **Progress/Momentum Services (Reading Entries):**
+  - `getProgressOverview()` - `src/server/routes/progress.ts:28`
+    - Reads: `getHabitEntriesByUser()` (line 43)
+    - ⚠️ **Issue:** Converts entries to DayLog-like structure (lines 46-50) for momentum/streak calculations
+    - ⚠️ **Issue:** Momentum service expects DayLog[] but receives HabitEntry[] (line 74)
 
 Write paths:
-- ...
+- **HabitEntry Creation:**
+  - `createHabitEntry(entry, userId)` - `src/server/repositories/habitEntryRepository.ts:22`
+  - `POST /api/entries` - `src/server/routes/habitEntries.ts:52` - `createHabitEntryRoute()`
+    - Validates entry payload
+    - Creates entry
+    - **Auto-triggers:** `recomputeDayLogForHabit()` (line 94)
+  - Frontend: `createHabitEntry()` - `src/lib/persistenceClient.ts:772`
+  - Frontend: `HabitContext.tsx:339` - `toggleHabit()` creates entry via `createHabitEntry()`
+  - Frontend: `HabitContext.tsx:382` - `updateLog()` creates entry via `createHabitEntry()`
+- **HabitEntry Update:**
+  - `updateHabitEntry(id, userId, patch)` - `src/server/repositories/habitEntryRepository.ts:156`
+  - `PATCH /api/entries/:id` - `src/server/routes/habitEntries.ts:190` - `updateHabitEntryRoute()`
+    - ⚠️ **Issue:** Only recomputes new date if date changed (line 226), should recompute both old and new dates
+    - **Auto-triggers:** `recomputeDayLogForHabit()` (line 226)
+  - Frontend: `updateHabitEntry(id, patch)` - `src/lib/persistenceClient.ts:787`
+  - Frontend: `HabitContext.tsx:400` - `updateHabitEntryContext()`
+- **HabitEntry Upsert:**
+  - `upsertHabitEntry(habitId, date, userId, updates)` - `src/server/repositories/habitEntryRepository.ts:247`
+  - `PUT /api/entries` - `src/server/routes/habitEntries.ts:283` - `upsertHabitEntryRoute()`
+    - **Auto-triggers:** `recomputeDayLogForHabit()` (line 312)
+  - Frontend: `upsertHabitEntry(habitId, dateKey, data)` - `src/lib/persistenceClient.ts:802`
+  - Frontend: `HabitContext.tsx:573` - `upsertHabitEntryContext()`
+  - Frontend: `TrackerGrid.tsx:735` - Multiple calls to `upsertHabitEntry()`
+  - Frontend: `DayView.tsx:18` - Uses `upsertHabitEntry()`
+- **HabitEntry Deletion:**
+  - `deleteHabitEntry(id, userId)` - `src/server/repositories/habitEntryRepository.ts:189` - Soft delete
+  - `deleteHabitEntryByKey(habitId, date, userId)` - `src/server/repositories/habitEntryRepository.ts:300` - Soft delete by key
+  - `deleteHabitEntriesForDay(habitId, date, userId)` - `src/server/repositories/habitEntryRepository.ts:218` - Bulk soft delete
+  - `DELETE /api/entries/:id` - `src/server/routes/habitEntries.ts:115` - `deleteHabitEntryRoute()`
+    - **Auto-triggers:** `recomputeDayLogForHabit()` (line 173)
+  - `DELETE /api/entries/key?habitId=...&dateKey=...` - `src/server/routes/habitEntries.ts:329` - `deleteHabitEntryByKeyRoute()`
+    - **Auto-triggers:** `recomputeDayLogForHabit()` (line 345)
+  - `DELETE /api/entries?habitId=...&date=...` - `src/server/routes/habitEntries.ts:247` - `deleteHabitEntriesForDayRoute()`
+    - **Auto-triggers:** `recomputeDayLogForHabit()` (line 265)
+  - Frontend: `deleteHabitEntry(id)` - `src/lib/persistenceClient.ts:840`
+  - Frontend: `deleteHabitEntryByKey(habitId, dateKey)` - `src/lib/persistenceClient.ts:818`
+  - Frontend: `HabitContext.tsx:410` - `deleteHabitEntryContext()`
+  - Frontend: `HabitContext.tsx:593` - `deleteHabitEntryByKeyContext()`
+- **DayLog Writes (Derived Cache):**
+  - `recomputeDayLogForHabit()` - `src/server/utils/recomputeUtils.ts:20`
+    - Called automatically after every entry mutation
+    - Aggregates entries: sums values, computes `completed` boolean
+    - Writes: `upsertDayLog()` or `deleteDayLog()` based on entry count
+  - ⚠️ **Legacy Direct DayLog Writes (Should be banned):**
+    - `upsertDayLog()` - `src/server/repositories/dayLogRepository.ts:20` - Still accessible via API
+    - `POST /api/dayLogs` - `src/server/routes/dayLogs.ts` - Direct write bypassing entries
+    - `saveDayLog()` - `src/lib/persistenceClient.ts:339` - Frontend wrapper
+    - `toggleHabit()` - `src/store/HabitContext.tsx:294` - Legacy path may write DayLogs directly
+    - `updateLog()` - `src/store/HabitContext.tsx:359` - Legacy path may write DayLogs directly
 
 Known risks:
-- ...
+- **Progress Overview Route Drift:**
+  - `getProgressOverview()` reads HabitEntries but converts to DayLog structure (lines 46-50)
+  - Momentum/streak services expect DayLog[] but receive HabitEntry[] (type casting on line 74)
+  - **Risk:** Type mismatch could cause runtime errors or incorrect calculations
+- **Goal Progress Reading DayLogs:**
+  - `computeGoalProgress()` - `src/server/utils/goalProgressUtils.ts:72` reads from DayLogs via `getDayLogsByHabit()`
+  - `computeFullGoalProgress()` - `src/server/utils/goalProgressUtils.ts:194` aggregates DayLogs
+  - **Risk:** Goal progress computed from derived cache instead of source of truth
+  - **Risk:** If DayLogs are out of sync, goal progress will be incorrect
+- **Momentum Service Type Mismatch:**
+  - `calculateGlobalMomentum()` - `src/server/services/momentumService.ts:44` expects `DayLog[]`
+  - `calculateCategoryMomentum()` - `src/server/services/momentumService.ts:58` expects `DayLog[]`
+  - Receives `HabitEntry[]` from progress route (type cast to `any[]`)
+  - **Risk:** Accesses `log.completed` and `log.date` which exist on both, but structure differs
+- **Frontend State Management:**
+  - `HabitContext.tsx` stores `logs: Record<string, DayLog>` (DayLog structure)
+  - Entry operations return `{ entry, dayLog }` but frontend primarily uses `dayLog`
+  - **Risk:** Frontend depends on DayLog structure, not HabitEntry structure
+- **Direct DayLog Writes Bypassing Entries:**
+  - `POST /api/dayLogs` route still exists and allows direct writes
+  - `toggleHabit()` and `updateLog()` in HabitContext may have legacy paths
+  - **Risk:** DayLogs can be written without corresponding HabitEntries
+  - **Risk:** DayLogs and HabitEntries can become out of sync
+- **Date Change Edge Case:**
+  - `updateHabitEntryRoute()` only recomputes new date if date changed (line 226)
+  - Comment indicates old date should also be recomputed (lines 205-224)
+  - **Risk:** Moving entry between days leaves old DayLog stale
+- **Multiple Entry Schemas:**
+  - ✅ **Single schema confirmed:** Only `habitEntries` collection exists
+  - ✅ **No duplicate collections found**
 
 Action:
-- ...
+- **Milestone A Plan:**
+  1. **Create `truthQuery` utility:**
+     - Function that reads from HabitEntries and returns canonical structure
+     - Replace all DayLog reads with HabitEntry reads + derivation
+     - Location: `src/server/utils/truthQuery.ts` (new file)
+  2. **Implement legacy merge adapter:**
+     - Function that converts HabitEntry[] to DayLog[] structure for compatibility
+     - Used during transition period for services expecting DayLog format
+     - Location: `src/server/utils/legacyAdapter.ts` (new file)
+  3. **Ban direct DayLog reads:**
+     - Update `goalProgressUtils.ts` to read from HabitEntries via `truthQuery`
+     - Update `momentumService.ts` to accept HabitEntry[] or use adapter
+     - Add lint rule or code review checklist to prevent new DayLog reads
+  4. **Migrate read paths:**
+     - `computeGoalProgress()` → Read from HabitEntries
+     - `computeFullGoalProgress()` → Read from HabitEntries
+     - `getProgressOverview()` → Use truthQuery + adapter pattern
+  5. **Enforce write discipline:**
+     - Deprecate `POST /api/dayLogs` route (return 410 Gone)
+     - Ensure all entry mutations trigger recompute (already done)
+     - Add validation to prevent DayLog writes without corresponding entries
+  6. **Fix date change edge case:**
+     - Update `updateHabitEntryRoute()` to recompute both old and new dates when date changes
 
 ---
 
