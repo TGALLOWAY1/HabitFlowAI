@@ -6,7 +6,20 @@
  * - Stored completion/progress fields
  * - Legacy DayLog writes
  * - HabitEntry date persistence
- * - Activity naming leakage (should use Routine)
+ * - Activity naming leakage (comprehensive ban - should use Routine)
+ * 
+ * Exclusions:
+ * - Test files (__tests__/, *.test.*)
+ * - Documentation (docs/, reference/)
+ * - This script itself
+ * - node_modules
+ * 
+ * Activity naming exceptions (allowed):
+ * - Legacy data handling in dayLogRepository (backward compatibility)
+ * - Activity icon from lucide-react (third-party library)
+ * - General activity terms (inactivityWarning, activityTab, "Activity Heatmap", etc.)
+ * - Predefined habit names (user-facing data)
+ * - Comments explaining renames
  * 
  * Run with: npm run check:invariants
  */
@@ -42,15 +55,20 @@ const FORBIDDEN_LEGACY = [
 ];
 
 // Forbidden Activity naming (should use Routine instead)
-const FORBIDDEN_ACTIVITY_NAMING = [
-    'ActivityRunner',
-    'ActivityModal',
-    'activityService',
-    'ActivityContext',
-    'ActivityList',
-    '/api/activities', // Should use /api/routines
-    'activityId', // Should use routineId (except in legacy data handling)
-    'activity_id',
+// Comprehensive ban on all activity* patterns in runtime code
+const FORBIDDEN_ACTIVITY_PATTERNS = [
+    { pattern: /\bactivity\b/i, name: 'activity (word)' },
+    { pattern: /\bactivities\b/i, name: 'activities (word)' },
+    { pattern: /\bActivity\b/, name: 'Activity (capitalized)' },
+    { pattern: /\bActivities\b/, name: 'Activities (capitalized)' },
+    { pattern: /\bactivityId\b/, name: 'activityId' },
+    { pattern: /\bactivity_id\b/, name: 'activity_id' },
+    { pattern: /\bActivityRunner\b/, name: 'ActivityRunner' },
+    { pattern: /\bActivityModal\b/, name: 'ActivityModal' },
+    { pattern: /\bactivityService\b/, name: 'activityService' },
+    { pattern: /\bActivityContext\b/, name: 'ActivityContext' },
+    { pattern: /\bActivityList\b/, name: 'ActivityList' },
+    { pattern: /\/api\/activities/, name: '/api/activities' },
 ];
 
 // Patterns that indicate persistence writes
@@ -115,7 +133,7 @@ function isInCommentOrString(line: string, index: number): boolean {
 function shouldExcludeFile(filePath: string): boolean {
     const relativePath = relative(PROJECT_ROOT, filePath);
     
-    // Exclude test files (they may test guardrails)
+    // Exclude test files (they may test guardrails or use legacy terms in fixtures)
     if (relativePath.includes('__tests__') || relativePath.includes('.test.')) {
         return true;
     }
@@ -125,7 +143,7 @@ function shouldExcludeFile(filePath: string): boolean {
         return true;
     }
     
-    // Exclude documentation
+    // Exclude documentation (reference docs, historical docs, etc.)
     if (relativePath.includes('docs/') || relativePath.includes('reference/')) {
         return true;
     }
@@ -246,9 +264,8 @@ function scanFile(filePath: string): void {
         });
         
         // Check for Activity naming leakage (should use Routine)
-        FORBIDDEN_ACTIVITY_NAMING.forEach(activityName => {
-            const activityPattern = new RegExp(`\\b${activityName}\\b`, 'i');
-            const match = activityPattern.exec(line);
+        FORBIDDEN_ACTIVITY_PATTERNS.forEach(({ pattern, name }) => {
+            const match = pattern.exec(line);
             
             if (match) {
                 const matchIndex = match.index;
@@ -259,27 +276,62 @@ function scanFile(filePath: string): void {
                 }
                 
                 // Allow activityId in legacy data handling context (dayLogRepository)
+                // This is the only place where activityId should appear - for backward compatibility
                 const isLegacyDataHandling = filePath.includes('dayLogRepository') && 
                                            (line.includes('legacy') || line.includes('Legacy') || 
-                                            line.includes('activityId') && line.includes('routineId'));
+                                            (line.includes('activityId') && line.includes('routineId')));
                 
-                // Allow "Activity" icon from lucide-react
+                // Allow "Activity" icon from lucide-react (third-party library)
+                // Check if Activity is imported from lucide-react in the file
                 const isIconImport = line.includes("from 'lucide-react'") || 
-                                   line.includes('import.*Activity.*from');
+                                   line.includes("from \"lucide-react\"") ||
+                                   line.match(/import\s+.*Activity.*from\s+['"]lucide-react['"]/);
                 
-                // Allow general activity terms (not Activity entity)
+                // Also check if this file imports Activity from lucide-react (for JSX usage)
+                // We'll check the full file content for the import
+                let fileHasIconImport = false;
+                try {
+                    const fileContent = readFileSync(filePath, 'utf-8');
+                    fileHasIconImport = /import\s+.*\{[^}]*Activity[^}]*\}\s+from\s+['"]lucide-react['"]/.test(fileContent) ||
+                                      /import\s+.*Activity\s+from\s+['"]lucide-react['"]/.test(fileContent);
+                } catch (e) {
+                    // If we can't read the file, skip this check
+                }
+                
+                // Allow general activity terms (not Activity entity):
+                // - inactivityWarning (goal inactivity, not Activity entity)
+                // - activityTab (general activity tab, not Activity entity)
+                // - "Activity Heatmap" (general activity visualization, not Activity entity)
+                // - "No activity yet" (general activity message, not Activity entity)
+                // - "recent activity" (general activity description, not Activity entity)
+                // - "activity counts" (general activity metrics, not Activity entity)
+                // - "Activity" as a UI label (general activity section header)
                 const isGeneralActivity = line.includes('inactivityWarning') || 
                                         line.includes('activityTab') ||
                                         line.includes('Activity Heatmap') ||
-                                        line.includes('No activity yet');
+                                        line.includes('No activity yet') ||
+                                        line.includes('recent activity') ||
+                                        line.includes('activity counts') ||
+                                        line.includes('global activity') ||
+                                        (line.includes('Activity') && line.includes('text-white') && line.includes('font-bold')); // UI section header
                 
-                if (!isLegacyDataHandling && !isIconImport && !isGeneralActivity) {
+                // Allow predefined habit names (user-facing data, not code)
+                const isPredefinedHabit = filePath.includes('predefinedHabits') && 
+                                        (line.includes('Activity for Lady') || 
+                                         line.includes('Social Activity'));
+                
+                // Allow comment explaining rename (e.g., "Renamed from activities")
+                const isRenameComment = line.includes('Renamed from') || 
+                                       line.includes('formerly Activity');
+                
+                if (!isLegacyDataHandling && !isIconImport && !fileHasIconImport && !isGeneralActivity && 
+                    !isPredefinedHabit && !isRenameComment) {
                     violations.push({
                         file: relative(PROJECT_ROOT, filePath),
                         line: lineNum,
                         content: trimmedLine,
                         type: 'legacy_store',
-                        field: activityName,
+                        field: name,
                     });
                 }
             }
@@ -347,10 +399,21 @@ function scanDirectory(dir: string): void {
  */
 function main(): void {
     console.log('🔍 Scanning for invariant violations...\n');
+    console.log('📋 Checking:');
+    console.log('  - Forbidden persistence fields (completion/progress)');
+    console.log('  - Legacy DayLog writes');
+    console.log('  - HabitEntry date persistence');
+    console.log('  - Activity naming leakage (activity* → routine*)\n');
     
     // Scan server directory (repositories and routes)
     scanDirectory(join(SERVER_DIR, 'repositories'));
     scanDirectory(join(SERVER_DIR, 'routes'));
+    
+    // Also scan frontend source for Activity naming (but exclude test files)
+    scanDirectory(join(PROJECT_ROOT, 'src/components'));
+    scanDirectory(join(PROJECT_ROOT, 'src/store'));
+    scanDirectory(join(PROJECT_ROOT, 'src/lib'));
+    scanDirectory(join(PROJECT_ROOT, 'src/models'));
     
     // Report results
     if (violations.length === 0) {
