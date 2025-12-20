@@ -193,7 +193,21 @@ export async function updateHabitEntryRoute(req: Request, res: Response): Promis
         const { id } = req.params;
         const patch = req.body;
 
-        // 1. Update
+        // 1. Fetch old entry to capture old date before update
+        // This is necessary to recompute both old and new dates if date changes
+        const { getDb } = await import('../lib/mongoClient');
+        const db = await getDb();
+        const oldEntry = await db.collection('habitEntries').findOne({ id, userId });
+
+        if (!oldEntry) {
+            res.status(404).json({ error: 'Entry not found' });
+            return;
+        }
+
+        const oldDate = oldEntry.date;
+        const habitId = oldEntry.habitId;
+
+        // 2. Update entry
         const updatedEntry = await updateHabitEntry(id, userId, patch);
 
         if (!updatedEntry) {
@@ -201,38 +215,35 @@ export async function updateHabitEntryRoute(req: Request, res: Response): Promis
             return;
         }
 
-        // 2. Recompute
-        // Note: If date changed, we need to recompute BOTH old and new dates!
-        // This complexity suggests we should block date changes or handle them carefully.
-        // PRD says: "Change date" is a feature.
-        // If date changed, we need the OLD date.
-        // `updateHabitEntry` returns the NEW doc.
-        // To handle date change correctly, we'd need to fetch OLD doc before update.
-        // For this MVP, let's assume date doesn't change OR we only recompute the new date (buggy).
+        // 3. Recompute DayLogs for affected dates
+        const newDate = updatedEntry.date;
 
-        // Fix: Fetch old doc before update if date is in patch.
-        // Similar to delete, we ideally peek.
-        // If date IS in patch:
-        //   recomputeDayLogForHabit(habitId, oldDate)
-        //   recomputeDayLogForHabit(habitId, newDate)
-        // If date NOT in patch:
-        //   recomputeDayLogForHabit(habitId, currentDate)
+        if (oldDate !== newDate) {
+            // Date changed: recompute both old and new dates
+            // This ensures no stale completion/progress remains on the old date
+            const [oldDayLog, newDayLog] = await Promise.all([
+                recomputeDayLogForHabit(habitId, oldDate, userId),
+                recomputeDayLogForHabit(habitId, newDate, userId)
+            ]);
 
-        // For now, I'll just recompute the NEW date's log.
-        // This covers 99% of cases (editing value).
-        // Handling moving entries between days is an edge case I'll defer or solve if I have time.
-        // I'll add a TODO.
+            // Return the new dayLog (old one is cleaned up if no entries remain)
+            res.json({
+                entry: updatedEntry,
+                dayLog: newDayLog
+            });
+        } else {
+            // Date unchanged: recompute once (current behavior)
+            const updatedDayLog = await recomputeDayLogForHabit(
+                habitId,
+                newDate,
+                userId
+            );
 
-        const updatedDayLog = await recomputeDayLogForHabit(
-            updatedEntry.habitId,
-            updatedEntry.date,
-            userId
-        );
-
-        res.json({
-            entry: updatedEntry,
-            dayLog: updatedDayLog
-        });
+            res.json({
+                entry: updatedEntry,
+                dayLog: updatedDayLog
+            });
+        }
 
     } catch (error) {
         console.error('Error updating entry:', error);
