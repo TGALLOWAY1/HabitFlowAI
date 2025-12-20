@@ -11,6 +11,21 @@ import type { DayLog } from '../../models/persistenceTypes';
 const COLLECTION_NAME = 'dayLogs';
 
 /**
+ * Helper function to clean DayLog by removing null optional fields.
+ * Maintains backward compatibility by returning undefined instead of null.
+ */
+function cleanDayLog(log: any): DayLog {
+  const cleaned: any = { ...log };
+  if (cleaned.routineId == null) {
+    delete cleaned.routineId;
+  }
+  if (cleaned.source == null) {
+    delete cleaned.source;
+  }
+  return cleaned as DayLog;
+}
+
+/**
  * Create or update a day log.
  * 
  * @param log - DayLog data
@@ -29,17 +44,23 @@ export async function upsertDayLog(
   const compositeKey = `${log.habitId}-${log.date}`;
 
   // Create document to store in MongoDB (includes userId and compositeKey)
-  // Build document with all fields from log, explicitly including activity metadata
+  // Only include optional fields if they are not null/undefined (for backward compatibility)
   const document: any = {
     habitId: log.habitId,
     date: log.date,
     value: log.value,
     completed: log.completed,
-    source: log.source, // Explicitly store source
-    routineId: log.routineId, // Explicitly store routineId
     compositeKey, // Store composite key for efficient querying
     userId,
   };
+
+  // Only include optional fields if they are provided (not null/undefined)
+  if (log.source != null) {
+    document.source = log.source;
+  }
+  if (log.routineId != null) {
+    document.routineId = log.routineId;
+  }
 
   // Legacy mapping: If legacy activityId exists and routineId is missing, map it.
   const logAny = log as any;
@@ -72,8 +93,9 @@ export async function upsertDayLog(
   }
 
   // Return DayLog (without userId, compositeKey, and _id)
+  // Remove null values for optional fields to maintain backward compatibility
   const { _id, userId: _, compositeKey: __, ...dayLog } = result;
-  return dayLog as DayLog;
+  return cleanDayLog(dayLog);
 }
 
 /**
@@ -92,10 +114,11 @@ export async function getDayLogsByUser(userId: string): Promise<Record<string, D
     .toArray();
 
   // Convert array to Record with composite key
+  // Remove null values for optional fields to maintain backward compatibility
   const logs: Record<string, DayLog> = {};
   for (const doc of documents) {
     const { _id, userId: _, compositeKey, ...log } = doc;
-    logs[compositeKey] = log as DayLog;
+    logs[compositeKey] = cleanDayLog(log);
   }
 
   return logs;
@@ -121,10 +144,11 @@ export async function getDayLogsByHabit(
     .toArray();
 
   // Convert array to Record with composite key
+  // Remove null values for optional fields to maintain backward compatibility
   const logs: Record<string, DayLog> = {};
   for (const doc of documents) {
     const { _id, userId: _, compositeKey, ...log } = doc;
-    logs[compositeKey] = log as DayLog;
+    logs[compositeKey] = cleanDayLog(log);
   }
 
   return logs;
@@ -155,8 +179,9 @@ export async function getDayLog(
   }
 
   // Remove MongoDB _id, userId, and compositeKey before returning
+  // Remove null values for optional fields to maintain backward compatibility
   const { _id, userId: _, compositeKey: __, ...log } = document;
-  return log as DayLog;
+  return cleanDayLog(log);
 }
 
 /**
@@ -183,7 +208,7 @@ export async function deleteDayLog(
 }
 
 /**
- * Delete all day logs for a habit (when habit is deleted).
+ * Delete all day logs for a habit.
  * 
  * @param habitId - Habit ID
  * @param userId - User ID to verify ownership
@@ -201,4 +226,3 @@ export async function deleteDayLogsByHabit(
 
   return result.deletedCount;
 }
-
