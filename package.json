@@ -11,7 +11,8 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "vitest",
-    "test:run": "vitest run"
+    "test:run": "vitest run",
+    "check:invariants": "tsx scripts/check-invariants.ts"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

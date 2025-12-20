@@ -1703,3 +1703,37 @@ The following fields are **banned** from persistence and will throw an error if 
 - ✅ Legacy `date` input is accepted and normalized
 - ✅ Existing records with `date` field are handled gracefully (reads prefer `dayKey`, fallback to `date`)
 
+---
+
+## Invariant Enforcement
+
+**Automated Checking:**
+- `npm run check:invariants` - Scans codebase for forbidden persistence patterns
+- Runs on: `src/server/repositories/` and `src/server/routes/`
+- Blocks: Stored completion/progress fields, legacy DayLog writes, HabitEntry date persistence
+
+**What It Blocks:**
+1. **Forbidden Persistence Fields:**
+   - `isComplete`, `completed`, `isCompleted`, `completion`
+   - `progress`, `currentValue`, `percent` (when stored, not computed)
+   - `streak`, `momentum`, `totals`, `weeklyProgress`, `dailyProgress`, `goalProgress`
+   - `completedOptions`
+
+2. **Legacy DayLog Writes:**
+   - `/api/dayLogs` endpoint usage (write routes are deprecated)
+   - `saveDayLog` function calls (should be removed)
+
+3. **HabitEntry Date Persistence:**
+   - `date` field assignments in write contexts (only `dayKey` should be persisted)
+
+**Allowed Contexts:**
+- DayLog functions in `recomputeUtils.ts` (derived data recomputation)
+- DayLog cleanup operations (cascade deletes)
+- Test files (may test guardrails)
+- Documentation and comments
+
+**Enforcement Location:**
+- Script: `scripts/check-invariants.ts`
+- Command: `npm run check:invariants`
+- Exit code: 1 if violations found, 0 if clean
+
