@@ -6,6 +6,7 @@
  * - Stored completion/progress fields
  * - Legacy DayLog writes
  * - HabitEntry date persistence
+ * - Activity naming leakage (should use Routine)
  * 
  * Run with: npm run check:invariants
  */
@@ -38,6 +39,18 @@ const FORBIDDEN_FIELDS = [
 const FORBIDDEN_LEGACY = [
     '/api/dayLogs', // API endpoint (write routes are deprecated)
     'saveDayLog', // Write function (should be removed)
+];
+
+// Forbidden Activity naming (should use Routine instead)
+const FORBIDDEN_ACTIVITY_NAMING = [
+    'ActivityRunner',
+    'ActivityModal',
+    'activityService',
+    'ActivityContext',
+    'ActivityList',
+    '/api/activities', // Should use /api/routines
+    'activityId', // Should use routineId (except in legacy data handling)
+    'activity_id',
 ];
 
 // Patterns that indicate persistence writes
@@ -232,6 +245,46 @@ function scanFile(filePath: string): void {
             }
         });
         
+        // Check for Activity naming leakage (should use Routine)
+        FORBIDDEN_ACTIVITY_NAMING.forEach(activityName => {
+            const activityPattern = new RegExp(`\\b${activityName}\\b`, 'i');
+            const match = activityPattern.exec(line);
+            
+            if (match) {
+                const matchIndex = match.index;
+                
+                // Skip if in comment or string
+                if (isInCommentOrString(line, matchIndex)) {
+                    return;
+                }
+                
+                // Allow activityId in legacy data handling context (dayLogRepository)
+                const isLegacyDataHandling = filePath.includes('dayLogRepository') && 
+                                           (line.includes('legacy') || line.includes('Legacy') || 
+                                            line.includes('activityId') && line.includes('routineId'));
+                
+                // Allow "Activity" icon from lucide-react
+                const isIconImport = line.includes("from 'lucide-react'") || 
+                                   line.includes('import.*Activity.*from');
+                
+                // Allow general activity terms (not Activity entity)
+                const isGeneralActivity = line.includes('inactivityWarning') || 
+                                        line.includes('activityTab') ||
+                                        line.includes('Activity Heatmap') ||
+                                        line.includes('No activity yet');
+                
+                if (!isLegacyDataHandling && !isIconImport && !isGeneralActivity) {
+                    violations.push({
+                        file: relative(PROJECT_ROOT, filePath),
+                        line: lineNum,
+                        content: trimmedLine,
+                        type: 'legacy_store',
+                        field: activityName,
+                    });
+                }
+            }
+        });
+        
         // Check for date persistence in HabitEntry writes
         // Look for date: assignments in object literals that are being written
         if (line.includes('date:') && !line.includes('//') && !line.includes('*')) {
@@ -309,7 +362,7 @@ function main(): void {
         violations.forEach((violation, index) => {
             const typeLabel = {
                 'forbidden_field': '🚫 Forbidden Field',
-                'legacy_store': '⚠️  Legacy Store',
+                'legacy_store': '⚠️  Legacy Store / Activity Naming',
                 'date_persistence': '📅 Date Persistence',
             }[violation.type];
             

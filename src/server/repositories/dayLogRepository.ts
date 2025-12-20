@@ -63,6 +63,7 @@ export async function upsertDayLog(
   }
 
   // Legacy mapping: If legacy activityId exists and routineId is missing, map it.
+  // This handles old data that used activityId before the rename to routineId.
   const logAny = log as any;
   if (!document.routineId && logAny.hasOwnProperty('activityId') && logAny.activityId != null) {
     document.routineId = logAny.activityId;

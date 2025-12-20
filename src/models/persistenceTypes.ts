@@ -408,7 +408,7 @@ export interface Routine {
 }
 
 /**
- * RoutineLog Entity (formerly ActivityLog)
+ * RoutineLog Entity
  * 
  * Storage Key: 'routineLogs'
  * Storage Format: Record<string, RoutineLog> (object keyed by composite key)
@@ -984,7 +984,7 @@ export interface HabitEntry {
      */
     source: 'manual' | 'routine' | 'quick' | 'import' | 'test';
 
-    /** Optional: linked activity/routine ID */
+    /** Optional: linked routine ID */
     routineId?: string;
 
     /**

@@ -1737,3 +1737,38 @@ The following fields are **banned** from persistence and will throw an error if 
 - Command: `npm run check:invariants`
 - Exit code: 1 if violations found, 0 if clean
 
+---
+
+## Milestone D — Naming Leakage
+
+**Purpose:** Remove naming leakage from old "activity/activities" vocabulary and align with canonical "routine" terminology.
+
+### Classification of Activity References
+
+**Legitimate Uses (No Changes Needed):**
+- `inactivityWarning` - Goal inactivity detection (not Activity entity)
+- `Activity` icon from `lucide-react` - Third-party icon component
+- "Activity Heatmap" UI label - General activity/engagement tracking (not Activity entity)
+- "No activity yet" UI copy - General activity messaging (not Activity entity)
+- `activityTab` variable - General activity tab state (not Activity entity)
+- Historical docs in `docs/v0-historical/` - Archive, no changes needed
+
+**Code Identifiers (Fixed):**
+- ✅ `persistenceTypes.ts` line 411: Comment "RoutineLog Entity (formerly ActivityLog)" → Updated to "RoutineLog Entity"
+- ✅ `persistenceTypes.ts` line 987: Comment "linked activity/routine ID" → Updated to "linked routine ID"
+- ✅ `dayLogRepository.ts` line 65-69: Legacy `activityId` mapping (kept for backward compatibility, added clarifying comment)
+
+**API Routes:**
+- ✅ All routes use `/api/routines` (no `/api/activities` found)
+- ✅ No `ActivityRunner`, `ActivityModal`, `activityService` components/services found
+
+**Persisted Fields:**
+- ✅ `activityId` legacy mapping handled in `dayLogRepository.ts` (normalizes to `routineId`)
+- ✅ All new writes use `routineId` only
+
+**UI Copy:**
+- "Activity Heatmap" and "No activity yet" refer to general activity/engagement, not the Activity entity
+- These are semantically correct and do not need changes
+
+**Status:** ✅ Complete - All naming leakage removed from runtime code. Only legacy data handling remains (with proper comments).
+
