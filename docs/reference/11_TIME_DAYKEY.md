@@ -118,13 +118,18 @@ Any time-based record must follow this pattern:
 ```ts
 {
   timestampUtc: string   // exact event time
-  dayKey: string         // YYYY-MM-DD in user timezone
+  dayKey: string         // YYYY-MM-DD in user timezone (ONLY persisted aggregation day)
 }
 ```
 
+**Important:** The `date` field is **NOT persisted** for HabitEntry. It is:
+- Accepted as legacy input (normalized to `dayKey`)
+- Returned in API responses as a derived alias from `dayKey` (for backward compatibility)
+- **NOT stored in the database**
+
 This applies to:
 
-* HabitEntry
+* HabitEntry (dayKey persisted, date is input-only)
 * RoutineExecution
 * HabitPotentialEvidence
 * JournalEntry

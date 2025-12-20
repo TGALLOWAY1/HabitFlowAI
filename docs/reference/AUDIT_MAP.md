@@ -1631,3 +1631,75 @@ Establish the "enforcement layer" so the codebase naturally conforms to canonica
 - ✅ Completion is derived, never stored
 - ✅ DayKey is the aggregation boundary
 
+---
+
+# Milestone C1.0 — DayKey-Only Persistence + Completion/Progress Guardrails
+
+**Milestone C1.0 purpose:**
+Remove legacy `date` field from persistence and enforce "no stored completion/progress" guardrails.
+
+**Status:** ✅ Complete
+
+---
+
+## DayKey-Only Persistence
+
+**Changes:**
+- `date` field is **NOT persisted** in HabitEntry records
+- `dayKey` is the **ONLY persisted aggregation day** field
+- `date` is accepted as legacy input (normalized to `dayKey`)
+- `date` is returned in API responses as a derived alias from `dayKey` (for backward compatibility)
+
+**Where DayKey is Normalized:**
+- `src/server/utils/dayKeyNormalization.ts` - `normalizeHabitEntryPayload()` accepts `date` as input, returns only `dayKey`
+- `src/server/routes/habitEntries.ts` - Route handlers normalize `date` → `dayKey` before persistence
+- `src/server/repositories/habitEntryRepository.ts` - Repository functions exclude `date` from DB writes
+
+**Repository Changes:**
+- `createHabitEntry()` - Excludes `date` from persisted document
+- `updateHabitEntry()` - Removes `date` from patch before update
+- `upsertHabitEntry()` - Excludes `date` from persisted document
+- All read functions derive `date` from `dayKey` for API response compatibility
+
+---
+
+## Completion/Progress Guardrails
+
+**Forbidden Fields (Runtime Assertion):**
+The following fields are **banned** from persistence and will throw an error if attempted:
+
+- `completed`, `isComplete`, `isCompleted`, `completion`
+- `progress`, `currentValue`, `percent`
+- `streak`, `momentum`, `totals`, `weeklyProgress`, `dailyProgress`
+
+**Enforcement Location:**
+- `src/server/repositories/habitEntryRepository.ts` - `assertNoStoredCompletionOrProgress()` function
+- Called in: `createHabitEntry()`, `updateHabitEntry()`, `upsertHabitEntry()`
+- Throws error with descriptive message if forbidden fields are detected
+
+**Type-Level Protection:**
+- `HabitEntry` type does not include completion/progress fields
+- TypeScript compile errors guide developers away from storing these fields
+
+**Tests:**
+- `src/server/repositories/__tests__/habitEntryRepository.guardrails.test.ts` - Tests that guardrails throw errors for forbidden fields
+
+---
+
+## Summary
+
+**Persistence Changes:**
+- ✅ `date` field removed from HabitEntry persistence (only `dayKey` is stored)
+- ✅ `date` accepted as legacy input and normalized to `dayKey`
+- ✅ `date` returned in API responses as derived alias from `dayKey`
+
+**Guardrails Added:**
+- ✅ Runtime assertion prevents storing completion/progress fields
+- ✅ Type-level protection via TypeScript types
+- ✅ Tests verify guardrails work correctly
+
+**Backward Compatibility:**
+- ✅ API responses include `date` field (derived from `dayKey`) for frontend compatibility
+- ✅ Legacy `date` input is accepted and normalized
+- ✅ Existing records with `date` field are handled gracefully (reads prefer `dayKey`, fallback to `date`)
+

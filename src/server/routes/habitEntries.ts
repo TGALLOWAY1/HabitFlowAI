@@ -146,28 +146,31 @@ export async function createHabitEntryRoute(req: Request, res: Response): Promis
             return;
         }
 
-        // 1. Create Entry with normalized dayKey
+        // 1. Create Entry with normalized dayKey (date is NOT persisted, only accepted as input)
+        const { date: _, ...entryDataWithoutDate } = entryData;
         const newEntry = await createHabitEntry({
-            ...entryData,
+            ...entryDataWithoutDate,
             dayKey: normalizedPayload.dayKey,
-            date: normalizedPayload.dayKey, // Keep date as legacy alias for backward compatibility
+            // date is NOT included - it's only accepted as input and normalized to dayKey
             timestamp: normalizedPayload.timestampUtc,
             source: entryData.source || 'manual' // Default source
         }, userId);
 
-        // 2. Recompute DayLog (use dayKey, fallback to date for legacy)
-        const dayKeyForRecompute = newEntry.dayKey || newEntry.date;
-        if (!dayKeyForRecompute) {
+        // Add date to response for backward compatibility (derived from dayKey)
+        const responseEntry = { ...newEntry, date: newEntry.dayKey };
+
+        // 2. Recompute DayLog (use dayKey)
+        if (!newEntry.dayKey) {
             throw new Error('Entry missing dayKey after creation');
         }
         const updatedDayLog = await recomputeDayLogForHabit(
             newEntry.habitId,
-            dayKeyForRecompute,
+            newEntry.dayKey,
             userId
         );
 
         res.status(201).json({
-            entry: newEntry,
+            entry: responseEntry, // Includes date as derived alias for backward compatibility
             dayLog: updatedDayLog // Return derived state
         });
 
@@ -229,11 +232,9 @@ export async function deleteHabitEntryRoute(req: Request, res: Response): Promis
             return;
         }
 
-        const { habitId, dayKey, date } = entry;
-        const dayKeyForRecompute = dayKey || date;
-
-        if (!dayKeyForRecompute) {
-            res.status(500).json({ error: 'Entry missing dayKey/date' });
+        const { habitId, dayKey } = entry;
+        if (!dayKey) {
+            res.status(500).json({ error: 'Entry missing dayKey' });
             return;
         }
 
@@ -245,7 +246,7 @@ export async function deleteHabitEntryRoute(req: Request, res: Response): Promis
         }
 
         // 2. Recompute
-        const updatedDayLog = await recomputeDayLogForHabit(habitId, dayKeyForRecompute, userId);
+        const updatedDayLog = await recomputeDayLogForHabit(habitId, dayKey, userId);
 
         res.json({
             success: true,
@@ -301,9 +302,10 @@ export async function updateHabitEntryRoute(req: Request, res: Response): Promis
                     timestamp: patch.timestamp || oldEntry.timestamp,
                 }, userTimeZone);
 
-                // Update patch with normalized dayKey
+                // Update patch with normalized dayKey (date is NOT persisted, only accepted as input)
                 patch.dayKey = normalized.dayKey;
-                patch.date = normalized.dayKey; // Keep date as legacy alias
+                // Remove date from patch - it's only accepted as input, not persisted
+                delete patch.date;
                 patch.timestamp = normalized.timestampUtc;
             } catch (error) {
                 res.status(400).json({ 
@@ -322,7 +324,13 @@ export async function updateHabitEntryRoute(req: Request, res: Response): Promis
         }
 
         // 3. Recompute DayLogs for affected dayKeys
-        const newDayKey = updatedEntry.dayKey || updatedEntry.date;
+        const newDayKey = updatedEntry.dayKey;
+        if (!newDayKey) {
+            throw new Error('Entry missing dayKey after update');
+        }
+
+        // Add date to response for backward compatibility (derived from dayKey)
+        const responseEntry = { ...updatedEntry, date: updatedEntry.dayKey };
 
         if (oldDayKey !== newDayKey) {
             // DayKey changed: recompute both old and new dayKeys
@@ -337,7 +345,7 @@ export async function updateHabitEntryRoute(req: Request, res: Response): Promis
 
             // Return the new dayLog (old one is cleaned up if no entries remain)
             res.json({
-                entry: updatedEntry,
+                entry: responseEntry, // Includes date as derived alias
                 dayLog: newDayLog
             });
         } else {
@@ -349,7 +357,7 @@ export async function updateHabitEntryRoute(req: Request, res: Response): Promis
             );
 
             res.json({
-                entry: updatedEntry,
+                entry: responseEntry, // Includes date as derived alias
                 dayLog: updatedDayLog
             });
         }
@@ -379,10 +387,12 @@ export async function deleteHabitEntriesForDayRoute(req: Request, res: Response)
         const { deleteHabitEntriesForDay } = await import('../repositories/habitEntryRepository');
 
         // 1. Bulk Delete
-        await deleteHabitEntriesForDay(habitId, date, userId);
+        // Normalize date to dayKey (both are YYYY-MM-DD format)
+        const dayKey = date;
+        await deleteHabitEntriesForDay(habitId, dayKey, userId);
 
         // 2. Recompute (should result in deleted/empty log)
-        const updatedDayLog = await recomputeDayLogForHabit(habitId, date, userId);
+        const updatedDayLog = await recomputeDayLogForHabit(habitId, dayKey, userId);
 
         res.json({
             success: true,

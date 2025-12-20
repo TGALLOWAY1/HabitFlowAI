@@ -87,7 +87,8 @@ HabitEntry {
 
   // Time
   timestampUtc: string        // exact event time, stored in UTC
-  dayKey: string              // YYYY-MM-DD, normalized to user timezone
+  dayKey: string              // YYYY-MM-DD, normalized to user timezone (ONLY persisted aggregation day)
+  // date: string              // NOT PERSISTED - accepted as legacy input only, normalized to dayKey
 
   // Value
   value?: number | null       // null or 1 for boolean habits; required for numeric
@@ -233,13 +234,16 @@ RoutineExecution must never bypass HabitEntry creation.
 
 To prevent synchronization bugs:
 
-* ❌ completion flags stored elsewhere
-* ❌ “completedOptions” maps
+* ❌ completion flags stored elsewhere (`completed`, `isComplete`, `isCompleted`, `completion`)
+* ❌ progress fields stored anywhere (`progress`, `currentValue`, `percent`, `streak`, `momentum`, `totals`, `weeklyProgress`, `dailyProgress`)
+* ❌ "completedOptions" maps
 * ❌ day completion caches treated as truth
 * ❌ goal-owned progress counters
 * ❌ parallel history stores (e.g. legacy DayLogs)
+* ❌ `date` field persisted in HabitEntry (only `dayKey` is persisted; `date` is input-only)
 
 All history must converge on HabitEntry.
+All completion/progress must be derived, never stored.
 
 ---
 

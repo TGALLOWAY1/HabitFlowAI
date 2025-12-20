@@ -991,14 +991,20 @@ export interface HabitEntry {
      * DayKey (YYYY-MM-DD) - Canonical aggregation boundary
      * Required: All entries must have a dayKey for aggregation.
      * This is the primary field for day-based queries and grouping.
+     * This is the ONLY persisted aggregation day field.
      */
     dayKey: string;
 
     /** 
-     * Legacy date field (YYYY-MM-DD) - kept for backward compatibility
-     * @deprecated Use dayKey instead. This field is maintained as an alias for queries.
+     * Legacy date field (YYYY-MM-DD) - READ-ONLY, NOT PERSISTED
+     * @deprecated Use dayKey instead. This field is:
+     * - Accepted as input for backward compatibility (normalized to dayKey)
+     * - Returned in API responses as a derived alias from dayKey
+     * - NOT stored in the database
+     * 
+     * For reads: If present in legacy records, it is ignored in favor of dayKey.
      */
-    date: string;
+    date?: string;
 
     /** Optional note */
     note?: string;

@@ -78,11 +78,14 @@ export function normalizeDayKey(options: {
 }
 
 /**
- * Normalizes HabitEntry payload to ensure dayKey is present.
+ * Normalizes HabitEntry dayKey from various input formats.
+ * 
+ * Accepts dayKey (preferred), date (legacy), or timestamp + timeZone (derive).
+ * Returns only dayKey - date is NOT persisted, only accepted as input.
  * 
  * @param payload - HabitEntry payload (may have dayKey, date, or timestamp)
  * @param timeZone - User's timezone (required if deriving from timestamp)
- * @returns Normalized payload with dayKey set
+ * @returns Normalized dayKey and timestampUtc (date is NOT included in return)
  */
 export function normalizeHabitEntryPayload(
     payload: any,
@@ -91,14 +94,15 @@ export function normalizeHabitEntryPayload(
     // Ensure timestampUtc exists (use timestamp or default to now)
     const timestampUtc = payload.timestamp || payload.timestampUtc || new Date().toISOString();
 
-    // Normalize dayKey
+    // Normalize dayKey from various inputs (dayKey, date, or timestamp + timeZone)
     const dayKey = normalizeDayKey({
         dayKey: payload.dayKey,
-        date: payload.date,
+        date: payload.date, // Accept date as legacy input, but normalize to dayKey
         timestamp: timestampUtc,
         timeZone: timeZone || 'UTC', // Default to UTC if not provided
     });
 
+    // Return only dayKey - date is NOT persisted, only accepted as input
     return {
         dayKey,
         timestampUtc,

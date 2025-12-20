@@ -10,6 +10,46 @@ import type { HabitEntry } from '../../models/persistenceTypes';
 import { ObjectId } from 'mongodb';
 import { randomUUID } from 'crypto';
 
+/**
+ * Assert that an object does not contain stored completion/progress fields.
+ * 
+ * Completion and progress must be derived from HabitEntries, never stored.
+ * This guardrail prevents accidental persistence of derived data.
+ * 
+ * @param obj - Object to check
+ * @throws Error if forbidden fields are present
+ */
+function assertNoStoredCompletionOrProgress(obj: any): void {
+    const forbiddenFields = [
+        'completed',
+        'isComplete',
+        'isCompleted',
+        'completion',
+        'progress',
+        'currentValue',
+        'percent',
+        'streak',
+        'momentum',
+        'totals',
+        'weeklyProgress',
+        'dailyProgress',
+    ];
+
+    const foundFields: string[] = [];
+    for (const field of forbiddenFields) {
+        if (field in obj && obj[field] !== undefined) {
+            foundFields.push(field);
+        }
+    }
+
+    if (foundFields.length > 0) {
+        throw new Error(
+            `Cannot persist completion/progress fields. Found: ${foundFields.join(', ')}. ` +
+            'Completion and progress must be derived from HabitEntries, never stored.'
+        );
+    }
+}
+
 const COLLECTION_NAME = 'habitEntries';
 
 /**
@@ -33,24 +73,27 @@ export async function createHabitEntry(
     // Ensure dayKey is present (required)
     const dayKey = entry.dayKey || entry.date;
     if (!dayKey) {
-        throw new Error('HabitEntry must have dayKey or date (legacy)');
+        throw new Error('HabitEntry must have dayKey or date (legacy input)');
     }
 
+    // Ban stored completion/progress fields
+    assertNoStoredCompletionOrProgress(entry);
+
+    // Create entry object (exclude date from persistence)
+    const { date: _, ...entryWithoutDate } = entry;
     const newEntry: HabitEntry = {
-        ...entry,
+        ...entryWithoutDate,
         id,
-        dayKey, // Store canonical dayKey
-        date: dayKey, // Keep date as legacy alias for backward compatibility
+        dayKey, // Store canonical dayKey only
         createdAt: now,
         updatedAt: now,
     };
 
-    // Create document to store in MongoDB (includes userId)
+    // Create document to store in MongoDB (includes userId, excludes date)
     const document = {
         ...newEntry,
         userId,
-        dayKey, // Store canonical dayKey
-        date: dayKey, // Keep date as legacy alias for queries
+        dayKey, // Store canonical dayKey only (date is NOT persisted)
     };
 
     const result = await collection.insertOne(document);
@@ -59,7 +102,9 @@ export async function createHabitEntry(
         throw new Error('Failed to create habit entry');
     }
 
-    return newEntry;
+    // For reads: derive date from dayKey for backward compatibility in API responses
+    const entryWithDate = { ...newEntry, date: newEntry.dayKey };
+    return entryWithDate as HabitEntry;
 }
 
 /**
@@ -91,7 +136,9 @@ export async function getHabitEntries(
 
     return documents.map(doc => {
         const { _id, userId: _, ...entry } = doc;
-        return entry as HabitEntry;
+        // For reads: derive date from dayKey for backward compatibility in API responses
+        const entryWithDate = entry.dayKey ? { ...entry, date: entry.dayKey } : entry;
+        return entryWithDate as HabitEntry;
     });
 }
 
@@ -117,7 +164,9 @@ export async function getHabitEntriesByHabit(
 
     return documents.map(doc => {
         const { _id, userId: _, ...entry } = doc;
-        return entry as HabitEntry;
+        // For reads: derive date from dayKey for backward compatibility in API responses
+        const entryWithDate = entry.dayKey ? { ...entry, date: entry.dayKey } : entry;
+        return entryWithDate as HabitEntry;
     });
 }
 
@@ -153,7 +202,9 @@ export async function getHabitEntriesForDay(
 
     return documents.map(doc => {
         const { _id, userId: _, ...entry } = doc;
-        return entry as HabitEntry;
+        // For reads: derive date from dayKey for backward compatibility in API responses
+        const entryWithDate = entry.dayKey ? { ...entry, date: entry.dayKey } : entry;
+        return entryWithDate as HabitEntry;
     });
 }
 
@@ -171,11 +222,17 @@ export async function updateHabitEntry(
     patch: Partial<Omit<HabitEntry, 'id' | 'habitId' | 'createdAt' | 'updatedAt'>>
 ): Promise<HabitEntry | null> {
 
+    // Ban stored completion/progress fields
+    assertNoStoredCompletionOrProgress(patch);
+
     const db = await getDb();
     const collection = db.collection(COLLECTION_NAME);
 
+    // Remove date from patch if present (date is not persisted)
+    const { date: _, ...patchWithoutDate } = patch;
+
     const update = {
-        ...patch,
+        ...patchWithoutDate,
         updatedAt: new Date().toISOString(),
     };
 
@@ -187,8 +244,11 @@ export async function updateHabitEntry(
 
     if (!result) return null;
 
-    const { _id, userId: _, ...updatedEntry } = result;
-    return updatedEntry as HabitEntry;
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { _id, userId: _userId, ...updatedEntry } = result;
+    // For reads: derive date from dayKey for backward compatibility in API responses
+    const entryWithDate = updatedEntry.dayKey ? { ...updatedEntry, date: updatedEntry.dayKey } : updatedEntry;
+    return entryWithDate as HabitEntry;
 }
 
 /**
@@ -229,14 +289,23 @@ export async function deleteHabitEntry(
  */
 export async function deleteHabitEntriesForDay(
     habitId: string,
-    date: string,
+    dayKey: string,
     userId: string
 ): Promise<number> {
     const db = await getDb();
     const collection = db.collection(COLLECTION_NAME);
 
+    // Query by dayKey (preferred) or date (legacy fallback for existing records)
     const result = await collection.updateMany(
-        { habitId, date, userId, deletedAt: { $exists: false } }, // Only active ones
+        { 
+            habitId, 
+            $or: [
+                { dayKey },
+                { date: dayKey } // Legacy fallback
+            ],
+            userId, 
+            deletedAt: { $exists: false } 
+        }, // Only active ones
         {
             $set: {
                 deletedAt: new Date().toISOString(),
@@ -278,12 +347,17 @@ export async function upsertHabitEntry(
         deletedAt: { $exists: false }
     }) as unknown as HabitEntry | null;
 
+    // Ban stored completion/progress fields
+    assertNoStoredCompletionOrProgress(updates);
+
     if (existing) {
-        // Update - ensure dayKey is set
+        // Update - ensure dayKey is set (exclude date from persistence)
+        // Type assertion needed because updates type omits date, but we want to be explicit
+        const updatesWithoutDate = updates as any;
+        delete updatesWithoutDate.date;
         const patch = { 
-            ...updates, 
+            ...updatesWithoutDate, 
             dayKey, // Ensure canonical dayKey is set
-            date: dayKey, // Keep date as legacy alias
             updatedAt: now 
         };
 
@@ -291,25 +365,32 @@ export async function upsertHabitEntry(
             { _id: new ObjectId((existing as any)._id) },
             { $set: patch }
         );
-        return { ...existing, ...patch };
+        const updated = { ...existing, ...patch };
+        // For reads: derive date from dayKey for backward compatibility in API responses
+        const entryWithDate = updated.dayKey ? { ...updated, date: updated.dayKey } : updated;
+        return entryWithDate as HabitEntry;
     } else {
-        // Create - ensure dayKey is set
+        // Create - ensure dayKey is set (exclude date from persistence)
+        // Type assertion needed because updates type omits date, but we want to be explicit
+        const updatesWithoutDate = updates as any;
+        delete updatesWithoutDate.date;
         const newEntry = {
             _id: new ObjectId(),
             id: randomUUID(),
             habitId,
             userId,
-            dayKey, // Canonical dayKey
-            date: dayKey, // Legacy alias
+            dayKey, // Canonical dayKey only (date is NOT persisted)
             value: updates.value ?? undefined,
             timestamp: updates.timestamp || now,
             source: updates.source || 'manual',
             createdAt: now,
             updatedAt: now,
-            ...updates
+            ...updatesWithoutDate
         } as HabitEntry;
         await collection.insertOne(newEntry as any);
-        return newEntry;
+        // For reads: derive date from dayKey for backward compatibility in API responses
+        const entryWithDate = { ...newEntry, date: newEntry.dayKey };
+        return entryWithDate as HabitEntry;
     }
 }
 
@@ -356,7 +437,9 @@ export async function getHabitEntriesByUser(
 
     return documents.map(doc => {
         const { _id, userId: _, ...entry } = doc;
-        return entry as HabitEntry;
+        // For reads: derive date from dayKey for backward compatibility in API responses
+        const entryWithDate = entry.dayKey ? { ...entry, date: entry.dayKey } : entry;
+        return entryWithDate as HabitEntry;
     });
 }
 
