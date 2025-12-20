@@ -81,8 +81,12 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     // Use refs to prevent double execution in React StrictMode
     const initializedRef = useRef(false);
 
-    // Helper function to load day logs
+    // Helper function to load day logs (LEGACY - for write compatibility only)
+    // NOTE: Reads should use /api/dayView endpoint instead
     const loadLogsFromApi = useCallback(async () => {
+        if (process.env.NODE_ENV === 'development') {
+            console.warn('[LEGACY READ WARNING] HabitContext.loadLogsFromApi is loading DayLogs. Day View should use /api/dayView endpoint instead.');
+        }
         try {
             const apiLogs = await fetchDayLogs();
             setLogs(apiLogs);

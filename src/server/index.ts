@@ -153,6 +153,9 @@ app.delete('/api/entries', deleteHabitEntriesForDayRoute); // Bulk delete via qu
 app.delete('/api/entries/:id', deleteHabitEntryRoute);
 app.patch('/api/entries/:id', updateHabitEntryRoute);
 
+// Day View route
+import { getDayView } from './routes/dayView';
+app.get('/api/dayView', getDayView);
 
 // Habit Potential Evidence routes
 import habitPotentialEvidenceRoutes from './routes/habitPotentialEvidence';

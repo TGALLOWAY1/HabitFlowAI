@@ -13,9 +13,11 @@ import {
   updateRoutine,
   deleteRoutine,
 } from '../repositories/routineRepository';
-import { upsertDayLog } from '../repositories/dayLogRepository';
 import { saveRoutineLog } from '../repositories/routineLogRepository';
-import type { Routine, RoutineStep, DayLog, RoutineLog } from '../../models/persistenceTypes';
+import { upsertHabitEntry } from '../repositories/habitEntryRepository';
+import { recomputeDayLogForHabit } from '../utils/recomputeUtils';
+import { validateDayKey } from '../domain/canonicalValidators';
+import type { Routine, RoutineStep, RoutineLog } from '../../models/persistenceTypes';
 import multer from 'multer';
 import { saveUploadedFile } from '../utils/fileStorage';
 
@@ -538,7 +540,7 @@ export async function submitRoutineRoute(req: Request, res: Response): Promise<v
       return;
     }
 
-    // Validate dateOverride if provided
+    // Validate dateOverride if provided (must be valid DayKey)
     if (dateOverride !== undefined) {
       if (typeof dateOverride !== 'string') {
         res.status(400).json({
@@ -549,12 +551,12 @@ export async function submitRoutineRoute(req: Request, res: Response): Promise<v
         });
         return;
       }
-      // Basic format validation
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(dateOverride)) {
+      const dayKeyValidation = validateDayKey(dateOverride);
+      if (!dayKeyValidation.valid) {
         res.status(400).json({
           error: {
             code: 'VALIDATION_ERROR',
-            message: 'dateOverride must be in YYYY-MM-DD format',
+            message: dayKeyValidation.error,
           },
         });
         return;
@@ -579,28 +581,38 @@ export async function submitRoutineRoute(req: Request, res: Response): Promise<v
 
     // Determine the log date
     const logDate = dateOverride || deriveDateString(submittedAt);
+    
+    // Determine timestamp for entries (use submittedAt if provided, otherwise current time)
+    const entryTimestamp = submittedAt ? new Date(submittedAt).toISOString() : new Date().toISOString();
 
-    // Create DayLogs for each requested habit
-    let createdOrUpdatedCount = 0;
+    // Do not write DayLogs directly. DayLogs are derived from HabitEntries.
+    // Create HabitEntries for each requested habit
     const habitIds = habitIdsToComplete || [];
 
-    for (const habitId of habitIds) {
+    // Create entries in parallel for better performance
+    const entryPromises = habitIds.map(async (habitId) => {
       // Security check: Only allow completing habits that are actually linked to this routine?
       // For now, implicit trust if user requests it, assuming frontend filters correctly.
       // Ideally, check if habitId is in routine.linkedHabitIds or allow flexibility.
 
-      const dayLog: DayLog = {
-        habitId,
-        date: logDate,
+      // Upsert HabitEntry with routine provenance
+      const entry = await upsertHabitEntry(habitId, logDate, userId, {
+        timestamp: entryTimestamp,
         value: 1, // Assume bool completion for simple flow
-        completed: true,
         source: 'routine',
         routineId: routine.id,
-      };
+        dayKey: logDate, // Canonical dayKey
+        date: logDate, // Legacy alias
+      });
 
-      await upsertDayLog(dayLog, userId);
-      createdOrUpdatedCount++;
-    }
+      // Recompute DayLog to keep derived cache in sync
+      await recomputeDayLogForHabit(habitId, logDate, userId);
+
+      return entry;
+    });
+
+    await Promise.all(entryPromises);
+    const createdOrUpdatedCount = habitIds.length;
 
     // Save RoutineLog to record completion of the routine itself
     const routineLog: RoutineLog = {

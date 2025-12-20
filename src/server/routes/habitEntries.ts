@@ -8,37 +8,70 @@
 import type { Request, Response } from 'express';
 import {
     createHabitEntry,
-    getHabitEntriesByHabit,
     updateHabitEntry,
     deleteHabitEntry,
-    getHabitEntriesForDay
 } from '../repositories/habitEntryRepository';
 import { getHabitById } from '../repositories/habitRepository';
 import { validateHabitEntryPayload } from '../utils/habitValidation';
 import { recomputeDayLogForHabit } from '../utils/recomputeUtils';
+import { validateDayKey, assertTimeZone, validateHabitEntryPayloadStructure, assertNoStoredCompletion } from '../domain/canonicalValidators';
+import { normalizeHabitEntryPayload } from '../utils/dayKeyNormalization';
 
 /**
- * Get entries for a habit.
- * GET /api/entries?habitId=...&date=... (date optional)
+ * Get entry views for a habit (via truthQuery).
+ * GET /api/entries?habitId=...&startDayKey=...&endDayKey=...&timeZone=...
+ * 
+ * Returns EntryView[] from truthQuery (unified HabitEntries + legacy DayLogs).
+ * All history reads should use this endpoint.
  */
 export async function getHabitEntriesRoute(req: Request, res: Response): Promise<void> {
     try {
         const userId = (req as any).userId || 'anonymous-user';
-        const { habitId, date } = req.query;
+        const { habitId, startDayKey, endDayKey, timeZone } = req.query;
 
         if (!habitId || typeof habitId !== 'string') {
             res.status(400).json({ error: 'habitId is required' });
             return;
         }
 
-        let entries;
-        if (date && typeof date === 'string') {
-            entries = await getHabitEntriesForDay(habitId, date, userId);
-        } else {
-            entries = await getHabitEntriesByHabit(habitId, userId);
+        // timeZone is required for DayKey derivation
+        const userTimeZone = (timeZone && typeof timeZone === 'string') 
+            ? timeZone 
+            : 'UTC'; // Default to UTC if not provided
+
+        // Validate timeZone
+        const timeZoneValidation = assertTimeZone(userTimeZone);
+        if (!timeZoneValidation.valid) {
+            res.status(400).json({ error: timeZoneValidation.error });
+            return;
         }
 
-        res.json({ entries });
+        // Validate dayKeys if provided
+        if (startDayKey && typeof startDayKey === 'string') {
+            const dayKeyValidation = validateDayKey(startDayKey);
+            if (!dayKeyValidation.valid) {
+                res.status(400).json({ error: dayKeyValidation.error });
+                return;
+            }
+        }
+
+        if (endDayKey && typeof endDayKey === 'string') {
+            const dayKeyValidation = validateDayKey(endDayKey);
+            if (!dayKeyValidation.valid) {
+                res.status(400).json({ error: dayKeyValidation.error });
+                return;
+            }
+        }
+
+        // Fetch via truthQuery (unified HabitEntries + legacy DayLogs)
+        const { getEntryViewsForHabit } = await import('../services/truthQuery');
+        const entryViews = await getEntryViewsForHabit(habitId, userId, {
+            startDayKey: startDayKey as string | undefined,
+            endDayKey: endDayKey as string | undefined,
+            timeZone: userTimeZone,
+        });
+
+        res.json({ entries: entryViews });
     } catch (error) {
         console.error('Error fetching entries:', error);
         res.status(500).json({ error: 'Failed to fetch entries' });
@@ -65,8 +98,37 @@ export async function createHabitEntryRoute(req: Request, res: Response): Promis
             // Let's rely on validation mostly.
         }
 
-        if (!entryData.habitId || !entryData.date) {
-            res.status(400).json({ error: 'Missing required fields: habitId, date' });
+        // Validate payload structure (canonical invariants)
+        const structureValidation = validateHabitEntryPayloadStructure(entryData);
+        if (!structureValidation.valid) {
+            res.status(400).json({ error: structureValidation.error });
+            return;
+        }
+
+        // Ensure no stored completion flags
+        const noCompletionValidation = assertNoStoredCompletion(entryData);
+        if (!noCompletionValidation.valid) {
+            res.status(400).json({ error: noCompletionValidation.error });
+            return;
+        }
+
+        // Normalize dayKey from various inputs (dayKey, date, or timestamp + timeZone)
+        const userTimeZone = (entryData.timeZone && typeof entryData.timeZone === 'string')
+            ? entryData.timeZone
+            : 'UTC'; // Default to UTC
+
+        let normalizedPayload;
+        try {
+            normalizedPayload = normalizeHabitEntryPayload(entryData, userTimeZone);
+        } catch (error) {
+            res.status(400).json({ 
+                error: error instanceof Error ? error.message : 'Failed to normalize dayKey' 
+            });
+            return;
+        }
+
+        if (!entryData.habitId) {
+            res.status(400).json({ error: 'Missing required field: habitId' });
             return;
         }
 
@@ -77,28 +139,38 @@ export async function createHabitEntryRoute(req: Request, res: Response): Promis
             return;
         }
 
+        // Validate habit-specific rules (Choice Bundle, etc.)
         const validation = validateHabitEntryPayload(habit, entryData);
         if (!validation.valid) {
             res.status(400).json({ error: validation.error });
             return;
         }
 
-        // 1. Create Entry
+        // 1. Create Entry with normalized dayKey (date is NOT persisted, only accepted as input)
+        const { date: _, ...entryDataWithoutDate } = entryData;
         const newEntry = await createHabitEntry({
-            ...entryData,
-            timestamp: entryData.timestamp || new Date().toISOString(), // Default to now if not provided
+            ...entryDataWithoutDate,
+            dayKey: normalizedPayload.dayKey,
+            // date is NOT included - it's only accepted as input and normalized to dayKey
+            timestamp: normalizedPayload.timestampUtc,
             source: entryData.source || 'manual' // Default source
         }, userId);
 
-        // 2. Recompute DayLog
+        // Add date to response for backward compatibility (derived from dayKey)
+        const responseEntry = { ...newEntry, date: newEntry.dayKey };
+
+        // 2. Recompute DayLog (use dayKey)
+        if (!newEntry.dayKey) {
+            throw new Error('Entry missing dayKey after creation');
+        }
         const updatedDayLog = await recomputeDayLogForHabit(
             newEntry.habitId,
-            newEntry.date,
+            newEntry.dayKey,
             userId
         );
 
         res.status(201).json({
-            entry: newEntry,
+            entry: responseEntry, // Includes date as derived alias for backward compatibility
             dayLog: updatedDayLog // Return derived state
         });
 
@@ -160,7 +232,11 @@ export async function deleteHabitEntryRoute(req: Request, res: Response): Promis
             return;
         }
 
-        const { habitId, date } = entry;
+        const { habitId, dayKey } = entry;
+        if (!dayKey) {
+            res.status(500).json({ error: 'Entry missing dayKey' });
+            return;
+        }
 
         // 1. Delete
         const deleted = await deleteHabitEntry(id, userId);
@@ -170,7 +246,7 @@ export async function deleteHabitEntryRoute(req: Request, res: Response): Promis
         }
 
         // 2. Recompute
-        const updatedDayLog = await recomputeDayLogForHabit(habitId, date, userId);
+        const updatedDayLog = await recomputeDayLogForHabit(habitId, dayKey, userId);
 
         res.json({
             success: true,
@@ -193,7 +269,53 @@ export async function updateHabitEntryRoute(req: Request, res: Response): Promis
         const { id } = req.params;
         const patch = req.body;
 
-        // 1. Update
+        // Ensure no stored completion flags
+        const noCompletionValidation = assertNoStoredCompletion(patch);
+        if (!noCompletionValidation.valid) {
+            res.status(400).json({ error: noCompletionValidation.error });
+            return;
+        }
+
+        // 1. Fetch old entry to capture old dayKey before update
+        // This is necessary to recompute both old and new dates if dayKey changes
+        const { getDb } = await import('../lib/mongoClient');
+        const db = await getDb();
+        const oldEntry = await db.collection('habitEntries').findOne({ id, userId });
+
+        if (!oldEntry) {
+            res.status(404).json({ error: 'Entry not found' });
+            return;
+        }
+
+        const oldDayKey = oldEntry.dayKey || oldEntry.date;
+        const habitId = oldEntry.habitId;
+
+        // Normalize dayKey if date/dayKey/timestamp is being updated
+        if (patch.date || patch.dayKey || patch.timestamp) {
+            const userTimeZone = (patch.timeZone && typeof patch.timeZone === 'string')
+                ? patch.timeZone
+                : 'UTC';
+
+            try {
+                const normalized = normalizeHabitEntryPayload({
+                    ...patch,
+                    timestamp: patch.timestamp || oldEntry.timestamp,
+                }, userTimeZone);
+
+                // Update patch with normalized dayKey (date is NOT persisted, only accepted as input)
+                patch.dayKey = normalized.dayKey;
+                // Remove date from patch - it's only accepted as input, not persisted
+                delete patch.date;
+                patch.timestamp = normalized.timestampUtc;
+            } catch (error) {
+                res.status(400).json({ 
+                    error: error instanceof Error ? error.message : 'Failed to normalize dayKey' 
+                });
+                return;
+            }
+        }
+
+        // 2. Update entry
         const updatedEntry = await updateHabitEntry(id, userId, patch);
 
         if (!updatedEntry) {
@@ -201,38 +323,44 @@ export async function updateHabitEntryRoute(req: Request, res: Response): Promis
             return;
         }
 
-        // 2. Recompute
-        // Note: If date changed, we need to recompute BOTH old and new dates!
-        // This complexity suggests we should block date changes or handle them carefully.
-        // PRD says: "Change date" is a feature.
-        // If date changed, we need the OLD date.
-        // `updateHabitEntry` returns the NEW doc.
-        // To handle date change correctly, we'd need to fetch OLD doc before update.
-        // For this MVP, let's assume date doesn't change OR we only recompute the new date (buggy).
+        // 3. Recompute DayLogs for affected dayKeys
+        const newDayKey = updatedEntry.dayKey;
+        if (!newDayKey) {
+            throw new Error('Entry missing dayKey after update');
+        }
 
-        // Fix: Fetch old doc before update if date is in patch.
-        // Similar to delete, we ideally peek.
-        // If date IS in patch:
-        //   recomputeDayLogForHabit(habitId, oldDate)
-        //   recomputeDayLogForHabit(habitId, newDate)
-        // If date NOT in patch:
-        //   recomputeDayLogForHabit(habitId, currentDate)
+        // Add date to response for backward compatibility (derived from dayKey)
+        const responseEntry = { ...updatedEntry, date: updatedEntry.dayKey };
 
-        // For now, I'll just recompute the NEW date's log.
-        // This covers 99% of cases (editing value).
-        // Handling moving entries between days is an edge case I'll defer or solve if I have time.
-        // I'll add a TODO.
+        if (oldDayKey !== newDayKey) {
+            // DayKey changed: recompute both old and new dayKeys
+            // This ensures no stale completion/progress remains on the old dayKey
+            await Promise.all([
+                recomputeDayLogForHabit(habitId, oldDayKey, userId),
+                recomputeDayLogForHabit(habitId, newDayKey, userId)
+            ]);
 
-        const updatedDayLog = await recomputeDayLogForHabit(
-            updatedEntry.habitId,
-            updatedEntry.date,
-            userId
-        );
+            // Recompute new dayKey's DayLog for response
+            const newDayLog = await recomputeDayLogForHabit(habitId, newDayKey, userId);
 
-        res.json({
-            entry: updatedEntry,
-            dayLog: updatedDayLog
-        });
+            // Return the new dayLog (old one is cleaned up if no entries remain)
+            res.json({
+                entry: responseEntry, // Includes date as derived alias
+                dayLog: newDayLog
+            });
+        } else {
+            // DayKey unchanged: recompute once (current behavior)
+            const updatedDayLog = await recomputeDayLogForHabit(
+                habitId,
+                newDayKey,
+                userId
+            );
+
+            res.json({
+                entry: responseEntry, // Includes date as derived alias
+                dayLog: updatedDayLog
+            });
+        }
 
     } catch (error) {
         console.error('Error updating entry:', error);
@@ -259,10 +387,12 @@ export async function deleteHabitEntriesForDayRoute(req: Request, res: Response)
         const { deleteHabitEntriesForDay } = await import('../repositories/habitEntryRepository');
 
         // 1. Bulk Delete
-        await deleteHabitEntriesForDay(habitId, date, userId);
+        // Normalize date to dayKey (both are YYYY-MM-DD format)
+        const dayKey = date;
+        await deleteHabitEntriesForDay(habitId, dayKey, userId);
 
         // 2. Recompute (should result in deleted/empty log)
-        const updatedDayLog = await recomputeDayLogForHabit(habitId, date, userId);
+        const updatedDayLog = await recomputeDayLogForHabit(habitId, dayKey, userId);
 
         res.json({
             success: true,

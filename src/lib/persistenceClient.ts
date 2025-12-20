@@ -318,6 +318,10 @@ export async function freezeHabit(id: string, date: string): Promise<{ habit: Ha
 /**
  * Fetch all day logs for the current user.
  * 
+ * ⚠️ LEGACY: DayLogs are derived caches from HabitEntries.
+ * This function is kept temporarily for reading DayLogs (derived cache).
+ * Write operations should use HabitEntry endpoints instead.
+ * 
  * @param habitId - Optional habit ID to filter logs
  * @returns Promise<Record<string, DayLog>> - Record of day logs keyed by `${habitId}-${date}`
  * @throws Error if API request fails
@@ -329,37 +333,13 @@ export async function fetchDayLogs(habitId?: string): Promise<Record<string, Day
   return response.logs;
 }
 
-/**
- * Create or update a day log.
- * 
- * @param log - DayLog data
- * @returns Promise<DayLog> - Created/updated day log
- * @throws Error if API request fails
- */
-export async function saveDayLog(log: DayLog): Promise<DayLog> {
-
-  const response = await apiRequest<{ log: DayLog }>('/dayLogs', {
-    method: 'POST',
-    body: JSON.stringify(log),
-  });
-
-  return response.log;
-}
-
-/**
- * Delete a day log.
- * 
- * @param habitId - Habit ID
- * @param date - Date in YYYY-MM-DD format
- * @returns Promise<void>
- * @throws Error if API request fails
- */
-export async function deleteDayLog(habitId: string, date: string): Promise<void> {
-
-  await apiRequest<{ message: string }>(`/dayLogs/${habitId}/${date}`, {
-    method: 'DELETE',
-  });
-}
+// DayLog write functions removed:
+// - saveDayLog() - REMOVED: DayLogs are derived caches and must not be written directly.
+//   Use createHabitEntry() or upsertHabitEntry() instead.
+// - deleteDayLog() - REMOVED: DayLogs are derived caches and must not be deleted directly.
+//   Use deleteHabitEntryByKey() or clearHabitEntriesForDay() instead.
+// 
+// DayLogs will be automatically recomputed after HabitEntry mutations.
 
 /**
  * WellbeingLog Persistence Functions
@@ -748,19 +728,60 @@ export async function createGoalManualLog(
  */
 
 /**
- * Fetch entries for a habit.
+ * Fetch entries for a habit (via truthQuery).
  * 
  * @param habitId - Habit ID
- * @param date - Optional date filter
- * @returns Promise<HabitEntry[]>
+ * @param startDayKey - Optional start DayKey (YYYY-MM-DD)
+ * @param endDayKey - Optional end DayKey (YYYY-MM-DD)
+ * @param timeZone - User's timezone (defaults to UTC)
+ * @returns Promise<EntryView[]> - EntryViews from truthQuery (unified HabitEntries + legacy DayLogs)
  */
-export async function fetchHabitEntries(habitId: string, date?: string): Promise<HabitEntry[]> {
-  const url = date
-    ? `/entries?habitId=${habitId}&date=${date}`
-    : `/entries?habitId=${habitId}`;
+export async function fetchHabitEntries(
+  habitId: string,
+  startDayKey?: string,
+  endDayKey?: string,
+  timeZone: string = 'UTC'
+): Promise<any[]> {
+  const params = new URLSearchParams({
+    habitId,
+    timeZone,
+  });
+  if (startDayKey) params.append('startDayKey', startDayKey);
+  if (endDayKey) params.append('endDayKey', endDayKey);
 
-  const response = await apiRequest<{ entries: HabitEntry[] }>(url);
+  const response = await apiRequest<{ entries: any[] }>(`/entries?${params.toString()}`);
   return response.entries;
+}
+
+/**
+ * Fetch day view for a specific dayKey (via truthQuery).
+ * 
+ * @param dayKey - DayKey in YYYY-MM-DD format
+ * @param timeZone - User's timezone (defaults to UTC)
+ * @returns Promise<DayViewResponse> - Day view with habit completion/progress derived from EntryViews
+ */
+export async function fetchDayView(dayKey: string, timeZone: string = 'UTC'): Promise<any> {
+  const params = new URLSearchParams({
+    dayKey,
+    timeZone,
+  });
+  const response = await apiRequest<any>(`/dayView?${params.toString()}`);
+  return response;
+}
+
+/**
+ * Fetch goal progress (via truthQuery).
+ * 
+ * @param goalId - Goal ID
+ * @param timeZone - User's timezone (defaults to UTC)
+ * @returns Promise<GoalProgress> - Goal progress computed from EntryViews
+ */
+export async function fetchGoalProgress(goalId: string, timeZone: string = 'UTC'): Promise<any> {
+  const params = new URLSearchParams({
+    timeZone,
+  });
+  const response = await apiRequest<{ progress: any }>(`/goals/${goalId}/progress?${params.toString()}`);
+  return response.progress;
 }
 
 /**

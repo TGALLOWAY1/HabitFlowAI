@@ -1,13 +1,25 @@
 import { useState, useMemo, useEffect } from 'react';
 import { ChevronDown, ChevronRight, CheckCircle2 } from 'lucide-react';
-import type { Category, Habit, DayLog } from '../../types';
+import type { Category, Habit } from '../../types';
 import { HabitGridCell } from './HabitGridCell';
 import { cn } from '../../utils/cn';
+import { warnLegacyCompletionRead } from '../../utils/legacyReadWarning';
+
+interface DayViewHabitStatus {
+    habit: Habit;
+    isComplete: boolean;
+    currentValue: number;
+    targetValue: number;
+    progressPercent: number;
+    weekComplete?: boolean;
+    completedChildrenCount?: number;
+    totalChildrenCount?: number;
+}
 
 interface DayCategorySectionProps {
     category: Category;
     habits: Habit[]; // Just the habits (roots) for this category
-    logs: Record<string, DayLog>;
+    habitStatusMap: Map<string, DayViewHabitStatus>; // Status from truthQuery dayView
     dateStr: string;
     onToggle: (habitId: string) => void;
     onPin: (habitId: string) => void;
@@ -28,7 +40,7 @@ interface DayCategorySectionProps {
 export const DayCategorySection = ({
     category,
     habits,
-    logs,
+    habitStatusMap,
     dateStr,
     onToggle,
     onPin,
@@ -36,27 +48,24 @@ export const DayCategorySection = ({
     allHabitsLookup,
     onUpdateHabitEntry,
     deleteHabitEntryByKey
-}: DayCategorySectionProps) => { // Removed unused logs prop
+}: DayCategorySectionProps) => {
     // Sort habits by order
     const sortedHabits = useMemo(() => {
         return [...habits].sort((a, b) => (a.order ?? Infinity) - (b.order ?? Infinity));
     }, [habits]);
 
-    // Compute completion status for default collapse
+    // Compute completion status for default collapse (from truthQuery)
     const { allDone, completedCount } = useMemo(() => {
         if (habits.length === 0) return { allDone: true, completedCount: 0 };
 
         let done = 0;
         habits.forEach(h => {
-            // Basic boolean/bundle check
-            // For bundles, we check if the parent feels "done" or if logged as done.
-            // DayLog usually tracks parent completion for bundles too (computed).
-            const log = logs[`${h.id}-${dateStr}`];
-            if (log?.completed) done++;
+            const status = habitStatusMap.get(h.id);
+            if (status?.isComplete) done++;
         });
 
         return { allDone: done === habits.length, completedCount: done };
-    }, [habits, logs, dateStr]);
+    }, [habits, habitStatusMap]);
 
     // State for Accordion Logic (Single Expanded Item)
     const [expandedHabitId, setExpandedHabitId] = useState<string | null>(null);
@@ -123,7 +132,10 @@ export const DayCategorySection = ({
             {!isCollapsed && (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-2">
                     {sortedHabits.map(habit => {
-                        const log = logs[`${habit.id}-${dateStr}`];
+                        // Get status from truthQuery dayView
+                        const status = habitStatusMap.get(habit.id);
+                        const isCompleted = status?.isComplete ?? false;
+
                         // If bundle, resolve children
                         let subHabits: Habit[] | undefined;
                         if (habit.type === 'bundle' && habit.subHabitIds) {
@@ -132,15 +144,16 @@ export const DayCategorySection = ({
                                 .filter((h): h is Habit => !!h);
                         }
 
-                        // Choice Bundle Selection
-                        const selectedChoice = log?.bundleOptionId;
+                        // Choice Bundle Selection - TODO: This may need to come from EntryView in the future
+                        // For now, we'll need to fetch entries separately or include in dayView response
+                        const selectedChoice = undefined; // TODO: Get from EntryView if needed
 
                         return (
                             <HabitGridCell
                                 key={habit.id}
                                 habit={habit}
-                                log={log}
-                                isCompleted={!!log?.completed}
+                                log={undefined} // No longer using DayLog
+                                isCompleted={isCompleted}
                                 isExpanded={expandedHabitId === habit.id}
                                 onToggle={() => onToggle(habit.id)}
                                 onExpand={() => setExpandedHabitId(prev => prev === habit.id ? null : habit.id)}
@@ -156,9 +169,6 @@ export const DayCategorySection = ({
                                         deleteHabitEntryByKey(habit.id, dateStr);
                                     } else {
                                         // Select (Upsert)
-                                        // We need to save 'bundleOptionId' in the entry.
-                                        // Assuming upsertHabitEntryContext allows passing extra data object?
-                                        // HabitContext.upsertHabitEntry signature: (habitId, dateKey, data?)
                                         onUpdateHabitEntry(habit.id, dateStr, {
                                             bundleOptionId: optionKey,
                                             value: 1, // Considered "done"

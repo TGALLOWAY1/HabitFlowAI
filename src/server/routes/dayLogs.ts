@@ -2,16 +2,20 @@
  * DayLog Routes
  * 
  * REST API endpoints for DayLog entities (habit tracking results).
- * Uses feature flag to enable/disable MongoDB persistence.
+ * 
+ * ⚠️ LEGACY: DayLogs are derived caches from HabitEntries.
+ * 
+ * Write operations (POST, PUT, DELETE) are DEPRECATED and return 410 Gone.
+ * DayLogs should only be written via recomputeDayLogForHabit() after HabitEntry mutations.
+ * 
+ * Read operations (GET) remain temporarily for debugging/legacy support but will be removed after Milestone B.
  */
 
 import type { Request, Response } from 'express';
 import {
-  upsertDayLog,
   getDayLogsByUser,
   getDayLogsByHabit,
   getDayLog,
-  deleteDayLog,
 } from '../repositories/dayLogRepository';
 import type { DayLog } from '../../models/persistenceTypes';
 
@@ -20,6 +24,9 @@ import type { DayLog } from '../../models/persistenceTypes';
  * 
  * GET /api/dayLogs
  * GET /api/dayLogs?habitId=xxx (optional filter)
+ * 
+ * ⚠️ LEGACY: This endpoint is deprecated and will be removed after Milestone B.
+ * DayLogs are derived caches. Use HabitEntry endpoints for source of truth.
  */
 export async function getDayLogs(req: Request, res: Response): Promise<void> {
   try {
@@ -36,9 +43,12 @@ export async function getDayLogs(req: Request, res: Response): Promise<void> {
       logs = await getDayLogsByUser(userId);
     }
 
-    res.status(200).json({
-      logs,
-    });
+    res.status(200)
+      .setHeader('X-Legacy-Endpoint', 'true')
+      .json({
+        logs,
+        legacy: true, // Mark as legacy in response body
+      });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     console.error('Error fetching day logs:', errorMessage);
@@ -57,85 +67,28 @@ export async function getDayLogs(req: Request, res: Response): Promise<void> {
  * 
  * POST /api/dayLogs
  * PUT /api/dayLogs
+ * 
+ * ⚠️ DEPRECATED: DayLogs are derived caches and must not be written directly.
+ * Write HabitEntries instead. DayLogs will be automatically recomputed.
+ * 
+ * Returns 410 Gone to indicate this endpoint is permanently removed.
  */
-export async function upsertDayLogRoute(req: Request, res: Response): Promise<void> {
-  try {
-
-    // Validate request body
-    const { habitId, date, value, completed } = req.body;
-
-    if (!habitId || typeof habitId !== 'string') {
-      res.status(400).json({
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: 'Habit ID is required and must be a string',
-        },
-      });
-      return;
-    }
-
-    if (!date || typeof date !== 'string') {
-      res.status(400).json({
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: 'Date is required and must be a string (YYYY-MM-DD)',
-        },
-      });
-      return;
-    }
-
-    if (typeof value !== 'number') {
-      res.status(400).json({
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: 'Value is required and must be a number',
-        },
-      });
-      return;
-    }
-
-    if (typeof completed !== 'boolean') {
-      res.status(400).json({
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: 'Completed is required and must be a boolean',
-        },
-      });
-      return;
-    }
-
-    // TODO: Extract userId from authentication token/session
-    const userId = (req as any).userId || 'anonymous-user';
-
-    const log: DayLog = {
-      habitId,
-      date,
-      value,
-      completed,
-    };
-
-    const result = await upsertDayLog(log, userId);
-
-    res.status(200).json({
-      log: result,
-    });
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    console.error('Error upserting day log:', errorMessage);
-    res.status(500).json({
-      error: {
-        code: 'INTERNAL_SERVER_ERROR',
-        message: 'Failed to save day log',
-        details: process.env.NODE_ENV === 'development' ? errorMessage : undefined,
-      },
-    });
-  }
+export async function upsertDayLogRoute(_req: Request, res: Response): Promise<void> {
+  // Do not write DayLogs directly. DayLogs are derived from HabitEntries.
+  res.status(410).json({
+    error: 'DayLogs are deprecated. Write HabitEntries instead.',
+    message: 'DayLogs are derived caches and must not be written directly. Use POST /api/entries to create HabitEntries. DayLogs will be automatically recomputed.',
+    deprecated: true,
+  });
 }
 
 /**
  * Get a single day log.
  * 
  * GET /api/dayLogs/:habitId/:date
+ * 
+ * ⚠️ LEGACY: This endpoint is deprecated and will be removed after Milestone B.
+ * DayLogs are derived caches. Use HabitEntry endpoints for source of truth.
  */
 export async function getDayLogRoute(req: Request, res: Response): Promise<void> {
   try {
@@ -167,9 +120,12 @@ export async function getDayLogRoute(req: Request, res: Response): Promise<void>
       return;
     }
 
-    res.status(200).json({
-      log,
-    });
+    res.status(200)
+      .setHeader('X-Legacy-Endpoint', 'true')
+      .json({
+        log,
+        legacy: true, // Mark as legacy in response body
+      });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     console.error('Error fetching day log:', errorMessage);
@@ -187,43 +143,18 @@ export async function getDayLogRoute(req: Request, res: Response): Promise<void>
  * Delete a day log.
  * 
  * DELETE /api/dayLogs/:habitId/:date
+ * 
+ * ⚠️ DEPRECATED: DayLogs are derived caches and must not be deleted directly.
+ * Delete HabitEntries instead. DayLogs will be automatically recomputed.
+ * 
+ * Returns 410 Gone to indicate this endpoint is permanently removed.
  */
-export async function deleteDayLogRoute(req: Request, res: Response): Promise<void> {
-  try {
-
-    const { habitId, date } = req.params;
-
-    if (!habitId || !date) {
-      res.status(400).json({
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: 'Habit ID and date are required',
-        },
-      });
-      return;
-    }
-
-    // TODO: Extract userId from authentication token/session
-    const userId = (req as any).userId || 'anonymous-user';
-
-    const deleted = await deleteDayLog(habitId, date, userId);
-
-    // Treat as idempotent success: Whether it was deleted or wasn't there, 
-    // the goal of "resource is gone" is achieved.
-    res.status(200).json({
-      message: 'Day log deleted successfully',
-      wasDeleted: deleted,
-    });
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    console.error('Error deleting day log:', errorMessage);
-    res.status(500).json({
-      error: {
-        code: 'INTERNAL_SERVER_ERROR',
-        message: 'Failed to delete day log',
-        details: process.env.NODE_ENV === 'development' ? errorMessage : undefined,
-      },
-    });
-  }
+export async function deleteDayLogRoute(_req: Request, res: Response): Promise<void> {
+  // Do not delete DayLogs directly. DayLogs are derived from HabitEntries.
+  res.status(410).json({
+    error: 'DayLogs are deprecated. Delete HabitEntries instead.',
+    message: 'DayLogs are derived caches and must not be deleted directly. Use DELETE /api/entries to delete HabitEntries. DayLogs will be automatically recomputed.',
+    deprecated: true,
+  });
 }
 
