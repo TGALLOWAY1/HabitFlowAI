@@ -88,6 +88,30 @@ export interface GoalLinkRecord {
     linkedHabitIds: string[];
 
     /**
+     * Aggregation mode for goal progress calculation.
+     * - 'count': Count entries or distinct days (see countMode)
+     * - 'sum': Sum entry values
+     * 
+     * Default: inferred from goal.type ('cumulative' → 'sum', 'frequency' → 'count')
+     */
+    aggregationMode?: 'count' | 'sum';
+
+    /**
+     * Count mode for count aggregation (only applies when aggregationMode === 'count').
+     * - 'distinctDays': Count distinct dayKeys (default for frequency goals)
+     * - 'entries': Count total number of entries
+     * 
+     * Default: 'distinctDays' for count goals
+     */
+    countMode?: 'distinctDays' | 'entries';
+
+    /**
+     * Optional unit for sum-mode validation.
+     * If provided, entries with mismatched units will generate warnings.
+     */
+    unit?: string;
+
+    /**
      * Optional: Granular linking for Choice Habits V2.
      * Allows linking to specific options with aggregation mode.
      */
@@ -106,7 +130,12 @@ export interface GoalLinkRecord {
 /**
  * GoalAggregationMode - How a goal aggregates progress from linked habits
  */
-export type GoalAggregationMode = 'days' | 'sum';
+export type GoalAggregationMode = 'count' | 'sum';
+
+/**
+ * GoalCountMode - How to count entries for count-mode goals
+ */
+export type GoalCountMode = 'distinctDays' | 'entries';
 
 /**
  * Validation helper types

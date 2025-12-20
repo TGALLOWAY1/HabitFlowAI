@@ -87,6 +87,25 @@ function validateGoalData(data: any): string | null {
     return 'unit must be a string if provided';
   }
 
+  // Validate aggregationMode if provided
+  if (data.aggregationMode !== undefined) {
+    if (data.aggregationMode !== 'count' && data.aggregationMode !== 'sum') {
+      return 'aggregationMode must be either "count" or "sum"';
+    }
+  }
+
+  // Validate countMode if provided
+  if (data.countMode !== undefined) {
+    if (data.countMode !== 'distinctDays' && data.countMode !== 'entries') {
+      return 'countMode must be either "distinctDays" or "entries"';
+    }
+    // countMode only applies to count aggregation
+    const aggregationMode = data.aggregationMode || (data.type === 'cumulative' ? 'sum' : 'count');
+    if (aggregationMode !== 'count') {
+      return 'countMode can only be set when aggregationMode is "count"';
+    }
+  }
+
   if (!Array.isArray(data.linkedHabitIds)) {
     return 'linkedHabitIds is required and must be an array';
   }
@@ -363,6 +382,10 @@ export async function createGoalRoute(req: Request, res: Response): Promise<void
       return;
     }
 
+    // Set default aggregationMode and countMode if not provided
+    const aggregationMode = req.body.aggregationMode || (req.body.type === 'cumulative' ? 'sum' : 'count');
+    const countMode = req.body.countMode || (aggregationMode === 'count' ? 'distinctDays' : undefined);
+
     const goal = await createGoal(
       {
         title: req.body.title.trim(),
@@ -370,6 +393,8 @@ export async function createGoalRoute(req: Request, res: Response): Promise<void
         targetValue: req.body.targetValue,
         unit: req.body.unit?.trim(),
         linkedHabitIds: req.body.linkedHabitIds,
+        aggregationMode,
+        countMode,
         deadline: req.body.deadline,
         completedAt: req.body.completedAt,
         notes: req.body.notes?.trim(),

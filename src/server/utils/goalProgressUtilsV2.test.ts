@@ -408,6 +408,302 @@ describe('goalProgressUtilsV2', () => {
 
       expect(progress.percent).toBe(100); // Completed
     });
+
+    it('should count distinct dayKeys when countMode is distinctDays (default)', () => {
+      const goal: Goal = {
+        id: 'goal-1',
+        title: 'Test Goal',
+        type: 'frequency',
+        targetValue: 5,
+        linkedHabitIds: ['habit-1'],
+        aggregationMode: 'count',
+        countMode: 'distinctDays', // Explicit
+        createdAt: '2025-01-01T00:00:00.000Z',
+      };
+
+      const entryViews: EntryView[] = [
+        {
+          habitId: 'habit-1',
+          dayKey: '2025-01-10',
+          timestampUtc: '2025-01-10T10:00:00.000Z',
+          value: 1,
+          source: 'manual',
+          provenance: {},
+          deletedAt: null,
+          conflict: false,
+        },
+        {
+          habitId: 'habit-1',
+          dayKey: '2025-01-10', // Same day, second entry
+          timestampUtc: '2025-01-10T15:00:00.000Z',
+          value: 1,
+          source: 'manual',
+          provenance: {},
+          deletedAt: null,
+          conflict: false,
+        },
+        {
+          habitId: 'habit-1',
+          dayKey: '2025-01-11', // Different day
+          timestampUtc: '2025-01-11T10:00:00.000Z',
+          value: 1,
+          source: 'manual',
+          provenance: {},
+          deletedAt: null,
+          conflict: false,
+        },
+      ];
+
+      const progress = computeFullGoalProgressV2(goal, entryViews, [], undefined, timeZone);
+
+      // distinctDays: 2 entries on same day count as 1 day
+      expect(progress.currentValue).toBe(2); // 2 distinct dayKeys
+    });
+
+    it('should count all entries when countMode is entries', () => {
+      const goal: Goal = {
+        id: 'goal-1',
+        title: 'Test Goal',
+        type: 'frequency',
+        targetValue: 5,
+        linkedHabitIds: ['habit-1'],
+        aggregationMode: 'count',
+        countMode: 'entries', // Count all entries
+        createdAt: '2025-01-01T00:00:00.000Z',
+      };
+
+      const entryViews: EntryView[] = [
+        {
+          habitId: 'habit-1',
+          dayKey: '2025-01-10',
+          timestampUtc: '2025-01-10T10:00:00.000Z',
+          value: 1,
+          source: 'manual',
+          provenance: {},
+          deletedAt: null,
+          conflict: false,
+        },
+        {
+          habitId: 'habit-1',
+          dayKey: '2025-01-10', // Same day, second entry
+          timestampUtc: '2025-01-10T15:00:00.000Z',
+          value: 1,
+          source: 'manual',
+          provenance: {},
+          deletedAt: null,
+          conflict: false,
+        },
+        {
+          habitId: 'habit-1',
+          dayKey: '2025-01-11', // Different day
+          timestampUtc: '2025-01-11T10:00:00.000Z',
+          value: 1,
+          source: 'manual',
+          provenance: {},
+          deletedAt: null,
+          conflict: false,
+        },
+      ];
+
+      const progress = computeFullGoalProgressV2(goal, entryViews, [], undefined, timeZone);
+
+      // entries: count all entries, even on same day
+      expect(progress.currentValue).toBe(3); // All 3 entries
+    });
+
+    it('should default to distinctDays for count goals without explicit countMode', () => {
+      const goal: Goal = {
+        id: 'goal-1',
+        title: 'Test Goal',
+        type: 'frequency',
+        targetValue: 5,
+        linkedHabitIds: ['habit-1'],
+        // No countMode specified - should default to distinctDays
+        createdAt: '2025-01-01T00:00:00.000Z',
+      };
+
+      const entryViews: EntryView[] = [
+        {
+          habitId: 'habit-1',
+          dayKey: '2025-01-10',
+          timestampUtc: '2025-01-10T10:00:00.000Z',
+          value: 1,
+          source: 'manual',
+          provenance: {},
+          deletedAt: null,
+          conflict: false,
+        },
+        {
+          habitId: 'habit-1',
+          dayKey: '2025-01-10', // Same day
+          timestampUtc: '2025-01-10T15:00:00.000Z',
+          value: 1,
+          source: 'manual',
+          provenance: {},
+          deletedAt: null,
+          conflict: false,
+        },
+      ];
+
+      const progress = computeFullGoalProgressV2(goal, entryViews, [], undefined, timeZone);
+
+      // Default: distinctDays
+      expect(progress.currentValue).toBe(1); // 1 distinct dayKey
+    });
+
+    it('should generate unit mismatch warnings for sum mode', () => {
+      const goal: Goal = {
+        id: 'goal-1',
+        title: 'Test Goal',
+        type: 'cumulative',
+        targetValue: 100,
+        unit: 'miles',
+        linkedHabitIds: ['habit-1'],
+        aggregationMode: 'sum',
+        createdAt: '2025-01-01T00:00:00.000Z',
+      };
+
+      const habit: Habit = {
+        id: 'habit-1',
+        categoryId: 'cat-1',
+        name: 'Running',
+        goal: {
+          type: 'number',
+          frequency: 'daily',
+          target: 5,
+          unit: 'miles',
+        },
+        archived: false,
+        createdAt: '2025-01-01T00:00:00.000Z',
+      };
+
+      const habitMap = new Map<string, Habit>([['habit-1', habit]]);
+
+      const entryViews: EntryView[] = [
+        {
+          habitId: 'habit-1',
+          dayKey: '2025-01-10',
+          timestampUtc: '2025-01-10T10:00:00.000Z',
+          value: 5,
+          unit: 'kilometers', // Unit mismatch
+          source: 'manual',
+          provenance: {},
+          deletedAt: null,
+          conflict: false,
+        },
+        {
+          habitId: 'habit-1',
+          dayKey: '2025-01-11',
+          timestampUtc: '2025-01-11T10:00:00.000Z',
+          value: 3,
+          unit: 'miles', // Matching unit
+          source: 'manual',
+          provenance: {},
+          deletedAt: null,
+          conflict: false,
+        },
+      ];
+
+      const progress = computeFullGoalProgressV2(goal, entryViews, [], habitMap, timeZone);
+
+      // Value still included (deterministic: include with warning)
+      expect(progress.currentValue).toBe(8); // 5 + 3
+      expect(progress.warnings).toBeDefined();
+      expect(progress.warnings?.length).toBe(1);
+      expect(progress.warnings?.[0].type).toBe('UNIT_MISMATCH');
+      expect(progress.warnings?.[0].habitId).toBe('habit-1');
+      expect(progress.warnings?.[0].expectedUnit).toBe('miles');
+      expect(progress.warnings?.[0].foundUnit).toBe('kilometers');
+    });
+
+    it('should not generate warnings when units match', () => {
+      const goal: Goal = {
+        id: 'goal-1',
+        title: 'Test Goal',
+        type: 'cumulative',
+        targetValue: 100,
+        unit: 'miles',
+        linkedHabitIds: ['habit-1'],
+        aggregationMode: 'sum',
+        createdAt: '2025-01-01T00:00:00.000Z',
+      };
+
+      const habit: Habit = {
+        id: 'habit-1',
+        categoryId: 'cat-1',
+        name: 'Running',
+        goal: {
+          type: 'number',
+          frequency: 'daily',
+          target: 5,
+          unit: 'miles',
+        },
+        archived: false,
+        createdAt: '2025-01-01T00:00:00.000Z',
+      };
+
+      const habitMap = new Map<string, Habit>([['habit-1', habit]]);
+
+      const entryViews: EntryView[] = [
+        {
+          habitId: 'habit-1',
+          dayKey: '2025-01-10',
+          timestampUtc: '2025-01-10T10:00:00.000Z',
+          value: 5,
+          unit: 'miles', // Matching unit
+          source: 'manual',
+          provenance: {},
+          deletedAt: null,
+          conflict: false,
+        },
+      ];
+
+      const progress = computeFullGoalProgressV2(goal, entryViews, [], habitMap, timeZone);
+
+      expect(progress.currentValue).toBe(5);
+      expect(progress.warnings).toBeUndefined(); // No warnings
+    });
+
+    it('should use explicit aggregationMode over goal.type inference', () => {
+      const goal: Goal = {
+        id: 'goal-1',
+        title: 'Test Goal',
+        type: 'cumulative', // Would normally infer 'sum'
+        targetValue: 100,
+        linkedHabitIds: ['habit-1'],
+        aggregationMode: 'count', // Explicit override
+        countMode: 'distinctDays',
+        createdAt: '2025-01-01T00:00:00.000Z',
+      };
+
+      const entryViews: EntryView[] = [
+        {
+          habitId: 'habit-1',
+          dayKey: '2025-01-10',
+          timestampUtc: '2025-01-10T10:00:00.000Z',
+          value: 5,
+          source: 'manual',
+          provenance: {},
+          deletedAt: null,
+          conflict: false,
+        },
+        {
+          habitId: 'habit-1',
+          dayKey: '2025-01-11',
+          timestampUtc: '2025-01-11T10:00:00.000Z',
+          value: 3,
+          source: 'manual',
+          provenance: {},
+          deletedAt: null,
+          conflict: false,
+        },
+      ];
+
+      const progress = computeFullGoalProgressV2(goal, entryViews, [], undefined, timeZone);
+
+      // Should count days, not sum values
+      expect(progress.currentValue).toBe(2); // 2 distinct dayKeys
+    });
   });
 });
 

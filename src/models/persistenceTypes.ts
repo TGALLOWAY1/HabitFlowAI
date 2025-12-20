@@ -710,6 +710,24 @@ export interface Goal {
     linkedHabitIds: string[];
 
     /**
+     * Aggregation mode for goal progress calculation.
+     * - 'count': Count entries or distinct days (see countMode)
+     * - 'sum': Sum entry values
+     * 
+     * Default: inferred from goal.type ('cumulative' → 'sum', 'frequency' → 'count')
+     */
+    aggregationMode?: 'count' | 'sum';
+
+    /**
+     * Count mode for count aggregation (only applies when aggregationMode === 'count').
+     * - 'distinctDays': Count distinct dayKeys (default for frequency goals)
+     * - 'entries': Count total number of entries
+     * 
+     * Default: 'distinctDays' for count goals
+     */
+    countMode?: 'distinctDays' | 'entries';
+
+    /**
      * Optional: Granular linking for Choice Habits V2.
      * Allows linking to specific options (e.g., "Run 5 miles" linked to "Running" option).
      */
@@ -743,6 +761,22 @@ export interface Goal {
 export type GoalsStorage = Goal[];
 
 /**
+ * Goal Progress Warning
+ * 
+ * Represents a warning about goal progress calculation.
+ */
+export interface GoalProgressWarning {
+    /** Type of warning */
+    type: 'UNIT_MISMATCH';
+    /** Habit ID that caused the warning */
+    habitId: string;
+    /** Expected unit */
+    expectedUnit: string;
+    /** Found unit */
+    foundUnit: string;
+}
+
+/**
  * Goal Progress
  * 
  * Represents the current progress toward a goal.
@@ -753,6 +787,9 @@ export interface GoalProgress {
 
     /** Percentage of goal completion (0-100) */
     percent: number;
+
+    /** Optional warnings about progress calculation */
+    warnings?: GoalProgressWarning[];
 
     /** Array of progress data for the last 7 days (most recent first) */
     lastSevenDays: Array<{

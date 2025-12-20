@@ -11,7 +11,8 @@ import { getGoalById } from '../repositories/goalRepository';
 import { getHabitsByUser } from '../repositories/habitRepository';
 import { getGoalManualLogsByGoal } from '../repositories/goalManualLogRepository';
 import { getEntryViewsForHabits } from '../services/truthQuery';
-import type { Goal, GoalProgress, GoalManualLog, Habit } from '../../models/persistenceTypes';
+import { getAggregationMode, getCountMode, unitsMatch } from './goalLinkSemantics';
+import type { Goal, GoalProgress, GoalManualLog, Habit, GoalProgressWarning } from '../../models/persistenceTypes';
 import type { EntryView } from '../services/truthQuery';
 import type { DayKey } from '../../domain/time/dayKey';
 
@@ -120,6 +121,10 @@ export function computeFullGoalProgressV2(
   habitMap?: Map<string, Habit>,
   timeZone: string = 'UTC'
 ): GoalProgress {
+  // Determine aggregation semantics
+  const aggregationMode = getAggregationMode(goal);
+  const countMode = getCountMode(goal);
+
   // Get date range for last 30 days (most recent first)
   const last30Days: DayKey[] = [];
   for (let i = 0; i < 30; i++) {
@@ -135,9 +140,9 @@ export function computeFullGoalProgressV2(
     entriesByDate.get(entry.dayKey)!.push(entry);
   }
 
-  // Build map of manual logs by date (for cumulative goals only)
+  // Build map of manual logs by date (for sum-mode goals only)
   const manualLogsByDate = new Map<DayKey, GoalManualLog[]>();
-  if (goal.type === 'cumulative') {
+  if (aggregationMode === 'sum') {
     for (const manualLog of manualLogs) {
       // Extract date from ISO timestamp (YYYY-MM-DD)
       const loggedDate = manualLog.loggedAt.split('T')[0] as DayKey;
@@ -148,21 +153,34 @@ export function computeFullGoalProgressV2(
     }
   }
 
-  // Compute current value
+  // Initialize warnings array
+  const warnings: GoalProgressWarning[] = [];
+
+  // Compute current value based on aggregation mode
   let currentValue: number;
-  if (goal.type === 'cumulative') {
-    // Sum all entry values (STRICT AGGREGATION)
+  if (aggregationMode === 'sum') {
+    // Sum mode: sum all entry values
     const habitValue = entryViews.reduce((sum, entry) => {
       // Type-Based Aggregation Logic
       if (habitMap && goal.unit) {
         const habit = habitMap.get(entry.habitId);
         if (!habit) return sum;
 
-        // Exclude Boolean habits from Cumulative/Numeric goals
+        // Exclude Boolean habits from sum-mode goals
         if (habit.goal.type === 'boolean') {
           return sum;
         }
-        // Include all Numeric habits regardless of unit typo
+
+        // Check unit mismatch (if entry has unit)
+        if (entry.unit && !unitsMatch(goal.unit, entry.unit)) {
+          // Collect warning but still include the value (deterministic: include with warning)
+          warnings.push({
+            type: 'UNIT_MISMATCH',
+            habitId: entry.habitId,
+            expectedUnit: goal.unit,
+            foundUnit: entry.unit,
+          });
+        }
       }
       return sum + (entry.value ?? 0);
     }, 0);
@@ -170,12 +188,18 @@ export function computeFullGoalProgressV2(
     const manualValue = manualLogs.reduce((sum, log) => sum + log.value, 0);
     currentValue = habitValue + manualValue;
   } else {
-    // Frequency OR OneTime: count distinct dayKeys where entries exist
-    const completedDayKeys = new Set<DayKey>();
-    for (const entry of entryViews) {
-      completedDayKeys.add(entry.dayKey);
+    // Count mode: count entries or distinct days
+    if (countMode === 'entries') {
+      // Count total number of entries
+      currentValue = entryViews.length;
+    } else {
+      // Count distinct dayKeys (default for count goals)
+      const completedDayKeys = new Set<DayKey>();
+      for (const entry of entryViews) {
+        completedDayKeys.add(entry.dayKey);
+      }
+      currentValue = completedDayKeys.size;
     }
-    currentValue = completedDayKeys.size;
   }
 
   // Calculate percentage
@@ -197,19 +221,18 @@ export function computeFullGoalProgressV2(
     let dayValue = 0;
     let hasProgress = false;
 
-    if (goal.type === 'cumulative') {
-      // Sum entry values for this day (STRICT AGGREGATION)
+    if (aggregationMode === 'sum') {
+      // Sum entry values for this day
       const habitValue = dayEntries.reduce((sum, entry) => {
         if (habitMap && goal.unit) {
           const habit = habitMap.get(entry.habitId);
           if (!habit) return sum;
 
-          // Type-Based Aggregation (Daily History Loop)
-          // Exclude Boolean habits from Cumulative/Numeric goals
+          // Exclude Boolean habits from sum-mode goals
           if (habit.goal.type === 'boolean') {
             return sum;
           }
-          // Include all Numeric habits (ignore unit string mismatch)
+          // Unit mismatch warnings are collected in main aggregation, not per-day
         }
         return sum + (entry.value ?? 0);
       }, 0);
@@ -219,10 +242,16 @@ export function computeFullGoalProgressV2(
       dayValue = habitValue + manualValue;
       hasProgress = dayValue > 0;
     } else {
-      // Frequency OR OneTime
-      // Check if any entry exists on this day
-      hasProgress = dayEntries.length > 0;
-      dayValue = hasProgress ? 1 : 0;
+      // Count mode
+      if (countMode === 'entries') {
+        // Count entries on this day
+        dayValue = dayEntries.length;
+        hasProgress = dayValue > 0;
+      } else {
+        // Count distinct days: if any entry exists, count as 1
+        hasProgress = dayEntries.length > 0;
+        dayValue = hasProgress ? 1 : 0;
+      }
     }
 
     return {
@@ -247,6 +276,7 @@ export function computeFullGoalProgressV2(
     lastSevenDays: lastSevenDaysData,
     lastThirtyDays: lastThirtyDaysData,
     inactivityWarning,
+    warnings: warnings.length > 0 ? warnings : undefined,
   };
 }
 
