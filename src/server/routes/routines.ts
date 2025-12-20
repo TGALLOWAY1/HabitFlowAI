@@ -16,6 +16,7 @@ import {
 import { saveRoutineLog } from '../repositories/routineLogRepository';
 import { upsertHabitEntry } from '../repositories/habitEntryRepository';
 import { recomputeDayLogForHabit } from '../utils/recomputeUtils';
+import { validateDayKey } from '../domain/canonicalValidators';
 import type { Routine, RoutineStep, RoutineLog } from '../../models/persistenceTypes';
 import multer from 'multer';
 import { saveUploadedFile } from '../utils/fileStorage';
@@ -539,7 +540,7 @@ export async function submitRoutineRoute(req: Request, res: Response): Promise<v
       return;
     }
 
-    // Validate dateOverride if provided
+    // Validate dateOverride if provided (must be valid DayKey)
     if (dateOverride !== undefined) {
       if (typeof dateOverride !== 'string') {
         res.status(400).json({
@@ -550,12 +551,12 @@ export async function submitRoutineRoute(req: Request, res: Response): Promise<v
         });
         return;
       }
-      // Basic format validation
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(dateOverride)) {
+      const dayKeyValidation = validateDayKey(dateOverride);
+      if (!dayKeyValidation.valid) {
         res.status(400).json({
           error: {
             code: 'VALIDATION_ERROR',
-            message: 'dateOverride must be in YYYY-MM-DD format',
+            message: dayKeyValidation.error,
           },
         });
         return;

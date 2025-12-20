@@ -14,6 +14,7 @@ import {
 import { getHabitById } from '../repositories/habitRepository';
 import { validateHabitEntryPayload } from '../utils/habitValidation';
 import { recomputeDayLogForHabit } from '../utils/recomputeUtils';
+import { validateDayKey, assertTimeZone, validateHabitEntryPayloadStructure, assertNoStoredCompletion } from '../domain/canonicalValidators';
 
 /**
  * Get entry views for a habit (via truthQuery).
@@ -37,27 +38,26 @@ export async function getHabitEntriesRoute(req: Request, res: Response): Promise
             ? timeZone 
             : 'UTC'; // Default to UTC if not provided
 
+        // Validate timeZone
+        const timeZoneValidation = assertTimeZone(userTimeZone);
+        if (!timeZoneValidation.valid) {
+            res.status(400).json({ error: timeZoneValidation.error });
+            return;
+        }
+
         // Validate dayKeys if provided
         if (startDayKey && typeof startDayKey === 'string') {
-            const { assertDayKey } = await import('../../domain/time/dayKey');
-            try {
-                assertDayKey(startDayKey);
-            } catch (error) {
-                res.status(400).json({ 
-                    error: `Invalid startDayKey format: ${error instanceof Error ? error.message : String(error)}` 
-                });
+            const dayKeyValidation = validateDayKey(startDayKey);
+            if (!dayKeyValidation.valid) {
+                res.status(400).json({ error: dayKeyValidation.error });
                 return;
             }
         }
 
         if (endDayKey && typeof endDayKey === 'string') {
-            const { assertDayKey } = await import('../../domain/time/dayKey');
-            try {
-                assertDayKey(endDayKey);
-            } catch (error) {
-                res.status(400).json({ 
-                    error: `Invalid endDayKey format: ${error instanceof Error ? error.message : String(error)}` 
-                });
+            const dayKeyValidation = validateDayKey(endDayKey);
+            if (!dayKeyValidation.valid) {
+                res.status(400).json({ error: dayKeyValidation.error });
                 return;
             }
         }
@@ -97,6 +97,20 @@ export async function createHabitEntryRoute(req: Request, res: Response): Promis
             // Let's rely on validation mostly.
         }
 
+        // Validate payload structure (canonical invariants)
+        const structureValidation = validateHabitEntryPayloadStructure(entryData);
+        if (!structureValidation.valid) {
+            res.status(400).json({ error: structureValidation.error });
+            return;
+        }
+
+        // Ensure no stored completion flags
+        const noCompletionValidation = assertNoStoredCompletion(entryData);
+        if (!noCompletionValidation.valid) {
+            res.status(400).json({ error: noCompletionValidation.error });
+            return;
+        }
+
         if (!entryData.habitId || !entryData.date) {
             res.status(400).json({ error: 'Missing required fields: habitId, date' });
             return;
@@ -109,6 +123,7 @@ export async function createHabitEntryRoute(req: Request, res: Response): Promis
             return;
         }
 
+        // Validate habit-specific rules (Choice Bundle, etc.)
         const validation = validateHabitEntryPayload(habit, entryData);
         if (!validation.valid) {
             res.status(400).json({ error: validation.error });
@@ -224,6 +239,22 @@ export async function updateHabitEntryRoute(req: Request, res: Response): Promis
         const userId = (req as any).userId || 'anonymous-user';
         const { id } = req.params;
         const patch = req.body;
+
+        // Validate payload structure if date is being updated
+        if (patch.date) {
+            const dayKeyValidation = validateDayKey(patch.date);
+            if (!dayKeyValidation.valid) {
+                res.status(400).json({ error: dayKeyValidation.error });
+                return;
+            }
+        }
+
+        // Ensure no stored completion flags
+        const noCompletionValidation = assertNoStoredCompletion(patch);
+        if (!noCompletionValidation.valid) {
+            res.status(400).json({ error: noCompletionValidation.error });
+            return;
+        }
 
         // 1. Fetch old entry to capture old date before update
         // This is necessary to recompute both old and new dates if date changes

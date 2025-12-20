@@ -239,6 +239,46 @@ If any answer is **no**, the design is invalid.
 
 ---
 
+## Enforcement (API Boundary Validation)
+
+### Validated at Route Level
+
+All routes that accept DayKey or timeZone parameters validate them at the API boundary:
+
+1. **DayKey Validation** (`validateDayKey`):
+   - Must match YYYY-MM-DD format
+   - Must be a valid calendar date (e.g., rejects "2025-13-01")
+   - Enforced via `assertDayKey()` from `src/domain/time/dayKey.ts`
+
+2. **TimeZone Validation** (`assertTimeZone`):
+   - Must be a valid IANA timezone identifier (e.g., "America/Los_Angeles", "UTC")
+   - Basic format sanity check + runtime validation via `Intl.DateTimeFormat`
+   - Required for DayKey derivation in queries
+
+### What Is Derived-Only
+
+The following are **never stored** and must be computed on-demand:
+
+- Week boundaries (derived from DayKey sets)
+- "Today" / "current day" (derived from user's timezone + current timestamp)
+- Weekly aggregates (derived from DayKey ranges)
+
+### Validation Location
+
+- **DayKey Utility**: `src/domain/time/dayKey.ts` (exports `assertDayKey`, `isValidDayKey`)
+- **Canonical Validators**: `src/server/domain/canonicalValidators.ts` (exports `validateDayKey`, `assertTimeZone`)
+- **Route Enforcement**: All routes accepting `dayKey` or `timeZone` query/body parameters
+
+### Routes Enforcing DayKey/TimeZone Validation
+
+- `GET /api/entries` - validates `startDayKey`, `endDayKey`, `timeZone`
+- `POST /api/entries` - validates `date` (DayKey format)
+- `PATCH /api/entries/:id` - validates `date` if provided
+- `GET /api/dayView` - validates `dayKey`, `timeZone`
+- `POST /api/routines/:id/submit` - validates `dateOverride` (DayKey format)
+
+---
+
 ## One-Sentence Summary
 
 DayKey is the immutable, user-relative calendar day used for all aggregation, ensuring consistent streaks, weekly progress, and recomputation across timezones.

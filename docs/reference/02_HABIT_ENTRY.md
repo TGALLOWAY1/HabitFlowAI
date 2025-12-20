@@ -257,6 +257,48 @@ If any answer is **no**, the design is invalid.
 
 ---
 
+## Enforcement (API Boundary Validation)
+
+### Validated at Route Level
+
+All HabitEntry write operations (create, update) are validated at the API boundary:
+
+1. **Structure Validation** (`validateHabitEntryPayloadStructure`):
+   - `habitId` is required and must be a string
+   - `date` is required and must be a valid DayKey (YYYY-MM-DD format)
+   - `source` must be one of: `'manual' | 'routine' | 'quick' | 'import' | 'test'`
+   - `value` must be a number or null (if provided)
+   - `timestamp` must be a valid ISO 8601 string (if provided)
+
+2. **No Stored Completion** (`assertNoStoredCompletion`):
+   - Rejects payloads containing fields like `completed`, `isComplete`, `progress`, `currentValue`, `percent`
+   - Completion/progress must be derived from HabitEntries, never stored
+
+3. **Habit-Specific Validation** (`validateHabitEntryPayload`):
+   - Choice Bundle rules (option selection, metric requirements)
+   - Unit expectations
+   - Value constraints based on habit type
+
+### What Is Derived-Only
+
+The following are **never stored** and must be computed on-demand:
+
+- `isComplete` / `completed` flags
+- `progress` / `currentValue` / `percent` metrics
+- Streak counts
+- Weekly totals
+- Goal progress
+
+All of these are derived from HabitEntries via `truthQuery` and aggregation functions.
+
+### Validation Location
+
+- **Canonical Types**: `src/server/domain/canonicalTypes.ts`
+- **Validators**: `src/server/domain/canonicalValidators.ts`
+- **Route Enforcement**: `src/server/routes/habitEntries.ts`
+
+---
+
 ## One-Sentence Summary
 
 A HabitEntry is the immutable unit of behavioral truth in HabitFlow; all progress, completion, and interpretation are derived from it and nothing may bypass it.

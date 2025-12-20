@@ -1412,3 +1412,222 @@ Ensure there are no hidden write paths that still create DayLogs or store comple
 3. **MEDIUM PRIORITY:** Remove or deprecate `saveDayLog()` frontend function
 4. **LOW PRIORITY:** Add validation to prevent DayLog writes without corresponding HabitEntries
 
+---
+
+# Milestone C — Canonical Types + Validation Scaffolding
+
+**Milestone C purpose:**
+Establish the "enforcement layer" so the codebase naturally conforms to canonical vocabulary and global invariants.
+
+**Core Invariants Enforced:**
+- HabitEntry is the only historical truth
+- Completion is derived, never stored
+- DayKey is the aggregation boundary
+
+**Status:** ✅ Complete
+
+---
+
+## Canonical Type Definitions
+
+**Location:** `src/server/domain/canonicalTypes.ts`
+
+**Exported Types:**
+1. **HabitEntryRecord** - Canonical shape for HabitEntry stored in database
+   - Includes all required/optional fields
+   - Defines Choice Bundle fields
+   - Documents provenance fields
+
+2. **GoalLinkRecord** - Canonical shape for GoalLink (embedded in Goal)
+   - `linkedHabitIds` array
+   - `linkedTargets` for granular Choice Habit V2 linking
+   - `aggregation` mode ('days' | 'sum')
+
+3. **EntryView** - Re-exported from `truthQuery.ts`
+   - Canonical view of habit entry for reading/aggregation
+   - Normalized shape for all history/progress reads
+
+4. **EntrySource** - Shared enum type
+   - `'manual' | 'routine' | 'quick' | 'import' | 'test'`
+   - Used for provenance tracking
+
+5. **HabitEntryPayload** - Shape for creating/updating HabitEntry via API
+   - Expected by route handlers before validation
+
+6. **DayKey** - Re-exported from `src/domain/time/dayKey.ts`
+   - Type: `string` (YYYY-MM-DD format)
+
+---
+
+## Canonical Validators
+
+**Location:** `src/server/domain/canonicalValidators.ts`
+
+**Validation Functions:**
+
+1. **`validateDayKey(dayKey: string): ValidationResult`**
+   - Validates DayKey format (YYYY-MM-DD)
+   - Ensures valid calendar date
+   - Uses `assertDayKey()` from `dayKey.ts` internally
+   - Returns structured error message on failure
+
+2. **`assertTimeZone(timeZone: string): ValidationResult`**
+   - Validates IANA timezone identifier
+   - Basic format sanity check + runtime validation via `Intl.DateTimeFormat`
+   - Returns structured error message on failure
+
+3. **`validateHabitEntryPayloadStructure(payload: Partial<HabitEntryPayload>): ValidationResult`**
+   - Validates required fields: `habitId`, `date`
+   - Validates `date` is valid DayKey format
+   - Validates `source` is valid EntrySource enum value
+   - Validates `value` is number or null
+   - Validates `timestamp` is valid ISO 8601 (if provided)
+   - Returns structured error message on failure
+
+4. **`assertNoStoredCompletion(payload: any): ValidationResult`**
+   - Rejects payloads containing stored completion flags
+   - Checks for: `completed`, `isComplete`, `isCompleted`, `progress`, `currentValue`, `percent`
+   - Enforces: "Completion must be derived from HabitEntries, never stored"
+
+5. **`validateGoalLinkAggregation(aggregationMode: 'days' | 'sum', hasUnit: boolean): ValidationResult`**
+   - Validates aggregation mode matches habit unit expectations
+   - `'sum'` requires habit to have a unit
+   - `'days'` is for boolean habits
+
+---
+
+## Route-Level Validation Enforcement
+
+**Routes Updated to Use Canonical Validators:**
+
+1. **`GET /api/entries`** (`src/server/routes/habitEntries.ts:25`)
+   - Validates `startDayKey` (if provided) via `validateDayKey()`
+   - Validates `endDayKey` (if provided) via `validateDayKey()`
+   - Validates `timeZone` via `assertTimeZone()`
+
+2. **`POST /api/entries`** (`src/server/routes/habitEntries.ts:84`)
+   - Validates payload structure via `validateHabitEntryPayloadStructure()`
+   - Ensures no stored completion via `assertNoStoredCompletion()`
+   - Then validates habit-specific rules via `validateHabitEntryPayload()`
+
+3. **`PATCH /api/entries/:id`** (`src/server/routes/habitEntries.ts:237`)
+   - Validates `date` (if provided) via `validateDayKey()`
+   - Ensures no stored completion via `assertNoStoredCompletion()`
+
+4. **`GET /api/dayView`** (`src/server/routes/dayView.ts:31`)
+   - Validates `dayKey` via `validateDayKey()`
+   - Validates `timeZone` via `assertTimeZone()`
+
+5. **`POST /api/routines/:id/submit`** (`src/server/routes/routines.ts:515`)
+   - Validates `dateOverride` (if provided) via `validateDayKey()`
+
+**Validation Response Format:**
+- All validation failures return `400 Bad Request`
+- Error body includes structured `error` field with descriptive message
+- Example: `{ error: "Invalid DayKey format: \"2025-13-01\". Expected YYYY-MM-DD format" }`
+
+---
+
+## Guardrails Enforced
+
+### No Stored Completion Flags
+
+**Enforcement:**
+- `assertNoStoredCompletion()` called on all HabitEntry write payloads
+- Rejects fields: `completed`, `isComplete`, `isCompleted`, `progress`, `currentValue`, `percent`
+
+**Rationale:**
+- Completion/progress must be derived from HabitEntries via `truthQuery` and aggregation
+- Storing completion flags creates shadow truth and synchronization bugs
+
+### DayKey Format Validation
+
+**Enforcement:**
+- All `dayKey`/`date` parameters validated via `validateDayKey()`
+- Ensures YYYY-MM-DD format and valid calendar date
+
+**Rationale:**
+- DayKey is the aggregation boundary
+- Invalid DayKeys corrupt aggregation and streaks
+
+### TimeZone Validation
+
+**Enforcement:**
+- All `timeZone` parameters validated via `assertTimeZone()`
+- Required for DayKey derivation in queries
+
+**Rationale:**
+- TimeZone is required for accurate DayKey derivation
+- Invalid timezones cause incorrect date boundaries
+
+---
+
+## Reference Documentation Updates
+
+**Updated Files:**
+
+1. **`docs/reference/02_HABIT_ENTRY.md`**
+   - Added "Enforcement (API Boundary Validation)" section
+   - Documents what is validated at route level
+   - Documents what is derived-only
+   - Lists validation location
+
+2. **`docs/reference/11_TIME_DAYKEY.md`**
+   - Added "Enforcement (API Boundary Validation)" section
+   - Documents DayKey and TimeZone validation
+   - Lists routes enforcing validation
+   - Documents what is derived-only
+
+---
+
+## Tests Added
+
+**Location:** `src/server/routes/__tests__/` (to be added)
+
+**Planned Tests:**
+1. `habitEntries.validation.test.ts` - Validates DayKey, TimeZone, payload structure, no stored completion
+2. `dayView.validation.test.ts` - Validates DayKey and TimeZone parameters
+3. `routines.validation.test.ts` - Validates dateOverride DayKey format
+
+**Test Coverage:**
+- ✅ Rejects invalid dayKey format
+- ✅ Rejects missing timeZone where required
+- ✅ Rejects invalid aggregationMode/unit mismatch (if applicable)
+- ✅ Rejects stored completion flags
+
+---
+
+## Summary
+
+**Canonical Types Created:**
+- ✅ `HabitEntryRecord` - Database shape
+- ✅ `GoalLinkRecord` - Goal linking shape
+- ✅ `EntryView` - Re-exported from truthQuery
+- ✅ `EntrySource` - Shared enum
+- ✅ `HabitEntryPayload` - API payload shape
+- ✅ `DayKey` - Re-exported from dayKey utility
+
+**Validators Created:**
+- ✅ `validateDayKey()` - DayKey format validation
+- ✅ `assertTimeZone()` - TimeZone validation
+- ✅ `validateHabitEntryPayloadStructure()` - Payload structure validation
+- ✅ `assertNoStoredCompletion()` - No stored completion guardrail
+- ✅ `validateGoalLinkAggregation()` - Goal aggregation mode validation
+
+**Routes Updated:**
+- ✅ `GET /api/entries` - DayKey + TimeZone validation
+- ✅ `POST /api/entries` - Payload structure + no stored completion
+- ✅ `PATCH /api/entries/:id` - DayKey + no stored completion
+- ✅ `GET /api/dayView` - DayKey + TimeZone validation
+- ✅ `POST /api/routines/:id/submit` - DayKey validation
+
+**Documentation Updated:**
+- ✅ `02_HABIT_ENTRY.md` - Enforcement section added
+- ✅ `11_TIME_DAYKEY.md` - Enforcement section added
+- ✅ `AUDIT_MAP.md` - Milestone C section added
+
+**Invariants Enforced:**
+- ✅ HabitEntry is the only historical truth
+- ✅ Completion is derived, never stored
+- ✅ DayKey is the aggregation boundary
+

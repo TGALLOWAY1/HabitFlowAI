@@ -9,7 +9,7 @@
 
 import type { Request, Response } from 'express';
 import { computeDayView } from '../services/dayViewService';
-import { assertDayKey } from '../../domain/time/dayKey';
+import { validateDayKey, assertTimeZone } from '../domain/canonicalValidators';
 import type { DayKey } from '../../domain/time/dayKey';
 
 /**
@@ -43,13 +43,12 @@ export async function getDayView(req: Request, res: Response): Promise<void> {
       return;
     }
 
-    try {
-      assertDayKey(dayKey);
-    } catch (error) {
+    const dayKeyValidation = validateDayKey(dayKey);
+    if (!dayKeyValidation.valid) {
       res.status(400).json({
         error: {
           code: 'VALIDATION_ERROR',
-          message: `Invalid dayKey format: ${error instanceof Error ? error.message : String(error)}`,
+          message: dayKeyValidation.error,
         },
       });
       return;
@@ -61,6 +60,17 @@ export async function getDayView(req: Request, res: Response): Promise<void> {
         error: {
           code: 'VALIDATION_ERROR',
           message: 'timeZone is required (e.g., "America/Los_Angeles", "UTC")',
+        },
+      });
+      return;
+    }
+
+    const timeZoneValidation = assertTimeZone(timeZone);
+    if (!timeZoneValidation.valid) {
+      res.status(400).json({
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: timeZoneValidation.error,
         },
       });
       return;
