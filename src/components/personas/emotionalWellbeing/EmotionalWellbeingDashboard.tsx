@@ -1,8 +1,5 @@
 import React, { useMemo, useState } from 'react';
 import { Sun, ExternalLink, HeartHandshake, Sparkles, Activity, Brain, Battery, Play } from 'lucide-react';
-import { ProgressRings } from '../../ProgressRings';
-import { DashboardComposer } from '../../../shared/personas/dashboardComposer';
-import { getActivePersonaId } from '../../../shared/personas/activePersona';
 import { useWellbeingEntriesRange } from '../../../hooks/useWellbeingEntriesRange';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, Legend } from 'recharts';
 import { fetchEntries, createEntry as createJournalEntry, upsertEntryByKey } from '../../../api/journal';
@@ -678,9 +675,6 @@ const EmotionalTrendCard: React.FC<{ onNavigateWellbeingHistory?: () => void }> 
 };
 
 export const EmotionalWellbeingDashboard: React.FC<Props> = ({ onOpenCheckIn, onNavigateWellbeingHistory, onStartRoutine }) => {
-  const personaId = getActivePersonaId();
-  const widgets = DashboardComposer(personaId);
-
   return (
     <div className="space-y-6 overflow-y-auto pb-20">
       {/* Persona Header actions */}
@@ -713,40 +707,8 @@ export const EmotionalWellbeingDashboard: React.FC<Props> = ({ onOpenCheckIn, on
         </div>
       </div>
 
-      {widgets.map((w, idx) => {
-        switch (w.type) {
-          case 'header':
-            return <ProgressRings key={`${w.type}-${idx}`} />;
-          case 'actionCards':
-            return <ActionCards key={`${w.type}-${idx}`} onStartRoutine={onStartRoutine} />;
-          case 'emotionalTrend':
-            return <EmotionalTrendCard key={`${w.type}-${idx}`} onNavigateWellbeingHistory={onNavigateWellbeingHistory} />;
-          default:
-            return null;
-        }
-      })}
-
-      {/* Minimal “legend” for what this persona is */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-        <div className="p-4 rounded-xl bg-neutral-900/50 border border-white/5">
-          <div className="flex items-center gap-2 text-sm font-semibold text-white">
-            <Activity size={16} className="text-purple-400" /> Anxiety
-          </div>
-          <div className="text-xs text-neutral-500 mt-1">Often shows up differently AM vs PM. Use the AM/PM toggle to compare.</div>
-        </div>
-        <div className="p-4 rounded-xl bg-neutral-900/50 border border-white/5">
-          <div className="flex items-center gap-2 text-sm font-semibold text-white">
-            <Brain size={16} className="text-blue-400" /> Low Mood
-          </div>
-          <div className="text-xs text-neutral-500 mt-1">A gentle signal (0–4) that pairs well with Calm.</div>
-        </div>
-        <div className="p-4 rounded-xl bg-neutral-900/50 border border-white/5">
-          <div className="flex items-center gap-2 text-sm font-semibold text-white">
-            <Sparkles size={16} className="text-emerald-400" /> Calm
-          </div>
-          <div className="text-xs text-neutral-500 mt-1">A counter-signal to stress; patterns matter more than any single day.</div>
-        </div>
-      </div>
+      {/* Main dashboard must be today-focused: no historical wellbeing charts here. */}
+      <ActionCards onStartRoutine={onStartRoutine} />
     </div>
   );
 };
