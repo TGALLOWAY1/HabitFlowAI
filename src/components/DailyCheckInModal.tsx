@@ -265,31 +265,31 @@ export const DailyCheckInModal: React.FC<DailyCheckInModalProps> = ({ isOpen, on
 
                             return (
                                 <div key={k} className="space-y-3">
-                                    <div className="flex justify-between text-sm">
-                                        <label className="text-neutral-300 font-medium flex items-center gap-2">
+                        <div className="flex justify-between text-sm">
+                            <label className="text-neutral-300 font-medium flex items-center gap-2">
                                             {cfg.icon}
                                             {cfg.label}
-                                        </label>
+                            </label>
                                         <span className={`${cfg.colorClass} font-bold`}>
                                             {value}{cfg.max === 100 ? '' : `/${cfg.max}`}
                                         </span>
-                                    </div>
-                                    <input
-                                        type="range"
+                        </div>
+                        <input
+                            type="range"
                                         min={cfg.min}
                                         max={cfg.max}
                                         step={cfg.step}
                                         value={value}
                                         onChange={(e) => updateCurrentSession(k as any, Number(e.target.value))}
                                         className="w-full h-2 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-emerald-500"
-                                    />
+                        />
                                     {(cfg.max <= 5) && (
-                                        <div className="flex justify-between text-xs text-neutral-500 px-1">
-                                            <span>Low</span>
-                                            <span>High</span>
-                                        </div>
+                        <div className="flex justify-between text-xs text-neutral-500 px-1">
+                            <span>Low</span>
+                            <span>High</span>
+                        </div>
                                     )}
-                                </div>
+                    </div>
                             );
                         })}
 
@@ -312,11 +312,11 @@ export const DailyCheckInModal: React.FC<DailyCheckInModalProps> = ({ isOpen, on
                             return (
                                 <div key={`extra-${k}`} className="space-y-3">
                                     <div className="flex justify-between items-center text-sm">
-                                        <label className="text-neutral-300 font-medium flex items-center gap-2">
+                            <label className="text-neutral-300 font-medium flex items-center gap-2">
                                             {cfg.icon}
                                             {cfg.label}
                                             <span className="text-[10px] text-neutral-500 font-semibold">(added)</span>
-                                        </label>
+                            </label>
                                         <div className="flex items-center gap-3">
                                             <span className={`${cfg.colorClass} font-bold`}>
                                                 {value}{cfg.max === 100 ? '' : `/${cfg.max}`}
@@ -329,23 +329,23 @@ export const DailyCheckInModal: React.FC<DailyCheckInModalProps> = ({ isOpen, on
                                                 Remove
                                             </button>
                                         </div>
-                                    </div>
-                                    <input
-                                        type="range"
+                        </div>
+                        <input
+                            type="range"
                                         min={cfg.min}
                                         max={cfg.max}
                                         step={cfg.step}
                                         value={value}
                                         onChange={(e) => updateCurrentSession(k as any, Number(e.target.value))}
                                         className="w-full h-2 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-emerald-500"
-                                    />
+                        />
                                     {(cfg.max <= 5) && (
-                                        <div className="flex justify-between text-xs text-neutral-500 px-1">
-                                            <span>Low</span>
-                                            <span>High</span>
-                                        </div>
+                        <div className="flex justify-between text-xs text-neutral-500 px-1">
+                            <span>Low</span>
+                            <span>High</span>
+                        </div>
                                     )}
-                                </div>
+                    </div>
                             );
                         })}
 
@@ -399,13 +399,13 @@ export const DailyCheckInModal: React.FC<DailyCheckInModalProps> = ({ isOpen, on
                                     >
                                         Hide
                                     </button>
-                                </div>
-                                <textarea
+                        </div>
+                        <textarea
                                     value={currentData.notes || ''}
-                                    onChange={(e) => updateCurrentSession('notes', e.target.value)}
-                                    placeholder={`How are you feeling this ${activeTab}?`}
-                                    className="w-full bg-neutral-800 border border-white/10 rounded-lg p-3 text-sm text-white focus:border-emerald-500 outline-none resize-none h-20"
-                                />
+                            onChange={(e) => updateCurrentSession('notes', e.target.value)}
+                            placeholder={`How are you feeling this ${activeTab}?`}
+                            className="w-full bg-neutral-800 border border-white/10 rounded-lg p-3 text-sm text-white focus:border-emerald-500 outline-none resize-none h-20"
+                        />
                             </div>
                         )}
                     </div>
