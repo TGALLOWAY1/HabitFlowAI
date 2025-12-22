@@ -146,6 +146,54 @@ describe('WellbeingEntryRepository', () => {
     expect(fetched).toHaveLength(1);
     expect(fetched[0].value).toBe(5);
   });
+
+  it('should keep createdAt stable across upserts while updating updatedAt', async () => {
+    const dayKey = '2025-01-28';
+
+    const first = await createWellbeingEntries(
+      [
+        {
+          dayKey,
+          timeOfDay: 'evening',
+          metricKey: 'anxiety',
+          value: 2,
+          source: 'checkin',
+          timestampUtc: new Date().toISOString(),
+        },
+      ],
+      TEST_USER_ID
+    );
+
+    expect(first).toHaveLength(1);
+    const firstCreatedAt = (first[0] as any).createdAt;
+    const firstUpdatedAt = (first[0] as any).updatedAt;
+    expect(typeof firstCreatedAt).toBe('string');
+    expect(typeof firstUpdatedAt).toBe('string');
+
+    // Ensure time advances so updatedAt changes
+    await new Promise((r) => setTimeout(r, 10));
+
+    const second = await createWellbeingEntries(
+      [
+        {
+          dayKey,
+          timeOfDay: 'evening',
+          metricKey: 'anxiety',
+          value: 4,
+          source: 'checkin',
+          timestampUtc: new Date().toISOString(),
+        },
+      ],
+      TEST_USER_ID
+    );
+
+    expect(second).toHaveLength(1);
+    const secondCreatedAt = (second[0] as any).createdAt;
+    const secondUpdatedAt = (second[0] as any).updatedAt;
+
+    expect(secondCreatedAt).toBe(firstCreatedAt);
+    expect(secondUpdatedAt).not.toBe(firstUpdatedAt);
+  });
 });
 
 

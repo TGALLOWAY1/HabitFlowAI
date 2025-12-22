@@ -177,9 +177,17 @@ export async function seedDemoEmotionalWellbeingRoute(req: Request, res: Respons
 
     const routinesCol = db.collection(MONGO_COLLECTIONS.ROUTINES);
     for (const r of demoRoutines) {
+      // Keep createdAt immutable on insert only.
+      // Avoid passing createdAt in $set to prevent operator path conflicts.
+      const { createdAt: _createdAt, ...rWithoutCreatedAt } = r;
       await routinesCol.updateOne(
         { id: r.id, userId },
-        { $set: r, $setOnInsert: { createdAt: now } },
+        {
+          // IMPORTANT: avoid updating the same field in multiple operators.
+          // createdAt must be insert-only.
+          $set: rWithoutCreatedAt,
+          $setOnInsert: { createdAt: now },
+        },
         { upsert: true }
       );
     }

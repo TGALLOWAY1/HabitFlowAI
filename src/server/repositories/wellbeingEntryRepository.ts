@@ -149,25 +149,31 @@ export async function createWellbeingEntries(
       metricKey: e.metricKey,
     });
 
+    // IMPORTANT: createdAt must be immutable and insert-only.
+    // Never include createdAt in $set.
+    const setDoc = {
+      userId,
+      dayKey: e.dayKey,
+      timeOfDay: e.timeOfDay,
+      metricKey: e.metricKey,
+      timestampUtc: e.timestampUtc,
+      value: e.value,
+      source: e.source,
+      isDeleted: false,
+      updatedAt: now,
+    };
+
+    const setOnInsertDoc = {
+      id: randomUUID(),
+      createdAt: now,
+    };
+
     return {
       updateOne: {
         filter,
         update: {
-          $set: {
-            userId,
-            dayKey: e.dayKey,
-            timeOfDay: e.timeOfDay,
-            metricKey: e.metricKey,
-            timestampUtc: e.timestampUtc,
-            value: e.value,
-            source: e.source,
-            isDeleted: false,
-            updatedAt: now,
-          },
-          $setOnInsert: {
-            id: randomUUID(),
-            createdAt: now,
-          },
+          $set: setDoc,
+          $setOnInsert: setOnInsertDoc,
         },
         upsert: true,
       },
