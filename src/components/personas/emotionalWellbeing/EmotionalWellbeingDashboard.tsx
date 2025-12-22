@@ -390,12 +390,12 @@ const TodaysSnapshotCard: React.FC = () => {
       {metrics.length === 0 ? (
         <div className="text-sm text-neutral-400">No check-in metrics configured.</div>
       ) : (
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
           {metrics.map((m) => {
             const v = valueFor(m.key);
             const filled = filledPips(m.scale, v);
             return (
-              <div key={m.key} className="p-4 rounded-xl bg-neutral-900/40 border border-white/5">
+              <div key={m.key} className="p-3 rounded-xl bg-neutral-900/40 border border-white/5">
                 <div className="flex items-center gap-2">
                   {m.icon}
                   <div className="text-sm font-semibold text-white">{m.label}</div>
