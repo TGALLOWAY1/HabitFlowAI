@@ -758,8 +758,7 @@ const GratitudeJarCard: React.FC = () => {
           + Quick add
         </button>
       }
-      className="bg-neutral-900/30 p-4"
-      headerClassName="mb-3"
+      className="bg-neutral-900/30"
     >
       {loading ? (
         <div className="text-sm text-neutral-400">Loading…</div>
@@ -768,10 +767,10 @@ const GratitudeJarCard: React.FC = () => {
       ) : entries.length === 0 ? (
         <div className="text-sm text-neutral-400">No gratitude entries yet.</div>
       ) : (
-        <div className="space-y-2">
+        <div className="space-y-3">
           {entries.map((e) => (
-            <div key={e.id} className="p-3 rounded-xl bg-neutral-900/40 border border-white/5">
-              <div className="text-xs text-neutral-500 mb-1">{e.date}</div>
+            <div key={e.id} className="p-3.5 rounded-xl bg-neutral-900/40 border border-white/5">
+              <div className="text-xs text-neutral-500 mb-1.5">{e.date}</div>
               <div className="text-sm text-white line-clamp-3">{e.content?.['free-write'] || '(empty)'}</div>
             </div>
           ))}
