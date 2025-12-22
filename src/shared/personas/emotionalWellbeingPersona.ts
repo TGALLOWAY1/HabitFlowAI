@@ -1,7 +1,8 @@
 import type { PersonaConfig } from './personaTypes';
+import { EMOTIONAL_PERSONA_ID } from './personaConstants';
 
 export const emotionalWellbeingPersona: PersonaConfig = {
-  id: 'emotional_wellbeing',
+  id: EMOTIONAL_PERSONA_ID,
   displayName: 'Emotional Wellbeing',
 
   dashboardWidgets: [
