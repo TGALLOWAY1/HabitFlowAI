@@ -1,8 +1,11 @@
 # HabitFlow Canonical Vocabulary (v1)
 
 ## Northstar
-HabitEntry is the only unit of historical truth.
-All progress is derived from HabitEntries.
+HabitEntry is the only unit of historical truth for behavior and progress.
+JournalEntry is the unit of historical truth for reflection and subjective state.
+
+All behavioral progress is derived from HabitEntries.
+Journals never mutate progress or completion.
 Everything else is interpretation or context.
 
 
@@ -19,9 +22,17 @@ Habit → action         (definition of valid behavior)
 Routine → support      (structure & intent)
 HabitEntry → truth     (facts)
 
+HabitEntry → behavioral truth (facts)
+JournalEntry → reflective truth (experience)
+
+Derived Metrics → interpretation
+Personas → visibility & framing
+
 Key insights:
 Nothing above HabitEntry owns time
-Nothing above HabitEntry owns history
+HabitEntry owns behavioral history
+JournalEntry owns reflective history
+Both are removable only in the sense that personas/interpretations are removable — not that truth stores are removable
 Everything above is removable
 
 Interpretive layers:
@@ -52,7 +63,9 @@ Interpretive layers:
 ## Global Invariants (Apply Everywhere)
 
 - Completion is derived, never stored  
-- HabitEntry is the only historical truth  
+- HabitEntry is the only unit of historical truth for behavior and progress.
+- JournalEntry is the unit of historical truth for reflection and subjective state.
 - DayKey is the aggregation boundary  
 - No punitive mechanics by default  
 - Interpretive layers must be deletable without data loss
+- Removing any Persona must not remove or invalidate either HabitEntry or JournalEntry history.
