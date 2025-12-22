@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Sun, ExternalLink, HeartHandshake, Sparkles, Activity, Brain, Battery, Play } from 'lucide-react';
+import { Sun, ExternalLink, HeartHandshake, Sparkles, Activity, Brain, Battery, Play, Target, Crosshair, Moon, Heart, Wind } from 'lucide-react';
 import { useWellbeingEntriesRange } from '../../../hooks/useWellbeingEntriesRange';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, Legend } from 'recharts';
 import { fetchEntries, createEntry as createJournalEntry, upsertEntryByKey } from '../../../api/journal';
@@ -7,6 +7,9 @@ import type { JournalEntry, Routine } from '../../../models/persistenceTypes';
 import { formatDayKeyFromDate } from '../../../domain/time/dayKey';
 import { useRoutineStore } from '../../../store/RoutineContext';
 import { fetchDashboardPrefs, updateDashboardPrefs } from '../../../lib/persistenceClient';
+import { useHabitStore } from '../../../store/HabitContext';
+import { getActivePersonaConfig } from '../../../shared/personas/activePersona';
+import type { WellbeingMetricKey } from '../../../models/persistenceTypes';
 
 type Props = {
   onOpenCheckIn: () => void;
@@ -51,6 +54,49 @@ const Card: React.FC<{
 
 const VIBE_OPTIONS = ['strained', 'tender', 'steady', 'open', 'thriving'] as const;
 type Vibe = typeof VIBE_OPTIONS[number];
+
+type SnapshotMetric = {
+  key: WellbeingMetricKey;
+  label: string;
+  icon: React.ReactNode;
+  /** Used for pip rendering; Snapshot never shows numbers */
+  scale: '0_4' | '1_5' | '0_100';
+};
+
+const SNAPSHOT_METRIC_META: Record<WellbeingMetricKey, SnapshotMetric> = {
+  depression: { key: 'depression', label: 'Depression', icon: <Brain size={14} className="text-blue-400" />, scale: '1_5' },
+  anxiety: { key: 'anxiety', label: 'Anxiety', icon: <Activity size={14} className="text-purple-400" />, scale: '1_5' },
+  energy: { key: 'energy', label: 'Energy', icon: <Battery size={14} className="text-emerald-400" />, scale: '1_5' },
+  sleepScore: { key: 'sleepScore', label: 'Sleep score', icon: <Moon size={14} className="text-indigo-400" />, scale: '0_100' },
+  sleepQuality: { key: 'sleepQuality', label: 'Sleep quality', icon: <Heart size={14} className="text-fuchsia-300" />, scale: '0_4' },
+  lowMood: { key: 'lowMood', label: 'Low Mood', icon: <Brain size={14} className="text-blue-400" />, scale: '0_4' },
+  calm: { key: 'calm', label: 'Calm', icon: <Wind size={14} className="text-emerald-400" />, scale: '0_4' },
+  stress: { key: 'stress', label: 'Stress', icon: <Target size={14} className="text-orange-400" />, scale: '0_4' },
+  focus: { key: 'focus', label: 'Focus', icon: <Crosshair size={14} className="text-amber-300" />, scale: '0_4' },
+  notes: { key: 'notes', label: 'Notes', icon: <Sparkles size={14} className="text-neutral-400" />, scale: '0_4' },
+};
+
+function clampInt(n: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, Math.round(n)));
+}
+
+function filledPips(scale: SnapshotMetric['scale'], value: number | null | undefined): number {
+  if (value === null || value === undefined || Number.isNaN(value)) return 0;
+  if (scale === '0_4') {
+    const v = clampInt(value, 0, 4);
+    return v + 1;
+  }
+  if (scale === '1_5') {
+    return clampInt(value, 0, 5);
+  }
+  // 0..100 -> 5 buckets (soft)
+  const v = clampInt(value, 0, 100);
+  if (v <= 20) return 1;
+  if (v <= 40) return 2;
+  if (v <= 60) return 3;
+  if (v <= 80) return 4;
+  return 5;
+}
 
 const CurrentVibeCard: React.FC = () => {
   const [vibe, setVibe] = useState<Vibe | null>(null);
@@ -201,6 +247,84 @@ const PinRoutinesModal: React.FC<{
         </div>
       </div>
     </div>
+  );
+};
+
+const TodaysSnapshotCard: React.FC = () => {
+  const { wellbeingLogs } = useHabitStore();
+  const persona = getActivePersonaConfig();
+  const today = new Date().toISOString().slice(0, 10);
+  const [extraKeys, setExtraKeys] = useState<WellbeingMetricKey[]>([]);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    fetchDashboardPrefs()
+      .then((prefs) => {
+        if (cancelled) return;
+        const keys = (prefs.checkinExtraMetricKeys || [])
+          .filter((k): k is WellbeingMetricKey => !!k)
+          .filter((k) => k !== 'notes');
+        setExtraKeys(keys);
+      })
+      .catch(() => {
+        // ignore
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const metrics = useMemo(() => {
+    const base = (persona.checkinSubset || []).filter((k): k is WellbeingMetricKey => k !== 'vibe');
+    const all = Array.from(new Set([...base, ...extraKeys]))
+      .filter((k) => k !== 'notes')
+      .filter((k) => SNAPSHOT_METRIC_META[k] !== undefined);
+    return all.map((k) => SNAPSHOT_METRIC_META[k]);
+  }, [persona.checkinSubset, extraKeys]);
+
+  const todaysLog = wellbeingLogs[today];
+  const session = todaysLog?.evening || todaysLog?.morning;
+
+  const valueFor = (key: WellbeingMetricKey): number | null => {
+    // Prefer session (morning/evening), then legacy top-level.
+    const v = (session as any)?.[key];
+    if (typeof v === 'number') return v;
+    const legacy = (todaysLog as any)?.[key];
+    if (typeof legacy === 'number') return legacy;
+    return null;
+  };
+
+  return (
+    <Card title="Today’s Snapshot" icon={<Sparkles size={16} className="text-sky-300" />} className="bg-neutral-900/40">
+      {metrics.length === 0 ? (
+        <div className="text-sm text-neutral-400">No check-in metrics configured.</div>
+      ) : (
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+          {metrics.map((m) => {
+            const v = valueFor(m.key);
+            const filled = filledPips(m.scale, v);
+            return (
+              <div key={m.key} className="p-4 rounded-xl bg-neutral-900/40 border border-white/5">
+                <div className="flex items-center gap-2">
+                  {m.icon}
+                  <div className="text-sm font-semibold text-white">{m.label}</div>
+                </div>
+                <div className="mt-3 flex gap-1.5" aria-label={`${m.label} intensity`}>
+                  {Array.from({ length: 5 }).map((_, idx) => (
+                    <div
+                      key={idx}
+                      className={`w-2.5 h-2.5 rounded-full ${idx < filled ? 'bg-white/50' : 'bg-white/10'}`}
+                    />
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      <div className="mt-4 text-sm text-neutral-400">You can feel more than one thing at once.</div>
+    </Card>
   );
 };
 
@@ -652,6 +776,7 @@ export const EmotionalWellbeingDashboard: React.FC<Props> = ({ onOpenCheckIn, on
       </div>
 
       {/* Main dashboard must be today-focused: no historical wellbeing charts here. */}
+      <TodaysSnapshotCard />
       <ActionCards onStartRoutine={onStartRoutine} />
     </div>
   );
