@@ -124,14 +124,6 @@ const CurrentVibeCard: React.FC = () => {
 
   const today = new Date().toISOString().slice(0, 10);
 
-  const VIBE_COPY: Record<Vibe, string> = {
-    strained: 'Today can be lighter.',
-    tender: 'Today is about gentleness.',
-    steady: 'Steady is enough.',
-    open: 'Make room for what helps.',
-    thriving: 'Let the good be real.',
-  };
-
   const VIBE_UI: Record<
     Vibe,
     {
@@ -265,10 +257,6 @@ const CurrentVibeCard: React.FC = () => {
             </button>
           );
         })}
-      </div>
-
-      <div className="mt-6 text-center text-lg sm:text-xl text-amber-100/80 leading-relaxed">
-        {loading ? 'Loading…' : vibe ? VIBE_COPY[vibe] : 'What fits right now?'}
       </div>
     </Card>
   );
