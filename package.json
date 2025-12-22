@@ -12,7 +12,8 @@
     "preview": "vite preview",
     "test": "vitest",
     "test:run": "vitest run",
-    "check:invariants": "tsx scripts/check-invariants.ts"
+    "check:invariants": "tsx scripts/check-invariants.ts",
+    "seed:emotion": "tsx scripts/seed-emotion-regulation.ts"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
