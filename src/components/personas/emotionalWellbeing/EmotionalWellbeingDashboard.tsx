@@ -224,12 +224,9 @@ const CurrentVibeCard: React.FC = () => {
 
   return (
     <Card
-      title="Today’s Support"
-      titleClassName="text-2xl font-light text-white/80"
-      headerClassName="justify-center mb-6"
+      title="Current Vibe"
+      icon={<Sparkles size={16} className="text-amber-400" />}
     >
-      <div className="text-center text-sm tracking-wide text-neutral-400 mb-5">Current Vibe</div>
-
       <div className="grid grid-cols-5 gap-3 items-start">
         {(VIBE_OPTIONS as readonly Vibe[]).map((key) => {
           const ui = VIBE_UI[key];
