@@ -14,6 +14,7 @@ import type { GoalDetail, CompletedGoal, ProgressOverview } from '../types';
 import { API_BASE_URL } from './persistenceConfig';
 import { invalidateGoalDataCache } from './goalDataCache';
 import { ACTIVE_USER_MODE_STORAGE_KEY, DEMO_USER_ID, type ActiveUserMode } from '../shared/demo';
+import { warnIfPersonaLeaksIntoHabitEntryRequest } from '../shared/invariants/personaInvariants';
 
 
 
@@ -76,6 +77,13 @@ async function apiRequest<T>(
   const userId = getActiveUserId();
 
   try {
+    // Dev-only safety rail: persona must never leak into HabitEntry data-layer calls.
+    warnIfPersonaLeaksIntoHabitEntryRequest({
+      endpoint,
+      headers: (options.headers as any) || {},
+      body: options.body,
+    });
+
     const response = await fetch(url, {
       ...options,
       headers: {

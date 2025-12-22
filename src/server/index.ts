@@ -32,6 +32,7 @@ const PORT = process.env.PORT || 3000;
 
 import { userIdMiddleware } from './middleware/auth';
 import { devUserIdOverride } from './middleware/devUserIdOverride';
+import { noPersonaInHabitEntryRequests } from './middleware/noPersonaInHabitEntryRequests';
 
 // Middleware
 app.use(express.json());
@@ -56,6 +57,7 @@ app.use((req, res, next) => {
 // Authentication Middleware
 app.use(userIdMiddleware);
 app.use(devUserIdOverride);
+app.use(noPersonaInHabitEntryRequests);
 
 // API Routes
 // Note: Specific routes (like /reorder) must come before parameterized routes (like /:id)

@@ -12,6 +12,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
     const isDev = import.meta.env.DEV;
     const [userMode, setUserMode] = useState<'real' | 'demo'>(() => getActiveUserMode());
     const isDemo = userMode === 'demo';
+    const [devNotice, setDevNotice] = useState<string | null>(null);
 
     const demoBadge = useMemo(() => {
         if (!isDemo) return null;
@@ -36,12 +37,22 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
     const handleSeedDemo = async () => {
         await seedDemoEmotionalWellbeing();
         await refreshHabitsAndCategories();
+        if (isDev) {
+            console.info('[Demo] Seeded demo data');
+            setDevNotice('Seeded demo data');
+            setTimeout(() => setDevNotice(null), 2500);
+        }
         window.location.reload();
     };
 
     const handleResetDemo = async () => {
         await resetDemoEmotionalWellbeing();
         await refreshHabitsAndCategories();
+        if (isDev) {
+            console.info('[Demo] Reset demo data');
+            setDevNotice('Reset demo data');
+            setTimeout(() => setDevNotice(null), 2500);
+        }
         window.location.reload();
     };
 
@@ -60,6 +71,11 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
                 </div>
 
                 <div className="flex items-center gap-4">
+                    {isDev && devNotice && (
+                        <div className="text-xs px-3 py-1.5 rounded-full bg-emerald-500/15 text-emerald-200 border border-emerald-500/20">
+                            {devNotice}
+                        </div>
+                    )}
                     {isDev && (
                         <div className="flex items-center gap-2">
                             <div className="flex items-center bg-neutral-800/60 border border-white/10 rounded-full overflow-hidden">
