@@ -682,13 +682,18 @@ const ActionCards: React.FC<{ onStartRoutine?: (routine: Routine) => void }> = (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           {pinnedRoutines.map((r) => (
             <div key={r.id} className="p-4 rounded-xl bg-neutral-800/50 border border-white/5 flex flex-col justify-between">
-              <div>
-                <div className="text-sm font-semibold text-white">{r.title}</div>
-                <div className="text-xs text-neutral-500 mt-1">A gentle reset you can do now.</div>
+              <div className="flex items-start justify-between gap-3 mb-4">
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-semibold text-white truncate">{r.title}</div>
+                  <div className="text-xs text-neutral-500 mt-0.5">Gentle reset</div>
+                </div>
+                <div className="flex-shrink-0">
+                  <Sparkles size={24} className="text-emerald-400/60" />
+                </div>
               </div>
               <button
                 onClick={() => onStartRoutine && onStartRoutine(r)}
-                className="mt-4 inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-semibold"
+                className="inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-semibold"
               >
                 <Play size={16} />
                 Start
