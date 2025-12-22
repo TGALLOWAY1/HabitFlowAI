@@ -576,17 +576,32 @@ export interface Skill {
  * Represents a single check-in session (morning or evening).
  */
 export interface WellbeingSession {
-    /** Depression level on a scale of 1-5 */
-    depression: number;
+    /** Depression level on a scale of 1-5 (legacy/compat) */
+    depression?: number;
 
     /** Anxiety level on a scale of 1-5 */
-    anxiety: number;
+    anxiety?: number;
 
     /** Energy level on a scale of 1-5 */
-    energy: number;
+    energy?: number;
 
-    /** Sleep score on a scale of 0-100 */
-    sleepScore: number;
+    /** Sleep score on a scale of 0-100 (often more objective) */
+    sleepScore?: number;
+
+    /** Subjective sleep quality on a scale of 0-4 (additive) */
+    sleepQuality?: number;
+
+    /** Subjective low mood on a scale of 0-4 (preferred over depression for new UI) */
+    lowMood?: number;
+
+    /** Subjective calm on a scale of 0-4 */
+    calm?: number;
+
+    /** Subjective stress on a scale of 0-4 */
+    stress?: number;
+
+    /** Subjective focus on a scale of 0-4 */
+    focus?: number;
 
     /** Optional free-text notes for this session */
     notes?: string;
@@ -632,6 +647,11 @@ export interface DailyWellbeing {
     anxiety?: number;
     energy?: number;
     sleepScore?: number;
+    sleepQuality?: number;
+    lowMood?: number;
+    calm?: number;
+    stress?: number;
+    focus?: number;
     notes?: string;
 }
 
@@ -648,6 +668,11 @@ export const WELLBEING_METRIC_KEYS = [
     'anxiety',
     'energy',
     'sleepScore',
+    'sleepQuality',
+    'lowMood',
+    'calm',
+    'stress',
+    'focus',
     'notes',
 ] as const;
 

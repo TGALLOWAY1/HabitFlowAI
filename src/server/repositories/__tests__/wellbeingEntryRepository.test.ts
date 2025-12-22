@@ -194,6 +194,35 @@ describe('WellbeingEntryRepository', () => {
     expect(secondCreatedAt).toBe(firstCreatedAt);
     expect(secondUpdatedAt).not.toBe(firstUpdatedAt);
   });
+
+  it('should accept new superset keys and preserve sleepScore behavior', async () => {
+    const dayKey = '2025-02-01';
+
+    const created = await createWellbeingEntries(
+      [
+        { dayKey, timeOfDay: 'morning', metricKey: 'lowMood', value: 3, source: 'checkin', timestampUtc: new Date().toISOString() },
+        { dayKey, timeOfDay: 'evening', metricKey: 'calm', value: 1, source: 'checkin', timestampUtc: new Date().toISOString() },
+        { dayKey, timeOfDay: null, metricKey: 'stress', value: 2, source: 'checkin', timestampUtc: new Date().toISOString() },
+        { dayKey, timeOfDay: null, metricKey: 'focus', value: 4, source: 'checkin', timestampUtc: new Date().toISOString() },
+        { dayKey, timeOfDay: null, metricKey: 'sleepQuality', value: 2, source: 'checkin', timestampUtc: new Date().toISOString() },
+        // legacy key remains supported unchanged
+        { dayKey, timeOfDay: 'morning', metricKey: 'sleepScore', value: 88, source: 'checkin', timestampUtc: new Date().toISOString() },
+      ],
+      TEST_USER_ID
+    );
+
+    expect(created.length).toBeGreaterThanOrEqual(6);
+
+    const fetched = await getWellbeingEntries({ userId: TEST_USER_ID, startDayKey: dayKey, endDayKey: dayKey });
+    const keys = fetched.map((e) => `${e.metricKey}:${e.timeOfDay ?? 'null'}`);
+
+    expect(keys).toContain('lowMood:morning');
+    expect(keys).toContain('calm:evening');
+    expect(keys).toContain('stress:null');
+    expect(keys).toContain('focus:null');
+    expect(keys).toContain('sleepQuality:null');
+    expect(keys).toContain('sleepScore:morning');
+  });
 });
 
 

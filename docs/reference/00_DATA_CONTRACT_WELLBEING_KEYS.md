@@ -83,6 +83,58 @@ The following keys are **LOCKED** and must remain stable across all personas, UI
 - **Derived**: No
 - **Stability Status**: **LOCKED**
 
+---
+
+## Additive Superset Keys (LOCKED)
+
+These keys were added as an **additive superset** to support multiple personas while preserving continuity.
+
+#### `lowMood`
+- **Type**: `number` (0-4 scale, subjective)
+- **Location**:
+  - `WellbeingSession.lowMood`
+  - `DailyWellbeing.lowMood` (legacy/top-level optional)
+- **User Input**: Yes
+- **Derived**: No
+- **Stability Status**: **LOCKED**
+- **Notes**: Preferred metric to show in newer Emotional Wellbeing UI (no migration required; `depression` remains supported).
+
+#### `calm`
+- **Type**: `number` (0-4 scale, subjective)
+- **Location**:
+  - `WellbeingSession.calm`
+  - `DailyWellbeing.calm` (legacy/top-level optional)
+- **User Input**: Yes
+- **Derived**: No
+- **Stability Status**: **LOCKED**
+
+#### `stress`
+- **Type**: `number` (0-4 scale, subjective)
+- **Location**:
+  - `WellbeingSession.stress`
+  - `DailyWellbeing.stress` (legacy/top-level optional)
+- **User Input**: Yes
+- **Derived**: No
+- **Stability Status**: **LOCKED**
+
+#### `focus`
+- **Type**: `number` (0-4 scale, subjective)
+- **Location**:
+  - `WellbeingSession.focus`
+  - `DailyWellbeing.focus` (legacy/top-level optional)
+- **User Input**: Yes
+- **Derived**: No
+- **Stability Status**: **LOCKED**
+
+#### `sleepQuality`
+- **Type**: `number` (0-4 scale, subjective)
+- **Location**:
+  - `WellbeingSession.sleepQuality`
+  - `DailyWellbeing.sleepQuality` (legacy/top-level optional)
+- **User Input**: Yes
+- **Derived**: No
+- **Stability Status**: **LOCKED**
+
 ### Session Structure Keys
 
 #### `morning`

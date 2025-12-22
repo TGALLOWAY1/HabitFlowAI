@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { X, Save, Sun, Moon, Battery, Activity, Brain } from 'lucide-react';
+import { X, Save, Sun, Moon, Battery, Activity, Brain, Wind, Target, Focus as FocusIcon, Heart } from 'lucide-react';
 import { useHabitStore } from '../store/HabitContext';
 import { format } from 'date-fns';
 import type { WellbeingSession } from '../types';
-import { WELLBEING_METRIC_KEYS } from '../models/persistenceTypes';
+import { WELLBEING_METRIC_KEYS, type WellbeingMetricKey } from '../models/persistenceTypes';
 import { getActivePersonaConfig } from '../shared/personas/activePersona';
 
 interface DailyCheckInModalProps {
@@ -12,11 +12,46 @@ interface DailyCheckInModalProps {
 }
 
 const INITIAL_SESSION: WellbeingSession = {
+    // Legacy/compat (1-5)
     depression: 3,
     anxiety: 3,
     energy: 3,
+    // Legacy (0-100)
     sleepScore: 75,
+    // New subjective superset (0-4)
+    lowMood: 2,
+    calm: 2,
+    stress: 2,
+    focus: 2,
+    sleepQuality: 2,
     notes: ''
+};
+
+type MetricUiConfig = {
+    key: WellbeingMetricKey;
+    label: string;
+    icon: React.ReactNode;
+    colorClass: string;
+    min: number;
+    max: number;
+    step: number;
+    /** Optional: show only in a specific tab */
+    tab?: 'morning' | 'evening';
+    /** Optional: render as textarea */
+    kind?: 'number' | 'text';
+};
+
+const METRIC_UI: Record<WellbeingMetricKey, MetricUiConfig> = {
+    depression: { key: 'depression', label: 'Depression (legacy)', icon: <Brain size={16} className="text-blue-400" />, colorClass: 'text-blue-400', min: 1, max: 5, step: 1, kind: 'number' },
+    anxiety: { key: 'anxiety', label: 'Anxiety', icon: <Activity size={16} className="text-purple-400" />, colorClass: 'text-purple-400', min: 1, max: 5, step: 1, kind: 'number' },
+    energy: { key: 'energy', label: 'Energy', icon: <Battery size={16} className="text-emerald-400" />, colorClass: 'text-emerald-400', min: 1, max: 5, step: 1, kind: 'number' },
+    sleepScore: { key: 'sleepScore', label: 'Sleep score', icon: <Moon size={16} className="text-indigo-400" />, colorClass: 'text-indigo-400', min: 0, max: 100, step: 1, tab: 'morning', kind: 'number' },
+    sleepQuality: { key: 'sleepQuality', label: 'Sleep quality (subjective)', icon: <Heart size={16} className="text-fuchsia-300" />, colorClass: 'text-fuchsia-300', min: 0, max: 4, step: 1, tab: 'morning', kind: 'number' },
+    lowMood: { key: 'lowMood', label: 'Low Mood', icon: <Brain size={16} className="text-blue-400" />, colorClass: 'text-blue-400', min: 0, max: 4, step: 1, kind: 'number' },
+    calm: { key: 'calm', label: 'Calm', icon: <Wind size={16} className="text-emerald-400" />, colorClass: 'text-emerald-400', min: 0, max: 4, step: 1, kind: 'number' },
+    stress: { key: 'stress', label: 'Stress', icon: <Target size={16} className="text-orange-400" />, colorClass: 'text-orange-400', min: 0, max: 4, step: 1, kind: 'number' },
+    focus: { key: 'focus', label: 'Focus', icon: <FocusIcon size={16} className="text-amber-300" />, colorClass: 'text-amber-300', min: 0, max: 4, step: 1, kind: 'number' },
+    notes: { key: 'notes', label: 'Notes (Optional)', icon: null, colorClass: 'text-neutral-300', min: 0, max: 0, step: 1, kind: 'text' },
 };
 
 export const DailyCheckInModal: React.FC<DailyCheckInModalProps> = ({ isOpen, onClose }) => {
@@ -79,9 +114,23 @@ export const DailyCheckInModal: React.FC<DailyCheckInModalProps> = ({ isOpen, on
                 }
             }
 
+            // Only persist keys the persona is actually showing (plus notes if present).
+            // This ensures persona changes don't silently write hidden metrics.
+            const sessionPayload: Partial<WellbeingSession> = {};
+            for (const key of WELLBEING_METRIC_KEYS) {
+                if (key === 'notes') continue;
+                if (!subsetSet.has(key)) continue;
+                const cfg = METRIC_UI[key];
+                if (cfg?.tab && cfg.tab !== activeTab) continue;
+                (sessionPayload as any)[key] = (currentData as any)[key];
+            }
+            if (typeof currentData.notes === 'string' && currentData.notes.trim().length > 0) {
+                sessionPayload.notes = currentData.notes;
+            }
+
             const result = await logWellbeing(today, {
                 date: today,
-                [activeTab]: currentData
+                [activeTab]: sessionPayload
             });
             console.log('[DailyCheckInModal] logWellbeing completed:', result);
             onClose();
@@ -137,99 +186,53 @@ export const DailyCheckInModal: React.FC<DailyCheckInModalProps> = ({ isOpen, on
 
                 {/* Body */}
                 <div className="p-6 space-y-6">
-                    {/* Depression */}
-                    {subsetSet.has('depression') && (
-                        <div className="space-y-3">
-                            <div className="flex justify-between text-sm">
-                                <label className="text-neutral-300 font-medium flex items-center gap-2">
-                                    <Brain size={16} className="text-blue-400" /> Depression
-                                </label>
-                                <span className="text-blue-400 font-bold">{currentData.depression}/5</span>
-                            </div>
-                            <input
-                                type="range"
-                                min="1" max="5" step="1"
-                                value={currentData.depression}
-                                onChange={(e) => updateCurrentSession('depression', Number(e.target.value))}
-                                className="w-full h-2 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-blue-500"
-                            />
-                            <div className="flex justify-between text-xs text-neutral-500 px-1">
-                                <span>Low</span>
-                                <span>High</span>
-                            </div>
-                        </div>
-                    )}
+                    {/* Render persona-selected metric subset from the canonical superset */}
+                    {checkinSubset
+                        .filter((k): k is WellbeingMetricKey => (WELLBEING_METRIC_KEYS as readonly string[]).includes(k))
+                        .map((k) => {
+                            const cfg = METRIC_UI[k];
+                            if (!cfg) return null;
+                            if (cfg.key === 'notes') return null; // Notes handled separately below
+                            if (cfg.tab && cfg.tab !== activeTab) return null;
 
-                    {/* Anxiety */}
-                    {subsetSet.has('anxiety') && (
-                        <div className="space-y-3">
-                            <div className="flex justify-between text-sm">
-                                <label className="text-neutral-300 font-medium flex items-center gap-2">
-                                    <Activity size={16} className="text-purple-400" /> Anxiety
-                                </label>
-                                <span className="text-purple-400 font-bold">{currentData.anxiety}/5</span>
-                            </div>
-                            <input
-                                type="range"
-                                min="1" max="5" step="1"
-                                value={currentData.anxiety}
-                                onChange={(e) => updateCurrentSession('anxiety', Number(e.target.value))}
-                                className="w-full h-2 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-purple-500"
-                            />
-                            <div className="flex justify-between text-xs text-neutral-500 px-1">
-                                <span>Low</span>
-                                <span>High</span>
-                            </div>
-                        </div>
-                    )}
+                            const rawValue = (currentData as any)[k];
+                            const value = typeof rawValue === 'number' ? rawValue : cfg.min;
 
-                    {/* Energy (Evening Only) */}
-                    {activeTab === 'evening' && subsetSet.has('energy') && (
-                        <div className="space-y-3 animate-in fade-in slide-in-from-left-4 duration-300">
-                            <div className="flex justify-between text-sm">
-                                <label className="text-neutral-300 font-medium flex items-center gap-2">
-                                    <Battery size={16} className="text-emerald-400" /> Energy
-                                </label>
-                                <span className="text-emerald-400 font-bold">{currentData.energy}/5</span>
-                            </div>
-                            <input
-                                type="range"
-                                min="1" max="5" step="1"
-                                value={currentData.energy}
-                                onChange={(e) => updateCurrentSession('energy', Number(e.target.value))}
-                                className="w-full h-2 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-emerald-500"
-                            />
-                            <div className="flex justify-between text-xs text-neutral-500 px-1">
-                                <span>Low</span>
-                                <span>High</span>
-                            </div>
-                        </div>
-                    )}
+                            return (
+                                <div key={k} className="space-y-3">
+                                    <div className="flex justify-between text-sm">
+                                        <label className="text-neutral-300 font-medium flex items-center gap-2">
+                                            {cfg.icon}
+                                            {cfg.label}
+                                        </label>
+                                        <span className={`${cfg.colorClass} font-bold`}>
+                                            {value}{cfg.max === 100 ? '' : `/${cfg.max}`}
+                                        </span>
+                                    </div>
+                                    <input
+                                        type="range"
+                                        min={cfg.min}
+                                        max={cfg.max}
+                                        step={cfg.step}
+                                        value={value}
+                                        onChange={(e) => updateCurrentSession(k as any, Number(e.target.value))}
+                                        className="w-full h-2 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-emerald-500"
+                                    />
+                                    {(cfg.max <= 5) && (
+                                        <div className="flex justify-between text-xs text-neutral-500 px-1">
+                                            <span>Low</span>
+                                            <span>High</span>
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        })}
 
-                    {/* Sleep Score (Morning Only) */}
-                    {activeTab === 'morning' && subsetSet.has('sleepScore') && (
-                        <div className="space-y-3 animate-in fade-in slide-in-from-right-4 duration-300">
-                            <div className="flex justify-between text-sm">
-                                <label className="text-neutral-300 font-medium flex items-center gap-2">
-                                    <Moon size={16} className="text-indigo-400" /> Sleep Score
-                                </label>
-                                <span className="text-indigo-400 font-bold">{currentData.sleepScore}</span>
-                            </div>
-                            <input
-                                type="range"
-                                min="0" max="100" step="1"
-                                value={currentData.sleepScore}
-                                onChange={(e) => updateCurrentSession('sleepScore', Number(e.target.value))}
-                                className="w-full h-2 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-indigo-500"
-                            />
-                        </div>
-                    )}
-
-                    {/* Notes */}
+                    {/* Notes (always available; stored only if non-empty) */}
                     <div className="space-y-2">
                         <label className="text-sm text-neutral-300 font-medium">Notes (Optional)</label>
                         <textarea
-                            value={currentData.notes}
+                            value={currentData.notes || ''}
                             onChange={(e) => updateCurrentSession('notes', e.target.value)}
                             placeholder={`How are you feeling this ${activeTab}?`}
                             className="w-full bg-neutral-800 border border-white/10 rounded-lg p-3 text-sm text-white focus:border-emerald-500 outline-none resize-none h-20"

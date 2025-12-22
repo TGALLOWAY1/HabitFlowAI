@@ -342,9 +342,11 @@ const EmotionalTrendCard: React.FC<{ onNavigateWellbeingHistory?: () => void }> 
       const dayKey = getDayKeyDaysAgo(i, timeZone);
       rows.push({
         dayKey,
-        depression: getDailyAverage(dayKey, 'depression'),
         anxiety: getDailyAverage(dayKey, 'anxiety'),
+        lowMood: getDailyAverage(dayKey, 'lowMood'),
+        calm: getDailyAverage(dayKey, 'calm'),
         energy: getDailyAverage(dayKey, 'energy'),
+        stress: getDailyAverage(dayKey, 'stress'),
       });
     }
     return rows;
@@ -393,15 +395,17 @@ const EmotionalTrendCard: React.FC<{ onNavigateWellbeingHistory?: () => void }> 
               <YAxis domain={[0, 5]} tick={{ fill: '#a3a3a3', fontSize: 10 }} tickLine={false} axisLine={false} />
               <Tooltip />
               <Legend />
-              <Line name="Depression" type="monotone" dataKey="depression" stroke="#3b82f6" strokeWidth={2} dot={false} connectNulls />
               <Line name="Anxiety" type="monotone" dataKey="anxiety" stroke="#a855f7" strokeWidth={2} dot={false} connectNulls />
+              <Line name="Low Mood" type="monotone" dataKey="lowMood" stroke="#60a5fa" strokeWidth={2} dot={false} connectNulls />
+              <Line name="Calm" type="monotone" dataKey="calm" stroke="#34d399" strokeWidth={2} dot={false} connectNulls />
               <Line name="Energy" type="monotone" dataKey="energy" stroke="#10b981" strokeWidth={2} dot={false} connectNulls />
+              <Line name="Stress" type="monotone" dataKey="stress" stroke="#f97316" strokeWidth={2} dot={false} connectNulls />
             </LineChart>
           </ResponsiveContainer>
         </div>
       )}
       <div className="text-xs text-neutral-500 mt-3">
-        Powered by canonical <code className="text-neutral-400">/api/wellbeingEntries</code> (averaged per day).
+        Powered by canonical <code className="text-neutral-400">/api/wellbeingEntries</code> (averaged per day). Depression remains available as legacy.
       </div>
     </Card>
   );
@@ -424,10 +428,10 @@ const WeeklyTrajectoryCard: React.FC = () => {
       .then((entries) => {
         if (cancelled) return;
 
-        const byWeek = new Map<string, { depression: number[]; anxiety: number[] }>();
+        const byWeek = new Map<string, { anxiety: number[]; lowMood: number[]; calm: number[] }>();
         for (const e of entries) {
           if (typeof e.value !== 'number') continue;
-          if (e.metricKey !== 'depression' && e.metricKey !== 'anxiety') continue;
+          if (e.metricKey !== 'anxiety' && e.metricKey !== 'lowMood' && e.metricKey !== 'calm') continue;
 
           // Week key: Monday-based label derived from dayKey date
           const d = new Date(`${e.dayKey}T00:00:00.000Z`);
@@ -436,8 +440,8 @@ const WeeklyTrajectoryCard: React.FC = () => {
           d.setUTCDate(d.getUTCDate() - diffToMonday);
           const weekKey = formatDayKeyFromDate(d, 'UTC');
 
-          const bucket = byWeek.get(weekKey) || { depression: [], anxiety: [] };
-          bucket[e.metricKey].push(e.value as number);
+          const bucket = byWeek.get(weekKey) || { anxiety: [], lowMood: [], calm: [] };
+          (bucket as any)[e.metricKey].push(e.value as number);
           byWeek.set(weekKey, bucket);
         }
 
@@ -446,8 +450,9 @@ const WeeklyTrajectoryCard: React.FC = () => {
           .slice(-8)
           .map(([weekKey, vals]) => ({
             week: weekKey,
-            depression: vals.depression.length ? vals.depression.reduce((x, y) => x + y, 0) / vals.depression.length : null,
             anxiety: vals.anxiety.length ? vals.anxiety.reduce((x, y) => x + y, 0) / vals.anxiety.length : null,
+            lowMood: vals.lowMood.length ? vals.lowMood.reduce((x, y) => x + y, 0) / vals.lowMood.length : null,
+            calm: vals.calm.length ? vals.calm.reduce((x, y) => x + y, 0) / vals.calm.length : null,
           }));
 
         setData(weeks);
@@ -482,8 +487,9 @@ const WeeklyTrajectoryCard: React.FC = () => {
               <YAxis domain={[0, 5]} tick={{ fill: '#a3a3a3', fontSize: 10 }} tickLine={false} axisLine={false} />
               <Tooltip />
               <Legend />
-              <Bar name="Depression" dataKey="depression" fill="#3b82f6" />
               <Bar name="Anxiety" dataKey="anxiety" fill="#a855f7" />
+              <Bar name="Low Mood" dataKey="lowMood" fill="#60a5fa" />
+              <Bar name="Calm" dataKey="calm" fill="#34d399" />
             </BarChart>
           </ResponsiveContainer>
         </div>

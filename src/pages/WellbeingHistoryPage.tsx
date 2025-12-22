@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { ArrowLeft, Brain, Activity, Battery, Moon } from 'lucide-react';
+import { ArrowLeft, Brain, Activity, Battery, Moon, Target, Crosshair, Heart, Wind } from 'lucide-react';
 import type { WellbeingMetricKey } from '../models/persistenceTypes';
 import { useWellbeingEntriesRange } from '../hooks/useWellbeingEntriesRange';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, Legend } from 'recharts';
@@ -9,15 +9,21 @@ type Props = {
 };
 
 const METRICS: Array<{ key: WellbeingMetricKey; label: string; color: string; icon: React.ReactNode }> = [
-  { key: 'depression', label: 'Depression', color: '#3b82f6', icon: <Brain size={14} className="text-blue-400" /> },
   { key: 'anxiety', label: 'Anxiety', color: '#a855f7', icon: <Activity size={14} className="text-purple-400" /> },
+  { key: 'lowMood', label: 'Low Mood', color: '#60a5fa', icon: <Brain size={14} className="text-blue-400" /> },
+  { key: 'calm', label: 'Calm', color: '#34d399', icon: <Wind size={14} className="text-emerald-400" /> },
   { key: 'energy', label: 'Energy', color: '#10b981', icon: <Battery size={14} className="text-emerald-400" /> },
-  { key: 'sleepScore', label: 'Sleep Score', color: '#818cf8', icon: <Moon size={14} className="text-indigo-400" /> },
+  { key: 'stress', label: 'Stress', color: '#f97316', icon: <Target size={14} className="text-orange-400" /> },
+  { key: 'focus', label: 'Focus', color: '#fbbf24', icon: <Crosshair size={14} className="text-amber-300" /> },
+  { key: 'sleepQuality', label: 'Sleep quality (subjective)', color: '#c084fc', icon: <Heart size={14} className="text-fuchsia-300" /> },
+  // Legacy/optional
+  { key: 'sleepScore', label: 'Sleep score', color: '#818cf8', icon: <Moon size={14} className="text-indigo-400" /> },
+  { key: 'depression', label: 'Depression (legacy)', color: '#3b82f6', icon: <Brain size={14} className="text-blue-400" /> },
 ];
 
 export const WellbeingHistoryPage: React.FC<Props> = ({ onBack }) => {
   const [windowDays, setWindowDays] = useState<7 | 14 | 30>(14);
-  const [activeMetrics, setActiveMetrics] = useState<WellbeingMetricKey[]>(['depression', 'anxiety']);
+  const [activeMetrics, setActiveMetrics] = useState<WellbeingMetricKey[]>(['anxiety', 'lowMood', 'calm', 'energy']);
 
   const { loading, error, getDailyAverage, startDayKey, endDayKey } = useWellbeingEntriesRange(windowDays);
 
@@ -42,6 +48,14 @@ export const WellbeingHistoryPage: React.FC<Props> = ({ onBack }) => {
   const toggleMetric = (key: WellbeingMetricKey) => {
     setActiveMetrics((prev) => (prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]));
   };
+
+  const yDomain = useMemo(() => {
+    if (activeMetrics.includes('sleepScore')) return [0, 100] as const;
+    // Legacy 1-5 metrics
+    if (activeMetrics.some((m) => m === 'depression' || m === 'anxiety' || m === 'energy')) return [0, 5] as const;
+    // New subjective superset 0-4
+    return [0, 4] as const;
+  }, [activeMetrics]);
 
   return (
     <div className="space-y-6 pb-20">
@@ -109,7 +123,7 @@ export const WellbeingHistoryPage: React.FC<Props> = ({ onBack }) => {
               <LineChart data={data}>
                 <XAxis dataKey="dayKey" tick={{ fill: '#a3a3a3', fontSize: 10 }} tickLine={false} axisLine={false} />
                 <YAxis
-                  domain={activeMetrics.includes('sleepScore') ? [0, 100] : [0, 5]}
+                  domain={yDomain as any}
                   tick={{ fill: '#a3a3a3', fontSize: 10 }}
                   tickLine={false}
                   axisLine={false}

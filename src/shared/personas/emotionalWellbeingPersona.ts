@@ -16,10 +16,11 @@ export const emotionalWellbeingPersona: PersonaConfig = {
 
   checkinSubset: [
     // TODO: add 'vibe' once we have a stable, contract-locked place to store it.
-    'depression',
     'anxiety',
+    'lowMood',
+    'calm',
+    'stress',
     'energy',
-    'sleepScore',
   ],
 };
 

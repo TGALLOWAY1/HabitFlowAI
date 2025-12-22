@@ -102,6 +102,10 @@ function clamp(n: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, n));
 }
 
+function clampInt(n: number, min: number, max: number): number {
+  return clamp(Math.round(n), min, max);
+}
+
 function seededRng(dayOffset: number): number {
   // Deterministic pseudo-random in [0,1)
   const x = Math.sin(dayOffset * 999) * 10000;
@@ -214,31 +218,53 @@ export async function seedDemoEmotionalWellbeingRoute(req: Request, res: Respons
       const wave = Math.sin((i / 30) * Math.PI * 2); // [-1,1]
       const noise = seededRng(i);
 
-      const depressionMorning = clamp(Math.round(3 + wave * 1 + (noise - 0.5) * 1), 1, 5);
-      const depressionEvening = clamp(Math.round(3 + wave * 1.2 + (seededRng(i + 1) - 0.5) * 1), 1, 5);
-      const anxietyMorning = clamp(Math.round(3 + wave * 0.8 + (seededRng(i + 2) - 0.5) * 1), 1, 5);
-      const anxietyEvening = clamp(Math.round(3 + wave * 0.9 + (seededRng(i + 3) - 0.5) * 1), 1, 5);
-      const energyEvening = clamp(Math.round(3 - wave * 0.9 + (seededRng(i + 4) - 0.5) * 1), 1, 5);
-      const sleepScoreMorning = clamp(Math.round(78 + wave * 10 + (seededRng(i + 5) - 0.5) * 8), 55, 95);
+      // Legacy/compat (1-5)
+      const depressionMorning = clampInt(3 + wave * 1 + (noise - 0.5) * 1, 1, 5);
+      const depressionEvening = clampInt(3 + wave * 1.2 + (seededRng(i + 1) - 0.5) * 1, 1, 5);
+      const anxietyMorning = clampInt(3 + wave * 0.8 + (seededRng(i + 2) - 0.5) * 1, 1, 5);
+      const anxietyEvening = clampInt(3 + wave * 0.9 + (seededRng(i + 3) - 0.5) * 1, 1, 5);
+      const energyMorning = clampInt(3 - wave * 0.6 + (seededRng(i + 4) - 0.5) * 1, 1, 5);
+      const energyEvening = clampInt(3 - wave * 0.9 + (seededRng(i + 5) - 0.5) * 1, 1, 5);
+
+      // Additive subjective superset (0-4)
+      const lowMoodMorning = clampInt(2 + wave * 1 + (seededRng(i + 6) - 0.5) * 1, 0, 4);
+      const lowMoodEvening = clampInt(2 + wave * 1.1 + (seededRng(i + 7) - 0.5) * 1, 0, 4);
+      const calmMorning = clampInt(2 - wave * 0.9 + (seededRng(i + 8) - 0.5) * 1, 0, 4);
+      const calmEvening = clampInt(2 - wave * 0.7 + (seededRng(i + 9) - 0.5) * 1, 0, 4);
+
+      // Once/day (timeOfDay=null in canonical entries)
+      const stressDaily = clampInt(2 + wave * 0.8 + (seededRng(i + 10) - 0.5) * 1, 0, 4);
+      const focusDaily = clampInt(2 - wave * 0.6 + (seededRng(i + 11) - 0.5) * 1, 0, 4);
+      const sleepQualityDaily = clampInt(2 - wave * 0.7 + (seededRng(i + 12) - 0.5) * 1, 0, 4);
+
+      // Legacy sleepScore (0-100)
+      const sleepScoreMorning = clampInt(78 + wave * 10 + (seededRng(i + 13) - 0.5) * 8, 55, 95);
 
       const morningTimestampUtc = `${dayKey}T08:00:00.000Z`;
       const eveningTimestampUtc = `${dayKey}T20:00:00.000Z`;
+      const middayTimestampUtc = `${dayKey}T12:00:00.000Z`;
 
       // Legacy container shape (for existing UI / endpoints)
       const daily: DailyWellbeing = {
         date: dayKey,
         morning: {
-          depression: depressionMorning,
+          depression: depressionMorning, // legacy/compat
           anxiety: anxietyMorning,
-          energy: 3,
+          energy: energyMorning,
           sleepScore: sleepScoreMorning,
+          // additive superset
+          lowMood: lowMoodMorning,
+          calm: calmMorning,
           ...(i % 9 === 0 ? { notes: 'Slept okay. Intention: be gentle with myself.' } : {}),
         },
         evening: {
-          depression: depressionEvening,
+          depression: depressionEvening, // legacy/compat
           anxiety: anxietyEvening,
           energy: energyEvening,
           sleepScore: sleepScoreMorning,
+          // additive superset
+          lowMood: lowMoodEvening,
+          calm: calmEvening,
           ...(i % 11 === 0 ? { notes: 'Noticing progress. One thing I’m proud of today.' } : {}),
         },
       };
@@ -247,12 +273,28 @@ export async function seedDemoEmotionalWellbeingRoute(req: Request, res: Respons
 
       // Canonical entries (timeOfDay + metricKey; no AM/PM key variants)
       canonicalEntries.push(
+        // legacy/compat
         { dayKey, timeOfDay: 'morning', metricKey: 'depression', value: depressionMorning, source: 'import', timestampUtc: morningTimestampUtc },
         { dayKey, timeOfDay: 'evening', metricKey: 'depression', value: depressionEvening, source: 'import', timestampUtc: eveningTimestampUtc },
+
+        // primary emotional superset (preferred)
+        { dayKey, timeOfDay: 'morning', metricKey: 'lowMood', value: lowMoodMorning, source: 'import', timestampUtc: morningTimestampUtc },
+        { dayKey, timeOfDay: 'evening', metricKey: 'lowMood', value: lowMoodEvening, source: 'import', timestampUtc: eveningTimestampUtc },
+        { dayKey, timeOfDay: 'morning', metricKey: 'calm', value: calmMorning, source: 'import', timestampUtc: morningTimestampUtc },
+        { dayKey, timeOfDay: 'evening', metricKey: 'calm', value: calmEvening, source: 'import', timestampUtc: eveningTimestampUtc },
+
         { dayKey, timeOfDay: 'morning', metricKey: 'anxiety', value: anxietyMorning, source: 'import', timestampUtc: morningTimestampUtc },
         { dayKey, timeOfDay: 'evening', metricKey: 'anxiety', value: anxietyEvening, source: 'import', timestampUtc: eveningTimestampUtc },
+        { dayKey, timeOfDay: 'morning', metricKey: 'energy', value: energyMorning, source: 'import', timestampUtc: morningTimestampUtc },
         { dayKey, timeOfDay: 'evening', metricKey: 'energy', value: energyEvening, source: 'import', timestampUtc: eveningTimestampUtc },
         { dayKey, timeOfDay: 'morning', metricKey: 'sleepScore', value: sleepScoreMorning, source: 'import', timestampUtc: morningTimestampUtc }
+      );
+
+      // Once/day metrics (timeOfDay=null)
+      canonicalEntries.push(
+        { dayKey, timeOfDay: null, metricKey: 'stress', value: stressDaily, source: 'import', timestampUtc: middayTimestampUtc },
+        { dayKey, timeOfDay: null, metricKey: 'focus', value: focusDaily, source: 'import', timestampUtc: middayTimestampUtc },
+        { dayKey, timeOfDay: null, metricKey: 'sleepQuality', value: sleepQualityDaily, source: 'import', timestampUtc: middayTimestampUtc },
       );
 
       if (i % 10 === 0) {
