@@ -619,6 +619,76 @@ export interface DailyWellbeing {
 }
 
 /**
+ * Wellbeing Metric Keys (LOCKED)
+ *
+ * These keys are a stable data contract across personas and UI changes.
+ * Do not rename or repurpose without a formal migration plan.
+ *
+ * See: docs/reference/00_DATA_CONTRACT_WELLBEING_KEYS.md
+ */
+export const WELLBEING_METRIC_KEYS = [
+    'depression',
+    'anxiety',
+    'energy',
+    'sleepScore',
+    'notes',
+] as const;
+
+export type WellbeingMetricKey = typeof WELLBEING_METRIC_KEYS[number];
+
+export function isWellbeingMetricKey(key: string): key is WellbeingMetricKey {
+    return (WELLBEING_METRIC_KEYS as readonly string[]).includes(key);
+}
+
+export type WellbeingTimeOfDay = 'morning' | 'evening';
+
+/**
+ * WellbeingEntry Entity (New Canonical Source of Truth for subjective check-ins)
+ *
+ * Storage Key: 'wellbeingEntries'
+ * Storage Format: WellbeingEntry[] (array of WellbeingEntry documents)
+ *
+ * Represents a single subjective wellbeing metric observation at a point in time.
+ * Uniqueness/idempotency is enforced on:
+ *   (userId, dayKey, timeOfDay, metricKey)
+ *
+ * IMPORTANT: Do not create AM/PM-specific metric keys (e.g. depressionAm).
+ * Use timeOfDay + metricKey instead.
+ */
+export interface WellbeingEntry {
+    /** Application-level ID (UUID), not MongoDB _id */
+    id: string;
+
+    /** User ID owner */
+    userId: string;
+
+    /** ISO 8601 UTC timestamp when the observation happened (or was recorded) */
+    timestampUtc: string;
+
+    /** Canonical aggregation boundary, derived at write time */
+    dayKey: string;
+
+    /** Optional session label; null if not applicable */
+    timeOfDay?: WellbeingTimeOfDay | null;
+
+    /** LOCKED metric key */
+    metricKey: WellbeingMetricKey;
+
+    /** Metric value (numeric scales) or string (notes) */
+    value: number | string | null;
+
+    /** Minimal provenance */
+    source: 'checkin' | 'import' | 'test';
+
+    /** Timestamps */
+    createdAt: string;
+    updatedAt: string;
+
+    /** Optional soft delete timestamp */
+    deletedAt?: string;
+}
+
+/**
  * Storage Structure Types
  * 
  * These types represent the structure used in the frontend application state.
@@ -909,6 +979,7 @@ export const MONGO_COLLECTIONS = {
     HABITS: 'habits',
     DAY_LOGS: 'dayLogs',
     WELLBEING_LOGS: 'wellbeingLogs',
+    WELLBEING_ENTRIES: 'wellbeingEntries',
     ROUTINES: 'routines',
     GOALS: 'goals',
     GOAL_MANUAL_LOGS: 'goalManualLogs',

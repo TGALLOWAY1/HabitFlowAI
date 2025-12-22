@@ -12,6 +12,7 @@ import { getCategories, createCategoryRoute, getCategory, updateCategoryRoute, d
 import { getHabits, createHabitRoute, getHabit, updateHabitRoute, deleteHabitRoute, reorderHabitsRoute } from './routes/habits';
 import { getDayLogs, upsertDayLogRoute, getDayLogRoute, deleteDayLogRoute } from './routes/dayLogs';
 import { getWellbeingLogs, upsertWellbeingLogRoute, getWellbeingLogRoute, deleteWellbeingLogRoute } from './routes/wellbeingLogs';
+import { getWellbeingEntriesRoute, upsertWellbeingEntriesRoute, deleteWellbeingEntryRoute } from './routes/wellbeingEntries';
 import { getRoutinesRoute, getRoutineRoute, createRoutineRoute, updateRoutineRoute, deleteRoutineRoute, submitRoutineRoute, uploadRoutineImageRoute, uploadRoutineImageMiddleware } from './routes/routines';
 import { getRoutineLogs } from './routes/routineLogs';
 import { getGoals, getGoal, getGoalProgress, getGoalsWithProgress, getCompletedGoals, createGoalRoute, updateGoalRoute, deleteGoalRoute, createGoalManualLogRoute, getGoalManualLogsRoute, getGoalDetailRoute, uploadGoalBadgeRoute, uploadBadgeMiddleware } from './routes/goals';
@@ -85,6 +86,11 @@ app.post('/api/wellbeingLogs', upsertWellbeingLogRoute);
 app.put('/api/wellbeingLogs', upsertWellbeingLogRoute);
 app.get('/api/wellbeingLogs/:date', getWellbeingLogRoute);
 app.delete('/api/wellbeingLogs/:date', deleteWellbeingLogRoute);
+
+// WellbeingEntry routes (New Canonical)
+app.get('/api/wellbeingEntries', getWellbeingEntriesRoute);
+app.post('/api/wellbeingEntries', upsertWellbeingEntriesRoute);
+app.delete('/api/wellbeingEntries/:id', deleteWellbeingEntryRoute);
 
 // Routine routes
 app.get('/api/routines', getRoutinesRoute);

@@ -24,6 +24,8 @@ export interface DailyWellbeing {
     notes?: string;
 }
 
+export type { WellbeingEntry, WellbeingMetricKey, WellbeingTimeOfDay } from './wellbeingEntry';
+
 export interface HabitGoal {
     type: 'boolean' | 'number';
     target?: number; // e.g., 8 (hours), 2000 (calories)

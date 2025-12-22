@@ -13,6 +13,57 @@ import {
   deleteWellbeingLog,
 } from '../repositories/wellbeingLogRepository';
 import type { DailyWellbeing } from '../../models/persistenceTypes';
+import { createWellbeingEntries, type WellbeingEntryUpsertInput } from '../repositories/wellbeingEntryRepository';
+import { isWellbeingMetricKey, WELLBEING_METRIC_KEYS, type WellbeingTimeOfDay } from '../../models/persistenceTypes';
+
+function deriveEntriesFromDailyWellbeing(payload: DailyWellbeing): WellbeingEntryUpsertInput[] {
+  const results: WellbeingEntryUpsertInput[] = [];
+
+  const dayKey = payload.date;
+
+  const addSession = (timeOfDay: WellbeingTimeOfDay, session: any) => {
+    if (!session) return;
+    for (const key of WELLBEING_METRIC_KEYS) {
+      // notes might be undefined; keep if explicitly present
+      const value = session[key];
+      if (value !== undefined) {
+        results.push({
+          dayKey,
+          timeOfDay,
+          metricKey: key,
+          value,
+          source: 'checkin',
+          timestampUtc: new Date().toISOString(),
+        });
+      }
+    }
+  };
+
+  addSession('morning', (payload as any).morning);
+  addSession('evening', (payload as any).evening);
+
+  // Legacy top-level fields (map to timeOfDay=null, except depression/anxiety where legacy fallback is treated as evening in UI)
+  const legacy: any = payload as any;
+  for (const k of Object.keys(legacy)) {
+    if (!isWellbeingMetricKey(k)) continue;
+    const v = legacy[k];
+    if (v === undefined) continue;
+
+    const timeOfDay: WellbeingTimeOfDay | null =
+      k === 'depression' || k === 'anxiety' ? 'evening' : null;
+
+    results.push({
+      dayKey,
+      timeOfDay,
+      metricKey: k,
+      value: v,
+      source: 'checkin',
+      timestampUtc: new Date().toISOString(),
+    });
+  }
+
+  return results;
+}
 
 /**
  * Get all wellbeing logs for the current user.
@@ -88,6 +139,16 @@ export async function upsertWellbeingLogRoute(req: Request, res: Response): Prom
     console.log(`[upsertWellbeingLogRoute] Upserting wellbeing log for date: ${date}, userId: ${userId}`);
     const result = await upsertWellbeingLog(log, userId);
     console.log(`[upsertWellbeingLogRoute] Successfully upserted wellbeing log:`, JSON.stringify(result, null, 2));
+
+    // Compatibility adapter: write canonical WellbeingEntry records (best-effort, do not change old endpoint behavior)
+    try {
+      const derivedEntries = deriveEntriesFromDailyWellbeing(log);
+      if (derivedEntries.length > 0) {
+        await createWellbeingEntries(derivedEntries, userId, { defaultTimeZone: 'UTC' });
+      }
+    } catch (err) {
+      console.error('[upsertWellbeingLogRoute] Failed to write WellbeingEntries (compat adapter):', err);
+    }
 
     res.status(200).json({
       wellbeingLog: result,
