@@ -445,14 +445,19 @@ function intensity0to4FromMetricValue(metric: MoodCompareKey, value: number | nu
 }
 
 function moodCellClass(metric: MoodCompareKey, intensity: number | null): string {
-  // Requirement: mood row must visually match the default Activity heatmap widget.
+  // Mood row uses a different color scheme than habit rows (emerald) for visual distinction.
   void metric;
 
   // Missing -> same "empty" as Activity heatmap
   if (intensity === null) return 'bg-neutral-800/50 border-white/5';
 
   const safe = Math.max(0, Math.min(4, intensity));
-  return `${getHeatmapColor(safe)} border-white/5`;
+  // Use purple/blue tones to contrast with emerald habit rows
+  if (safe === 0) return 'bg-purple-900/80 border-white/5';
+  if (safe === 1) return 'bg-purple-700 border-white/5';
+  if (safe === 2) return 'bg-purple-500 border-white/5';
+  if (safe === 3) return 'bg-purple-400 border-white/5';
+  return 'bg-purple-300 border-white/5';
 }
 
 const HabitsMoodPatternsCard: React.FC = () => {
@@ -579,7 +584,7 @@ const HabitsMoodPatternsCard: React.FC = () => {
                       {habitCells.map((active, idx) => (
                         <div
                           key={idx}
-                          className={`h-4 rounded-sm border ${
+                          className={`aspect-square w-full rounded-sm border ${
                             active ? 'bg-emerald-400/35 border-emerald-400/10' : 'bg-neutral-800/50 border-white/5'
                           }`}
                           title={`${dayKeys30[idx]}: ${active ? 'active' : '—'}`}
@@ -598,7 +603,7 @@ const HabitsMoodPatternsCard: React.FC = () => {
                 {moodCells.map((intensity, idx) => (
                   <div
                     key={idx}
-                    className={`h-4 rounded-sm border ${moodCellClass(selectedMetric, intensity)}`}
+                    className={`aspect-square w-full rounded-sm border ${moodCellClass(selectedMetric, intensity)}`}
                     title={`${dayKeys30[idx]}: ${intensity === null ? '—' : intensity}`}
                   />
                 ))}
