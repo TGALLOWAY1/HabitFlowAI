@@ -1,5 +1,21 @@
 import React, { useMemo, useState } from 'react';
-import { Sun, ExternalLink, HeartHandshake, Sparkles, Activity, Brain, Battery, Play, Target, Crosshair, Moon, Heart, Wind } from 'lucide-react';
+import {
+  Sun,
+  ExternalLink,
+  HeartHandshake,
+  Sparkles,
+  Activity,
+  Brain,
+  Battery,
+  Play,
+  Target,
+  Crosshair,
+  Moon,
+  Wind,
+  Spiral,
+  Flower2,
+  Layers,
+} from 'lucide-react';
 import { useWellbeingEntriesRange } from '../../../hooks/useWellbeingEntriesRange';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, Legend } from 'recharts';
 import { fetchEntries, createEntry as createJournalEntry, upsertEntryByKey } from '../../../api/journal';
@@ -105,11 +121,58 @@ const CurrentVibeCard: React.FC = () => {
   const today = new Date().toISOString().slice(0, 10);
 
   const VIBE_COPY: Record<Vibe, string> = {
-    strained: 'Let it be lighter today.',
-    tender: 'Today can be gentle.',
+    strained: 'Today can be lighter.',
+    tender: 'Today is about gentleness.',
     steady: 'Steady is enough.',
-    open: 'Stay curious, stay kind.',
+    open: 'Make room for what helps.',
     thriving: 'Let the good be real.',
+  };
+
+  const VIBE_UI: Record<
+    Vibe,
+    {
+      label: string;
+      Icon: React.ComponentType<{ size?: number; className?: string }>;
+      tileBaseClass: string;
+      tileSelectedClass: string;
+      labelSelectedClass: string;
+    }
+  > = {
+    strained: {
+      label: 'strained',
+      Icon: Spiral,
+      tileBaseClass: 'bg-slate-800/60 border-white/10 text-slate-200',
+      tileSelectedClass: 'bg-slate-700/70 border-slate-200/30 shadow-lg shadow-slate-400/10 ring-2 ring-slate-200/25',
+      labelSelectedClass: 'text-white',
+    },
+    tender: {
+      label: 'tender',
+      Icon: HeartHandshake,
+      tileBaseClass: 'bg-rose-900/20 border-rose-200/10 text-rose-100/80',
+      tileSelectedClass: 'bg-rose-900/35 border-rose-200/25 shadow-lg shadow-rose-400/20 ring-2 ring-rose-300/30',
+      labelSelectedClass: 'text-rose-50',
+    },
+    steady: {
+      label: 'steady',
+      Icon: Layers,
+      tileBaseClass: 'bg-sky-900/20 border-sky-200/10 text-sky-100/80',
+      tileSelectedClass: 'bg-sky-900/35 border-sky-200/25 shadow-lg shadow-sky-400/20 ring-2 ring-sky-300/30',
+      labelSelectedClass: 'text-sky-50',
+    },
+    open: {
+      label: 'open',
+      Icon: Flower2,
+      tileBaseClass: 'bg-emerald-900/20 border-emerald-200/10 text-emerald-100/80',
+      tileSelectedClass: 'bg-emerald-900/35 border-emerald-200/25 shadow-lg shadow-emerald-400/20 ring-2 ring-emerald-300/30',
+      labelSelectedClass: 'text-emerald-50',
+    },
+    thriving: {
+      label: 'thriving',
+      Icon: Sun,
+      tileBaseClass: 'bg-amber-900/15 border-amber-200/10 text-amber-100/80',
+      tileSelectedClass: 'bg-amber-900/30 border-amber-200/25 shadow-lg shadow-amber-300/20 ring-2 ring-amber-200/30',
+      labelSelectedClass: 'text-amber-50',
+    },
   };
 
   const loadVibeData = React.useCallback(() => {
@@ -158,24 +221,52 @@ const CurrentVibeCard: React.FC = () => {
 
   return (
     <Card
-      title="Current Vibe"
-      icon={<Sparkles size={16} className="text-amber-400" />}
+      title="Today’s Support"
+      titleClassName="text-2xl font-light text-white/80"
+      headerClassName="justify-center mb-6"
     >
-      <div className="flex flex-wrap gap-2">
-        {(VIBE_OPTIONS as readonly Vibe[]).map((key) => (
-          <button
-            key={key}
-            onClick={() => saveVibe(key)}
-            className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${
-              vibe === key ? 'bg-white/10 text-white border-white/20' : 'bg-neutral-800/60 text-neutral-300 border-white/10 hover:text-white'
-            }`}
-          >
-            {key}
-          </button>
-        ))}
+      <div className="text-center text-sm tracking-wide text-neutral-400 mb-5">Current Vibe</div>
+
+      <div className="grid grid-cols-5 gap-3 items-start">
+        {(VIBE_OPTIONS as readonly Vibe[]).map((key) => {
+          const ui = VIBE_UI[key];
+          const selected = vibe === key;
+          const Icon = ui.Icon;
+
+          return (
+            <button
+              key={key}
+              type="button"
+              aria-pressed={selected}
+              onClick={() => saveVibe(key)}
+              className="group flex flex-col items-center"
+            >
+              <div
+                className={[
+                  'w-16 h-16 sm:w-20 sm:h-20 rounded-2xl border flex items-center justify-center transition-all',
+                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30 focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-950',
+                  selected ? ui.tileSelectedClass : ui.tileBaseClass,
+                ].join(' ')}
+              >
+                <Icon
+                  size={28}
+                  className={`transition-opacity ${selected ? 'opacity-100' : 'opacity-80 group-hover:opacity-100'}`}
+                />
+              </div>
+              <div
+                className={[
+                  'mt-2 text-xs sm:text-sm font-semibold tracking-wide text-center transition-colors',
+                  selected ? ui.labelSelectedClass : 'text-neutral-400 group-hover:text-neutral-200',
+                ].join(' ')}
+              >
+                {ui.label}
+              </div>
+            </button>
+          );
+        })}
       </div>
 
-      <div className="mt-3 text-sm text-neutral-400 leading-relaxed">
+      <div className="mt-6 text-center text-lg sm:text-xl text-amber-100/80 leading-relaxed">
         {loading ? 'Loading…' : vibe ? VIBE_COPY[vibe] : 'What fits right now?'}
       </div>
     </Card>
