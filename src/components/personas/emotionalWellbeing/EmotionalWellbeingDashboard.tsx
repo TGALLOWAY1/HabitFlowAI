@@ -791,7 +791,6 @@ const GratitudeJarCard: React.FC = () => {
           ))}
         </div>
       )}
-      <div className="text-xs text-neutral-500 mt-2">Shows your most recent gratitude entries.</div>
     </Card>
   );
 };
