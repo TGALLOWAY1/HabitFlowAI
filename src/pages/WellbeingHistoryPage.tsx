@@ -88,7 +88,7 @@ export const WellbeingHistoryPage: React.FC<Props> = ({ onBack }) => {
   }, [startDayKey, endDayKey, getDailyAverage, metric]);
 
   const weeksForMetric = useMemo(() => {
-    const rows: Array<typeof cells> = [];
+    const rows: Array<Array<{ dayKey: string; value: number | null; intensity: number | null }>> = [];
     for (let i = 0; i < cellsForMetric.length; i += 7) {
       rows.push(cellsForMetric.slice(i, i + 7));
     }
@@ -276,9 +276,10 @@ export const WellbeingHistoryPage: React.FC<Props> = ({ onBack }) => {
 
                 <div className="inline-flex gap-3">
                   {/* Day labels */}
-                  <div className="flex flex-col gap-1 pt-5">
-                    {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d) => (
-                      <div key={d} className="h-4 text-[10px] text-neutral-600 flex items-center">
+                  <div className="flex flex-col gap-1">
+                    <div className="h-5" />
+                    {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d, idx) => (
+                      <div key={`${d}-${idx}`} className="h-4 text-[10px] text-neutral-600 flex items-center">
                         {d}
                       </div>
                     ))}
@@ -287,9 +288,10 @@ export const WellbeingHistoryPage: React.FC<Props> = ({ onBack }) => {
                   {/* Grid */}
                   <div className="flex flex-col gap-1">
                     <div className="h-5" />
-                    <div className="flex flex-col gap-1">
+                    {/* weeks as columns (horizontal), days stacked vertically */}
+                    <div className="flex gap-1 overflow-x-auto">
                       {weeksForMetric.map((week, i) => (
-                        <div key={i} className="flex gap-1">
+                        <div key={week[0]?.dayKey ?? i} className="flex flex-col gap-1">
                           {week.map((cell) => (
                             <button
                               key={cell.dayKey}
@@ -351,25 +353,28 @@ export const WellbeingHistoryPage: React.FC<Props> = ({ onBack }) => {
                     </div>
                     <div className="flex gap-2">
                       <div className="flex flex-col gap-1 pt-5">
-                        {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d) => (
-                          <div key={d} className="h-3 text-[9px] text-neutral-700 flex items-center">
+                        {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d, idx) => (
+                          <div key={`${d}-${idx}`} className="h-3 text-[9px] text-neutral-700 flex items-center">
                             {d}
                           </div>
                         ))}
                       </div>
                       <div className="flex flex-col gap-1">
                         <div className="h-5" />
-                        {weeks.map((week, i) => (
-                          <div key={i} className="flex gap-1">
-                            {week.map((cell) => (
-                              <div
-                                key={cell.dayKey}
-                                className={`w-3 h-3 rounded border ${heatClass(cell.intensity)} border-white/5`}
-                                title={`${cell.dayKey}: ${cell.value === null ? '—' : cell.value}`}
-                              />
-                            ))}
-                          </div>
-                        ))}
+                        {/* weeks as columns (horizontal), days stacked vertically */}
+                        <div className="flex gap-1 overflow-x-auto">
+                          {weeks.map((week, i) => (
+                            <div key={week[0]?.dayKey ?? i} className="flex flex-col gap-1">
+                              {week.map((cell) => (
+                                <div
+                                  key={cell.dayKey}
+                                  className={`w-3 h-3 rounded border ${heatClass(cell.intensity)} border-white/5`}
+                                  title={`${cell.dayKey}: ${cell.value === null ? '—' : cell.value}`}
+                                />
+                              ))}
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     </div>
                   </div>
