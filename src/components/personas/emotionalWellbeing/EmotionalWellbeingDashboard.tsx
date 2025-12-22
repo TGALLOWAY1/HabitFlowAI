@@ -60,7 +60,7 @@ const Card: React.FC<{
   titleClassName?: string;
   headerClassName?: string;
 }> = ({ title, icon, right, children, className, titleClassName, headerClassName }) => (
-  <div className={`bg-neutral-900/50 rounded-2xl border border-white/5 p-6 backdrop-blur-sm ${className || ''}`}>
+  <div className={`bg-neutral-900/50 rounded-2xl border border-white/5 p-6 backdrop-blur-sm flex flex-col h-full ${className || ''}`}>
     <div className={`flex items-center justify-between mb-4 ${headerClassName || ''}`}>
       <div className="flex items-center gap-2">
         {icon}
@@ -68,7 +68,9 @@ const Card: React.FC<{
       </div>
       {right}
     </div>
-    {children}
+    <div className="flex-1">
+      {children}
+    </div>
   </div>
 );
 
@@ -1049,12 +1051,16 @@ export const EmotionalWellbeingDashboard: React.FC<Props> = ({ onOpenCheckIn, on
       </div>
 
       {/* Top row: Current Vibe (primary) + Gratitude Jar (secondary) */}
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-start">
-        <div className="md:col-span-3">
-          <CurrentVibeCard />
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-stretch">
+        <div className="md:col-span-3 flex">
+          <div className="w-full">
+            <CurrentVibeCard />
+          </div>
         </div>
-        <div className="md:col-span-2">
-          <GratitudeJarCard />
+        <div className="md:col-span-2 flex">
+          <div className="w-full">
+            <GratitudeJarCard />
+          </div>
         </div>
       </div>
 
