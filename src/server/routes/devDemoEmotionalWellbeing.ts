@@ -10,20 +10,53 @@
 
 import type { Request, Response } from 'express';
 import { getDb } from '../lib/mongoClient';
-import { assertDemoSeedAllowed, DEMO_USER_ID } from '../config/demo';
+import { isDemoModeEnabled, DEMO_USER_ID } from '../config/demo';
 import { MONGO_COLLECTIONS, type DailyWellbeing, type Routine, type RoutineStep } from '../../models/persistenceTypes';
 import { formatDayKeyFromDate } from '../../domain/time/dayKey';
 import { upsertWellbeingLog } from '../repositories/wellbeingLogRepository';
 import { createWellbeingEntries } from '../repositories/wellbeingEntryRepository';
 import { createEntry as createJournalEntry, upsertEntryByTemplateAndDate } from '../repositories/journal';
 
-function assertDemoRequest(req: Request): string {
-  assertDemoSeedAllowed();
+function shouldDebugDemo(): boolean {
+  return process.env.NODE_ENV !== 'production' && process.env.DEBUG_DEMO === 'true';
+}
 
+function logDemoGuardFailure(req: Request, failedGuard: string, message: string): void {
+  if (!shouldDebugDemo()) return;
+  // eslint-disable-next-line no-console
+  console.warn('[DemoSeed][403]', {
+    failedGuard,
+    message,
+    NODE_ENV: process.env.NODE_ENV,
+    DEMO_MODE_ENABLED: process.env.DEMO_MODE_ENABLED,
+    reqUserId: (req as any).userId,
+    headerXUserId: req.headers['x-user-id'],
+  });
+}
+
+function assertDemoRequest(req: Request): string {
+  // Guard 1: never in production
+  if (process.env.NODE_ENV === 'production') {
+    const msg = 'Demo seed/reset endpoints are disabled in production';
+    logDemoGuardFailure(req, 'NODE_ENV===production', msg);
+    throw new Error(msg);
+  }
+
+  // Guard 2: feature flag must be enabled
+  if (!isDemoModeEnabled()) {
+    const msg = 'Demo mode is disabled. Set DEMO_MODE_ENABLED=true to enable demo seed/reset endpoints.';
+    logDemoGuardFailure(req, 'DEMO_MODE_ENABLED!==true', msg);
+    throw new Error(msg);
+  }
+
+  // Guard 3: user must be DEMO_USER_ID
   const userId = (req as any).userId || 'anonymous-user';
   if (userId !== DEMO_USER_ID) {
-    throw new Error('Forbidden: demo seed/reset may only run for DEMO_USER_ID');
+    const msg = 'Forbidden: demo seed/reset may only run for DEMO_USER_ID';
+    logDemoGuardFailure(req, 'req.userId!==DEMO_USER_ID', msg);
+    throw new Error(msg);
   }
+
   return userId;
 }
 
