@@ -11,6 +11,7 @@ import {
   Target,
   Crosshair,
   Moon,
+  Heart,
   Wind,
   Repeat,
   Flower2,
