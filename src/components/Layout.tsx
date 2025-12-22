@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useMemo, useState } from 'react';
 import { LayoutGrid, Settings, User } from 'lucide-react';
 import { useHabitStore } from '../store/HabitContext';
+import { getActiveUserMode, setActiveUserMode, seedDemoEmotionalWellbeing, resetDemoEmotionalWellbeing } from '../lib/persistenceClient';
 
 interface LayoutProps {
     children: React.ReactNode;
@@ -8,9 +9,40 @@ interface LayoutProps {
 
 export const Layout: React.FC<LayoutProps> = ({ children }) => {
     const { refreshHabitsAndCategories } = useHabitStore();
+    const isDev = import.meta.env.DEV;
+    const [userMode, setUserMode] = useState<'real' | 'demo'>(() => getActiveUserMode());
+    const isDemo = userMode === 'demo';
+
+    const demoBadge = useMemo(() => {
+        if (!isDemo) return null;
+        return (
+            <span className="ml-3 inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold tracking-wide bg-rose-500/15 text-rose-300 border border-rose-500/30">
+                DEMO DATA
+            </span>
+        );
+    }, [isDemo]);
 
     const handleRefresh = async () => {
         await refreshHabitsAndCategories();
+    };
+
+    const handleToggleMode = (mode: 'real' | 'demo') => {
+        setActiveUserMode(mode);
+        setUserMode(mode);
+        // Hard refresh so all queries re-run under the new userId identity header
+        window.location.reload();
+    };
+
+    const handleSeedDemo = async () => {
+        await seedDemoEmotionalWellbeing();
+        await refreshHabitsAndCategories();
+        window.location.reload();
+    };
+
+    const handleResetDemo = async () => {
+        await resetDemoEmotionalWellbeing();
+        await refreshHabitsAndCategories();
+        window.location.reload();
     };
 
     return (
@@ -24,9 +56,49 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
                     <h1 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-neutral-400">
                         HabitFlow
                     </h1>
+                    {demoBadge}
                 </div>
 
                 <div className="flex items-center gap-4">
+                    {isDev && (
+                        <div className="flex items-center gap-2">
+                            <div className="flex items-center bg-neutral-800/60 border border-white/10 rounded-full overflow-hidden">
+                                <button
+                                    onClick={() => handleToggleMode('real')}
+                                    className={`px-3 py-1.5 text-xs font-semibold transition-colors ${!isDemo ? 'bg-white/10 text-white' : 'text-neutral-300 hover:text-white'}`}
+                                    title="Use your real local user data"
+                                >
+                                    Use My Data
+                                </button>
+                                <button
+                                    onClick={() => handleToggleMode('demo')}
+                                    className={`px-3 py-1.5 text-xs font-semibold transition-colors ${isDemo ? 'bg-rose-500/20 text-rose-200' : 'text-neutral-300 hover:text-white'}`}
+                                    title="Switch to demo dataset (DEMO_USER_ID)"
+                                >
+                                    Demo: Emotional Wellbeing
+                                </button>
+                            </div>
+
+                            {isDemo && (
+                                <div className="flex items-center gap-2">
+                                    <button
+                                        onClick={handleSeedDemo}
+                                        className="px-3 py-1.5 text-xs font-semibold rounded-full bg-emerald-500/15 text-emerald-200 border border-emerald-500/30 hover:bg-emerald-500/25 transition-colors"
+                                        title="Seed demo wellbeing + gratitude journal data (server-guarded)"
+                                    >
+                                        Seed Demo Data
+                                    </button>
+                                    <button
+                                        onClick={handleResetDemo}
+                                        className="px-3 py-1.5 text-xs font-semibold rounded-full bg-rose-500/15 text-rose-200 border border-rose-500/30 hover:bg-rose-500/25 transition-colors"
+                                        title="Reset demo wellbeing + gratitude journal data (server-guarded)"
+                                    >
+                                        Reset Demo Data
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+                    )}
                     <button
                         onClick={handleRefresh}
                         className="p-2 hover:bg-white/5 rounded-full transition-colors text-neutral-400 hover:text-white"

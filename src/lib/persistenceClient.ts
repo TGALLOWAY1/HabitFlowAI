@@ -11,6 +11,7 @@ import type { GoalDetail, CompletedGoal, ProgressOverview } from '../types';
 
 import { API_BASE_URL } from './persistenceConfig';
 import { invalidateGoalDataCache } from './goalDataCache';
+import { ACTIVE_USER_MODE_STORAGE_KEY, DEMO_USER_ID, type ActiveUserMode } from '../shared/demo';
 
 
 
@@ -40,6 +41,26 @@ function getOrCreateUserId(): string {
   return userId;
 }
 
+export function getActiveUserMode(): ActiveUserMode {
+  if (typeof window === 'undefined') return 'real';
+  const raw = localStorage.getItem(ACTIVE_USER_MODE_STORAGE_KEY);
+  return raw === 'demo' ? 'demo' : 'real';
+}
+
+export function setActiveUserMode(mode: ActiveUserMode): void {
+  if (typeof window === 'undefined') return;
+  localStorage.setItem(ACTIVE_USER_MODE_STORAGE_KEY, mode);
+}
+
+/**
+ * Single canonical place to determine the effective userId for all API calls.
+ * - demo mode -> DEMO_USER_ID (separate dataset)
+ * - real mode -> sticky persistent user id
+ */
+export function getActiveUserId(): string {
+  return getActiveUserMode() === 'demo' ? DEMO_USER_ID : getOrCreateUserId();
+}
+
 /**
  * Make an API request with error handling.
  */
@@ -49,8 +70,8 @@ async function apiRequest<T>(
 ): Promise<T> {
   const url = `${API_BASE_URL}${endpoint}`;
 
-  // Get persistent user ID
-  const userId = getOrCreateUserId();
+  // Get effective user ID (demo vs real)
+  const userId = getActiveUserId();
 
   try {
     const response = await fetch(url, {
@@ -103,6 +124,17 @@ async function apiRequest<T>(
     }
     throw new Error('Unknown error occurred during API request');
   }
+}
+
+/**
+ * Demo (Dev-only) Seed/Reset endpoints
+ */
+export async function seedDemoEmotionalWellbeing(): Promise<void> {
+  await apiRequest('/dev/seedDemoEmotionalWellbeing', { method: 'POST' });
+}
+
+export async function resetDemoEmotionalWellbeing(): Promise<void> {
+  await apiRequest('/dev/resetDemoEmotionalWellbeing', { method: 'POST' });
 }
 
 /**

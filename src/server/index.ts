@@ -13,6 +13,7 @@ import { getHabits, createHabitRoute, getHabit, updateHabitRoute, deleteHabitRou
 import { getDayLogs, upsertDayLogRoute, getDayLogRoute, deleteDayLogRoute } from './routes/dayLogs';
 import { getWellbeingLogs, upsertWellbeingLogRoute, getWellbeingLogRoute, deleteWellbeingLogRoute } from './routes/wellbeingLogs';
 import { getWellbeingEntriesRoute, upsertWellbeingEntriesRoute, deleteWellbeingEntryRoute } from './routes/wellbeingEntries';
+import { seedDemoEmotionalWellbeingRoute, resetDemoEmotionalWellbeingRoute } from './routes/devDemoEmotionalWellbeing';
 import { getRoutinesRoute, getRoutineRoute, createRoutineRoute, updateRoutineRoute, deleteRoutineRoute, submitRoutineRoute, uploadRoutineImageRoute, uploadRoutineImageMiddleware } from './routes/routines';
 import { getRoutineLogs } from './routes/routineLogs';
 import { getGoals, getGoal, getGoalProgress, getGoalsWithProgress, getCompletedGoals, createGoalRoute, updateGoalRoute, deleteGoalRoute, createGoalManualLogRoute, getGoalManualLogsRoute, getGoalDetailRoute, uploadGoalBadgeRoute, uploadBadgeMiddleware } from './routes/goals';
@@ -91,6 +92,10 @@ app.delete('/api/wellbeingLogs/:date', deleteWellbeingLogRoute);
 app.get('/api/wellbeingEntries', getWellbeingEntriesRoute);
 app.post('/api/wellbeingEntries', upsertWellbeingEntriesRoute);
 app.delete('/api/wellbeingEntries/:id', deleteWellbeingEntryRoute);
+
+// --- DEV ONLY: Demo seed/reset (hard-guarded on server) ---
+app.post('/api/dev/seedDemoEmotionalWellbeing', seedDemoEmotionalWellbeingRoute);
+app.post('/api/dev/resetDemoEmotionalWellbeing', resetDemoEmotionalWellbeingRoute);
 
 // Routine routes
 app.get('/api/routines', getRoutinesRoute);
