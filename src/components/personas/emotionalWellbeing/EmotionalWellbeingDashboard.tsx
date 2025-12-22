@@ -386,7 +386,12 @@ const TodaysSnapshotCard: React.FC = () => {
   };
 
   return (
-    <Card title="Today’s Snapshot" icon={<Sparkles size={16} className="text-sky-300" />} className="bg-neutral-900/40">
+    <Card
+      title="Today’s Snapshot"
+      icon={<Sparkles size={16} className="text-sky-300" />}
+      right={<div className="text-xs text-neutral-400 italic">You can feel more than one thing at once.</div>}
+      className="bg-neutral-900/40"
+    >
       {metrics.length === 0 ? (
         <div className="text-sm text-neutral-400">No check-in metrics configured.</div>
       ) : (
@@ -413,8 +418,6 @@ const TodaysSnapshotCard: React.FC = () => {
           })}
         </div>
       )}
-
-      <div className="mt-4 text-sm text-neutral-400">You can feel more than one thing at once.</div>
     </Card>
   );
 };
