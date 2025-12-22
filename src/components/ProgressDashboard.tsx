@@ -9,15 +9,17 @@ import { GoalPulseCard } from './goals/GoalPulseCard';
 import { CategoryCompletionRow } from './CategoryCompletionRow';
 import { EmotionalWellbeingDashboard } from './personas/emotionalWellbeing/EmotionalWellbeingDashboard';
 import { getActivePersonaId } from '../shared/personas/activePersona';
+import type { Routine } from '../models/persistenceTypes';
 
 interface ProgressDashboardProps {
     onCreateGoal?: () => void;
     onViewGoal?: (goalId: string) => void;
     onSelectCategory?: (categoryId: string) => void;
     onNavigateWellbeingHistory?: () => void;
+    onStartRoutine?: (routine: Routine) => void;
 }
 
-export const ProgressDashboard: React.FC<ProgressDashboardProps> = ({ onCreateGoal, onViewGoal, onSelectCategory, onNavigateWellbeingHistory }) => {
+export const ProgressDashboard: React.FC<ProgressDashboardProps> = ({ onCreateGoal, onViewGoal, onSelectCategory, onNavigateWellbeingHistory, onStartRoutine }) => {
     const { habits, categories } = useHabitStore();
     const { data: progressData, loading: progressLoading } = useProgressOverview();
     const [isCheckInOpen, setIsCheckInOpen] = useState(false);
@@ -78,6 +80,7 @@ export const ProgressDashboard: React.FC<ProgressDashboardProps> = ({ onCreateGo
                 <EmotionalWellbeingDashboard
                     onOpenCheckIn={() => setIsCheckInOpen(true)}
                     onNavigateWellbeingHistory={onNavigateWellbeingHistory}
+                    onStartRoutine={onStartRoutine}
                 />
                 <DailyCheckInModal
                     isOpen={isCheckInOpen}

@@ -485,6 +485,23 @@ export interface JournalEntry {
 export type JournalEntriesStorage = JournalEntry[];
 
 /**
+ * Dashboard Preferences (User-scoped)
+ *
+ * Stores view-only user preferences for dashboard composition (e.g., pinned routines).
+ * This must never affect truth stores (HabitEntry, WellbeingEntry, JournalEntry).
+ */
+export interface DashboardPrefs {
+    /** User ID owner */
+    userId: string;
+
+    /** Global pinned routine IDs (not persona-specific yet) */
+    pinnedRoutineIds: string[];
+
+    /** ISO 8601 timestamp */
+    updatedAt: string;
+}
+
+/**
  * Identity Entity
  * 
  * Storage Key: 'identities'
@@ -985,6 +1002,7 @@ export const MONGO_COLLECTIONS = {
     GOAL_MANUAL_LOGS: 'goalManualLogs',
     ROUTINE_LOGS: 'routineLogs',
     JOURNAL_ENTRIES: 'journalEntries',
+    DASHBOARD_PREFS: 'dashboardPrefs',
     TASKS: 'tasks',
     HABIT_ENTRIES: 'habitEntries',
     HABIT_POTENTIAL_EVIDENCE: 'habitPotentialEvidence',

@@ -11,6 +11,7 @@ import {
     getEntryById,
     updateEntry,
     deleteEntry,
+    upsertEntryByTemplateAndDate,
 } from '../repositories/journal';
 import type { JournalEntry } from '../../models/persistenceTypes';
 
@@ -103,6 +104,58 @@ export async function createEntryRoute(req: Request, res: Response): Promise<voi
             error: {
                 code: 'INTERNAL_SERVER_ERROR',
                 message: 'Failed to create journal entry',
+                details: process.env.NODE_ENV === 'development' ? errorMessage : undefined,
+            },
+        });
+    }
+}
+
+/**
+ * Upsert a journal entry by (templateId, date) key.
+ *
+ * PUT /api/journal/byKey
+ */
+export async function upsertEntryByKeyRoute(req: Request, res: Response): Promise<void> {
+    try {
+        const { templateId, mode, persona, content, date } = req.body;
+
+        if (!templateId || typeof templateId !== 'string') {
+            res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Template ID is required' } });
+            return;
+        }
+        if (!mode || typeof mode !== 'string') {
+            res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Mode is required' } });
+            return;
+        }
+        if (!content || typeof content !== 'object') {
+            res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Content is required' } });
+            return;
+        }
+        if (!date || typeof date !== 'string') {
+            res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Date is required (YYYY-MM-DD)' } });
+            return;
+        }
+
+        const userId = (req as any).userId || 'anonymous-user';
+
+        const entry = await upsertEntryByTemplateAndDate(
+            {
+                templateId,
+                mode: mode as JournalEntry['mode'],
+                persona: persona || undefined,
+                content,
+                date,
+            },
+            userId
+        );
+
+        res.status(200).json({ entry });
+    } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        res.status(500).json({
+            error: {
+                code: 'INTERNAL_SERVER_ERROR',
+                message: 'Failed to upsert journal entry',
                 details: process.env.NODE_ENV === 'development' ? errorMessage : undefined,
             },
         });

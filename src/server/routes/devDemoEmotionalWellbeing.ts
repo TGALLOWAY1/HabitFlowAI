@@ -11,11 +11,11 @@
 import type { Request, Response } from 'express';
 import { getDb } from '../lib/mongoClient';
 import { assertDemoSeedAllowed, DEMO_USER_ID } from '../config/demo';
-import { MONGO_COLLECTIONS, type DailyWellbeing } from '../../models/persistenceTypes';
+import { MONGO_COLLECTIONS, type DailyWellbeing, type Routine, type RoutineStep } from '../../models/persistenceTypes';
 import { formatDayKeyFromDate } from '../../domain/time/dayKey';
 import { upsertWellbeingLog } from '../repositories/wellbeingLogRepository';
 import { createWellbeingEntries } from '../repositories/wellbeingEntryRepository';
-import { createEntry as createJournalEntry } from '../repositories/journal';
+import { createEntry as createJournalEntry, upsertEntryByTemplateAndDate } from '../repositories/journal';
 
 function assertDemoRequest(req: Request): string {
   assertDemoSeedAllowed();
@@ -46,11 +46,21 @@ async function resetDemoData(userId: string): Promise<{ deleted: Record<string, 
     .collection(MONGO_COLLECTIONS.JOURNAL_ENTRIES)
     .deleteMany({ userId });
 
+  const dashboardPrefsResult = await db
+    .collection(MONGO_COLLECTIONS.DASHBOARD_PREFS)
+    .deleteMany({ userId });
+
+  const routinesResult = await db
+    .collection(MONGO_COLLECTIONS.ROUTINES)
+    .deleteMany({ userId });
+
   return {
     deleted: {
       wellbeingEntries: wellbeingEntriesResult.deletedCount || 0,
       wellbeingLogs: wellbeingLogsResult.deletedCount || 0,
       journalEntries: journalEntriesResult.deletedCount || 0,
+      dashboardPrefs: dashboardPrefsResult.deletedCount || 0,
+      routines: routinesResult.deletedCount || 0,
     },
   };
 }
@@ -82,6 +92,70 @@ export async function seedDemoEmotionalWellbeingRoute(req: Request, res: Respons
 
     // Idempotency: reset first, then insert
     const reset = await resetDemoData(userId);
+
+    // Seed 3 demo routines + pin them (Action Cards)
+    const db = await getDb();
+    const now = new Date().toISOString();
+    const demoRoutineIds = [
+      'demo_routine_breath_reset',
+      'demo_routine_gentle_walk',
+      'demo_routine_gratitude_pause',
+    ];
+
+    const demoRoutines: Routine[] = [
+      {
+        id: demoRoutineIds[0],
+        userId,
+        title: '2-min Breath Reset',
+        linkedHabitIds: [],
+        steps: [
+          { id: 'step_1', title: 'Inhale slowly (4s)', instruction: 'Breathe in through your nose for 4 seconds.', timerSeconds: 4 } as RoutineStep,
+          { id: 'step_2', title: 'Exhale longer (6s)', instruction: 'Exhale gently for 6 seconds.', timerSeconds: 6 } as RoutineStep,
+          { id: 'step_3', title: 'Repeat x 6', instruction: 'Repeat the cycle 6 times.', timerSeconds: 60 } as RoutineStep,
+        ],
+        createdAt: now,
+        updatedAt: now,
+      },
+      {
+        id: demoRoutineIds[1],
+        userId,
+        title: 'Gentle Walk (10 min)',
+        linkedHabitIds: [],
+        steps: [
+          { id: 'step_1', title: 'Shoes on', instruction: 'Low-friction start: just get ready.', timerSeconds: 30 } as RoutineStep,
+          { id: 'step_2', title: 'Walk slowly', instruction: 'Notice one thing you can see, hear, and feel.', timerSeconds: 600 } as RoutineStep,
+        ],
+        createdAt: now,
+        updatedAt: now,
+      },
+      {
+        id: demoRoutineIds[2],
+        userId,
+        title: 'Gratitude Pause',
+        linkedHabitIds: [],
+        steps: [
+          { id: 'step_1', title: 'Name one good thing', instruction: 'Small counts. One tiny win is enough.' } as RoutineStep,
+          { id: 'step_2', title: 'Write one sentence', instruction: 'Optional: add it to your Gratitude Jar.' } as RoutineStep,
+        ],
+        createdAt: now,
+        updatedAt: now,
+      },
+    ];
+
+    const routinesCol = db.collection(MONGO_COLLECTIONS.ROUTINES);
+    for (const r of demoRoutines) {
+      await routinesCol.updateOne(
+        { id: r.id, userId },
+        { $set: r, $setOnInsert: { createdAt: now } },
+        { upsert: true }
+      );
+    }
+
+    await db.collection(MONGO_COLLECTIONS.DASHBOARD_PREFS).updateOne(
+      { userId },
+      { $set: { userId, pinnedRoutineIds: demoRoutineIds, updatedAt: now } },
+      { upsert: true }
+    );
 
     const today = new Date();
     const dayKeys: string[] = [];
@@ -191,6 +265,23 @@ export async function seedDemoEmotionalWellbeingRoute(req: Request, res: Respons
       journalCreated.push(entry.id);
     }
 
+    // Seed "Current Vibe" journal entries for last 14 days (idempotent)
+    const vibeOptions = ['strained', 'tender', 'steady', 'open', 'thriving'] as const;
+    for (let i = 0; i < 14; i++) {
+      const dayKey = dayKeys[i];
+      const vibe = vibeOptions[i % vibeOptions.length];
+      await upsertEntryByTemplateAndDate(
+        {
+          templateId: 'current_vibe',
+          mode: 'free',
+          persona: 'Demo: Emotional Wellbeing',
+          date: dayKey,
+          content: { value: vibe },
+        },
+        userId
+      );
+    }
+
     res.status(200).json({
       ok: true,
       userId,
@@ -199,6 +290,9 @@ export async function seedDemoEmotionalWellbeingRoute(req: Request, res: Respons
         wellbeingDays: dayKeys.length,
         wellbeingEntries: savedEntries.length,
         journalEntries: journalCreated.length,
+        routines: demoRoutines.length,
+        pinnedRoutineIds: demoRoutineIds.length,
+        vibeDays: 14,
       },
     });
   } catch (error) {

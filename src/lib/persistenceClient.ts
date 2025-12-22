@@ -7,6 +7,7 @@
 
 import type { Category, Habit, DayLog, DailyWellbeing, Goal, GoalWithProgress, GoalManualLog, Routine, RoutineLog, HabitEntry } from '../models/persistenceTypes';
 import type { WellbeingEntry } from '../models/persistenceTypes';
+import type { DashboardPrefs } from '../models/persistenceTypes';
 
 import type { GoalDetail, CompletedGoal, ProgressOverview } from '../types';
 
@@ -151,6 +152,22 @@ export async function fetchWellbeingEntries(params: {
   }).toString();
   const response = await apiRequest<{ wellbeingEntries: WellbeingEntry[] }>(`/wellbeingEntries?${qs}`);
   return response.wellbeingEntries;
+}
+
+/**
+ * Dashboard Prefs (view-only)
+ */
+export async function fetchDashboardPrefs(): Promise<DashboardPrefs> {
+  const response = await apiRequest<{ dashboardPrefs: DashboardPrefs }>('/dashboardPrefs');
+  return response.dashboardPrefs;
+}
+
+export async function updateDashboardPrefs(patch: { pinnedRoutineIds: string[] }): Promise<DashboardPrefs> {
+  const response = await apiRequest<{ dashboardPrefs: DashboardPrefs }>('/dashboardPrefs', {
+    method: 'PUT',
+    body: JSON.stringify(patch),
+  });
+  return response.dashboardPrefs;
 }
 
 /**

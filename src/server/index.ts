@@ -18,9 +18,10 @@ import { getRoutinesRoute, getRoutineRoute, createRoutineRoute, updateRoutineRou
 import { getRoutineLogs } from './routes/routineLogs';
 import { getGoals, getGoal, getGoalProgress, getGoalsWithProgress, getCompletedGoals, createGoalRoute, updateGoalRoute, deleteGoalRoute, createGoalManualLogRoute, getGoalManualLogsRoute, getGoalDetailRoute, uploadGoalBadgeRoute, uploadBadgeMiddleware } from './routes/goals';
 import { getProgressOverview } from './routes/progress';
-import { getEntriesRoute, createEntryRoute, getEntryRoute, updateEntryRoute, deleteEntryRoute } from './routes/journal';
+import { getEntriesRoute, createEntryRoute, upsertEntryByKeyRoute, getEntryRoute, updateEntryRoute, deleteEntryRoute } from './routes/journal';
 import { getTasksRoute, createTaskRoute, updateTaskRoute, deleteTaskRoute } from './routes/tasks';
 import { skillTreeRouter } from './routes/skillTree';
+import { getDashboardPrefsRoute, updateDashboardPrefsRoute } from './routes/dashboardPrefs';
 import { closeConnection } from './lib/mongoClient';
 
 // Assert MongoDB is enabled at startup (fail fast if misconfigured)
@@ -116,9 +117,14 @@ app.get('/api/progress/overview', getProgressOverview);
 // Journal routes
 app.get('/api/journal', getEntriesRoute);
 app.post('/api/journal', createEntryRoute);
+app.put('/api/journal/byKey', upsertEntryByKeyRoute);
 app.get('/api/journal/:id', getEntryRoute);
 app.patch('/api/journal/:id', updateEntryRoute);
 app.delete('/api/journal/:id', deleteEntryRoute);
+
+// Dashboard prefs (view-only)
+app.get('/api/dashboardPrefs', getDashboardPrefsRoute);
+app.put('/api/dashboardPrefs', updateDashboardPrefsRoute);
 
 // Goal routes
 app.get('/api/goals', getGoals);

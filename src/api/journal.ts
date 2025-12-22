@@ -67,6 +67,20 @@ export async function createEntry(
 }
 
 /**
+ * Upsert a journal entry by (templateId, date) key.
+ * Used for stable per-day reflective truth like "current_vibe".
+ */
+export async function upsertEntryByKey(
+    data: Omit<JournalEntry, 'id' | 'createdAt' | 'updatedAt' | 'userId'>
+): Promise<JournalEntry> {
+    const response = await apiRequest<{ entry: JournalEntry }>('/journal/byKey', {
+        method: 'PUT',
+        body: JSON.stringify(data)
+    });
+    return response.entry;
+}
+
+/**
  * Get a single journal entry by ID.
  */
 export async function fetchEntry(id: string): Promise<JournalEntry> {

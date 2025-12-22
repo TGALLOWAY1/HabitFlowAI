@@ -1,18 +1,21 @@
 import React, { useMemo, useState } from 'react';
-import { Sun, ExternalLink, HeartHandshake, Sparkles, Activity, Brain, Battery, CalendarRange } from 'lucide-react';
+import { Sun, ExternalLink, HeartHandshake, Sparkles, Activity, Brain, Battery, CalendarRange, Play } from 'lucide-react';
 import { ProgressRings } from '../../ProgressRings';
 import { DashboardComposer } from '../../../shared/personas/dashboardComposer';
 import { getActivePersonaId } from '../../../shared/personas/activePersona';
 import { useWellbeingEntriesRange } from '../../../hooks/useWellbeingEntriesRange';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, Legend, BarChart, Bar } from 'recharts';
-import { fetchEntries, createEntry as createJournalEntry } from '../../../api/journal';
-import type { JournalEntry } from '../../../models/persistenceTypes';
+import { fetchEntries, createEntry as createJournalEntry, upsertEntryByKey } from '../../../api/journal';
+import type { JournalEntry, Routine } from '../../../models/persistenceTypes';
 import { fetchWellbeingEntries } from '../../../lib/persistenceClient';
 import { formatDayKeyFromDate } from '../../../domain/time/dayKey';
+import { useRoutineStore } from '../../../store/RoutineContext';
+import { fetchDashboardPrefs, updateDashboardPrefs } from '../../../lib/persistenceClient';
 
 type Props = {
   onOpenCheckIn: () => void;
   onNavigateWellbeingHistory?: () => void;
+  onStartRoutine?: (routine: Routine) => void;
 };
 
 function getTimeZone(): string {
@@ -42,33 +45,64 @@ const Card: React.FC<{ title: string; icon?: React.ReactNode; right?: React.Reac
   </div>
 );
 
+const VIBE_OPTIONS = ['strained', 'tender', 'steady', 'open', 'thriving'] as const;
+type Vibe = typeof VIBE_OPTIONS[number];
+
 const CurrentVibeCard: React.FC = () => {
-  // UI-only placeholder for MVP (no unstable schema keys).
-  const [vibe, setVibe] = useState<'low' | 'meh' | 'okay' | 'good' | 'great' | null>(null);
+  const [vibe, setVibe] = useState<Vibe | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const today = new Date().toISOString().slice(0, 10);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    fetchEntries()
+      .then((all) => {
+        if (cancelled) return;
+        const entry = all.find((e) => e.templateId === 'current_vibe' && e.date === today);
+        const v = entry?.content?.value as string | undefined;
+        if (v && (VIBE_OPTIONS as readonly string[]).includes(v)) {
+          setVibe(v as Vibe);
+        }
+      })
+      .finally(() => {
+        if (cancelled) return;
+        setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [today]);
+
+  const saveVibe = async (next: Vibe) => {
+    setVibe(next);
+    await upsertEntryByKey({
+      templateId: 'current_vibe',
+      mode: 'free',
+      persona: 'Emotional Wellbeing',
+      date: today,
+      content: { value: next },
+    });
+  };
 
   return (
     <Card
       title="Current Vibe"
       icon={<Sparkles size={16} className="text-amber-400" />}
-      right={<span className="text-xs text-neutral-500">TODO: add stable storage (not a metric key)</span>}
+      right={<span className="text-xs text-neutral-500">{loading ? 'Loading…' : 'Saved as JournalEntry (current_vibe)'}</span>}
     >
       <div className="text-sm text-neutral-400 mb-3">Quick check: how do you feel right now?</div>
       <div className="flex flex-wrap gap-2">
-        {([
-          ['low', 'Low'],
-          ['meh', 'Meh'],
-          ['okay', 'Okay'],
-          ['good', 'Good'],
-          ['great', 'Great'],
-        ] as const).map(([key, label]) => (
+        {(VIBE_OPTIONS as readonly Vibe[]).map((key) => (
           <button
             key={key}
-            onClick={() => setVibe(key)}
+            onClick={() => saveVibe(key)}
             className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${
               vibe === key ? 'bg-white/10 text-white border-white/20' : 'bg-neutral-800/60 text-neutral-300 border-white/10 hover:text-white'
             }`}
           >
-            {label}
+            {key}
           </button>
         ))}
       </div>
@@ -76,25 +110,154 @@ const CurrentVibeCard: React.FC = () => {
   );
 };
 
-const ActionCards: React.FC = () => {
-  // Placeholder: pinned routines don’t exist yet.
-  const actions = [
-    { title: '2-min breath reset', note: 'Slow exhale x 6' },
-    { title: 'Gentle walk', note: '10 minutes outside' },
-    { title: 'Text a friend', note: 'Ask for a check-in' },
-  ];
+const PinRoutinesModal: React.FC<{
+  isOpen: boolean;
+  routines: Routine[];
+  initialPinnedIds: string[];
+  onClose: () => void;
+  onSave: (ids: string[]) => Promise<void>;
+}> = ({ isOpen, routines, initialPinnedIds, onClose, onSave }) => {
+  const [selected, setSelected] = useState<string[]>(initialPinnedIds);
+  React.useEffect(() => setSelected(initialPinnedIds), [initialPinnedIds, isOpen]);
+
+  if (!isOpen) return null;
+
+  const toggle = (id: string) => {
+    setSelected((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  };
+
+  const suggestedCap = 3;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+      <div className="bg-neutral-900 border border-white/10 rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden">
+        <div className="p-4 border-b border-white/5 flex items-center justify-between">
+          <div>
+            <div className="text-white font-semibold">Pin routines</div>
+            <div className="text-xs text-neutral-500 mt-1">Suggested: pin ~{suggestedCap}. You can pin more.</div>
+          </div>
+          <button onClick={onClose} className="text-neutral-400 hover:text-white">Close</button>
+        </div>
+
+        <div className="p-4 max-h-[60vh] overflow-y-auto space-y-2">
+          {routines.length === 0 ? (
+            <div className="text-sm text-neutral-400">No routines yet.</div>
+          ) : (
+            routines.map((r) => {
+              const checked = selected.includes(r.id);
+              return (
+                <label key={r.id} className="flex items-center justify-between p-3 rounded-xl bg-neutral-800/50 border border-white/5 cursor-pointer">
+                  <div className="flex items-center gap-3">
+                    <input type="checkbox" checked={checked} onChange={() => toggle(r.id)} />
+                    <div>
+                      <div className="text-sm text-white font-semibold">{r.title}</div>
+                      <div className="text-xs text-neutral-500">{r.steps.length} steps</div>
+                    </div>
+                  </div>
+                  <div className="text-xs text-neutral-500">{checked ? 'Pinned' : '—'}</div>
+                </label>
+              );
+            })
+          )}
+        </div>
+
+        <div className="p-4 border-t border-white/5 flex justify-end gap-2">
+          <button onClick={onClose} className="px-3 py-2 rounded-lg bg-neutral-800 hover:bg-neutral-700 border border-white/5 text-sm font-medium">Cancel</button>
+          <button
+            onClick={async () => {
+              await onSave(selected);
+              onClose();
+            }}
+            className="px-3 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-semibold"
+          >
+            Save pins
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const ActionCards: React.FC<{ onStartRoutine?: (routine: Routine) => void }> = ({ onStartRoutine }) => {
+  const { routines } = useRoutineStore();
+  const [prefsIds, setPrefsIds] = useState<string[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [isPinModalOpen, setIsPinModalOpen] = useState(false);
+
+  const loadPrefs = async () => {
+    setLoading(true);
+    try {
+      const prefs = await fetchDashboardPrefs();
+      setPrefsIds(prefs.pinnedRoutineIds || []);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  React.useEffect(() => {
+    void loadPrefs();
+  }, []);
+
+  const pinnedRoutines = useMemo(() => {
+    const map = new Map(routines.map((r) => [r.id, r]));
+    return prefsIds.map((id) => map.get(id)).filter(Boolean) as Routine[];
+  }, [prefsIds, routines]);
 
   return (
     <Card title="Action Cards" icon={<HeartHandshake size={16} className="text-emerald-400" />}>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-        {actions.map((a) => (
-          <div key={a.title} className="p-4 rounded-xl bg-neutral-800/50 border border-white/5">
-            <div className="text-sm font-semibold text-white">{a.title}</div>
-            <div className="text-xs text-neutral-500 mt-1">{a.note}</div>
+      {loading ? (
+        <div className="text-sm text-neutral-400">Loading…</div>
+      ) : pinnedRoutines.length === 0 ? (
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <div className="text-sm text-neutral-300 font-medium">No pinned routines yet.</div>
+            <div className="text-xs text-neutral-500 mt-1">Pin 2–3 gentle routines to show here.</div>
           </div>
-        ))}
-      </div>
-      <div className="text-xs text-neutral-500 mt-3">TODO: map these to pinned routines when routine pinning is available.</div>
+          <button
+            onClick={() => setIsPinModalOpen(true)}
+            className="px-3 py-2 rounded-lg bg-neutral-800 hover:bg-neutral-700 border border-white/5 text-sm font-semibold"
+          >
+            Pin routines
+          </button>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          {pinnedRoutines.map((r) => (
+            <div key={r.id} className="p-4 rounded-xl bg-neutral-800/50 border border-white/5 flex flex-col justify-between">
+              <div>
+                <div className="text-sm font-semibold text-white">{r.title}</div>
+                <div className="text-xs text-neutral-500 mt-1">A gentle reset you can do now.</div>
+              </div>
+              <button
+                onClick={() => onStartRoutine && onStartRoutine(r)}
+                className="mt-4 inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-semibold"
+              >
+                <Play size={16} />
+                Start
+              </button>
+            </div>
+          ))}
+          <div className="p-4 rounded-xl bg-neutral-900/40 border border-white/5 flex items-center justify-center">
+            <button
+              onClick={() => setIsPinModalOpen(true)}
+              className="text-xs font-semibold text-neutral-300 hover:text-white transition-colors"
+            >
+              Edit pins
+            </button>
+          </div>
+        </div>
+      )}
+
+      <PinRoutinesModal
+        isOpen={isPinModalOpen}
+        routines={routines}
+        initialPinnedIds={prefsIds}
+        onClose={() => setIsPinModalOpen(false)}
+        onSave={async (ids) => {
+          const saved = await updateDashboardPrefs({ pinnedRoutineIds: ids });
+          setPrefsIds(saved.pinnedRoutineIds || []);
+        }}
+      />
     </Card>
   );
 };
@@ -330,7 +493,7 @@ const WeeklyTrajectoryCard: React.FC = () => {
   );
 };
 
-export const EmotionalWellbeingDashboard: React.FC<Props> = ({ onOpenCheckIn, onNavigateWellbeingHistory }) => {
+export const EmotionalWellbeingDashboard: React.FC<Props> = ({ onOpenCheckIn, onNavigateWellbeingHistory, onStartRoutine }) => {
   const personaId = getActivePersonaId();
   const widgets = DashboardComposer(personaId);
 
@@ -363,7 +526,7 @@ export const EmotionalWellbeingDashboard: React.FC<Props> = ({ onOpenCheckIn, on
           case 'currentVibe':
             return <CurrentVibeCard key={`${w.type}-${idx}`} />;
           case 'actionCards':
-            return <ActionCards key={`${w.type}-${idx}`} />;
+            return <ActionCards key={`${w.type}-${idx}`} onStartRoutine={onStartRoutine} />;
           case 'gratitudeJar':
             return <GratitudeJarCard key={`${w.type}-${idx}`} />;
           case 'emotionalTrend':
