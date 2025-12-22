@@ -729,7 +729,7 @@ const GratitudeJarCard: React.FC = () => {
       const all = await fetchEntries();
       const gratitude = all.filter((e) => e.templateId === 'gratitude-jar');
       // newest first (api already sorts desc)
-      setEntries(gratitude.slice(0, 2));
+      setEntries(gratitude.slice(0, 3));
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load gratitude entries');
     } finally {
@@ -770,10 +770,7 @@ const GratitudeJarCard: React.FC = () => {
           + Quick add
         </button>
       }
-      // Supportive, secondary visual hierarchy vs Current Vibe
-      className="bg-neutral-900/30 p-4"
-      headerClassName="mb-3"
-      titleClassName="text-sm font-semibold text-white/90"
+      className="bg-neutral-900/30"
     >
       {loading ? (
         <div className="text-sm text-neutral-400">Loading…</div>
@@ -784,9 +781,9 @@ const GratitudeJarCard: React.FC = () => {
       ) : (
         <div className="space-y-2">
           {entries.map((e) => (
-            <div key={e.id} className="p-3 rounded-xl bg-neutral-900/40 border border-white/5">
-              <div className="text-xs text-neutral-500 mb-1">{e.date}</div>
-              <div className="text-sm text-white line-clamp-3">{e.content?.['free-write'] || '(empty)'}</div>
+            <div key={e.id} className="p-2.5 rounded-xl bg-neutral-900/40 border border-white/5">
+              <div className="text-xs text-neutral-500 mb-0.5">{e.date}</div>
+              <div className="text-sm text-white line-clamp-2">{e.content?.['free-write'] || '(empty)'}</div>
             </div>
           ))}
         </div>
