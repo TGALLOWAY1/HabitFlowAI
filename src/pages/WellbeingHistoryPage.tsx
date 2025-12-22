@@ -1,67 +1,91 @@
 import React, { useMemo, useState } from 'react';
-import { ArrowLeft, Brain, Activity, Battery, Moon, Target, Crosshair, Heart, Wind } from 'lucide-react';
+import { ArrowLeft, Activity, Battery, Target, Brain, Wind } from 'lucide-react';
 import type { WellbeingMetricKey } from '../models/persistenceTypes';
 import { useWellbeingEntriesRange } from '../hooks/useWellbeingEntriesRange';
-import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, Legend } from 'recharts';
 
 type Props = {
   onBack: () => void;
 };
 
-const METRICS: Array<{ key: WellbeingMetricKey; label: string; color: string; icon: React.ReactNode }> = [
-  { key: 'anxiety', label: 'Anxiety', color: '#a855f7', icon: <Activity size={14} className="text-purple-400" /> },
-  { key: 'lowMood', label: 'Low Mood', color: '#60a5fa', icon: <Brain size={14} className="text-blue-400" /> },
-  { key: 'calm', label: 'Calm', color: '#34d399', icon: <Wind size={14} className="text-emerald-400" /> },
-  { key: 'energy', label: 'Energy', color: '#10b981', icon: <Battery size={14} className="text-emerald-400" /> },
-  { key: 'stress', label: 'Stress', color: '#f97316', icon: <Target size={14} className="text-orange-400" /> },
-  { key: 'focus', label: 'Focus', color: '#fbbf24', icon: <Crosshair size={14} className="text-amber-300" /> },
-  { key: 'sleepQuality', label: 'Sleep quality (subjective)', color: '#c084fc', icon: <Heart size={14} className="text-fuchsia-300" /> },
-  // Legacy/optional
-  { key: 'sleepScore', label: 'Sleep score', color: '#818cf8', icon: <Moon size={14} className="text-indigo-400" /> },
-  { key: 'depression', label: 'Depression (legacy)', color: '#3b82f6', icon: <Brain size={14} className="text-blue-400" /> },
+type SelectableMetric = Extract<WellbeingMetricKey, 'anxiety' | 'lowMood' | 'calm' | 'energy' | 'stress'>;
+
+const METRICS: Array<{ key: SelectableMetric; label: string; icon: React.ReactNode }> = [
+  { key: 'anxiety', label: 'Anxiety', icon: <Activity size={14} className="text-purple-400" /> },
+  { key: 'lowMood', label: 'Low Mood', icon: <Brain size={14} className="text-blue-400" /> },
+  { key: 'calm', label: 'Calm', icon: <Wind size={14} className="text-emerald-400" /> },
+  { key: 'energy', label: 'Energy', icon: <Battery size={14} className="text-emerald-400" /> },
+  { key: 'stress', label: 'Stress', icon: <Target size={14} className="text-orange-400" /> },
 ];
 
+function clampInt(n: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, Math.round(n)));
+}
+
+function intensityFromValue(metric: SelectableMetric, value: number): number {
+  // Heatmap scale is always 0..4 intensity.
+  // Map legacy 1..5 metrics down to 0..4 by subtracting 1.
+  if (metric === 'anxiety' || metric === 'energy') {
+    return clampInt(value - 1, 0, 4);
+  }
+  // New subjective superset is already 0..4.
+  return clampInt(value, 0, 4);
+}
+
+function heatClass(intensity: number | null): string {
+  // Missing -> neutral gray
+  if (intensity === null) return 'bg-neutral-800/60 border-white/5';
+  // 0..4 -> increasing intensity
+  switch (intensity) {
+    case 0:
+      return 'bg-sky-900/20 border-white/5';
+    case 1:
+      return 'bg-sky-800/30 border-sky-500/10';
+    case 2:
+      return 'bg-sky-700/40 border-sky-500/15';
+    case 3:
+      return 'bg-sky-600/55 border-sky-400/20';
+    default:
+      return 'bg-sky-500/70 border-sky-300/25';
+  }
+}
+
 export const WellbeingHistoryPage: React.FC<Props> = ({ onBack }) => {
-  const [windowDays, setWindowDays] = useState<7 | 14 | 30>(14);
-  const [activeMetrics, setActiveMetrics] = useState<WellbeingMetricKey[]>(['anxiety', 'lowMood', 'calm', 'energy']);
+  const [windowDays, setWindowDays] = useState<30 | 90 | 180>(90);
+  const [metric, setMetric] = useState<SelectableMetric>('anxiety');
+  const [hover, setHover] = useState<{ dayKey: string; value: number | null } | null>(null);
 
   const { loading, error, getDailyAverage, startDayKey, endDayKey } = useWellbeingEntriesRange(windowDays);
 
-  const data = useMemo(() => {
-    // Build contiguous dayKey rows using the already-derived dayKeys from the hook range.
-    // We use dayKey strings on x-axis for simplicity.
-    const rows: any[] = [];
+  const cells = useMemo(() => {
+    // Calendar-style grid: 7 columns (Sun..Sat), rows are weeks.
+    // We align the start to the previous Sunday to make a clean grid.
     const start = new Date(`${startDayKey}T00:00:00.000Z`);
     const end = new Date(`${endDayKey}T00:00:00.000Z`);
 
-    for (let d = new Date(start); d <= end; d.setUTCDate(d.getUTCDate() + 1)) {
+    const startDow = start.getUTCDay(); // 0=Sun
+    const gridStart = new Date(start);
+    gridStart.setUTCDate(gridStart.getUTCDate() - startDow);
+
+    const days: Array<{ dayKey: string; value: number | null; intensity: number | null }> = [];
+    for (let d = new Date(gridStart); d <= end; d.setUTCDate(d.getUTCDate() + 1)) {
       const dayKey = d.toISOString().slice(0, 10);
-      const row: any = { dayKey };
-      for (const m of activeMetrics) {
-        row[m] = getDailyAverage(dayKey, m);
-      }
-      rows.push(row);
+      // only compute values inside requested window (start..end); outside is null/neutral
+      const inRange = d >= start && d <= end;
+      const raw = inRange ? getDailyAverage(dayKey, metric as any) : null;
+      const value = typeof raw === 'number' ? raw : null;
+      const intensity = value === null ? null : intensityFromValue(metric, value);
+      days.push({ dayKey, value, intensity });
+    }
+    return days;
+  }, [startDayKey, endDayKey, getDailyAverage, metric]);
+
+  const weeks = useMemo(() => {
+    const rows: Array<typeof cells> = [];
+    for (let i = 0; i < cells.length; i += 7) {
+      rows.push(cells.slice(i, i + 7));
     }
     return rows;
-  }, [activeMetrics, getDailyAverage, startDayKey, endDayKey]);
-
-  const toggleMetric = (key: WellbeingMetricKey) => {
-    setActiveMetrics((prev) => (prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]));
-  };
-
-  const applyPreset = (preset: 'emotional_core' | 'energy_focus' | 'sleep') => {
-    if (preset === 'emotional_core') setActiveMetrics(['anxiety', 'lowMood', 'calm']);
-    if (preset === 'energy_focus') setActiveMetrics(['energy', 'focus', 'stress']);
-    if (preset === 'sleep') setActiveMetrics(['sleepScore', 'sleepQuality']);
-  };
-
-  const yDomain = useMemo(() => {
-    if (activeMetrics.includes('sleepScore')) return [0, 100] as const;
-    // Legacy 1-5 metrics
-    if (activeMetrics.some((m) => m === 'depression' || m === 'anxiety' || m === 'energy')) return [0, 5] as const;
-    // New subjective superset 0-4
-    return [0, 4] as const;
-  }, [activeMetrics]);
+  }, [cells]);
 
   return (
     <div className="space-y-6 pb-20">
@@ -75,7 +99,7 @@ export const WellbeingHistoryPage: React.FC<Props> = ({ onBack }) => {
         </button>
 
         <div className="flex bg-neutral-800 rounded-md p-0.5 border border-white/5">
-          {([7, 14, 30] as const).map((d) => (
+          {([30, 90, 180] as const).map((d) => (
             <button
               key={d}
               onClick={() => setWindowDays(d)}
@@ -99,33 +123,13 @@ export const WellbeingHistoryPage: React.FC<Props> = ({ onBack }) => {
           </div>
 
           <div className="flex flex-wrap gap-2 items-center">
-            <div className="flex items-center gap-2 mr-2">
-              <div className="text-[11px] text-neutral-500 font-semibold">Quick presets:</div>
-              <button
-                onClick={() => applyPreset('emotional_core')}
-                className="px-2 py-1 rounded-md bg-neutral-800/60 border border-white/10 text-[11px] text-neutral-200 hover:text-white hover:bg-neutral-800 transition-colors"
-              >
-                Emotional core
-              </button>
-              <button
-                onClick={() => applyPreset('energy_focus')}
-                className="px-2 py-1 rounded-md bg-neutral-800/60 border border-white/10 text-[11px] text-neutral-200 hover:text-white hover:bg-neutral-800 transition-colors"
-              >
-                Energy & focus
-              </button>
-              <button
-                onClick={() => applyPreset('sleep')}
-                className="px-2 py-1 rounded-md bg-neutral-800/60 border border-white/10 text-[11px] text-neutral-200 hover:text-white hover:bg-neutral-800 transition-colors"
-              >
-                Sleep
-              </button>
-            </div>
+            <div className="text-[11px] text-neutral-500 font-semibold mr-2">Metric:</div>
             {METRICS.map((m) => {
-              const active = activeMetrics.includes(m.key);
+              const active = metric === m.key;
               return (
                 <button
                   key={m.key}
-                  onClick={() => toggleMetric(m.key)}
+                  onClick={() => setMetric(m.key)}
                   className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${
                     active ? 'bg-white/10 text-white border-white/20' : 'bg-neutral-800/60 text-neutral-300 border-white/10 hover:text-white'
                   }`}
@@ -142,26 +146,54 @@ export const WellbeingHistoryPage: React.FC<Props> = ({ onBack }) => {
           <div className="text-sm text-neutral-400">Loading…</div>
         ) : error ? (
           <div className="text-sm text-red-300">{error}</div>
-        ) : activeMetrics.length === 0 ? (
-          <div className="text-sm text-neutral-400">Select at least one metric.</div>
         ) : (
-          <div className="h-80">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={data}>
-                <XAxis dataKey="dayKey" tick={{ fill: '#a3a3a3', fontSize: 10 }} tickLine={false} axisLine={false} />
-                <YAxis
-                  domain={yDomain as any}
-                  tick={{ fill: '#a3a3a3', fontSize: 10 }}
-                  tickLine={false}
-                  axisLine={false}
-                />
-                <Tooltip />
-                <Legend />
-                {METRICS.filter((m) => activeMetrics.includes(m.key)).map((m) => (
-                  <Line key={m.key} name={m.label} type="monotone" dataKey={m.key} stroke={m.color} strokeWidth={2} dot={false} connectNulls />
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <div className="text-xs text-neutral-500">
+                Color shows intensity (0–4). Missing days are neutral.
+              </div>
+              {hover ? (
+                <div className="text-xs text-neutral-300">
+                  <span className="text-neutral-500 mr-2">{hover.dayKey}</span>
+                  <span className="font-semibold text-white">{hover.value === null ? '—' : hover.value}</span>
+                </div>
+              ) : (
+                <div className="text-xs text-neutral-500">Hover a day to see details</div>
+              )}
+            </div>
+
+            <div className="inline-flex gap-3">
+              {/* Day labels */}
+              <div className="flex flex-col gap-1 pt-5">
+                {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d) => (
+                  <div key={d} className="h-4 text-[10px] text-neutral-600 flex items-center">
+                    {d}
+                  </div>
                 ))}
-              </LineChart>
-            </ResponsiveContainer>
+              </div>
+
+              {/* Grid */}
+              <div className="flex flex-col gap-1">
+                {/* Spacer for alignment */}
+                <div className="h-5" />
+                <div className="flex flex-col gap-1">
+                  {weeks.map((week, i) => (
+                    <div key={i} className="flex gap-1">
+                      {week.map((cell) => (
+                        <button
+                          key={cell.dayKey}
+                          type="button"
+                          className={`w-4 h-4 rounded border ${heatClass(cell.intensity)} hover:border-white/20 transition-colors`}
+                          onMouseEnter={() => setHover({ dayKey: cell.dayKey, value: cell.value })}
+                          onMouseLeave={() => setHover(null)}
+                          title={`${cell.dayKey}: ${cell.value === null ? '—' : cell.value}`}
+                        />
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
           </div>
         )}
       </div>

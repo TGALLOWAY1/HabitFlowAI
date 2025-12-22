@@ -3,7 +3,7 @@ import { fetchWellbeingEntries } from '../lib/persistenceClient';
 import type { WellbeingEntry, WellbeingMetricKey, WellbeingTimeOfDay } from '../models/persistenceTypes';
 import { formatDayKeyFromDate } from '../domain/time/dayKey';
 
-type WindowDays = 7 | 14 | 30 | 90;
+type WindowDays = 7 | 14 | 30 | 90 | 180;
 
 function getTimeZone(): string {
   try {
