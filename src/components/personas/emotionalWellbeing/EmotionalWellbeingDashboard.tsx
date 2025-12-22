@@ -649,7 +649,20 @@ const ActionCards: React.FC<{ onStartRoutine?: (routine: Routine) => void }> = (
   }, [prefsIds, routines]);
 
   return (
-    <Card title="Action Cards" icon={<HeartHandshake size={16} className="text-emerald-400" />}>
+    <Card
+      title="Action Cards"
+      icon={<HeartHandshake size={16} className="text-emerald-400" />}
+      right={
+        <button
+          onClick={() => setIsPinModalOpen(true)}
+          className="p-2 rounded-lg bg-neutral-800/60 hover:bg-neutral-800 border border-white/10 text-neutral-200 hover:text-white transition-colors"
+          aria-label="Edit pinned routines"
+          title="Edit pinned routines"
+        >
+          <Edit size={16} />
+        </button>
+      }
+    >
       {loading ? (
         <div className="text-sm text-neutral-400">Loading…</div>
       ) : pinnedRoutines.length === 0 ? (
@@ -682,16 +695,6 @@ const ActionCards: React.FC<{ onStartRoutine?: (routine: Routine) => void }> = (
               </button>
             </div>
           ))}
-          <div className="p-4 rounded-xl bg-neutral-900/40 border border-white/5 flex items-center justify-center">
-            <button
-              onClick={() => setIsPinModalOpen(true)}
-              className="p-2 rounded-lg bg-neutral-800/60 hover:bg-neutral-800 border border-white/10 text-neutral-200 hover:text-white transition-colors"
-              aria-label="Edit pinned routines"
-              title="Edit pinned routines"
-            >
-              <Edit size={16} />
-            </button>
-          </div>
         </div>
       )}
 
