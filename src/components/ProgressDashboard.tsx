@@ -7,17 +7,24 @@ import { DailyCheckInModal } from './DailyCheckInModal';
 import { Sun, Loader2 } from 'lucide-react';
 import { GoalPulseCard } from './goals/GoalPulseCard';
 import { CategoryCompletionRow } from './CategoryCompletionRow';
+import { EmotionalWellbeingDashboard } from './personas/emotionalWellbeing/EmotionalWellbeingDashboard';
+import { getActivePersonaId, resolvePersona } from '../shared/personas/activePersona';
+import type { Routine } from '../models/persistenceTypes';
+import { DEFAULT_PERSONA_ID, EMOTIONAL_PERSONA_ID } from '../shared/personas/personaConstants';
 
 interface ProgressDashboardProps {
     onCreateGoal?: () => void;
     onViewGoal?: (goalId: string) => void;
     onSelectCategory?: (categoryId: string) => void;
+    onNavigateWellbeingHistory?: () => void;
+    onStartRoutine?: (routine: Routine) => void;
 }
 
-export const ProgressDashboard: React.FC<ProgressDashboardProps> = ({ onCreateGoal, onViewGoal, onSelectCategory }) => {
+export const ProgressDashboard: React.FC<ProgressDashboardProps> = ({ onCreateGoal, onViewGoal, onSelectCategory, onNavigateWellbeingHistory, onStartRoutine }) => {
     const { habits, categories } = useHabitStore();
     const { data: progressData, loading: progressLoading } = useProgressOverview();
     const [isCheckInOpen, setIsCheckInOpen] = useState(false);
+    const activePersonaId = resolvePersona(getActivePersonaId());
     // Initialize state from URL params
     const [activityTab, setActivityTab] = useState<'overall' | 'category'>(() => {
         const params = new URLSearchParams(window.location.search);
@@ -65,6 +72,28 @@ export const ProgressDashboard: React.FC<ProgressDashboardProps> = ({ onCreateGo
 
 
 
+
+    // Persona-controlled dashboard composition (view-only).
+    // Persona must NEVER affect persistence or user identity.
+    if (activePersonaId === EMOTIONAL_PERSONA_ID) {
+        return (
+            <>
+                <EmotionalWellbeingDashboard
+                    onOpenCheckIn={() => setIsCheckInOpen(true)}
+                    onNavigateWellbeingHistory={onNavigateWellbeingHistory}
+                    onStartRoutine={onStartRoutine}
+                />
+                <DailyCheckInModal
+                    isOpen={isCheckInOpen}
+                    onClose={() => setIsCheckInOpen(false)}
+                />
+            </>
+        );
+    }
+    // Strict default persona gate: restore legacy dashboard as-is.
+    // Do NOT rebuild default dashboard via composer.
+    // DEFAULT_PERSONA_ID (or any unknown) -> legacy tree below.
+    void DEFAULT_PERSONA_ID;
 
     return (
         <div className="space-y-6 overflow-y-auto pb-20">

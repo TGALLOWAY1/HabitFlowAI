@@ -6,27 +6,7 @@
 
 import { API_BASE_URL } from '../lib/persistenceConfig';
 import type { JournalEntry } from '../models/persistenceTypes';
-
-/**
- * Get or create a persistent user ID.
- * Helper duplicated from persistenceClient.ts to avoid circular deps or heavy refactoring
- * for now. Ideally this moves to a shared auth/identity util.
- */
-function getOrCreateUserId(): string {
-    if (typeof window === 'undefined') {
-        return 'server-side-rendering-placeholder';
-    }
-
-    const STORAGE_KEY = 'habitflow_user_id';
-    let userId = localStorage.getItem(STORAGE_KEY);
-
-    if (!userId) {
-        userId = crypto.randomUUID();
-        localStorage.setItem(STORAGE_KEY, userId);
-    }
-
-    return userId;
-}
+import { getActiveUserId } from '../lib/persistenceClient';
 
 /**
  * Make an API request with error handling.
@@ -36,7 +16,7 @@ async function apiRequest<T>(
     options: RequestInit = {}
 ): Promise<T> {
     const url = `${API_BASE_URL}${endpoint}`;
-    const userId = getOrCreateUserId();
+    const userId = getActiveUserId();
 
     try {
         const response = await fetch(url, {
@@ -81,6 +61,20 @@ export async function createEntry(
 ): Promise<JournalEntry> {
     const response = await apiRequest<{ entry: JournalEntry }>('/journal', {
         method: 'POST',
+        body: JSON.stringify(data)
+    });
+    return response.entry;
+}
+
+/**
+ * Upsert a journal entry by (templateId, date) key.
+ * Used for stable per-day reflective truth like "current_vibe".
+ */
+export async function upsertEntryByKey(
+    data: Omit<JournalEntry, 'id' | 'createdAt' | 'updatedAt' | 'userId'>
+): Promise<JournalEntry> {
+    const response = await apiRequest<{ entry: JournalEntry }>('/journal/byKey', {
+        method: 'PUT',
         body: JSON.stringify(data)
     });
     return response.entry;

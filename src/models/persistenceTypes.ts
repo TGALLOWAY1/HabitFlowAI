@@ -485,6 +485,29 @@ export interface JournalEntry {
 export type JournalEntriesStorage = JournalEntry[];
 
 /**
+ * Dashboard Preferences (User-scoped)
+ *
+ * Stores view-only user preferences for dashboard composition (e.g., pinned routines).
+ * This must never affect truth stores (HabitEntry, WellbeingEntry, JournalEntry).
+ */
+export interface DashboardPrefs {
+    /** User ID owner */
+    userId: string;
+
+    /** Global pinned routine IDs (not persona-specific yet) */
+    pinnedRoutineIds: string[];
+
+    /**
+     * Extra wellbeing metric keys to show in Daily Check-in (user-controlled).
+     * Persona-agnostic (applies across personas) by design.
+     */
+    checkinExtraMetricKeys?: WellbeingMetricKey[];
+
+    /** ISO 8601 timestamp */
+    updatedAt: string;
+}
+
+/**
  * Identity Entity
  * 
  * Storage Key: 'identities'
@@ -559,17 +582,32 @@ export interface Skill {
  * Represents a single check-in session (morning or evening).
  */
 export interface WellbeingSession {
-    /** Depression level on a scale of 1-5 */
-    depression: number;
+    /** Depression level on a scale of 1-5 (legacy/compat) */
+    depression?: number;
 
     /** Anxiety level on a scale of 1-5 */
-    anxiety: number;
+    anxiety?: number;
 
     /** Energy level on a scale of 1-5 */
-    energy: number;
+    energy?: number;
 
-    /** Sleep score on a scale of 0-100 */
-    sleepScore: number;
+    /** Sleep score on a scale of 0-100 (often more objective) */
+    sleepScore?: number;
+
+    /** Subjective sleep quality on a scale of 0-4 (additive) */
+    sleepQuality?: number;
+
+    /** Subjective low mood on a scale of 0-4 (preferred over depression for new UI) */
+    lowMood?: number;
+
+    /** Subjective calm on a scale of 0-4 */
+    calm?: number;
+
+    /** Subjective stress on a scale of 0-4 */
+    stress?: number;
+
+    /** Subjective focus on a scale of 0-4 */
+    focus?: number;
 
     /** Optional free-text notes for this session */
     notes?: string;
@@ -615,7 +653,87 @@ export interface DailyWellbeing {
     anxiety?: number;
     energy?: number;
     sleepScore?: number;
+    sleepQuality?: number;
+    lowMood?: number;
+    calm?: number;
+    stress?: number;
+    focus?: number;
     notes?: string;
+}
+
+/**
+ * Wellbeing Metric Keys (LOCKED)
+ *
+ * These keys are a stable data contract across personas and UI changes.
+ * Do not rename or repurpose without a formal migration plan.
+ *
+ * See: docs/reference/00_DATA_CONTRACT_WELLBEING_KEYS.md
+ */
+export const WELLBEING_METRIC_KEYS = [
+    'depression',
+    'anxiety',
+    'energy',
+    'sleepScore',
+    'sleepQuality',
+    'lowMood',
+    'calm',
+    'stress',
+    'focus',
+    'notes',
+] as const;
+
+export type WellbeingMetricKey = typeof WELLBEING_METRIC_KEYS[number];
+
+export function isWellbeingMetricKey(key: string): key is WellbeingMetricKey {
+    return (WELLBEING_METRIC_KEYS as readonly string[]).includes(key);
+}
+
+export type WellbeingTimeOfDay = 'morning' | 'evening';
+
+/**
+ * WellbeingEntry Entity (New Canonical Source of Truth for subjective check-ins)
+ *
+ * Storage Key: 'wellbeingEntries'
+ * Storage Format: WellbeingEntry[] (array of WellbeingEntry documents)
+ *
+ * Represents a single subjective wellbeing metric observation at a point in time.
+ * Uniqueness/idempotency is enforced on:
+ *   (userId, dayKey, timeOfDay, metricKey)
+ *
+ * IMPORTANT: Do not create AM/PM-specific metric keys (e.g. depressionAm).
+ * Use timeOfDay + metricKey instead.
+ */
+export interface WellbeingEntry {
+    /** Application-level ID (UUID), not MongoDB _id */
+    id: string;
+
+    /** User ID owner */
+    userId: string;
+
+    /** ISO 8601 UTC timestamp when the observation happened (or was recorded) */
+    timestampUtc: string;
+
+    /** Canonical aggregation boundary, derived at write time */
+    dayKey: string;
+
+    /** Optional session label; null if not applicable */
+    timeOfDay?: WellbeingTimeOfDay | null;
+
+    /** LOCKED metric key */
+    metricKey: WellbeingMetricKey;
+
+    /** Metric value (numeric scales) or string (notes) */
+    value: number | string | null;
+
+    /** Minimal provenance */
+    source: 'checkin' | 'import' | 'test';
+
+    /** Timestamps */
+    createdAt: string;
+    updatedAt: string;
+
+    /** Optional soft delete timestamp */
+    deletedAt?: string;
 }
 
 /**
@@ -909,11 +1027,13 @@ export const MONGO_COLLECTIONS = {
     HABITS: 'habits',
     DAY_LOGS: 'dayLogs',
     WELLBEING_LOGS: 'wellbeingLogs',
+    WELLBEING_ENTRIES: 'wellbeingEntries',
     ROUTINES: 'routines',
     GOALS: 'goals',
     GOAL_MANUAL_LOGS: 'goalManualLogs',
     ROUTINE_LOGS: 'routineLogs',
     JOURNAL_ENTRIES: 'journalEntries',
+    DASHBOARD_PREFS: 'dashboardPrefs',
     TASKS: 'tasks',
     HABIT_ENTRIES: 'habitEntries',
     HABIT_POTENTIAL_EVIDENCE: 'habitPotentialEvidence',

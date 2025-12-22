@@ -5,10 +5,15 @@ export interface Category {
 }
 
 export interface WellbeingSession {
-    depression: number; // 1-5
-    anxiety: number; // 1-5
-    energy: number; // 1-5
-    sleepScore: number; // 0-100
+    depression?: number; // 1-5 (legacy/compat)
+    anxiety?: number; // 1-5
+    energy?: number; // 1-5
+    sleepScore?: number; // 0-100 (often more objective)
+    sleepQuality?: number; // 0-4 (subjective)
+    lowMood?: number; // 0-4 (preferred over depression for new UI)
+    calm?: number; // 0-4
+    stress?: number; // 0-4
+    focus?: number; // 0-4
     notes?: string;
 }
 
@@ -21,8 +26,15 @@ export interface DailyWellbeing {
     anxiety?: number;
     energy?: number;
     sleepScore?: number;
+    sleepQuality?: number;
+    lowMood?: number;
+    calm?: number;
+    stress?: number;
+    focus?: number;
     notes?: string;
 }
+
+export type { WellbeingEntry, WellbeingMetricKey, WellbeingTimeOfDay } from './wellbeingEntry';
 
 export interface HabitGoal {
     type: 'boolean' | 'number';

@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { X, Save, Sun, Moon, Battery, Activity, Brain } from 'lucide-react';
+import { X, Save, Sun, Moon, Battery, Activity, Brain, Wind, Target, Focus as FocusIcon, Heart } from 'lucide-react';
 import { useHabitStore } from '../store/HabitContext';
 import { format } from 'date-fns';
 import type { WellbeingSession } from '../types';
+import { WELLBEING_METRIC_KEYS, type WellbeingMetricKey } from '../models/persistenceTypes';
+import { getActivePersonaConfig } from '../shared/personas/activePersona';
+import { fetchDashboardPrefs, updateDashboardPrefs } from '../lib/persistenceClient';
 
 interface DailyCheckInModalProps {
     isOpen: boolean;
@@ -10,16 +13,60 @@ interface DailyCheckInModalProps {
 }
 
 const INITIAL_SESSION: WellbeingSession = {
+    // Legacy/compat (1-5)
     depression: 3,
     anxiety: 3,
     energy: 3,
+    // Legacy (0-100)
     sleepScore: 75,
+    // New subjective superset (0-4)
+    lowMood: 2,
+    calm: 2,
+    stress: 2,
+    focus: 2,
+    sleepQuality: 2,
     notes: ''
+};
+
+type MetricUiConfig = {
+    key: WellbeingMetricKey;
+    label: string;
+    icon: React.ReactNode;
+    colorClass: string;
+    min: number;
+    max: number;
+    step: number;
+    /** Optional: show only in a specific tab */
+    tab?: 'morning' | 'evening';
+    /** Optional: render as textarea */
+    kind?: 'number' | 'text';
+};
+
+const METRIC_UI: Record<WellbeingMetricKey, MetricUiConfig> = {
+    depression: { key: 'depression', label: 'Depression (legacy)', icon: <Brain size={16} className="text-blue-400" />, colorClass: 'text-blue-400', min: 1, max: 5, step: 1, kind: 'number' },
+    anxiety: { key: 'anxiety', label: 'Anxiety', icon: <Activity size={16} className="text-purple-400" />, colorClass: 'text-purple-400', min: 1, max: 5, step: 1, kind: 'number' },
+    energy: { key: 'energy', label: 'Energy', icon: <Battery size={16} className="text-emerald-400" />, colorClass: 'text-emerald-400', min: 1, max: 5, step: 1, kind: 'number' },
+    sleepScore: { key: 'sleepScore', label: 'Sleep score', icon: <Moon size={16} className="text-indigo-400" />, colorClass: 'text-indigo-400', min: 0, max: 100, step: 1, tab: 'morning', kind: 'number' },
+    sleepQuality: { key: 'sleepQuality', label: 'Sleep quality (subjective)', icon: <Heart size={16} className="text-fuchsia-300" />, colorClass: 'text-fuchsia-300', min: 0, max: 4, step: 1, tab: 'morning', kind: 'number' },
+    lowMood: { key: 'lowMood', label: 'Low Mood', icon: <Brain size={16} className="text-blue-400" />, colorClass: 'text-blue-400', min: 0, max: 4, step: 1, kind: 'number' },
+    calm: { key: 'calm', label: 'Calm', icon: <Wind size={16} className="text-emerald-400" />, colorClass: 'text-emerald-400', min: 0, max: 4, step: 1, kind: 'number' },
+    stress: { key: 'stress', label: 'Stress', icon: <Target size={16} className="text-orange-400" />, colorClass: 'text-orange-400', min: 0, max: 4, step: 1, kind: 'number' },
+    focus: { key: 'focus', label: 'Focus', icon: <FocusIcon size={16} className="text-amber-300" />, colorClass: 'text-amber-300', min: 0, max: 4, step: 1, kind: 'number' },
+    notes: { key: 'notes', label: 'Notes (Optional)', icon: null, colorClass: 'text-neutral-300', min: 0, max: 0, step: 1, kind: 'text' },
 };
 
 export const DailyCheckInModal: React.FC<DailyCheckInModalProps> = ({ isOpen, onClose }) => {
     const { logWellbeing, wellbeingLogs } = useHabitStore();
     const today = format(new Date(), 'yyyy-MM-dd');
+    const persona = getActivePersonaConfig();
+    const checkinSubset = persona.checkinSubset;
+    const [extraKeys, setExtraKeys] = useState<WellbeingMetricKey[]>([]);
+    const [notesOpen, setNotesOpen] = useState(false);
+
+    const subsetSet = new Set<WellbeingMetricKey>([
+        ...(checkinSubset as WellbeingMetricKey[]),
+        ...extraKeys,
+    ]);
 
     // Determine default tab based on time of day (before 5PM = Morning)
     const currentHour = new Date().getHours();
@@ -30,6 +77,26 @@ export const DailyCheckInModal: React.FC<DailyCheckInModalProps> = ({ isOpen, on
     // State for both sessions
     const [morningData, setMorningData] = useState<WellbeingSession>(INITIAL_SESSION);
     const [eveningData, setEveningData] = useState<WellbeingSession>(INITIAL_SESSION);
+
+    // Load dashboard prefs (extra metrics) when opening modal
+    useEffect(() => {
+        if (!isOpen) return;
+        let cancelled = false;
+        fetchDashboardPrefs()
+            .then((prefs) => {
+                if (cancelled) return;
+                const keys = (prefs.checkinExtraMetricKeys || [])
+                    .filter((k): k is WellbeingMetricKey => (WELLBEING_METRIC_KEYS as readonly string[]).includes(k))
+                    .filter((k) => k !== 'notes');
+                setExtraKeys(keys);
+            })
+            .catch(() => {
+                // ignore (best-effort)
+            });
+        return () => {
+            cancelled = true;
+        };
+    }, [isOpen]);
 
     // Load existing data
     useEffect(() => {
@@ -44,6 +111,15 @@ export const DailyCheckInModal: React.FC<DailyCheckInModalProps> = ({ isOpen, on
         }
     }, [isOpen, wellbeingLogs, today]);
 
+    // Open notes section if there are existing notes for the active tab
+    useEffect(() => {
+        if (!isOpen) return;
+        const current = activeTab === 'morning' ? morningData : eveningData;
+        if (typeof current.notes === 'string' && current.notes.trim().length > 0) {
+            setNotesOpen(true);
+        }
+    }, [isOpen, activeTab, morningData, eveningData]);
+
     // Helper to update current session data
     const updateCurrentSession = (field: keyof WellbeingSession, value: any) => {
         if (activeTab === 'morning') {
@@ -55,12 +131,71 @@ export const DailyCheckInModal: React.FC<DailyCheckInModalProps> = ({ isOpen, on
 
     const currentData = activeTab === 'morning' ? morningData : eveningData;
 
+    const addableMetrics = (WELLBEING_METRIC_KEYS as readonly WellbeingMetricKey[])
+        .filter((k) => k !== 'notes')
+        .filter((k) => !subsetSet.has(k));
+
+    const handleAddMetric = async (key: WellbeingMetricKey) => {
+        const next = Array.from(new Set([...extraKeys, key]));
+        setExtraKeys(next);
+        try {
+            await updateDashboardPrefs({ checkinExtraMetricKeys: next });
+        } catch {
+            // ignore
+        }
+
+        const cfg = METRIC_UI[key];
+        if (cfg?.tab && cfg.tab !== activeTab) {
+            setActiveTab(cfg.tab);
+        }
+    };
+
+    const handleRemoveExtraMetric = async (key: WellbeingMetricKey) => {
+        const next = extraKeys.filter((k) => k !== key);
+        setExtraKeys(next);
+        try {
+            await updateDashboardPrefs({ checkinExtraMetricKeys: next });
+        } catch {
+            // ignore
+        }
+    };
+
     const handleSave = async () => {
         console.log('[DailyCheckInModal] handleSave called with:', { today, activeTab, currentData });
         try {
+            /**
+             * Guardrail (dev-only):
+             * Prevent introducing new wellbeing keys at runtime.
+             * Only keys in WELLBEING_METRIC_KEYS are allowed (contract-locked).
+             */
+            if (import.meta.env.DEV) {
+                for (const key of Object.keys(currentData)) {
+                    if (!(WELLBEING_METRIC_KEYS as readonly string[]).includes(key)) {
+                        throw new Error(
+                            `Invalid wellbeing metric key "${key}". Do not create new keys at runtime. ` +
+                            'Use WELLBEING_METRIC_KEYS (see docs/reference/00_DATA_CONTRACT_WELLBEING_KEYS.md).'
+                        );
+                    }
+                }
+            }
+
+            // Only persist keys the persona is actually showing (plus notes if present).
+            // This ensures persona changes don't silently write hidden metrics.
+            const sessionPayload: Partial<WellbeingSession> = {};
+            for (const key of WELLBEING_METRIC_KEYS) {
+                if (key === 'notes') continue;
+                if (!subsetSet.has(key)) continue;
+                const cfg = METRIC_UI[key];
+                if (cfg?.tab && cfg.tab !== activeTab) continue;
+                (sessionPayload as any)[key] = (currentData as any)[key];
+            }
+            if (typeof currentData.notes === 'string' && currentData.notes.trim().length > 0) {
+                sessionPayload.notes = currentData.notes;
+            }
+
             const result = await logWellbeing(today, {
                 date: today,
-                [activeTab]: currentData
+                [activeTab]: sessionPayload
             });
             console.log('[DailyCheckInModal] logWellbeing completed:', result);
             onClose();
@@ -116,99 +251,163 @@ export const DailyCheckInModal: React.FC<DailyCheckInModalProps> = ({ isOpen, on
 
                 {/* Body */}
                 <div className="p-6 space-y-6">
-                    {/* Depression */}
-                    <div className="space-y-3">
+                    {/* Render persona-selected metric subset from the canonical superset */}
+                    {checkinSubset
+                        .filter((k): k is WellbeingMetricKey => (WELLBEING_METRIC_KEYS as readonly string[]).includes(k))
+                        .map((k) => {
+                            const cfg = METRIC_UI[k];
+                            if (!cfg) return null;
+                            if (cfg.key === 'notes') return null; // Notes handled separately below
+                            if (cfg.tab && cfg.tab !== activeTab) return null;
+
+                            const rawValue = (currentData as any)[k];
+                            const value = typeof rawValue === 'number' ? rawValue : cfg.min;
+
+                            return (
+                                <div key={k} className="space-y-3">
                         <div className="flex justify-between text-sm">
                             <label className="text-neutral-300 font-medium flex items-center gap-2">
-                                <Brain size={16} className="text-blue-400" /> Depression
+                                            {cfg.icon}
+                                            {cfg.label}
                             </label>
-                            <span className="text-blue-400 font-bold">{currentData.depression}/5</span>
+                                        <span className={`${cfg.colorClass} font-bold`}>
+                                            {value}{cfg.max === 100 ? '' : `/${cfg.max}`}
+                                        </span>
                         </div>
                         <input
                             type="range"
-                            min="1" max="5" step="1"
-                            value={currentData.depression}
-                            onChange={(e) => updateCurrentSession('depression', Number(e.target.value))}
-                            className="w-full h-2 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-blue-500"
+                                        min={cfg.min}
+                                        max={cfg.max}
+                                        step={cfg.step}
+                                        value={value}
+                                        onChange={(e) => updateCurrentSession(k as any, Number(e.target.value))}
+                                        className="w-full h-2 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-emerald-500"
                         />
+                                    {(cfg.max <= 5) && (
                         <div className="flex justify-between text-xs text-neutral-500 px-1">
                             <span>Low</span>
                             <span>High</span>
                         </div>
+                                    )}
                     </div>
+                            );
+                        })}
 
-                    {/* Anxiety */}
-                    <div className="space-y-3">
-                        <div className="flex justify-between text-sm">
+                    {/* Extra metrics (user-added, persisted) */}
+                    {extraKeys
+                        .filter((k) => !checkinSubset.includes(k))
+                        .filter((k) => {
+                            const cfg = METRIC_UI[k];
+                            if (!cfg) return false;
+                            if (cfg.key === 'notes') return false;
+                            if (cfg.tab && cfg.tab !== activeTab) return false;
+                            return true;
+                        })
+                        .map((k) => {
+                            const cfg = METRIC_UI[k];
+                            if (!cfg) return null;
+                            const rawValue = (currentData as any)[k];
+                            const value = typeof rawValue === 'number' ? rawValue : cfg.min;
+
+                            return (
+                                <div key={`extra-${k}`} className="space-y-3">
+                                    <div className="flex justify-between items-center text-sm">
                             <label className="text-neutral-300 font-medium flex items-center gap-2">
-                                <Activity size={16} className="text-purple-400" /> Anxiety
+                                            {cfg.icon}
+                                            {cfg.label}
+                                            <span className="text-[10px] text-neutral-500 font-semibold">(added)</span>
                             </label>
-                            <span className="text-purple-400 font-bold">{currentData.anxiety}/5</span>
+                                        <div className="flex items-center gap-3">
+                                            <span className={`${cfg.colorClass} font-bold`}>
+                                                {value}{cfg.max === 100 ? '' : `/${cfg.max}`}
+                                            </span>
+                                            <button
+                                                onClick={() => handleRemoveExtraMetric(k)}
+                                                className="text-xs text-neutral-500 hover:text-white"
+                                                title="Remove metric"
+                                            >
+                                                Remove
+                                            </button>
+                                        </div>
                         </div>
                         <input
                             type="range"
-                            min="1" max="5" step="1"
-                            value={currentData.anxiety}
-                            onChange={(e) => updateCurrentSession('anxiety', Number(e.target.value))}
-                            className="w-full h-2 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-purple-500"
+                                        min={cfg.min}
+                                        max={cfg.max}
+                                        step={cfg.step}
+                                        value={value}
+                                        onChange={(e) => updateCurrentSession(k as any, Number(e.target.value))}
+                                        className="w-full h-2 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-emerald-500"
                         />
+                                    {(cfg.max <= 5) && (
                         <div className="flex justify-between text-xs text-neutral-500 px-1">
                             <span>Low</span>
                             <span>High</span>
                         </div>
+                                    )}
                     </div>
+                            );
+                        })}
 
-                    {/* Energy (Evening Only) */}
-                    {activeTab === 'evening' && (
-                        <div className="space-y-3 animate-in fade-in slide-in-from-left-4 duration-300">
-                            <div className="flex justify-between text-sm">
-                                <label className="text-neutral-300 font-medium flex items-center gap-2">
-                                    <Battery size={16} className="text-emerald-400" /> Energy
-                                </label>
-                                <span className="text-emerald-400 font-bold">{currentData.energy}/5</span>
-                            </div>
-                            <input
-                                type="range"
-                                min="1" max="5" step="1"
-                                value={currentData.energy}
-                                onChange={(e) => updateCurrentSession('energy', Number(e.target.value))}
-                                className="w-full h-2 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-emerald-500"
-                            />
-                            <div className="flex justify-between text-xs text-neutral-500 px-1">
-                                <span>Low</span>
-                                <span>High</span>
+                    {/* Add another metric */}
+                    {addableMetrics.length > 0 && (
+                        <div className="pt-2">
+                            <div className="text-xs font-semibold text-neutral-400 mb-2">Add another metric</div>
+                            <select
+                                value=""
+                                onChange={(e) => {
+                                    const key = e.target.value as WellbeingMetricKey;
+                                    if (!key) return;
+                                    handleAddMetric(key);
+                                }}
+                                className="w-full bg-neutral-800 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-emerald-500 outline-none"
+                            >
+                                <option value="" disabled>
+                                    Select a metric…
+                                </option>
+                                {addableMetrics.map((k) => (
+                                    <option key={k} value={k}>
+                                        {METRIC_UI[k]?.label || k}
+                                    </option>
+                                ))}
+                            </select>
+                            <div className="text-[11px] text-neutral-500 mt-2">
+                                Added metrics will appear in future check-ins too.
                             </div>
                         </div>
                     )}
 
-                    {/* Sleep Score (Morning Only) */}
-                    {activeTab === 'morning' && (
-                        <div className="space-y-3 animate-in fade-in slide-in-from-right-4 duration-300">
-                            <div className="flex justify-between text-sm">
-                                <label className="text-neutral-300 font-medium flex items-center gap-2">
-                                    <Moon size={16} className="text-indigo-400" /> Sleep Score
-                                </label>
-                                <span className="text-indigo-400 font-bold">{currentData.sleepScore}</span>
-                            </div>
-                            <input
-                                type="range"
-                                min="0" max="100" step="1"
-                                value={currentData.sleepScore}
-                                onChange={(e) => updateCurrentSession('sleepScore', Number(e.target.value))}
-                                className="w-full h-2 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-indigo-500"
-                            />
+                    {/* Notes (collapsible; stored only if non-empty) */}
+                    <div className="pt-2">
+                        {!notesOpen ? (
+                            <button
+                                onClick={() => setNotesOpen(true)}
+                                className="text-sm text-neutral-300 hover:text-white transition-colors"
+                            >
+                                + Add a note
+                            </button>
+                        ) : (
+                            <div className="space-y-2">
+                                <div className="flex items-center justify-between">
+                                    <label className="text-sm text-neutral-300 font-medium">Note</label>
+                                    <button
+                                        onClick={() => {
+                                            setNotesOpen(false);
+                                            updateCurrentSession('notes', '');
+                                        }}
+                                        className="text-xs text-neutral-500 hover:text-white"
+                                    >
+                                        Hide
+                                    </button>
                         </div>
-                    )}
-
-                    {/* Notes */}
-                    <div className="space-y-2">
-                        <label className="text-sm text-neutral-300 font-medium">Notes (Optional)</label>
                         <textarea
-                            value={currentData.notes}
+                                    value={currentData.notes || ''}
                             onChange={(e) => updateCurrentSession('notes', e.target.value)}
                             placeholder={`How are you feeling this ${activeTab}?`}
                             className="w-full bg-neutral-800 border border-white/10 rounded-lg p-3 text-sm text-white focus:border-emerald-500 outline-none resize-none h-20"
                         />
+                            </div>
+                        )}
                     </div>
                 </div>
 

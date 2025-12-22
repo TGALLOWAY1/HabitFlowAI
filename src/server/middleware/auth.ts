@@ -6,6 +6,7 @@
  */
 
 import type { Request, Response, NextFunction } from 'express';
+import { DEMO_USER_ID, isDemoModeEnabled } from '../config/demo';
 
 /**
  * Middleware to extract userId from headers.
@@ -19,7 +20,18 @@ export function userIdMiddleware(req: Request, _res: Response, next: NextFunctio
 
     // Validate and sanitize the user ID
     if (userIdHeader && typeof userIdHeader === 'string' && userIdHeader.trim().length > 0) {
-        (req as any).userId = userIdHeader.trim();
+        const trimmed = userIdHeader.trim();
+        // Safety: demo userId is only honored in dev AND only when DEMO_MODE_ENABLED=true.
+        // In all other cases, demo identity must not be set via headers.
+        if (trimmed === DEMO_USER_ID) {
+            if (process.env.NODE_ENV !== 'production' && isDemoModeEnabled()) {
+                (req as any).userId = trimmed;
+            } else {
+                (req as any).userId = 'anonymous-user';
+            }
+        } else {
+            (req as any).userId = trimmed;
+        }
         // Optional: Log new sessions (verbose, maybe only for debug)
         // console.log(`[Auth] Request from user: ${(req as any).userId}`);
     } else {

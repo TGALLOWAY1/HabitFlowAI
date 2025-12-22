@@ -10,6 +10,17 @@ import type { JournalEntry } from '../../models/persistenceTypes';
 
 const COLLECTION_NAME = 'journalEntries';
 
+let indexesEnsured = false;
+
+async function ensureIndexes(): Promise<void> {
+    if (indexesEnsured) return;
+    const db = await getDb();
+    const collection = db.collection(COLLECTION_NAME);
+    // Helps upsert-by-key lookups
+    await collection.createIndex({ userId: 1, templateId: 1, date: 1 }, { name: 'by_user_template_date' });
+    indexesEnsured = true;
+}
+
 /**
  * Create a new journal entry.
  * 
@@ -43,6 +54,51 @@ export async function createEntry(
 
     // Remove MongoDB _id and userId before returning
     const { _id, userId: _, ...entry } = document as any;
+    return entry as JournalEntry;
+}
+
+/**
+ * Upsert a journal entry by (templateId, date) uniqueness for a user.
+ *
+ * This is used for stable reflective truth like "current_vibe" where we want:
+ *   uniqueness: (userId, date, templateId)
+ *
+ * IMPORTANT: Do not use this to mutate HabitEntry progress or completion.
+ */
+export async function upsertEntryByTemplateAndDate(
+    data: Omit<JournalEntry, 'id' | 'createdAt' | 'updatedAt' | 'userId'>,
+    userId: string
+): Promise<JournalEntry> {
+    await ensureIndexes();
+    const db = await getDb();
+    const collection = db.collection(COLLECTION_NAME);
+
+    if (!data.templateId || typeof data.templateId !== 'string') {
+        throw new Error('templateId is required');
+    }
+    if (!data.date || typeof data.date !== 'string') {
+        throw new Error('date is required (YYYY-MM-DD)');
+    }
+
+    const now = new Date().toISOString();
+
+    const result = await collection.findOneAndUpdate(
+        { userId, templateId: data.templateId, date: data.date },
+        {
+            $set: {
+                ...data,
+                userId,
+                updatedAt: now,
+            },
+            $setOnInsert: {
+                id: crypto.randomUUID(),
+                createdAt: now,
+            }
+        },
+        { upsert: true, returnDocument: 'after' }
+    );
+
+    const { _id, userId: _, ...entry } = result as any;
     return entry as JournalEntry;
 }
 

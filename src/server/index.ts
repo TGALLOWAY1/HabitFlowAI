@@ -12,13 +12,16 @@ import { getCategories, createCategoryRoute, getCategory, updateCategoryRoute, d
 import { getHabits, createHabitRoute, getHabit, updateHabitRoute, deleteHabitRoute, reorderHabitsRoute } from './routes/habits';
 import { getDayLogs, upsertDayLogRoute, getDayLogRoute, deleteDayLogRoute } from './routes/dayLogs';
 import { getWellbeingLogs, upsertWellbeingLogRoute, getWellbeingLogRoute, deleteWellbeingLogRoute } from './routes/wellbeingLogs';
+import { getWellbeingEntriesRoute, upsertWellbeingEntriesRoute, deleteWellbeingEntryRoute } from './routes/wellbeingEntries';
+import { seedDemoEmotionalWellbeingRoute, resetDemoEmotionalWellbeingRoute } from './routes/devDemoEmotionalWellbeing';
 import { getRoutinesRoute, getRoutineRoute, createRoutineRoute, updateRoutineRoute, deleteRoutineRoute, submitRoutineRoute, uploadRoutineImageRoute, uploadRoutineImageMiddleware } from './routes/routines';
 import { getRoutineLogs } from './routes/routineLogs';
 import { getGoals, getGoal, getGoalProgress, getGoalsWithProgress, getCompletedGoals, createGoalRoute, updateGoalRoute, deleteGoalRoute, createGoalManualLogRoute, getGoalManualLogsRoute, getGoalDetailRoute, uploadGoalBadgeRoute, uploadBadgeMiddleware } from './routes/goals';
 import { getProgressOverview } from './routes/progress';
-import { getEntriesRoute, createEntryRoute, getEntryRoute, updateEntryRoute, deleteEntryRoute } from './routes/journal';
+import { getEntriesRoute, createEntryRoute, upsertEntryByKeyRoute, getEntryRoute, updateEntryRoute, deleteEntryRoute } from './routes/journal';
 import { getTasksRoute, createTaskRoute, updateTaskRoute, deleteTaskRoute } from './routes/tasks';
 import { skillTreeRouter } from './routes/skillTree';
+import { getDashboardPrefsRoute, updateDashboardPrefsRoute } from './routes/dashboardPrefs';
 import { closeConnection } from './lib/mongoClient';
 
 // Assert MongoDB is enabled at startup (fail fast if misconfigured)
@@ -28,6 +31,8 @@ const app: Express = express();
 const PORT = process.env.PORT || 3000;
 
 import { userIdMiddleware } from './middleware/auth';
+import { devUserIdOverride } from './middleware/devUserIdOverride';
+import { noPersonaInHabitEntryRequests } from './middleware/noPersonaInHabitEntryRequests';
 
 // Middleware
 app.use(express.json());
@@ -51,6 +56,8 @@ app.use((req, res, next) => {
 
 // Authentication Middleware
 app.use(userIdMiddleware);
+app.use(devUserIdOverride);
+app.use(noPersonaInHabitEntryRequests);
 
 // API Routes
 // Note: Specific routes (like /reorder) must come before parameterized routes (like /:id)
@@ -86,6 +93,15 @@ app.put('/api/wellbeingLogs', upsertWellbeingLogRoute);
 app.get('/api/wellbeingLogs/:date', getWellbeingLogRoute);
 app.delete('/api/wellbeingLogs/:date', deleteWellbeingLogRoute);
 
+// WellbeingEntry routes (New Canonical)
+app.get('/api/wellbeingEntries', getWellbeingEntriesRoute);
+app.post('/api/wellbeingEntries', upsertWellbeingEntriesRoute);
+app.delete('/api/wellbeingEntries/:id', deleteWellbeingEntryRoute);
+
+// --- DEV ONLY: Demo seed/reset (hard-guarded on server) ---
+app.post('/api/dev/seedDemoEmotionalWellbeing', seedDemoEmotionalWellbeingRoute);
+app.post('/api/dev/resetDemoEmotionalWellbeing', resetDemoEmotionalWellbeingRoute);
+
 // Routine routes
 app.get('/api/routines', getRoutinesRoute);
 app.post('/api/routines', createRoutineRoute);
@@ -105,9 +121,14 @@ app.get('/api/progress/overview', getProgressOverview);
 // Journal routes
 app.get('/api/journal', getEntriesRoute);
 app.post('/api/journal', createEntryRoute);
+app.put('/api/journal/byKey', upsertEntryByKeyRoute);
 app.get('/api/journal/:id', getEntryRoute);
 app.patch('/api/journal/:id', updateEntryRoute);
 app.delete('/api/journal/:id', deleteEntryRoute);
+
+// Dashboard prefs (view-only)
+app.get('/api/dashboardPrefs', getDashboardPrefsRoute);
+app.put('/api/dashboardPrefs', updateDashboardPrefsRoute);
 
 // Goal routes
 app.get('/api/goals', getGoals);
