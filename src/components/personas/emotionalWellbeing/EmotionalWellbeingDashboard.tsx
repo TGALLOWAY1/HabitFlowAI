@@ -328,6 +328,212 @@ const TodaysSnapshotCard: React.FC = () => {
   );
 };
 
+type MoodCompareKey = Exclude<WellbeingMetricKey, 'notes'>;
+
+function intensity0to4FromMetricValue(metric: MoodCompareKey, value: number | null): number | null {
+  if (value === null || value === undefined) return null;
+  // legacy 1..5 -> 0..4
+  if (metric === 'anxiety' || metric === 'energy' || metric === 'depression') {
+    return clampInt(value - 1, 0, 4);
+  }
+  // legacy 0..100 -> bucket to 0..4
+  if (metric === 'sleepScore') {
+    const v = clampInt(value, 0, 100);
+    if (v <= 20) return 0;
+    if (v <= 40) return 1;
+    if (v <= 60) return 2;
+    if (v <= 80) return 3;
+    return 4;
+  }
+  // new subjective superset already 0..4
+  return clampInt(value, 0, 4);
+}
+
+function moodCellClass(metric: MoodCompareKey, intensity: number | null): string {
+  if (intensity === null) return 'bg-neutral-800/60 border-white/5';
+
+  const opacity = [15, 25, 35, 50, 65][intensity] || 25;
+  // Keep colors muted and non-judgmental.
+  const base =
+    metric === 'calm'
+      ? 'bg-emerald-400'
+      : metric === 'anxiety'
+        ? 'bg-purple-400'
+        : metric === 'lowMood'
+          ? 'bg-sky-400'
+          : metric === 'stress'
+            ? 'bg-orange-400'
+            : metric === 'focus'
+              ? 'bg-amber-300'
+              : metric === 'energy'
+                ? 'bg-green-400'
+                : metric === 'sleepQuality'
+                  ? 'bg-fuchsia-300'
+                  : metric === 'sleepScore'
+                    ? 'bg-indigo-400'
+                    : 'bg-neutral-400';
+
+  // Use Tailwind opacity via slash when possible; fall back to inline-ish classes with /xx.
+  // We stick to a fixed palette to avoid runtime styles.
+  const withOpacity =
+    base === 'bg-emerald-400' ? `bg-emerald-400/${opacity}` :
+    base === 'bg-purple-400' ? `bg-purple-400/${opacity}` :
+    base === 'bg-sky-400' ? `bg-sky-400/${opacity}` :
+    base === 'bg-orange-400' ? `bg-orange-400/${opacity}` :
+    base === 'bg-amber-300' ? `bg-amber-300/${opacity}` :
+    base === 'bg-green-400' ? `bg-green-400/${opacity}` :
+    base === 'bg-fuchsia-300' ? `bg-fuchsia-300/${opacity}` :
+    base === 'bg-indigo-400' ? `bg-indigo-400/${opacity}` :
+    `bg-neutral-400/${opacity}`;
+
+  return `${withOpacity} border-white/5`;
+}
+
+const HabitsMoodPatternsCard: React.FC = () => {
+  const { habits, logs, wellbeingLogs } = useHabitStore();
+  const persona = getActivePersonaConfig();
+  const [extraKeys, setExtraKeys] = useState<WellbeingMetricKey[]>([]);
+  const timeZone = useMemo(() => getTimeZone(), []);
+  const [selectedMetric, setSelectedMetric] = useState<MoodCompareKey>('calm');
+
+  React.useEffect(() => {
+    let cancelled = false;
+    fetchDashboardPrefs()
+      .then((prefs) => {
+        if (cancelled) return;
+        const keys = (prefs.checkinExtraMetricKeys || []).filter((k): k is WellbeingMetricKey => !!k);
+        setExtraKeys(keys);
+      })
+      .catch(() => {
+        // ignore
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const metricOptions = useMemo(() => {
+    const base = (persona.checkinSubset || []).filter((k): k is WellbeingMetricKey => k !== 'vibe');
+    const all = Array.from(new Set([...base, ...extraKeys]))
+      .filter((k) => k !== 'notes')
+      .filter((k) => SNAPSHOT_METRIC_META[k] !== undefined) as MoodCompareKey[];
+    return all.map((k) => SNAPSHOT_METRIC_META[k]);
+  }, [persona.checkinSubset, extraKeys]);
+
+  React.useEffect(() => {
+    // Ensure selectedMetric stays valid when persona/extras change.
+    if (metricOptions.length === 0) return;
+    const keys = metricOptions.map((m) => m.key as MoodCompareKey);
+    if (!keys.includes(selectedMetric)) {
+      setSelectedMetric(keys.includes('calm') ? 'calm' : keys[0]);
+    }
+  }, [metricOptions]);
+
+  const dayKeys30 = useMemo(() => {
+    const keys: string[] = [];
+    for (let i = 29; i >= 0; i--) {
+      keys.push(getDayKeyDaysAgo(i, timeZone));
+    }
+    return keys;
+  }, [timeZone]);
+
+  const activeHabits = useMemo(() => {
+    return habits.filter((h) => !h.archived);
+  }, [habits]);
+
+  const getMoodValueForDay = (dayKey: string, key: MoodCompareKey): number | null => {
+    const log = wellbeingLogs[dayKey];
+    if (!log) return null;
+    const session = log.evening || log.morning;
+    const v = (session as any)?.[key];
+    if (typeof v === 'number') return v;
+    const legacy = (log as any)?.[key];
+    if (typeof legacy === 'number') return legacy;
+    return null;
+  };
+
+  const gridStyle: React.CSSProperties = useMemo(() => ({ gridTemplateColumns: 'repeat(30, minmax(0, 1fr))', gap: '3px' }), []);
+
+  return (
+    <Card
+      title="Habits & Mood Patterns"
+      icon={<Sparkles size={16} className="text-neutral-300" />}
+      right={
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-neutral-500">Metric:</span>
+          <select
+            value={selectedMetric}
+            onChange={(e) => setSelectedMetric(e.target.value as MoodCompareKey)}
+            className="bg-neutral-800 border border-white/10 rounded-md px-2 py-1 text-xs text-white focus:outline-none focus:border-white/20"
+          >
+            {metricOptions.map((m) => (
+              <option key={m.key} value={m.key}>
+                {m.label}
+              </option>
+            ))}
+          </select>
+        </div>
+      }
+    >
+      <div className="space-y-5">
+        {activeHabits.length === 0 ? (
+          <div className="text-sm text-neutral-400">No habits yet.</div>
+        ) : (
+          activeHabits.map((habit) => {
+            const habitCells = dayKeys30.map((dayKey) => {
+              const log = logs[`${habit.id}-${dayKey}`];
+              const hasAny =
+                !!log &&
+                (log.completed ||
+                  (typeof log.value === 'number' && log.value > 0) ||
+                  (log.completedOptions && Object.keys(log.completedOptions).length > 0));
+              return hasAny;
+            });
+
+            const moodCells = dayKeys30.map((dayKey) => {
+              const v = getMoodValueForDay(dayKey, selectedMetric);
+              return intensity0to4FromMetricValue(selectedMetric, v);
+            });
+
+            return (
+              <div key={habit.id} className="space-y-2">
+                <div className="grid grid-cols-[180px_1fr] gap-3 items-center">
+                  <div className="text-sm font-semibold text-white truncate">{habit.name}</div>
+                  <div className="grid" style={gridStyle}>
+                    {habitCells.map((active, idx) => (
+                      <div
+                        key={idx}
+                        className={`h-4 rounded-sm border ${
+                          active ? 'bg-emerald-400/35 border-emerald-400/10' : 'bg-neutral-800/50 border-white/5'
+                        }`}
+                        title={`${dayKeys30[idx]}: ${active ? 'active' : '—'}`}
+                      />
+                    ))}
+                  </div>
+                </div>
+                <div className="grid grid-cols-[180px_1fr] gap-3 items-center">
+                  <div className="text-xs text-neutral-500 truncate"> </div>
+                  <div className="grid" style={gridStyle}>
+                    {moodCells.map((intensity, idx) => (
+                      <div
+                        key={idx}
+                        className={`h-4 rounded-sm border ${moodCellClass(selectedMetric, intensity)}`}
+                        title={`${dayKeys30[idx]}: ${intensity === null ? '—' : intensity}`}
+                      />
+                    ))}
+                  </div>
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
+
+      <div className="mt-4 text-xs text-neutral-500">Notice any patterns.</div>
+    </Card>
+  );
+};
+
 const ActionCards: React.FC<{ onStartRoutine?: (routine: Routine) => void }> = ({ onStartRoutine }) => {
   const { routines } = useRoutineStore();
   const [prefsIds, setPrefsIds] = useState<string[]>([]);
@@ -777,6 +983,7 @@ export const EmotionalWellbeingDashboard: React.FC<Props> = ({ onOpenCheckIn, on
 
       {/* Main dashboard must be today-focused: no historical wellbeing charts here. */}
       <TodaysSnapshotCard />
+      <HabitsMoodPatternsCard />
       <ActionCards onStartRoutine={onStartRoutine} />
     </div>
   );
