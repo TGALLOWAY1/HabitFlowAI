@@ -31,12 +31,20 @@ function getDayKeyDaysAgo(daysAgo: number, timeZone: string): string {
   return formatDayKeyFromDate(d, timeZone);
 }
 
-const Card: React.FC<{ title: string; icon?: React.ReactNode; right?: React.ReactNode; children: React.ReactNode }> = ({ title, icon, right, children }) => (
-  <div className="bg-neutral-900/50 rounded-2xl border border-white/5 p-6 backdrop-blur-sm">
-    <div className="flex items-center justify-between mb-4">
+const Card: React.FC<{
+  title: string;
+  icon?: React.ReactNode;
+  right?: React.ReactNode;
+  children: React.ReactNode;
+  className?: string;
+  titleClassName?: string;
+  headerClassName?: string;
+}> = ({ title, icon, right, children, className, titleClassName, headerClassName }) => (
+  <div className={`bg-neutral-900/50 rounded-2xl border border-white/5 p-6 backdrop-blur-sm ${className || ''}`}>
+    <div className={`flex items-center justify-between mb-4 ${headerClassName || ''}`}>
       <div className="flex items-center gap-2">
         {icon}
-        <h3 className="text-lg font-semibold text-white">{title}</h3>
+        <h3 className={`text-lg font-semibold text-white ${titleClassName || ''}`}>{title}</h3>
       </div>
       {right}
     </div>
@@ -357,7 +365,7 @@ const GratitudeJarCard: React.FC = () => {
       const all = await fetchEntries();
       const gratitude = all.filter((e) => e.templateId === 'gratitude-jar');
       // newest first (api already sorts desc)
-      setEntries(gratitude.slice(0, 3));
+      setEntries(gratitude.slice(0, 2));
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load gratitude entries');
     } finally {
@@ -398,6 +406,10 @@ const GratitudeJarCard: React.FC = () => {
           + Quick add
         </button>
       }
+      // Supportive, secondary visual hierarchy vs Current Vibe
+      className="bg-neutral-900/30 p-4"
+      headerClassName="mb-3"
+      titleClassName="text-sm font-semibold text-white/90"
     >
       {loading ? (
         <div className="text-sm text-neutral-400">Loading…</div>
@@ -406,16 +418,16 @@ const GratitudeJarCard: React.FC = () => {
       ) : entries.length === 0 ? (
         <div className="text-sm text-neutral-400">No gratitude entries yet.</div>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-2">
           {entries.map((e) => (
-            <div key={e.id} className="p-4 rounded-xl bg-neutral-800/50 border border-white/5">
+            <div key={e.id} className="p-3 rounded-xl bg-neutral-900/40 border border-white/5">
               <div className="text-xs text-neutral-500 mb-1">{e.date}</div>
               <div className="text-sm text-white line-clamp-3">{e.content?.['free-write'] || '(empty)'}</div>
             </div>
           ))}
         </div>
       )}
-      <div className="text-xs text-neutral-500 mt-3">Shows your last 3 gratitude-jar journal entries.</div>
+      <div className="text-xs text-neutral-500 mt-2">Shows your most recent gratitude entries.</div>
     </Card>
   );
 };
@@ -691,16 +703,22 @@ export const EmotionalWellbeingDashboard: React.FC<Props> = ({ onOpenCheckIn, on
         )}
       </div>
 
+      {/* Top row: Current Vibe (primary) + Gratitude Jar (secondary) */}
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-start">
+        <div className="md:col-span-3">
+          <CurrentVibeCard />
+        </div>
+        <div className="md:col-span-2">
+          <GratitudeJarCard />
+        </div>
+      </div>
+
       {widgets.map((w, idx) => {
         switch (w.type) {
           case 'header':
             return <ProgressRings key={`${w.type}-${idx}`} />;
-          case 'currentVibe':
-            return <CurrentVibeCard key={`${w.type}-${idx}`} />;
           case 'actionCards':
             return <ActionCards key={`${w.type}-${idx}`} onStartRoutine={onStartRoutine} />;
-          case 'gratitudeJar':
-            return <GratitudeJarCard key={`${w.type}-${idx}`} />;
           case 'emotionalTrend':
             return <EmotionalTrendCard key={`${w.type}-${idx}`} onNavigateWellbeingHistory={onNavigateWellbeingHistory} />;
           default:
