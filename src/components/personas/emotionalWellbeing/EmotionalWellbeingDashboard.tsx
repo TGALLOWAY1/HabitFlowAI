@@ -452,12 +452,12 @@ function moodCellClass(metric: MoodCompareKey, intensity: number | null): string
   if (intensity === null) return 'bg-neutral-800/50 border-white/5';
 
   const safe = Math.max(0, Math.min(4, intensity));
-  // Use purple/blue tones to contrast with emerald habit rows
-  if (safe === 0) return 'bg-purple-900/80 border-white/5';
-  if (safe === 1) return 'bg-purple-700 border-white/5';
-  if (safe === 2) return 'bg-purple-500 border-white/5';
-  if (safe === 3) return 'bg-purple-400 border-white/5';
-  return 'bg-purple-300 border-white/5';
+  // Use blue tones to contrast with emerald habit rows
+  if (safe === 0) return 'bg-blue-900/80 border-white/5';
+  if (safe === 1) return 'bg-blue-700 border-white/5';
+  if (safe === 2) return 'bg-blue-500 border-white/5';
+  if (safe === 3) return 'bg-blue-400 border-white/5';
+  return 'bg-blue-300 border-white/5';
 }
 
 const HabitsMoodPatternsCard: React.FC = () => {
