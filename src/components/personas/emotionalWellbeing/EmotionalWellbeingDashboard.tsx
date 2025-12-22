@@ -607,7 +607,6 @@ const HabitsMoodPatternsCard: React.FC = () => {
         )}
       </div>
 
-      <div className="mt-4 text-xs text-neutral-500">Notice any patterns.</div>
     </Card>
   );
 };
