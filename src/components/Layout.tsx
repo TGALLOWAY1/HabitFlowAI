@@ -42,7 +42,8 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
             setDevNotice('Seeded demo data');
             setTimeout(() => setDevNotice(null), 2500);
         }
-        window.location.reload();
+        // Trigger lightweight refetches without a full reload
+        window.dispatchEvent(new Event('habitflow:demo-data-changed'));
     };
 
     const handleResetDemo = async () => {
@@ -53,7 +54,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
             setDevNotice('Reset demo data');
             setTimeout(() => setDevNotice(null), 2500);
         }
-        window.location.reload();
+        window.dispatchEvent(new Event('habitflow:demo-data-changed'));
     };
 
     return (

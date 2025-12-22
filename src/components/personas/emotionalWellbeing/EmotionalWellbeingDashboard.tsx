@@ -48,13 +48,31 @@ const Card: React.FC<{ title: string; icon?: React.ReactNode; right?: React.Reac
 const VIBE_OPTIONS = ['strained', 'tender', 'steady', 'open', 'thriving'] as const;
 type Vibe = typeof VIBE_OPTIONS[number];
 
+function vibeDotClass(v: Vibe | null): string {
+  switch (v) {
+    case 'strained':
+      return 'bg-red-400';
+    case 'tender':
+      return 'bg-fuchsia-300';
+    case 'steady':
+      return 'bg-emerald-400';
+    case 'open':
+      return 'bg-sky-400';
+    case 'thriving':
+      return 'bg-amber-300';
+    default:
+      return 'bg-neutral-700';
+  }
+}
+
 const CurrentVibeCard: React.FC = () => {
   const [vibe, setVibe] = useState<Vibe | null>(null);
   const [loading, setLoading] = useState(false);
+  const [week, setWeek] = useState<Array<{ dayKey: string; vibe: Vibe | null }>>([]);
 
   const today = new Date().toISOString().slice(0, 10);
 
-  React.useEffect(() => {
+  const loadVibeData = React.useCallback(() => {
     let cancelled = false;
     setLoading(true);
     fetchEntries()
@@ -65,6 +83,20 @@ const CurrentVibeCard: React.FC = () => {
         if (v && (VIBE_OPTIONS as readonly string[]).includes(v)) {
           setVibe(v as Vibe);
         }
+
+        // Last 7 days row (including today)
+        const timeZone = getTimeZone();
+        const days: Array<{ dayKey: string; vibe: Vibe | null }> = [];
+        for (let i = 6; i >= 0; i--) {
+          const dayKey = getDayKeyDaysAgo(i, timeZone);
+          const e = all.find((x) => x.templateId === 'current_vibe' && x.date === dayKey);
+          const vv = e?.content?.value as string | undefined;
+          days.push({
+            dayKey,
+            vibe: vv && (VIBE_OPTIONS as readonly string[]).includes(vv) ? (vv as Vibe) : null,
+          });
+        }
+        setWeek(days);
       })
       .finally(() => {
         if (cancelled) return;
@@ -75,6 +107,18 @@ const CurrentVibeCard: React.FC = () => {
     };
   }, [today]);
 
+  React.useEffect(() => {
+    const cleanup = loadVibeData();
+    return cleanup;
+  }, [loadVibeData]);
+
+  // Refresh after demo seed/reset
+  React.useEffect(() => {
+    const handler = () => loadVibeData();
+    window.addEventListener('habitflow:demo-data-changed', handler as any);
+    return () => window.removeEventListener('habitflow:demo-data-changed', handler as any);
+  }, [loadVibeData]);
+
   const saveVibe = async (next: Vibe) => {
     setVibe(next);
     await upsertEntryByKey({
@@ -84,6 +128,8 @@ const CurrentVibeCard: React.FC = () => {
       date: today,
       content: { value: next },
     });
+    // optimistic update in mini history row
+    setWeek((prev) => prev.map((d) => (d.dayKey === today ? { ...d, vibe: next } : d)));
   };
 
   return (
@@ -105,6 +151,22 @@ const CurrentVibeCard: React.FC = () => {
             {key}
           </button>
         ))}
+      </div>
+
+      <div className="mt-4">
+        <div className="text-xs text-neutral-500 mb-2">Last 7 days</div>
+        <div className="flex items-center gap-2">
+          {week.map((d) => {
+            const weekday = new Date(`${d.dayKey}T00:00:00.000Z`).toLocaleDateString(undefined, { weekday: 'narrow' });
+            return (
+              <div key={d.dayKey} className="flex flex-col items-center gap-1 w-7">
+                <div className="text-[10px] text-neutral-500">{weekday}</div>
+                <div className={`w-2.5 h-2.5 rounded-full ${vibeDotClass(d.vibe)}`} title={`${d.dayKey}: ${d.vibe ?? '—'}`} />
+              </div>
+            );
+          })}
+        </div>
+        <div className="text-[11px] text-neutral-500 mt-2">Missing days are normal. No pressure.</div>
       </div>
     </Card>
   );
@@ -198,6 +260,12 @@ const ActionCards: React.FC<{ onStartRoutine?: (routine: Routine) => void }> = (
     void loadPrefs();
   }, []);
 
+  React.useEffect(() => {
+    const handler = () => void loadPrefs();
+    window.addEventListener('habitflow:demo-data-changed', handler as any);
+    return () => window.removeEventListener('habitflow:demo-data-changed', handler as any);
+  }, []);
+
   const pinnedRoutines = useMemo(() => {
     const map = new Map(routines.map((r) => [r.id, r]));
     return prefsIds.map((id) => map.get(id)).filter(Boolean) as Routine[];
@@ -286,6 +354,12 @@ const GratitudeJarCard: React.FC = () => {
     void load();
   }, []);
 
+  React.useEffect(() => {
+    const handler = () => void load();
+    window.addEventListener('habitflow:demo-data-changed', handler as any);
+    return () => window.removeEventListener('habitflow:demo-data-changed', handler as any);
+  }, []);
+
   const handleQuickAdd = async () => {
     await createJournalEntry({
       templateId: 'gratitude-jar',
@@ -333,6 +407,7 @@ const GratitudeJarCard: React.FC = () => {
 
 const EmotionalTrendCard: React.FC<{ onNavigateWellbeingHistory?: () => void }> = ({ onNavigateWellbeingHistory }) => {
   const [windowDays, setWindowDays] = useState<7 | 14 | 30>(7);
+  const [mode, setMode] = useState<'avg' | 'am_pm'>('avg');
   const { startDayKey, endDayKey, loading, error, getDailyAverage } = useWellbeingEntriesRange(windowDays);
 
   const timeZone = useMemo(() => getTimeZone(), []);
@@ -340,17 +415,29 @@ const EmotionalTrendCard: React.FC<{ onNavigateWellbeingHistory?: () => void }> 
     const rows: any[] = [];
     for (let i = windowDays - 1; i >= 0; i--) {
       const dayKey = getDayKeyDaysAgo(i, timeZone);
-      rows.push({
-        dayKey,
-        anxiety: getDailyAverage(dayKey, 'anxiety'),
-        lowMood: getDailyAverage(dayKey, 'lowMood'),
-        calm: getDailyAverage(dayKey, 'calm'),
-        energy: getDailyAverage(dayKey, 'energy'),
-        stress: getDailyAverage(dayKey, 'stress'),
-      });
+      if (mode === 'am_pm') {
+        rows.push({
+          dayKey,
+          anxiety_am: getDailyAverage(dayKey, 'anxiety', 'morning'),
+          anxiety_pm: getDailyAverage(dayKey, 'anxiety', 'evening'),
+          lowMood_am: getDailyAverage(dayKey, 'lowMood', 'morning'),
+          lowMood_pm: getDailyAverage(dayKey, 'lowMood', 'evening'),
+          calm_am: getDailyAverage(dayKey, 'calm', 'morning'),
+          calm_pm: getDailyAverage(dayKey, 'calm', 'evening'),
+        });
+      } else {
+        rows.push({
+          dayKey,
+          anxiety: getDailyAverage(dayKey, 'anxiety'),
+          lowMood: getDailyAverage(dayKey, 'lowMood'),
+          calm: getDailyAverage(dayKey, 'calm'),
+          energy: getDailyAverage(dayKey, 'energy'),
+          stress: getDailyAverage(dayKey, 'stress'),
+        });
+      }
     }
     return rows;
-  }, [windowDays, timeZone, getDailyAverage]);
+  }, [windowDays, timeZone, getDailyAverage, mode]);
 
   return (
     <Card
@@ -358,6 +445,20 @@ const EmotionalTrendCard: React.FC<{ onNavigateWellbeingHistory?: () => void }> 
       icon={<Activity size={16} className="text-sky-400" />}
       right={
         <div className="flex items-center gap-3">
+          <div className="flex bg-neutral-800 rounded-md p-0.5 border border-white/5">
+            {(['avg', 'am_pm'] as const).map((m) => (
+              <button
+                key={m}
+                onClick={() => setMode(m)}
+                className={`px-2 py-0.5 text-[10px] font-medium rounded transition-colors ${
+                  mode === m ? 'bg-neutral-700 text-white' : 'text-neutral-400 hover:text-white'
+                }`}
+                title={m === 'avg' ? 'Daily average' : 'Morning/Evening'}
+              >
+                {m === 'avg' ? 'Daily avg' : 'AM/PM'}
+              </button>
+            ))}
+          </div>
           <div className="flex bg-neutral-800 rounded-md p-0.5 border border-white/5">
             {([7, 14, 30] as const).map((d) => (
               <button
@@ -395,11 +496,24 @@ const EmotionalTrendCard: React.FC<{ onNavigateWellbeingHistory?: () => void }> 
               <YAxis domain={[0, 5]} tick={{ fill: '#a3a3a3', fontSize: 10 }} tickLine={false} axisLine={false} />
               <Tooltip />
               <Legend />
-              <Line name="Anxiety" type="monotone" dataKey="anxiety" stroke="#a855f7" strokeWidth={2} dot={false} connectNulls />
-              <Line name="Low Mood" type="monotone" dataKey="lowMood" stroke="#60a5fa" strokeWidth={2} dot={false} connectNulls />
-              <Line name="Calm" type="monotone" dataKey="calm" stroke="#34d399" strokeWidth={2} dot={false} connectNulls />
-              <Line name="Energy" type="monotone" dataKey="energy" stroke="#10b981" strokeWidth={2} dot={false} connectNulls />
-              <Line name="Stress" type="monotone" dataKey="stress" stroke="#f97316" strokeWidth={2} dot={false} connectNulls />
+              {mode === 'am_pm' ? (
+                <>
+                  <Line name="Anxiety AM" type="monotone" dataKey="anxiety_am" stroke="#a855f7" strokeWidth={2} dot={false} connectNulls />
+                  <Line name="Anxiety PM" type="monotone" dataKey="anxiety_pm" stroke="#a855f7" strokeDasharray="4 3" strokeWidth={2} dot={false} connectNulls />
+                  <Line name="Low Mood AM" type="monotone" dataKey="lowMood_am" stroke="#60a5fa" strokeWidth={2} dot={false} connectNulls />
+                  <Line name="Low Mood PM" type="monotone" dataKey="lowMood_pm" stroke="#60a5fa" strokeDasharray="4 3" strokeWidth={2} dot={false} connectNulls />
+                  <Line name="Calm AM" type="monotone" dataKey="calm_am" stroke="#34d399" strokeWidth={2} dot={false} connectNulls />
+                  <Line name="Calm PM" type="monotone" dataKey="calm_pm" stroke="#34d399" strokeDasharray="4 3" strokeWidth={2} dot={false} connectNulls />
+                </>
+              ) : (
+                <>
+                  <Line name="Anxiety" type="monotone" dataKey="anxiety" stroke="#a855f7" strokeWidth={2} dot={false} connectNulls />
+                  <Line name="Low Mood" type="monotone" dataKey="lowMood" stroke="#60a5fa" strokeWidth={2} dot={false} connectNulls />
+                  <Line name="Calm" type="monotone" dataKey="calm" stroke="#34d399" strokeWidth={2} dot={false} connectNulls />
+                  <Line name="Energy" type="monotone" dataKey="energy" stroke="#10b981" strokeWidth={2} dot={false} connectNulls />
+                  <Line name="Stress" type="monotone" dataKey="stress" stroke="#f97316" strokeWidth={2} dot={false} connectNulls />
+                </>
+              )}
             </LineChart>
           </ResponsiveContainer>
         </div>
@@ -415,6 +529,13 @@ const WeeklyTrajectoryCard: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<any[]>([]);
+
+  function stddev(values: number[]): number {
+    if (values.length <= 1) return 0;
+    const mean = values.reduce((a, b) => a + b, 0) / values.length;
+    const v = values.reduce((acc, x) => acc + (x - mean) * (x - mean), 0) / values.length;
+    return Math.sqrt(v);
+  }
 
   React.useEffect(() => {
     let cancelled = false;
@@ -453,6 +574,8 @@ const WeeklyTrajectoryCard: React.FC = () => {
             anxiety: vals.anxiety.length ? vals.anxiety.reduce((x, y) => x + y, 0) / vals.anxiety.length : null,
             lowMood: vals.lowMood.length ? vals.lowMood.reduce((x, y) => x + y, 0) / vals.lowMood.length : null,
             calm: vals.calm.length ? vals.calm.reduce((x, y) => x + y, 0) / vals.calm.length : null,
+            anxietyStd: vals.anxiety.length ? stddev(vals.anxiety) : null,
+            lowMoodStd: vals.lowMood.length ? stddev(vals.lowMood) : null,
           }));
 
         setData(weeks);
@@ -485,7 +608,19 @@ const WeeklyTrajectoryCard: React.FC = () => {
             <BarChart data={data}>
               <XAxis dataKey="week" tick={{ fill: '#a3a3a3', fontSize: 10 }} tickLine={false} axisLine={false} />
               <YAxis domain={[0, 5]} tick={{ fill: '#a3a3a3', fontSize: 10 }} tickLine={false} axisLine={false} />
-              <Tooltip />
+              <Tooltip
+                formatter={(value: any, name: any, props: any) => {
+                  const p = props?.payload;
+                  if (!p) return [value, name];
+                  if (name === 'Anxiety' && p.anxietyStd !== null && p.anxietyStd !== undefined) {
+                    return [`${Number(value).toFixed(2)} (±${Number(p.anxietyStd).toFixed(2)})`, name];
+                  }
+                  if (name === 'Low Mood' && p.lowMoodStd !== null && p.lowMoodStd !== undefined) {
+                    return [`${Number(value).toFixed(2)} (±${Number(p.lowMoodStd).toFixed(2)})`, name];
+                  }
+                  return [value, name];
+                }}
+              />
               <Legend />
               <Bar name="Anxiety" dataKey="anxiety" fill="#a855f7" />
               <Bar name="Low Mood" dataKey="lowMood" fill="#60a5fa" />
@@ -494,7 +629,9 @@ const WeeklyTrajectoryCard: React.FC = () => {
           </ResponsiveContainer>
         </div>
       )}
-      <div className="text-xs text-neutral-500 mt-3">Last 6–8 weeks, averaged per week (canonical wellbeingEntries).</div>
+      <div className="text-xs text-neutral-500 mt-3">
+        Last 8 weeks, averaged per week (canonical wellbeingEntries). Hover a bar to see a simple “steadiness” hint (±).
+      </div>
     </Card>
   );
 };

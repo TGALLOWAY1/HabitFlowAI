@@ -49,6 +49,12 @@ export const WellbeingHistoryPage: React.FC<Props> = ({ onBack }) => {
     setActiveMetrics((prev) => (prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]));
   };
 
+  const applyPreset = (preset: 'emotional_core' | 'energy_focus' | 'sleep') => {
+    if (preset === 'emotional_core') setActiveMetrics(['anxiety', 'lowMood', 'calm']);
+    if (preset === 'energy_focus') setActiveMetrics(['energy', 'focus', 'stress']);
+    if (preset === 'sleep') setActiveMetrics(['sleepScore', 'sleepQuality']);
+  };
+
   const yDomain = useMemo(() => {
     if (activeMetrics.includes('sleepScore')) return [0, 100] as const;
     // Legacy 1-5 metrics
@@ -92,7 +98,28 @@ export const WellbeingHistoryPage: React.FC<Props> = ({ onBack }) => {
             </div>
           </div>
 
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2 items-center">
+            <div className="flex items-center gap-2 mr-2">
+              <div className="text-[11px] text-neutral-500 font-semibold">Quick presets:</div>
+              <button
+                onClick={() => applyPreset('emotional_core')}
+                className="px-2 py-1 rounded-md bg-neutral-800/60 border border-white/10 text-[11px] text-neutral-200 hover:text-white hover:bg-neutral-800 transition-colors"
+              >
+                Emotional core
+              </button>
+              <button
+                onClick={() => applyPreset('energy_focus')}
+                className="px-2 py-1 rounded-md bg-neutral-800/60 border border-white/10 text-[11px] text-neutral-200 hover:text-white hover:bg-neutral-800 transition-colors"
+              >
+                Energy & focus
+              </button>
+              <button
+                onClick={() => applyPreset('sleep')}
+                className="px-2 py-1 rounded-md bg-neutral-800/60 border border-white/10 text-[11px] text-neutral-200 hover:text-white hover:bg-neutral-800 transition-colors"
+              >
+                Sleep
+              </button>
+            </div>
             {METRICS.map((m) => {
               const active = activeMetrics.includes(m.key);
               return (

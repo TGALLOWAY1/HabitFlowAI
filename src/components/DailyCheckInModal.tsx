@@ -5,6 +5,7 @@ import { format } from 'date-fns';
 import type { WellbeingSession } from '../types';
 import { WELLBEING_METRIC_KEYS, type WellbeingMetricKey } from '../models/persistenceTypes';
 import { getActivePersonaConfig } from '../shared/personas/activePersona';
+import { fetchDashboardPrefs, updateDashboardPrefs } from '../lib/persistenceClient';
 
 interface DailyCheckInModalProps {
     isOpen: boolean;
@@ -59,7 +60,13 @@ export const DailyCheckInModal: React.FC<DailyCheckInModalProps> = ({ isOpen, on
     const today = format(new Date(), 'yyyy-MM-dd');
     const persona = getActivePersonaConfig();
     const checkinSubset = persona.checkinSubset;
-    const subsetSet = new Set(checkinSubset);
+    const [extraKeys, setExtraKeys] = useState<WellbeingMetricKey[]>([]);
+    const [notesOpen, setNotesOpen] = useState(false);
+
+    const subsetSet = new Set<WellbeingMetricKey>([
+        ...(checkinSubset as WellbeingMetricKey[]),
+        ...extraKeys,
+    ]);
 
     // Determine default tab based on time of day (before 5PM = Morning)
     const currentHour = new Date().getHours();
@@ -70,6 +77,26 @@ export const DailyCheckInModal: React.FC<DailyCheckInModalProps> = ({ isOpen, on
     // State for both sessions
     const [morningData, setMorningData] = useState<WellbeingSession>(INITIAL_SESSION);
     const [eveningData, setEveningData] = useState<WellbeingSession>(INITIAL_SESSION);
+
+    // Load dashboard prefs (extra metrics) when opening modal
+    useEffect(() => {
+        if (!isOpen) return;
+        let cancelled = false;
+        fetchDashboardPrefs()
+            .then((prefs) => {
+                if (cancelled) return;
+                const keys = (prefs.checkinExtraMetricKeys || [])
+                    .filter((k): k is WellbeingMetricKey => (WELLBEING_METRIC_KEYS as readonly string[]).includes(k))
+                    .filter((k) => k !== 'notes');
+                setExtraKeys(keys);
+            })
+            .catch(() => {
+                // ignore (best-effort)
+            });
+        return () => {
+            cancelled = true;
+        };
+    }, [isOpen]);
 
     // Load existing data
     useEffect(() => {
@@ -84,6 +111,15 @@ export const DailyCheckInModal: React.FC<DailyCheckInModalProps> = ({ isOpen, on
         }
     }, [isOpen, wellbeingLogs, today]);
 
+    // Open notes section if there are existing notes for the active tab
+    useEffect(() => {
+        if (!isOpen) return;
+        const current = activeTab === 'morning' ? morningData : eveningData;
+        if (typeof current.notes === 'string' && current.notes.trim().length > 0) {
+            setNotesOpen(true);
+        }
+    }, [isOpen, activeTab, morningData, eveningData]);
+
     // Helper to update current session data
     const updateCurrentSession = (field: keyof WellbeingSession, value: any) => {
         if (activeTab === 'morning') {
@@ -94,6 +130,35 @@ export const DailyCheckInModal: React.FC<DailyCheckInModalProps> = ({ isOpen, on
     };
 
     const currentData = activeTab === 'morning' ? morningData : eveningData;
+
+    const addableMetrics = (WELLBEING_METRIC_KEYS as readonly WellbeingMetricKey[])
+        .filter((k) => k !== 'notes')
+        .filter((k) => !subsetSet.has(k));
+
+    const handleAddMetric = async (key: WellbeingMetricKey) => {
+        const next = Array.from(new Set([...extraKeys, key]));
+        setExtraKeys(next);
+        try {
+            await updateDashboardPrefs({ checkinExtraMetricKeys: next });
+        } catch {
+            // ignore
+        }
+
+        const cfg = METRIC_UI[key];
+        if (cfg?.tab && cfg.tab !== activeTab) {
+            setActiveTab(cfg.tab);
+        }
+    };
+
+    const handleRemoveExtraMetric = async (key: WellbeingMetricKey) => {
+        const next = extraKeys.filter((k) => k !== key);
+        setExtraKeys(next);
+        try {
+            await updateDashboardPrefs({ checkinExtraMetricKeys: next });
+        } catch {
+            // ignore
+        }
+    };
 
     const handleSave = async () => {
         console.log('[DailyCheckInModal] handleSave called with:', { today, activeTab, currentData });
@@ -228,15 +293,121 @@ export const DailyCheckInModal: React.FC<DailyCheckInModalProps> = ({ isOpen, on
                             );
                         })}
 
-                    {/* Notes (always available; stored only if non-empty) */}
-                    <div className="space-y-2">
-                        <label className="text-sm text-neutral-300 font-medium">Notes (Optional)</label>
-                        <textarea
-                            value={currentData.notes || ''}
-                            onChange={(e) => updateCurrentSession('notes', e.target.value)}
-                            placeholder={`How are you feeling this ${activeTab}?`}
-                            className="w-full bg-neutral-800 border border-white/10 rounded-lg p-3 text-sm text-white focus:border-emerald-500 outline-none resize-none h-20"
-                        />
+                    {/* Extra metrics (user-added, persisted) */}
+                    {extraKeys
+                        .filter((k) => !checkinSubset.includes(k))
+                        .filter((k) => {
+                            const cfg = METRIC_UI[k];
+                            if (!cfg) return false;
+                            if (cfg.key === 'notes') return false;
+                            if (cfg.tab && cfg.tab !== activeTab) return false;
+                            return true;
+                        })
+                        .map((k) => {
+                            const cfg = METRIC_UI[k];
+                            if (!cfg) return null;
+                            const rawValue = (currentData as any)[k];
+                            const value = typeof rawValue === 'number' ? rawValue : cfg.min;
+
+                            return (
+                                <div key={`extra-${k}`} className="space-y-3">
+                                    <div className="flex justify-between items-center text-sm">
+                                        <label className="text-neutral-300 font-medium flex items-center gap-2">
+                                            {cfg.icon}
+                                            {cfg.label}
+                                            <span className="text-[10px] text-neutral-500 font-semibold">(added)</span>
+                                        </label>
+                                        <div className="flex items-center gap-3">
+                                            <span className={`${cfg.colorClass} font-bold`}>
+                                                {value}{cfg.max === 100 ? '' : `/${cfg.max}`}
+                                            </span>
+                                            <button
+                                                onClick={() => handleRemoveExtraMetric(k)}
+                                                className="text-xs text-neutral-500 hover:text-white"
+                                                title="Remove metric"
+                                            >
+                                                Remove
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <input
+                                        type="range"
+                                        min={cfg.min}
+                                        max={cfg.max}
+                                        step={cfg.step}
+                                        value={value}
+                                        onChange={(e) => updateCurrentSession(k as any, Number(e.target.value))}
+                                        className="w-full h-2 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-emerald-500"
+                                    />
+                                    {(cfg.max <= 5) && (
+                                        <div className="flex justify-between text-xs text-neutral-500 px-1">
+                                            <span>Low</span>
+                                            <span>High</span>
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        })}
+
+                    {/* Add another metric */}
+                    {addableMetrics.length > 0 && (
+                        <div className="pt-2">
+                            <div className="text-xs font-semibold text-neutral-400 mb-2">Add another metric</div>
+                            <select
+                                value=""
+                                onChange={(e) => {
+                                    const key = e.target.value as WellbeingMetricKey;
+                                    if (!key) return;
+                                    handleAddMetric(key);
+                                }}
+                                className="w-full bg-neutral-800 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-emerald-500 outline-none"
+                            >
+                                <option value="" disabled>
+                                    Select a metric…
+                                </option>
+                                {addableMetrics.map((k) => (
+                                    <option key={k} value={k}>
+                                        {METRIC_UI[k]?.label || k}
+                                    </option>
+                                ))}
+                            </select>
+                            <div className="text-[11px] text-neutral-500 mt-2">
+                                Added metrics will appear in future check-ins too.
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Notes (collapsible; stored only if non-empty) */}
+                    <div className="pt-2">
+                        {!notesOpen ? (
+                            <button
+                                onClick={() => setNotesOpen(true)}
+                                className="text-sm text-neutral-300 hover:text-white transition-colors"
+                            >
+                                + Add a note
+                            </button>
+                        ) : (
+                            <div className="space-y-2">
+                                <div className="flex items-center justify-between">
+                                    <label className="text-sm text-neutral-300 font-medium">Note</label>
+                                    <button
+                                        onClick={() => {
+                                            setNotesOpen(false);
+                                            updateCurrentSession('notes', '');
+                                        }}
+                                        className="text-xs text-neutral-500 hover:text-white"
+                                    >
+                                        Hide
+                                    </button>
+                                </div>
+                                <textarea
+                                    value={currentData.notes || ''}
+                                    onChange={(e) => updateCurrentSession('notes', e.target.value)}
+                                    placeholder={`How are you feeling this ${activeTab}?`}
+                                    className="w-full bg-neutral-800 border border-white/10 rounded-lg p-3 text-sm text-white focus:border-emerald-500 outline-none resize-none h-20"
+                                />
+                            </div>
+                        )}
                     </div>
                 </div>
 

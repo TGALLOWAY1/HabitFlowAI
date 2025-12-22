@@ -77,6 +77,16 @@ describe('DashboardPrefsRepository', () => {
     const roundTrip = await getDashboardPrefs(TEST_USER_ID);
     expect(roundTrip.pinnedRoutineIds).toEqual(['r1', 'r2']);
   });
+
+  it('should save and retrieve checkinExtraMetricKeys (filtering invalid keys and notes)', async () => {
+    const saved = await updateDashboardPrefs(TEST_USER_ID, {
+      checkinExtraMetricKeys: ['lowMood', 'calm', 'notes', 'not_a_key', 'stress'] as any,
+    });
+    expect(saved.checkinExtraMetricKeys).toEqual(['lowMood', 'calm', 'stress']);
+
+    const roundTrip = await getDashboardPrefs(TEST_USER_ID);
+    expect(roundTrip.checkinExtraMetricKeys).toEqual(['lowMood', 'calm', 'stress']);
+  });
 });
 
 

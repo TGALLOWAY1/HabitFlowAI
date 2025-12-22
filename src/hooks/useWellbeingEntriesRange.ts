@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { fetchWellbeingEntries } from '../lib/persistenceClient';
-import type { WellbeingEntry, WellbeingMetricKey } from '../models/persistenceTypes';
+import type { WellbeingEntry, WellbeingMetricKey, WellbeingTimeOfDay } from '../models/persistenceTypes';
 import { formatDayKeyFromDate } from '../domain/time/dayKey';
 
 type WindowDays = 7 | 14 | 30;
@@ -23,6 +23,7 @@ export function useWellbeingEntriesRange(windowDays: WindowDays) {
   const [entries, setEntries] = useState<WellbeingEntry[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [refreshTick, setRefreshTick] = useState(0);
 
   const timeZone = useMemo(() => getTimeZone(), []);
   const endDayKey = useMemo(() => getDayKeyNDaysAgo(0, timeZone), [timeZone]);
@@ -50,7 +51,14 @@ export function useWellbeingEntriesRange(windowDays: WindowDays) {
     return () => {
       cancelled = true;
     };
-  }, [startDayKey, endDayKey]);
+  }, [startDayKey, endDayKey, refreshTick]);
+
+  // Allow external invalidation (e.g., after demo seed/reset) without a full page reload.
+  useEffect(() => {
+    const handler = () => setRefreshTick((x) => x + 1);
+    window.addEventListener('habitflow:demo-data-changed', handler as any);
+    return () => window.removeEventListener('habitflow:demo-data-changed', handler as any);
+  }, []);
 
   const byDay = useMemo(() => {
     const map = new Map<string, WellbeingEntry[]>();
@@ -62,11 +70,20 @@ export function useWellbeingEntriesRange(windowDays: WindowDays) {
     return map;
   }, [entries]);
 
-  function getDailyAverage(dayKey: string, metricKey: WellbeingMetricKey): number | null {
+  function getDailyAverage(
+    dayKey: string,
+    metricKey: WellbeingMetricKey,
+    timeOfDay?: WellbeingTimeOfDay | null
+  ): number | null {
     const dayEntries = byDay.get(dayKey);
     if (!dayEntries) return null;
     const values = dayEntries
-      .filter((e) => e.metricKey === metricKey && typeof e.value === 'number')
+      .filter((e) => {
+        if (e.metricKey !== metricKey) return false;
+        if (typeof e.value !== 'number') return false;
+        if (timeOfDay === undefined) return true;
+        return (e.timeOfDay ?? null) === timeOfDay;
+      })
       .map((e) => e.value as number);
     if (values.length === 0) return null;
     return values.reduce((a, b) => a + b, 0) / values.length;

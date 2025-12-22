@@ -497,6 +497,12 @@ export interface DashboardPrefs {
     /** Global pinned routine IDs (not persona-specific yet) */
     pinnedRoutineIds: string[];
 
+    /**
+     * Extra wellbeing metric keys to show in Daily Check-in (user-controlled).
+     * Persona-agnostic (applies across personas) by design.
+     */
+    checkinExtraMetricKeys?: WellbeingMetricKey[];
+
     /** ISO 8601 timestamp */
     updatedAt: string;
 }

@@ -203,6 +203,19 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     }, [refreshHabitsAndCategories, loadLogsFromApi, loadWellbeingLogsFromApi, fetchEvidenceForToday]);
 
+    // Demo seed/reset refresh: re-fetch wellbeing logs (and habits/categories already refreshed in Layout).
+    useEffect(() => {
+        const handler = async () => {
+            try {
+                await loadWellbeingLogsFromApi();
+            } catch {
+                // ignore (best-effort)
+            }
+        };
+        window.addEventListener('habitflow:demo-data-changed', handler as any);
+        return () => window.removeEventListener('habitflow:demo-data-changed', handler as any);
+    }, [loadWellbeingLogsFromApi]);
+
 
     const logWellbeing = async (date: string, data: DailyWellbeing) => {
         console.log('[logWellbeing] FUNCTION CALLED with:', { date, data });
