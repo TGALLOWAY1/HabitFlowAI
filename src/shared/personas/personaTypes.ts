@@ -10,16 +10,14 @@ export type DashboardWidgetType =
   | 'currentVibe'
   | 'actionCards'
   | 'gratitudeJar'
-  | 'emotionalTrend'
-  | 'weeklyTrajectory';
+  | 'emotionalTrend';
 
 export type DashboardWidgetDescriptor =
   | { type: 'header' }
   | { type: 'currentVibe' }
   | { type: 'actionCards' }
   | { type: 'gratitudeJar' }
-  | { type: 'emotionalTrend' }
-  | { type: 'weeklyTrajectory' };
+  | { type: 'emotionalTrend' };
 
 /**
  * PersonaConfig

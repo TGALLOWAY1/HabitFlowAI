@@ -11,7 +11,6 @@ export const emotionalWellbeingPersona: PersonaConfig = {
     { type: 'actionCards' },
     { type: 'gratitudeJar' },
     { type: 'emotionalTrend' },
-    { type: 'weeklyTrajectory' },
   ],
 
   checkinSubset: [

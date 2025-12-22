@@ -1,13 +1,12 @@
 import React, { useMemo, useState } from 'react';
-import { Sun, ExternalLink, HeartHandshake, Sparkles, Activity, Brain, Battery, CalendarRange, Play } from 'lucide-react';
+import { Sun, ExternalLink, HeartHandshake, Sparkles, Activity, Brain, Battery, Play } from 'lucide-react';
 import { ProgressRings } from '../../ProgressRings';
 import { DashboardComposer } from '../../../shared/personas/dashboardComposer';
 import { getActivePersonaId } from '../../../shared/personas/activePersona';
 import { useWellbeingEntriesRange } from '../../../hooks/useWellbeingEntriesRange';
-import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, Legend, BarChart, Bar } from 'recharts';
+import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, Legend } from 'recharts';
 import { fetchEntries, createEntry as createJournalEntry, upsertEntryByKey } from '../../../api/journal';
 import type { JournalEntry, Routine } from '../../../models/persistenceTypes';
-import { fetchWellbeingEntries } from '../../../lib/persistenceClient';
 import { formatDayKeyFromDate } from '../../../domain/time/dayKey';
 import { useRoutineStore } from '../../../store/RoutineContext';
 import { fetchDashboardPrefs, updateDashboardPrefs } from '../../../lib/persistenceClient';
@@ -406,38 +405,123 @@ const GratitudeJarCard: React.FC = () => {
 };
 
 const EmotionalTrendCard: React.FC<{ onNavigateWellbeingHistory?: () => void }> = ({ onNavigateWellbeingHistory }) => {
-  const [windowDays, setWindowDays] = useState<7 | 14 | 30>(7);
+  const [windowDays, setWindowDays] = useState<7 | 14 | 30 | 90>(14);
   const [mode, setMode] = useState<'avg' | 'am_pm'>('avg');
   const { startDayKey, endDayKey, loading, error, getDailyAverage } = useWellbeingEntriesRange(windowDays);
+  const [activeMetrics, setActiveMetrics] = useState<Array<'anxiety' | 'lowMood' | 'calm' | 'energy' | 'stress' | 'focus' | 'sleepScore' | 'sleepQuality'>>([
+    'anxiety',
+    'lowMood',
+    'calm',
+  ]);
 
   const timeZone = useMemo(() => getTimeZone(), []);
+
+  const yDomain = useMemo(() => {
+    if (activeMetrics.includes('sleepScore')) return [0, 100] as const;
+    if (activeMetrics.some((m) => m === 'anxiety' || m === 'energy')) return [0, 5] as const;
+    return [0, 4] as const;
+  }, [activeMetrics]);
+
+  const metricChips: Array<{ key: typeof activeMetrics[number]; label: string; color: string }> = [
+    { key: 'anxiety', label: 'Anxiety', color: '#a855f7' },
+    { key: 'lowMood', label: 'Low Mood', color: '#60a5fa' },
+    { key: 'calm', label: 'Calm', color: '#34d399' },
+    { key: 'energy', label: 'Energy', color: '#10b981' },
+    { key: 'stress', label: 'Stress', color: '#f97316' },
+    { key: 'focus', label: 'Focus', color: '#fbbf24' },
+    { key: 'sleepScore', label: 'Sleep score', color: '#818cf8' },
+    { key: 'sleepQuality', label: 'Sleep quality', color: '#c084fc' },
+  ];
+
+  const applyPreset = (preset: 'emotional_core' | 'energy_focus' | 'sleep') => {
+    if (preset === 'emotional_core') {
+      setActiveMetrics(['anxiety', 'lowMood', 'calm']);
+      return;
+    }
+    if (preset === 'energy_focus') {
+      setMode('avg');
+      setActiveMetrics(['energy', 'stress', 'focus']);
+      return;
+    }
+    if (preset === 'sleep') {
+      setMode('avg');
+      setActiveMetrics(['sleepScore', 'sleepQuality']);
+      return;
+    }
+  };
+
+  const toggleMetric = (k: typeof activeMetrics[number]) => {
+    setActiveMetrics((prev) => (prev.includes(k) ? prev.filter((x) => x !== k) : [...prev, k]));
+  };
+
+  // AM/PM is session-based; if user wants AM/PM, keep selection to session-friendly metrics.
+  React.useEffect(() => {
+    if (mode !== 'am_pm') return;
+    const sessionFriendly: any[] = ['anxiety', 'lowMood', 'calm', 'energy'];
+    const filtered = activeMetrics.filter((m) => sessionFriendly.includes(m));
+    if (filtered.length === 0) {
+      setActiveMetrics(['anxiety', 'lowMood', 'calm']);
+    } else if (filtered.length !== activeMetrics.length) {
+      setActiveMetrics(filtered as any);
+    }
+  }, [mode]);
+
+  const series = useMemo(() => {
+    if (mode === 'am_pm') {
+      const out: Array<{ name: string; key: string; color: string; dashed?: boolean }> = [];
+      const addPair = (base: string, label: string, color: string) => {
+        out.push({ name: `${label} AM`, key: `${base}_am`, color });
+        out.push({ name: `${label} PM`, key: `${base}_pm`, color, dashed: true });
+      };
+      if (activeMetrics.includes('anxiety')) addPair('anxiety', 'Anxiety', '#a855f7');
+      if (activeMetrics.includes('lowMood')) addPair('lowMood', 'Low Mood', '#60a5fa');
+      if (activeMetrics.includes('calm')) addPair('calm', 'Calm', '#34d399');
+      if (activeMetrics.includes('energy')) addPair('energy', 'Energy', '#10b981');
+      return out;
+    }
+    return metricChips
+      .filter((m) => activeMetrics.includes(m.key))
+      .map((m) => ({ name: m.label, key: m.key, color: m.color }));
+  }, [mode, activeMetrics]);
+
   const data = useMemo(() => {
     const rows: any[] = [];
     for (let i = windowDays - 1; i >= 0; i--) {
       const dayKey = getDayKeyDaysAgo(i, timeZone);
       if (mode === 'am_pm') {
-        rows.push({
-          dayKey,
-          anxiety_am: getDailyAverage(dayKey, 'anxiety', 'morning'),
-          anxiety_pm: getDailyAverage(dayKey, 'anxiety', 'evening'),
-          lowMood_am: getDailyAverage(dayKey, 'lowMood', 'morning'),
-          lowMood_pm: getDailyAverage(dayKey, 'lowMood', 'evening'),
-          calm_am: getDailyAverage(dayKey, 'calm', 'morning'),
-          calm_pm: getDailyAverage(dayKey, 'calm', 'evening'),
-        });
+        const row: any = { dayKey };
+        if (activeMetrics.includes('anxiety')) {
+          row.anxiety_am = getDailyAverage(dayKey, 'anxiety', 'morning');
+          row.anxiety_pm = getDailyAverage(dayKey, 'anxiety', 'evening');
+        }
+        if (activeMetrics.includes('lowMood')) {
+          row.lowMood_am = getDailyAverage(dayKey, 'lowMood', 'morning');
+          row.lowMood_pm = getDailyAverage(dayKey, 'lowMood', 'evening');
+        }
+        if (activeMetrics.includes('calm')) {
+          row.calm_am = getDailyAverage(dayKey, 'calm', 'morning');
+          row.calm_pm = getDailyAverage(dayKey, 'calm', 'evening');
+        }
+        if (activeMetrics.includes('energy')) {
+          row.energy_am = getDailyAverage(dayKey, 'energy', 'morning');
+          row.energy_pm = getDailyAverage(dayKey, 'energy', 'evening');
+        }
+        rows.push(row);
       } else {
-        rows.push({
-          dayKey,
-          anxiety: getDailyAverage(dayKey, 'anxiety'),
-          lowMood: getDailyAverage(dayKey, 'lowMood'),
-          calm: getDailyAverage(dayKey, 'calm'),
-          energy: getDailyAverage(dayKey, 'energy'),
-          stress: getDailyAverage(dayKey, 'stress'),
-        });
+        const row: any = { dayKey };
+        if (activeMetrics.includes('anxiety')) row.anxiety = getDailyAverage(dayKey, 'anxiety');
+        if (activeMetrics.includes('lowMood')) row.lowMood = getDailyAverage(dayKey, 'lowMood');
+        if (activeMetrics.includes('calm')) row.calm = getDailyAverage(dayKey, 'calm');
+        if (activeMetrics.includes('energy')) row.energy = getDailyAverage(dayKey, 'energy');
+        if (activeMetrics.includes('stress')) row.stress = getDailyAverage(dayKey, 'stress');
+        if (activeMetrics.includes('focus')) row.focus = getDailyAverage(dayKey, 'focus');
+        if (activeMetrics.includes('sleepScore')) row.sleepScore = getDailyAverage(dayKey, 'sleepScore');
+        if (activeMetrics.includes('sleepQuality')) row.sleepQuality = getDailyAverage(dayKey, 'sleepQuality');
+        rows.push(row);
       }
     }
     return rows;
-  }, [windowDays, timeZone, getDailyAverage, mode]);
+  }, [windowDays, timeZone, getDailyAverage, mode, activeMetrics]);
 
   return (
     <Card
@@ -445,6 +529,27 @@ const EmotionalTrendCard: React.FC<{ onNavigateWellbeingHistory?: () => void }> 
       icon={<Activity size={16} className="text-sky-400" />}
       right={
         <div className="flex items-center gap-3">
+          <div className="hidden md:flex items-center gap-2 mr-1">
+            <div className="text-[11px] text-neutral-500 font-semibold">Presets:</div>
+            <button
+              onClick={() => applyPreset('emotional_core')}
+              className="px-2 py-1 rounded-md bg-neutral-800/60 border border-white/10 text-[11px] text-neutral-200 hover:text-white hover:bg-neutral-800 transition-colors"
+            >
+              Emotional core
+            </button>
+            <button
+              onClick={() => applyPreset('energy_focus')}
+              className="px-2 py-1 rounded-md bg-neutral-800/60 border border-white/10 text-[11px] text-neutral-200 hover:text-white hover:bg-neutral-800 transition-colors"
+            >
+              Energy & focus
+            </button>
+            <button
+              onClick={() => applyPreset('sleep')}
+              className="px-2 py-1 rounded-md bg-neutral-800/60 border border-white/10 text-[11px] text-neutral-200 hover:text-white hover:bg-neutral-800 transition-colors"
+            >
+              Sleep
+            </button>
+          </div>
           <div className="flex bg-neutral-800 rounded-md p-0.5 border border-white/5">
             {(['avg', 'am_pm'] as const).map((m) => (
               <button
@@ -460,7 +565,7 @@ const EmotionalTrendCard: React.FC<{ onNavigateWellbeingHistory?: () => void }> 
             ))}
           </div>
           <div className="flex bg-neutral-800 rounded-md p-0.5 border border-white/5">
-            {([7, 14, 30] as const).map((d) => (
+            {([7, 14, 30, 90] as const).map((d) => (
               <button
                 key={d}
                 onClick={() => setWindowDays(d)}
@@ -484,153 +589,61 @@ const EmotionalTrendCard: React.FC<{ onNavigateWellbeingHistory?: () => void }> 
         </div>
       }
     >
+      <div className="flex flex-wrap items-center gap-2 mb-3">
+        {metricChips.map((m) => {
+          const active = activeMetrics.includes(m.key);
+          const disabledInAmPm = mode === 'am_pm' && !['anxiety', 'lowMood', 'calm', 'energy'].includes(m.key);
+          return (
+            <button
+              key={m.key}
+              onClick={() => {
+                if (disabledInAmPm) setMode('avg');
+                toggleMetric(m.key);
+              }}
+              className={`px-2.5 py-1 rounded-full text-[11px] font-semibold border transition-colors ${
+                active ? 'bg-white/10 text-white border-white/20' : 'bg-neutral-800/60 text-neutral-300 border-white/10 hover:text-white'
+              }`}
+              title={disabledInAmPm ? 'Switches to Daily avg (this metric is not session-based).' : undefined}
+            >
+              {m.label}
+            </button>
+          );
+        })}
+      </div>
+
       {loading ? (
         <div className="text-sm text-neutral-400">Loading…</div>
       ) : error ? (
         <div className="text-sm text-red-300">{error}</div>
+      ) : series.length === 0 ? (
+        <div className="text-sm text-neutral-400">Select at least one metric.</div>
       ) : (
         <div className="h-56">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={data}>
               <XAxis dataKey="dayKey" tick={{ fill: '#a3a3a3', fontSize: 10 }} tickLine={false} axisLine={false} />
-              <YAxis domain={[0, 5]} tick={{ fill: '#a3a3a3', fontSize: 10 }} tickLine={false} axisLine={false} />
+              <YAxis domain={yDomain as any} tick={{ fill: '#a3a3a3', fontSize: 10 }} tickLine={false} axisLine={false} />
               <Tooltip />
               <Legend />
-              {mode === 'am_pm' ? (
-                <>
-                  <Line name="Anxiety AM" type="monotone" dataKey="anxiety_am" stroke="#a855f7" strokeWidth={2} dot={false} connectNulls />
-                  <Line name="Anxiety PM" type="monotone" dataKey="anxiety_pm" stroke="#a855f7" strokeDasharray="4 3" strokeWidth={2} dot={false} connectNulls />
-                  <Line name="Low Mood AM" type="monotone" dataKey="lowMood_am" stroke="#60a5fa" strokeWidth={2} dot={false} connectNulls />
-                  <Line name="Low Mood PM" type="monotone" dataKey="lowMood_pm" stroke="#60a5fa" strokeDasharray="4 3" strokeWidth={2} dot={false} connectNulls />
-                  <Line name="Calm AM" type="monotone" dataKey="calm_am" stroke="#34d399" strokeWidth={2} dot={false} connectNulls />
-                  <Line name="Calm PM" type="monotone" dataKey="calm_pm" stroke="#34d399" strokeDasharray="4 3" strokeWidth={2} dot={false} connectNulls />
-                </>
-              ) : (
-                <>
-                  <Line name="Anxiety" type="monotone" dataKey="anxiety" stroke="#a855f7" strokeWidth={2} dot={false} connectNulls />
-                  <Line name="Low Mood" type="monotone" dataKey="lowMood" stroke="#60a5fa" strokeWidth={2} dot={false} connectNulls />
-                  <Line name="Calm" type="monotone" dataKey="calm" stroke="#34d399" strokeWidth={2} dot={false} connectNulls />
-                  <Line name="Energy" type="monotone" dataKey="energy" stroke="#10b981" strokeWidth={2} dot={false} connectNulls />
-                  <Line name="Stress" type="monotone" dataKey="stress" stroke="#f97316" strokeWidth={2} dot={false} connectNulls />
-                </>
-              )}
+              {series.map((s) => (
+                <Line
+                  key={s.key}
+                  name={s.name}
+                  type="monotone"
+                  dataKey={s.key}
+                  stroke={s.color}
+                  strokeDasharray={s.dashed ? '4 3' : undefined}
+                  strokeWidth={2}
+                  dot={false}
+                  connectNulls
+                />
+              ))}
             </LineChart>
           </ResponsiveContainer>
         </div>
       )}
       <div className="text-xs text-neutral-500 mt-3">
-        Powered by canonical <code className="text-neutral-400">/api/wellbeingEntries</code> (averaged per day). Depression remains available as legacy.
-      </div>
-    </Card>
-  );
-};
-
-const WeeklyTrajectoryCard: React.FC = () => {
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [data, setData] = useState<any[]>([]);
-
-  function stddev(values: number[]): number {
-    if (values.length <= 1) return 0;
-    const mean = values.reduce((a, b) => a + b, 0) / values.length;
-    const v = values.reduce((acc, x) => acc + (x - mean) * (x - mean), 0) / values.length;
-    return Math.sqrt(v);
-  }
-
-  React.useEffect(() => {
-    let cancelled = false;
-    const timeZone = getTimeZone();
-    const endDayKey = getDayKeyDaysAgo(0, timeZone);
-    const startDayKey = getDayKeyDaysAgo(55, timeZone); // ~8 weeks
-
-    setLoading(true);
-    setError(null);
-    fetchWellbeingEntries({ startDayKey, endDayKey })
-      .then((entries) => {
-        if (cancelled) return;
-
-        const byWeek = new Map<string, { anxiety: number[]; lowMood: number[]; calm: number[] }>();
-        for (const e of entries) {
-          if (typeof e.value !== 'number') continue;
-          if (e.metricKey !== 'anxiety' && e.metricKey !== 'lowMood' && e.metricKey !== 'calm') continue;
-
-          // Week key: Monday-based label derived from dayKey date
-          const d = new Date(`${e.dayKey}T00:00:00.000Z`);
-          const day = d.getUTCDay(); // 0..6, Sun=0
-          const diffToMonday = (day + 6) % 7;
-          d.setUTCDate(d.getUTCDate() - diffToMonday);
-          const weekKey = formatDayKeyFromDate(d, 'UTC');
-
-          const bucket = byWeek.get(weekKey) || { anxiety: [], lowMood: [], calm: [] };
-          (bucket as any)[e.metricKey].push(e.value as number);
-          byWeek.set(weekKey, bucket);
-        }
-
-        const weeks = Array.from(byWeek.entries())
-          .sort((a, b) => a[0].localeCompare(b[0]))
-          .slice(-8)
-          .map(([weekKey, vals]) => ({
-            week: weekKey,
-            anxiety: vals.anxiety.length ? vals.anxiety.reduce((x, y) => x + y, 0) / vals.anxiety.length : null,
-            lowMood: vals.lowMood.length ? vals.lowMood.reduce((x, y) => x + y, 0) / vals.lowMood.length : null,
-            calm: vals.calm.length ? vals.calm.reduce((x, y) => x + y, 0) / vals.calm.length : null,
-            anxietyStd: vals.anxiety.length ? stddev(vals.anxiety) : null,
-            lowMoodStd: vals.lowMood.length ? stddev(vals.lowMood) : null,
-          }));
-
-        setData(weeks);
-      })
-      .catch((e) => {
-        if (cancelled) return;
-        setError(e instanceof Error ? e.message : 'Failed to load weekly trajectory');
-      })
-      .finally(() => {
-        if (cancelled) return;
-        setLoading(false);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  return (
-    <Card title="Weekly Emotional Trajectory" icon={<CalendarRange size={16} className="text-indigo-400" />}>
-      {loading ? (
-        <div className="text-sm text-neutral-400">Loading…</div>
-      ) : error ? (
-        <div className="text-sm text-red-300">{error}</div>
-      ) : data.length === 0 ? (
-        <div className="text-sm text-neutral-400">No weekly data yet.</div>
-      ) : (
-        <div className="h-56">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={data}>
-              <XAxis dataKey="week" tick={{ fill: '#a3a3a3', fontSize: 10 }} tickLine={false} axisLine={false} />
-              <YAxis domain={[0, 5]} tick={{ fill: '#a3a3a3', fontSize: 10 }} tickLine={false} axisLine={false} />
-              <Tooltip
-                formatter={(value: any, name: any, props: any) => {
-                  const p = props?.payload;
-                  if (!p) return [value, name];
-                  if (name === 'Anxiety' && p.anxietyStd !== null && p.anxietyStd !== undefined) {
-                    return [`${Number(value).toFixed(2)} (±${Number(p.anxietyStd).toFixed(2)})`, name];
-                  }
-                  if (name === 'Low Mood' && p.lowMoodStd !== null && p.lowMoodStd !== undefined) {
-                    return [`${Number(value).toFixed(2)} (±${Number(p.lowMoodStd).toFixed(2)})`, name];
-                  }
-                  return [value, name];
-                }}
-              />
-              <Legend />
-              <Bar name="Anxiety" dataKey="anxiety" fill="#a855f7" />
-              <Bar name="Low Mood" dataKey="lowMood" fill="#60a5fa" />
-              <Bar name="Calm" dataKey="calm" fill="#34d399" />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      )}
-      <div className="text-xs text-neutral-500 mt-3">
-        Last 8 weeks, averaged per week (canonical wellbeingEntries). Hover a bar to see a simple “steadiness” hint (±).
+        Powered by canonical <code className="text-neutral-400">/api/wellbeingEntries</code>. Weekly view removed; use 90d + presets for patterns.
       </div>
     </Card>
   );
@@ -674,8 +687,6 @@ export const EmotionalWellbeingDashboard: React.FC<Props> = ({ onOpenCheckIn, on
             return <GratitudeJarCard key={`${w.type}-${idx}`} />;
           case 'emotionalTrend':
             return <EmotionalTrendCard key={`${w.type}-${idx}`} onNavigateWellbeingHistory={onNavigateWellbeingHistory} />;
-          case 'weeklyTrajectory':
-            return <WeeklyTrajectoryCard key={`${w.type}-${idx}`} />;
           default:
             return null;
         }
@@ -685,21 +696,21 @@ export const EmotionalWellbeingDashboard: React.FC<Props> = ({ onOpenCheckIn, on
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
         <div className="p-4 rounded-xl bg-neutral-900/50 border border-white/5">
           <div className="flex items-center gap-2 text-sm font-semibold text-white">
-            <Brain size={16} className="text-blue-400" /> Depression
-          </div>
-          <div className="text-xs text-neutral-500 mt-1">Tracked morning/evening; chart shows daily average.</div>
-        </div>
-        <div className="p-4 rounded-xl bg-neutral-900/50 border border-white/5">
-          <div className="flex items-center gap-2 text-sm font-semibold text-white">
             <Activity size={16} className="text-purple-400" /> Anxiety
           </div>
-          <div className="text-xs text-neutral-500 mt-1">Tracked morning/evening; chart shows daily average.</div>
+          <div className="text-xs text-neutral-500 mt-1">Often shows up differently AM vs PM. Use the AM/PM toggle to compare.</div>
         </div>
         <div className="p-4 rounded-xl bg-neutral-900/50 border border-white/5">
           <div className="flex items-center gap-2 text-sm font-semibold text-white">
-            <Battery size={16} className="text-emerald-400" /> Energy
+            <Brain size={16} className="text-blue-400" /> Low Mood
           </div>
-          <div className="text-xs text-neutral-500 mt-1">Optional; shown for context.</div>
+          <div className="text-xs text-neutral-500 mt-1">A gentle signal (0–4) that pairs well with Calm.</div>
+        </div>
+        <div className="p-4 rounded-xl bg-neutral-900/50 border border-white/5">
+          <div className="flex items-center gap-2 text-sm font-semibold text-white">
+            <Sparkles size={16} className="text-emerald-400" /> Calm
+          </div>
+          <div className="text-xs text-neutral-500 mt-1">A counter-signal to stress; patterns matter more than any single day.</div>
         </div>
       </div>
     </div>
