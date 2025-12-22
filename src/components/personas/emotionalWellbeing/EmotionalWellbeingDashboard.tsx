@@ -26,6 +26,7 @@ import { fetchDashboardPrefs, updateDashboardPrefs } from '../../../lib/persiste
 import { useHabitStore } from '../../../store/HabitContext';
 import { getActivePersonaConfig } from '../../../shared/personas/activePersona';
 import type { WellbeingMetricKey } from '../../../models/persistenceTypes';
+import { GratitudeJarIcon } from '../../icons/GratitudeJarIcon';
 
 type Props = {
   onOpenCheckIn: () => void;
@@ -759,7 +760,7 @@ const GratitudeJarCard: React.FC = () => {
   return (
     <Card
       title="Gratitude Jar"
-      icon={<Sparkles size={16} className="text-emerald-400" />}
+      icon={<GratitudeJarIcon size={18} className="text-emerald-300" />}
       right={
         <button
           onClick={handleQuickAdd}
