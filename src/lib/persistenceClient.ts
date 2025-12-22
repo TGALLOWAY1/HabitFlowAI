@@ -6,6 +6,7 @@
  */
 
 import type { Category, Habit, DayLog, DailyWellbeing, Goal, GoalWithProgress, GoalManualLog, Routine, RoutineLog, HabitEntry } from '../models/persistenceTypes';
+import type { WellbeingEntry } from '../models/persistenceTypes';
 
 import type { GoalDetail, CompletedGoal, ProgressOverview } from '../types';
 
@@ -135,6 +136,21 @@ export async function seedDemoEmotionalWellbeing(): Promise<void> {
 
 export async function resetDemoEmotionalWellbeing(): Promise<void> {
   await apiRequest('/dev/resetDemoEmotionalWellbeing', { method: 'POST' });
+}
+
+/**
+ * WellbeingEntry (Canonical) Persistence Functions
+ */
+export async function fetchWellbeingEntries(params: {
+  startDayKey: string;
+  endDayKey: string;
+}): Promise<WellbeingEntry[]> {
+  const qs = new URLSearchParams({
+    startDayKey: params.startDayKey,
+    endDayKey: params.endDayKey,
+  }).toString();
+  const response = await apiRequest<{ wellbeingEntries: WellbeingEntry[] }>(`/wellbeingEntries?${qs}`);
+  return response.wellbeingEntries;
 }
 
 /**

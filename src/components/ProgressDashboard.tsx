@@ -7,17 +7,21 @@ import { DailyCheckInModal } from './DailyCheckInModal';
 import { Sun, Loader2 } from 'lucide-react';
 import { GoalPulseCard } from './goals/GoalPulseCard';
 import { CategoryCompletionRow } from './CategoryCompletionRow';
+import { EmotionalWellbeingDashboard } from './personas/emotionalWellbeing/EmotionalWellbeingDashboard';
+import { getActivePersonaId } from '../shared/personas/activePersona';
 
 interface ProgressDashboardProps {
     onCreateGoal?: () => void;
     onViewGoal?: (goalId: string) => void;
     onSelectCategory?: (categoryId: string) => void;
+    onNavigateWellbeingHistory?: () => void;
 }
 
-export const ProgressDashboard: React.FC<ProgressDashboardProps> = ({ onCreateGoal, onViewGoal, onSelectCategory }) => {
+export const ProgressDashboard: React.FC<ProgressDashboardProps> = ({ onCreateGoal, onViewGoal, onSelectCategory, onNavigateWellbeingHistory }) => {
     const { habits, categories } = useHabitStore();
     const { data: progressData, loading: progressLoading } = useProgressOverview();
     const [isCheckInOpen, setIsCheckInOpen] = useState(false);
+    const activePersonaId = getActivePersonaId();
     // Initialize state from URL params
     const [activityTab, setActivityTab] = useState<'overall' | 'category'>(() => {
         const params = new URLSearchParams(window.location.search);
@@ -65,6 +69,23 @@ export const ProgressDashboard: React.FC<ProgressDashboardProps> = ({ onCreateGo
 
 
 
+
+    // Persona-controlled dashboard composition (view-only).
+    // Persona must NEVER affect persistence or user identity.
+    if (activePersonaId === 'emotional_wellbeing') {
+        return (
+            <>
+                <EmotionalWellbeingDashboard
+                    onOpenCheckIn={() => setIsCheckInOpen(true)}
+                    onNavigateWellbeingHistory={onNavigateWellbeingHistory}
+                />
+                <DailyCheckInModal
+                    isOpen={isCheckInOpen}
+                    onClose={() => setIsCheckInOpen(false)}
+                />
+            </>
+        );
+    }
 
     return (
         <div className="space-y-6 overflow-y-auto pb-20">

@@ -6,27 +6,7 @@
 
 import { API_BASE_URL } from '../lib/persistenceConfig';
 import type { JournalEntry } from '../models/persistenceTypes';
-
-/**
- * Get or create a persistent user ID.
- * Helper duplicated from persistenceClient.ts to avoid circular deps or heavy refactoring
- * for now. Ideally this moves to a shared auth/identity util.
- */
-function getOrCreateUserId(): string {
-    if (typeof window === 'undefined') {
-        return 'server-side-rendering-placeholder';
-    }
-
-    const STORAGE_KEY = 'habitflow_user_id';
-    let userId = localStorage.getItem(STORAGE_KEY);
-
-    if (!userId) {
-        userId = crypto.randomUUID();
-        localStorage.setItem(STORAGE_KEY, userId);
-    }
-
-    return userId;
-}
+import { getActiveUserId } from '../lib/persistenceClient';
 
 /**
  * Make an API request with error handling.
@@ -36,7 +16,7 @@ async function apiRequest<T>(
     options: RequestInit = {}
 ): Promise<T> {
     const url = `${API_BASE_URL}${endpoint}`;
-    const userId = getOrCreateUserId();
+    const userId = getActiveUserId();
 
     try {
         const response = await fetch(url, {

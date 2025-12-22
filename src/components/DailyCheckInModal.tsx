@@ -3,6 +3,8 @@ import { X, Save, Sun, Moon, Battery, Activity, Brain } from 'lucide-react';
 import { useHabitStore } from '../store/HabitContext';
 import { format } from 'date-fns';
 import type { WellbeingSession } from '../types';
+import { WELLBEING_METRIC_KEYS } from '../models/persistenceTypes';
+import { getActivePersonaConfig } from '../shared/personas/activePersona';
 
 interface DailyCheckInModalProps {
     isOpen: boolean;
@@ -20,6 +22,9 @@ const INITIAL_SESSION: WellbeingSession = {
 export const DailyCheckInModal: React.FC<DailyCheckInModalProps> = ({ isOpen, onClose }) => {
     const { logWellbeing, wellbeingLogs } = useHabitStore();
     const today = format(new Date(), 'yyyy-MM-dd');
+    const persona = getActivePersonaConfig();
+    const checkinSubset = persona.checkinSubset;
+    const subsetSet = new Set(checkinSubset);
 
     // Determine default tab based on time of day (before 5PM = Morning)
     const currentHour = new Date().getHours();
@@ -58,6 +63,22 @@ export const DailyCheckInModal: React.FC<DailyCheckInModalProps> = ({ isOpen, on
     const handleSave = async () => {
         console.log('[DailyCheckInModal] handleSave called with:', { today, activeTab, currentData });
         try {
+            /**
+             * Guardrail (dev-only):
+             * Prevent introducing new wellbeing keys at runtime.
+             * Only keys in WELLBEING_METRIC_KEYS are allowed (contract-locked).
+             */
+            if (import.meta.env.DEV) {
+                for (const key of Object.keys(currentData)) {
+                    if (!(WELLBEING_METRIC_KEYS as readonly string[]).includes(key)) {
+                        throw new Error(
+                            `Invalid wellbeing metric key "${key}". Do not create new keys at runtime. ` +
+                            'Use WELLBEING_METRIC_KEYS (see docs/reference/00_DATA_CONTRACT_WELLBEING_KEYS.md).'
+                        );
+                    }
+                }
+            }
+
             const result = await logWellbeing(today, {
                 date: today,
                 [activeTab]: currentData
@@ -117,49 +138,53 @@ export const DailyCheckInModal: React.FC<DailyCheckInModalProps> = ({ isOpen, on
                 {/* Body */}
                 <div className="p-6 space-y-6">
                     {/* Depression */}
-                    <div className="space-y-3">
-                        <div className="flex justify-between text-sm">
-                            <label className="text-neutral-300 font-medium flex items-center gap-2">
-                                <Brain size={16} className="text-blue-400" /> Depression
-                            </label>
-                            <span className="text-blue-400 font-bold">{currentData.depression}/5</span>
+                    {subsetSet.has('depression') && (
+                        <div className="space-y-3">
+                            <div className="flex justify-between text-sm">
+                                <label className="text-neutral-300 font-medium flex items-center gap-2">
+                                    <Brain size={16} className="text-blue-400" /> Depression
+                                </label>
+                                <span className="text-blue-400 font-bold">{currentData.depression}/5</span>
+                            </div>
+                            <input
+                                type="range"
+                                min="1" max="5" step="1"
+                                value={currentData.depression}
+                                onChange={(e) => updateCurrentSession('depression', Number(e.target.value))}
+                                className="w-full h-2 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-blue-500"
+                            />
+                            <div className="flex justify-between text-xs text-neutral-500 px-1">
+                                <span>Low</span>
+                                <span>High</span>
+                            </div>
                         </div>
-                        <input
-                            type="range"
-                            min="1" max="5" step="1"
-                            value={currentData.depression}
-                            onChange={(e) => updateCurrentSession('depression', Number(e.target.value))}
-                            className="w-full h-2 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-blue-500"
-                        />
-                        <div className="flex justify-between text-xs text-neutral-500 px-1">
-                            <span>Low</span>
-                            <span>High</span>
-                        </div>
-                    </div>
+                    )}
 
                     {/* Anxiety */}
-                    <div className="space-y-3">
-                        <div className="flex justify-between text-sm">
-                            <label className="text-neutral-300 font-medium flex items-center gap-2">
-                                <Activity size={16} className="text-purple-400" /> Anxiety
-                            </label>
-                            <span className="text-purple-400 font-bold">{currentData.anxiety}/5</span>
+                    {subsetSet.has('anxiety') && (
+                        <div className="space-y-3">
+                            <div className="flex justify-between text-sm">
+                                <label className="text-neutral-300 font-medium flex items-center gap-2">
+                                    <Activity size={16} className="text-purple-400" /> Anxiety
+                                </label>
+                                <span className="text-purple-400 font-bold">{currentData.anxiety}/5</span>
+                            </div>
+                            <input
+                                type="range"
+                                min="1" max="5" step="1"
+                                value={currentData.anxiety}
+                                onChange={(e) => updateCurrentSession('anxiety', Number(e.target.value))}
+                                className="w-full h-2 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-purple-500"
+                            />
+                            <div className="flex justify-between text-xs text-neutral-500 px-1">
+                                <span>Low</span>
+                                <span>High</span>
+                            </div>
                         </div>
-                        <input
-                            type="range"
-                            min="1" max="5" step="1"
-                            value={currentData.anxiety}
-                            onChange={(e) => updateCurrentSession('anxiety', Number(e.target.value))}
-                            className="w-full h-2 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-purple-500"
-                        />
-                        <div className="flex justify-between text-xs text-neutral-500 px-1">
-                            <span>Low</span>
-                            <span>High</span>
-                        </div>
-                    </div>
+                    )}
 
                     {/* Energy (Evening Only) */}
-                    {activeTab === 'evening' && (
+                    {activeTab === 'evening' && subsetSet.has('energy') && (
                         <div className="space-y-3 animate-in fade-in slide-in-from-left-4 duration-300">
                             <div className="flex justify-between text-sm">
                                 <label className="text-neutral-300 font-medium flex items-center gap-2">
@@ -182,7 +207,7 @@ export const DailyCheckInModal: React.FC<DailyCheckInModalProps> = ({ isOpen, on
                     )}
 
                     {/* Sleep Score (Morning Only) */}
-                    {activeTab === 'morning' && (
+                    {activeTab === 'morning' && subsetSet.has('sleepScore') && (
                         <div className="space-y-3 animate-in fade-in slide-in-from-right-4 duration-300">
                             <div className="flex justify-between text-sm">
                                 <label className="text-neutral-300 font-medium flex items-center gap-2">

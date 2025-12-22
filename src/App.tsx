@@ -27,9 +27,10 @@ import { DayView } from './components/day-view/DayView';
 import { JournalPage } from './pages/JournalPage';
 import { TasksPage } from './pages/TasksPage';
 import { DebugEntriesPage } from './pages/DebugEntriesPage';
+import { WellbeingHistoryPage } from './pages/WellbeingHistoryPage';
 
 // Simple router state
-type AppRoute = 'tracker' | 'dashboard' | 'routines' | 'goals' | 'calendar' | 'wins' | 'journal' | 'tasks' | 'day' | 'debug-entries';
+type AppRoute = 'tracker' | 'dashboard' | 'routines' | 'goals' | 'calendar' | 'wins' | 'journal' | 'tasks' | 'day' | 'debug-entries' | 'wellbeing-history';
 
 
 // Helper functions for URL syncing
@@ -62,6 +63,8 @@ function parseRouteFromLocation(location: Location): AppRoute {
       return "tracker"; // Redirect old 'day' view to tracker
     case "debug-entries":
       return "debug-entries";
+    case "wellbeing-history":
+      return "wellbeing-history";
     default:
 
       return "dashboard"; // default view
@@ -418,7 +421,10 @@ const HabitTrackerContent: React.FC = () => {
               setActiveCategoryId(categoryId);
               handleNavigate('tracker');
             }}
+            onNavigateWellbeingHistory={() => handleNavigate('wellbeing-history')}
           />
+        ) : view === 'wellbeing-history' ? (
+          <WellbeingHistoryPage onBack={() => handleNavigate('dashboard')} />
         ) : view === 'routines' ? (
           <RoutineList
             onCreate={() => setRoutineEditorState({ isOpen: true, mode: 'create', routine: undefined })}
