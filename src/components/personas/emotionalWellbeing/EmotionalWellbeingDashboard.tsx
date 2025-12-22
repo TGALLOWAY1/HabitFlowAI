@@ -10,6 +10,7 @@ import {
   Play,
   Target,
   Crosshair,
+  Edit,
   Moon,
   Heart,
   Wind,
@@ -679,9 +680,11 @@ const ActionCards: React.FC<{ onStartRoutine?: (routine: Routine) => void }> = (
           <div className="p-4 rounded-xl bg-neutral-900/40 border border-white/5 flex items-center justify-center">
             <button
               onClick={() => setIsPinModalOpen(true)}
-              className="text-xs font-semibold text-neutral-300 hover:text-white transition-colors"
+              className="p-2 rounded-lg bg-neutral-800/60 hover:bg-neutral-800 border border-white/10 text-neutral-200 hover:text-white transition-colors"
+              aria-label="Edit pinned routines"
+              title="Edit pinned routines"
             >
-              Edit pins
+              <Edit size={16} />
             </button>
           </div>
         </div>
