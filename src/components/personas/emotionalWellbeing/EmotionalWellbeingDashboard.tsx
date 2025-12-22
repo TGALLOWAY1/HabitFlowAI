@@ -12,7 +12,7 @@ import {
   Crosshair,
   Moon,
   Wind,
-  Spiral,
+  Repeat,
   Flower2,
   Layers,
 } from 'lucide-react';
@@ -140,7 +140,7 @@ const CurrentVibeCard: React.FC = () => {
   > = {
     strained: {
       label: 'strained',
-      Icon: Spiral,
+      Icon: Repeat,
       tileBaseClass: 'bg-slate-800/60 border-white/10 text-slate-200',
       tileSelectedClass: 'bg-slate-700/70 border-slate-200/30 shadow-lg shadow-slate-400/10 ring-2 ring-slate-200/25',
       labelSelectedClass: 'text-white',
