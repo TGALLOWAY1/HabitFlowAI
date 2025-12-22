@@ -55,13 +55,16 @@ type Vibe = typeof VIBE_OPTIONS[number];
 const CurrentVibeCard: React.FC = () => {
   const [vibe, setVibe] = useState<Vibe | null>(null);
   const [loading, setLoading] = useState(false);
-  const [weekSummary, setWeekSummary] = useState<{ count: number; mode: Vibe | null }>({ count: 0, mode: null });
 
   const today = new Date().toISOString().slice(0, 10);
 
-  function titleCase(s: string): string {
-    return s.length ? s[0].toUpperCase() + s.slice(1) : s;
-  }
+  const VIBE_COPY: Record<Vibe, string> = {
+    strained: 'Let it be lighter today.',
+    tender: 'Today can be gentle.',
+    steady: 'Steady is enough.',
+    open: 'Stay curious, stay kind.',
+    thriving: 'Let the good be real.',
+  };
 
   const loadVibeData = React.useCallback(() => {
     let cancelled = false;
@@ -74,51 +77,6 @@ const CurrentVibeCard: React.FC = () => {
         if (v && (VIBE_OPTIONS as readonly string[]).includes(v)) {
           setVibe(v as Vibe);
         }
-
-        // Build a simple 7-day summary (including today)
-        const timeZone = getTimeZone();
-        const days: Array<{ dayKey: string; vibe: Vibe | null }> = [];
-        for (let i = 6; i >= 0; i--) {
-          const dayKey = getDayKeyDaysAgo(i, timeZone);
-          const e = all.find((x) => x.templateId === 'current_vibe' && x.date === dayKey);
-          const vv = e?.content?.value as string | undefined;
-          days.push({
-            dayKey,
-            vibe: vv && (VIBE_OPTIONS as readonly string[]).includes(vv) ? (vv as Vibe) : null,
-          });
-        }
-
-        const count = days.filter((d) => d.vibe !== null).length;
-        const freq = new Map<Vibe, number>();
-        for (const d of days) {
-          if (!d.vibe) continue;
-          freq.set(d.vibe, (freq.get(d.vibe) || 0) + 1);
-        }
-
-        // Mode with tie-breaker: most recent among tied.
-        let mode: Vibe | null = null;
-        let bestCount = -1;
-        for (const [k, c] of freq.entries()) {
-          if (c > bestCount) {
-            bestCount = c;
-            mode = k;
-          } else if (c === bestCount && mode) {
-            // tie-breaker: whichever appears more recently (scan from newest to oldest)
-            for (let idx = days.length - 1; idx >= 0; idx--) {
-              const vv = days[idx].vibe;
-              if (!vv) continue;
-              if (vv === k) {
-                mode = k;
-                break;
-              }
-              if (vv === mode) {
-                break;
-              }
-            }
-          }
-        }
-
-        setWeekSummary({ count, mode });
       })
       .finally(() => {
         if (cancelled) return;
@@ -150,21 +108,13 @@ const CurrentVibeCard: React.FC = () => {
       date: today,
       content: { value: next },
     });
-    // Optimistic: if today wasn't counted yet, increment.
-    setWeekSummary((prev) => {
-      // We can't know if today already had a vibe without reloading, so keep it simple.
-      // A refresh event will sync shortly in demo mode; otherwise next open will sync.
-      return prev;
-    });
   };
 
   return (
     <Card
       title="Current Vibe"
       icon={<Sparkles size={16} className="text-amber-400" />}
-      right={<span className="text-xs text-neutral-500">{loading ? 'Loading…' : 'Saved as JournalEntry (current_vibe)'}</span>}
     >
-      <div className="text-sm text-neutral-400 mb-3">Quick check: how do you feel right now?</div>
       <div className="flex flex-wrap gap-2">
         {(VIBE_OPTIONS as readonly Vibe[]).map((key) => (
           <button
@@ -179,14 +129,8 @@ const CurrentVibeCard: React.FC = () => {
         ))}
       </div>
 
-      <div className="mt-4 text-sm text-neutral-300">
-        {weekSummary.count >= 3 && weekSummary.mode ? (
-          <span>
-            Most common vibe this week: <span className="font-semibold text-white">{titleCase(weekSummary.mode)}</span>
-          </span>
-        ) : (
-          <span>You’ve checked in {weekSummary.count} of the last 7 days.</span>
-        )}
+      <div className="mt-3 text-sm text-neutral-400 leading-relaxed">
+        {loading ? 'Loading…' : vibe ? VIBE_COPY[vibe] : 'What fits right now?'}
       </div>
     </Card>
   );
