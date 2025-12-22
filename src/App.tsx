@@ -13,7 +13,7 @@ import { RoutineEditorModal } from './components/RoutineEditorModal';
 import { RoutineRunnerModal } from './components/RoutineRunnerModal';
 import { RoutinePreviewModal } from './components/RoutinePreviewModal';
 import { HabitHistoryModal } from './components/HabitHistoryModal';
-import { BarChart3, Calendar, ClipboardList, Target, Clock, BookOpenText, CheckSquare } from 'lucide-react';
+import { BarChart3, Calendar, ClipboardList, Target, BookOpenText, CheckSquare } from 'lucide-react';
 
 import type { Routine, Habit } from './types';
 import { GoalsPage } from './pages/goals/GoalsPage';
@@ -21,7 +21,6 @@ import { CreateGoalFlow } from './pages/goals/CreateGoalFlow';
 import { GoalDetailPage } from './pages/goals/GoalDetailPage';
 import { GoalCompletedPage } from './pages/goals/GoalCompletedPage';
 import { WinArchivePage } from './pages/goals/WinArchivePage';
-import { CalendarView } from './components/CalendarView';
 import { DayView } from './components/day-view/DayView';
 
 import { JournalPage } from './pages/JournalPage';
@@ -30,7 +29,7 @@ import { DebugEntriesPage } from './pages/DebugEntriesPage';
 import { WellbeingHistoryPage } from './pages/WellbeingHistoryPage';
 
 // Simple router state
-type AppRoute = 'tracker' | 'dashboard' | 'routines' | 'goals' | 'calendar' | 'wins' | 'journal' | 'tasks' | 'day' | 'debug-entries' | 'wellbeing-history';
+type AppRoute = 'tracker' | 'dashboard' | 'routines' | 'goals' | 'wins' | 'journal' | 'tasks' | 'day' | 'debug-entries' | 'wellbeing-history';
 
 
 // Helper functions for URL syncing
@@ -53,8 +52,6 @@ function parseRouteFromLocation(location: Location): AppRoute {
 
     case "tracker":
       return "tracker";
-    case "calendar":
-      return "calendar";
     case "journal":
       return "journal";
     case "tasks":
@@ -242,25 +239,11 @@ const HabitTrackerContent: React.FC = () => {
               <Calendar size={20} />
             </button>
             <button
-              onClick={() => handleNavigate('tasks')}
-              className={`p-2 rounded-md transition-colors ${view === 'tasks' ? 'bg-neutral-700 text-white' : 'text-neutral-400 hover:text-white'}`}
-              title="Tasks (Minimal)"
+              onClick={() => handleNavigate('journal')}
+              className={`p-2 rounded-md transition-colors ${view === 'journal' ? 'bg-neutral-700 text-white' : 'text-neutral-400 hover:text-white'}`}
+              title="Journal"
             >
-              <CheckSquare size={20} />
-            </button>
-            <button
-              onClick={() => handleNavigate('calendar')}
-              className={`p-2 rounded-md transition-colors ${view === 'calendar' ? 'bg-neutral-700 text-white' : 'text-neutral-400 hover:text-white'}`}
-              title="Weekly Calendar"
-            >
-              <Clock size={20} />
-            </button>
-            <button
-              onClick={() => handleNavigate('routines')}
-              className={`p-2 rounded-md transition-colors ${view === 'routines' ? 'bg-neutral-700 text-white' : 'text-neutral-400 hover:text-white'}`}
-              title="Routines"
-            >
-              <ClipboardList size={20} />
+              <BookOpenText size={20} />
             </button>
             <button
               onClick={() => handleNavigate('goals')}
@@ -270,11 +253,18 @@ const HabitTrackerContent: React.FC = () => {
               <Target size={20} />
             </button>
             <button
-              onClick={() => handleNavigate('journal')}
-              className={`p-2 rounded-md transition-colors ${view === 'journal' ? 'bg-neutral-700 text-white' : 'text-neutral-400 hover:text-white'}`}
-              title="Journal"
+              onClick={() => handleNavigate('routines')}
+              className={`p-2 rounded-md transition-colors ${view === 'routines' ? 'bg-neutral-700 text-white' : 'text-neutral-400 hover:text-white'}`}
+              title="Routines"
             >
-              <BookOpenText size={20} />
+              <ClipboardList size={20} />
+            </button>
+            <button
+              onClick={() => handleNavigate('tasks')}
+              className={`p-2 rounded-md transition-colors ${view === 'tasks' ? 'bg-neutral-700 text-white' : 'text-neutral-400 hover:text-white'}`}
+              title="Tasks (Minimal)"
+            >
+              <CheckSquare size={20} />
             </button>
           </div>
         </div>
@@ -433,8 +423,6 @@ const HabitTrackerContent: React.FC = () => {
             onStart={(routine) => setRoutineRunnerState({ isOpen: true, routine })}
             onPreview={(routine) => setRoutinePreviewState({ isOpen: true, routine })}
           />
-        ) : view === 'calendar' ? (
-          <CalendarView />
         ) : view === 'journal' ? (
           <JournalPage />
         ) : view === 'tasks' ? (
