@@ -88,12 +88,14 @@ export const RoutineRunnerModal: React.FC<RoutineRunnerModalProps> = ({
         }
     };
 
-    const handleFinish = async () => {
+    const handleFinish = async (logHabits: boolean = false) => {
         if (!routine) return;
         setSubmitting(true);
         try {
             await submitRoutine(routine.id, {
-                submittedAt: new Date().toISOString()
+                submittedAt: new Date().toISOString(),
+                // Only include habitIdsToComplete if user explicitly chooses to log habits
+                habitIdsToComplete: logHabits ? routine.linkedHabitIds : undefined,
             });
             await refreshDayLogs();
             onClose();
@@ -253,14 +255,25 @@ export const RoutineRunnerModal: React.FC<RoutineRunnerModalProps> = ({
                                 >
                                     Back to Routine
                                 </button>
-                                <button
-                                    onClick={handleFinish}
-                                    disabled={submitting}
-                                    className="flex items-center gap-2 px-8 py-3 bg-emerald-500 text-neutral-900 font-bold rounded-lg hover:bg-emerald-400 transition-colors shadow-lg shadow-emerald-500/20"
-                                >
-                                    {submitting ? 'Saving...' : 'Complete Routine'}
-                                    <Check size={20} />
-                                </button>
+                                <div className="flex items-center gap-3">
+                                    <button
+                                        onClick={() => handleFinish(false)}
+                                        disabled={submitting}
+                                        className="flex items-center gap-2 px-6 py-3 bg-neutral-700 text-white font-semibold rounded-lg hover:bg-neutral-600 transition-colors"
+                                    >
+                                        {submitting ? 'Saving...' : 'Complete Routine'}
+                                    </button>
+                                    {routine.linkedHabitIds && routine.linkedHabitIds.length > 0 && (
+                                        <button
+                                            onClick={() => handleFinish(true)}
+                                            disabled={submitting}
+                                            className="flex items-center gap-2 px-6 py-3 bg-emerald-500 text-neutral-900 font-bold rounded-lg hover:bg-emerald-400 transition-colors shadow-lg shadow-emerald-500/20"
+                                        >
+                                            {submitting ? 'Saving...' : 'Complete + Log Habits'}
+                                            <Check size={20} />
+                                        </button>
+                                    )}
+                                </div>
                             </>
                         )}
                     </div>
