@@ -91,6 +91,7 @@ export function getActivePersonaId(): PersonaId {
 /**
  * Set the active persona ID (user selection)
  * Stores the selection in localStorage and updates the mode if needed
+ * Dispatches event to trigger re-render
  */
 export function setActivePersonaId(personaId: PersonaId): void {
   if (typeof window === 'undefined') return;
@@ -107,6 +108,9 @@ export function setActivePersonaId(personaId: PersonaId): void {
   } else if (resolved === DEFAULT_PERSONA_ID) {
     localStorage.setItem(ACTIVE_USER_MODE_STORAGE_KEY, 'real');
   }
+  
+  // Dispatch event to trigger re-render
+  window.dispatchEvent(new Event('habitflow:personaChanged'));
 }
 
 export function getActivePersonaConfig(): PersonaConfig {

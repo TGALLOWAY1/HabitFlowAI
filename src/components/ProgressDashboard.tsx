@@ -127,13 +127,17 @@ export const ProgressDashboard: React.FC<ProgressDashboardProps> = ({ onCreateGo
     // Track persona changes to trigger re-render
     const [personaChangeKey, setPersonaChangeKey] = useState(0);
     
-    // Listen for persona changes (from PersonaSwitcher or query param)
+    // Listen for persona changes (from PersonaSwitcher, User menu, or query param)
     useEffect(() => {
         const handlePersonaChange = () => {
             setPersonaChangeKey(prev => prev + 1);
         };
-        window.addEventListener('persona-changed', handlePersonaChange);
-        return () => window.removeEventListener('persona-changed', handlePersonaChange);
+        window.addEventListener('habitflow:personaChanged', handlePersonaChange);
+        window.addEventListener('persona-changed', handlePersonaChange); // Legacy event support
+        return () => {
+            window.removeEventListener('habitflow:personaChanged', handlePersonaChange);
+            window.removeEventListener('persona-changed', handlePersonaChange);
+        };
     }, []);
 
     // Re-evaluate active persona when change key updates (forces re-render)

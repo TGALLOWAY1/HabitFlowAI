@@ -56,7 +56,7 @@ export const PersonaSwitcher: React.FC<PersonaSwitcherProps> = ({ onPersonaChang
   }, [isOpen]);
 
   const handleSelect = (personaId: PersonaId) => {
-    setActivePersonaId(personaId);
+    setActivePersonaId(personaId); // This now dispatches 'habitflow:personaChanged'
     setActivePersonaIdState(personaId);
     setIsOpen(false);
     
@@ -64,8 +64,6 @@ export const PersonaSwitcher: React.FC<PersonaSwitcherProps> = ({ onPersonaChang
     if (onPersonaChange) {
       onPersonaChange();
     }
-    // Always dispatch event for components that listen to it
-    window.dispatchEvent(new Event('persona-changed'));
   };
 
   const activeOption = PERSONA_OPTIONS.find(opt => opt.id === activePersonaId) || PERSONA_OPTIONS[0];
