@@ -134,12 +134,6 @@ export const QuickLog: React.FC = () => {
     setSelectedOptionId(null);
   };
 
-  const handleHabitSelect = (habit: Habit) => {
-    setSelectedHabit(habit);
-    setNumericValue('');
-    setSelectedOptionId(null);
-  };
-
   const handleQuickLog = async (habit: Habit) => {
     // Boolean habit - immediate log
     if (habit.goal.type === 'boolean') {
