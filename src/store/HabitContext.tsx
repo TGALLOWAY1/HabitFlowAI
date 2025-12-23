@@ -626,21 +626,47 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     };
 
     const deleteHabitEntryByKeyContext = async (habitId: string, dateKey: string) => {
+        // [DEBUG_ENTRY_DELETE] Log deletion request
+        const DEBUG_ENTRY_DELETE = false; // Set to true for debugging
+        if (DEBUG_ENTRY_DELETE) {
+            console.log('[DEBUG_ENTRY_DELETE] deleteHabitEntryByKeyContext called:', {
+                habitId,
+                dateKey,
+                requestPayload: { habitId, dateKey }
+            });
+        }
         try {
             const { dayLog } = await deleteHabitEntryByKey(habitId, dateKey);
+
+            if (DEBUG_ENTRY_DELETE) {
+                console.log('[DEBUG_ENTRY_DELETE] deleteHabitEntryByKey API response:', {
+                    success: true,
+                    dayLog: dayLog ? 'exists' : 'null (entry deleted)',
+                    dayLogDetails: dayLog
+                });
+            }
 
             // Update local state
             setLogs(prev => {
                 const newLogs = { ...prev };
                 if (dayLog) {
                     newLogs[`${habitId}-${dateKey}`] = dayLog;
+                    if (DEBUG_ENTRY_DELETE) {
+                        console.log('[DEBUG_ENTRY_DELETE] Local state updated: log exists (entry partially deleted or other entries remain)');
+                    }
                 } else {
                     // Log deleted (unchecked) -> Remove from state
                     delete newLogs[`${habitId}-${dateKey}`];
+                    if (DEBUG_ENTRY_DELETE) {
+                        console.log('[DEBUG_ENTRY_DELETE] Local state updated: log removed (all entries deleted)');
+                    }
                 }
                 return newLogs;
             });
         } catch (error) {
+            if (DEBUG_ENTRY_DELETE) {
+                console.error('[DEBUG_ENTRY_DELETE] deleteHabitEntryByKeyContext failed:', error);
+            }
             console.error('Failed to delete habit entry:', error);
             setLastPersistenceError("Failed to remove habit entry.");
         }

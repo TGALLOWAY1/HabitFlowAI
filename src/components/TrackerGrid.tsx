@@ -4,6 +4,9 @@ import { type Habit, type DayLog, type Routine, type HabitPotentialEvidence } fr
 import { cn } from '../utils/cn';
 import { Check, Plus, Trash2, GripVertical, Pencil, Play, Flame, History, Zap, Link2 } from 'lucide-react';
 
+// [DEBUG_ENTRY_DELETE] Flag to enable debug logging for entry deletion
+const DEBUG_ENTRY_DELETE = false;
+
 import { NumericInputPopover } from './NumericInputPopover';
 import { HabitHistoryModal } from './HabitHistoryModal';
 import { HabitLogModal } from './HabitLogModal';
@@ -365,6 +368,21 @@ const HabitRowContent = ({
                         });
                     };
 
+                    // [DEBUG_ENTRY_DELETE] Log cell render state
+                    if (DEBUG_ENTRY_DELETE) {
+                        console.log('[DEBUG_ENTRY_DELETE] Cell render:', {
+                            habitId: habit.id,
+                            habitName: habit.name,
+                            dayKey: dateStr,
+                            logExists: !!log,
+                            logCompleted: log?.completed,
+                            logValue: log?.value,
+                            isCompleted,
+                            hasValue,
+                            entryId: 'N/A (DayLog is derived cache, no entryId)'
+                        });
+                    }
+
                     return (
                         <div
                             key={dateStr}
@@ -372,7 +390,24 @@ const HabitRowContent = ({
                         >
                             <button
                                 onClick={habit.type === 'bundle' && habit.bundleType !== 'choice' ? handleBundleClick : (isInteractive ? (e) => handleCellClick(e, habit, dateStr, log) : undefined)}
-                                onDoubleClick={isInteractive ? (e) => handleCellClick(e, habit, dateStr, log) : undefined}
+                                onDoubleClick={isInteractive ? (e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    // [DEBUG_ENTRY_DELETE] Log double-click event
+                                    if (DEBUG_ENTRY_DELETE) {
+                                        console.log('[DEBUG_ENTRY_DELETE] Double-click handler fired:', {
+                                            habitId: habit.id,
+                                            habitName: habit.name,
+                                            dayKey: dateStr,
+                                            logExists: !!log,
+                                            logCompleted: log?.completed,
+                                            logValue: log?.value,
+                                            eventDetail: e.detail,
+                                            eventType: e.type
+                                        });
+                                    }
+                                    handleCellClick(e, habit, dateStr, log);
+                                } : undefined}
                                 disabled={!isInteractive}
                                 className={cn(
                                     "w-10 h-10 rounded-lg flex items-center justify-center transition-all duration-200 relative overflow-hidden",
@@ -751,6 +786,15 @@ export const TrackerGrid = ({
         return () => window.removeEventListener('click', handleClick);
     }, []);
 
+    // Cleanup click timeout on unmount
+    useEffect(() => {
+        return () => {
+            if (clickTimeoutRef.current) {
+                clearTimeout(clickTimeoutRef.current);
+            }
+        };
+    }, []);
+
     const handleContextMenu = (e: React.MouseEvent, habit: Habit) => {
         e.preventDefault();
         setContextMenu({
@@ -780,6 +824,10 @@ export const TrackerGrid = ({
     const [historyModalHabitId, setHistoryModalHabitId] = useState<string | null>(null);
     const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
     const [choiceLogState, setChoiceLogState] = useState<{ habit: Habit; date: string } | null>(null);
+    
+    // Track click timing to prevent single-click from firing when double-click is intended
+    const clickTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+    const lastClickTimeRef = React.useRef<number>(0);
 
     const toggleExpand = (id: string) => {
         setExpandedIds(prev => {
@@ -908,6 +956,28 @@ export const TrackerGrid = ({
     };
 
     const handleCellClick = async (e: React.MouseEvent, habit: Habit, dateStr: string, log?: DayLog) => {
+        // [DEBUG_ENTRY_DELETE] Log handleCellClick invocation
+        if (DEBUG_ENTRY_DELETE) {
+            console.log('[DEBUG_ENTRY_DELETE] handleCellClick called:', {
+                habitId: habit.id,
+                habitName: habit.name,
+                dayKey: dateStr,
+                logExists: !!log,
+                logCompleted: log?.completed,
+                logValue: log?.value,
+                eventType: e.type,
+                eventDetail: e.detail,
+                isDoubleClick: e.type === 'dblclick' || e.detail === 2
+            });
+        }
+
+        // Cancel any pending single-click action if this is a double-click
+        if (e.type === 'dblclick') {
+            if (clickTimeoutRef.current) {
+                clearTimeout(clickTimeoutRef.current);
+                clickTimeoutRef.current = null;
+            }
+        }
 
         // Handle Unified Choice Children (Real Habits)
         if (habit.bundleParentId && !habit.isVirtual) {
@@ -980,18 +1050,96 @@ export const TrackerGrid = ({
         }
 
         // Standard Habit Logic
-        if (habit.goal.type === 'boolean') {
-            handleToggle(habit.id, dateStr);
-        } else {
-            const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-            setPopoverState({
-                isOpen: true,
+        // Check for double-click deletion first
+        const isDoubleClick = e.type === 'dblclick';
+        
+        // Resolve entry existence: check if log indicates an entry exists
+        // For boolean habits: completed === true means entry exists
+        // For numeric habits: value > 0 means entry exists
+        const hasExistingEntry = log?.completed || (log?.value !== undefined && log.value > 0);
+        
+        if (DEBUG_ENTRY_DELETE) {
+            console.log('[DEBUG_ENTRY_DELETE] Standard habit logic check:', {
                 habitId: habit.id,
-                date: dateStr,
-                initialValue: log?.value || 0,
-                unit: habit.goal.unit,
-                position: { top: rect.bottom + 8, left: rect.left - 40 },
+                dayKey: dateStr,
+                isDoubleClick,
+                hasExistingEntry,
+                goalType: habit.goal.type,
+                willAttemptDelete: isDoubleClick && hasExistingEntry
             });
+        }
+
+        // Handle double-click deletion
+        if (isDoubleClick) {
+            if (hasExistingEntry) {
+                // [DEBUG_ENTRY_DELETE] Double-click on existing entry - delete it
+                if (DEBUG_ENTRY_DELETE) {
+                    console.log('[DEBUG_ENTRY_DELETE] Attempting deletion via deleteHabitEntryByKey:', {
+                        habitId: habit.id,
+                        dayKey: dateStr,
+                        logState: log
+                    });
+                }
+                try {
+                    // Use canonical dayKey (dateStr is already in YYYY-MM-DD format)
+                    await deleteHabitEntryByKey(habit.id, dateStr);
+                    if (DEBUG_ENTRY_DELETE) {
+                        console.log('[DEBUG_ENTRY_DELETE] deleteHabitEntryByKey call completed successfully');
+                    }
+                    refreshProgress();
+                    return;
+                } catch (error) {
+                    if (DEBUG_ENTRY_DELETE) {
+                        console.error('[DEBUG_ENTRY_DELETE] deleteHabitEntryByKey failed:', error);
+                    }
+                    console.error('Failed to delete habit entry:', error);
+                    // Don't throw - allow user to try again
+                    return;
+                }
+            } else {
+                // Double-click on empty cell - do nothing (or could show toast)
+                if (DEBUG_ENTRY_DELETE) {
+                    console.log('[DEBUG_ENTRY_DELETE] Double-click on empty cell - no action');
+                }
+                return;
+            }
+        }
+
+        // Single-click behavior: delay to allow double-click detection
+        // Only proceed if this is a single-click (not a double-click)
+        if (e.type === 'click') {
+            // Clear any existing timeout
+            if (clickTimeoutRef.current) {
+                clearTimeout(clickTimeoutRef.current);
+            }
+            
+            // Capture element reference before setTimeout (React nullifies e.currentTarget after handler)
+            const targetElement = e.currentTarget as HTMLElement;
+            
+            // Set a delay to allow double-click to cancel this
+            clickTimeoutRef.current = setTimeout(() => {
+                clickTimeoutRef.current = null;
+                
+                // Check if element still exists (may have been unmounted)
+                if (!targetElement || !document.body.contains(targetElement)) {
+                    return;
+                }
+                
+                // Execute single-click action
+                if (habit.goal.type === 'boolean') {
+                    handleToggle(habit.id, dateStr);
+                } else {
+                    const rect = targetElement.getBoundingClientRect();
+                    setPopoverState({
+                        isOpen: true,
+                        habitId: habit.id,
+                        date: dateStr,
+                        initialValue: log?.value || 0,
+                        unit: habit.goal.unit,
+                        position: { top: rect.bottom + 8, left: rect.left - 40 },
+                    });
+                }
+            }, 300); // 300ms delay to detect double-click
         }
     };
 
