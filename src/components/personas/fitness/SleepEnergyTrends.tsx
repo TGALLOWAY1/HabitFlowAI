@@ -1,4 +1,4 @@
-import React, { useState, useMemo, memo } from 'react';
+import React, { useState, useMemo, memo, useCallback } from 'react';
 import { Moon, Battery } from 'lucide-react';
 import { useWellbeingEntriesRange } from '../../../hooks/useWellbeingEntriesRange';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip } from 'recharts';
@@ -23,10 +23,10 @@ const SleepEnergyTrendsComponent: React.FC = () => {
   const { entries, loading, error } = useWellbeingEntriesRange(windowDays);
   const timeZone = useMemo(() => getTimeZone(), []);
 
-  // DEV ONLY: Debug log to confirm re-renders
+  // DEV ONLY: Render counter to verify re-renders
   if (import.meta.env.DEV) {
     // eslint-disable-next-line no-console
-    console.log('[SleepEnergyTrends] Render', { windowDays, loading, error });
+    console.count('SleepEnergyTrends render');
   }
 
   // Filter entries to ONLY sleep/energy metrics - this prevents readiness entries from affecting computation
@@ -85,10 +85,11 @@ const SleepEnergyTrendsComponent: React.FC = () => {
     return rows;
   }, [windowDays, timeZone, entriesByDay]);
 
-  const formatDayKey = (dayKey: string): string => {
+  // Memoize formatDayKey to ensure stable reference for chart components
+  const formatDayKey = useCallback((dayKey: string): string => {
     const d = new Date(`${dayKey}T00:00:00.000Z`);
     return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-  };
+  }, []);
 
   return (
     <div className="bg-neutral-900/50 rounded-2xl border border-white/5 p-6">
