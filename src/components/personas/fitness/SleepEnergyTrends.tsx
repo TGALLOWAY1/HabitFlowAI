@@ -1,4 +1,4 @@
-import React, { useState, useMemo, memo } from 'react';
+import React, { useState, useMemo, memo, useRef } from 'react';
 import { Moon, Battery } from 'lucide-react';
 import { useWellbeingEntriesRange } from '../../../hooks/useWellbeingEntriesRange';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip } from 'recharts';
@@ -29,9 +29,9 @@ const SleepEnergyTrendsComponent: React.FC = () => {
     console.log('[SleepEnergyTrends] Render', { windowDays, loading, error });
   }
 
-  // Only recompute when sleep/energy data changes (not readiness metrics)
-  // getDailyAverage is now stable via useCallback, but we compute the actual values
-  // to ensure the data arrays only change when sleep/energy values actually change
+  // Compute sleep/energy data - only recompute when windowDays changes or when
+  // actual sleep/energy values change (not readiness metrics)
+  // We compute the values and compare them to previous values to prevent unnecessary updates
   const sleepData = useMemo(() => {
     const rows: Array<{ dayKey: string; value: number | null }> = [];
     for (let i = windowDays - 1; i >= 0; i--) {
@@ -39,7 +39,6 @@ const SleepEnergyTrendsComponent: React.FC = () => {
       const value = getDailyAverage(dayKey, 'sleepQuality');
       rows.push({ dayKey, value: typeof value === 'number' ? value : null });
     }
-    // Return a stable reference - only changes if actual values change
     return rows;
   }, [windowDays, timeZone, getDailyAverage]);
 
@@ -50,9 +49,62 @@ const SleepEnergyTrendsComponent: React.FC = () => {
       const value = getDailyAverage(dayKey, 'energy');
       rows.push({ dayKey, value: typeof value === 'number' ? value : null });
     }
-    // Return a stable reference - only changes if actual values change
     return rows;
   }, [windowDays, timeZone, getDailyAverage]);
+
+  // Store previous computed values to compare and prevent unnecessary re-renders
+  // Only re-render charts if actual sleep/energy values changed, not when readiness entries are added
+  const prevSleepDataRef = useRef<Array<{ dayKey: string; value: number | null }>>([]);
+  const prevEnergyDataRef = useRef<Array<{ dayKey: string; value: number | null }>>([]);
+  
+  // Only update if values actually changed (deep comparison of values)
+  const stableSleepData = useMemo(() => {
+    const prev = prevSleepDataRef.current;
+    const current = sleepData;
+    
+    // Compare values (not references) - only sleep/energy values matter
+    if (prev.length !== current.length) {
+      prevSleepDataRef.current = current;
+      return current;
+    }
+    
+    const valuesChanged = prev.some((p, i) => {
+      const c = current[i];
+      return p.dayKey !== c.dayKey || p.value !== c.value;
+    });
+    
+    if (valuesChanged) {
+      prevSleepDataRef.current = current;
+      return current;
+    }
+    
+    // No change - return previous to prevent re-render
+    return prev;
+  }, [sleepData]);
+
+  const stableEnergyData = useMemo(() => {
+    const prev = prevEnergyDataRef.current;
+    const current = energyData;
+    
+    // Compare values (not references) - only sleep/energy values matter
+    if (prev.length !== current.length) {
+      prevEnergyDataRef.current = current;
+      return current;
+    }
+    
+    const valuesChanged = prev.some((p, i) => {
+      const c = current[i];
+      return p.dayKey !== c.dayKey || p.value !== c.value;
+    });
+    
+    if (valuesChanged) {
+      prevEnergyDataRef.current = current;
+      return current;
+    }
+    
+    // No change - return previous to prevent re-render
+    return prev;
+  }, [energyData]);
 
   const formatDayKey = (dayKey: string): string => {
     const d = new Date(`${dayKey}T00:00:00.000Z`);
@@ -88,7 +140,7 @@ const SleepEnergyTrendsComponent: React.FC = () => {
           ) : (
             <div className="h-24">
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={sleepData}>
+                <LineChart data={stableSleepData}>
                   <XAxis
                     dataKey="dayKey"
                     tick={{ fill: '#a3a3a3', fontSize: 9 }}
@@ -139,7 +191,7 @@ const SleepEnergyTrendsComponent: React.FC = () => {
           ) : (
             <div className="h-24">
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={energyData}>
+                <LineChart data={stableEnergyData}>
                   <XAxis
                     dataKey="dayKey"
                     tick={{ fill: '#a3a3a3', fontSize: 9 }}
