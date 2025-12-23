@@ -1,10 +1,20 @@
 # Fitness Persona V1 Implementation Checklist
 
-## Development Access
+## Accessing Different Personas
 
-### Opening the Fitness Dashboard in Dev Mode
+### Primary Method: Persona Switcher UI
 
-To view the Fitness dashboard during development, use the query parameter override:
+The **Persona Switcher** is available in the top-right corner of all dashboards. Click the "Mode" dropdown to switch between:
+
+- **Default** - Legacy dashboard with Progress Rings, Goals, Activity Heatmap
+- **Emotional Regulation** - Emotional Wellbeing Dashboard
+- **Fitness** - Fitness Dashboard
+
+The selection persists across page refreshes via localStorage.
+
+### Development Fallback: Query Parameter (Dev Only)
+
+For development/testing, you can also use the query parameter override:
 
 ```
 /dashboard?persona=fitness
@@ -15,5 +25,5 @@ To view the Fitness dashboard during development, use the query parameter overri
 - `?persona=emotional` - Shows Emotional Wellbeing Dashboard  
 - `?persona=default` - Shows Default (legacy) Dashboard
 
-**Note:** This query parameter override is **DEV ONLY** and will not work in production builds. It updates the `habitflow_active_user_mode` localStorage key and triggers a re-render of the ProgressDashboard component.
+**Note:** The query parameter override is **DEV ONLY** and takes highest priority when present. It updates localStorage and triggers a re-render. The UI switcher is the preferred method for normal use.
 

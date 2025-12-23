@@ -6,6 +6,7 @@ import { SleepEnergyTrends } from './SleepEnergyTrends';
 import { QuickLog } from './QuickLog';
 import { ActionCards } from './ActionCards';
 import { RoutinePreviewModal } from '../../RoutinePreviewModal';
+import { PersonaSwitcher } from '../PersonaSwitcher';
 
 type Props = {
   onOpenCheckIn: () => void;
@@ -32,6 +33,7 @@ export const FitnessDashboard: React.FC<Props> = ({ onOpenCheckIn, onNavigateWel
       <div className="space-y-6 overflow-y-auto pb-20">
         {/* Persona Header actions */}
         <div className="flex justify-end gap-2">
+          <PersonaSwitcher />
           <button
             onClick={onOpenCheckIn}
             className="flex items-center gap-2 px-4 py-2 bg-neutral-800 hover:bg-neutral-700 text-white rounded-lg transition-colors text-sm font-medium border border-white/5"

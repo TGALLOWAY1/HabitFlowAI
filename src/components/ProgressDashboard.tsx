@@ -9,6 +9,7 @@ import { GoalPulseCard } from './goals/GoalPulseCard';
 import { CategoryCompletionRow } from './CategoryCompletionRow';
 import { EmotionalWellbeingDashboard } from './personas/emotionalWellbeing/EmotionalWellbeingDashboard';
 import { FitnessDashboard } from './personas/fitness/FitnessDashboard';
+import { PersonaSwitcher } from './personas/PersonaSwitcher';
 import { getActivePersonaId, resolvePersona } from '../shared/personas/activePersona';
 import type { Routine } from '../models/persistenceTypes';
 import { DEFAULT_PERSONA_ID, EMOTIONAL_PERSONA_ID, FITNESS_PERSONA_ID } from '../shared/personas/personaConstants';
@@ -123,6 +124,19 @@ export const ProgressDashboard: React.FC<ProgressDashboardProps> = ({ onCreateGo
         };
     }, [personaQueryParam]);
 
+    // Track persona changes to trigger re-render
+    const [personaChangeKey, setPersonaChangeKey] = useState(0);
+    
+    // Listen for persona changes (from PersonaSwitcher or query param)
+    useEffect(() => {
+        const handlePersonaChange = () => {
+            setPersonaChangeKey(prev => prev + 1);
+        };
+        window.addEventListener('persona-changed', handlePersonaChange);
+        return () => window.removeEventListener('persona-changed', handlePersonaChange);
+    }, []);
+
+    // Re-evaluate active persona when change key updates (forces re-render)
     const activePersonaId = resolvePersona(getActivePersonaId());
     // Initialize state from URL params
     const [activityTab, setActivityTab] = useState<'overall' | 'category'>(() => {
@@ -211,8 +225,9 @@ export const ProgressDashboard: React.FC<ProgressDashboardProps> = ({ onCreateGo
 
     return (
         <div className="space-y-6 overflow-y-auto pb-20">
-            {/* Header with Check-in Button */}
-            <div className="flex justify-end">
+            {/* Header with Check-in Button and Persona Switcher */}
+            <div className="flex justify-end gap-2">
+                <PersonaSwitcher onPersonaChange={() => setPersonaChangeKey(prev => prev + 1)} />
                 <button
                     onClick={() => setIsCheckInOpen(true)}
                     className="flex items-center gap-2 px-4 py-2 bg-neutral-800 hover:bg-neutral-700 text-white rounded-lg transition-colors text-sm font-medium border border-white/5"
