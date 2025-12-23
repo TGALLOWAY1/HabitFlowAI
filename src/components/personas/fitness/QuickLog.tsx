@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { Plus, X, Hash, Clock } from 'lucide-react';
 import { useHabitStore } from '../../../store/HabitContext';
 import { upsertHabitEntry, fetchHabitEntries } from '../../../lib/persistenceClient';
@@ -34,61 +34,79 @@ export const QuickLog: React.FC = () => {
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const activeHabits = habits.filter((h) => !h.archived);
-  const todayKey = formatDayKeyFromDate(new Date(), getTimeZone());
-  const timeZone = getTimeZone();
+  // Memoize stable values to prevent effect loops
+  const timeZone = useMemo(() => getTimeZone(), []);
+  const todayKey = useMemo(() => formatDayKeyFromDate(new Date(), timeZone), [timeZone]);
+  const activeHabits = useMemo(() => habits.filter((h) => !h.archived), [habits]);
 
-  // Fetch recent entries (from today)
-  useEffect(() => {
-    const loadRecentEntries = async () => {
-      if (activeHabits.length === 0) {
-        setRecentEntries([]);
-        return;
-      }
+  // Stable function to load recent entries
+  const loadRecentEntries = useCallback(async () => {
+    if (activeHabits.length === 0) {
+      setRecentEntries((prev) => {
+        // Only set if actually changing
+        if (prev.length === 0) return prev;
+        return [];
+      });
+      return;
+    }
 
-      setLoadingEntries(true);
-      try {
-        const allEntries: Array<EntryView & { habitName: string }> = [];
-        
-        // Fetch entries for all active habits from today
-        for (const habit of activeHabits) {
-          try {
-            const entries = await fetchHabitEntries(habit.id, todayKey, todayKey, timeZone);
-            for (const entry of entries) {
-              allEntries.push({
-                ...entry,
-                habitName: habit.name,
-              });
-            }
-          } catch (err) {
-            console.error(`[QuickLog] Failed to fetch entries for habit ${habit.id}:`, err);
+    setLoadingEntries(true);
+    try {
+      const allEntries: Array<EntryView & { habitName: string }> = [];
+      
+      // Fetch entries for all active habits from today
+      for (const habit of activeHabits) {
+        try {
+          const entries = await fetchHabitEntries(habit.id, todayKey, todayKey, timeZone);
+          for (const entry of entries) {
+            allEntries.push({
+              ...entry,
+              habitName: habit.name,
+            });
           }
+        } catch (err) {
+          console.error(`[QuickLog] Failed to fetch entries for habit ${habit.id}:`, err);
         }
-
-        // Sort by timestamp (most recent first) and take top 5
-        allEntries.sort((a, b) => {
-          const timeA = new Date(a.timestampUtc || a.dayKey).getTime();
-          const timeB = new Date(b.timestampUtc || b.dayKey).getTime();
-          return timeB - timeA;
-        });
-
-        setRecentEntries(allEntries.slice(0, 5));
-      } catch (err) {
-        console.error('[QuickLog] Failed to load recent entries:', err);
-      } finally {
-        setLoadingEntries(false);
       }
-    };
 
-    loadRecentEntries();
+      // Sort by timestamp (most recent first) and take top 5
+      allEntries.sort((a, b) => {
+        const timeA = new Date(a.timestampUtc || a.dayKey).getTime();
+        const timeB = new Date(b.timestampUtc || b.dayKey).getTime();
+        return timeB - timeA;
+      });
+
+      const newEntries = allEntries.slice(0, 5);
+      
+      // Guard: only set state if entries actually changed
+      setRecentEntries((prev) => {
+        // Compare by creating a stable key for each entry
+        const prevKeys = prev.map((e) => `${e.habitId}-${e.dayKey}-${e.timestampUtc}`).sort().join('|');
+        const newKeys = newEntries.map((e) => `${e.habitId}-${e.dayKey}-${e.timestampUtc}`).sort().join('|');
+        
+        if (prevKeys === newKeys) {
+          return prev; // No change, return previous to prevent re-render
+        }
+        return newEntries;
+      });
+    } catch (err) {
+      console.error('[QuickLog] Failed to load recent entries:', err);
+    } finally {
+      setLoadingEntries(false);
+    }
+  }, [activeHabits, todayKey, timeZone]);
+
+  // Fetch recent entries (from today) - only when dependencies actually change
+  useEffect(() => {
+    void loadRecentEntries();
     
     // Refresh entries when a new entry is logged
     const handleEntryChange = () => {
-      loadRecentEntries();
+      void loadRecentEntries();
     };
     window.addEventListener('habitflow:demo-data-changed', handleEntryChange);
     return () => window.removeEventListener('habitflow:demo-data-changed', handleEntryChange);
-  }, [activeHabits, todayKey, timeZone]);
+  }, [loadRecentEntries]);
 
   // Close on outside click
   useEffect(() => {
