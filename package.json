@@ -13,7 +13,8 @@
     "test": "vitest",
     "test:run": "vitest run",
     "check:invariants": "tsx scripts/check-invariants.ts",
-    "seed:emotion": "tsx scripts/seed-emotion-regulation.ts"
+    "seed:emotion": "tsx scripts/seed-emotion-regulation.ts",
+    "seed:fitness": "tsx scripts/seed-fitness.ts"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
