@@ -6,7 +6,7 @@
  */
 
 import type { Category, Habit, DayLog, DailyWellbeing, Goal, GoalWithProgress, GoalManualLog, Routine, RoutineLog, HabitEntry } from '../models/persistenceTypes';
-import type { WellbeingEntry } from '../models/persistenceTypes';
+import type { WellbeingEntry, WellbeingMetricKey } from '../models/persistenceTypes';
 import type { DashboardPrefs } from '../models/persistenceTypes';
 
 import type { GoalDetail, CompletedGoal, ProgressOverview } from '../types';
@@ -159,6 +159,28 @@ export async function fetchWellbeingEntries(params: {
     endDayKey: params.endDayKey,
   }).toString();
   const response = await apiRequest<{ wellbeingEntries: WellbeingEntry[] }>(`/wellbeingEntries?${qs}`);
+  return response.wellbeingEntries;
+}
+
+export async function upsertWellbeingEntries(params: {
+  entries: Array<{
+    dayKey: string;
+    timeOfDay?: 'morning' | 'evening' | null;
+    metricKey: WellbeingMetricKey;
+    value: number | string | null;
+    source?: 'checkin' | 'import' | 'test';
+    timestampUtc?: string;
+    timeZone?: string;
+  }>;
+  defaultTimeZone?: string;
+}): Promise<WellbeingEntry[]> {
+  const response = await apiRequest<{ wellbeingEntries: WellbeingEntry[] }>('/wellbeingEntries', {
+    method: 'POST',
+    body: JSON.stringify({
+      entries: params.entries,
+      defaultTimeZone: params.defaultTimeZone || 'UTC',
+    }),
+  });
   return response.wellbeingEntries;
 }
 

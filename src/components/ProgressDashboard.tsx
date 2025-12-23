@@ -8,9 +8,10 @@ import { Sun, Loader2 } from 'lucide-react';
 import { GoalPulseCard } from './goals/GoalPulseCard';
 import { CategoryCompletionRow } from './CategoryCompletionRow';
 import { EmotionalWellbeingDashboard } from './personas/emotionalWellbeing/EmotionalWellbeingDashboard';
+import { FitnessDashboard } from './personas/fitness/FitnessDashboard';
 import { getActivePersonaId, resolvePersona } from '../shared/personas/activePersona';
 import type { Routine } from '../models/persistenceTypes';
-import { DEFAULT_PERSONA_ID, EMOTIONAL_PERSONA_ID } from '../shared/personas/personaConstants';
+import { DEFAULT_PERSONA_ID, EMOTIONAL_PERSONA_ID, FITNESS_PERSONA_ID } from '../shared/personas/personaConstants';
 
 interface ProgressDashboardProps {
     onCreateGoal?: () => void;
@@ -79,6 +80,21 @@ export const ProgressDashboard: React.FC<ProgressDashboardProps> = ({ onCreateGo
         return (
             <>
                 <EmotionalWellbeingDashboard
+                    onOpenCheckIn={() => setIsCheckInOpen(true)}
+                    onNavigateWellbeingHistory={onNavigateWellbeingHistory}
+                    onStartRoutine={onStartRoutine}
+                />
+                <DailyCheckInModal
+                    isOpen={isCheckInOpen}
+                    onClose={() => setIsCheckInOpen(false)}
+                />
+            </>
+        );
+    }
+    if (activePersonaId === FITNESS_PERSONA_ID) {
+        return (
+            <>
+                <FitnessDashboard
                     onOpenCheckIn={() => setIsCheckInOpen(true)}
                     onNavigateWellbeingHistory={onNavigateWellbeingHistory}
                     onStartRoutine={onStartRoutine}

@@ -1,8 +1,9 @@
 import type { PersonaConfig, PersonaId } from './personaTypes';
 import { emotionalWellbeingPersona } from './emotionalWellbeingPersona';
+import { fitnessPersona } from './fitnessPersona';
 import { defaultPersona } from './defaultPersona';
 import { ACTIVE_USER_MODE_STORAGE_KEY } from '../demo';
-import { DEFAULT_PERSONA_ID, EMOTIONAL_PERSONA_ID } from './personaConstants';
+import { DEFAULT_PERSONA_ID, EMOTIONAL_PERSONA_ID, FITNESS_PERSONA_ID } from './personaConstants';
 
 /**
  * Active persona selector (safe defaults).
@@ -11,6 +12,7 @@ import { DEFAULT_PERSONA_ID, EMOTIONAL_PERSONA_ID } from './personaConstants';
  */
 export function resolvePersona(personaId: string | null | undefined): PersonaId {
   if (personaId === EMOTIONAL_PERSONA_ID) return EMOTIONAL_PERSONA_ID;
+  if (personaId === FITNESS_PERSONA_ID) return FITNESS_PERSONA_ID;
   if (personaId === DEFAULT_PERSONA_ID) return DEFAULT_PERSONA_ID;
 
   if (import.meta.env?.DEV && personaId) {
@@ -37,7 +39,9 @@ export function getActivePersonaId(): PersonaId {
 
 export function getActivePersonaConfig(): PersonaConfig {
   const id = getActivePersonaId();
-  return id === EMOTIONAL_PERSONA_ID ? emotionalWellbeingPersona : defaultPersona;
+  if (id === EMOTIONAL_PERSONA_ID) return emotionalWellbeingPersona;
+  if (id === FITNESS_PERSONA_ID) return fitnessPersona;
+  return defaultPersona;
 }
 
 
