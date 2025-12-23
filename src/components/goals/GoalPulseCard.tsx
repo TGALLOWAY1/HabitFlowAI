@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import type { GoalWithProgress } from '../../types';
-import { format, isPast, isToday, isTomorrow } from 'date-fns';
+import { format, isPast, isToday, isTomorrow, isFuture, differenceInDays } from 'date-fns';
 
 interface GoalPulseCardProps {
     goalWithProgress: GoalWithProgress;
@@ -29,15 +29,51 @@ export const GoalPulseCard: React.FC<GoalPulseCardProps> = ({ goalWithProgress, 
         return `Due ${format(deadlineDate, 'MMM d')}`;
     }, [goal.deadline]);
 
+    // Determine if goal has upcoming deadline and status label
+    const deadlineInfo = useMemo(() => {
+        if (!goal.deadline || goal.completedAt) return null;
+
+        const deadlineDate = new Date(goal.deadline);
+        if (isNaN(deadlineDate.getTime())) return null;
+
+        if (isPast(deadlineDate)) return null; // Don't show label for overdue
+
+        if (isFuture(deadlineDate)) {
+            const daysUntil = differenceInDays(deadlineDate, new Date());
+            // "Upcoming" for goals within 7 days, "Preparing" for goals 7-30 days away
+            if (daysUntil <= 7) {
+                return { label: 'Upcoming', daysUntil };
+            } else if (daysUntil <= 30) {
+                return { label: 'Preparing', daysUntil };
+            }
+        }
+
+        return null;
+    }, [goal.deadline, goal.completedAt]);
+
+    // Determine if goal should have subtle emphasis (has deadline and is upcoming)
+    const hasUpcomingDeadline = deadlineInfo !== null;
+    const emphasisClass = hasUpcomingDeadline
+        ? 'border-emerald-500/20 bg-neutral-900/60'
+        : 'border-white/5 bg-neutral-900/50';
+
     return (
         <button
             onClick={onClick}
-            className="group w-full text-left bg-neutral-900/50 hover:bg-neutral-800 border border-white/5 hover:border-white/10 rounded-xl p-3 transition-all duration-200 cursor-pointer flex flex-col justify-between h-full"
+            className={`group w-full text-left ${emphasisClass} hover:bg-neutral-800 border hover:border-white/10 rounded-xl p-3 transition-all duration-200 cursor-pointer flex flex-col justify-between h-full`}
         >
             <div className="flex items-start justify-between w-full mb-2">
-                <h4 className="text-sm font-medium text-neutral-200 group-hover:text-white truncate pr-2 flex-1">
-                    {goal.title}
-                </h4>
+                <div className="flex-1 min-w-0 pr-2">
+                    <h4 className="text-sm font-medium text-neutral-200 group-hover:text-white truncate">
+                        {goal.title}
+                    </h4>
+                    {/* Optional "Upcoming" / "Preparing" label */}
+                    {deadlineInfo && (
+                        <div className="text-[10px] text-emerald-400/80 font-medium mt-0.5">
+                            {deadlineInfo.label}
+                        </div>
+                    )}
+                </div>
 
                 {/* One-Time Goal Status / Cumulative Value */}
                 {isCumulative ? (
