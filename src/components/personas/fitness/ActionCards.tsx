@@ -183,10 +183,10 @@ export const ActionCards: React.FC<Props> = ({ onStartRoutine, onViewRoutine }) 
     return Math.max(1, Math.ceil(estimatedSeconds / 60));
   };
 
-  const getCategoryName = (routine: Routine): string => {
-    if (!routine.categoryId) return 'Uncategorized';
+  const getCategoryName = (routine: Routine): string | null => {
+    if (!routine.categoryId) return null;
     const category = categories.find((c) => c.id === routine.categoryId);
-    return category?.name || 'Uncategorized';
+    return category?.name || null;
   };
 
   if (loading) {
@@ -237,39 +237,43 @@ export const ActionCards: React.FC<Props> = ({ onStartRoutine, onViewRoutine }) 
             return (
               <div
                 key={routine.id}
-                className="p-4 rounded-xl bg-neutral-800/50 border border-white/5 flex flex-col justify-between min-h-[140px]"
+                className="h-[140px] p-3 rounded-xl bg-neutral-800/50 border border-white/5 flex flex-col justify-between"
               >
-                <div className="mb-4">
-                  <div className="flex items-start justify-between gap-2 mb-2">
+                <div className="flex-1 min-w-0 flex flex-col">
+                  <div className="flex items-start justify-between gap-2 mb-1.5">
                     <div className="flex-1 min-w-0">
-                      <div className="text-sm font-semibold text-white truncate">{routine.title}</div>
+                      <div className="text-sm font-semibold text-white truncate leading-tight">{routine.title}</div>
                       {isGoTo && (
                         <div className="text-[10px] text-emerald-400 font-medium mt-0.5">My Go-To Routine</div>
                       )}
                     </div>
                   </div>
-                  <div className="flex items-center gap-3 text-xs text-neutral-400">
+                  <div className="flex items-center gap-2 text-xs text-neutral-400 mt-auto">
                     <span>{duration} min</span>
-                    <span>•</span>
-                    <span className="truncate">{categoryName}</span>
+                    {categoryName && (
+                      <>
+                        <span>•</span>
+                        <span className="truncate text-neutral-500">{categoryName}</span>
+                      </>
+                    )}
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 mt-2">
                   <button
                     onClick={() => onStartRoutine && onStartRoutine(routine)}
-                    className="flex-1 inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-semibold transition-colors"
+                    className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-semibold transition-colors"
                   >
-                    <Play size={14} />
+                    <Play size={12} />
                     Start
                   </button>
                   {onViewRoutine && (
                     <button
                       onClick={() => onViewRoutine(routine)}
-                      className="px-3 py-2 rounded-lg bg-neutral-700 hover:bg-neutral-600 border border-white/10 text-neutral-300 hover:text-white text-sm font-medium transition-colors"
+                      className="p-1.5 rounded-lg bg-neutral-700/50 hover:bg-neutral-700 border border-white/10 text-neutral-400 hover:text-white transition-colors"
                       title="View routine"
                     >
-                      <Eye size={14} />
+                      <Eye size={12} />
                     </button>
                   )}
                 </div>
