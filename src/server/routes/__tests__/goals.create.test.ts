@@ -116,19 +116,29 @@ describe('Goal Create Routes', () => {
             expect(goals[0].title).toBe('Calculus Final');
         });
 
-        it('should fail if deadline is missing for onetime goal', async () => {
+        it('should create onetime goal without deadline (optional)', async () => {
             const response = await request(app)
                 .post('/api/goals')
                 .send({
-                    title: 'Invalid Goal',
+                    title: 'Flexible Event Goal',
                     type: 'onetime',
-                    // Missing deadline
+                    // Missing deadline - should be allowed
                     linkedHabitIds: [],
                 })
-                .expect(400);
+                .expect(201);
 
-            expect(response.body.error.code).toBe('VALIDATION_ERROR');
-            expect(response.body.error.message).toContain('deadline is required');
+            expect(response.body).toHaveProperty('goal');
+            expect(response.body.goal.title).toBe('Flexible Event Goal');
+            expect(response.body.goal.type).toBe('onetime');
+            // Deadline should be null or undefined (database may store as null)
+            expect(response.body.goal.deadline === null || response.body.goal.deadline === undefined).toBe(true);
+
+            // Verify persistence
+            const goals = await getGoalsByUser(TEST_USER_ID);
+            expect(goals).toHaveLength(1);
+            expect(goals[0].title).toBe('Flexible Event Goal');
+            // Deadline should be null or undefined (database may store as null)
+            expect(goals[0].deadline === null || goals[0].deadline === undefined).toBe(true);
         });
 
         it('should fail if type is invalid', async () => {

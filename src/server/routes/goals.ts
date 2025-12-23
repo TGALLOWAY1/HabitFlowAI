@@ -114,9 +114,7 @@ function validateGoalData(data: any): string | null {
     return 'linkedHabitIds must be an array of non-empty strings';
   }
 
-  if (data.type === 'onetime' && !data.deadline) {
-    return 'deadline is required for one-time goals';
-  }
+  // Deadline is optional for one-time goals (no validation needed)
 
   if (data.deadline !== undefined) {
     if (typeof data.deadline !== 'string') {

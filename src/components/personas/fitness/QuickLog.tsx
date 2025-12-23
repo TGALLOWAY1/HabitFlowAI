@@ -23,7 +23,7 @@ function getTimeZone(): string {
 }
 
 export const QuickLog: React.FC = () => {
-  const { habits, refreshProgress } = useHabitStore();
+  const { habits } = useHabitStore();
   const [isOpen, setIsOpen] = useState(false);
   const [selectedHabit, setSelectedHabit] = useState<Habit | null>(null);
   const [numericValue, setNumericValue] = useState('');
@@ -206,9 +206,6 @@ export const QuickLog: React.FC = () => {
         source: 'quick',
         timestamp: new Date().toISOString(),
       });
-
-      // Refresh progress to update UI
-      refreshProgress();
 
       // Trigger refresh event (will update recent entries via event listener)
       window.dispatchEvent(new CustomEvent('habitflow:demo-data-changed'));
