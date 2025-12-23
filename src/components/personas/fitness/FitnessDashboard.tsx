@@ -2,6 +2,7 @@ import React from 'react';
 import { Activity } from 'lucide-react';
 import type { Routine } from '../../../models/persistenceTypes';
 import { ReadinessSnapshot } from './ReadinessSnapshot';
+import { SleepEnergyTrends } from './SleepEnergyTrends';
 
 type Props = {
   onOpenCheckIn: () => void;
@@ -37,9 +38,14 @@ export const FitnessDashboard: React.FC<Props> = ({ onOpenCheckIn, onNavigateWel
         <div className="md:col-span-2">
           <ReadinessSnapshot />
         </div>
-        {/* Right column will be Quick Log (to be implemented) */}
-        <div className="md:col-span-1">
+        {/* Right column: Quick Log (top) + Sleep/Energy Trends (below) */}
+        <div className="md:col-span-1 space-y-4">
           {/* Placeholder for Quick Log */}
+          <div className="bg-neutral-900/50 rounded-2xl border border-white/5 p-6">
+            <div className="text-sm text-neutral-400">Quick Log (coming soon)</div>
+          </div>
+          {/* Sleep Quality Trend + Energy Level Trend - stacked vertically, half-width card */}
+          <SleepEnergyTrends />
         </div>
       </div>
 
