@@ -129,7 +129,7 @@ const SleepEnergyTrendsComponent: React.FC = () => {
                     axisLine={false}
                   />
                   <YAxis
-                    domain={[0, 4]}
+                    domain={[0, 5]}
                     tick={{ fill: '#a3a3a3', fontSize: 9 }}
                     tickLine={false}
                     axisLine={false}
@@ -180,7 +180,7 @@ const SleepEnergyTrendsComponent: React.FC = () => {
                     axisLine={false}
                   />
                   <YAxis
-                    domain={[1, 5]}
+                    domain={[0, 5]}
                     tick={{ fill: '#a3a3a3', fontSize: 9 }}
                     tickLine={false}
                     axisLine={false}
