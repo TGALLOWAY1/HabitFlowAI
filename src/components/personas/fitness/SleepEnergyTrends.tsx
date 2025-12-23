@@ -142,7 +142,7 @@ const SleepEnergyTrendsComponent: React.FC = () => {
                       color: '#fff',
                     }}
                     labelFormatter={(label) => formatDayKey(label)}
-                    formatter={(value: any) => (value !== null ? value.toFixed(1) : 'N/A')}
+                    formatter={(value: any) => (value !== null ? Math.round(value).toString() : 'N/A')}
                   />
                   <Line
                     type="monotone"
@@ -193,7 +193,7 @@ const SleepEnergyTrendsComponent: React.FC = () => {
                       color: '#fff',
                     }}
                     labelFormatter={(label) => formatDayKey(label)}
-                    formatter={(value: any) => (value !== null ? value.toFixed(1) : 'N/A')}
+                    formatter={(value: any) => (value !== null ? Math.round(value).toString() : 'N/A')}
                   />
                   <Line
                     type="monotone"
