@@ -306,7 +306,7 @@ export const ActionCards: React.FC<Props> = ({ onStartRoutine, onViewRoutine }) 
           </button>
         </div>
       ) : (
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-2 gap-3">
           {pinnedRoutines.map((routine) => {
             const duration = calculateDuration(routine);
             const categoryName = getCategoryName(routine);
@@ -315,18 +315,18 @@ export const ActionCards: React.FC<Props> = ({ onStartRoutine, onViewRoutine }) 
             return (
               <div
                 key={routine.id}
-                className="h-[140px] p-3 rounded-xl bg-neutral-800/50 border border-white/5 flex flex-col justify-between"
+                className="h-[130px] p-2.5 rounded-xl bg-neutral-800/50 border border-white/5 flex flex-col justify-between"
               >
                 <div className="flex-1 min-w-0 flex flex-col">
-                  <div className="flex items-start justify-between gap-2 mb-1.5">
+                  <div className="flex items-start justify-between gap-1.5 mb-1">
                     <div className="flex-1 min-w-0">
-                      <div className="text-sm font-semibold text-white truncate leading-tight">{routine.title}</div>
+                      <div className="text-xs font-semibold text-white truncate leading-tight">{routine.title}</div>
                       {isGoTo && (
-                        <div className="text-[10px] text-emerald-400 font-medium mt-0.5">My Go-To Routine</div>
+                        <div className="text-[9px] text-emerald-400 font-medium mt-0.5">My Go-To Routine</div>
                       )}
                     </div>
                   </div>
-                  <div className="flex items-center gap-2 text-xs text-neutral-400 mt-auto">
+                  <div className="flex items-center gap-1.5 text-[10px] text-neutral-400 mt-auto">
                     <span>{duration} min</span>
                     {categoryName && (
                       <>
@@ -337,21 +337,21 @@ export const ActionCards: React.FC<Props> = ({ onStartRoutine, onViewRoutine }) 
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2 mt-2">
+                <div className="flex items-center gap-1.5 mt-1.5">
                   <button
                     onClick={() => onStartRoutine && onStartRoutine(routine)}
-                    className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-semibold transition-colors"
+                    className="flex-1 inline-flex items-center justify-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-[10px] font-semibold transition-colors"
                   >
-                    <Play size={12} />
+                    <Play size={11} />
                     Start
                   </button>
                   {onViewRoutine && (
                     <button
                       onClick={() => onViewRoutine(routine)}
-                      className="p-1.5 rounded-lg bg-neutral-700/50 hover:bg-neutral-700 border border-white/10 text-neutral-400 hover:text-white transition-colors"
+                      className="p-1 rounded-lg bg-neutral-700/50 hover:bg-neutral-700 border border-white/10 text-neutral-400 hover:text-white transition-colors"
                       title="View routine"
                     >
-                      <Eye size={12} />
+                      <Eye size={11} />
                     </button>
                   )}
                 </div>
