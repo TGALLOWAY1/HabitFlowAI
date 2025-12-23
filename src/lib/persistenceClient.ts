@@ -930,10 +930,35 @@ export async function upsertHabitEntry(habitId: string, dateKey: string, data: a
  * @param dateKey - Date Key
  */
 export async function deleteHabitEntryByKey(habitId: string, dateKey: string): Promise<{ dayLog: DayLog | null }> {
-  const response = await apiRequest<{ dayLog: DayLog | null }>(`/entries/key/${habitId}/${dateKey}`, {
-    method: 'DELETE',
-  });
-  return response;
+  // [DEBUG_ENTRY_DELETE] Log API call
+  const DEBUG_ENTRY_DELETE = false; // Set to true for debugging
+  if (DEBUG_ENTRY_DELETE) {
+    console.log('[DEBUG_ENTRY_DELETE] deleteHabitEntryByKey API call:', {
+      url: `/entries/key?habitId=${habitId}&dateKey=${dateKey}`,
+      method: 'DELETE',
+      habitId,
+      dateKey
+    });
+  }
+  try {
+    // Fix: Use query parameters to match server route expectation
+    const response = await apiRequest<{ dayLog: DayLog | null }>(`/entries/key?habitId=${encodeURIComponent(habitId)}&dateKey=${encodeURIComponent(dateKey)}`, {
+      method: 'DELETE',
+    });
+    if (DEBUG_ENTRY_DELETE) {
+      console.log('[DEBUG_ENTRY_DELETE] deleteHabitEntryByKey API response received:', {
+        success: true,
+        dayLog: response.dayLog ? 'exists' : 'null',
+        dayLogDetails: response.dayLog
+      });
+    }
+    return response;
+  } catch (error) {
+    if (DEBUG_ENTRY_DELETE) {
+      console.error('[DEBUG_ENTRY_DELETE] deleteHabitEntryByKey API call failed:', error);
+    }
+    throw error;
+  }
 }
 
 
