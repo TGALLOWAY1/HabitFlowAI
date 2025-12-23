@@ -3,7 +3,7 @@ import { Play, Eye, Edit, Target } from 'lucide-react';
 import { useRoutineStore } from '../../../store/RoutineContext';
 import { useHabitStore } from '../../../store/HabitContext';
 import { fetchDashboardPrefs, updateDashboardPrefs } from '../../../lib/persistenceClient';
-import type { Routine } from '../../../models/persistenceTypes';
+import type { Routine, RoutineLog } from '../../../models/persistenceTypes';
 
 const PinRoutinesModal: React.FC<{
   isOpen: boolean;
@@ -78,8 +78,65 @@ type Props = {
   onViewRoutine?: (routine: Routine) => void;
 };
 
+/**
+ * Calculate last week's same weekday date
+ * @param today - Today's date (YYYY-MM-DD)
+ * @returns Last week's same weekday (YYYY-MM-DD)
+ */
+export function getLastWeekSameWeekday(today: string): string {
+  const d = new Date(`${today}T00:00:00.000Z`);
+  d.setUTCDate(d.getUTCDate() - 7);
+  return d.toISOString().slice(0, 10);
+}
+
+/**
+ * Get routine IDs used on a specific date from routine logs
+ * @param routineLogs - Record of routine logs keyed by `${routineId}-${date}`
+ * @param date - Date to check (YYYY-MM-DD)
+ * @returns Set of routine IDs used on that date
+ */
+export function getRoutinesUsedOnDate(routineLogs: Record<string, RoutineLog>, date: string): Set<string> {
+  const routineIds = new Set<string>();
+  for (const [compositeKey, log] of Object.entries(routineLogs)) {
+    if (log.date === date) {
+      routineIds.add(log.routineId);
+    }
+  }
+  return routineIds;
+}
+
+/**
+ * Order routines: surface routines used last week on same weekday first
+ * @param routines - Array of routines to order
+ * @param routineLogs - Record of routine logs
+ * @param today - Today's date (YYYY-MM-DD)
+ * @returns Ordered array with weekday-mirrored routines first
+ */
+export function orderRoutinesByWeekdayMirroring(
+  routines: Routine[],
+  routineLogs: Record<string, RoutineLog>,
+  today: string
+): Routine[] {
+  const lastWeekSameWeekday = getLastWeekSameWeekday(today);
+  const routinesUsedLastWeek = getRoutinesUsedOnDate(routineLogs, lastWeekSameWeekday);
+
+  const used: Routine[] = [];
+  const notUsed: Routine[] = [];
+
+  for (const routine of routines) {
+    if (routinesUsedLastWeek.has(routine.id)) {
+      used.push(routine);
+    } else {
+      notUsed.push(routine);
+    }
+  }
+
+  // Return used routines first, then others (preserving original order within each group)
+  return [...used, ...notUsed];
+}
+
 export const ActionCards: React.FC<Props> = ({ onStartRoutine, onViewRoutine }) => {
-  const { routines } = useRoutineStore();
+  const { routines, routineLogs } = useRoutineStore();
   const { categories } = useHabitStore();
   const [prefsIds, setPrefsIds] = useState<string[]>([]);
   const [goToRoutineId, setGoToRoutineId] = useState<string | null>(null);
@@ -110,11 +167,15 @@ export const ActionCards: React.FC<Props> = ({ onStartRoutine, onViewRoutine }) 
 
   const pinnedRoutines = useMemo(() => {
     const map = new Map(routines.map((r) => [r.id, r]));
-    return prefsIds
+    const pinned = prefsIds
       .slice(0, 4) // Max 4 cards
       .map((id) => map.get(id))
       .filter(Boolean) as Routine[];
-  }, [prefsIds, routines]);
+
+    // Apply weekday mirroring ordering
+    const today = new Date().toISOString().slice(0, 10);
+    return orderRoutinesByWeekdayMirroring(pinned, routineLogs, today);
+  }, [prefsIds, routines, routineLogs]);
 
   const calculateDuration = (routine: Routine): number => {
     // Estimate duration: sum of timerSeconds + 60s buffer per step
