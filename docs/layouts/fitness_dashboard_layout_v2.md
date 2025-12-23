@@ -97,9 +97,9 @@ Purpose
 │                                               │  entries      │
 ├───────────────────────────────────────────────┼───────────────┤
 │                                               │               │
-│  Action Cards (2×2 grid, 8 cols)              │  Sleep &      │
-│  pinned routines                              │  Energy       │
-│                                               │  Trends       │
+│  Sleep & Energy Trends (8 cols)               │  Action       │
+│  stacked charts + shared range dropdown       │  Cards (4)    │
+│                                               │  2×2 compact  │
 ├───────────────────────────────────────────────┴───────────────┤
 │                                                               │
 │  Goals at a Glance (unchanged)                                │
@@ -109,6 +109,8 @@ Purpose
 │  Activity Heat Map (unchanged)                                │
 │                                                               │
 └───────────────────────────────────────────────────────────────┘
+
+
 5. Explicit Non-Goals (Still Enforced)
 No readiness scoring
 No recovery calculations

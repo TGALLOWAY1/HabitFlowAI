@@ -94,29 +94,8 @@ export const ReadinessSnapshot: React.FC = () => {
   }, [todayKey]);
 
   const handleSliderChange = async (metricKey: ReadinessKey, value: number) => {
-    // Update state using functional update to ensure we're working with latest state
-    setValues((prev) => {
-      const newValues = { ...prev, [metricKey]: value };
-      
-      // DEV ONLY: Assert that only the changed metric was updated
-      if (import.meta.env.DEV) {
-        const otherMetrics = (Object.keys(newValues) as ReadinessKey[]).filter((k) => k !== metricKey);
-        const changed = otherMetrics.filter((k) => newValues[k] !== prev[k]);
-        if (changed.length > 0) {
-          console.error(
-            `[ReadinessSnapshot] BUG: Moving ${metricKey} also changed: ${changed.join(', ')}`
-          );
-        }
-        // Verify the changed metric actually changed
-        if (newValues[metricKey] === prev[metricKey] && prev[metricKey] !== null) {
-          console.warn(
-            `[ReadinessSnapshot] WARNING: ${metricKey} value didn't change (${prev[metricKey]} -> ${newValues[metricKey]})`
-          );
-        }
-      }
-      
-      return newValues;
-    });
+    // Note: State is already updated optimistically in onChange handler
+    // This function only handles persistence
     
     setSaving(true);
 
@@ -172,6 +151,7 @@ export const ReadinessSnapshot: React.FC = () => {
       <div className="grid grid-cols-5 gap-4">
         {READINESS_METRICS.map((metric) => {
           const currentValue = values[metric.key] ?? 2; // Default to middle (2 on 0-4 scale)
+          const metricKey = metric.key; // Capture in closure to ensure independence
 
           return (
             <div key={metric.key} className="space-y-2">
@@ -192,7 +172,32 @@ export const ReadinessSnapshot: React.FC = () => {
                 max={4}
                 step={1}
                 value={currentValue}
-                onChange={(e) => handleSliderChange(metric.key, Number(e.target.value))}
+                onChange={(e) => {
+                  // Capture the metric key and value immediately to ensure independence
+                  const targetMetric = metricKey;
+                  const newValue = Number(e.target.value);
+                  
+                  // Update state immediately for responsive UI
+                  setValues((prev) => {
+                    const updated = { ...prev, [targetMetric]: newValue };
+                    
+                    // DEV: Verify only this metric changed
+                    if (import.meta.env.DEV) {
+                      const otherKeys = (Object.keys(updated) as ReadinessKey[]).filter(k => k !== targetMetric);
+                      const otherChanged = otherKeys.filter(k => updated[k] !== prev[k]);
+                      if (otherChanged.length > 0) {
+                        console.error(`[ReadinessSnapshot] onChange: Moving ${targetMetric} also changed: ${otherChanged.join(', ')}`);
+                      }
+                    }
+                    
+                    return updated;
+                  });
+                  
+                  // Trigger async save (don't await - let it happen in background)
+                  handleSliderChange(targetMetric, newValue).catch(err => {
+                    console.error(`[ReadinessSnapshot] Failed to save ${targetMetric}:`, err);
+                  });
+                }}
                 disabled={saving}
                 className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-emerald-500/60 hover:accent-emerald-500/80 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 style={{
