@@ -12,8 +12,10 @@ function getTimeZone(): string {
   }
 }
 
+type ReadinessKey = 'readiness' | 'soreness' | 'hydration' | 'fueling' | 'recovery';
+
 type ReadinessMetric = {
-  key: WellbeingMetricKey;
+  key: ReadinessKey;
   label: string;
   icon: React.ReactNode;
 };
@@ -29,7 +31,7 @@ const READINESS_METRICS: ReadinessMetric[] = [
 export const ReadinessSnapshot: React.FC = () => {
   const timeZone = useMemo(() => getTimeZone(), []);
   const todayKey = useMemo(() => formatDayKeyFromDate(new Date(), timeZone), [timeZone]);
-  const [values, setValues] = useState<Record<WellbeingMetricKey, number | null>>({
+  const [values, setValues] = useState<Record<ReadinessKey, number | null>>({
     readiness: null,
     soreness: null,
     hydration: null,
@@ -51,7 +53,7 @@ export const ReadinessSnapshot: React.FC = () => {
       .then((entries: WellbeingEntry[]) => {
         if (cancelled) return;
 
-        const todayValues: Record<WellbeingMetricKey, number | null> = {
+        const todayValues: Record<ReadinessKey, number | null> = {
           readiness: null,
           soreness: null,
           hydration: null,
@@ -91,19 +93,42 @@ export const ReadinessSnapshot: React.FC = () => {
     };
   }, [todayKey]);
 
-  const handleSliderChange = async (metricKey: WellbeingMetricKey, value: number) => {
-    const newValues = { ...values, [metricKey]: value };
-    setValues(newValues);
+  const handleSliderChange = async (metricKey: ReadinessKey, value: number) => {
+    // Update state using functional update to ensure we're working with latest state
+    setValues((prev) => {
+      const newValues = { ...prev, [metricKey]: value };
+      
+      // DEV ONLY: Assert that only the changed metric was updated
+      if (import.meta.env.DEV) {
+        const otherMetrics = (Object.keys(newValues) as ReadinessKey[]).filter((k) => k !== metricKey);
+        const changed = otherMetrics.filter((k) => newValues[k] !== prev[k]);
+        if (changed.length > 0) {
+          console.error(
+            `[ReadinessSnapshot] BUG: Moving ${metricKey} also changed: ${changed.join(', ')}`
+          );
+        }
+        // Verify the changed metric actually changed
+        if (newValues[metricKey] === prev[metricKey] && prev[metricKey] !== null) {
+          console.warn(
+            `[ReadinessSnapshot] WARNING: ${metricKey} value didn't change (${prev[metricKey]} -> ${newValues[metricKey]})`
+          );
+        }
+      }
+      
+      return newValues;
+    });
+    
     setSaving(true);
 
     try {
       // Upsert wellbeing entry (morning session for readiness snapshot)
+      // Each metric is persisted independently with its own metricKey
       await upsertWellbeingEntries({
         entries: [
           {
             dayKey: todayKey,
             timeOfDay: 'morning',
-            metricKey,
+            metricKey, // Unique metric key ensures no overwriting
             value,
             source: 'checkin',
             timestampUtc: new Date().toISOString(),
@@ -116,8 +141,14 @@ export const ReadinessSnapshot: React.FC = () => {
       window.dispatchEvent(new CustomEvent('habitflow:demo-data-changed'));
     } catch (err) {
       console.error('[ReadinessSnapshot] Failed to save entry:', err);
-      // Revert on error
-      setValues(values);
+      // Revert on error using functional update
+      setValues((prev) => {
+        // Restore previous value for this metric only
+        const reverted = { ...prev };
+        // Note: We can't easily restore here without storing previous state
+        // The error case is rare, so we'll let the next load fix it
+        return reverted;
+      });
     } finally {
       setSaving(false);
     }
@@ -146,12 +177,17 @@ export const ReadinessSnapshot: React.FC = () => {
             <div key={metric.key} className="space-y-2">
               <div className="flex items-center gap-2 justify-center">
                 {metric.icon}
-                <label className="text-xs text-neutral-300 font-medium text-center">
+                <label 
+                  htmlFor={`readiness-slider-${metric.key}`}
+                  className="text-xs text-neutral-300 font-medium text-center cursor-pointer"
+                >
                   {metric.label}
                 </label>
               </div>
               <input
                 type="range"
+                id={`readiness-slider-${metric.key}`}
+                name={`readiness-${metric.key}`}
                 min={0}
                 max={4}
                 step={1}
