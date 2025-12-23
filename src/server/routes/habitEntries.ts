@@ -35,8 +35,8 @@ export async function getHabitEntriesRoute(req: Request, res: Response): Promise
         }
 
         // timeZone is required for DayKey derivation
-        const userTimeZone = (timeZone && typeof timeZone === 'string') 
-            ? timeZone 
+        const userTimeZone = (timeZone && typeof timeZone === 'string')
+            ? timeZone
             : 'UTC'; // Default to UTC if not provided
 
         // Validate timeZone
@@ -121,8 +121,8 @@ export async function createHabitEntryRoute(req: Request, res: Response): Promis
         try {
             normalizedPayload = normalizeHabitEntryPayload(entryData, userTimeZone);
         } catch (error) {
-            res.status(400).json({ 
-                error: error instanceof Error ? error.message : 'Failed to normalize dayKey' 
+            res.status(400).json({
+                error: error instanceof Error ? error.message : 'Failed to normalize dayKey'
             });
             return;
         }
@@ -308,8 +308,8 @@ export async function updateHabitEntryRoute(req: Request, res: Response): Promis
                 delete patch.date;
                 patch.timestamp = normalized.timestampUtc;
             } catch (error) {
-                res.status(400).json({ 
-                    error: error instanceof Error ? error.message : 'Failed to normalize dayKey' 
+                res.status(400).json({
+                    error: error instanceof Error ? error.message : 'Failed to normalize dayKey'
                 });
                 return;
             }

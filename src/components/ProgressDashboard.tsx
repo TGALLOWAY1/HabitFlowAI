@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useHabitStore } from '../store/HabitContext';
 import { useProgressOverview } from '../lib/useProgressOverview';
 import { Heatmap } from './Heatmap';
@@ -8,9 +8,11 @@ import { Sun, Loader2 } from 'lucide-react';
 import { GoalPulseCard } from './goals/GoalPulseCard';
 import { CategoryCompletionRow } from './CategoryCompletionRow';
 import { EmotionalWellbeingDashboard } from './personas/emotionalWellbeing/EmotionalWellbeingDashboard';
+import { FitnessDashboard } from './personas/fitness/FitnessDashboard';
+import { PersonaSwitcher } from './personas/PersonaSwitcher';
 import { getActivePersonaId, resolvePersona } from '../shared/personas/activePersona';
 import type { Routine } from '../models/persistenceTypes';
-import { DEFAULT_PERSONA_ID, EMOTIONAL_PERSONA_ID } from '../shared/personas/personaConstants';
+import { DEFAULT_PERSONA_ID, EMOTIONAL_PERSONA_ID, FITNESS_PERSONA_ID } from '../shared/personas/personaConstants';
 
 interface ProgressDashboardProps {
     onCreateGoal?: () => void;
@@ -24,6 +26,121 @@ export const ProgressDashboard: React.FC<ProgressDashboardProps> = ({ onCreateGo
     const { habits, categories } = useHabitStore();
     const { data: progressData, loading: progressLoading } = useProgressOverview();
     const [isCheckInOpen, setIsCheckInOpen] = useState(false);
+    
+    // ============================================================================
+    // DASHBOARD ROUTING / PERSONA RESOLUTION AUDIT
+    // ============================================================================
+    // WHERE PERSONA IS READ FROM:
+    // - getActivePersonaId() in src/shared/personas/activePersona.ts (line 33)
+    //   - Reads from localStorage: ACTIVE_USER_MODE_STORAGE_KEY ('habitflow_active_user_mode')
+    //   - Demo mode → EMOTIONAL_PERSONA_ID
+    //   - Real mode → DEFAULT_PERSONA_ID
+    //   - Note: Currently no userId-based persona resolution in getActivePersonaId()
+    // - resolvePersona() normalizes/validates the persona ID (line 13 in activePersona.ts)
+    //   - Maps string personaId to valid PersonaId type
+    //   - Unknown personas fall back to DEFAULT_PERSONA_ID
+    //
+    // WHERE DASHBOARD COMPONENT IS CHOSEN:
+    // - ProgressDashboard.tsx (this file, lines 79-108)
+    //   - Conditional rendering based on activePersonaId
+    //   - EMOTIONAL_PERSONA_ID → EmotionalWellbeingDashboard (lines 79-93)
+    //   - FITNESS_PERSONA_ID → FitnessDashboard (lines 94-108)
+    //   - DEFAULT_PERSONA_ID (or unknown) → Legacy default dashboard (lines 114-265)
+    //
+    // CURRENTLY SUPPORTED PERSONAS:
+    // 1. DEFAULT_PERSONA_ID ('default') - Legacy dashboard with Progress Rings, Goals, Activity Heatmap
+    // 2. EMOTIONAL_PERSONA_ID ('emotional_wellbeing') - Emotional Wellbeing Dashboard
+    // 3. FITNESS_PERSONA_ID ('fitness_focused') - Fitness Dashboard
+    //
+    // NOTE: dashboardComposer.ts does NOT yet support FITNESS_PERSONA_ID
+    // (it only handles EMOTIONAL_PERSONA_ID and defaults everything else to emotionalWellbeingPersona)
+    // Fitness persona dashboard not yet wired here.
+    // ============================================================================
+    // DEV ONLY: Sync persona query param to localStorage for persistence and trigger re-render
+    const [personaQueryParam, setPersonaQueryParam] = useState<string | null>(() => {
+        if (!import.meta.env.DEV || typeof window === 'undefined') return null;
+        return new URLSearchParams(window.location.search).get('persona');
+    });
+    
+    useEffect(() => {
+        if (!import.meta.env.DEV || typeof window === 'undefined') return;
+        
+        const params = new URLSearchParams(window.location.search);
+        const personaParam = params.get('persona');
+        
+        // Update state to trigger re-render if param changed
+        if (personaParam !== personaQueryParam) {
+            setPersonaQueryParam(personaParam);
+        }
+        
+        if (!personaParam) return;
+        
+        // Map query param to user mode for localStorage
+        let mode: 'real' | 'demo' | null = null;
+        switch (personaParam.toLowerCase()) {
+            case 'fitness':
+            case 'emotional':
+                // Both fitness and emotional personas use demo mode
+                mode = 'demo';
+                break;
+            case 'default':
+                mode = 'real';
+                break;
+        }
+        
+        if (mode !== null) {
+            const currentMode = localStorage.getItem('habitflow_active_user_mode');
+            if (currentMode !== mode) {
+                localStorage.setItem('habitflow_active_user_mode', mode);
+            }
+        }
+    }, [personaQueryParam]); // Re-run when query param changes
+    
+    // Listen for URL changes (browser back/forward, manual URL changes)
+    useEffect(() => {
+        if (!import.meta.env.DEV || typeof window === 'undefined') return;
+        
+        const handleLocationChange = () => {
+            const params = new URLSearchParams(window.location.search);
+            const personaParam = params.get('persona');
+            setPersonaQueryParam(personaParam);
+        };
+        
+        // Listen for popstate (browser back/forward)
+        window.addEventListener('popstate', handleLocationChange);
+        
+        // Also check on mount and periodically (for manual URL changes)
+        const interval = setInterval(() => {
+            const params = new URLSearchParams(window.location.search);
+            const currentParam = params.get('persona');
+            if (currentParam !== personaQueryParam) {
+                handleLocationChange();
+            }
+        }, 100); // Check every 100ms
+        
+        return () => {
+            window.removeEventListener('popstate', handleLocationChange);
+            clearInterval(interval);
+        };
+    }, [personaQueryParam]);
+
+    // Track persona changes to trigger re-render
+    const [personaChangeKey, setPersonaChangeKey] = useState(0);
+    
+    // Listen for persona changes (from PersonaSwitcher, User menu, or query param)
+    useEffect(() => {
+        const handlePersonaChange = () => {
+            setPersonaChangeKey(prev => prev + 1);
+        };
+        window.addEventListener('habitflow:personaChanged', handlePersonaChange);
+        window.addEventListener('persona-changed', handlePersonaChange); // Legacy event support
+        return () => {
+            window.removeEventListener('habitflow:personaChanged', handlePersonaChange);
+            window.removeEventListener('persona-changed', handlePersonaChange);
+        };
+    }, []);
+
+    // Re-evaluate active persona when change key updates (forces re-render)
     const activePersonaId = resolvePersona(getActivePersonaId());
     // Initialize state from URL params
     const [activityTab, setActivityTab] = useState<'overall' | 'category'>(() => {
@@ -90,6 +207,24 @@ export const ProgressDashboard: React.FC<ProgressDashboardProps> = ({ onCreateGo
             </>
         );
     }
+    if (activePersonaId === FITNESS_PERSONA_ID) {
+        return (
+            <>
+                <FitnessDashboard
+                    onOpenCheckIn={() => setIsCheckInOpen(true)}
+                    onNavigateWellbeingHistory={onNavigateWellbeingHistory}
+                    onStartRoutine={onStartRoutine}
+                    onCreateGoal={onCreateGoal}
+                    onViewGoal={onViewGoal}
+                    onSelectCategory={onSelectCategory}
+                />
+                <DailyCheckInModal
+                    isOpen={isCheckInOpen}
+                    onClose={() => setIsCheckInOpen(false)}
+                />
+            </>
+        );
+    }
     // Strict default persona gate: restore legacy dashboard as-is.
     // Do NOT rebuild default dashboard via composer.
     // DEFAULT_PERSONA_ID (or any unknown) -> legacy tree below.
@@ -97,8 +232,9 @@ export const ProgressDashboard: React.FC<ProgressDashboardProps> = ({ onCreateGo
 
     return (
         <div className="space-y-6 overflow-y-auto pb-20">
-            {/* Header with Check-in Button */}
-            <div className="flex justify-end">
+            {/* Header with Check-in Button and Persona Switcher */}
+            <div className="flex justify-end gap-2">
+                <PersonaSwitcher onPersonaChange={() => setPersonaChangeKey(prev => prev + 1)} />
                 <button
                     onClick={() => setIsCheckInOpen(true)}
                     className="flex items-center gap-2 px-4 py-2 bg-neutral-800 hover:bg-neutral-700 text-white rounded-lg transition-colors text-sm font-medium border border-white/5"

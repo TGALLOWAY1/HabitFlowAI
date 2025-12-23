@@ -1,7 +1,10 @@
-import React, { useMemo, useState } from 'react';
-import { LayoutGrid, Settings, User } from 'lucide-react';
+import React, { useMemo, useState, useRef, useEffect } from 'react';
+import { LayoutGrid, Settings, User, Check } from 'lucide-react';
 import { useHabitStore } from '../store/HabitContext';
 import { getActiveUserMode, setActiveUserMode, seedDemoEmotionalWellbeing, resetDemoEmotionalWellbeing } from '../lib/persistenceClient';
+import { getActivePersonaId, setActivePersonaId } from '../shared/personas/activePersona';
+import { DEFAULT_PERSONA_ID, EMOTIONAL_PERSONA_ID, FITNESS_PERSONA_ID } from '../shared/personas/personaConstants';
+import type { PersonaId } from '../shared/personas/personaTypes';
 
 interface LayoutProps {
     children: React.ReactNode;
@@ -13,6 +16,9 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
     const [userMode, setUserMode] = useState<'real' | 'demo'>(() => getActiveUserMode());
     const isDemo = userMode === 'demo';
     const [devNotice, setDevNotice] = useState<string | null>(null);
+    const [userMenuOpen, setUserMenuOpen] = useState(false);
+    const [activePersonaId, setActivePersonaIdState] = useState<PersonaId>(getActivePersonaId());
+    const userMenuRef = useRef<HTMLDivElement>(null);
 
     const demoBadge = useMemo(() => {
         if (!isDemo) return null;
@@ -56,6 +62,44 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
         }
         window.dispatchEvent(new Event('habitflow:demo-data-changed'));
     };
+
+    // Listen for persona changes
+    useEffect(() => {
+        const handlePersonaChange = () => {
+            setActivePersonaIdState(getActivePersonaId());
+        };
+        window.addEventListener('habitflow:personaChanged', handlePersonaChange);
+        return () => window.removeEventListener('habitflow:personaChanged', handlePersonaChange);
+    }, []);
+
+    // Close user menu when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) {
+                setUserMenuOpen(false);
+            }
+        };
+
+        if (userMenuOpen) {
+            document.addEventListener('mousedown', handleClickOutside);
+        }
+
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, [userMenuOpen]);
+
+    const handlePersonaSelect = (personaId: PersonaId) => {
+        setActivePersonaId(personaId);
+        setActivePersonaIdState(personaId);
+        setUserMenuOpen(false);
+    };
+
+    const personaOptions = [
+        { id: DEFAULT_PERSONA_ID, label: 'Default Dashboard' },
+        { id: EMOTIONAL_PERSONA_ID, label: 'Emotional Wellbeing' },
+        { id: FITNESS_PERSONA_ID, label: 'Fitness Focused' },
+    ];
 
     return (
         <div className="min-h-screen bg-neutral-900 text-white font-sans selection:bg-emerald-500/30">
@@ -123,14 +167,47 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
                     >
                         <Settings size={20} />
                     </button>
-                    <button className="w-8 h-8 bg-neutral-800 rounded-full flex items-center justify-center border border-white/10 text-neutral-400">
-                        <User size={16} />
-                    </button>
+                    <div ref={userMenuRef} className="relative">
+                        <button
+                            onClick={() => setUserMenuOpen(!userMenuOpen)}
+                            className="w-8 h-8 bg-neutral-800 rounded-full flex items-center justify-center border border-white/10 text-neutral-400 hover:bg-neutral-700 hover:text-white transition-colors"
+                            aria-label="User menu"
+                        >
+                            <User size={16} />
+                        </button>
+
+                        {userMenuOpen && (
+                            <div className="absolute right-0 top-full mt-2 w-56 bg-neutral-900 border border-white/10 rounded-xl shadow-lg overflow-hidden z-50 animate-in fade-in slide-in-from-top-2">
+                                <div className="py-1">
+                                    <div className="px-4 py-2 text-xs font-semibold text-neutral-500 uppercase tracking-wider border-b border-white/5">
+                                        Persona
+                                    </div>
+                                    {personaOptions.map((option) => {
+                                        const isActive = option.id === activePersonaId;
+                                        return (
+                                            <button
+                                                key={option.id}
+                                                onClick={() => handlePersonaSelect(option.id)}
+                                                className={`w-full text-left px-4 py-2 text-sm transition-colors flex items-center gap-2 ${
+                                                    isActive
+                                                        ? 'bg-emerald-500/10 text-emerald-400 font-semibold'
+                                                        : 'text-neutral-300 hover:bg-neutral-800 hover:text-white'
+                                                }`}
+                                            >
+                                                {isActive && <Check size={14} className="text-emerald-400" />}
+                                                <span className={isActive ? '' : 'ml-6'}>{option.label}</span>
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        )}
+                    </div>
                 </div>
             </header>
 
             {/* Main Content */}
-            <main className="pt-20 px-4 pb-20 max-w-7xl mx-auto min-h-screen flex flex-col">
+            <main className="pt-20 px-4 pb-20 max-w-7xl mx-auto min-h-screen">
                 {children}
             </main>
         </div>

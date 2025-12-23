@@ -9,6 +9,10 @@ import { EMOTIONAL_PERSONA_ID } from './personaConstants';
  * Output: ordered list of widget descriptors
  *
  * No data fetching allowed here.
+ * 
+ * NOTE: Fitness persona dashboard not yet wired here.
+ * Currently only supports EMOTIONAL_PERSONA_ID.
+ * Fitness persona routing is handled directly in ProgressDashboard.tsx.
  */
 export function DashboardComposer(personaId: PersonaId): DashboardWidgetDescriptor[] {
   switch (personaId) {

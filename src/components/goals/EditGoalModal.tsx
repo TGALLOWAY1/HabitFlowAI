@@ -119,10 +119,8 @@ export const EditGoalModal: React.FC<EditGoalModalProps> = ({
             return;
         }
 
-        if (goal.type === 'onetime' && !deadline) {
-            setError('Event Date is required for One-Time goals');
-            return;
-        }
+        // Event date is optional for one-time goals
+        // No validation needed
 
         // --- FIX FOR GHOST HABIT IDs ---
         // Filter out any IDs that don't exist in the current habits list.
@@ -348,14 +346,13 @@ export const EditGoalModal: React.FC<EditGoalModalProps> = ({
                             {/* Deadline */}
                             <div className={goal.type === 'onetime' ? "sm:col-span-2" : "sm:col-span-2"}>
                                 <label className="block text-sm font-medium text-neutral-300 mb-2">
-                                    {goal.type === 'onetime' ? 'Event Date' : 'Deadline (Optional)'}
+                                    {goal.type === 'onetime' ? 'Event Date (Optional)' : 'Deadline (Optional)'}
                                 </label>
                                 <input
                                     type="date"
                                     value={deadline}
                                     onChange={(e) => setDeadline(e.target.value)}
                                     className="w-full bg-neutral-800 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-emerald-500"
-                                    required={goal.type === 'onetime'}
                                 />
                             </div>
                         </div>

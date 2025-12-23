@@ -1,7 +1,7 @@
 import type { WellbeingMetricKey } from '../../models/persistenceTypes';
-import { DEFAULT_PERSONA_ID, EMOTIONAL_PERSONA_ID } from './personaConstants';
+import { DEFAULT_PERSONA_ID, EMOTIONAL_PERSONA_ID, FITNESS_PERSONA_ID } from './personaConstants';
 
-export type PersonaId = typeof DEFAULT_PERSONA_ID | typeof EMOTIONAL_PERSONA_ID;
+export type PersonaId = typeof DEFAULT_PERSONA_ID | typeof EMOTIONAL_PERSONA_ID | typeof FITNESS_PERSONA_ID;
 
 export type PersonaCheckinKey = WellbeingMetricKey | 'vibe';
 

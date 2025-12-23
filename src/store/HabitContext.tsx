@@ -80,6 +80,7 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     // Use refs to prevent double execution in React StrictMode
     const initializedRef = useRef(false);
+    const hasLoadedWellbeingRef = useRef(false);
 
     // Helper function to load day logs (LEGACY - for write compatibility only)
     // NOTE: Reads should use /api/dayView endpoint instead
@@ -180,7 +181,10 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 const results = await Promise.allSettled([
                     refreshHabitsAndCategories().then(() => console.log('[HabitContext] Habits/Categories loaded')),
                     loadLogsFromApi().then(() => console.log('[HabitContext] Day logs loaded')),
-                    loadWellbeingLogsFromApi().then(() => console.log('[HabitContext] Wellbeing logs loaded')),
+                    loadWellbeingLogsFromApi().then(() => {
+                        console.log('[HabitContext] Wellbeing logs loaded');
+                        hasLoadedWellbeingRef.current = true;
+                    }),
                     fetchEvidenceForToday().then(() => console.log('[HabitContext] Evidence loaded'))
                 ]);
 
@@ -201,11 +205,24 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             console.error('[HabitContext] Error during initialization:', error);
         });
 
-    }, [refreshHabitsAndCategories, loadLogsFromApi, loadWellbeingLogsFromApi, fetchEvidenceForToday]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []); // Empty deps - only run once on mount, callbacks are stable
 
     // Demo seed/reset refresh: re-fetch wellbeing logs (and habits/categories already refreshed in Layout).
+    // Only refresh if we've already done the initial load (to avoid double-fetching on mount)
+    // Only reload for explicit seed/reset operations, not for individual entry updates
     useEffect(() => {
-        const handler = async () => {
+        type DemoDataChangedDetail = { reason?: 'seed' | 'reset' | 'other' };
+        const handler = async (evt: Event) => {
+            const custom = evt as CustomEvent<DemoDataChangedDetail>;
+            // Only reload for seed/reset operations
+            if (custom.detail?.reason !== 'seed' && custom.detail?.reason !== 'reset') {
+                return; // Ignore other demo-data-changed events
+            }
+            // Only refresh if initial load has completed
+            if (!hasLoadedWellbeingRef.current) {
+                return; // Skip if initial load hasn't happened yet
+            }
             try {
                 await loadWellbeingLogsFromApi();
             } catch {
@@ -214,7 +231,8 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         };
         window.addEventListener('habitflow:demo-data-changed', handler as any);
         return () => window.removeEventListener('habitflow:demo-data-changed', handler as any);
-    }, [loadWellbeingLogsFromApi]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []); // Empty deps - handler uses stable loadWellbeingLogsFromApi from closure
 
 
     const logWellbeing = async (date: string, data: DailyWellbeing) => {

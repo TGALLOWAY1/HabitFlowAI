@@ -680,6 +680,12 @@ export const WELLBEING_METRIC_KEYS = [
     'stress',
     'focus',
     'notes',
+    // Fitness Persona readiness metrics
+    'readiness',
+    'soreness',
+    'hydration',
+    'fueling',
+    'recovery',
 ] as const;
 
 export type WellbeingMetricKey = typeof WELLBEING_METRIC_KEYS[number];

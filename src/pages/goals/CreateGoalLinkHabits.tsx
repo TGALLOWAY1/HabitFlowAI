@@ -91,7 +91,7 @@ export const CreateGoalLinkHabits: React.FC<CreateGoalLinkHabitsProps> = ({
                 <div className="text-white font-medium">{goalDraft.title}</div>
                 <div className="text-xs text-neutral-500 mt-1 capitalize">
                     {goalDraft.type === 'onetime'
-                        ? `One-Time Event • ${goalDraft.deadline}`
+                        ? `One-Time Event${goalDraft.deadline ? ` • ${goalDraft.deadline}` : ''}`
                         : `${goalDraft.type} • Target: ${goalDraft.targetValue} ${goalDraft.unit || ''}`}
                 </div>
             </div>

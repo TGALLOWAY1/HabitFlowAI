@@ -86,7 +86,8 @@ export const CreateGoalPage: React.FC<CreateGoalPageProps> = ({ onNext }) => {
         if (!title.trim()) return false;
 
         if (type === 'onetime') {
-            return !!deadline; // Deadline (Event Date) is required for onetime
+            // Event Date is optional for onetime goals
+            return true;
         } else {
             // For others, target value > 0 is required
             return targetValue !== '' && !isNaN(parseFloat(targetValue)) && parseFloat(targetValue) > 0;
@@ -329,10 +330,10 @@ export const CreateGoalPage: React.FC<CreateGoalPageProps> = ({ onNext }) => {
                     </div>
                 ) : (
                     <div className="space-y-6 animate-in slide-in-from-top-2 duration-300">
-                        {/* Event Date (Required for OneTime) */}
+                        {/* Event Date (Optional for OneTime) */}
                         <div className="space-y-3">
                             <label className="block text-sm font-medium text-neutral-300">
-                                Event Date <span className="text-emerald-500">*</span>
+                                Event Date <span className="text-neutral-500 font-normal">(Optional)</span>
                             </label>
                             <input
                                 type="date"
@@ -340,10 +341,9 @@ export const CreateGoalPage: React.FC<CreateGoalPageProps> = ({ onNext }) => {
                                 onChange={(e) => setDeadline(e.target.value)}
                                 className="w-full bg-neutral-900/50 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/50 transition-all"
                                 min={new Date().toISOString().split('T')[0]}
-                                required
                             />
                             <p className="text-xs text-neutral-500">
-                                When is the big day?
+                                Leave blank if you don't have a date in mind.
                             </p>
                         </div>
                     </div>

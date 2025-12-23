@@ -297,14 +297,14 @@ export async function deleteHabitEntriesForDay(
 
     // Query by dayKey (preferred) or date (legacy fallback for existing records)
     const result = await collection.updateMany(
-        { 
-            habitId, 
+        {
+            habitId,
             $or: [
                 { dayKey },
                 { date: dayKey } // Legacy fallback
             ],
-            userId, 
-            deletedAt: { $exists: false } 
+            userId,
+            deletedAt: { $exists: false }
         }, // Only active ones
         {
             $set: {
@@ -355,10 +355,10 @@ export async function upsertHabitEntry(
         // Type assertion needed because updates type omits date, but we want to be explicit
         const updatesWithoutDate = updates as any;
         delete updatesWithoutDate.date;
-        const patch = { 
-            ...updatesWithoutDate, 
+        const patch = {
+            ...updatesWithoutDate,
             dayKey, // Ensure canonical dayKey is set
-            updatedAt: now 
+            updatedAt: now
         };
 
         await collection.updateOne(

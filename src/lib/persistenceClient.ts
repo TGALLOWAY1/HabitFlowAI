@@ -6,7 +6,7 @@
  */
 
 import type { Category, Habit, DayLog, DailyWellbeing, Goal, GoalWithProgress, GoalManualLog, Routine, RoutineLog, HabitEntry } from '../models/persistenceTypes';
-import type { WellbeingEntry } from '../models/persistenceTypes';
+import type { WellbeingEntry, WellbeingMetricKey } from '../models/persistenceTypes';
 import type { DashboardPrefs } from '../models/persistenceTypes';
 
 import type { GoalDetail, CompletedGoal, ProgressOverview } from '../types';
@@ -159,6 +159,28 @@ export async function fetchWellbeingEntries(params: {
     endDayKey: params.endDayKey,
   }).toString();
   const response = await apiRequest<{ wellbeingEntries: WellbeingEntry[] }>(`/wellbeingEntries?${qs}`);
+  return response.wellbeingEntries;
+}
+
+export async function upsertWellbeingEntries(params: {
+  entries: Array<{
+    dayKey: string;
+    timeOfDay?: 'morning' | 'evening' | null;
+    metricKey: WellbeingMetricKey;
+    value: number | string | null;
+    source?: 'checkin' | 'import' | 'test';
+    timestampUtc?: string;
+    timeZone?: string;
+  }>;
+  defaultTimeZone?: string;
+}): Promise<WellbeingEntry[]> {
+  const response = await apiRequest<{ wellbeingEntries: WellbeingEntry[] }>('/wellbeingEntries', {
+    method: 'POST',
+    body: JSON.stringify({
+      entries: params.entries,
+      defaultTimeZone: params.defaultTimeZone || 'UTC',
+    }),
+  });
   return response.wellbeingEntries;
 }
 
@@ -894,11 +916,9 @@ export async function updateHabitEntry(id: string, patch: Partial<HabitEntry>): 
  * @param data - Entry data (value, optionKey, etc.)
  */
 export async function upsertHabitEntry(habitId: string, dateKey: string, data: any = {}): Promise<{ entry: HabitEntry, dayLog: DayLog | null }> {
-  // Use a specialized endpoint or just reuse create/update logic if not available via API
-  // For now, let's assume we use the POST /entries endpoint which handles upsert logic on server
   const response = await apiRequest<{ entry: HabitEntry, dayLog: DayLog | null }>('/entries', {
-    method: 'POST',
-    body: JSON.stringify({ habitId, date: dateKey, ...data }),
+    method: 'PUT',
+    body: JSON.stringify({ habitId, dateKey, ...data }),
   });
   return response;
 }

@@ -59,10 +59,8 @@ export const CreateGoalFlow: React.FC<CreateGoalFlowProps> = ({
         }
 
         if (goalDraft.type === 'onetime') {
-            if (!goalDraft.deadline) {
-                setError('Event date is required for One-Time goals.');
-                return;
-            }
+            // Event date is optional for one-time goals
+            // No validation needed
         } else {
             if (goalDraft.targetValue <= 0) {
                 setError('Target value must be greater than 0.');
