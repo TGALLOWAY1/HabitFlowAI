@@ -456,6 +456,13 @@ export async function upsertHabitEntryRoute(req: Request, res: Response): Promis
  * Delete a habit entry by key.
  * DELETE /api/entries/key?habitId=...&dateKey=...
  */
+/**
+ * Delete a habit entry by key (habitId + dayKey).
+ * DELETE /api/entries/key?habitId=...&dateKey=...
+ * 
+ * Uses canonical dayKey format (YYYY-MM-DD). This is the preferred method
+ * for deletion as it avoids issues with stale entry IDs.
+ */
 export async function deleteHabitEntryByKeyRoute(req: Request, res: Response): Promise<void> {
     try {
         const userId = (req as any).userId || 'anonymous-user';
@@ -466,17 +473,30 @@ export async function deleteHabitEntryByKeyRoute(req: Request, res: Response): P
             return;
         }
 
+        // Validate dayKey format (YYYY-MM-DD)
+        const dayKeyPattern = /^\d{4}-\d{2}-\d{2}$/;
+        if (!dayKeyPattern.test(dateKey)) {
+            res.status(400).json({ error: 'dateKey must be in YYYY-MM-DD format' });
+            return;
+        }
+
         const { deleteHabitEntryByKey } = await import('../repositories/habitEntryRepository');
 
-        // 1. Delete
-        await deleteHabitEntryByKey(habitId, dateKey, userId);
+        // 1. Delete (soft delete - sets deletedAt)
+        const deleted = await deleteHabitEntryByKey(habitId, dateKey, userId);
 
-        // 2. Recompute
+        if (!deleted) {
+            // No active entry found to delete
+            res.status(404).json({ error: 'No active entry found for the given habitId and dateKey' });
+            return;
+        }
+
+        // 2. Recompute dayLog after deletion
         const updatedDayLog = await recomputeDayLogForHabit(habitId, dateKey, userId);
 
         res.json({
             success: true,
-            dayLog: updatedDayLog
+            dayLog: updatedDayLog // May be null if all entries for the day were deleted
         });
 
     } catch (error) {

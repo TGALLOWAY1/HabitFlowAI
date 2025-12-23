@@ -395,18 +395,36 @@ export async function upsertHabitEntry(
 }
 
 /**
- * Soft delete a single habit entry by key
+ * Soft delete a single habit entry by key (habitId + dayKey)
+ * 
+ * Uses canonical dayKey format (YYYY-MM-DD). Supports legacy date field for backward compatibility.
+ * Only deletes entries that are not already soft-deleted (deletedAt does not exist).
+ * 
+ * @param habitId - Habit ID
+ * @param dayKey - DayKey string (YYYY-MM-DD) - canonical field
+ * @param userId - User ID
+ * @returns True if an entry was deleted, false if no matching active entry found
  */
 export async function deleteHabitEntryByKey(
     habitId: string,
-    date: string,
+    dayKey: string,
     userId: string
 ): Promise<boolean> {
     const db = await getDb();
     const collection = db.collection(COLLECTION_NAME);
 
+    // Query by dayKey (preferred) or date (legacy fallback)
+    // Only delete entries that are not already soft-deleted
     const result = await collection.updateOne(
-        { habitId, date, userId, deletedAt: { $exists: false } },
+        {
+            habitId,
+            userId,
+            $or: [
+                { dayKey },
+                { date: dayKey } // Legacy fallback
+            ],
+            deletedAt: { $exists: false } // Only delete active entries
+        },
         {
             $set: {
                 deletedAt: new Date().toISOString(),

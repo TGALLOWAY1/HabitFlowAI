@@ -206,8 +206,11 @@ describe('TrackerGrid double-click delete', () => {
     describe('Numeric habit double-click delete', () => {
         it('should delete entry when double-clicking a numeric habit cell with value', async () => {
             const habitId = 'habit-num-1';
-            const dayKey = '2025-01-27'; // YYYY-MM-DD format (canonical dayKey)
+            // Use today's date to ensure it's in the rendered date range
+            const today = new Date();
+            const dayKey = today.toISOString().split('T')[0]; // YYYY-MM-DD format (canonical dayKey)
             const habit = createNumericHabit(habitId, 'Hours Slept');
+            // For numeric habits, value > 0 means entry exists (even if not completed)
             const log = createDayLog(habitId, dayKey, false, 8); // value > 0 but not completed
 
             const habits = [habit];
