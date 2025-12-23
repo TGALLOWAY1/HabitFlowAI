@@ -83,9 +83,10 @@ export async function updateDashboardPrefs(
     update.checkinExtraMetricKeys = uniq.filter((k) => allowed.has(k as any)) as any;
   }
 
-  const result = await col.findOneAndUpdate(
-    { userId },
-    {
+  // TEMP: Debug log to inspect update operation
+  if (process.env.NODE_ENV === 'development') {
+    // eslint-disable-next-line no-console
+    console.log('[updateDashboardPrefs] Update operation:', JSON.stringify({
       $set: {
         userId,
         ...update,
@@ -94,7 +95,31 @@ export async function updateDashboardPrefs(
         pinnedRoutineIds: [],
         checkinExtraMetricKeys: [],
       },
-    },
+    }, null, 2));
+  }
+
+  // Fix: Use full document replace approach to avoid MongoDB update conflicts
+  // Get existing prefs first, then merge and replace
+  const existing = await col.findOne({ userId });
+  const existingPrefs = existing
+    ? ({ ...existing, _id: undefined } as any as DashboardPrefs)
+    : { userId, pinnedRoutineIds: [], checkinExtraMetricKeys: [], updatedAt: now };
+
+  // Merge patch into existing prefs
+  const merged: DashboardPrefs = {
+    ...existingPrefs,
+    ...update,
+    userId, // Always set userId
+    updatedAt: now,
+  };
+
+  // Ensure arrays exist (defensive)
+  if (!merged.pinnedRoutineIds) merged.pinnedRoutineIds = [];
+  if (!merged.checkinExtraMetricKeys) merged.checkinExtraMetricKeys = [];
+
+  const result = await col.findOneAndUpdate(
+    { userId },
+    { $set: merged },
     { upsert: true, returnDocument: 'after' }
   );
 

@@ -193,6 +193,12 @@ export async function fetchDashboardPrefs(): Promise<DashboardPrefs> {
 }
 
 export async function updateDashboardPrefs(patch: Partial<Pick<DashboardPrefs, 'pinnedRoutineIds' | 'checkinExtraMetricKeys'>>): Promise<DashboardPrefs> {
+  // TEMP: Debug log to inspect payload
+  if (import.meta.env.DEV) {
+    // eslint-disable-next-line no-console
+    console.log('[updateDashboardPrefs] Sending payload:', JSON.stringify(patch, null, 2));
+  }
+  
   const response = await apiRequest<{ dashboardPrefs: DashboardPrefs }>('/dashboardPrefs', {
     method: 'PUT',
     body: JSON.stringify(patch),
