@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Activity, Loader2 } from 'lucide-react';
 import type { Routine } from '../../../models/persistenceTypes';
 import { ReadinessSnapshot } from './ReadinessSnapshot';
@@ -89,9 +89,31 @@ export const FitnessDashboard: React.FC<Props> = ({
     }
   };
 
+  // DEV ONLY: Debug helper to check container heights (temporary)
+  useEffect(() => {
+    if (import.meta.env.DEV) {
+      const container = document.querySelector('[data-fitness-dashboard-container]');
+      if (container) {
+        const rect = container.getBoundingClientRect();
+        // eslint-disable-next-line no-console
+        console.log('[Fitness Dashboard] Container height:', {
+          scrollHeight: container.scrollHeight,
+          clientHeight: container.clientHeight,
+          offsetHeight: (container as HTMLElement).offsetHeight,
+          viewportHeight: window.innerHeight,
+          canScroll: container.scrollHeight > container.clientHeight,
+        });
+      }
+    }
+  }, []);
+
   return (
     <>
-      <div className="space-y-6 overflow-y-auto pb-20">
+      {/* Fitness dashboard keeps legacy Activity + Goals sections per spec. */}
+      <div 
+        data-fitness-dashboard-container
+        className={`space-y-6 overflow-y-auto pb-20 ${import.meta.env.DEV ? 'border border-emerald-500/20' : ''}`}
+      >
         {/* Persona Header actions */}
         <div className="flex justify-end gap-2">
           <PersonaSwitcher />

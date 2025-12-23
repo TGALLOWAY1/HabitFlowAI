@@ -207,7 +207,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
             </header>
 
             {/* Main Content */}
-            <main className="pt-20 px-4 pb-20 max-w-7xl mx-auto min-h-screen flex flex-col">
+            <main className="pt-20 px-4 pb-20 max-w-7xl mx-auto min-h-screen">
                 {children}
             </main>
         </div>
