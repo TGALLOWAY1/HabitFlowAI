@@ -25,6 +25,36 @@ export const ProgressDashboard: React.FC<ProgressDashboardProps> = ({ onCreateGo
     const { habits, categories } = useHabitStore();
     const { data: progressData, loading: progressLoading } = useProgressOverview();
     const [isCheckInOpen, setIsCheckInOpen] = useState(false);
+    
+    // ============================================================================
+    // DASHBOARD ROUTING / PERSONA RESOLUTION AUDIT
+    // ============================================================================
+    // WHERE PERSONA IS READ FROM:
+    // - getActivePersonaId() in src/shared/personas/activePersona.ts (line 33)
+    //   - Reads from localStorage: ACTIVE_USER_MODE_STORAGE_KEY ('habitflow_active_user_mode')
+    //   - Demo mode → EMOTIONAL_PERSONA_ID
+    //   - Real mode → DEFAULT_PERSONA_ID
+    //   - Note: Currently no userId-based persona resolution in getActivePersonaId()
+    // - resolvePersona() normalizes/validates the persona ID (line 13 in activePersona.ts)
+    //   - Maps string personaId to valid PersonaId type
+    //   - Unknown personas fall back to DEFAULT_PERSONA_ID
+    //
+    // WHERE DASHBOARD COMPONENT IS CHOSEN:
+    // - ProgressDashboard.tsx (this file, lines 79-108)
+    //   - Conditional rendering based on activePersonaId
+    //   - EMOTIONAL_PERSONA_ID → EmotionalWellbeingDashboard (lines 79-93)
+    //   - FITNESS_PERSONA_ID → FitnessDashboard (lines 94-108)
+    //   - DEFAULT_PERSONA_ID (or unknown) → Legacy default dashboard (lines 114-265)
+    //
+    // CURRENTLY SUPPORTED PERSONAS:
+    // 1. DEFAULT_PERSONA_ID ('default') - Legacy dashboard with Progress Rings, Goals, Activity Heatmap
+    // 2. EMOTIONAL_PERSONA_ID ('emotional_wellbeing') - Emotional Wellbeing Dashboard
+    // 3. FITNESS_PERSONA_ID ('fitness_focused') - Fitness Dashboard
+    //
+    // NOTE: dashboardComposer.ts does NOT yet support FITNESS_PERSONA_ID
+    // (it only handles EMOTIONAL_PERSONA_ID and defaults everything else to emotionalWellbeingPersona)
+    // Fitness persona dashboard not yet wired here.
+    // ============================================================================
     const activePersonaId = resolvePersona(getActivePersonaId());
     // Initialize state from URL params
     const [activityTab, setActivityTab] = useState<'overall' | 'category'>(() => {
