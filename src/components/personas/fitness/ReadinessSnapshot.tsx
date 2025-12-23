@@ -198,7 +198,7 @@ const ReadinessSnapshotComponent: React.FC = () => {
                   });
                 }}
                 disabled={saving}
-                className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-emerald-500/60 hover:accent-emerald-500/80 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-emerald-500/60 hover:accent-emerald-500/80 disabled:opacity-50 disabled:cursor-not-allowed"
                 style={{
                   background: `linear-gradient(to right, 
                     rgb(34, 197, 94) 0%, 
