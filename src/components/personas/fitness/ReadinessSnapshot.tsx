@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, memo } from 'react';
 import { Battery, Droplet, UtensilsCrossed, Heart, Activity } from 'lucide-react';
 import { fetchWellbeingEntries, upsertWellbeingEntries } from '../../../lib/persistenceClient';
 import type { WellbeingEntry, WellbeingMetricKey } from '../../../models/persistenceTypes';
@@ -36,7 +36,7 @@ const READINESS_METRICS: ReadinessMetric[] = [
   { key: 'recovery', label: 'Recovery', icon: <Heart size={16} className="text-pink-400" /> },
 ];
 
-export const ReadinessSnapshot: React.FC = () => {
+const ReadinessSnapshotComponent: React.FC = () => {
   const timeZone = useMemo(() => getTimeZone(), []);
   const todayKey = useMemo(() => formatDayKeyFromDate(new Date(), timeZone), [timeZone]);
   const [values, setValues] = useState<Record<ReadinessKey, number>>(DEFAULTS);
@@ -209,4 +209,8 @@ export const ReadinessSnapshot: React.FC = () => {
     </div>
   );
 };
+
+// Memoize to prevent re-renders when parent re-renders
+// Readiness state is fully self-contained, so parent re-renders shouldn't affect this component
+export const ReadinessSnapshot = memo(ReadinessSnapshotComponent);
 

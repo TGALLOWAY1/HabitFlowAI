@@ -30,6 +30,12 @@ export const FitnessDashboard: React.FC<Props> = ({
   onViewGoal,
   onSelectCategory,
 }) => {
+  // DEV ONLY: Render counter to verify readiness sliders don't cause re-renders
+  if (import.meta.env.DEV) {
+    // eslint-disable-next-line no-console
+    console.count('FitnessDashboard render');
+  }
+
   const [previewRoutine, setPreviewRoutine] = useState<Routine | undefined>(undefined);
   const { habits, categories } = useHabitStore();
   const { data: progressData, loading: progressLoading } = useProgressOverview();
