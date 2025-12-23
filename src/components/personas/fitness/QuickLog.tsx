@@ -144,10 +144,10 @@ export const QuickLog: React.FC = () => {
     return (
       <button
         onClick={() => setIsOpen(true)}
-        className="w-full bg-neutral-900/50 rounded-2xl border border-white/5 p-4 hover:bg-neutral-900/70 hover:border-white/10 transition-all text-left group"
+        className="w-full bg-neutral-900/30 rounded-xl border border-white/5 p-2.5 hover:bg-neutral-900/50 hover:border-white/10 transition-all text-left group"
       >
-        <div className="flex items-center gap-2 text-sm font-medium text-neutral-300 group-hover:text-white transition-colors">
-          <Plus size={16} className="text-emerald-400" />
+        <div className="flex items-center gap-1.5 text-xs font-medium text-neutral-400 group-hover:text-neutral-300 transition-colors">
+          <Plus size={12} className="text-neutral-500 group-hover:text-neutral-400" />
           <span>Log something you did</span>
         </div>
       </button>
