@@ -1,9 +1,18 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Plus, X, Hash } from 'lucide-react';
+import { Plus, X, Hash, Clock } from 'lucide-react';
 import { useHabitStore } from '../../../store/HabitContext';
-import { upsertHabitEntry } from '../../../lib/persistenceClient';
+import { upsertHabitEntry, fetchHabitEntries } from '../../../lib/persistenceClient';
 import { formatDayKeyFromDate } from '../../../domain/time/dayKey';
 import type { Habit } from '../../../models/persistenceTypes';
+
+interface EntryView {
+  habitId: string;
+  dayKey: string;
+  timestampUtc: string;
+  value: number | null;
+  unit?: string;
+  source: string;
+}
 
 function getTimeZone(): string {
   try {
@@ -20,11 +29,66 @@ export const QuickLog: React.FC = () => {
   const [numericValue, setNumericValue] = useState('');
   const [selectedOptionId, setSelectedOptionId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [recentEntries, setRecentEntries] = useState<Array<EntryView & { habitName: string }>>([]);
+  const [loadingEntries, setLoadingEntries] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const activeHabits = habits.filter((h) => !h.archived);
   const todayKey = formatDayKeyFromDate(new Date(), getTimeZone());
+  const timeZone = getTimeZone();
+
+  // Fetch recent entries (from today)
+  useEffect(() => {
+    const loadRecentEntries = async () => {
+      if (activeHabits.length === 0) {
+        setRecentEntries([]);
+        return;
+      }
+
+      setLoadingEntries(true);
+      try {
+        const allEntries: Array<EntryView & { habitName: string }> = [];
+        
+        // Fetch entries for all active habits from today
+        for (const habit of activeHabits) {
+          try {
+            const entries = await fetchHabitEntries(habit.id, todayKey, todayKey, timeZone);
+            for (const entry of entries) {
+              allEntries.push({
+                ...entry,
+                habitName: habit.name,
+              });
+            }
+          } catch (err) {
+            console.error(`[QuickLog] Failed to fetch entries for habit ${habit.id}:`, err);
+          }
+        }
+
+        // Sort by timestamp (most recent first) and take top 5
+        allEntries.sort((a, b) => {
+          const timeA = new Date(a.timestampUtc || a.dayKey).getTime();
+          const timeB = new Date(b.timestampUtc || b.dayKey).getTime();
+          return timeB - timeA;
+        });
+
+        setRecentEntries(allEntries.slice(0, 5));
+      } catch (err) {
+        console.error('[QuickLog] Failed to load recent entries:', err);
+      } finally {
+        setLoadingEntries(false);
+      }
+    };
+
+    loadRecentEntries();
+    
+    // Refresh entries when a new entry is logged
+    const handleEntryChange = () => {
+      loadRecentEntries();
+    };
+    window.addEventListener('habitflow:demo-data-changed', handleEntryChange);
+    return () => window.removeEventListener('habitflow:demo-data-changed', handleEntryChange);
+  }, [activeHabits, todayKey, timeZone]);
 
   // Close on outside click
   useEffect(() => {
@@ -128,7 +192,7 @@ export const QuickLog: React.FC = () => {
       // Refresh progress to update UI
       refreshProgress();
 
-      // Trigger refresh event
+      // Trigger refresh event (will update recent entries via event listener)
       window.dispatchEvent(new CustomEvent('habitflow:demo-data-changed'));
 
       // Collapse UI
@@ -142,15 +206,56 @@ export const QuickLog: React.FC = () => {
 
   if (!isOpen) {
     return (
-      <button
-        onClick={() => setIsOpen(true)}
-        className="w-full bg-neutral-900/30 rounded-xl border border-white/5 p-2.5 hover:bg-neutral-900/50 hover:border-white/10 transition-all text-left group"
-      >
-        <div className="flex items-center gap-1.5 text-xs font-medium text-neutral-400 group-hover:text-neutral-300 transition-colors">
-          <Plus size={12} className="text-neutral-500 group-hover:text-neutral-400" />
-          <span>Log something you did</span>
-        </div>
-      </button>
+      <div className="w-full bg-neutral-900/30 rounded-xl border border-white/5 p-3 space-y-2.5">
+        <button
+          onClick={() => setIsOpen(true)}
+          className="w-full text-left group"
+        >
+          <div className="flex items-center gap-1.5 text-xs font-medium text-neutral-400 group-hover:text-neutral-300 transition-colors">
+            <Plus size={12} className="text-neutral-500 group-hover:text-neutral-400" />
+            <span>Log something you did</span>
+          </div>
+        </button>
+        
+        {/* Recent entries list (gratitude-jar style) */}
+        {recentEntries.length > 0 && (
+          <div className="space-y-1.5 pt-2 border-t border-white/5">
+            {recentEntries.map((entry, idx) => {
+              const entryTime = entry.timestampUtc ? new Date(entry.timestampUtc) : new Date(entry.dayKey);
+              const timeStr = entryTime.toLocaleTimeString('en-US', { 
+                hour: 'numeric', 
+                minute: '2-digit',
+                hour12: true 
+              });
+              
+              return (
+                <div 
+                  key={`${entry.habitId}-${entry.dayKey}-${idx}`}
+                  className="text-xs text-neutral-500 flex items-start gap-1.5"
+                >
+                  <Clock size={10} className="mt-0.5 flex-shrink-0 text-neutral-600" />
+                  <div className="flex-1 min-w-0">
+                    <span className="text-neutral-400">{entry.habitName}</span>
+                    {entry.value !== null && entry.value !== undefined && (
+                      <span className="text-neutral-500">
+                        {' '}
+                        {entry.value}
+                        {entry.unit && ` ${entry.unit}`}
+                      </span>
+                    )}
+                    <span className="text-neutral-600 ml-1.5">{timeStr}</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+        {!loadingEntries && recentEntries.length === 0 && (
+          <div className="text-[10px] text-neutral-600 pt-2 border-t border-white/5">
+            No entries today
+          </div>
+        )}
+      </div>
     );
   }
 

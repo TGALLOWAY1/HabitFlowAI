@@ -109,7 +109,7 @@ export const FitnessDashboard: React.FC<Props> = ({
 
   return (
     <>
-      {/* Fitness dashboard keeps legacy Activity + Goals sections per spec. */}
+      {/* Fitness dashboard layout per canonical contract: @docs/layouts/fitness_dashboard_layout_v2.md */}
       <div 
         data-fitness-dashboard-container
         className={`space-y-6 overflow-y-auto pb-20 ${import.meta.env.DEV ? 'border border-emerald-500/20' : ''}`}
@@ -135,26 +135,31 @@ export const FitnessDashboard: React.FC<Props> = ({
           )}
         </div>
 
-        {/* Daily Context Card - spans left + center columns per layout contract */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="md:col-span-2">
+        {/* Row 1: Daily Context + Quick Log (8/12 + 4/12) */}
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+          {/* Left: Subjective Readiness Snapshot (8/12 columns) */}
+          <div className="md:col-span-8">
             <ReadinessSnapshot />
           </div>
-          {/* Right column: Quick Log (top) + Sleep/Energy Trends (below) */}
-          <div className="md:col-span-1 space-y-4">
-            {/* Quick Log - utility affordance, aligned with Daily Context */}
+          {/* Right: Quick Log (4/12 columns) */}
+          <div className="md:col-span-4">
             <QuickLog />
-            {/* Sleep Quality Trend + Energy Level Trend - stacked vertically, half-width card */}
+          </div>
+        </div>
+
+        {/* Row 2: Action Cards + Sleep & Energy Trends (8/12 + 4/12) */}
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+          {/* Left: Action Cards in 2×2 grid (8/12 columns) */}
+          <div className="md:col-span-8">
+            <ActionCards onStartRoutine={onStartRoutine} onViewRoutine={handleViewRoutine} />
+          </div>
+          {/* Right: Sleep & Energy Trends (4/12 columns) */}
+          <div className="md:col-span-4">
             <SleepEnergyTrends />
           </div>
         </div>
 
-        {/* Action Cards - 2×2 grid, spans left + center columns per layout contract */}
-        <ActionCards onStartRoutine={onStartRoutine} onViewRoutine={handleViewRoutine} />
-
-        {/* Fitness dashboard keeps legacy Activity + Goals sections per spec. */}
-        
-        {/* Goals at a glance */}
+        {/* Row 3: Goals at a Glance (full width) */}
         <div className="bg-neutral-900/50 rounded-2xl border border-white/5 p-6 backdrop-blur-sm">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-semibold text-white">Goals at a glance</h3>
@@ -202,7 +207,7 @@ export const FitnessDashboard: React.FC<Props> = ({
           )}
         </div>
 
-        {/* Activity Heatmap Section */}
+        {/* Row 4: Activity Heat Map (full width) */}
         <div className="bg-neutral-900/50 rounded-2xl border border-white/5 p-6 backdrop-blur-sm">
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6">
             <div className="flex items-center gap-4">
