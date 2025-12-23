@@ -114,11 +114,11 @@ const SleepEnergyTrendsComponent: React.FC = () => {
             <span className="text-sm text-neutral-300 font-medium">Sleep Quality</span>
           </div>
           {loading ? (
-            <div className="text-xs text-neutral-400 h-24 flex items-center">Loading…</div>
+            <div className="text-xs text-neutral-400 min-h-[96px] flex items-center">Loading…</div>
           ) : error ? (
-            <div className="text-xs text-red-300 h-24 flex items-center">{error}</div>
+            <div className="text-xs text-red-300 min-h-[96px] flex items-center">{error}</div>
           ) : (
-            <div className="h-24">
+            <div className="w-full min-w-0 min-h-[96px] h-24">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={sleepData}>
                   <XAxis
@@ -165,11 +165,11 @@ const SleepEnergyTrendsComponent: React.FC = () => {
             <span className="text-sm text-neutral-300 font-medium">Energy Level</span>
           </div>
           {loading ? (
-            <div className="text-xs text-neutral-400 h-24 flex items-center">Loading…</div>
+            <div className="text-xs text-neutral-400 min-h-[96px] flex items-center">Loading…</div>
           ) : error ? (
-            <div className="text-xs text-red-300 h-24 flex items-center">{error}</div>
+            <div className="text-xs text-red-300 min-h-[96px] flex items-center">{error}</div>
           ) : (
-            <div className="h-24">
+            <div className="w-full min-w-0 min-h-[96px] h-24">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={energyData}>
                   <XAxis

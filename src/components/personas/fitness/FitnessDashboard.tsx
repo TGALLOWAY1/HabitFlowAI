@@ -100,7 +100,6 @@ export const FitnessDashboard: React.FC<Props> = ({
     if (import.meta.env.DEV) {
       const container = document.querySelector('[data-fitness-dashboard-container]');
       if (container) {
-        const rect = container.getBoundingClientRect();
         // eslint-disable-next-line no-console
         console.log('[Fitness Dashboard] Container height:', {
           scrollHeight: container.scrollHeight,
