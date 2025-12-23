@@ -210,8 +210,15 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     // Demo seed/reset refresh: re-fetch wellbeing logs (and habits/categories already refreshed in Layout).
     // Only refresh if we've already done the initial load (to avoid double-fetching on mount)
+    // Only reload for explicit seed/reset operations, not for individual entry updates
     useEffect(() => {
-        const handler = async () => {
+        type DemoDataChangedDetail = { reason?: 'seed' | 'reset' | 'other' };
+        const handler = async (evt: Event) => {
+            const custom = evt as CustomEvent<DemoDataChangedDetail>;
+            // Only reload for seed/reset operations
+            if (custom.detail?.reason !== 'seed' && custom.detail?.reason !== 'reset') {
+                return; // Ignore other demo-data-changed events
+            }
             // Only refresh if initial load has completed
             if (!hasLoadedWellbeingRef.current) {
                 return; // Skip if initial load hasn't happened yet

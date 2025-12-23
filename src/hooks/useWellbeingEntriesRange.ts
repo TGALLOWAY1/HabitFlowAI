@@ -55,9 +55,68 @@ export function useWellbeingEntriesRange(windowDays: WindowDays) {
 
   // Allow external invalidation (e.g., after demo seed/reset) without a full page reload.
   useEffect(() => {
-    const handler = () => setRefreshTick((x) => x + 1);
+    type DemoDataChangedDetail = { reason?: 'seed' | 'reset' | 'other' };
+    const handler = (evt: Event) => {
+      const custom = evt as CustomEvent<DemoDataChangedDetail>;
+      // Only refresh for seed/reset operations
+      if (custom.detail?.reason === 'seed' || custom.detail?.reason === 'reset') {
+        setRefreshTick((x) => x + 1);
+      }
+    };
     window.addEventListener('habitflow:demo-data-changed', handler as any);
     return () => window.removeEventListener('habitflow:demo-data-changed', handler as any);
+  }, []);
+
+  // Listen for individual wellbeing entry updates and merge locally (no refetch)
+  useEffect(() => {
+    type WellbeingEntryUpsertDetail = {
+      dayKey: string;
+      timeOfDay: 'morning' | 'evening' | null;
+      metricKey: string;
+      value: number;
+    };
+    const handler = (evt: Event) => {
+      const custom = evt as CustomEvent<WellbeingEntryUpsertDetail>;
+      if (!custom.detail) return;
+
+      const { dayKey, timeOfDay, metricKey, value } = custom.detail;
+
+      // Merge the entry into local state without refetching
+      setEntries((prev) => {
+        // Check if entry already exists
+        const existingIndex = prev.findIndex(
+          (e) =>
+            e.dayKey === dayKey &&
+            e.metricKey === metricKey &&
+            (e.timeOfDay ?? null) === timeOfDay
+        );
+
+        const newEntry: WellbeingEntry = {
+          id: existingIndex >= 0 ? prev[existingIndex].id : `temp-${Date.now()}`,
+          userId: existingIndex >= 0 ? prev[existingIndex].userId : 'anonymous-user',
+          dayKey,
+          timeOfDay: timeOfDay ?? null,
+          metricKey: metricKey as WellbeingMetricKey,
+          value,
+          source: 'checkin',
+          timestampUtc: new Date().toISOString(),
+          createdAt: existingIndex >= 0 ? prev[existingIndex].createdAt : new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+
+        if (existingIndex >= 0) {
+          // Update existing entry
+          const next = [...prev];
+          next[existingIndex] = newEntry;
+          return next;
+        } else {
+          // Add new entry
+          return [...prev, newEntry];
+        }
+      });
+    };
+    window.addEventListener('habitflow:wellbeing-entry-upsert', handler as any);
+    return () => window.removeEventListener('habitflow:wellbeing-entry-upsert', handler as any);
   }, []);
 
   const byDay = useMemo(() => {

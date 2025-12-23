@@ -122,8 +122,17 @@ const ReadinessSnapshotComponent: React.FC = () => {
         defaultTimeZone: timeZone,
       });
 
-      // Trigger refresh event for other components
-      window.dispatchEvent(new CustomEvent('habitflow:demo-data-changed'));
+      // Dispatch specific wellbeing entry update event (no refetch needed)
+      window.dispatchEvent(
+        new CustomEvent('habitflow:wellbeing-entry-upsert', {
+          detail: {
+            dayKey: todayKey,
+            timeOfDay: 'morning',
+            metricKey,
+            value,
+          },
+        })
+      );
     } catch (err) {
       console.error('[ReadinessSnapshot] Failed to save entry:', err);
       // Revert on error using functional update
