@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 import { fetchWellbeingEntries } from '../lib/persistenceClient';
 import type { WellbeingEntry, WellbeingMetricKey, WellbeingTimeOfDay } from '../models/persistenceTypes';
 import { formatDayKeyFromDate } from '../domain/time/dayKey';
@@ -70,24 +70,27 @@ export function useWellbeingEntriesRange(windowDays: WindowDays) {
     return map;
   }, [entries]);
 
-  function getDailyAverage(
-    dayKey: string,
-    metricKey: WellbeingMetricKey,
-    timeOfDay?: WellbeingTimeOfDay | null
-  ): number | null {
-    const dayEntries = byDay.get(dayKey);
-    if (!dayEntries) return null;
-    const values = dayEntries
-      .filter((e) => {
-        if (e.metricKey !== metricKey) return false;
-        if (typeof e.value !== 'number') return false;
-        if (timeOfDay === undefined) return true;
-        return (e.timeOfDay ?? null) === timeOfDay;
-      })
-      .map((e) => e.value as number);
-    if (values.length === 0) return null;
-    return values.reduce((a, b) => a + b, 0) / values.length;
-  }
+  const getDailyAverage = useCallback(
+    (
+      dayKey: string,
+      metricKey: WellbeingMetricKey,
+      timeOfDay?: WellbeingTimeOfDay | null
+    ): number | null => {
+      const dayEntries = byDay.get(dayKey);
+      if (!dayEntries) return null;
+      const values = dayEntries
+        .filter((e) => {
+          if (e.metricKey !== metricKey) return false;
+          if (typeof e.value !== 'number') return false;
+          if (timeOfDay === undefined) return true;
+          return (e.timeOfDay ?? null) === timeOfDay;
+        })
+        .map((e) => e.value as number);
+      if (values.length === 0) return null;
+      return values.reduce((a, b) => a + b, 0) / values.length;
+    },
+    [byDay]
+  );
 
   return { entries, loading, error, startDayKey, endDayKey, getDailyAverage };
 }

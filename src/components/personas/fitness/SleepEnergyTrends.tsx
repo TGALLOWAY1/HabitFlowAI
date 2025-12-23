@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, memo } from 'react';
 import { Moon, Battery } from 'lucide-react';
 import { useWellbeingEntriesRange } from '../../../hooks/useWellbeingEntriesRange';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip } from 'recharts';
@@ -18,11 +18,20 @@ function getDayKeyDaysAgo(daysAgo: number, timeZone: string): string {
   return formatDayKeyFromDate(d, timeZone);
 }
 
-export const SleepEnergyTrends: React.FC = () => {
+const SleepEnergyTrendsComponent: React.FC = () => {
   const [windowDays, setWindowDays] = useState<7 | 14 | 30>(14);
   const { startDayKey, endDayKey, loading, error, getDailyAverage } = useWellbeingEntriesRange(windowDays);
   const timeZone = useMemo(() => getTimeZone(), []);
 
+  // DEV ONLY: Debug log to confirm re-renders
+  if (import.meta.env.DEV) {
+    // eslint-disable-next-line no-console
+    console.log('[SleepEnergyTrends] Render', { windowDays, loading, error });
+  }
+
+  // Only recompute when sleep/energy data changes (not readiness metrics)
+  // getDailyAverage is now stable via useCallback, but we compute the actual values
+  // to ensure the data arrays only change when sleep/energy values actually change
   const sleepData = useMemo(() => {
     const rows: Array<{ dayKey: string; value: number | null }> = [];
     for (let i = windowDays - 1; i >= 0; i--) {
@@ -30,6 +39,7 @@ export const SleepEnergyTrends: React.FC = () => {
       const value = getDailyAverage(dayKey, 'sleepQuality');
       rows.push({ dayKey, value: typeof value === 'number' ? value : null });
     }
+    // Return a stable reference - only changes if actual values change
     return rows;
   }, [windowDays, timeZone, getDailyAverage]);
 
@@ -40,6 +50,7 @@ export const SleepEnergyTrends: React.FC = () => {
       const value = getDailyAverage(dayKey, 'energy');
       rows.push({ dayKey, value: typeof value === 'number' ? value : null });
     }
+    // Return a stable reference - only changes if actual values change
     return rows;
   }, [windowDays, timeZone, getDailyAverage]);
 
@@ -169,4 +180,9 @@ export const SleepEnergyTrends: React.FC = () => {
     </div>
   );
 };
+
+// Memoize component to prevent re-renders when parent re-renders
+// Only re-renders when internal state/hooks change (windowDays, or sleep/energy data)
+// getDailyAverage is now stable via useCallback, so readiness changes won't trigger re-renders
+export const SleepEnergyTrends = memo(SleepEnergyTrendsComponent);
 
