@@ -83,21 +83,6 @@ export async function updateDashboardPrefs(
     update.checkinExtraMetricKeys = uniq.filter((k) => allowed.has(k as any)) as any;
   }
 
-  // TEMP: Debug log to inspect update operation
-  if (process.env.NODE_ENV === 'development') {
-    // eslint-disable-next-line no-console
-    console.log('[updateDashboardPrefs] Update operation:', JSON.stringify({
-      $set: {
-        userId,
-        ...update,
-      },
-      $setOnInsert: {
-        pinnedRoutineIds: [],
-        checkinExtraMetricKeys: [],
-      },
-    }, null, 2));
-  }
-
   // Fix: Use full document replace approach to avoid MongoDB update conflicts
   // Get existing prefs first, then merge and replace
   const existing = await col.findOne({ userId });
