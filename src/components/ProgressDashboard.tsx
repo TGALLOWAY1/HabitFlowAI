@@ -214,6 +214,9 @@ export const ProgressDashboard: React.FC<ProgressDashboardProps> = ({ onCreateGo
                     onOpenCheckIn={() => setIsCheckInOpen(true)}
                     onNavigateWellbeingHistory={onNavigateWellbeingHistory}
                     onStartRoutine={onStartRoutine}
+                    onCreateGoal={onCreateGoal}
+                    onViewGoal={onViewGoal}
+                    onSelectCategory={onSelectCategory}
                 />
                 <DailyCheckInModal
                     isOpen={isCheckInOpen}
