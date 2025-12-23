@@ -1113,15 +1113,23 @@ export const TrackerGrid = ({
                 clearTimeout(clickTimeoutRef.current);
             }
             
+            // Capture element reference before setTimeout (React nullifies e.currentTarget after handler)
+            const targetElement = e.currentTarget as HTMLElement;
+            
             // Set a delay to allow double-click to cancel this
             clickTimeoutRef.current = setTimeout(() => {
                 clickTimeoutRef.current = null;
+                
+                // Check if element still exists (may have been unmounted)
+                if (!targetElement || !document.body.contains(targetElement)) {
+                    return;
+                }
                 
                 // Execute single-click action
                 if (habit.goal.type === 'boolean') {
                     handleToggle(habit.id, dateStr);
                 } else {
-                    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                    const rect = targetElement.getBoundingClientRect();
                     setPopoverState({
                         isOpen: true,
                         habitId: habit.id,
