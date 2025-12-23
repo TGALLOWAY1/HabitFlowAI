@@ -156,7 +156,7 @@ export const FitnessDashboard: React.FC<Props> = ({
         {/* Row 2: Sleep & Energy Trends + Action Cards (8/12 + 4/12) - V1.2 layout */}
         <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
           {/* Left: Sleep & Energy Trends (8/12 columns) */}
-          <div className="md:col-span-8">
+          <div className="md:col-span-8 min-w-0">
             <SleepEnergyTrends />
           </div>
           {/* Right: Action Cards in 2×2 grid (4/12 columns) */}
