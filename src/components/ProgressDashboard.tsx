@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useHabitStore } from '../store/HabitContext';
 import { useProgressOverview } from '../lib/useProgressOverview';
 import { Heatmap } from './Heatmap';
@@ -55,6 +55,74 @@ export const ProgressDashboard: React.FC<ProgressDashboardProps> = ({ onCreateGo
     // (it only handles EMOTIONAL_PERSONA_ID and defaults everything else to emotionalWellbeingPersona)
     // Fitness persona dashboard not yet wired here.
     // ============================================================================
+    // DEV ONLY: Sync persona query param to localStorage for persistence and trigger re-render
+    const [personaQueryParam, setPersonaQueryParam] = useState<string | null>(() => {
+        if (!import.meta.env.DEV || typeof window === 'undefined') return null;
+        return new URLSearchParams(window.location.search).get('persona');
+    });
+    
+    useEffect(() => {
+        if (!import.meta.env.DEV || typeof window === 'undefined') return;
+        
+        const params = new URLSearchParams(window.location.search);
+        const personaParam = params.get('persona');
+        
+        // Update state to trigger re-render if param changed
+        if (personaParam !== personaQueryParam) {
+            setPersonaQueryParam(personaParam);
+        }
+        
+        if (!personaParam) return;
+        
+        // Map query param to user mode for localStorage
+        let mode: 'real' | 'demo' | null = null;
+        switch (personaParam.toLowerCase()) {
+            case 'fitness':
+            case 'emotional':
+                // Both fitness and emotional personas use demo mode
+                mode = 'demo';
+                break;
+            case 'default':
+                mode = 'real';
+                break;
+        }
+        
+        if (mode !== null) {
+            const currentMode = localStorage.getItem('habitflow_active_user_mode');
+            if (currentMode !== mode) {
+                localStorage.setItem('habitflow_active_user_mode', mode);
+            }
+        }
+    }, [personaQueryParam]); // Re-run when query param changes
+    
+    // Listen for URL changes (browser back/forward, manual URL changes)
+    useEffect(() => {
+        if (!import.meta.env.DEV || typeof window === 'undefined') return;
+        
+        const handleLocationChange = () => {
+            const params = new URLSearchParams(window.location.search);
+            const personaParam = params.get('persona');
+            setPersonaQueryParam(personaParam);
+        };
+        
+        // Listen for popstate (browser back/forward)
+        window.addEventListener('popstate', handleLocationChange);
+        
+        // Also check on mount and periodically (for manual URL changes)
+        const interval = setInterval(() => {
+            const params = new URLSearchParams(window.location.search);
+            const currentParam = params.get('persona');
+            if (currentParam !== personaQueryParam) {
+                handleLocationChange();
+            }
+        }, 100); // Check every 100ms
+        
+        return () => {
+            window.removeEventListener('popstate', handleLocationChange);
+            clearInterval(interval);
+        };
+    }, [personaQueryParam]);
+
     const activePersonaId = resolvePersona(getActivePersonaId());
     // Initialize state from URL params
     const [activityTab, setActivityTab] = useState<'overall' | 'category'>(() => {

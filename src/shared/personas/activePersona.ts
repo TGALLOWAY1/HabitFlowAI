@@ -30,7 +30,40 @@ function getUserMode(): 'real' | 'demo' {
   return raw === 'demo' ? 'demo' : 'real';
 }
 
+/**
+ * DEV ONLY: Read persona from URL query parameter
+ * @returns PersonaId if valid query param found, null otherwise
+ */
+function getPersonaFromQueryParam(): PersonaId | null {
+  if (!import.meta.env.DEV || typeof window === 'undefined') return null;
+  
+  const params = new URLSearchParams(window.location.search);
+  const personaParam = params.get('persona');
+  
+  if (!personaParam) return null;
+  
+  // Map query param values to persona IDs
+  switch (personaParam.toLowerCase()) {
+    case 'fitness':
+      return FITNESS_PERSONA_ID;
+    case 'emotional':
+      return EMOTIONAL_PERSONA_ID;
+    case 'default':
+      return DEFAULT_PERSONA_ID;
+    default:
+      return null;
+  }
+}
+
 export function getActivePersonaId(): PersonaId {
+  // DEV ONLY: Check query param first (highest priority)
+  if (import.meta.env.DEV) {
+    const queryPersona = getPersonaFromQueryParam();
+    if (queryPersona) {
+      return queryPersona;
+    }
+  }
+  
   // Safe temporary rule (until a persona selector UI exists):
   // - Demo mode defaults to Emotional Wellbeing
   // - Real mode defaults to Default persona (legacy dashboard)
