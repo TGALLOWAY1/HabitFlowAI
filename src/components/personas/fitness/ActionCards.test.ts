@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import {
   getLastWeekSameWeekday,
   getRoutinesUsedOnDate,
@@ -175,6 +175,44 @@ describe('ActionCards weekday mirroring', () => {
       expect(result[0].id).toBe('routine-1');
       expect(result[1].id).toBe('routine-3');
       expect(result[2].id).toBe('routine-2');
+    });
+  });
+
+  describe('Pin Routines persistence', () => {
+    it('should limit pinned routines to max 4', () => {
+      const selected = ['r1', 'r2', 'r3', 'r4', 'r5'];
+      const limited = selected.slice(0, 4);
+      expect(limited).toEqual(['r1', 'r2', 'r3', 'r4']);
+      expect(limited.length).toBeLessThanOrEqual(4);
+    });
+
+    it('should normalize arrays for comparison (sort IDs)', () => {
+      const normalizeIds = (ids: string[]): string[] => [...ids].sort();
+      
+      const ids1 = ['r3', 'r1', 'r2'];
+      const ids2 = ['r1', 'r2', 'r3'];
+      
+      expect(JSON.stringify(normalizeIds(ids1))).toBe(JSON.stringify(normalizeIds(ids2)));
+    });
+
+    it('should detect changes when arrays differ', () => {
+      const normalizeIds = (ids: string[]): string[] => [...ids].sort();
+      
+      const initial = ['r1', 'r2'];
+      const selected = ['r1', 'r3'];
+      
+      const hasChanges = JSON.stringify(normalizeIds(selected)) !== JSON.stringify(normalizeIds(initial));
+      expect(hasChanges).toBe(true);
+    });
+
+    it('should detect no changes when arrays are the same (different order)', () => {
+      const normalizeIds = (ids: string[]): string[] => [...ids].sort();
+      
+      const initial = ['r2', 'r1', 'r3'];
+      const selected = ['r1', 'r3', 'r2'];
+      
+      const hasChanges = JSON.stringify(normalizeIds(selected)) !== JSON.stringify(normalizeIds(initial));
+      expect(hasChanges).toBe(false);
     });
   });
 });

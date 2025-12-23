@@ -13,15 +13,69 @@ const PinRoutinesModal: React.FC<{
   onSave: (ids: string[]) => Promise<void>;
 }> = ({ isOpen, routines, initialPinnedIds, onClose, onSave }) => {
   const [selected, setSelected] = useState<string[]>(initialPinnedIds);
-  React.useEffect(() => setSelected(initialPinnedIds), [initialPinnedIds, isOpen]);
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  
+  React.useEffect(() => {
+    if (isOpen) {
+      setSelected(initialPinnedIds);
+      setError(null);
+    }
+  }, [initialPinnedIds, isOpen]);
 
   if (!isOpen) return null;
 
+  const maxPins = 4;
+
+  // Normalize arrays for comparison (sort IDs)
+  const normalizeIds = (ids: string[]): string[] => [...ids].sort();
+  const hasChanges = JSON.stringify(normalizeIds(selected)) !== JSON.stringify(normalizeIds(initialPinnedIds));
+  const canSelectMore = selected.length < maxPins;
+
   const toggle = (id: string) => {
-    setSelected((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+    setSelected((prev) => {
+      if (prev.includes(id)) {
+        // Remove
+        return prev.filter((x) => x !== id);
+      } else {
+        // Add (only if under limit)
+        if (prev.length >= maxPins) return prev;
+        return [...prev, id];
+      }
+    });
+    setError(null); // Clear error on change
   };
 
-  const suggestedCap = 4;
+  const handleSave = async () => {
+    // Limit to max 4 routines
+    const idsToSave = selected.slice(0, maxPins);
+    
+    // TEMPORARY: Debug log
+    if (import.meta.env.DEV) {
+      // eslint-disable-next-line no-console
+      console.log('[PinRoutinesModal] Save handler fired', {
+        selected: idsToSave,
+        initial: initialPinnedIds,
+        hasChanges,
+      });
+    }
+
+    setIsSaving(true);
+    setError(null);
+
+    try {
+      await onSave(idsToSave);
+      // Close modal on success
+      onClose();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Couldn\'t save yet. Try again.';
+      setError(message);
+      // eslint-disable-next-line no-console
+      console.error('[PinRoutinesModal] Save failed:', err);
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
@@ -29,7 +83,7 @@ const PinRoutinesModal: React.FC<{
         <div className="p-4 border-b border-white/5 flex items-center justify-between">
           <div>
             <div className="text-white font-semibold">Pin routines</div>
-            <div className="text-xs text-neutral-500 mt-1">Pin up to {suggestedCap} routines for Action Cards.</div>
+            <div className="text-xs text-neutral-500 mt-1">Pin up to {maxPins} routines for Action Cards.</div>
           </div>
           <button onClick={onClose} className="text-neutral-400 hover:text-white">Close</button>
         </div>
@@ -40,32 +94,56 @@ const PinRoutinesModal: React.FC<{
           ) : (
             routines.map((r) => {
               const checked = selected.includes(r.id);
+              const disabled = !checked && !canSelectMore;
               return (
-                <label key={r.id} className="flex items-center justify-between p-3 rounded-xl bg-neutral-800/50 border border-white/5 cursor-pointer">
+                <label
+                  key={r.id}
+                  className={`flex items-center justify-between p-3 rounded-xl bg-neutral-800/50 border border-white/5 ${
+                    disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
+                  }`}
+                >
                   <div className="flex items-center gap-3">
-                    <input type="checkbox" checked={checked} onChange={() => toggle(r.id)} />
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={() => toggle(r.id)}
+                      disabled={disabled || isSaving}
+                    />
                     <div>
                       <div className="text-sm text-white font-semibold">{r.title}</div>
                       <div className="text-xs text-neutral-500">{r.steps.length} steps</div>
                     </div>
                   </div>
-                  <div className="text-xs text-neutral-500">{checked ? 'Pinned' : '—'}</div>
+                  <div className="text-xs text-neutral-500">
+                    {checked ? 'Pinned' : disabled ? 'Max 4' : '—'}
+                  </div>
                 </label>
               );
             })
           )}
         </div>
 
+        {/* Error message */}
+        {error && (
+          <div className="px-4 py-2 bg-red-500/10 border-t border-red-500/50">
+            <div className="text-red-400 text-sm">{error}</div>
+          </div>
+        )}
+
         <div className="p-4 border-t border-white/5 flex justify-end gap-2">
-          <button onClick={onClose} className="px-3 py-2 rounded-lg bg-neutral-800 hover:bg-neutral-700 border border-white/5 text-sm font-medium">Cancel</button>
           <button
-            onClick={async () => {
-              await onSave(selected);
-              onClose();
-            }}
-            className="px-3 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-semibold"
+            onClick={onClose}
+            disabled={isSaving}
+            className="px-3 py-2 rounded-lg bg-neutral-800 hover:bg-neutral-700 border border-white/5 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Save pins
+            Cancel
+          </button>
+          <button
+            onClick={handleSave}
+            disabled={!hasChanges || isSaving || selected.length === 0}
+            className="px-3 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-emerald-500"
+          >
+            {isSaving ? 'Saving...' : 'Save pins'}
           </button>
         </div>
       </div>
@@ -289,10 +367,24 @@ export const ActionCards: React.FC<Props> = ({ onStartRoutine, onViewRoutine }) 
         initialPinnedIds={prefsIds}
         onClose={() => setIsPinModalOpen(false)}
         onSave={async (ids) => {
-          const saved = await updateDashboardPrefs({ pinnedRoutineIds: ids });
+          // Ensure max 4 routines
+          const idsToSave = ids.slice(0, 4);
+          
+          // Persist to dashboard preferences
+          const saved = await updateDashboardPrefs({ pinnedRoutineIds: idsToSave });
+          
+          // Update local state immediately (no refresh needed)
           setPrefsIds(saved.pinnedRoutineIds || []);
-          // Update go-to routine to first pinned
-          setGoToRoutineId(saved.pinnedRoutineIds?.[0] || null);
+          
+          // Preserve "My Go-To Routine" if it's still in the pinned list
+          // Otherwise, set to first pinned routine
+          const newGoToId = saved.pinnedRoutineIds?.includes(goToRoutineId || '')
+            ? goToRoutineId
+            : saved.pinnedRoutineIds?.[0] || null;
+          setGoToRoutineId(newGoToId);
+          
+          // Trigger refresh event for other components
+          window.dispatchEvent(new CustomEvent('habitflow:demo-data-changed'));
         }}
       />
     </div>
