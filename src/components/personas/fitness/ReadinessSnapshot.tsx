@@ -14,6 +14,14 @@ function getTimeZone(): string {
 
 type ReadinessKey = 'readiness' | 'soreness' | 'hydration' | 'fueling' | 'recovery';
 
+const DEFAULTS: Record<ReadinessKey, number> = {
+  readiness: 2,
+  soreness: 2,
+  hydration: 2,
+  fueling: 2,
+  recovery: 2,
+};
+
 type ReadinessMetric = {
   key: ReadinessKey;
   label: string;
@@ -31,15 +39,18 @@ const READINESS_METRICS: ReadinessMetric[] = [
 export const ReadinessSnapshot: React.FC = () => {
   const timeZone = useMemo(() => getTimeZone(), []);
   const todayKey = useMemo(() => formatDayKeyFromDate(new Date(), timeZone), [timeZone]);
-  const [values, setValues] = useState<Record<ReadinessKey, number | null>>({
-    readiness: null,
-    soreness: null,
-    hydration: null,
-    fueling: null,
-    recovery: null,
-  });
+  const [values, setValues] = useState<Record<ReadinessKey, number>>(DEFAULTS);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+
+  // Helper to set a single key value
+  const setKey = (key: ReadinessKey, next: number) => {
+    setValues((prev) => {
+      // Only update if value actually changed
+      if (prev[key] === next) return prev;
+      return { ...prev, [key]: next };
+    });
+  };
 
   // Load today's values
   useEffect(() => {
@@ -53,15 +64,9 @@ export const ReadinessSnapshot: React.FC = () => {
       .then((entries: WellbeingEntry[]) => {
         if (cancelled) return;
 
-        const todayValues: Record<ReadinessKey, number | null> = {
-          readiness: null,
-          soreness: null,
-          hydration: null,
-          fueling: null,
-          recovery: null,
-        };
+        const todayValues: Record<ReadinessKey, number> = { ...DEFAULTS };
 
-        // Get the latest value for each metric (prefer morning, fallback to evening, then null)
+        // Get the latest value for each metric (prefer morning, fallback to evening, then default)
         for (const metric of READINESS_METRICS) {
           const metricEntries = entries.filter(
             (e) => e.metricKey === metric.key && e.dayKey === todayKey && !e.deletedAt
@@ -77,6 +82,7 @@ export const ReadinessSnapshot: React.FC = () => {
               todayValues[metric.key] = entry.value;
             }
           }
+          // If no entry found, keep default value (already set from DEFAULTS)
         }
 
         setValues(todayValues);
@@ -150,15 +156,15 @@ export const ReadinessSnapshot: React.FC = () => {
 
       <div className="grid grid-cols-5 gap-4">
         {READINESS_METRICS.map((metric) => {
-          const currentValue = values[metric.key] ?? 2; // Default to middle (2 on 0-4 scale)
-          const metricKey = metric.key; // Capture in closure to ensure independence
+          const key = metric.key;
+          const currentValue = values[key];
 
           return (
-            <div key={metric.key} className="space-y-2">
+            <div key={key} className="space-y-2">
               <div className="flex items-center gap-2 justify-center">
                 {metric.icon}
                 <label 
-                  htmlFor={`readiness-slider-${metric.key}`}
+                  htmlFor={`readiness-slider-${key}`}
                   className="text-xs text-neutral-300 font-medium text-center cursor-pointer"
                 >
                   {metric.label}
@@ -166,36 +172,20 @@ export const ReadinessSnapshot: React.FC = () => {
               </div>
               <input
                 type="range"
-                id={`readiness-slider-${metric.key}`}
-                name={`readiness-${metric.key}`}
+                id={`readiness-slider-${key}`}
+                name={`readiness-${key}`}
                 min={0}
                 max={4}
                 step={1}
                 value={currentValue}
                 onChange={(e) => {
-                  // Capture the metric key and value immediately to ensure independence
-                  const targetMetric = metricKey;
                   const newValue = Number(e.target.value);
-                  
-                  // Update state immediately for responsive UI
-                  setValues((prev) => {
-                    const updated = { ...prev, [targetMetric]: newValue };
-                    
-                    // DEV: Verify only this metric changed
-                    if (import.meta.env.DEV) {
-                      const otherKeys = (Object.keys(updated) as ReadinessKey[]).filter(k => k !== targetMetric);
-                      const otherChanged = otherKeys.filter(k => updated[k] !== prev[k]);
-                      if (otherChanged.length > 0) {
-                        console.error(`[ReadinessSnapshot] onChange: Moving ${targetMetric} also changed: ${otherChanged.join(', ')}`);
-                      }
-                    }
-                    
-                    return updated;
-                  });
+                  // Update only this specific key
+                  setKey(key, newValue);
                   
                   // Trigger async save (don't await - let it happen in background)
-                  handleSliderChange(targetMetric, newValue).catch(err => {
-                    console.error(`[ReadinessSnapshot] Failed to save ${targetMetric}:`, err);
+                  handleSliderChange(key, newValue).catch(err => {
+                    console.error(`[ReadinessSnapshot] Failed to save ${key}:`, err);
                   });
                 }}
                 disabled={saving}
