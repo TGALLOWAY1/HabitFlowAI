@@ -16,7 +16,7 @@ import { getWellbeingEntriesRoute, upsertWellbeingEntriesRoute, deleteWellbeingE
 import { seedDemoEmotionalWellbeingRoute, resetDemoEmotionalWellbeingRoute } from './routes/devDemoEmotionalWellbeing';
 import { getRoutinesRoute, getRoutineRoute, createRoutineRoute, updateRoutineRoute, deleteRoutineRoute, submitRoutineRoute, uploadRoutineImageRoute, uploadRoutineImageMiddleware } from './routes/routines';
 import { getRoutineLogs } from './routes/routineLogs';
-import { getGoals, getGoal, getGoalProgress, getGoalsWithProgress, getCompletedGoals, createGoalRoute, updateGoalRoute, deleteGoalRoute, createGoalManualLogRoute, getGoalManualLogsRoute, getGoalDetailRoute, uploadGoalBadgeRoute, uploadBadgeMiddleware } from './routes/goals';
+import { getGoals, getGoal, getGoalProgress, getGoalsWithProgress, getCompletedGoals, createGoalRoute, updateGoalRoute, deleteGoalRoute, reorderGoalsRoute, createGoalManualLogRoute, getGoalManualLogsRoute, getGoalDetailRoute, uploadGoalBadgeRoute, uploadBadgeMiddleware } from './routes/goals';
 import { getProgressOverview } from './routes/progress';
 import { getEntriesRoute, createEntryRoute, upsertEntryByKeyRoute, getEntryRoute, updateEntryRoute, deleteEntryRoute } from './routes/journal';
 import { getTasksRoute, createTaskRoute, updateTaskRoute, deleteTaskRoute } from './routes/tasks';
@@ -135,6 +135,7 @@ app.get('/api/goals', getGoals);
 app.get('/api/goals/completed', getCompletedGoals);
 app.get('/api/goals-with-progress', getGoalsWithProgress);
 app.post('/api/goals', createGoalRoute);
+app.patch('/api/goals/reorder', reorderGoalsRoute);
 app.get('/api/goals/:id/progress', getGoalProgress);
 app.get('/api/goals/:id/detail', getGoalDetailRoute);
 // Badge upload route (must come before /goals/:id to match first)

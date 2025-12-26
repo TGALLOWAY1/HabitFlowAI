@@ -50,7 +50,7 @@ export async function createGoal(
  * Get all goals for a user.
  * 
  * @param userId - User ID to filter goals
- * @returns Array of goals for the user
+ * @returns Array of goals for the user, sorted by sortOrder (asc) then createdAt (asc)
  */
 export async function getGoalsByUser(userId: string): Promise<Goal[]> {
 
@@ -59,6 +59,9 @@ export async function getGoalsByUser(userId: string): Promise<Goal[]> {
 
   const documents = await collection
     .find({ userId })
+    // Sort by 'sortOrder' ascending (null/undefined values come LAST by default in Mongo)
+    // then by createdAt ascending for stable ordering
+    .sort({ sortOrder: 1, createdAt: 1 })
     .toArray();
 
   // Remove MongoDB _id and userId before returning
@@ -170,6 +173,41 @@ export async function deleteGoal(
   const result = await collection.deleteOne({ id, userId });
 
   return result.deletedCount > 0;
+}
+
+/**
+ * Reorder goals.
+ * Updates the 'sortOrder' field for a list of goals.
+ * 
+ * @param userId - User ID to verify ownership
+ * @param goalIds - Array of goal IDs in the desired order
+ * @returns True if successful
+ */
+export async function reorderGoals(
+  userId: string,
+  goalIds: string[]
+): Promise<boolean> {
+  const db = await getDb();
+  const collection = db.collection(COLLECTION_NAME);
+
+  // Use bulkWrite for efficiency
+  // Map over the explicit order of IDs provided
+  const operations = goalIds.map((id, index) => ({
+    updateOne: {
+      filter: { id, userId },
+      update: { $set: { sortOrder: index } }
+    }
+  }));
+
+  if (operations.length === 0) return true;
+
+  try {
+    await collection.bulkWrite(operations);
+    return true;
+  } catch (error) {
+    console.error('Failed to reorder goals:', error);
+    return false;
+  }
 }
 
 /**

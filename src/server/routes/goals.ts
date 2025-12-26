@@ -14,6 +14,7 @@ import {
   getGoalById,
   updateGoal,
   deleteGoal,
+  reorderGoals,
   validateHabitIds,
 } from '../repositories/goalRepository';
 import { getHabitById } from '../repositories/habitRepository';
@@ -136,6 +137,12 @@ function validateGoalData(data: any): string | null {
 
   if (data.badgeImageUrl !== undefined && typeof data.badgeImageUrl !== 'string') {
     return 'badgeImageUrl must be a string if provided';
+  }
+
+  if (data.sortOrder !== undefined) {
+    if (typeof data.sortOrder !== 'number' || !Number.isInteger(data.sortOrder) || data.sortOrder < 0) {
+      return 'sortOrder must be a non-negative integer if provided';
+    }
   }
 
   return null;
@@ -384,6 +391,28 @@ export async function createGoalRoute(req: Request, res: Response): Promise<void
     const aggregationMode = req.body.aggregationMode || (req.body.type === 'cumulative' ? 'sum' : 'count');
     const countMode = req.body.countMode || (aggregationMode === 'count' ? 'distinctDays' : undefined);
 
+    // Determine sortOrder: if provided, use it; otherwise assign to end of category
+    let sortOrder: number | undefined = req.body.sortOrder;
+    if (sortOrder === undefined) {
+      // Fetch existing goals in the same category to determine next sortOrder
+      const existingGoals = await getGoalsByUser(userId);
+      const goalsInCategory = existingGoals.filter(
+        g => g.categoryId === req.body.categoryId || (!g.categoryId && !req.body.categoryId)
+      );
+      
+      if (goalsInCategory.length > 0) {
+        // Find the maximum sortOrder in the category and add 1
+        const maxSortOrder = Math.max(
+          ...goalsInCategory.map(g => g.sortOrder ?? -1),
+          -1
+        );
+        sortOrder = maxSortOrder + 1;
+      } else {
+        // First goal in category, start at 0
+        sortOrder = 0;
+      }
+    }
+
     const goal = await createGoal(
       {
         title: req.body.title.trim(),
@@ -397,6 +426,8 @@ export async function createGoalRoute(req: Request, res: Response): Promise<void
         completedAt: req.body.completedAt,
         notes: req.body.notes?.trim(),
         badgeImageUrl: req.body.badgeImageUrl?.trim(),
+        categoryId: req.body.categoryId,
+        sortOrder,
       },
       userId
     );
@@ -585,6 +616,19 @@ export async function updateGoalRoute(req: Request, res: Response): Promise<void
         return;
       }
       patch.categoryId = req.body.categoryId || undefined;
+    }
+
+    if (req.body.sortOrder !== undefined) {
+      if (typeof req.body.sortOrder !== 'number' || !Number.isInteger(req.body.sortOrder) || req.body.sortOrder < 0) {
+        res.status(400).json({
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: 'sortOrder must be a non-negative integer',
+          },
+        });
+        return;
+      }
+      patch.sortOrder = req.body.sortOrder;
     }
 
     if (Object.keys(patch).length === 0) {
@@ -1053,6 +1097,59 @@ export async function uploadGoalBadgeRoute(req: Request, res: Response): Promise
  * Single file upload with field name 'image'.
  */
 export const uploadBadgeMiddleware = upload.single('image');
+
+/**
+ * Reorder goals.
+ * 
+ * PATCH /api/goals/reorder
+ * 
+ * Body: { goalIds: string[] }
+ * - goalIds: Array of goal IDs in the desired order
+ */
+export async function reorderGoalsRoute(req: Request, res: Response): Promise<void> {
+  try {
+    const { goalIds } = req.body;
+
+    if (!Array.isArray(goalIds) || !goalIds.every(id => typeof id === 'string')) {
+      res.status(400).json({
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'goalIds must be an array of goal IDs',
+        },
+      });
+      return;
+    }
+
+    // TODO: Extract userId from authentication token/session
+    const userId = (req as any).userId || 'anonymous-user';
+
+    const success = await reorderGoals(userId, goalIds);
+
+    if (!success) {
+      res.status(500).json({
+        error: {
+          code: 'INTERNAL_SERVER_ERROR',
+          message: 'Failed to reorder goals',
+        },
+      });
+      return;
+    }
+
+    res.status(200).json({
+      message: 'Goals reordered successfully',
+    });
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error('Error reordering goals:', errorMessage);
+    res.status(500).json({
+      error: {
+        code: 'INTERNAL_SERVER_ERROR',
+        message: 'Failed to reorder goals',
+        details: process.env.NODE_ENV === 'development' ? errorMessage : undefined,
+      },
+    });
+  }
+}
 
 /**
  * Delete a goal.

@@ -879,6 +879,13 @@ export interface Goal {
 
     /** Optional URL to a badge/image associated with the goal */
     badgeImageUrl?: string;
+
+    /** 
+     * Display order of the goal within its category. Lower numbers appear first.
+     * Optional for backward compatibility (treated as Infinity if missing).
+     * Goals without sortOrder will be sorted by createdAt (asc) as fallback.
+     */
+    sortOrder?: number;
 }
 
 /** Goals stored as an array */
