@@ -1,11 +1,13 @@
-import React, { useState } from 'react';
-import { Plus, Trophy, Target, TrendingUp, BookOpen } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { Plus, Trophy, Target, TrendingUp, BookOpen, ChevronDown, ChevronRight } from 'lucide-react';
 import { useGoalsWithProgress } from '../../lib/useGoalsWithProgress';
 import { GoalGridCard } from '../../components/goals/GoalGridCard';
 import { Loader2, AlertCircle } from 'lucide-react';
 import { GoalManualProgressModal } from '../../components/goals/GoalManualProgressModal';
 import { EditGoalModal } from '../../components/goals/EditGoalModal';
 import { SkillTreeTab } from '../../components/SkillTree/SkillTreeTab';
+import { useHabitStore } from '../../store/HabitContext';
+import { buildGoalStacks } from '../../utils/goalUtils';
 
 interface GoalsPageProps {
     onCreateGoal?: () => void;
@@ -14,6 +16,86 @@ interface GoalsPageProps {
     onViewWinArchive?: () => void;
 }
 
+interface StackProps {
+    stack: { category: { id: string; name: string; color: string }; goals: unknown[] };
+    isExpanded: boolean;
+    goalCount: number;
+    onToggle: () => void;
+    getGoalWithProgress: (goalId: string) => { goal: { id: string }; progress: unknown } | undefined;
+    onViewGoal?: (goalId: string) => void;
+    onEdit: (goalId: string) => void;
+    onAddManualProgress: (goalId: string, event: React.MouseEvent) => void;
+    onNavigateToCompleted?: (goalId: string) => void;
+}
+
+const Stack: React.FC<StackProps> = ({
+    stack,
+    isExpanded,
+    goalCount,
+    onToggle,
+    getGoalWithProgress,
+    onViewGoal,
+    onEdit,
+    onAddManualProgress,
+    onNavigateToCompleted,
+}) => {
+    return (
+        <div className="border border-white/5 rounded-xl bg-neutral-900/30 overflow-hidden w-full">
+            {/* Stack Header */}
+            <button
+                onClick={onToggle}
+                className="w-full px-4 sm:px-6 py-4 flex items-center justify-between hover:bg-neutral-800/50 active:bg-neutral-800/70 transition-colors text-left touch-manipulation"
+            >
+                <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+                    <div
+                        className={`w-3 h-3 rounded-full flex-shrink-0 ${stack.category.color || 'bg-neutral-600'}`}
+                    />
+                    <h2 className="text-base sm:text-lg lg:text-xl font-semibold text-white truncate">
+                        {stack.category.name}
+                    </h2>
+                    <span className="text-xs sm:text-sm text-neutral-400 font-medium flex-shrink-0">
+                        ({goalCount} {goalCount === 1 ? 'goal' : 'goals'})
+                    </span>
+                </div>
+                <div className="flex-shrink-0 text-neutral-400 ml-2">
+                    {isExpanded ? (
+                        <ChevronDown size={20} />
+                    ) : (
+                        <ChevronRight size={20} />
+                    )}
+                </div>
+            </button>
+
+            {/* Stack Body - Goal Cards */}
+            {isExpanded && (
+                <div className="px-3 sm:px-4 lg:px-6 py-4 border-t border-white/5 overflow-x-hidden">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+                        {stack.goals.map((goal: { id: string }) => {
+                            const goalWithProgress = getGoalWithProgress(goal.id);
+                            if (!goalWithProgress) return null;
+
+                            return (
+                                <GoalGridCard
+                                    key={goal.id}
+                                    goalWithProgress={goalWithProgress}
+                                    onViewDetails={(goalId) => {
+                                        if (onViewGoal) {
+                                            onViewGoal(goalId);
+                                        }
+                                    }}
+                                    onEdit={onEdit}
+                                    onAddManualProgress={onAddManualProgress}
+                                    onNavigateToCompleted={onNavigateToCompleted}
+                                />
+                            );
+                        })}
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
+
 export const GoalsPage: React.FC<GoalsPageProps> = ({
     onCreateGoal,
     onViewGoal,
@@ -21,9 +103,13 @@ export const GoalsPage: React.FC<GoalsPageProps> = ({
     onViewWinArchive
 }) => {
     const { data, loading, error, refetch } = useGoalsWithProgress();
+    const { categories } = useHabitStore();
     const [manualProgressGoalId, setManualProgressGoalId] = useState<string | null>(null);
     const [editingGoalId, setEditingGoalId] = useState<string | null>(null);
     const [activeTab, setActiveTab] = useState<'overview' | 'progress' | 'skills'>('overview');
+    // Track expanded/collapsed state for each stack (category ID -> boolean)
+    // Default to expanded on desktop (all true initially)
+    const [expandedStacks, setExpandedStacks] = useState<Set<string>>(new Set());
 
     // We don't need useHabitStore().goals here if using useGoalsWithProgress for overview
     // But we might need it for other things? 
@@ -33,6 +119,41 @@ export const GoalsPage: React.FC<GoalsPageProps> = ({
     const getGoalById = (id: string | null) => {
         if (!id) return null;
         return data.find(g => g.goal.id === id) || null;
+    };
+
+    // Build goal stacks grouped by category
+    const goalStacks = useMemo(() => {
+        if (!data || !categories) return [];
+        
+        // Extract goals from GoalWithProgress array
+        const goals = data.map(gwp => gwp.goal);
+        
+        return buildGoalStacks({ goals, categories });
+    }, [data, categories]);
+
+    // Initialize all stacks as expanded on mount (desktop default)
+    React.useEffect(() => {
+        if (goalStacks.length > 0 && expandedStacks.size === 0) {
+            setExpandedStacks(new Set(goalStacks.map(stack => stack.category.id)));
+        }
+    }, [goalStacks, expandedStacks.size]);
+
+    // Toggle stack expand/collapse
+    const toggleStack = (categoryId: string) => {
+        setExpandedStacks(prev => {
+            const next = new Set(prev);
+            if (next.has(categoryId)) {
+                next.delete(categoryId);
+            } else {
+                next.add(categoryId);
+            }
+            return next;
+        });
+    };
+
+    // Find goalWithProgress by goal ID
+    const getGoalWithProgress = (goalId: string) => {
+        return data.find(gwp => gwp.goal.id === goalId);
     };
 
     if (loading) {
@@ -65,7 +186,7 @@ export const GoalsPage: React.FC<GoalsPageProps> = ({
     }
 
     return (
-        <div className={`w-full mx-auto py-6 sm:py-8 ${
+        <div className={`w-full mx-auto py-6 sm:py-8 overflow-x-hidden ${
             activeTab === 'skills' 
                 ? 'max-w-[98vw] px-3 sm:px-4 lg:px-6' 
                 : 'max-w-4xl px-4 sm:px-6 lg:px-8'
@@ -130,7 +251,7 @@ export const GoalsPage: React.FC<GoalsPageProps> = ({
 
             {/* Content Area */}
             {activeTab === 'overview' && (
-                data.length === 0 ? (
+                goalStacks.length === 0 ? (
                     <div className="text-center py-16 sm:py-20">
                         <div className="max-w-md mx-auto">
                             <div className="mb-6">
@@ -154,26 +275,29 @@ export const GoalsPage: React.FC<GoalsPageProps> = ({
                         </div>
                     </div>
                 ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {data.map((goalWithProgress) => (
-                            <GoalGridCard
-                                key={goalWithProgress.goal.id}
-                                goalWithProgress={goalWithProgress}
-                                onViewDetails={(goalId) => {
-                                    if (onViewGoal) {
-                                        onViewGoal(goalId);
-                                    }
-                                }}
-                                onEdit={(goalId) => {
-                                    setEditingGoalId(goalId);
-                                }}
-                                onAddManualProgress={(goalId, event) => {
-                                    event.preventDefault(); // Stop propagation
-                                    setManualProgressGoalId(goalId);
-                                }}
-                                onNavigateToCompleted={onNavigateToCompleted}
-                            />
-                        ))}
+                    <div className="space-y-4 sm:space-y-6 overflow-x-hidden">
+                        {goalStacks.map((stack) => {
+                            const isExpanded = expandedStacks.has(stack.category.id);
+                            const goalCount = stack.goals.length;
+
+                            return (
+                                <Stack
+                                    key={stack.category.id}
+                                    stack={stack}
+                                    isExpanded={isExpanded}
+                                    goalCount={goalCount}
+                                    onToggle={() => toggleStack(stack.category.id)}
+                                    getGoalWithProgress={getGoalWithProgress}
+                                    onViewGoal={onViewGoal}
+                                    onEdit={(goalId) => setEditingGoalId(goalId)}
+                                    onAddManualProgress={(goalId, event) => {
+                                        event.preventDefault();
+                                        setManualProgressGoalId(goalId);
+                                    }}
+                                    onNavigateToCompleted={onNavigateToCompleted}
+                                />
+                            );
+                        })}
                     </div>
                 )
             )}

@@ -737,6 +737,23 @@ export async function deleteGoal(id: string): Promise<void> {
 }
 
 /**
+ * Reorder goals.
+ * 
+ * @param goalIds - Array of goal IDs in new order
+ * @returns Promise<void>
+ * @throws Error if API request fails
+ */
+export async function reorderGoals(goalIds: string[]): Promise<void> {
+  await apiRequest<{ message: string }>('/goals/reorder', {
+    method: 'PATCH',
+    body: JSON.stringify({ goalIds }),
+  });
+
+  // Invalidate cache after successful reorder
+  invalidateGoalDataCache();
+}
+
+/**
  * Fetch all goals with progress information for the current user.
  * 
  * Efficiently fetches all goals with their progress data in a single request,
