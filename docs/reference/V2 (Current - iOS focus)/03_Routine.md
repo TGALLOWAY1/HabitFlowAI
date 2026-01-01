@@ -266,3 +266,49 @@ If a feature proposal makes a routine “count” for something, it violates Nor
 ## One-Sentence Summary
 
 A Routine is a non-authoritative support structure that records user intent to apply structure and may emit optional, ignorable suggestions—only explicit HabitEntries ever create behavioral truth.
+
+---
+
+## Routine Image Storage
+
+### Storage Location
+
+Routine images are stored in MongoDB in the `routineImages` collection, not on the filesystem.
+
+### API Endpoints
+
+- **Upload**: `POST /api/routines/:routineId/image`
+  - Accepts `multipart/form-data` with field name `file`
+  - Validates: JPEG, PNG, WebP only; max 5MB
+  - Returns: `{ imageId: string, imageUrl: string }`
+
+- **Get**: `GET /api/routines/:routineId/image`
+  - Returns image bytes with appropriate `Content-Type` header
+  - Sets `Cache-Control: public, max-age=86400`
+
+- **Delete**: `DELETE /api/routines/:routineId/image`
+  - Removes image from MongoDB
+  - Returns: `{ ok: true }`
+
+### Data Model
+
+Routine images are stored as MongoDB documents with:
+- `routineId` (string, unique index) - Links to routine
+- `contentType` (string) - MIME type (e.g., `image/jpeg`)
+- `data` (Binary) - Image bytes as BSON BinData
+- `createdAt` (Date)
+- `updatedAt` (Date)
+
+### Limits
+
+- **File size**: Maximum 5MB
+- **File types**: JPEG, PNG, WebP only
+- **Per routine**: One image per routine (enforced by unique index)
+
+### Frontend Usage
+
+Routines returned from the API include an `imageUrl` field:
+- `imageUrl: "/api/routines/:id/image"` if image exists
+- `imageUrl: null` if no image
+
+The frontend renders images using this URL directly.

@@ -44,6 +44,17 @@ export const RoutinePreviewModal: React.FC<RoutinePreviewModalProps> = ({
                     </button>
                 </div>
 
+                {/* Routine Image (if available) */}
+                {routine.imageUrl && (
+                    <div className="w-full aspect-video bg-neutral-800/50 border-b border-white/5 overflow-hidden">
+                        <img
+                            src={routine.imageUrl}
+                            alt={routine.title}
+                            className="w-full h-full object-cover"
+                        />
+                    </div>
+                )}
+
                 {/* Content */}
                 <div className="flex-1 overflow-y-auto p-6 space-y-8">
 

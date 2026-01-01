@@ -1,4 +1,4 @@
-# 📄 `01_Habit.md` — Canonical Object (V4)
+# Habit — Canonical Object (V4)
 
 > **Authority Notice**
 > This document is authoritative.

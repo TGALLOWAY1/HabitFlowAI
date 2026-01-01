@@ -549,12 +549,23 @@ export async function updateRoutine(
  * @param file - The image file to upload
  * @returns The public URL of the uploaded image
  */
-export async function uploadRoutineImage(file: File): Promise<string> {
-  const url = `${API_BASE_URL}/upload/routine-image`;
+/**
+ * Upload a routine-level image.
+ * 
+ * @param routineId - ID of the routine to upload image for
+ * @param file - Image file to upload
+ * @returns Promise<{ imageId: string, imageUrl: string }> - Upload result with image ID and URL
+ * @throws Error if upload fails (network error, invalid file type, file too large, etc.)
+ */
+export async function uploadRoutineImage(
+  routineId: string,
+  file: File
+): Promise<{ imageId: string; imageUrl: string }> {
+  const url = `${API_BASE_URL}/routines/${routineId}/image`;
   const userId = getOrCreateUserId();
 
   const formData = new FormData();
-  formData.append('image', file);
+  formData.append('file', file);
 
   try {
     const response = await fetch(url, {
@@ -567,14 +578,40 @@ export async function uploadRoutineImage(file: File): Promise<string> {
     });
 
     if (!response.ok) {
-      throw new Error(`Upload failed: ${response.status} ${response.statusText}`);
+      const errorData = await response.json().catch(() => ({}));
+      const errorMessage = errorData?.error?.message || `Upload failed: ${response.status} ${response.statusText}`;
+      
+      // Provide specific error messages for common cases
+      if (response.status === 400) {
+        if (errorMessage.includes('Invalid image type')) {
+          throw new Error('Invalid image type. Only JPEG, PNG, and WebP images are allowed.');
+        }
+        if (errorMessage.includes('file size') || errorMessage.includes('5MB')) {
+          throw new Error('Image file size exceeds 5MB limit.');
+        }
+        throw new Error(errorMessage);
+      }
+      
+      if (response.status === 404) {
+        throw new Error('Routine not found.');
+      }
+      
+      throw new Error(errorMessage);
     }
 
     const data = await response.json();
-    return data.url;
+    return {
+      imageId: data.imageId,
+      imageUrl: data.imageUrl,
+    };
   } catch (error) {
+    if (error instanceof Error) {
+      // Re-throw with the error message
+      throw error;
+    }
+    // Network errors or other unexpected errors
     console.error('Error uploading routine image:', error);
-    throw error;
+    throw new Error('Network error. Please check your connection and try again.');
   }
 }
 

@@ -1,8 +1,11 @@
 /**
  * File Storage Utility
  * 
- * Handles file uploads and storage for the application.
+ * Handles file uploads and storage for goal badge images.
  * Currently uses local file storage, but can be extended to support S3 or other cloud providers.
+ * 
+ * Note: Routine images are stored in MongoDB and served via API endpoints.
+ * This utility is only used for goal badge images.
  */
 
 import { randomUUID } from 'crypto';
