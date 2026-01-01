@@ -19,24 +19,31 @@ import { recomputeDayLogForHabit } from '../utils/recomputeUtils';
 import { validateDayKey } from '../domain/canonicalValidators';
 import type { Routine, RoutineStep, RoutineLog } from '../../models/persistenceTypes';
 import multer from 'multer';
-import { saveUploadedFile } from '../utils/fileStorage';
+import {
+  getRoutineImageByRoutineId,
+  deleteRoutineImageByRoutineId,
+  upsertRoutineImage,
+} from '../repositories/routineImageRepository';
 
-// Configure multer for in-memory file storage
-const upload = multer({
+// Configure multer for routine image uploads (MongoDB storage)
+// Validates: jpeg, png, webp only; max 5MB
+const routineImageUpload = multer({
   storage: multer.memoryStorage(),
   limits: {
     fileSize: 5 * 1024 * 1024, // 5MB limit
   },
   fileFilter: (_req, file, cb) => {
-    if (file.mimetype.startsWith('image/')) {
+    // Explicitly allow only jpeg, png, and webp
+    const allowedMimeTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+    if (allowedMimeTypes.includes(file.mimetype.toLowerCase())) {
       cb(null, true);
     } else {
-      cb(new Error('Only image files are allowed'));
+      cb(new Error('Only JPEG, PNG, and WebP images are allowed'));
     }
   },
 });
 
-export const uploadRoutineImageMiddleware = upload.single('image');
+export const uploadRoutineImageMiddleware = routineImageUpload.single('file');
 
 /**
  * Validate a RoutineStep object.
@@ -95,6 +102,17 @@ function validateSteps(steps: any): string | null {
 }
 
 /**
+ * Helper function to check if a routine has an image and return the imageUrl.
+ * 
+ * @param routineId - ID of the routine
+ * @returns Promise<string | null> - Image URL if image exists, null otherwise
+ */
+async function getRoutineImageUrl(routineId: string): Promise<string | null> {
+  const image = await getRoutineImageByRoutineId(routineId);
+  return image ? `/api/routines/${routineId}/image` : null;
+}
+
+/**
  * Get all routines for the current user.
  * 
  * GET /api/routines
@@ -107,9 +125,20 @@ export async function getRoutinesRoute(req: Request, res: Response): Promise<voi
 
     const routines = await getRoutines(userId);
 
+    // Add imageUrl to each routine
+    const routinesWithImages = await Promise.all(
+      routines.map(async (routine) => {
+        const imageUrl = await getRoutineImageUrl(routine.id);
+        return {
+          ...routine,
+          imageUrl,
+        };
+      })
+    );
+
     // Return full list including steps
     res.status(200).json({
-      routines,
+      routines: routinesWithImages,
     });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
@@ -159,8 +188,14 @@ export async function getRoutineRoute(req: Request, res: Response): Promise<void
       return;
     }
 
+    // Add imageUrl to routine
+    const imageUrl = await getRoutineImageUrl(routine.id);
+
     res.status(200).json({
-      routine,
+      routine: {
+        ...routine,
+        imageUrl,
+      },
     });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
@@ -251,8 +286,14 @@ export async function createRoutineRoute(req: Request, res: Response): Promise<v
       }
     );
 
+    // Add imageUrl to routine
+    const imageUrl = await getRoutineImageUrl(routine.id);
+
     res.status(201).json({
-      routine,
+      routine: {
+        ...routine,
+        imageUrl,
+      },
     });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
@@ -379,8 +420,14 @@ export async function updateRoutineRoute(req: Request, res: Response): Promise<v
       return;
     }
 
+    // Add imageUrl to routine
+    const imageUrl = await getRoutineImageUrl(routine.id);
+
     res.status(200).json({
-      routine,
+      routine: {
+        ...routine,
+        imageUrl,
+      },
     });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
@@ -446,27 +493,207 @@ export async function deleteRoutineRoute(req: Request, res: Response): Promise<v
 }
 
 /**
- * Upload a routine step image.
+ * Get a routine image by routine ID.
  * 
- * POST /api/upload/routine-image
+ * GET /api/routines/:routineId/image
+ * Returns image bytes with appropriate Content-Type header.
  */
-export async function uploadRoutineImageRoute(req: Request, res: Response): Promise<void> {
+export async function getRoutineImageRoute(req: Request, res: Response): Promise<void> {
   try {
-    if (!req.file) {
+    const { routineId } = req.params;
+
+    if (!routineId) {
       res.status(400).json({
         error: {
           code: 'VALIDATION_ERROR',
-          message: 'No image file provided',
+          message: 'Routine ID is required',
         },
       });
       return;
     }
 
-    // Save file using existing utility
-    const publicUrl = saveUploadedFile(req.file, 'routine-images');
+    // TODO: Extract userId from authentication token/session
+    const userId = (req as any).userId || 'anonymous-user';
+
+    // Verify routine exists and belongs to user
+    const routine = await getRoutine(userId, routineId);
+    if (!routine) {
+      res.status(404).json({
+        error: {
+          code: 'NOT_FOUND',
+          message: 'Routine not found',
+        },
+      });
+      return;
+    }
+
+    // Fetch image from repository
+    const image = await getRoutineImageByRoutineId(routineId);
+    if (!image) {
+      res.status(404).json({
+        error: {
+          code: 'NOT_FOUND',
+          message: 'Routine image not found',
+        },
+      });
+      return;
+    }
+
+    // Set headers
+    res.setHeader('Content-Type', image.contentType);
+    res.setHeader('Cache-Control', 'public, max-age=86400');
+
+    // Send image bytes
+    res.status(200).send(image.data);
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error('Error fetching routine image:', errorMessage);
+    res.status(500).json({
+      error: {
+        code: 'INTERNAL_SERVER_ERROR',
+        message: 'Failed to fetch routine image',
+        details: process.env.NODE_ENV === 'development' ? errorMessage : undefined,
+      },
+    });
+  }
+}
+
+/**
+ * Delete a routine image by routine ID.
+ * 
+ * DELETE /api/routines/:routineId/image
+ * Deletes the image document from MongoDB.
+ */
+export async function deleteRoutineImageRoute(req: Request, res: Response): Promise<void> {
+  try {
+    const { routineId } = req.params;
+
+    if (!routineId) {
+      res.status(400).json({
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'Routine ID is required',
+        },
+      });
+      return;
+    }
+
+    // TODO: Extract userId from authentication token/session
+    const userId = (req as any).userId || 'anonymous-user';
+
+    // Verify routine exists and belongs to user
+    const routine = await getRoutine(userId, routineId);
+    if (!routine) {
+      res.status(404).json({
+        error: {
+          code: 'NOT_FOUND',
+          message: 'Routine not found',
+        },
+      });
+      return;
+    }
+
+    // Delete image from repository
+    await deleteRoutineImageByRoutineId(routineId);
 
     res.status(200).json({
-      url: publicUrl,
+      ok: true,
+    });
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error('Error deleting routine image:', errorMessage);
+    res.status(500).json({
+      error: {
+        code: 'INTERNAL_SERVER_ERROR',
+        message: 'Failed to delete routine image',
+        details: process.env.NODE_ENV === 'development' ? errorMessage : undefined,
+      },
+    });
+  }
+}
+
+/**
+ * Upload a routine image.
+ * 
+ * POST /api/routines/:routineId/image
+ * Stores image in MongoDB and updates routine with imageId reference.
+ */
+export async function uploadRoutineImageRoute(req: Request, res: Response): Promise<void> {
+  try {
+    const { routineId } = req.params;
+
+    if (!routineId) {
+      res.status(400).json({
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'Routine ID is required',
+        },
+      });
+      return;
+    }
+
+    if (!req.file) {
+      res.status(400).json({
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'No image file provided. Please upload a file with field name "file".',
+        },
+      });
+      return;
+    }
+
+    // TODO: Extract userId from authentication token/session
+    const userId = (req as any).userId || 'anonymous-user';
+
+    // Verify routine exists and belongs to user
+    const routine = await getRoutine(userId, routineId);
+    if (!routine) {
+      res.status(404).json({
+        error: {
+          code: 'NOT_FOUND',
+          message: 'Routine not found',
+        },
+      });
+      return;
+    }
+
+    // Validate file
+    const allowedMimeTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+    if (!allowedMimeTypes.includes(req.file.mimetype.toLowerCase())) {
+      res.status(400).json({
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'Invalid image type. Only JPEG, PNG, and WebP images are allowed.',
+        },
+      });
+      return;
+    }
+
+    if (req.file.size > 5 * 1024 * 1024) {
+      res.status(400).json({
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'Image file size exceeds 5MB limit.',
+        },
+      });
+      return;
+    }
+
+    // Store image in MongoDB
+    const { imageId } = await upsertRoutineImage({
+      routineId,
+      contentType: req.file.mimetype,
+      data: req.file.buffer,
+    });
+
+    // Update routine with imageId reference
+    await updateRoutine(userId, routineId, {
+      imageId,
+    });
+
+    res.status(200).json({
+      imageId,
+      imageUrl: `/api/routines/${routineId}/image`,
     });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';

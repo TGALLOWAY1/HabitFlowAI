@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Plus, Trash2, Link2, Clock, Image as ImageIcon, Loader2, ChevronDown } from 'lucide-react';
 import { uploadRoutineImage } from '../lib/persistenceClient';
+import { API_BASE_URL } from '../lib/persistenceConfig';
 import { useRoutineStore } from '../store/RoutineContext';
 import { useHabitStore } from '../store/HabitContext';
 import type { Routine, RoutineStep } from '../models/persistenceTypes';
@@ -18,7 +19,7 @@ export const RoutineEditorModal: React.FC<RoutineEditorModalProps> = ({
     initialRoutine,
     onClose,
 }) => {
-    const { addRoutine, updateRoutine } = useRoutineStore();
+    const { addRoutine, updateRoutine, refreshRoutines } = useRoutineStore();
     const { categories, habits, updateHabit } = useHabitStore();
 
     // Form State
@@ -32,19 +33,72 @@ export const RoutineEditorModal: React.FC<RoutineEditorModalProps> = ({
     const [validationError, setValidationError] = useState<string | null>(null);
     const [uploadingStepId, setUploadingStepId] = useState<string | null>(null);
     const [expandedStepId, setExpandedStepId] = useState<string | null>(null);
+    const [uploadingRoutineImage, setUploadingRoutineImage] = useState(false);
+    const [routineImageError, setRoutineImageError] = useState<string | null>(null);
 
-    const handleImageUpload = async (file: File, stepId: string) => {
+    const handleRoutineImageUpload = async (file: File) => {
+        if (!initialRoutine?.id && mode === 'create') {
+            setRoutineImageError('Please save the routine first before uploading an image.');
+            return;
+        }
+
+        const routineId = initialRoutine?.id;
+        if (!routineId) {
+            setRoutineImageError('Routine ID is required.');
+            return;
+        }
+
+        setUploadingRoutineImage(true);
+        setRoutineImageError(null);
+
+        try {
+            // Validate file type client-side
+            const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+            if (!allowedTypes.includes(file.type.toLowerCase())) {
+                throw new Error('Invalid image type. Only JPEG, PNG, and WebP images are allowed.');
+            }
+
+            // Validate file size client-side (5MB)
+            if (file.size > 5 * 1024 * 1024) {
+                throw new Error('Image file size exceeds 5MB limit.');
+            }
+
+            const result = await uploadRoutineImage(routineId, file);
+            
+            // Update the routine in the store to reflect the new image
+            await updateRoutine(routineId, { imageId: result.imageId });
+            
+            // Update local state immediately so image appears right away
+            setCurrentRoutineImageUrl(result.imageUrl);
+            
+            // Refresh routines to sync with server
+            await refreshRoutines();
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : 'Failed to upload image. Please try again.';
+            setRoutineImageError(errorMessage);
+            console.error('Failed to upload routine image:', error);
+        } finally {
+            setUploadingRoutineImage(false);
+        }
+    };
+
+    const handleStepImageUpload = async (file: File, stepId: string) => {
         setUploadingStepId(stepId);
         try {
-            const url = await uploadRoutineImage(file);
+            // For step images, we still use the old approach (manual URL entry or external URLs)
+            // This is separate from routine-level images
+            const url = URL.createObjectURL(file);
             updateStep(stepId, { imageUrl: url });
         } catch (error) {
-            console.error('Failed to upload image:', error);
-            setValidationError('Failed to upload image. Please try again.');
+            console.error('Failed to upload step image:', error);
+            setValidationError('Failed to upload step image. Please try again.');
         } finally {
             setUploadingStepId(null);
         }
     };
+
+    // Track current routine image URL for immediate UI updates
+    const [currentRoutineImageUrl, setCurrentRoutineImageUrl] = useState<string | null | undefined>(null);
 
     // Initialize state
     useEffect(() => {
@@ -55,11 +109,13 @@ export const RoutineEditorModal: React.FC<RoutineEditorModalProps> = ({
             setCategoryId(initialRoutine.categoryId);
             setSteps(initialRoutine.steps ? initialRoutine.steps.map(s => ({ ...s })) : []);
             setExpandedStepId(null); // Collapse all initially
+            setCurrentRoutineImageUrl(initialRoutine.imageUrl);
         } else {
             setTitle('');
             setCategoryId(undefined);
             setSteps([]);
             setExpandedStepId(null);
+            setCurrentRoutineImageUrl(null);
         }
     }, [isOpen, mode, initialRoutine]);
 
@@ -205,6 +261,88 @@ export const RoutineEditorModal: React.FC<RoutineEditorModalProps> = ({
                                     Selecting a category limits linked habits to that category.
                                 </p>
                             </div>
+
+                            {/* Routine Image Upload */}
+                            {mode === 'edit' && initialRoutine?.id && (
+                                <div>
+                                    <label className="block text-sm font-medium text-neutral-400 mb-2">Routine Image (Optional)</label>
+                                    <div className="space-y-2">
+                                        {currentRoutineImageUrl && (
+                                            <div className="relative w-full aspect-video bg-neutral-800 rounded-lg overflow-hidden border border-white/5">
+                                                <img
+                                                    src={currentRoutineImageUrl}
+                                                    alt={initialRoutine.title}
+                                                    className="w-full h-full object-cover"
+                                                />
+                                                <button
+                                                    onClick={async () => {
+                                                        if (confirm('Delete this routine image?')) {
+                                                            try {
+                                                                // Delete image via API
+                                                                const response = await fetch(`${API_BASE_URL}/routines/${initialRoutine.id}/image`, {
+                                                                    method: 'DELETE',
+                                                                    headers: {
+                                                                        'X-User-Id': localStorage.getItem('habitflow_user_id') || 'anonymous-user',
+                                                                    },
+                                                                });
+                                                                if (response.ok) {
+                                                                    await updateRoutine(initialRoutine.id, { imageId: undefined });
+                                                                    setCurrentRoutineImageUrl(null);
+                                                                    await refreshRoutines();
+                                                                }
+                                                            } catch (error) {
+                                                                console.error('Failed to delete image:', error);
+                                                                setRoutineImageError('Failed to delete image. Please try again.');
+                                                            }
+                                                        }
+                                                    }}
+                                                    className="absolute top-2 right-2 p-1.5 bg-black/50 text-white rounded-full opacity-0 hover:opacity-100 transition-opacity hover:bg-black/70"
+                                                    title="Remove Image"
+                                                >
+                                                    <X size={14} />
+                                                </button>
+                                            </div>
+                                        )}
+                                        <div className="flex items-center gap-2">
+                                            <input
+                                                id="routine-image-upload"
+                                                type="file"
+                                                accept="image/jpeg,image/jpg,image/png,image/webp"
+                                                className="hidden"
+                                                onChange={(e) => {
+                                                    if (e.target.files?.[0]) {
+                                                        handleRoutineImageUpload(e.target.files[0]);
+                                                    }
+                                                    e.target.value = '';
+                                                }}
+                                                disabled={uploadingRoutineImage}
+                                            />
+                                            <label
+                                                htmlFor="routine-image-upload"
+                                                className={`flex items-center gap-2 px-4 py-2 bg-neutral-800 border border-white/10 rounded-lg text-sm text-neutral-300 hover:bg-neutral-700 transition-colors cursor-pointer ${uploadingRoutineImage ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                            >
+                                                {uploadingRoutineImage ? (
+                                                    <>
+                                                        <Loader2 size={16} className="animate-spin" />
+                                                        Uploading...
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <ImageIcon size={16} />
+                                                        {initialRoutine.imageUrl ? 'Replace Image' : 'Upload Image'}
+                                                    </>
+                                                )}
+                                            </label>
+                                            <span className="text-xs text-neutral-500">
+                                                JPEG, PNG, or WebP (max 5MB)
+                                            </span>
+                                        </div>
+                                        {routineImageError && (
+                                            <p className="text-xs text-red-400">{routineImageError}</p>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
                         </div>
 
                         <div className="space-y-4">
@@ -323,7 +461,7 @@ export const RoutineEditorModal: React.FC<RoutineEditorModalProps> = ({
                                                                 className="hidden"
                                                                 onChange={(e) => {
                                                                     if (e.target.files?.[0]) {
-                                                                        handleImageUpload(e.target.files[0], step.id);
+                                                                        handleStepImageUpload(e.target.files[0], step.id);
                                                                     }
                                                                     e.target.value = '';
                                                                 }}

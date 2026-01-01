@@ -44,10 +44,21 @@ const RoutineCard: React.FC<{
     return (
         <div
             onClick={() => onPreview(routine)}
-            className="group relative bg-neutral-800/40 border border-white/5 rounded-xl p-4 hover:bg-neutral-800/80 hover:border-white/10 transition-all cursor-pointer flex flex-col h-32 justify-between"
+            className="group relative bg-neutral-800/40 border border-white/5 rounded-xl p-4 hover:bg-neutral-800/80 hover:border-white/10 transition-all cursor-pointer flex flex-col h-32 justify-between overflow-hidden"
         >
+            {/* Routine Image (if available) */}
+            {routine.imageUrl && (
+                <div className="absolute inset-0 opacity-20 group-hover:opacity-30 transition-opacity">
+                    <img
+                        src={routine.imageUrl}
+                        alt={routine.title}
+                        className="w-full h-full object-cover"
+                    />
+                </div>
+            )}
+
             {/* Top Row: Title & Menu */}
-            <div className="flex justify-between items-start gap-2">
+            <div className="flex justify-between items-start gap-2 relative z-10">
                 <h3 className="text-white font-medium text-sm line-clamp-2 leading-relaxed">
                     {routine.title}
                 </h3>
@@ -96,7 +107,7 @@ const RoutineCard: React.FC<{
             </div>
 
             {/* Bottom Row: Metadata */}
-            <div className="flex items-center text-xs text-neutral-500 font-medium">
+            <div className="flex items-center text-xs text-neutral-500 font-medium relative z-10">
                 <span>{totalSteps} steps</span>
                 <span className="mx-1.5 opacity-50">·</span>
                 <span>~{estimatedMinutes} min</span>

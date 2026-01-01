@@ -400,6 +400,12 @@ export interface Routine {
     /** Array of steps that make up this routine */
     steps: RoutineStep[];
 
+    /** Optional image ID reference (points to routine_images collection) */
+    imageId?: string;
+
+    /** Optional image URL for displaying routine image (set by API) */
+    imageUrl?: string | null;
+
     /** ISO 8601 timestamp of when the routine was created */
     createdAt: string;
 
@@ -1045,6 +1051,7 @@ export const MONGO_COLLECTIONS = {
     GOALS: 'goals',
     GOAL_MANUAL_LOGS: 'goalManualLogs',
     ROUTINE_LOGS: 'routineLogs',
+    ROUTINE_IMAGES: 'routineImages',
     JOURNAL_ENTRIES: 'journalEntries',
     DASHBOARD_PREFS: 'dashboardPrefs',
     TASKS: 'tasks',

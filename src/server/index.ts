@@ -14,7 +14,7 @@ import { getDayLogs, upsertDayLogRoute, getDayLogRoute, deleteDayLogRoute } from
 import { getWellbeingLogs, upsertWellbeingLogRoute, getWellbeingLogRoute, deleteWellbeingLogRoute } from './routes/wellbeingLogs';
 import { getWellbeingEntriesRoute, upsertWellbeingEntriesRoute, deleteWellbeingEntryRoute } from './routes/wellbeingEntries';
 import { seedDemoEmotionalWellbeingRoute, resetDemoEmotionalWellbeingRoute } from './routes/devDemoEmotionalWellbeing';
-import { getRoutinesRoute, getRoutineRoute, createRoutineRoute, updateRoutineRoute, deleteRoutineRoute, submitRoutineRoute, uploadRoutineImageRoute, uploadRoutineImageMiddleware } from './routes/routines';
+import { getRoutinesRoute, getRoutineRoute, createRoutineRoute, updateRoutineRoute, deleteRoutineRoute, submitRoutineRoute, uploadRoutineImageRoute, uploadRoutineImageMiddleware, getRoutineImageRoute, deleteRoutineImageRoute } from './routes/routines';
 import { getRoutineLogs } from './routes/routineLogs';
 import { getGoals, getGoal, getGoalProgress, getGoalsWithProgress, getCompletedGoals, createGoalRoute, updateGoalRoute, deleteGoalRoute, reorderGoalsRoute, createGoalManualLogRoute, getGoalManualLogsRoute, getGoalDetailRoute, uploadGoalBadgeRoute, uploadBadgeMiddleware } from './routes/goals';
 import { getProgressOverview } from './routes/progress';
@@ -37,7 +37,8 @@ import { noPersonaInHabitEntryRequests } from './middleware/noPersonaInHabitEntr
 // Middleware
 app.use(express.json());
 
-// Serve static files from public directory (for uploaded images)
+// Serve static files from public directory (for goal badge images)
+// Note: Routine images are served via API endpoints, not static files
 app.use('/uploads', express.static('public/uploads'));
 
 // CORS middleware (for development)
@@ -105,8 +106,10 @@ app.post('/api/dev/resetDemoEmotionalWellbeing', resetDemoEmotionalWellbeingRout
 // Routine routes
 app.get('/api/routines', getRoutinesRoute);
 app.post('/api/routines', createRoutineRoute);
-// Upload route (must come before /:id)
-app.post('/api/upload/routine-image', uploadRoutineImageMiddleware, uploadRoutineImageRoute);
+// Image routes (must come before /:id to avoid route conflicts)
+app.post('/api/routines/:routineId/image', uploadRoutineImageMiddleware, uploadRoutineImageRoute);
+app.get('/api/routines/:routineId/image', getRoutineImageRoute);
+app.delete('/api/routines/:routineId/image', deleteRoutineImageRoute);
 app.get('/api/routines/:id', getRoutineRoute);
 app.patch('/api/routines/:id', updateRoutineRoute);
 app.delete('/api/routines/:id', deleteRoutineRoute);
