@@ -148,6 +148,34 @@ function validateGoalData(data: any): string | null {
   return null;
 }
 
+function buildIteratedGoalData(goal: Goal, currentValue: number | null): Omit<Goal, 'id' | 'createdAt'> {
+  const baseTargetValue = (typeof goal.targetValue === 'number' && goal.targetValue > 0)
+    ? goal.targetValue
+    : Math.max(1, Math.ceil(currentValue ?? 1));
+  const resolvedCurrentValue = Number.isFinite(currentValue) ? currentValue ?? 0 : 0;
+
+  const nextTargetValue = goal.type === 'onetime'
+    ? goal.targetValue
+    : Math.max(resolvedCurrentValue, baseTargetValue) + baseTargetValue;
+
+  return {
+    title: goal.title,
+    type: goal.type,
+    targetValue: goal.type === 'onetime' ? goal.targetValue : nextTargetValue,
+    unit: goal.unit,
+    linkedHabitIds: goal.linkedHabitIds,
+    aggregationMode: goal.aggregationMode,
+    countMode: goal.countMode,
+    linkedTargets: goal.linkedTargets,
+    deadline: goal.deadline,
+    completedAt: undefined,
+    notes: goal.notes,
+    badgeImageUrl: undefined,
+    categoryId: goal.categoryId,
+    sortOrder: goal.sortOrder,
+  };
+}
+
 
 /**
  * Get all goals for the current user.
@@ -644,6 +672,30 @@ export async function updateGoalRoute(req: Request, res: Response): Promise<void
     // TODO: Extract userId from authentication token/session
     const userId = (req as any).userId || 'anonymous-user';
 
+    let existingGoal: Goal | null = null;
+    let shouldIterateGoal = false;
+    let currentValueForIteration = 0;
+
+    if (patch.completedAt) {
+      existingGoal = await getGoalById(id, userId);
+      if (!existingGoal) {
+        res.status(404).json({
+          error: {
+            code: 'NOT_FOUND',
+            message: 'Goal not found',
+          },
+        });
+        return;
+      }
+
+      if (!existingGoal.completedAt) {
+        const { computeGoalProgressV2 } = await import('../utils/goalProgressUtilsV2');
+        const progress = await computeGoalProgressV2(id, userId, 'UTC');
+        currentValueForIteration = progress?.currentValue ?? 0;
+        shouldIterateGoal = true;
+      }
+    }
+
     // If linkedHabitIds is being updated, validate that all IDs exist
     if (patch.linkedHabitIds) {
       const invalidHabitIds = await validateHabitIdsExist(patch.linkedHabitIds, userId);
@@ -670,8 +722,14 @@ export async function updateGoalRoute(req: Request, res: Response): Promise<void
       return;
     }
 
+    let iteratedGoal: Goal | null = null;
+    if (shouldIterateGoal) {
+      iteratedGoal = await createGoal(buildIteratedGoalData(goal, currentValueForIteration), userId);
+    }
+
     res.status(200).json({
       goal,
+      iteratedGoal,
     });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
