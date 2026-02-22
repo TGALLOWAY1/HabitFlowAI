@@ -23,6 +23,6 @@ These remain the source files and are cited by the docs above:
 
 ## Historical / Archived
 
-- `docs/archive/PSYCHOLOGICAL_SAFETY_V0.md` — preserved psychological-safety direction; not current v1 direction.
+- `docs/archive/PSYCHOLOGICAL_SAFETY_V0.md` — ARCHIVED psychological-safety-first direction (preserved, not current v1 direction).
 - `docs/archive/root/` — archived root-level implementation snapshots.
 - `docs/reference/V0/` — historical PRDs and migration plans.
