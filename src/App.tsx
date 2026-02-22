@@ -13,7 +13,7 @@ import { RoutineEditorModal } from './components/RoutineEditorModal';
 import { RoutineRunnerModal } from './components/RoutineRunnerModal';
 import { RoutinePreviewModal } from './components/RoutinePreviewModal';
 import { HabitHistoryModal } from './components/HabitHistoryModal';
-import { BarChart3, Calendar, ClipboardList, Target, BookOpenText, CheckSquare } from 'lucide-react';
+import { BarChart3, Calendar, ClipboardList, Target, BookOpenText, CheckSquare, LayoutDashboard } from 'lucide-react';
 
 import type { Routine, Habit } from './types';
 import { GoalsPage } from './pages/goals/GoalsPage';
@@ -27,17 +27,25 @@ import { JournalPage } from './pages/JournalPage';
 import { TasksPage } from './pages/TasksPage';
 import { DebugEntriesPage } from './pages/DebugEntriesPage';
 import { WellbeingHistoryPage } from './pages/WellbeingHistoryPage';
+import { MainDashboardPage } from './pages/MainDashboardPage';
 
 // Simple router state
-type AppRoute = 'tracker' | 'dashboard' | 'routines' | 'goals' | 'wins' | 'journal' | 'tasks' | 'day' | 'debug-entries' | 'wellbeing-history';
+type AppRoute = 'tracker' | 'dashboard' | 'main-dashboard' | 'routines' | 'goals' | 'wins' | 'journal' | 'tasks' | 'day' | 'debug-entries' | 'wellbeing-history';
 
 
 // Helper functions for URL syncing
 function parseRouteFromLocation(location: Location): AppRoute {
+  const normalizedPath = location.pathname.replace(/\/+$/, '') || '/';
+  if (normalizedPath === '/dashboard' || normalizedPath === '/insights/dashboard') {
+    return 'main-dashboard';
+  }
+
   const params = new URLSearchParams(location.search);
   const view = params.get("view");
 
   switch (view) {
+    case "main-dashboard":
+      return "main-dashboard";
     case "dashboard":
     case "progress": // Legacy support
       return "dashboard";
@@ -70,6 +78,20 @@ function parseRouteFromLocation(location: Location): AppRoute {
 
 function buildUrlForRoute(route: AppRoute, params: Record<string, string> = {}): string {
   const searchParams = new URLSearchParams(window.location.search);
+  const currentPath = window.location.pathname.replace(/\/+$/, '') || '/';
+  const basePath = currentPath === '/dashboard' || currentPath === '/insights/dashboard' ? '/' : window.location.pathname;
+
+  if (route === 'main-dashboard') {
+    searchParams.delete("view");
+    searchParams.delete("goalId");
+
+    Object.entries(params).forEach(([key, value]) => {
+      searchParams.set(key, value);
+    });
+
+    const queryString = searchParams.toString();
+    return queryString ? `/dashboard?${queryString}` : '/dashboard';
+  }
 
   if (route === 'dashboard') {
     searchParams.delete("view");
@@ -86,7 +108,7 @@ function buildUrlForRoute(route: AppRoute, params: Record<string, string> = {}):
   });
 
   const queryString = searchParams.toString();
-  return queryString ? `${window.location.pathname}?${queryString}` : window.location.pathname;
+  return queryString ? `${basePath}?${queryString}` : basePath;
 }
 
 const HabitTrackerContent: React.FC = () => {
@@ -199,7 +221,19 @@ const HabitTrackerContent: React.FC = () => {
         {/* Title Section */}
         <div className="flex items-center justify-between">
           <h2 className="text-2xl font-bold text-white">
-            {view === 'tracker' ? 'Habits' : view === 'dashboard' ? 'Dashboard' : view === 'routines' ? 'Routines' : view === 'journal' ? 'Journal' : view === 'tasks' ? 'Tasks' : 'Goals'}
+            {view === 'tracker'
+              ? 'Habits'
+              : view === 'main-dashboard'
+                ? 'Main Dashboard'
+                : view === 'dashboard'
+                  ? 'Dashboard'
+                  : view === 'routines'
+                    ? 'Routines'
+                    : view === 'journal'
+                      ? 'Journal'
+                      : view === 'tasks'
+                        ? 'Tasks'
+                        : 'Goals'}
           </h2>
 
           {/* Tracker View Toggles (Only visible on Habits page) */}
@@ -224,6 +258,13 @@ const HabitTrackerContent: React.FC = () => {
             {/* Removed standalone Sun button to fix layout issues */}
 
 
+            <button
+              onClick={() => handleNavigate('main-dashboard')}
+              className={`p-2 rounded-md transition-colors ${view === 'main-dashboard' ? 'bg-neutral-700 text-white' : 'text-neutral-400 hover:text-white'}`}
+              title="Main Dashboard"
+            >
+              <LayoutDashboard size={20} />
+            </button>
             <button
               onClick={() => handleNavigate('dashboard')}
               className={`p-2 rounded-md transition-colors ${view === 'dashboard' ? 'bg-neutral-700 text-white' : 'text-neutral-400 hover:text-white'}`}
@@ -401,6 +442,8 @@ const HabitTrackerContent: React.FC = () => {
           ) : (
             <DayView />
           )
+        ) : view === 'main-dashboard' ? (
+          <MainDashboardPage />
         ) : view === 'dashboard' ? (
           <ProgressDashboard
             onCreateGoal={() => setShowCreateGoal(true)}

@@ -10,6 +10,7 @@ import type { WellbeingEntry, WellbeingMetricKey } from '../models/persistenceTy
 import type { DashboardPrefs } from '../models/persistenceTypes';
 
 import type { GoalDetail, CompletedGoal, ProgressOverview } from '../types';
+import type { DashboardCadenceFilter, MainDashboardResponse } from '../types/mainDashboard';
 
 import { API_BASE_URL } from './persistenceConfig';
 import { invalidateGoalDataCache } from './goalDataCache';
@@ -820,6 +821,32 @@ export async function fetchProgressOverview(): Promise<ProgressOverview> {
 }
 
 /**
+ * Fetch read-only main dashboard analytics for a month.
+ *
+ * GET /api/dashboard?month=YYYY-MM
+ */
+export async function fetchMainDashboard(params: {
+  month: string;
+  categoryId?: string;
+  cadence?: DashboardCadenceFilter;
+  includeWeekly?: boolean;
+  timeZone?: string;
+}): Promise<MainDashboardResponse> {
+  const searchParams = new URLSearchParams({
+    month: params.month,
+    cadence: params.cadence || 'all',
+    includeWeekly: String(params.includeWeekly ?? true),
+    timeZone: params.timeZone || 'UTC',
+  });
+
+  if (params.categoryId) {
+    searchParams.set('categoryId', params.categoryId);
+  }
+
+  return apiRequest<MainDashboardResponse>(`/dashboard?${searchParams.toString()}`);
+}
+
+/**
  * Fetch goal detail with progress, manual logs, and history.
  * 
  * GET /api/goals/:id/detail
@@ -1066,4 +1093,3 @@ export async function clearHabitEntriesForDay(habitId: string, date: string): Pr
   });
   return response;
 }
-
