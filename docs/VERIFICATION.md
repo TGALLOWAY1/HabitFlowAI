@@ -54,6 +54,17 @@ Expected checks:
 - deleted entries (`deletedAt`) excluded
 - weekly habit semantics (distinct-day vs quantity target)
 - bundle parents excluded from direct completion truth
+- `includeWeekly=false` removes weekly habits from all-mode aggregation
+
+Unit tests implemented in:
+
+- `src/server/services/dashboardReadModel.test.ts`
+
+Run:
+
+```bash
+npm run test:run -- src/server/services/dashboardReadModel.test.ts
+```
 
 ## 3) Regression Safety
 

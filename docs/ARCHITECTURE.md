@@ -46,6 +46,10 @@ Behavioral truth boundary:
 - Canonical truth object: `HabitEntry` in `habitEntries` collection.
 - Derived/compatibility surface: `dayLogs` still exists but is non-canonical.
 
+New read model surface:
+
+- `GET /api/dashboard` computes monthly analytics on demand from `habitEntries + habits + dayKey`.
+
 ## Canonical Data Flow (Behavior)
 
 1. User logs behavior via frontend action.
