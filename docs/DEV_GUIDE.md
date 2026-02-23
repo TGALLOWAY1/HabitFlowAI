@@ -67,6 +67,25 @@ npm run seed:fitness
 
 ## Troubleshooting
 
-- If API calls fail, check `MONGODB_URI` and that Mongo is running.
-- If frontend cannot reach backend, verify `VITE_API_BASE_URL` and CORS behavior in `src/server/index.ts`.
-- If DayKey errors appear, validate timezone/dayKey inputs against `src/domain/time/dayKey.ts` and `src/server/domain/canonicalValidators.ts`.
+### 500 errors on API endpoints (categories, habits, routines, etc.)
+
+These usually indicate the backend cannot connect to MongoDB. Common causes:
+
+1. **SSL/TLS "tlsv1 alert internal error" with MongoDB Atlas**  
+   Node.js 24+ uses newer OpenSSL that can fail with Atlas. **Use Node.js 20 LTS**:
+   ```bash
+   nvm use 20   # or: brew install node@20
+   ```
+
+2. **MongoDB not reachable**  
+   - Ensure `MONGODB_URI` and `MONGODB_DB_NAME` are set in `.env`
+   - For Atlas: whitelist your IP in Network Access (or use `0.0.0.0/0` for local dev)
+   - Get the connection string from Atlas: Connect → Drivers → Node.js
+
+3. **Backend not running**  
+   Run both frontend and backend: `npm run dev:all`
+
+### Other issues
+
+- If frontend cannot reach backend, verify `VITE_API_BASE_URL` and CORS in `src/server/index.ts`
+- If DayKey errors appear, validate against `src/domain/time/dayKey.ts` and `src/server/domain/canonicalValidators.ts`

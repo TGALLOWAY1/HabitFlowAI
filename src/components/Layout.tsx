@@ -1,7 +1,7 @@
 import React, { useMemo, useState, useRef, useEffect } from 'react';
 import { LayoutGrid, Settings, User, Check } from 'lucide-react';
 import { useHabitStore } from '../store/HabitContext';
-import { getActiveUserMode, setActiveUserMode, seedDemoEmotionalWellbeing, resetDemoEmotionalWellbeing } from '../lib/persistenceClient';
+import { getActiveUserMode, seedDemoEmotionalWellbeing, resetDemoEmotionalWellbeing } from '../lib/persistenceClient';
 import { getActivePersonaId, setActivePersonaId } from '../shared/personas/activePersona';
 import { DEFAULT_PERSONA_ID, EMOTIONAL_PERSONA_ID, FITNESS_PERSONA_ID } from '../shared/personas/personaConstants';
 import type { PersonaId } from '../shared/personas/personaTypes';
@@ -13,8 +13,7 @@ interface LayoutProps {
 export const Layout: React.FC<LayoutProps> = ({ children }) => {
     const { refreshHabitsAndCategories } = useHabitStore();
     const isDev = import.meta.env.DEV;
-    const [userMode, setUserMode] = useState<'real' | 'demo'>(() => getActiveUserMode());
-    const isDemo = userMode === 'demo';
+    const isDemo = getActiveUserMode() === 'demo';
     const [devNotice, setDevNotice] = useState<string | null>(null);
     const [userMenuOpen, setUserMenuOpen] = useState(false);
     const [activePersonaId, setActivePersonaIdState] = useState<PersonaId>(getActivePersonaId());
@@ -31,13 +30,6 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
 
     const handleRefresh = async () => {
         await refreshHabitsAndCategories();
-    };
-
-    const handleToggleMode = (mode: 'real' | 'demo') => {
-        setActiveUserMode(mode);
-        setUserMode(mode);
-        // Hard refresh so all queries re-run under the new userId identity header
-        window.location.reload();
     };
 
     const handleSeedDemo = async () => {
@@ -121,26 +113,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
                             {devNotice}
                         </div>
                     )}
-                    {isDev && (
-                        <div className="flex items-center gap-2">
-                            <div className="flex items-center bg-neutral-800/60 border border-white/10 rounded-full overflow-hidden">
-                                <button
-                                    onClick={() => handleToggleMode('real')}
-                                    className={`px-3 py-1.5 text-xs font-semibold transition-colors ${!isDemo ? 'bg-white/10 text-white' : 'text-neutral-300 hover:text-white'}`}
-                                    title="Use your real local user data"
-                                >
-                                    Use My Data
-                                </button>
-                                <button
-                                    onClick={() => handleToggleMode('demo')}
-                                    className={`px-3 py-1.5 text-xs font-semibold transition-colors ${isDemo ? 'bg-rose-500/20 text-rose-200' : 'text-neutral-300 hover:text-white'}`}
-                                    title="Switch to demo dataset (DEMO_USER_ID)"
-                                >
-                                    Demo: Emotional Wellbeing
-                                </button>
-                            </div>
-
-                            {isDemo && (
+                    {isDev && isDemo && (
                                 <div className="flex items-center gap-2">
                                     <button
                                         onClick={handleSeedDemo}
@@ -157,8 +130,6 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
                                         Reset Demo Data
                                     </button>
                                 </div>
-                            )}
-                        </div>
                     )}
                     <button
                         onClick={handleRefresh}
