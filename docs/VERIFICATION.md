@@ -15,9 +15,12 @@
 4. Ensure historical material is clearly marked:
 - files in `docs/archive/` begin with archive notice.
 
-## 2) Main Dashboard Accuracy
+## 2) Progress Accuracy
 
-Validate `GET /api/dashboard` with controlled fixture data.
+Validate derived progress from canonical habit entries using existing read paths:
+
+- `GET /api/progress/overview`
+- `GET /api/dayView?dayKey=...&timeZone=...`
 
 ### Minimal Fixture Plan
 
@@ -28,25 +31,14 @@ Create a test user with:
 
 Expected checks:
 
-1. `dailyCounts[dayKey]`
-- increments only for days with non-deleted entries.
+1. Day completion
+- reflects existence of non-deleted `HabitEntry` records for the day.
 
-2. `dailyPercent[dayKey]`
-- computed from selected habits for that day and consistent with denominator.
+2. Weekly semantics
+- weekly habit completion/progress is DayKey-window based and deterministic.
 
-3. `monthlySummary`
-- `goal` matches defined monthly opportunity model.
-- `percent === completed / goal * 100` (rounded rules documented in code).
-
-4. `weeklySummary`
-- week window boundaries are DayKey-based and deterministic.
-
-5. `heatmap`
-- habit rows align to day keys in selected month.
-- deleted entries are absent.
-
-6. `categoryRollup`
-- sums align with per-habit contributions and selected filters.
+3. Derived-only guarantees
+- completion/progress are not stored as truth fields on habit entries.
 
 ### Edge Cases
 
@@ -58,4 +50,4 @@ Expected checks:
 ## 3) Regression Safety
 
 - Existing dashboard and existing pages still render and navigate.
-- Logging actions still occur on existing surfaces (no behavior moved to Main Dashboard).
+- Logging actions still occur on existing surfaces.

@@ -60,9 +60,9 @@ Generated: 2026-02-22
 - `docs/DEV_GUIDE.md` — local setup, env, scripts, tests.
 - `docs/API.md` — backend route inventory and contracts.
 - `docs/DATA_MODEL.md` — implemented schema and collection ownership.
-- `docs/UI.md` — page inventory and route map (includes new Main Dashboard page).
+- `docs/UI.md` — page inventory and route map.
 - `docs/V1_PRODUCT_DIRECTION.md` — practical/personal-use-first direction.
-- `docs/VERIFICATION.md` — docs and dashboard verification checklist.
+- `docs/VERIFICATION.md` — docs and behavior verification checklist.
 - `docs/archive/` — historical/stale material, explicitly marked archived.
 - `docs/reference/` — authoritative source library (kept intact, linked from index).
 
@@ -72,4 +72,3 @@ Generated: 2026-02-22
 - New canonical docs hub under `docs/` created.
 - Root README repointed to `docs/DOC_INDEX.md`.
 - Canonical reference docs retained in-place under `docs/reference/`.
-
