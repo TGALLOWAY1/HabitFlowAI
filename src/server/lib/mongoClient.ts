@@ -98,6 +98,8 @@ async function connectToMongo(): Promise<MongoClient> {
     // Retry settings
     retryWrites: true,
     retryReads: true,
+    // Mitigate IPv4/IPv6 TLS issues with MongoDB Atlas
+    autoSelectFamily: false,
   };
 
   try {

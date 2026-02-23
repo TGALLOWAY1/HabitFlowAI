@@ -1,3 +1,5 @@
+ARCHIVED: kept for historical context; may not match current code.
+
 # Emotion Regulation Persona Dashboard Implementation
 
 ## Overview

@@ -1,3 +1,5 @@
+ARCHIVED: kept for historical context; may not match current code.
+
 # Goals Feature Implementation Summary
 
 ## Branch: `10-introduce-the-idea-of-a-goal`

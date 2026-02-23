@@ -1,3 +1,5 @@
+ARCHIVED: kept for historical context; may not match current code.
+
 # Routine Image MongoDB Migration Plan
 
 ## Analysis Summary

@@ -1,3 +1,5 @@
+ARCHIVED: kept for historical context; may not match current code.
+
 # Goals Feature V1 Readiness Checklist
 
 ## ✅ V1 Features (All Present)
