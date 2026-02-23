@@ -18,7 +18,6 @@ import { getRoutinesRoute, getRoutineRoute, createRoutineRoute, updateRoutineRou
 import { getRoutineLogs } from './routes/routineLogs';
 import { getGoals, getGoal, getGoalProgress, getGoalsWithProgress, getCompletedGoals, createGoalRoute, updateGoalRoute, deleteGoalRoute, reorderGoalsRoute, createGoalManualLogRoute, getGoalManualLogsRoute, getGoalDetailRoute, uploadGoalBadgeRoute, uploadBadgeMiddleware } from './routes/goals';
 import { getProgressOverview } from './routes/progress';
-import { getMainDashboardRoute } from './routes/dashboard';
 import { getEntriesRoute, createEntryRoute, upsertEntryByKeyRoute, getEntryRoute, updateEntryRoute, deleteEntryRoute } from './routes/journal';
 import { getTasksRoute, createTaskRoute, updateTaskRoute, deleteTaskRoute } from './routes/tasks';
 import { skillTreeRouter } from './routes/skillTree';
@@ -121,7 +120,6 @@ app.get('/api/routineLogs', getRoutineLogs);
 
 // Progress routes
 app.get('/api/progress/overview', getProgressOverview);
-app.get('/api/dashboard', getMainDashboardRoute);
 
 // Journal routes
 app.get('/api/journal', getEntriesRoute);
@@ -232,3 +230,4 @@ process.on('SIGINT', async () => {
 });
 
 export default app;
+
