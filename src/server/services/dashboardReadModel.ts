@@ -58,8 +58,6 @@ function buildEntryIndex(entries: HabitEntry[]): Map<string, Map<string, HabitEn
   const index = new Map<string, Map<string, HabitEntry[]>>();
 
   for (const entry of entries) {
-    if (entry.deletedAt) continue;
-
     const dayKey = entry.dayKey || entry.date;
     if (!dayKey) continue;
 

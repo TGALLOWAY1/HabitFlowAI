@@ -40,29 +40,6 @@ Base URL: `/api`
 - `GET /dayView`
 - `GET /progress/overview`
 
-## Main Dashboard Read Model
-
-- `GET /dashboard`
-
-Query params:
-
-- `month` (required): `YYYY-MM`
-- `categoryId` (optional)
-- `cadence` (optional): `all | daily | weekly` (default `all`)
-- `includeWeekly` (optional): `true | false` (default `true`)
-- `timeZone` (optional): IANA timezone, default `UTC`
-
-Response fields:
-
-- `dailyCounts[dayKey]`
-- `dailyPercent[dayKey]`
-- `monthlySummary` (`completed`, `goal`, `percent`)
-- `weeklySummary` (`startDayKey`, `endDayKey`, `referenceDayKey`, `completed`, `goal`, `percent`)
-- `heatmap.habits[]` with per-day booleans
-- `categoryRollup[]`
-- `categoryOptions[]`
-- `filters`
-
 ## Day Logs (Legacy/Derived Compatibility)
 
 - `GET /dayLogs`
