@@ -8,12 +8,13 @@ import { TrackerGrid } from './components/TrackerGrid';
 import { CategoryMomentumBanner } from './components/CategoryMomentumBanner';
 import { AddHabitModal } from './components/AddHabitModal';
 import { ProgressDashboard } from './components/ProgressDashboard';
+import { StreakDashboardV1 } from './components/StreakDashboardV1';
 import { RoutineList } from './components/RoutineList';
 import { RoutineEditorModal } from './components/RoutineEditorModal';
 import { RoutineRunnerModal } from './components/RoutineRunnerModal';
 import { RoutinePreviewModal } from './components/RoutinePreviewModal';
 import { HabitHistoryModal } from './components/HabitHistoryModal';
-import { BarChart3, Calendar, ClipboardList, Target, BookOpenText, CheckSquare } from 'lucide-react';
+import { BarChart3, Calendar, ClipboardList, Target, BookOpenText, CheckSquare, Flame } from 'lucide-react';
 
 import type { Routine, Habit } from './types';
 import { GoalsPage } from './pages/goals/GoalsPage';
@@ -29,7 +30,7 @@ import { DebugEntriesPage } from './pages/DebugEntriesPage';
 import { WellbeingHistoryPage } from './pages/WellbeingHistoryPage';
 
 // Simple router state
-type AppRoute = 'tracker' | 'dashboard' | 'routines' | 'goals' | 'wins' | 'journal' | 'tasks' | 'day' | 'debug-entries' | 'wellbeing-history';
+type AppRoute = 'tracker' | 'dashboard' | 'streak-dashboard' | 'routines' | 'goals' | 'wins' | 'journal' | 'tasks' | 'day' | 'debug-entries' | 'wellbeing-history';
 
 
 // Helper functions for URL syncing
@@ -41,6 +42,9 @@ function parseRouteFromLocation(location: Location): AppRoute {
     case "dashboard":
     case "progress": // Legacy support
       return "dashboard";
+    case "streak-dashboard":
+    case "streaks":
+      return "streak-dashboard";
     case "routines": // Renamed from activities
     case "goals":
     case "daily": // Legacy alias? or rename 'day' route to be internal state?
@@ -49,7 +53,7 @@ function parseRouteFromLocation(location: Location): AppRoute {
       // Let's just remove 'day' route entirely and handle it as state.
       return "tracker";
     case "wins":
-
+      return "wins";
     case "tracker":
       return "tracker";
     case "journal":
@@ -199,7 +203,7 @@ const HabitTrackerContent: React.FC = () => {
         {/* Title Section */}
         <div className="flex items-center justify-between">
           <h2 className="text-2xl font-bold text-white">
-            {view === 'tracker' ? 'Habits' : view === 'dashboard' ? 'Dashboard' : view === 'routines' ? 'Routines' : view === 'journal' ? 'Journal' : view === 'tasks' ? 'Tasks' : 'Goals'}
+            {view === 'tracker' ? 'Habits' : view === 'dashboard' ? 'Dashboard' : view === 'streak-dashboard' ? 'Streaks' : view === 'routines' ? 'Routines' : view === 'journal' ? 'Journal' : view === 'tasks' ? 'Tasks' : 'Goals'}
           </h2>
 
           {/* Tracker View Toggles (Only visible on Habits page) */}
@@ -230,6 +234,13 @@ const HabitTrackerContent: React.FC = () => {
               title="Dashboard"
             >
               <BarChart3 size={20} />
+            </button>
+            <button
+              onClick={() => handleNavigate('streak-dashboard')}
+              className={`p-2 rounded-md transition-colors ${view === 'streak-dashboard' ? 'bg-neutral-700 text-white' : 'text-neutral-400 hover:text-white'}`}
+              title="Streak Dashboard"
+            >
+              <Flame size={20} />
             </button>
             <button
               onClick={() => handleNavigate('tracker')}
@@ -414,6 +425,8 @@ const HabitTrackerContent: React.FC = () => {
             onNavigateWellbeingHistory={() => handleNavigate('wellbeing-history')}
             onStartRoutine={(routine) => setRoutineRunnerState({ isOpen: true, routine })}
           />
+        ) : view === 'streak-dashboard' ? (
+          <StreakDashboardV1 />
         ) : view === 'wellbeing-history' ? (
           <WellbeingHistoryPage onBack={() => handleNavigate('dashboard')} />
         ) : view === 'routines' ? (

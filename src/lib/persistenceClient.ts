@@ -9,7 +9,7 @@ import type { Category, Habit, DayLog, DailyWellbeing, Goal, GoalWithProgress, G
 import type { WellbeingEntry, WellbeingMetricKey } from '../models/persistenceTypes';
 import type { DashboardPrefs } from '../models/persistenceTypes';
 
-import type { GoalDetail, CompletedGoal, ProgressOverview } from '../types';
+import type { GoalDetail, CompletedGoal, ProgressOverview, DashboardStreaksOverview } from '../types';
 
 import { API_BASE_URL } from './persistenceConfig';
 import { invalidateGoalDataCache } from './goalDataCache';
@@ -820,6 +820,16 @@ export async function fetchProgressOverview(): Promise<ProgressOverview> {
 }
 
 /**
+ * Fetch streak-centric dashboard payload derived from HabitEntries.
+ *
+ * GET /api/dashboard/streaks
+ */
+export async function fetchDashboardStreaks(): Promise<DashboardStreaksOverview> {
+  const response = await apiRequest<DashboardStreaksOverview>('/dashboard/streaks');
+  return response;
+}
+
+/**
  * Fetch goal detail with progress, manual logs, and history.
  * 
  * GET /api/goals/:id/detail
@@ -1066,4 +1076,3 @@ export async function clearHabitEntriesForDay(habitId: string, date: string): Pr
   });
   return response;
 }
-

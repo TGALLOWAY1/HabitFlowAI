@@ -188,6 +188,79 @@ export interface ProgressOverview {
     };
 }
 
+export interface DashboardStreaksOverview {
+    todayDayKey: string;
+    todayStrip: {
+        todayDayKey: string;
+        totalHabits: number;
+        completedToday: number;
+        atRiskCount: number;
+        completedDaily: number;
+        completedWeekly: number;
+    };
+    topStreaks: Array<{
+        habitId: string;
+        habitName: string;
+        categoryId: string;
+        frequency: HabitGoal['frequency'];
+        currentStreak: number;
+        bestStreak: number;
+        lastCompletedDayKey: string | null;
+        atRisk: boolean;
+    }>;
+    atRiskHabits: Array<{
+        habitId: string;
+        habitName: string;
+        categoryId: string;
+        frequency: HabitGoal['frequency'];
+        currentStreak: number;
+        bestStreak: number;
+        lastCompletedDayKey: string | null;
+        weekSatisfied?: boolean;
+        weekProgress?: number;
+        weekTarget?: number;
+    }>;
+    heatmap: {
+        dayKeys: string[];
+        habits: Array<{
+            habitId: string;
+            habitName: string;
+            categoryId: string;
+            frequency: HabitGoal['frequency'];
+            cells: Array<{
+                dayKey: string;
+                completed: boolean;
+                value: number;
+            }>;
+        }>;
+    };
+    weeklyProgress: Array<{
+        habitId: string;
+        habitName: string;
+        categoryId: string;
+        weekStartDayKey: string;
+        current: number;
+        target: number;
+        satisfied: boolean;
+    }>;
+    habits: Array<{
+        habit: Habit;
+        currentStreak: number;
+        bestStreak: number;
+        lastCompletedDayKey: string | null;
+        atRisk: boolean;
+        completedToday: boolean;
+        weekSatisfied?: boolean;
+        weekProgress?: number;
+        weekTarget?: number;
+        last7Days: Array<{
+            dayKey: string;
+            completed: boolean;
+            value: number;
+        }>;
+    }>;
+}
+
 // Momentum Types
 export type GlobalMomentumState = 'Strong' | 'Steady' | 'Building' | 'Gentle Restart' | 'Ready';
 export type CategoryMomentumState = 'Strong' | 'Steady' | 'Building' | 'Paused';
