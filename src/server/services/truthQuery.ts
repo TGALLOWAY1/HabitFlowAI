@@ -80,16 +80,13 @@ export interface EntryView {
 export async function getEntryViewsForHabit(
   habitId: string,
   userId: string,
-  args: { startDayKey?: DayKey; endDayKey?: DayKey; timeZone: string }
+  args: { startDayKey?: DayKey; endDayKey?: DayKey; timeZone: string; includeLegacyFallback?: boolean }
 ): Promise<EntryView[]> {
-  // Fetch both HabitEntries (primary) and DayLogs (legacy)
-  const [entries, dayLogsRecord] = await Promise.all([
-    getHabitEntriesByHabit(habitId, userId),
-    getDayLogsByHabit(habitId, userId),
-  ]);
-
-  // Convert DayLog Record to array
-  const dayLogs = Object.values(dayLogsRecord);
+  const includeLegacyFallback = args.includeLegacyFallback ?? true;
+  const entries = await getHabitEntriesByHabit(habitId, userId);
+  const dayLogs = includeLegacyFallback
+    ? Object.values(await getDayLogsByHabit(habitId, userId))
+    : [];
 
   // Map both sources to EntryView
   const entryViews = entries.map(entry => mapEntryToView(entry, args.timeZone));
@@ -142,14 +139,14 @@ export async function getEntryViewsForHabit(
 export async function getEntryViewsForHabits(
   habitIds: string[],
   userId: string,
-  args: { startDayKey?: DayKey; endDayKey?: DayKey; timeZone: string }
+  args: { startDayKey?: DayKey; endDayKey?: DayKey; timeZone: string; includeLegacyFallback?: boolean }
 ): Promise<EntryView[]> {
+  const includeLegacyFallback = args.includeLegacyFallback ?? true;
+
   // For batch queries, fetch all user entries and dayLogs, then filter by habitIds
   // This is more efficient than N queries for N habits
-  const [allEntries, allDayLogsRecord] = await Promise.all([
-    getHabitEntriesByUser(userId),
-    getDayLogsByUser(userId),
-  ]);
+  const allEntries = await getHabitEntriesByUser(userId);
+  const allDayLogsRecord = includeLegacyFallback ? await getDayLogsByUser(userId) : {};
 
   // Filter to requested habits
   const habitIdSet = new Set(habitIds);
@@ -408,4 +405,3 @@ function detectConflict(entryView: EntryView, legacyView: EntryView): boolean {
   // Both null - no conflict
   return false;
 }
-

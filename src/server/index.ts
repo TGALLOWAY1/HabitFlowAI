@@ -11,6 +11,7 @@ import { assertMongoEnabled } from './config';
 import { getCategories, createCategoryRoute, getCategory, updateCategoryRoute, deleteCategoryRoute, reorderCategoriesRoute } from './routes/categories';
 import { getHabits, createHabitRoute, getHabit, updateHabitRoute, deleteHabitRoute, reorderHabitsRoute } from './routes/habits';
 import { getDayLogs, upsertDayLogRoute, getDayLogRoute, deleteDayLogRoute } from './routes/dayLogs';
+import { getDaySummary } from './routes/daySummary';
 import { getWellbeingLogs, upsertWellbeingLogRoute, getWellbeingLogRoute, deleteWellbeingLogRoute } from './routes/wellbeingLogs';
 import { getWellbeingEntriesRoute, upsertWellbeingEntriesRoute, deleteWellbeingEntryRoute } from './routes/wellbeingEntries';
 import { seedDemoEmotionalWellbeingRoute, resetDemoEmotionalWellbeingRoute } from './routes/devDemoEmotionalWellbeing';
@@ -83,6 +84,7 @@ app.delete('/api/habits/:id', deleteHabitRoute);
 
 // DayLog routes (habit tracking results)
 app.get('/api/dayLogs', getDayLogs);
+app.get('/api/daySummary', getDaySummary);
 app.post('/api/dayLogs', upsertDayLogRoute);
 app.put('/api/dayLogs', upsertDayLogRoute);
 app.get('/api/dayLogs/:habitId/:date', getDayLogRoute);
