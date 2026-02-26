@@ -6,13 +6,43 @@
  */
 
 import { MongoClient, Db } from 'mongodb';
-import type { MongoClientOptions } from 'mongodb';
+import type { MongoClientOptions, CreateIndexesOptions } from 'mongodb';
 import { getMongoDbUri, getMongoDbName } from '../config/env';
 
 // Singleton client instance
 let client: MongoClient | null = null;
 let db: Db | null = null;
 let connectionPromise: Promise<MongoClient> | null = null;
+let indexesEnsuredForDbName: string | null = null;
+
+async function ensureCoreIndexes(database: Db): Promise<void> {
+  if (indexesEnsuredForDbName === database.databaseName) {
+    return;
+  }
+
+  const createIndexSafe = async (
+    collectionName: string,
+    keys: Record<string, 1 | -1>,
+    options?: CreateIndexesOptions
+  ) => {
+    try {
+      await database.collection(collectionName).createIndex(keys, options);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.warn(`[MongoDB] Failed to ensure index on ${collectionName}: ${message}`);
+    }
+  };
+
+  await Promise.all([
+    createIndexSafe('habitEntries', { userId: 1, id: 1 }, { unique: true, name: 'idx_habitEntries_user_id_unique' }),
+    createIndexSafe('habitEntries', { userId: 1, habitId: 1, dayKey: 1, deletedAt: 1 }, { name: 'idx_habitEntries_user_habit_day_deleted' }),
+    createIndexSafe('habitEntries', { userId: 1, habitId: 1, timestamp: -1 }, { name: 'idx_habitEntries_user_habit_timestamp' }),
+    createIndexSafe('dayLogs', { userId: 1, compositeKey: 1 }, { unique: true, name: 'idx_dayLogs_user_composite_unique' }),
+    createIndexSafe('dayLogs', { userId: 1, habitId: 1, date: 1 }, { name: 'idx_dayLogs_user_habit_date' }),
+  ]);
+
+  indexesEnsuredForDbName = database.databaseName;
+}
 
 /**
  * Get the MongoDB database instance.
@@ -30,8 +60,9 @@ export async function getDb(): Promise<Db> {
     // Verify connection is still alive
     try {
       await client.db().admin().ping();
+      await ensureCoreIndexes(db);
       return db;
-    } catch (error) {
+    } catch {
       // Connection is dead, reset and reconnect
       console.warn('MongoDB connection lost, reconnecting...');
       client = null;
@@ -44,6 +75,7 @@ export async function getDb(): Promise<Db> {
   if (connectionPromise) {
     const connectedClient = await connectionPromise;
     db = connectedClient.db(getMongoDbName());
+    await ensureCoreIndexes(db);
     return db;
   }
 
@@ -53,6 +85,7 @@ export async function getDb(): Promise<Db> {
   try {
     const connectedClient = await connectionPromise;
     db = connectedClient.db(getMongoDbName());
+    await ensureCoreIndexes(db);
     return db;
   } catch (error) {
     // Reset connection promise on error so we can retry
@@ -127,7 +160,7 @@ async function connectToMongo(): Promise<MongoClient> {
     if (client) {
       try {
         await client.close();
-      } catch (closeError) {
+      } catch {
         // Ignore close errors
       }
       client = null;
@@ -159,6 +192,7 @@ export async function closeConnection(): Promise<void> {
       client = null;
       db = null;
       connectionPromise = null;
+      indexesEnsuredForDbName = null;
     }
   }
 }
@@ -180,4 +214,3 @@ export async function isConnected(): Promise<boolean> {
     return false;
   }
 }
-

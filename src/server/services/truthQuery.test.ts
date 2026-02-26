@@ -274,6 +274,28 @@ describe('truthQuery', () => {
       expect(views[0].dayKey).toBe('2025-01-15');
       expect(views[0].value).toBe(2);
     });
+
+    it('should ignore legacy DayLog fallback when includeLegacyFallback=false', async () => {
+      const dayKey = '2025-01-15';
+      const dayLog: DayLog = {
+        habitId,
+        date: dayKey,
+        value: 1,
+        completed: true,
+        source: 'manual',
+      };
+
+      vi.mocked(getHabitEntriesByHabit).mockResolvedValue([]);
+      vi.mocked(getDayLogsByHabit).mockResolvedValue({ [`${habitId}-${dayKey}`]: dayLog });
+
+      const views = await getEntryViewsForHabit(habitId, userId, {
+        timeZone,
+        includeLegacyFallback: false,
+      });
+
+      expect(views).toHaveLength(0);
+      expect(getDayLogsByHabit).not.toHaveBeenCalled();
+    });
   });
 
   describe('getEntryViewsForHabits - batch merge', () => {
@@ -337,4 +359,3 @@ describe('truthQuery', () => {
     });
   });
 });
-

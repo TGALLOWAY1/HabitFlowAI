@@ -16,7 +16,7 @@ import { format, parseISO } from 'date-fns';
 import { GoalManualProgressModal } from '../../components/goals/GoalManualProgressModal';
 import { DeleteGoalConfirmModal } from '../../components/goals/DeleteGoalConfirmModal';
 import { EditGoalModal } from '../../components/goals/EditGoalModal';
-import { deleteGoal, markGoalAsCompleted, fetchHabitEntries } from '../../lib/persistenceClient';
+import { deleteGoal, markGoalAsCompleted, fetchHabitEntries, getLocalTimeZone } from '../../lib/persistenceClient';
 import { invalidateAllGoalCaches } from '../../lib/goalDataCache';
 import { GoalStatusChip } from '../../components/goals/GoalSharedComponents';
 import { GoalTrendChart } from '../../components/goals/GoalTrendChart';
@@ -79,14 +79,14 @@ export const GoalDetailPage: React.FC<GoalDetailPageProps> = ({ goalId, onBack, 
                 console.log('[GoalDetail] Loading entries for habits:', data.goal.linkedHabitIds);
                 for (const habitId of data.goal.linkedHabitIds) {
                     // Fetch via truthQuery endpoint (unified HabitEntries + legacy DayLogs)
-                    // Default to UTC timezone - could be extracted from user preferences
-                    const entries = await fetchHabitEntries(habitId, undefined, undefined, 'UTC');
+                    const entries = await fetchHabitEntries(habitId, undefined, undefined, getLocalTimeZone());
                     console.log(`[GoalDetail] Fetched ${entries.length} entries for habit ${habitId}`, entries);
                     // Map EntryView to HabitEntry shape for compatibility
                     allEntries.push(...entries.map((ev: any) => ({
                         id: ev.id || `entry-${ev.habitId}-${ev.dayKey}`,
                         habitId: ev.habitId,
                         timestamp: ev.timestampUtc,
+                        dayKey: ev.dayKey,
                         date: ev.dayKey,
                         dateKey: ev.dayKey,
                         value: ev.value,

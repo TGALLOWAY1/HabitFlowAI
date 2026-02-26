@@ -167,6 +167,7 @@ interface HabitRowContentProps {
     onViewHistory: (habit: Habit) => void;
     potentialEvidence?: HabitPotentialEvidence[];
     onContextMenu: (e: React.MouseEvent, habit: Habit) => void;
+    isDeleteMode: boolean;
 }
 
 const HabitRowContent = ({
@@ -193,7 +194,8 @@ const HabitRowContent = ({
     streak,
     onViewHistory,
     potentialEvidence,
-    onContextMenu
+    onContextMenu,
+    isDeleteMode
 }: HabitRowContentProps) => {
 
     // Non-Negotiable Logic
@@ -339,6 +341,7 @@ const HabitRowContent = ({
                     }
 
                     const isPartial = hasValue && !isCompleted;
+                    const hasExistingEntry = isCompleted || hasValue;
 
                     const isInteractive = true; // Bundles are now interactive
 
@@ -423,7 +426,8 @@ const HabitRowContent = ({
                                                     ? "bg-blue-500 text-neutral-900 shadow-[0_0_15px_rgba(59,130,246,0.4)] scale-95" // Partial
                                                     : "bg-neutral-800/50 text-transparent hover:bg-neutral-800 hover:text-neutral-600 border border-white/5 hover:border-white/10",
                                     !isInteractive && isCompleted && "opacity-80 cursor-default",
-                                    !isInteractive && "cursor-default hover:bg-neutral-800/50 hover:text-transparent"
+                                    !isInteractive && "cursor-default hover:bg-neutral-800/50 hover:text-transparent",
+                                    isDeleteMode && hasExistingEntry && "ring-1 ring-red-500/60"
                                 )}
                                 title={
                                     habit.type === 'bundle'
@@ -496,7 +500,8 @@ const SortableHabitRow = ({
     streak,
     onViewHistory,
     potentialEvidence,
-    onContextMenu
+    onContextMenu,
+    isDeleteMode
 }: {
     habit: Habit;
     allHabits: Habit[];
@@ -515,6 +520,7 @@ const SortableHabitRow = ({
     onViewHistory: (habit: Habit) => void;
     potentialEvidence?: HabitPotentialEvidence[];
     onContextMenu: (e: React.MouseEvent, habit: Habit) => void;
+    isDeleteMode: boolean;
 }) => {
     const {
         attributes,
@@ -605,6 +611,7 @@ const SortableHabitRow = ({
                 onViewHistory={onViewHistory}
                 potentialEvidence={potentialEvidence}
                 onContextMenu={onContextMenu}
+                isDeleteMode={isDeleteMode}
             />
 
             {/* Child Rows - Rendered when expanded */}
@@ -630,6 +637,7 @@ const SortableHabitRow = ({
                     onViewHistory={onViewHistory}
                     potentialEvidence={potentialEvidence}
                     onContextMenu={onContextMenu}
+                    isDeleteMode={isDeleteMode}
                 />
             ))}
         </div>
@@ -821,6 +829,7 @@ export const TrackerGrid = ({
     });
 
     const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+    const [deleteMode, setDeleteMode] = useState(false);
     const [historyModalHabitId, setHistoryModalHabitId] = useState<string | null>(null);
     const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
     const [choiceLogState, setChoiceLogState] = useState<{ habit: Habit; date: string } | null>(null);
@@ -1064,9 +1073,22 @@ export const TrackerGrid = ({
                 dayKey: dateStr,
                 isDoubleClick,
                 hasExistingEntry,
+                deleteMode,
                 goalType: habit.goal.type,
                 willAttemptDelete: isDoubleClick && hasExistingEntry
             });
+        }
+
+        if (deleteMode) {
+            if (hasExistingEntry) {
+                try {
+                    await deleteHabitEntryByKey(habit.id, dateStr);
+                    refreshProgress();
+                } catch (error) {
+                    console.error('Failed to delete habit entry in delete mode:', error);
+                }
+            }
+            return;
         }
 
         // Handle double-click deletion
@@ -1159,13 +1181,27 @@ export const TrackerGrid = ({
                     <div className="sticky top-0 z-20 flex border-b border-white/5 bg-neutral-900 shadow-md">
                         <div className="w-64 flex-shrink-0 p-4 font-medium text-emerald-400 border-r border-white/5 flex items-center justify-between bg-neutral-900 group">
                             <span>Daily Habits</span>
-                            <button
-                                onClick={onAddHabit}
-                                className="p-1.5 rounded-lg hover:bg-neutral-800 text-neutral-500 hover:text-emerald-400 transition-colors"
-                                title="Add New Habit"
-                            >
-                                <Plus size={18} />
-                            </button>
+                            <div className="flex items-center gap-1">
+                                <button
+                                    onClick={() => setDeleteMode(prev => !prev)}
+                                    className={cn(
+                                        "p-1.5 rounded-lg transition-colors",
+                                        deleteMode
+                                            ? "bg-red-500/20 text-red-400"
+                                            : "hover:bg-neutral-800 text-neutral-500 hover:text-red-400"
+                                    )}
+                                    title={deleteMode ? 'Exit Delete Mode' : 'Enter Delete Mode (mobile-friendly)'}
+                                >
+                                    <Trash2 size={16} />
+                                </button>
+                                <button
+                                    onClick={onAddHabit}
+                                    className="p-1.5 rounded-lg hover:bg-neutral-800 text-neutral-500 hover:text-emerald-400 transition-colors"
+                                    title="Add New Habit"
+                                >
+                                    <Plus size={18} />
+                                </button>
+                            </div>
                         </div>
                         <div className="flex overflow-x-auto scrollbar-hide bg-neutral-900">
                             {dates.map((date) => (
@@ -1189,6 +1225,11 @@ export const TrackerGrid = ({
                     </div>
 
                     {/* Daily Rows */}
+                    {deleteMode && (
+                        <div className="px-4 py-2 text-xs text-red-300 bg-red-500/10 border-b border-red-500/20">
+                            Delete mode active: tap any filled cell to remove that day&apos;s entry.
+                        </div>
+                    )}
                     <div className="flex-col">
                         {dailyHabits.length > 0 ? (
                             <SortableContext
@@ -1215,6 +1256,7 @@ export const TrackerGrid = ({
                                         onViewHistory={(h) => setHistoryModalHabitId(h.id)}
                                         potentialEvidence={potentialEvidence}
                                         onContextMenu={handleContextMenu}
+                                        isDeleteMode={deleteMode}
                                     />
                                 ))}
                             </SortableContext>

@@ -7,7 +7,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { useHabitStore } from '../store/HabitContext';
-import { fetchHabitEntries } from '../lib/persistenceClient';
+import { fetchHabitEntries, getLocalTimeZone } from '../lib/persistenceClient';
 import { AlertTriangle } from 'lucide-react';
 
 interface EntryView {
@@ -56,8 +56,12 @@ export const DebugEntriesPage: React.FC = () => {
         const startDayKey = dayKey || undefined;
         const endDayKey = dayKey || undefined;
 
-        // Default to UTC timezone - could be extracted from user preferences
-        const fetchedEntries = await fetchHabitEntries(selectedHabitId, startDayKey, endDayKey, 'UTC');
+        const fetchedEntries = await fetchHabitEntries(
+          selectedHabitId,
+          startDayKey,
+          endDayKey,
+          getLocalTimeZone()
+        );
         setEntries(fetchedEntries);
       } catch (err) {
         console.error('Failed to fetch entries:', err);
@@ -290,4 +294,3 @@ export const DebugEntriesPage: React.FC = () => {
     </div>
   );
 };
-

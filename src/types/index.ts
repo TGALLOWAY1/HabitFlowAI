@@ -165,10 +165,16 @@ export interface ProgressOverview {
         habit: Habit;
         completed: boolean;
         value?: number; // Present if quantified habit has a value
-        streak: number;
+        streak: number; // Backward-compatible alias for currentStreak
+        currentStreak: number;
+        bestStreak: number;
+        lastCompletedDayKey: string | null;
+        atRisk: boolean;
         formattedStreak: string; // "3 day streak" or "5 weeks"
-
         freezeStatus?: 'active' | 'used' | 'none'; // 'active' = currently frozen today
+        weekSatisfied?: boolean;
+        weekProgress?: number;
+        weekTarget?: number;
     }>;
     goalsWithProgress: GoalWithProgress[];
     momentum: {
@@ -180,6 +186,79 @@ export interface ProgressOverview {
         };
         category: Record<string, CategoryMomentumState>; // Keep simple for now or expand if needed
     };
+}
+
+export interface DashboardStreaksOverview {
+    todayDayKey: string;
+    todayStrip: {
+        todayDayKey: string;
+        totalHabits: number;
+        completedToday: number;
+        atRiskCount: number;
+        completedDaily: number;
+        completedWeekly: number;
+    };
+    topStreaks: Array<{
+        habitId: string;
+        habitName: string;
+        categoryId: string;
+        frequency: HabitGoal['frequency'];
+        currentStreak: number;
+        bestStreak: number;
+        lastCompletedDayKey: string | null;
+        atRisk: boolean;
+    }>;
+    atRiskHabits: Array<{
+        habitId: string;
+        habitName: string;
+        categoryId: string;
+        frequency: HabitGoal['frequency'];
+        currentStreak: number;
+        bestStreak: number;
+        lastCompletedDayKey: string | null;
+        weekSatisfied?: boolean;
+        weekProgress?: number;
+        weekTarget?: number;
+    }>;
+    heatmap: {
+        dayKeys: string[];
+        habits: Array<{
+            habitId: string;
+            habitName: string;
+            categoryId: string;
+            frequency: HabitGoal['frequency'];
+            cells: Array<{
+                dayKey: string;
+                completed: boolean;
+                value: number;
+            }>;
+        }>;
+    };
+    weeklyProgress: Array<{
+        habitId: string;
+        habitName: string;
+        categoryId: string;
+        weekStartDayKey: string;
+        current: number;
+        target: number;
+        satisfied: boolean;
+    }>;
+    habits: Array<{
+        habit: Habit;
+        currentStreak: number;
+        bestStreak: number;
+        lastCompletedDayKey: string | null;
+        atRisk: boolean;
+        completedToday: boolean;
+        weekSatisfied?: boolean;
+        weekProgress?: number;
+        weekTarget?: number;
+        last7Days: Array<{
+            dayKey: string;
+            completed: boolean;
+            value: number;
+        }>;
+    }>;
 }
 
 // Momentum Types

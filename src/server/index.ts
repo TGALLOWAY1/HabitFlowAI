@@ -11,6 +11,7 @@ import { assertMongoEnabled } from './config';
 import { getCategories, createCategoryRoute, getCategory, updateCategoryRoute, deleteCategoryRoute, reorderCategoriesRoute } from './routes/categories';
 import { getHabits, createHabitRoute, getHabit, updateHabitRoute, deleteHabitRoute, reorderHabitsRoute } from './routes/habits';
 import { getDayLogs, upsertDayLogRoute, getDayLogRoute, deleteDayLogRoute } from './routes/dayLogs';
+import { getDaySummary } from './routes/daySummary';
 import { getWellbeingLogs, upsertWellbeingLogRoute, getWellbeingLogRoute, deleteWellbeingLogRoute } from './routes/wellbeingLogs';
 import { getWellbeingEntriesRoute, upsertWellbeingEntriesRoute, deleteWellbeingEntryRoute } from './routes/wellbeingEntries';
 import { seedDemoEmotionalWellbeingRoute, resetDemoEmotionalWellbeingRoute } from './routes/devDemoEmotionalWellbeing';
@@ -18,6 +19,8 @@ import { getRoutinesRoute, getRoutineRoute, createRoutineRoute, updateRoutineRou
 import { getRoutineLogs } from './routes/routineLogs';
 import { getGoals, getGoal, getGoalProgress, getGoalsWithProgress, getCompletedGoals, createGoalRoute, updateGoalRoute, deleteGoalRoute, reorderGoalsRoute, createGoalManualLogRoute, getGoalManualLogsRoute, getGoalDetailRoute, uploadGoalBadgeRoute, uploadBadgeMiddleware } from './routes/goals';
 import { getProgressOverview } from './routes/progress';
+import { getDashboardStreaks } from './routes/dashboard';
+import { getIntegrityReport } from './routes/admin';
 import { getEntriesRoute, createEntryRoute, upsertEntryByKeyRoute, getEntryRoute, updateEntryRoute, deleteEntryRoute } from './routes/journal';
 import { getTasksRoute, createTaskRoute, updateTaskRoute, deleteTaskRoute } from './routes/tasks';
 import { skillTreeRouter } from './routes/skillTree';
@@ -82,6 +85,7 @@ app.delete('/api/habits/:id', deleteHabitRoute);
 
 // DayLog routes (habit tracking results)
 app.get('/api/dayLogs', getDayLogs);
+app.get('/api/daySummary', getDaySummary);
 app.post('/api/dayLogs', upsertDayLogRoute);
 app.put('/api/dayLogs', upsertDayLogRoute);
 app.get('/api/dayLogs/:habitId/:date', getDayLogRoute);
@@ -120,6 +124,7 @@ app.get('/api/routineLogs', getRoutineLogs);
 
 // Progress routes
 app.get('/api/progress/overview', getProgressOverview);
+app.get('/api/dashboard/streaks', getDashboardStreaks);
 
 // Journal routes
 app.get('/api/journal', getEntriesRoute);
@@ -199,6 +204,8 @@ app.post('/api/admin/migrations/backfill-daylogs', async (req: Request, res: Res
   }
 });
 
+app.get('/api/admin/integrity-report', getIntegrityReport);
+
 
 // Health check endpoint
 app.get('/api/health', (_req, res) => {
@@ -230,4 +237,3 @@ process.on('SIGINT', async () => {
 });
 
 export default app;
-

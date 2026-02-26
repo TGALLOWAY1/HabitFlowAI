@@ -9,7 +9,7 @@ import type { Category, Habit, DayLog, DailyWellbeing, Goal, GoalWithProgress, G
 import type { WellbeingEntry, WellbeingMetricKey } from '../models/persistenceTypes';
 import type { DashboardPrefs } from '../models/persistenceTypes';
 
-import type { GoalDetail, CompletedGoal, ProgressOverview } from '../types';
+import type { GoalDetail, CompletedGoal, ProgressOverview, DashboardStreaksOverview } from '../types';
 
 import { API_BASE_URL } from './persistenceConfig';
 import { invalidateGoalDataCache } from './goalDataCache';
@@ -62,6 +62,14 @@ export function setActiveUserMode(mode: ActiveUserMode): void {
  */
 export function getActiveUserId(): string {
   return getActiveUserMode() === 'demo' ? DEMO_USER_ID : getOrCreateUserId();
+}
+
+export function getLocalTimeZone(): string {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+  } catch {
+    return 'UTC';
+  }
 }
 
 /**
@@ -425,6 +433,25 @@ export async function fetchDayLogs(habitId?: string): Promise<Record<string, Day
 
   const url = habitId ? `/dayLogs?habitId=${habitId}` : '/dayLogs';
   const response = await apiRequest<{ logs: Record<string, DayLog> }>(url);
+  return response.logs;
+}
+
+/**
+ * Fetch canonical day summary logs derived directly from HabitEntries.
+ *
+ * GET /api/daySummary?startDayKey=...&endDayKey=...&timeZone=...
+ */
+export async function fetchDaySummary(
+  startDayKey: string,
+  endDayKey: string,
+  timeZone: string
+): Promise<Record<string, DayLog>> {
+  const params = new URLSearchParams({
+    startDayKey,
+    endDayKey,
+    timeZone,
+  });
+  const response = await apiRequest<{ logs: Record<string, DayLog> }>(`/daySummary?${params.toString()}`);
   return response.logs;
 }
 
@@ -815,7 +842,19 @@ export async function fetchGoalsWithProgress(): Promise<GoalWithProgress[]> {
  * @throws Error if API request fails
  */
 export async function fetchProgressOverview(): Promise<ProgressOverview> {
-  const response = await apiRequest<ProgressOverview>('/progress/overview');
+  const timeZone = getLocalTimeZone();
+  const response = await apiRequest<ProgressOverview>(`/progress/overview?timeZone=${encodeURIComponent(timeZone)}`);
+  return response;
+}
+
+/**
+ * Fetch streak-centric dashboard payload derived from HabitEntries.
+ *
+ * GET /api/dashboard/streaks
+ */
+export async function fetchDashboardStreaks(): Promise<DashboardStreaksOverview> {
+  const timeZone = getLocalTimeZone();
+  const response = await apiRequest<DashboardStreaksOverview>(`/dashboard/streaks?timeZone=${encodeURIComponent(timeZone)}`);
   return response;
 }
 
@@ -889,7 +928,7 @@ export async function fetchHabitEntries(
   habitId: string,
   startDayKey?: string,
   endDayKey?: string,
-  timeZone: string = 'UTC'
+  timeZone: string = getLocalTimeZone()
 ): Promise<any[]> {
   const params = new URLSearchParams({
     habitId,
@@ -909,7 +948,7 @@ export async function fetchHabitEntries(
  * @param timeZone - User's timezone (defaults to UTC)
  * @returns Promise<DayViewResponse> - Day view with habit completion/progress derived from EntryViews
  */
-export async function fetchDayView(dayKey: string, timeZone: string = 'UTC'): Promise<any> {
+export async function fetchDayView(dayKey: string, timeZone: string = getLocalTimeZone()): Promise<any> {
   const params = new URLSearchParams({
     dayKey,
     timeZone,
@@ -925,7 +964,7 @@ export async function fetchDayView(dayKey: string, timeZone: string = 'UTC'): Pr
  * @param timeZone - User's timezone (defaults to UTC)
  * @returns Promise<GoalProgress> - Goal progress computed from EntryViews
  */
-export async function fetchGoalProgress(goalId: string, timeZone: string = 'UTC'): Promise<any> {
+export async function fetchGoalProgress(goalId: string, timeZone: string = getLocalTimeZone()): Promise<any> {
   const params = new URLSearchParams({
     timeZone,
   });
@@ -1066,4 +1105,3 @@ export async function clearHabitEntriesForDay(habitId: string, date: string): Pr
   });
   return response;
 }
-
