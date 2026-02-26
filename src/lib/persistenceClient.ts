@@ -428,6 +428,25 @@ export async function fetchDayLogs(habitId?: string): Promise<Record<string, Day
   return response.logs;
 }
 
+/**
+ * Fetch canonical day summary logs derived directly from HabitEntries.
+ *
+ * GET /api/daySummary?startDayKey=...&endDayKey=...&timeZone=...
+ */
+export async function fetchDaySummary(
+  startDayKey: string,
+  endDayKey: string,
+  timeZone: string
+): Promise<Record<string, DayLog>> {
+  const params = new URLSearchParams({
+    startDayKey,
+    endDayKey,
+    timeZone,
+  });
+  const response = await apiRequest<{ logs: Record<string, DayLog> }>(`/daySummary?${params.toString()}`);
+  return response.logs;
+}
+
 // DayLog write functions removed:
 // - saveDayLog() - REMOVED: DayLogs are derived caches and must not be written directly.
 //   Use createHabitEntry() or upsertHabitEntry() instead.

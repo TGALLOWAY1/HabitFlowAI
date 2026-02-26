@@ -9,7 +9,7 @@ import {
     saveHabit,
     updateHabit as updateHabitApi, // Reserved for future use
     deleteHabit as deleteHabitApi,
-    fetchDayLogs,
+    fetchDaySummary,
 
     fetchWellbeingLogs,
     saveWellbeingLog,
@@ -82,14 +82,29 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const initializedRef = useRef(false);
     const hasLoadedWellbeingRef = useRef(false);
 
-    // Helper function to load day logs (LEGACY - for write compatibility only)
-    // NOTE: Reads should use /api/dayView endpoint instead
+    const toLocalDayKey = (date: Date): string => {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    };
+
+    const getCanonicalSummaryWindow = () => {
+        const end = new Date();
+        const start = new Date();
+        start.setDate(start.getDate() - 400);
+        return {
+            startDayKey: toLocalDayKey(start),
+            endDayKey: toLocalDayKey(end),
+            timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
+        };
+    };
+
+    // Helper function to load canonical day summary derived from HabitEntries.
     const loadLogsFromApi = useCallback(async () => {
-        if (process.env.NODE_ENV === 'development') {
-            console.warn('[LEGACY READ WARNING] HabitContext.loadLogsFromApi is loading DayLogs. Day View should use /api/dayView endpoint instead.');
-        }
         try {
-            const apiLogs = await fetchDayLogs();
+            const { startDayKey, endDayKey, timeZone } = getCanonicalSummaryWindow();
+            const apiLogs = await fetchDaySummary(startDayKey, endDayKey, timeZone);
             setLogs(apiLogs);
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : 'Unknown error';
@@ -383,6 +398,7 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                     setLogs(prev => ({ ...prev, [key]: dayLog }));
                 }
             }
+            await refreshDayLogs();
         } catch (error) {
             console.error('Failed to toggle habit:', error instanceof Error ? error.message : 'Unknown error');
             // Rollback to previous state
@@ -424,6 +440,7 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             if (dayLog) {
                 setLogs(prev => ({ ...prev, [key]: dayLog }));
             }
+            await refreshDayLogs();
         } catch (error) {
             console.error('Failed to update log:', error instanceof Error ? error.message : 'Unknown error');
             // Rollback to previous state
@@ -596,7 +613,8 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     const refreshDayLogs = async () => {
         try {
-            const apiLogs = await fetchDayLogs();
+            const { startDayKey, endDayKey, timeZone } = getCanonicalSummaryWindow();
+            const apiLogs = await fetchDaySummary(startDayKey, endDayKey, timeZone);
             setLogs(apiLogs);
         } catch (error) {
             console.error('Failed to refresh day logs', error);
@@ -617,6 +635,8 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                     [`${habitId}-${dateKey}`]: dayLog
                 }));
             }
+
+            await refreshDayLogs();
 
             // Re-fetch evidence or habits if needed?
         } catch (error) {
@@ -663,6 +683,7 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 }
                 return newLogs;
             });
+            await refreshDayLogs();
         } catch (error) {
             if (DEBUG_ENTRY_DELETE) {
                 console.error('[DEBUG_ENTRY_DELETE] deleteHabitEntryByKeyContext failed:', error);
