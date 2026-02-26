@@ -60,7 +60,8 @@ function calculateBestConsecutiveSpan(dayKeys: string[], stepInDays: number): nu
 
 function calculateDailyMetrics(
   dayStates: HabitDayState[],
-  referenceDate: Date
+  referenceDate: Date,
+  referenceDayKey?: string
 ): HabitStreakMetrics {
   const validDayKeys = new Set(
     dayStates
@@ -68,7 +69,7 @@ function calculateDailyMetrics(
       .map(state => state.dayKey)
   );
 
-  const todayDayKey = toDayKey(referenceDate);
+  const todayDayKey = referenceDayKey ?? toDayKey(referenceDate);
   const completedToday = validDayKeys.has(todayDayKey);
   const allCompletedDayKeys = [...validDayKeys];
   const sortedCompletedDayKeys = allCompletedDayKeys.sort();
@@ -139,11 +140,13 @@ function buildWeeklyProgressMap(
 function calculateWeeklyMetrics(
   dayStates: HabitDayState[],
   habit: Habit,
-  referenceDate: Date
+  referenceDate: Date,
+  referenceDayKey?: string
 ): HabitStreakMetrics {
+  const referenceDay = referenceDayKey ? parseISO(referenceDayKey) : referenceDate;
   const target = habit.goal.target ?? 1;
   const weeklyProgressMap = buildWeeklyProgressMap(dayStates, habit);
-  const currentWeekKey = weekStartDayKey(referenceDate);
+  const currentWeekKey = weekStartDayKey(referenceDay);
   const currentWeek = weeklyProgressMap.get(currentWeekKey) ?? { progress: 0, satisfied: false };
 
   let currentStreak = 0;
@@ -170,8 +173,8 @@ function calculateWeeklyMetrics(
     : null;
 
   const daysLeftInWeek = differenceInCalendarDays(
-    endOfWeek(referenceDate, { weekStartsOn: 1 }),
-    referenceDate
+    endOfWeek(referenceDay, { weekStartsOn: 1 }),
+    referenceDay
   );
   const atRisk = currentStreak > 0 && !currentWeek.satisfied && daysLeftInWeek <= 2;
 
@@ -179,7 +182,7 @@ function calculateWeeklyMetrics(
     currentStreak,
     bestStreak,
     lastCompletedDayKey,
-    completedToday: dayStates.some(state => state.dayKey === toDayKey(referenceDate) && (state.completed || state.isFrozen)),
+    completedToday: dayStates.some(state => state.dayKey === (referenceDayKey ?? toDayKey(referenceDay)) && (state.completed || state.isFrozen)),
     atRisk,
     weekSatisfied: currentWeek.satisfied,
     weekProgress: currentWeek.progress,
@@ -194,11 +197,12 @@ function calculateWeeklyMetrics(
 export function calculateHabitStreakMetrics(
   habit: Habit,
   dayStates: HabitDayState[],
-  referenceDate: Date = new Date()
+  referenceDate: Date = new Date(),
+  referenceDayKey?: string
 ): HabitStreakMetrics {
   if (habit.goal.frequency === 'weekly') {
-    return calculateWeeklyMetrics(dayStates, habit, referenceDate);
+    return calculateWeeklyMetrics(dayStates, habit, referenceDate, referenceDayKey);
   }
 
-  return calculateDailyMetrics(dayStates, referenceDate);
+  return calculateDailyMetrics(dayStates, referenceDate, referenceDayKey);
 }

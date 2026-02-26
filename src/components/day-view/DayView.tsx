@@ -5,8 +5,7 @@ import { PinnedHabitsStrip } from './PinnedHabitsStrip';
 import { DayCategorySection } from './DayCategorySection';
 import { format } from 'date-fns';
 import { Calendar } from 'lucide-react';
-import { fetchDayView } from '../../lib/persistenceClient';
-import { warnLegacyCompletionRead } from '../../utils/legacyReadWarning';
+import { fetchDayView, getLocalTimeZone } from '../../lib/persistenceClient';
 
 import type { Habit } from '../../types';
 
@@ -52,8 +51,7 @@ export const DayView = () => {
             setDayViewLoading(true);
             setDayViewError(null);
             try {
-                // Default to UTC timezone for now - could be extracted from user preferences
-                const data = await fetchDayView(dateStr, 'UTC');
+                const data = await fetchDayView(dateStr, getLocalTimeZone());
                 setDayViewData(data);
             } catch (err) {
                 console.error('Failed to load day view:', err);

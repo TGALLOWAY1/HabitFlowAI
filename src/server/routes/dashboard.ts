@@ -1,8 +1,9 @@
 import type { Request, Response } from 'express';
-import { format, startOfWeek, subDays } from 'date-fns';
+import { format, parseISO, startOfWeek, subDays } from 'date-fns';
 import { getHabitsByUser } from '../repositories/habitRepository';
 import { getHabitEntriesByUser } from '../repositories/habitEntryRepository';
 import { calculateHabitStreakMetrics, type HabitDayState } from '../services/streakService';
+import { assertTimeZone } from '../domain/canonicalValidators';
 
 type HabitLast7Cell = {
   dayKey: string;
@@ -32,6 +33,22 @@ function buildLast7DayKeys(referenceDate: Date): string[] {
     dayKeys.push(toDayKey(subDays(referenceDate, i)));
   }
   return dayKeys;
+}
+
+function getTodayDayKeyForTimeZone(timeZone: string): string {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(new Date());
+  const year = parts.find(part => part.type === 'year')?.value;
+  const month = parts.find(part => part.type === 'month')?.value;
+  const day = parts.find(part => part.type === 'day')?.value;
+  if (!year || !month || !day) {
+    return new Date().toISOString().slice(0, 10);
+  }
+  return `${year}-${month}-${day}`;
 }
 
 function aggregateDayStatesByHabit(
@@ -68,9 +85,16 @@ function aggregateDayStatesByHabit(
 export async function getDashboardStreaks(req: Request, res: Response): Promise<void> {
   try {
     const userId = getUserIdFromRequest(req);
+    const requestedTimeZone = typeof req.query?.timeZone === 'string' ? req.query.timeZone : 'UTC';
+    const timeZoneValidation = assertTimeZone(requestedTimeZone);
+    if (!timeZoneValidation.valid) {
+      res.status(400).json({ error: timeZoneValidation.error });
+      return;
+    }
+
     const referenceDate = new Date();
-    const todayDayKey = toDayKey(referenceDate);
-    const weekStartDayKey = toDayKey(startOfWeek(referenceDate, { weekStartsOn: 1 }));
+    const todayDayKey = getTodayDayKeyForTimeZone(requestedTimeZone);
+    const weekStartDayKey = toDayKey(startOfWeek(parseISO(todayDayKey), { weekStartsOn: 1 }));
 
     const [habits, entries] = await Promise.all([
       getHabitsByUser(userId),
@@ -84,7 +108,7 @@ export async function getDashboardStreaks(req: Request, res: Response): Promise<
     const habitSummaries = activeHabits.map(habit => {
       const habitDayMap = dayStatesByHabit.get(habit.id) ?? new Map<string, HabitDayState>();
       const dayStates = Array.from(habitDayMap.values());
-      const streak = calculateHabitStreakMetrics(habit, dayStates, referenceDate);
+      const streak = calculateHabitStreakMetrics(habit, dayStates, referenceDate, todayDayKey);
 
       const last7Days: HabitLast7Cell[] = last7DayKeys.map(dayKey => {
         const state = habitDayMap.get(dayKey);

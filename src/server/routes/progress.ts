@@ -11,17 +11,27 @@ import { getHabitsByUser } from '../repositories/habitRepository';
 // Note: computeGoalsWithProgress is now imported dynamically in getProgressOverview
 import { calculateGlobalMomentum, calculateCategoryMomentum, getMomentumCopy } from '../services/momentumService';
 import { calculateHabitStreakMetrics, type HabitDayState } from '../services/streakService';
+import { assertTimeZone } from '../domain/canonicalValidators';
 import type { MomentumState } from '../../types';
 import type { DayLog } from '../../models/persistenceTypes';
 
 /**
  * Get today's date in YYYY-MM-DD format.
  */
-function getTodayDateString(): string {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, '0');
-  const day = String(now.getDate()).padStart(2, '0');
+function getTodayDateString(timeZone: string): string {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(new Date());
+
+  const year = parts.find(part => part.type === 'year')?.value;
+  const month = parts.find(part => part.type === 'month')?.value;
+  const day = parts.find(part => part.type === 'day')?.value;
+  if (!year || !month || !day) {
+    return new Date().toISOString().slice(0, 10);
+  }
   return `${year}-${month}-${day}`;
 }
 
@@ -41,9 +51,15 @@ export async function getProgressOverview(req: Request, res: Response): Promise<
   try {
     // TODO: Extract userId from authentication token/session
     const userId = getUserIdFromRequest(req);
+    const requestedTimeZone = typeof req.query?.timeZone === 'string' ? req.query.timeZone : 'UTC';
+    const timeZoneValidation = assertTimeZone(requestedTimeZone);
+    if (!timeZoneValidation.valid) {
+      res.status(400).json({ error: timeZoneValidation.error });
+      return;
+    }
 
     // Get today's date
-    const todayDate = getTodayDateString();
+    const todayDate = getTodayDateString(requestedTimeZone);
 
     // Fetch all habits for the user
     const habits = await getHabitsByUser(userId);
@@ -116,7 +132,7 @@ export async function getProgressOverview(req: Request, res: Response): Promise<
     for (const habit of activeHabits) {
       const dayStates = Array.from(dayStatesByHabit.get(habit.id)?.values() ?? []);
       const todayState = dayStatesByHabit.get(habit.id)?.get(todayDate);
-      const streakMetrics = calculateHabitStreakMetrics(habit, dayStates, referenceDate);
+      const streakMetrics = calculateHabitStreakMetrics(habit, dayStates, referenceDate, todayDate);
 
       const completed = streakMetrics.completedToday;
       const value = habit.goal.type === 'number' && todayState ? todayState.value : undefined;
@@ -144,9 +160,8 @@ export async function getProgressOverview(req: Request, res: Response): Promise<
     }
 
     // Fetch goals with progress (reuses efficient batch computation via truthQuery)
-    // Default to UTC timezone for now - could be extracted from user preferences
     const { computeGoalsWithProgressV2 } = await import('../utils/goalProgressUtilsV2');
-    const goalsWithProgress = await computeGoalsWithProgressV2(userId, 'UTC');
+    const goalsWithProgress = await computeGoalsWithProgressV2(userId, requestedTimeZone);
 
     // Return combined response
     res.status(200).json({

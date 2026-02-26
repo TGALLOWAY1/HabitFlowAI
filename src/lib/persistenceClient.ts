@@ -64,6 +64,14 @@ export function getActiveUserId(): string {
   return getActiveUserMode() === 'demo' ? DEMO_USER_ID : getOrCreateUserId();
 }
 
+export function getLocalTimeZone(): string {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+  } catch {
+    return 'UTC';
+  }
+}
+
 /**
  * Make an API request with error handling.
  */
@@ -834,7 +842,8 @@ export async function fetchGoalsWithProgress(): Promise<GoalWithProgress[]> {
  * @throws Error if API request fails
  */
 export async function fetchProgressOverview(): Promise<ProgressOverview> {
-  const response = await apiRequest<ProgressOverview>('/progress/overview');
+  const timeZone = getLocalTimeZone();
+  const response = await apiRequest<ProgressOverview>(`/progress/overview?timeZone=${encodeURIComponent(timeZone)}`);
   return response;
 }
 
@@ -844,7 +853,8 @@ export async function fetchProgressOverview(): Promise<ProgressOverview> {
  * GET /api/dashboard/streaks
  */
 export async function fetchDashboardStreaks(): Promise<DashboardStreaksOverview> {
-  const response = await apiRequest<DashboardStreaksOverview>('/dashboard/streaks');
+  const timeZone = getLocalTimeZone();
+  const response = await apiRequest<DashboardStreaksOverview>(`/dashboard/streaks?timeZone=${encodeURIComponent(timeZone)}`);
   return response;
 }
 
@@ -918,7 +928,7 @@ export async function fetchHabitEntries(
   habitId: string,
   startDayKey?: string,
   endDayKey?: string,
-  timeZone: string = 'UTC'
+  timeZone: string = getLocalTimeZone()
 ): Promise<any[]> {
   const params = new URLSearchParams({
     habitId,
@@ -938,7 +948,7 @@ export async function fetchHabitEntries(
  * @param timeZone - User's timezone (defaults to UTC)
  * @returns Promise<DayViewResponse> - Day view with habit completion/progress derived from EntryViews
  */
-export async function fetchDayView(dayKey: string, timeZone: string = 'UTC'): Promise<any> {
+export async function fetchDayView(dayKey: string, timeZone: string = getLocalTimeZone()): Promise<any> {
   const params = new URLSearchParams({
     dayKey,
     timeZone,
@@ -954,7 +964,7 @@ export async function fetchDayView(dayKey: string, timeZone: string = 'UTC'): Pr
  * @param timeZone - User's timezone (defaults to UTC)
  * @returns Promise<GoalProgress> - Goal progress computed from EntryViews
  */
-export async function fetchGoalProgress(goalId: string, timeZone: string = 'UTC'): Promise<any> {
+export async function fetchGoalProgress(goalId: string, timeZone: string = getLocalTimeZone()): Promise<any> {
   const params = new URLSearchParams({
     timeZone,
   });
