@@ -20,6 +20,7 @@ import { getRoutineLogs } from './routes/routineLogs';
 import { getGoals, getGoal, getGoalProgress, getGoalsWithProgress, getCompletedGoals, createGoalRoute, updateGoalRoute, deleteGoalRoute, reorderGoalsRoute, createGoalManualLogRoute, getGoalManualLogsRoute, getGoalDetailRoute, uploadGoalBadgeRoute, uploadBadgeMiddleware } from './routes/goals';
 import { getProgressOverview } from './routes/progress';
 import { getDashboardStreaks } from './routes/dashboard';
+import { getIntegrityReport } from './routes/admin';
 import { getEntriesRoute, createEntryRoute, upsertEntryByKeyRoute, getEntryRoute, updateEntryRoute, deleteEntryRoute } from './routes/journal';
 import { getTasksRoute, createTaskRoute, updateTaskRoute, deleteTaskRoute } from './routes/tasks';
 import { skillTreeRouter } from './routes/skillTree';
@@ -202,6 +203,8 @@ app.post('/api/admin/migrations/backfill-daylogs', async (req: Request, res: Res
     res.status(500).json({ error: err.message });
   }
 });
+
+app.get('/api/admin/integrity-report', getIntegrityReport);
 
 
 // Health check endpoint
