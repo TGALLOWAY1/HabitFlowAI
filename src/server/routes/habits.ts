@@ -15,6 +15,7 @@ import {
   deleteHabit,
   reorderHabits,
 } from '../repositories/habitRepository';
+import { getCategoryById } from '../repositories/categoryRepository';
 import { deleteHabitEntriesByHabit } from '../repositories/habitEntryRepository';
 import { deleteDayLogsByHabit } from '../repositories/dayLogRepository';
 import type { Habit } from '../../models/persistenceTypes';
@@ -245,14 +246,27 @@ export async function updateHabitRoute(req: Request, res: Response): Promise<voi
     if (linkedGoalId !== undefined) patch.linkedGoalId = linkedGoalId;
     if (linkedRoutineIds !== undefined) patch.linkedRoutineIds = linkedRoutineIds;
 
-    // TODO: Validate types more strictly if needed, but for now rely on basic checks or TS interface safety at repository level mostly.
-
     if (Object.keys(patch).length === 0) {
       res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'At least one field must be provided for update' } });
       return;
     }
 
     const userId = (req as any).userId || 'anonymous-user';
+
+    // Validate target category exists when categoryId is being changed
+    if (patch.categoryId) {
+      const targetCategory = await getCategoryById(patch.categoryId, userId);
+      if (!targetCategory) {
+        res.status(400).json({
+          error: {
+            code: 'INVALID_CATEGORY',
+            message: 'Target category does not exist',
+          },
+        });
+        return;
+      }
+    }
+
     const habit = await updateHabit(id, userId, patch);
 
     if (!habit) {

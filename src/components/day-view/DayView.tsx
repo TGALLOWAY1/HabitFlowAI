@@ -3,6 +3,7 @@ import { useHabitStore } from '../../store/HabitContext';
 import { getHabitsForDate } from '../../utils/habitUtils';
 import { PinnedHabitsStrip } from './PinnedHabitsStrip';
 import { DayCategorySection } from './DayCategorySection';
+import { CategoryPickerModal } from '../CategoryPickerModal';
 import { format } from 'date-fns';
 import { Calendar } from 'lucide-react';
 import { fetchDayView, getLocalTimeZone } from '../../lib/persistenceClient';
@@ -44,6 +45,7 @@ export const DayView = () => {
     const [dayViewData, setDayViewData] = useState<DayViewData | null>(null);
     const [dayViewLoading, setDayViewLoading] = useState(true);
     const [dayViewError, setDayViewError] = useState<string | null>(null);
+    const [categoryPickerHabit, setCategoryPickerHabit] = useState<Habit | null>(null);
 
     // Fetch day view from truthQuery endpoint
     useEffect(() => {
@@ -188,6 +190,7 @@ export const DayView = () => {
                                 onToggle={handleToggle}
                                 onPin={handlePin}
                                 onUpdateEstimate={handleUpdateEstimate}
+                                onMoveToCategory={(h) => setCategoryPickerHabit(h)}
                                 allHabitsLookup={allHabitsLookup}
                                 onUpdateHabitEntry={upsertHabitEntry}
                                 deleteHabitEntryByKey={deleteHabitEntryByKey}
@@ -199,6 +202,14 @@ export const DayView = () => {
 
             {/* Footer / Empty Space for scrolling */}
             <div className="h-12" />
+
+            {/* Category Picker Modal */}
+            <CategoryPickerModal
+                isOpen={!!categoryPickerHabit}
+                onClose={() => setCategoryPickerHabit(null)}
+                habitId={categoryPickerHabit?.id ?? ''}
+                currentCategoryId={categoryPickerHabit?.categoryId ?? ''}
+            />
         </div>
     );
 };

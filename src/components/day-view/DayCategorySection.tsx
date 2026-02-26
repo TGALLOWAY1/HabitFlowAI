@@ -18,21 +18,14 @@ interface DayViewHabitStatus {
 
 interface DayCategorySectionProps {
     category: Category;
-    habits: Habit[]; // Just the habits (roots) for this category
-    habitStatusMap: Map<string, DayViewHabitStatus>; // Status from truthQuery dayView
+    habits: Habit[];
+    habitStatusMap: Map<string, DayViewHabitStatus>;
     dateStr: string;
     onToggle: (habitId: string) => void;
     onPin: (habitId: string) => void;
     onUpdateEstimate: (habitId: string, minutes: number) => void;
-
-    // Pass entire habits list to resolve subHabits if needed?
-    // Or simpler: We expect `habits` to be the *root* habits to display.
-    // If a habit is a bundle, we need to be able to find its children.
-    // Let's assume the parent `DayView` passes a lookup or we use context?
-    // Passing allHabits is safest for bundle resolution.
+    onMoveToCategory?: (habit: Habit) => void;
     allHabitsLookup: Map<string, Habit>;
-
-    // Choice bundle selection
     onUpdateHabitEntry: (habitId: string, dateKey: string, data: any) => Promise<void>;
     deleteHabitEntryByKey: (habitId: string, dateKey: string) => Promise<void>;
 }
@@ -45,6 +38,7 @@ export const DayCategorySection = ({
     onToggle,
     onPin,
     onUpdateEstimate,
+    onMoveToCategory,
     allHabitsLookup,
     onUpdateHabitEntry,
     deleteHabitEntryByKey
@@ -148,17 +142,18 @@ export const DayCategorySection = ({
                         // For now, we'll need to fetch entries separately or include in dayView response
                         const selectedChoice = undefined; // TODO: Get from EntryView if needed
 
-                        return (
+                            return (
                             <HabitGridCell
                                 key={habit.id}
                                 habit={habit}
-                                log={undefined} // No longer using DayLog
+                                log={undefined}
                                 isCompleted={isCompleted}
                                 isExpanded={expandedHabitId === habit.id}
                                 onToggle={() => onToggle(habit.id)}
                                 onExpand={() => setExpandedHabitId(prev => prev === habit.id ? null : habit.id)}
                                 onPin={onPin}
                                 onUpdateEstimate={onUpdateEstimate}
+                                onMoveToCategory={onMoveToCategory}
                                 subHabits={subHabits}
 
                                 // Helper for choice select

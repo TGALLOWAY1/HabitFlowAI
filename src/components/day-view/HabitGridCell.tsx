@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Check, Target, Clock, Pin, PinOff, ListTodo, Disc } from 'lucide-react';
+import { Check, Target, Clock, Pin, PinOff, ListTodo, Disc, FolderInput } from 'lucide-react';
 import type { Habit, DayLog } from '../../types';
 import { cn } from '../../utils/cn';
 
@@ -12,6 +12,7 @@ interface HabitGridCellProps {
     onExpand: () => void;
     onPin: (id: string) => void;
     onUpdateEstimate: (id: string, minutes: number) => void;
+    onMoveToCategory?: (habit: Habit) => void;
 
     // Bundle Props
     subHabits?: Habit[];
@@ -29,6 +30,7 @@ export const HabitGridCell = ({
     onExpand,
     onPin,
     onUpdateEstimate,
+    onMoveToCategory,
     subHabits,
     onChoiceSelect,
     selectedChoice
@@ -177,8 +179,17 @@ export const HabitGridCell = ({
                         </div>
                     )}
 
-                    {/* 4. Actions (Pin) */}
-                    <div className="flex items-center justify-end mt-1 pt-2 border-t border-white/5">
+                    {/* 4. Actions (Pin, Move) */}
+                    <div className="flex items-center justify-end gap-1 mt-1 pt-2 border-t border-white/5">
+                        {onMoveToCategory && (
+                            <button
+                                onClick={() => onMoveToCategory(habit)}
+                                className="flex items-center gap-1.5 px-2 py-1 rounded-md transition-colors text-xs text-neutral-500 hover:text-neutral-300 hover:bg-white/5"
+                            >
+                                <FolderInput size={12} />
+                                <span>Move</span>
+                            </button>
+                        )}
                         <button
                             onClick={() => onPin(habit.id)}
                             className={cn(

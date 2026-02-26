@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { HabitProvider, useHabitStore } from './store/HabitContext';
 import { RoutineProvider } from './store/RoutineContext';
 import { TaskProvider } from './context/TaskContext';
+import { ToastProvider } from './components/Toast';
 import { Layout } from './components/Layout';
 import { CategoryTabs } from './components/CategoryTabs';
 import { TrackerGrid } from './components/TrackerGrid';
@@ -506,15 +507,17 @@ const HabitTrackerContent: React.FC = () => {
 
 function App() {
   return (
-    <HabitProvider>
-      <RoutineProvider>
-        <TaskProvider>
-          <Layout>
-            <HabitTrackerContent />
-          </Layout>
-        </TaskProvider>
-      </RoutineProvider>
-    </HabitProvider>
+    <ToastProvider>
+      <HabitProvider>
+        <RoutineProvider>
+          <TaskProvider>
+            <Layout>
+              <HabitTrackerContent />
+            </Layout>
+          </TaskProvider>
+        </RoutineProvider>
+      </HabitProvider>
+    </ToastProvider>
   );
 }
 

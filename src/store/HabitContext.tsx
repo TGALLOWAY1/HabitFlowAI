@@ -31,6 +31,7 @@ interface HabitContextType {
     addCategory: (category: Omit<Category, 'id'>) => Promise<Category>;
     addHabit: (habit: Omit<Habit, 'id' | 'createdAt' | 'archived'>) => Promise<Habit>;
     updateHabit: (id: string, patch: Partial<Omit<Habit, 'id' | 'createdAt'>>) => Promise<Habit>;
+    moveHabitToCategory: (habitId: string, targetCategoryId: string) => Promise<void>;
     toggleHabit: (habitId: string, date: string) => Promise<void>;
     updateLog: (habitId: string, date: string, value: number) => Promise<void>;
     deleteHabit: (id: string) => Promise<void>;
@@ -337,6 +338,33 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : 'Unknown error';
             console.error('Failed to update habit in API:', errorMessage);
+            throw error;
+        }
+    };
+
+    // Moves only the selected habit. For bundle parents, sub-habits keep their own categoryId.
+    const moveHabitToCategory = async (habitId: string, targetCategoryId: string): Promise<void> => {
+        const previousHabits = habits;
+        const habit = habits.find(h => h.id === habitId);
+        if (!habit) throw new Error('Habit not found');
+        if (habit.categoryId === targetCategoryId) return;
+
+        // Compute order: place at bottom of target category
+        const habitsInTarget = habits.filter(h => h.categoryId === targetCategoryId);
+        const maxOrder = habitsInTarget.reduce((max, h) => Math.max(max, h.order ?? 0), -1);
+        const newOrder = maxOrder + 1;
+
+        // Optimistic update
+        setHabits(prev => prev.map(h =>
+            h.id === habitId ? { ...h, categoryId: targetCategoryId, order: newOrder } : h
+        ));
+
+        try {
+            await updateHabitApi(habitId, { categoryId: targetCategoryId, order: newOrder });
+        } catch (error) {
+            setHabits(previousHabits);
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+            console.error('Failed to move habit:', errorMessage);
             throw error;
         }
     };
@@ -704,6 +732,7 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             updateCategory,
             addHabit,
             updateHabit,
+            moveHabitToCategory,
             toggleHabit,
             updateLog,
             updateHabitEntry: updateHabitEntryContext,
