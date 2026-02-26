@@ -2,7 +2,8 @@ import React, { useMemo, useState, useEffect } from 'react';
 import { format, eachDayOfInterval, subDays, isToday } from 'date-fns';
 import { type Habit, type DayLog, type Routine, type HabitPotentialEvidence } from '../types';
 import { cn } from '../utils/cn';
-import { Check, Plus, Trash2, GripVertical, Pencil, Play, Flame, History, Zap, Link2 } from 'lucide-react';
+import { Check, Plus, Trash2, GripVertical, Pencil, Play, Flame, History, Zap, Link2, FolderInput } from 'lucide-react';
+import { CategoryPickerModal } from './CategoryPickerModal';
 
 // [DEBUG_ENTRY_DELETE] Flag to enable debug logging for entry deletion
 const DEBUG_ENTRY_DELETE = false;
@@ -65,7 +66,8 @@ const HabitActionButtons = ({
     onDelete,
     deleteConfirmId,
     setDeleteConfirmId,
-    onRunRoutine
+    onRunRoutine,
+    onMoveToCategory
 }: {
     habit: Habit,
     onEdit: () => void,
@@ -73,7 +75,8 @@ const HabitActionButtons = ({
     onDelete: (id: string) => Promise<void>,
     deleteConfirmId: string | null,
     setDeleteConfirmId: (id: string | null) => void,
-    onRunRoutine?: (routine: Routine) => void
+    onRunRoutine?: (routine: Routine) => void,
+    onMoveToCategory?: () => void
 }) => {
     const { routines } = useRoutineStore();
     const linkedRoutines = routines.filter(r => r.linkedHabitIds?.includes(habit.id));
@@ -90,6 +93,18 @@ const HabitActionButtons = ({
                     title={`Run Routine: ${linkedRoutines[0].title}`}
                 >
                     <Play size={14} />
+                </button>
+            )}
+            {onMoveToCategory && (
+                <button
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        onMoveToCategory();
+                    }}
+                    className="p-1.5 rounded-lg hover:bg-neutral-800 text-neutral-500 hover:text-white transition-colors"
+                    title="Move to Category"
+                >
+                    <FolderInput size={14} />
                 </button>
             )}
             <button
@@ -168,6 +183,7 @@ interface HabitRowContentProps {
     potentialEvidence?: HabitPotentialEvidence[];
     onContextMenu: (e: React.MouseEvent, habit: Habit) => void;
     isDeleteMode: boolean;
+    onMoveToCategory?: (habit: Habit) => void;
 }
 
 const HabitRowContent = ({
@@ -195,7 +211,8 @@ const HabitRowContent = ({
     onViewHistory,
     potentialEvidence,
     onContextMenu,
-    isDeleteMode
+    isDeleteMode,
+    onMoveToCategory
 }: HabitRowContentProps) => {
 
     // Non-Negotiable Logic
@@ -293,6 +310,7 @@ const HabitRowContent = ({
                     setDeleteConfirmId={setDeleteConfirmId}
                     onRunRoutine={onRunRoutine}
                     onViewHistory={() => onViewHistory(habit)}
+                    onMoveToCategory={onMoveToCategory ? () => onMoveToCategory(habit) : undefined}
                 />
 
                 {/* Bundle Expand/Collapse "Drawer Handle" */}
@@ -501,7 +519,8 @@ const SortableHabitRow = ({
     onViewHistory,
     potentialEvidence,
     onContextMenu,
-    isDeleteMode
+    isDeleteMode,
+    onMoveToCategory
 }: {
     habit: Habit;
     allHabits: Habit[];
@@ -521,6 +540,7 @@ const SortableHabitRow = ({
     potentialEvidence?: HabitPotentialEvidence[];
     onContextMenu: (e: React.MouseEvent, habit: Habit) => void;
     isDeleteMode: boolean;
+    onMoveToCategory?: (habit: Habit) => void;
 }) => {
     const {
         attributes,
@@ -612,6 +632,7 @@ const SortableHabitRow = ({
                 potentialEvidence={potentialEvidence}
                 onContextMenu={onContextMenu}
                 isDeleteMode={isDeleteMode}
+                onMoveToCategory={onMoveToCategory}
             />
 
             {/* Child Rows - Rendered when expanded */}
@@ -619,9 +640,9 @@ const SortableHabitRow = ({
                 <HabitRowContent
                     key={child.id}
                     habit={child}
-                    depth={child.isVirtual ? 0 : 1} // User requested 'No Indent' for choice, so depth 0. Checklist depth 1.
+                    depth={child.isVirtual ? 0 : 1}
                     isExpanded={false}
-                    hasChildren={false} // Assume 1 level for MVP
+                    hasChildren={false}
                     onToggleExpand={() => { }}
                     logs={logs}
                     dates={dates}
@@ -631,8 +652,7 @@ const SortableHabitRow = ({
                     setDeleteConfirmId={setDeleteConfirmId}
                     onEditHabit={onEditHabit}
                     onToggle={onToggle}
-                    // No drag props
-                    style={{ transition }} // Maintain transition if needed
+                    style={{ transition }}
                     onRunRoutine={onRunRoutine}
                     onViewHistory={onViewHistory}
                     potentialEvidence={potentialEvidence}
@@ -833,7 +853,8 @@ export const TrackerGrid = ({
     const [historyModalHabitId, setHistoryModalHabitId] = useState<string | null>(null);
     const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
     const [choiceLogState, setChoiceLogState] = useState<{ habit: Habit; date: string } | null>(null);
-    
+    const [categoryPickerHabit, setCategoryPickerHabit] = useState<Habit | null>(null);
+
     // Track click timing to prevent single-click from firing when double-click is intended
     const clickTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
     const lastClickTimeRef = React.useRef<number>(0);
@@ -1257,6 +1278,7 @@ export const TrackerGrid = ({
                                         potentialEvidence={potentialEvidence}
                                         onContextMenu={handleContextMenu}
                                         isDeleteMode={deleteMode}
+                                        onMoveToCategory={(h) => setCategoryPickerHabit(h)}
                                     />
                                 ))}
                             </SortableContext>
@@ -1411,6 +1433,16 @@ export const TrackerGrid = ({
 
                                 <button
                                     onClick={() => {
+                                        setCategoryPickerHabit(habit);
+                                        setContextMenu(null);
+                                    }}
+                                    className="flex items-center gap-2 px-2 py-1.5 text-sm text-neutral-300 hover:bg-neutral-700/50 rounded transition-colors text-left w-full"
+                                >
+                                    <FolderInput size={14} /> Move to Category…
+                                </button>
+
+                                <button
+                                    onClick={() => {
                                         onViewHistory(habit);
                                         setContextMenu(null);
                                     }}
@@ -1448,6 +1480,14 @@ export const TrackerGrid = ({
                     onSave={handleChoiceSave}
                 />
             )}
+
+            {/* Category Picker Modal */}
+            <CategoryPickerModal
+                isOpen={!!categoryPickerHabit}
+                onClose={() => setCategoryPickerHabit(null)}
+                habitId={categoryPickerHabit?.id ?? ''}
+                currentCategoryId={categoryPickerHabit?.categoryId ?? ''}
+            />
         </div>
     );
 };
