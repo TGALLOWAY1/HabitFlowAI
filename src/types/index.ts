@@ -165,10 +165,16 @@ export interface ProgressOverview {
         habit: Habit;
         completed: boolean;
         value?: number; // Present if quantified habit has a value
-        streak: number;
+        streak: number; // Backward-compatible alias for currentStreak
+        currentStreak: number;
+        bestStreak: number;
+        lastCompletedDayKey: string | null;
+        atRisk: boolean;
         formattedStreak: string; // "3 day streak" or "5 weeks"
-
         freezeStatus?: 'active' | 'used' | 'none'; // 'active' = currently frozen today
+        weekSatisfied?: boolean;
+        weekProgress?: number;
+        weekTarget?: number;
     }>;
     goalsWithProgress: GoalWithProgress[];
     momentum: {

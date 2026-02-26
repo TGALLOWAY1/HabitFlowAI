@@ -10,9 +10,9 @@ import { getHabitEntriesByUser } from '../repositories/habitEntryRepository';
 import { getHabitsByUser } from '../repositories/habitRepository';
 // Note: computeGoalsWithProgress is now imported dynamically in getProgressOverview
 import { calculateGlobalMomentum, calculateCategoryMomentum, getMomentumCopy } from '../services/momentumService';
-import { calculateDailyStreak, calculateWeeklyStreak } from '../services/streakService';
-import { subDays, format } from 'date-fns';
+import { calculateHabitStreakMetrics, type HabitDayState } from '../services/streakService';
 import type { MomentumState } from '../../types';
+import type { DayLog } from '../../models/persistenceTypes';
 
 /**
  * Get today's date in YYYY-MM-DD format.
@@ -25,10 +25,15 @@ function getTodayDateString(): string {
   return `${year}-${month}-${day}`;
 }
 
+function getUserIdFromRequest(req: Request): string {
+  const candidate = (req as Request & { userId?: unknown }).userId;
+  return typeof candidate === 'string' && candidate.length > 0 ? candidate : 'anonymous-user';
+}
+
 export async function getProgressOverview(req: Request, res: Response): Promise<void> {
   try {
     // TODO: Extract userId from authentication token/session
-    const userId = (req as any).userId || 'anonymous-user';
+    const userId = getUserIdFromRequest(req);
 
     // Get today's date
     const todayDate = getTodayDateString();
@@ -39,51 +44,47 @@ export async function getProgressOverview(req: Request, res: Response): Promise<
     // Filter out archived habits
     const activeHabits = habits.filter(h => !h.archived);
 
-    // Fetch all habit entries (Single-Source of Truth)
+    // Fetch all habit entries (single source of truth)
     const habitEntries = await getHabitEntriesByUser(userId);
 
-    // Convert to Map for O(1) Lookup: Key = `${habitId}-${dayKey}`
-    // Use dayKey (canonical) with fallback to date for backward compatibility
-    const allLogs: Record<string, any> = {};
+    // Aggregate entries by habit + dayKey for canonical completion/value derivation
+    const dayStatesByHabit = new Map<string, Map<string, HabitDayState>>();
     habitEntries.forEach(entry => {
       const dayKey = entry.dayKey || entry.date;
       if (!dayKey) {
         console.warn(`[progress] Entry ${entry.id} missing dayKey and date, skipping`);
         return;
       }
-      const key = `${entry.habitId}-${dayKey}`;
-      allLogs[key] = entry;
-    });
 
-    // Build habitsToday array with completion status for today
-    // Calculate Momentum (based on all logs, not just today)
-    const logsArray = habitEntries;
+      const habitDayMap = dayStatesByHabit.get(entry.habitId) ?? new Map<string, HabitDayState>();
+      const existing = habitDayMap.get(dayKey) ?? {
+        dayKey,
+        value: 0,
+        completed: true,
+      };
 
-    // [NEW] Process Auto-Freezes (Check Yesterday)
-    const { processAutoFreezes } = await import('../services/freezeService');
-    // Note: processAutoFreezes might expect DayLog[], check compat.
-    // Assuming it accepts array of logs. 
-    await processAutoFreezes(activeHabits, allLogs, userId);
-
-    // Re-fetch all logs to ensure streak calc uses latest freeze data
-    // Optimally, processAutoFreezes should return updates, but for now re-fetch
-    const updatedEntries = await getHabitEntriesByUser(userId);
-    const updatedLogsArray = updatedEntries;
-
-    // Re-build map
-    // Use dayKey (canonical) with fallback to date for backward compatibility
-    const updatedLogs: Record<string, any> = {};
-    updatedEntries.forEach(entry => {
-      const dayKey = entry.dayKey || entry.date;
-      if (!dayKey) {
-        console.warn(`[progress] Entry ${entry.id} missing dayKey and date, skipping`);
-        return;
+      existing.completed = true;
+      if (typeof entry.value === 'number') {
+        existing.value += entry.value;
       }
-      const key = `${entry.habitId}-${dayKey}`;
-      updatedLogs[key] = entry;
+
+      habitDayMap.set(dayKey, existing);
+      dayStatesByHabit.set(entry.habitId, habitDayMap);
     });
 
-    const globalMomentum = calculateGlobalMomentum(updatedLogsArray as any[]);
+    // Build a completion-only log array for momentum calculations
+    const completionLogs: DayLog[] = Array.from(dayStatesByHabit.entries()).flatMap(([habitId, dayMap]) =>
+      Array.from(dayMap.values())
+        .filter(state => state.completed)
+        .map(state => ({
+          habitId,
+          date: state.dayKey,
+          value: state.value,
+          completed: true,
+        }))
+    );
+
+    const globalMomentum = calculateGlobalMomentum(completionLogs);
 
     // Group habits by category for Category Momentum
     const categoryHabitMap: Record<string, string[]> = {};
@@ -94,61 +95,22 @@ export async function getProgressOverview(req: Request, res: Response): Promise<
 
     const categoryMomentum: Record<string, MomentumState> = {};
     Object.keys(categoryHabitMap).forEach(catId => {
-      const result = calculateCategoryMomentum(logsArray as any[], categoryHabitMap[catId]);
+      const result = calculateCategoryMomentum(completionLogs, categoryHabitMap[catId]);
       categoryMomentum[catId] = result.state;
     });
 
-    // Build habitsToday array with completion status for today AND streaks
+    // Build habitsToday array with canonical streak metrics
     const habitsToday = [];
-    const yesterdayDate = format(subDays(new Date(), 1), 'yyyy-MM-dd');
+    const referenceDate = new Date();
 
     for (const habit of activeHabits) {
-      // Find today's log for this habit
-      const logKey = `${habit.id}-${todayDate}`;
-      const todayLog = updatedLogs[logKey];
+      const dayStates = Array.from(dayStatesByHabit.get(habit.id)?.values() ?? []);
+      const todayState = dayStatesByHabit.get(habit.id)?.get(todayDate);
+      const streakMetrics = calculateHabitStreakMetrics(habit, dayStates, referenceDate);
 
-      // Determine completion status
-      const completed = todayLog?.completed || false;
-
-      // Get value if quantified habit
-      const value = todayLog?.value !== undefined ? todayLog.value : undefined;
-
-      // Calculate Streak
-      let streak = 0;
-      if (habit.goal.frequency === 'weekly') {
-        streak = calculateWeeklyStreak(updatedLogsArray as any[], habit.id);
-      } else {
-        streak = calculateDailyStreak(updatedLogsArray as any[], habit.id);
-      }
-
-      // Soft Freeze Check (Lazy Creation)
-      // If yesterday was missed, check if we should have applied a soft freeze
-      // We do this check if today's log shows no streak continuity from yesterday?
-      // Actually, StreakService handles continuity. 
-      // But if we want to PERSIST the soft freeze so it shows up in history/logs explicitly:
-      // Check Yesterday Log.
-      const yesterdayLogKey = `${habit.id}-${yesterdayDate}`;
-      const yesterdayLog = updatedLogs[yesterdayLogKey];
-
-      if (!yesterdayLog && habit.goal.frequency === 'daily') {
-        // Missed yesterday (no log). Check eligibility.
-        // Streak would be 0 now if we ran calculation without the freeze.
-        // But we want to simulate "What if we had the freeze?"
-        // Or simpler: Calculate streak assuming yesterday was frozen?
-        // "Automatically applied when... Habit streak >= 3".
-        // If the streak WAS >= 3 before yesterday.
-        // This suggests "Streak at end of Day Before Yesterday" >= 3.
-        // This is getting complex to optimize.
-
-        // Simpler approach for MVP:
-        // Just rely on StreakService to handle "gaps" if we pass a "allowSoftFreeze" flag?
-        // No, the PRD implies a persistent state "Habit marked as 'paused'".
-        // So we SHOULD create the log.
-
-        // To avoid heavy logic here, let's defer soft-freeze creation to a dedicated background job or 
-        // triggered when user views the habit details/history.
-        // For dashboard, we just compute streak.
-      }
+      const completed = streakMetrics.completedToday;
+      const value = habit.goal.type === 'number' && todayState ? todayState.value : undefined;
+      const streak = streakMetrics.currentStreak;
 
       const formattedStreak = habit.goal.frequency === 'weekly'
         ? `${streak} ${streak === 1 ? 'week' : 'weeks'}`
@@ -159,8 +121,15 @@ export async function getProgressOverview(req: Request, res: Response): Promise<
         completed,
         value,
         streak,
+        currentStreak: streakMetrics.currentStreak,
+        bestStreak: streakMetrics.bestStreak,
+        lastCompletedDayKey: streakMetrics.lastCompletedDayKey,
+        atRisk: streakMetrics.atRisk,
         formattedStreak,
-        freezeStatus: todayLog?.isFrozen ? 'active' : 'none'
+        freezeStatus: 'none',
+        weekSatisfied: streakMetrics.weekSatisfied,
+        weekProgress: streakMetrics.weekProgress,
+        weekTarget: streakMetrics.weekTarget,
       });
     }
 
