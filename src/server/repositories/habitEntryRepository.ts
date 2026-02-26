@@ -319,6 +319,37 @@ export async function deleteHabitEntriesForDay(
 }
 
 /**
+ * Soft delete all entries for a habit.
+ *
+ * @param habitId - Habit ID
+ * @param userId - User ID
+ * @returns Number of entries marked deleted
+ */
+export async function deleteHabitEntriesByHabit(
+    habitId: string,
+    userId: string
+): Promise<number> {
+    const db = await getDb();
+    const collection = db.collection(COLLECTION_NAME);
+
+    const result = await collection.updateMany(
+        {
+            habitId,
+            userId,
+            deletedAt: { $exists: false }
+        },
+        {
+            $set: {
+                deletedAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString()
+            }
+        }
+    );
+
+    return result.modifiedCount;
+}
+
+/**
  * Upsert a habit entry for a specific dayKey (create or update)
  * @param habitId - Habit ID
  * @param dayKey - DayKey string YYYY-MM-DD (canonical)
@@ -460,4 +491,3 @@ export async function getHabitEntriesByUser(
         return entryWithDate as HabitEntry;
     });
 }
-

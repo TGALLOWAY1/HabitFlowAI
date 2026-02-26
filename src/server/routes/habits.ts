@@ -15,6 +15,8 @@ import {
   deleteHabit,
   reorderHabits,
 } from '../repositories/habitRepository';
+import { deleteHabitEntriesByHabit } from '../repositories/habitEntryRepository';
+import { deleteDayLogsByHabit } from '../repositories/dayLogRepository';
 import type { Habit } from '../../models/persistenceTypes';
 
 /**
@@ -295,13 +297,8 @@ export async function deleteHabitRoute(req: Request, res: Response): Promise<voi
     // TODO: Extract userId from authentication token/session
     const userId = (req as any).userId || 'anonymous-user';
 
-    // Cascade delete day logs for this habit
-    const { deleteDayLogsByHabit } = await import('../repositories/dayLogRepository');
-    await deleteDayLogsByHabit(id, userId);
-
-    const deleted = await deleteHabit(id, userId);
-
-    if (!deleted) {
+    const existing = await getHabitById(id, userId);
+    if (!existing) {
       res.status(404).json({
         error: {
           code: 'NOT_FOUND',
@@ -311,8 +308,26 @@ export async function deleteHabitRoute(req: Request, res: Response): Promise<voi
       return;
     }
 
+    // Cascade delete entries (source of truth) first, then derived day logs.
+    const deletedEntriesCount = await deleteHabitEntriesByHabit(id, userId);
+    const deletedDayLogsCount = await deleteDayLogsByHabit(id, userId);
+
+    const deleted = await deleteHabit(id, userId);
+
+    if (!deleted) {
+      res.status(500).json({
+        error: {
+          code: 'INTERNAL_SERVER_ERROR',
+          message: 'Failed to delete habit',
+        },
+      });
+      return;
+    }
+
     res.status(200).json({
       message: 'Habit deleted successfully',
+      deletedEntriesCount,
+      deletedDayLogsCount,
     });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
@@ -377,6 +392,5 @@ export async function reorderHabitsRoute(req: Request, res: Response): Promise<v
     });
   }
 }
-
 
 
