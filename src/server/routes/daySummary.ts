@@ -9,6 +9,8 @@ type AggregatedDayEntry = {
   dayKey: string;
   count: number;
   valueSum: number;
+  hasFreeze: boolean;
+  freezeType?: DayLog['freezeType'];
   latestTimestamp: string;
   latestSource: HabitEntry['source'];
   latestRoutineId?: string;
@@ -42,6 +44,15 @@ function isDayKeyInRange(dayKey: string, startDayKey: string, endDayKey: string)
   return dayKey >= startDayKey && dayKey <= endDayKey;
 }
 
+function parseFreezeType(note?: string): DayLog['freezeType'] | undefined {
+  if (!note || !note.startsWith('freeze:')) return undefined;
+  const raw = note.slice('freeze:'.length);
+  if (raw === 'manual' || raw === 'auto' || raw === 'soft') {
+    return raw;
+  }
+  return 'auto';
+}
+
 function aggregateEntries(
   entries: HabitEntry[],
   allowedHabitIds: Set<string>,
@@ -63,19 +74,26 @@ function aggregateEntries(
       dayKey,
       count: 0,
       valueSum: 0,
+      hasFreeze: false,
       latestTimestamp: '',
       latestSource: 'manual' as HabitEntry['source'],
       completedOptions: {},
     };
 
-    existing.count += 1;
-    if (typeof entry.value === 'number') {
-      existing.valueSum += entry.value;
-    }
+    const freezeType = parseFreezeType(entry.note);
+    if (freezeType) {
+      existing.hasFreeze = true;
+      existing.freezeType = freezeType;
+    } else {
+      existing.count += 1;
+      if (typeof entry.value === 'number') {
+        existing.valueSum += entry.value;
+      }
 
-    const optionKey = entry.choiceChildHabitId || entry.bundleOptionId;
-    if (optionKey) {
-      existing.completedOptions[optionKey] = typeof entry.value === 'number' ? entry.value : 1;
+      const optionKey = entry.choiceChildHabitId || entry.bundleOptionId;
+      if (optionKey) {
+        existing.completedOptions[optionKey] = typeof entry.value === 'number' ? entry.value : 1;
+      }
     }
 
     if (!existing.latestTimestamp || entry.timestamp > existing.latestTimestamp) {
@@ -142,17 +160,18 @@ export async function getDaySummary(req: Request, res: Response): Promise<void> 
 
       let value: number | undefined;
       let completed = false;
+      const isFrozen = aggregate.hasFreeze && aggregate.count === 0;
 
       if (habit.bundleType === 'choice') {
         value = undefined;
         completed = aggregate.count > 0;
       } else if (habit.goal.type === 'number') {
-        value = aggregate.valueSum;
+        value = isFrozen ? 0 : aggregate.valueSum;
         const target = habit.goal.target ?? 0;
-        completed = aggregate.valueSum >= target;
+        completed = !isFrozen && aggregate.valueSum >= target;
       } else {
-        value = aggregate.valueSum > 0 ? aggregate.valueSum : aggregate.count;
-        completed = value > 0;
+        value = isFrozen ? 0 : (aggregate.valueSum > 0 ? aggregate.valueSum : aggregate.count);
+        completed = !isFrozen && value > 0;
       }
 
       const completedOptions =
@@ -167,6 +186,8 @@ export async function getDaySummary(req: Request, res: Response): Promise<void> 
         routineId: aggregate.latestRoutineId,
         bundleOptionId: aggregate.latestBundleOptionId,
         completedOptions,
+        isFrozen,
+        freezeType: isFrozen ? aggregate.freezeType : undefined,
       };
     }
 
@@ -190,4 +211,3 @@ export async function getDaySummary(req: Request, res: Response): Promise<void> 
     });
   }
 }
-

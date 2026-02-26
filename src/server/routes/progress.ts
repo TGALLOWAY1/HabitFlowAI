@@ -30,6 +30,13 @@ function getUserIdFromRequest(req: Request): string {
   return typeof candidate === 'string' && candidate.length > 0 ? candidate : 'anonymous-user';
 }
 
+function parseFreezeType(note?: string): 'manual' | 'auto' | 'soft' | undefined {
+  if (!note || !note.startsWith('freeze:')) return undefined;
+  const raw = note.slice('freeze:'.length);
+  if (raw === 'manual' || raw === 'auto' || raw === 'soft') return raw;
+  return 'auto';
+}
+
 export async function getProgressOverview(req: Request, res: Response): Promise<void> {
   try {
     // TODO: Extract userId from authentication token/session
@@ -60,12 +67,15 @@ export async function getProgressOverview(req: Request, res: Response): Promise<
       const existing = habitDayMap.get(dayKey) ?? {
         dayKey,
         value: 0,
-        completed: true,
+        completed: false,
       };
 
-      existing.completed = true;
-      if (typeof entry.value === 'number') {
-        existing.value += entry.value;
+      const freezeType = parseFreezeType(entry.note);
+      if (freezeType) {
+        existing.isFrozen = true;
+      } else {
+        existing.completed = true;
+        existing.value += typeof entry.value === 'number' ? entry.value : 1;
       }
 
       habitDayMap.set(dayKey, existing);

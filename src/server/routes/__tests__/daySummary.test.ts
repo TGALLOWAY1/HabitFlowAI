@@ -123,6 +123,15 @@ describe('getDaySummary', () => {
         value: 1,
         deletedAt: '2026-02-20T12:30:00.000Z',
       }),
+      createEntry({
+        id: 'e-8',
+        habitId: 'habit-daily',
+        dayKey: '2026-02-21',
+        timestamp: '2026-02-21T23:59:59.000Z',
+        source: 'manual',
+        value: 0,
+        note: 'freeze:auto',
+      }),
     ];
 
     vi.mocked(getHabitsByUser).mockResolvedValue(habits);
@@ -170,7 +179,15 @@ describe('getDaySummary', () => {
       })
     );
 
+    expect(body.logs['habit-daily-2026-02-21']).toEqual(
+      expect.objectContaining({
+        completed: false,
+        value: 0,
+        isFrozen: true,
+        freezeType: 'auto',
+      })
+    );
+
     expect(body.logs['habit-daily-2026-02-10']).toBeUndefined();
   });
 });
-

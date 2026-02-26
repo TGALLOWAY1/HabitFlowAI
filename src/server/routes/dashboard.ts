@@ -19,6 +19,13 @@ function getUserIdFromRequest(req: Request): string {
   return typeof candidate === 'string' && candidate.length > 0 ? candidate : 'anonymous-user';
 }
 
+function parseFreezeType(note?: string): 'manual' | 'auto' | 'soft' | undefined {
+  if (!note || !note.startsWith('freeze:')) return undefined;
+  const raw = note.slice('freeze:'.length);
+  if (raw === 'manual' || raw === 'auto' || raw === 'soft') return raw;
+  return 'auto';
+}
+
 function buildLast7DayKeys(referenceDate: Date): string[] {
   const dayKeys: string[] = [];
   for (let i = 6; i >= 0; i--) {
@@ -40,11 +47,16 @@ function aggregateDayStatesByHabit(
     const existing = habitDayMap.get(dayKey) ?? {
       dayKey,
       value: 0,
-      completed: true,
+      completed: false,
     };
 
-    existing.completed = true;
-    existing.value += typeof entry.value === 'number' ? entry.value : 1;
+    const freezeType = parseFreezeType(entry.note);
+    if (freezeType) {
+      existing.isFrozen = true;
+    } else {
+      existing.completed = true;
+      existing.value += typeof entry.value === 'number' ? entry.value : 1;
+    }
 
     habitDayMap.set(dayKey, existing);
     dayStatesByHabit.set(entry.habitId, habitDayMap);
