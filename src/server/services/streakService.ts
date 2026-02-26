@@ -1,124 +1,204 @@
-import type { DayLog } from '../../types';
-import { subDays, isSameDay, parseISO, getISOWeek, getYear } from 'date-fns';
+import { differenceInCalendarDays, endOfWeek, format, parseISO, startOfWeek, subDays } from 'date-fns';
+import type { Habit } from '../../models/persistenceTypes';
+
+export interface HabitDayState {
+  dayKey: string;
+  value: number;
+  completed: boolean;
+  isFrozen?: boolean;
+}
+
+export interface HabitStreakMetrics {
+  currentStreak: number;
+  bestStreak: number;
+  lastCompletedDayKey: string | null;
+  completedToday: boolean;
+  atRisk: boolean;
+  weekSatisfied?: boolean;
+  weekProgress?: number;
+  weekTarget?: number;
+}
+
+function toDayKey(date: Date): string {
+  return format(date, 'yyyy-MM-dd');
+}
+
+function previousDayKey(dayKey: string): string {
+  return toDayKey(subDays(parseISO(dayKey), 1));
+}
+
+function weekStartDayKey(date: Date): string {
+  return toDayKey(startOfWeek(date, { weekStartsOn: 1 }));
+}
+
+function previousWeekStartDayKey(currentWeekStart: string): string {
+  return weekStartDayKey(subDays(parseISO(currentWeekStart), 7));
+}
+
+function calculateBestConsecutiveSpan(dayKeys: string[], stepInDays: number): number {
+  if (dayKeys.length === 0) return 0;
+
+  const sorted = [...new Set(dayKeys)].sort();
+  let best = 1;
+  let current = 1;
+
+  for (let i = 1; i < sorted.length; i++) {
+    const prev = parseISO(sorted[i - 1]);
+    const next = parseISO(sorted[i]);
+    const diff = differenceInCalendarDays(next, prev);
+
+    if (diff === stepInDays) {
+      current += 1;
+      best = Math.max(best, current);
+    } else if (diff > stepInDays) {
+      current = 1;
+    }
+  }
+
+  return best;
+}
+
+function calculateDailyMetrics(
+  dayStates: HabitDayState[],
+  referenceDate: Date
+): HabitStreakMetrics {
+  const validDayKeys = new Set(
+    dayStates
+      .filter(state => state.completed || state.isFrozen)
+      .map(state => state.dayKey)
+  );
+
+  const todayDayKey = toDayKey(referenceDate);
+  const completedToday = validDayKeys.has(todayDayKey);
+  const allCompletedDayKeys = [...validDayKeys];
+  const sortedCompletedDayKeys = allCompletedDayKeys.sort();
+  const lastCompletedDayKey = sortedCompletedDayKeys.length > 0
+    ? sortedCompletedDayKeys[sortedCompletedDayKeys.length - 1]
+    : null;
+
+  let currentStreak = 0;
+  let cursor = completedToday ? todayDayKey : previousDayKey(todayDayKey);
+  while (validDayKeys.has(cursor)) {
+    currentStreak += 1;
+    cursor = previousDayKey(cursor);
+    if (currentStreak > 10000) break;
+  }
+
+  const bestStreak = calculateBestConsecutiveSpan(allCompletedDayKeys, 1);
+  const atRisk = currentStreak > 0 && !completedToday;
+
+  return {
+    currentStreak,
+    bestStreak,
+    lastCompletedDayKey,
+    completedToday,
+    atRisk,
+  };
+}
+
+type WeeklyProgress = {
+  progress: number;
+  satisfied: boolean;
+};
+
+function buildWeeklyProgressMap(
+  dayStates: HabitDayState[],
+  habit: Habit
+): Map<string, WeeklyProgress> {
+  const isQuantity = habit.goal.type === 'number';
+  const target = habit.goal.target ?? 1;
+
+  const rawWeekMap = new Map<string, { total: number; distinctDays: Set<string> }>();
+
+  for (const dayState of dayStates) {
+    if (!(dayState.completed || dayState.isFrozen)) continue;
+
+    const weekKey = weekStartDayKey(parseISO(dayState.dayKey));
+    const existing = rawWeekMap.get(weekKey) ?? { total: 0, distinctDays: new Set<string>() };
+    existing.distinctDays.add(dayState.dayKey);
+
+    if (isQuantity) {
+      existing.total += dayState.value;
+    }
+
+    rawWeekMap.set(weekKey, existing);
+  }
+
+  const weeklyMap = new Map<string, WeeklyProgress>();
+  for (const [weekKey, value] of rawWeekMap.entries()) {
+    const progress = isQuantity ? value.total : value.distinctDays.size;
+    weeklyMap.set(weekKey, {
+      progress,
+      satisfied: progress >= target,
+    });
+  }
+
+  return weeklyMap;
+}
+
+function calculateWeeklyMetrics(
+  dayStates: HabitDayState[],
+  habit: Habit,
+  referenceDate: Date
+): HabitStreakMetrics {
+  const target = habit.goal.target ?? 1;
+  const weeklyProgressMap = buildWeeklyProgressMap(dayStates, habit);
+  const currentWeekKey = weekStartDayKey(referenceDate);
+  const currentWeek = weeklyProgressMap.get(currentWeekKey) ?? { progress: 0, satisfied: false };
+
+  let currentStreak = 0;
+  let cursorWeekKey = currentWeek.satisfied ? currentWeekKey : previousWeekStartDayKey(currentWeekKey);
+
+  while (weeklyProgressMap.get(cursorWeekKey)?.satisfied) {
+    currentStreak += 1;
+    cursorWeekKey = previousWeekStartDayKey(cursorWeekKey);
+    if (currentStreak > 10000) break;
+  }
+
+  const satisfiedWeekKeys = [...weeklyProgressMap.entries()]
+    .filter(([, value]) => value.satisfied)
+    .map(([weekKey]) => weekKey);
+
+  const bestStreak = calculateBestConsecutiveSpan(satisfiedWeekKeys, 7);
+
+  const completedDayKeys = dayStates
+    .filter(state => state.completed || state.isFrozen)
+    .map(state => state.dayKey)
+    .sort();
+  const lastCompletedDayKey = completedDayKeys.length > 0
+    ? completedDayKeys[completedDayKeys.length - 1]
+    : null;
+
+  const daysLeftInWeek = differenceInCalendarDays(
+    endOfWeek(referenceDate, { weekStartsOn: 1 }),
+    referenceDate
+  );
+  const atRisk = currentStreak > 0 && !currentWeek.satisfied && daysLeftInWeek <= 2;
+
+  return {
+    currentStreak,
+    bestStreak,
+    lastCompletedDayKey,
+    completedToday: dayStates.some(state => state.dayKey === toDayKey(referenceDate) && (state.completed || state.isFrozen)),
+    atRisk,
+    weekSatisfied: currentWeek.satisfied,
+    weekProgress: currentWeek.progress,
+    weekTarget: target,
+  };
+}
 
 /**
- * Streak Service
- * 
- * Handles resilient streak logic:
- * 1. Daily Streak (days contiguous, bridged by freezes)
- * 2. Weekly Streak (weeks contiguous, partial credit counts)
+ * Calculates canonical streak metrics from day-level completion derived from HabitEntries.
+ * DayLogs are intentionally not required here.
  */
+export function calculateHabitStreakMetrics(
+  habit: Habit,
+  dayStates: HabitDayState[],
+  referenceDate: Date = new Date()
+): HabitStreakMetrics {
+  if (habit.goal.frequency === 'weekly') {
+    return calculateWeeklyMetrics(dayStates, habit, referenceDate);
+  }
 
-export const calculateDailyStreak = (logs: DayLog[], habitId: string, referenceDate: Date = new Date()): number => {
-    // 1. Filter logs for this habit
-    const habitLogs = logs.filter(l => l.habitId === habitId && (l.completed || l.isFrozen));
-
-    // 2. Sort logs by date descending
-    habitLogs.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-
-    let streak = 0;
-    let checkDate = referenceDate;
-
-    // 3. Handle "Today"
-    // If we have a log for today (completed or frozen), streak includes it.
-    // If not, we don't break; we just check yesterday.
-    const todayLog = habitLogs.find(l => isSameDay(parseISO(l.date), checkDate));
-    if (todayLog) {
-        streak++;
-        checkDate = subDays(checkDate, 1);
-    } else {
-        // No log for today. Streak assumes we stick active from yesterday?
-        // Actually, if I haven't done it today, my streak is whatever it was yesterday.
-        // So we just step back one day to start checking "history".
-        checkDate = subDays(checkDate, 1);
-    }
-
-    // 4. Iterate backwards
-    // We allow gaps ONLY if they are covered by a freeze?
-    // Wait, the `habitLogs` array only contains "good" days (completed or frozen).
-    // So if the next log in the array is NOT `checkDate`, then we have a gap.
-
-    // BUT, we need to handle the fact that we might have skipped "today" but done "yesterday".
-    // Or skipped "today" and "yesterday" (Break).
-
-    // Better approach: Iterate days backwards from checkDate.
-    // Stop when we find a day with NO log.
-
-    // Max lookback? A reasonable number or until streak breaks.
-    // We can iterate until we fail to find a log.
-
-    // Optimization: Use a Set of date strings for O(1) lookup
-    const validDates = new Set(habitLogs.map(l => l.date));
-
-    while (true) {
-        const dateStr = checkDate.toISOString().split('T')[0];
-
-        if (validDates.has(dateStr)) {
-            streak++;
-            checkDate = subDays(checkDate, 1);
-        } else {
-            // Found a gap. Streak ends.
-            break;
-        }
-
-        // Safety break for infinite loops (though subDays should prevent)
-        if (streak > 10000) break;
-    }
-
-    return streak;
-};
-
-export const calculateWeeklyStreak = (logs: DayLog[], habitId: string, referenceDate: Date = new Date()): number => {
-    // 1. Group logs by Week (ISO Week)
-    // Map: "YYYY-WW" -> count
-    const weekCounts = new Map<string, number>();
-    const frozenWeeks = new Set<string>(); // Keep track if any day in the week was frozen
-
-    logs.filter(l => l.habitId === habitId).forEach(log => {
-        const date = parseISO(log.date);
-        const key = `${getYear(date)}-${getISOWeek(date)}`;
-
-        if (log.completed) {
-            weekCounts.set(key, (weekCounts.get(key) || 0) + 1);
-        }
-        if (log.isFrozen) {
-            frozenWeeks.add(key);
-        }
-    });
-
-    let streak = 0;
-    let checkDate = referenceDate;
-
-    // Current Week handling
-    const currentWeekKey = `${getYear(checkDate)}-${getISOWeek(checkDate)}`;
-    const currentWeekCount = weekCounts.get(currentWeekKey) || 0;
-    const currentWeekFrozen = frozenWeeks.has(currentWeekKey);
-
-    // If current week has >= 1 completion OR is frozen, it counts.
-    // If 0 completions, it doesn't break streak yet (week in progress), so we ignore it and start from previous week.
-    // Wait, if it has completions, we increment streak.
-    if (currentWeekCount >= 1 || currentWeekFrozen) {
-        streak++;
-    }
-
-    // Move to previous week
-    checkDate = subDays(checkDate, 7); // Rough jump, better to align to end of prev week?
-    // Actually just iterating weeks is safer.
-
-    const maxWeeks = 500; // Safety cap
-    for (let i = 0; i < maxWeeks; i++) {
-        const weekKey = `${getYear(checkDate)}-${getISOWeek(checkDate)}`;
-        const count = weekCounts.get(weekKey) || 0;
-        const isFrozen = frozenWeeks.has(weekKey);
-
-        if (count >= 1 || isFrozen) {
-            streak++;
-            checkDate = subDays(checkDate, 7);
-        } else {
-            break;
-        }
-    }
-
-    return streak;
-};
-
+  return calculateDailyMetrics(dayStates, referenceDate);
+}
