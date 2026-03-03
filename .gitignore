@@ -26,3 +26,7 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Migration run artifacts (regenerated on each run)
+docs/migrations/user-migration-*.json
+docs/migrations/test-user-cleanup-*.json
