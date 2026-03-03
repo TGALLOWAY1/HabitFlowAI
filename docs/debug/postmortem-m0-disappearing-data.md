@@ -63,36 +63,47 @@ Determine whether data under `anonymous-user` and/or `32ba4231-...` should be mi
 
 ### Step 2: Migrate orphaned data (when ready)
 
-Create and run a migration that updates `userId` on affected documents:
+Use the migration script (see `docs/migrations/README.md` for full details):
 
-```js
-// Example — DO NOT RUN until reviewed
-const TARGET_USER = '8013bd6a-1af4-4dc1-84ec-9e6d51dec7fb';
-const ORPHAN_IDS = ['anonymous-user', '32ba4231-79d9-4d07-8aa9-398aee800ce6'];
-const COLLECTIONS = ['habits', 'categories', 'goals', 'habitEntries', 'dayLogs', 'wellbeingLogs', 'tasks'];
+```bash
+# Dry-run first
+npx tsx scripts/migrations/migrateUserData.ts \
+  --from anonymous-user \
+  --from 32ba4231-79d9-4d07-8aa9-398aee800ce6 \
+  --to 8013bd6a-1af4-4dc1-84ec-9e6d51dec7fb \
+  --dry-run
 
-for (const colName of COLLECTIONS) {
-  const result = await db.collection(colName).updateMany(
-    { userId: { $in: ORPHAN_IDS } },
-    { $set: { userId: TARGET_USER } }
-  );
-  console.log(`${colName}: ${result.modifiedCount} migrated`);
-}
+# Apply after reviewing the dry-run report
+npx tsx scripts/migrations/migrateUserData.ts \
+  --from anonymous-user \
+  --from 32ba4231-79d9-4d07-8aa9-398aee800ce6 \
+  --to 8013bd6a-1af4-4dc1-84ec-9e6d51dec7fb \
+  --apply
+
+# Verify
+npx tsx scripts/migrations/verifyUserMigration.ts \
+  --from anonymous-user \
+  --from 32ba4231-79d9-4d07-8aa9-398aee800ce6 \
+  --to 8013bd6a-1af4-4dc1-84ec-9e6d51dec7fb \
+  --allow-leftovers
 ```
 
 ### Step 3: Clean up test data from production
 
-```js
-const TEST_PATTERN = /^test-/;
-// Find and remove test-user documents (after backing up)
+```bash
+npx tsx scripts/migrations/cleanupTestUsers.ts --dry-run
+npx tsx scripts/migrations/cleanupTestUsers.ts --apply
 ```
 
 ### Step 4: Prevent recurrence
 
-- [x] Added hard guard in `mongoClient.ts`: `NODE_ENV=test` rejects non-test DB names
-- [x] Added `NODE_ENV=test` in vitest setup file
-- [x] Created `assertTestDb.ts` helper for explicit test guards
-- [ ] Consider using `mongodb-memory-server` for fully isolated tests
+- [x] Hard guard in `mongoClient.ts`: rejects non-test DB names when `NODE_ENV=test`, `VITEST`, or `JEST_WORKER_ID` detected
+- [x] Vitest setup sets `NODE_ENV=test`
+- [x] `assertTestDb.ts` helper for explicit test guards
+- [x] All 18 integration tests converted to `mongodb-memory-server` via shared `mongoTestHelper.ts`
+- [x] `ALLOW_LIVE_DB_TESTS=true` required for live-DB integration tests (must use `_test` DB name)
+- [x] Removed hardcoded `KNOWN_USER_ID` — replaced with stable first-run default
+- [x] Added `DevIdentityPanel` for dev-mode userId switching
 - [ ] Add a pre-commit hook or CI check that ensures tests never reference production DB names
 
 ---
@@ -101,13 +112,15 @@ const TEST_PATTERN = /^test-/;
 
 | # | Control | Status |
 |---|---------|--------|
-| 1 | `getDb()` rejects non-test DB when `NODE_ENV=test` | ✅ Added |
+| 1 | `getDb()` rejects non-test DB (NODE_ENV, VITEST, JEST) | ✅ Added |
 | 2 | Vitest setup sets `NODE_ENV=test` | ✅ Added |
 | 3 | Startup log prints host + dbName + NODE_ENV | ✅ Added |
 | 4 | `assertTestDb.ts` guard available for tests | ✅ Created |
 | 5 | `/api/debug/whoami` endpoint for identity debugging | ✅ Added |
 | 6 | `inspectMongo.ts` read-only diagnostic script | ✅ Created |
 | 7 | `docs/debug/db-config.md` documents env resolution | ✅ Created |
-| 8 | Frontend hardcodes known userId (no more random UUIDs) | ✅ Already in place |
-| 9 | In-memory MongoDB for tests | ⬜ Recommended |
-| 10 | CI check for test DB isolation | ⬜ Recommended |
+| 8 | Frontend uses stable userId (no hardcoded override) | ✅ Refactored |
+| 9 | In-memory MongoDB for all tests | ✅ Implemented |
+| 10 | Dev identity panel for userId switching | ✅ Added |
+| 11 | Migration + verification + cleanup scripts | ✅ Created |
+| 12 | CI check for test DB isolation | ⬜ Recommended |
