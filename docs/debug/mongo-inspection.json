@@ -1,0 +1,105 @@
+{
+  "timestamp": "2026-03-03T21:31:47.911Z",
+  "host": "habitflowai.dgdrdui.mongodb.net",
+  "dbName": "HabitFlowAI",
+  "nodeEnv": "(unset)",
+  "collections": [
+    "activities",
+    "activityLogs",
+    "categories",
+    "dashboardPrefs",
+    "dayLogs",
+    "goalManualLogs",
+    "goals",
+    "habitEntries",
+    "habits",
+    "identities",
+    "journalEntries",
+    "routineImages",
+    "routineLogs",
+    "routines",
+    "skills",
+    "tasks",
+    "userPreferences",
+    "wellbeingEntries",
+    "wellbeingLogs"
+  ],
+  "counts": {
+    "habits": 242,
+    "categories": 34,
+    "goals": 17,
+    "habitEntries": 480,
+    "dayLogs": 400,
+    "wellbeingLogs": 47,
+    "wellbeingEntries": 454,
+    "routines": 16,
+    "routineLogs": 1,
+    "journalEntries": 31,
+    "tasks": 4,
+    "skillTree": 0,
+    "dashboardPrefs": 2,
+    "routineImages": 0,
+    "goalManualLogs": 2,
+    "habitPotentialEvidence": 0
+  },
+  "samples": {
+    "habits": {
+      "_id": "6933a6ac220d001de8b4d65c",
+      "userId": "anonymous-user"
+    },
+    "categories": {
+      "_id": "6933a6ac220d001de8b4d65f",
+      "userId": "anonymous-user"
+    },
+    "goals": {
+      "_id": "693624650029ce339f3694b9",
+      "userId": "anonymous-user"
+    },
+    "habitEntries": {
+      "_id": "693cf70ee2cba7307457732e",
+      "userId": "anonymous-user"
+    },
+    "dayLogs": {
+      "_id": "69373c9d8fa3f772663afe66",
+      "userId": "anonymous-user"
+    },
+    "wellbeingLogs": {
+      "_id": "693624d28fa3f772663a5b77",
+      "userId": "anonymous-user"
+    },
+    "wellbeingEntries": {
+      "_id": "6949d36dbeb3a35e3d8f2555",
+      "userId": "8013bd6a-1af4-4dc1-84ec-9e6d51dec7fb"
+    },
+    "routines": {
+      "_id": "693bad13ec344ce3a7524785",
+      "userId": "8013bd6a-1af4-4dc1-84ec-9e6d51dec7fb"
+    },
+    "routineLogs": {
+      "_id": "694ee1063395c7aed7206d0e",
+      "userId": "test-user-routines-validation"
+    },
+    "journalEntries": {
+      "_id": "693c688b05da8131fc02084d",
+      "userId": "8013bd6a-1af4-4dc1-84ec-9e6d51dec7fb"
+    },
+    "tasks": {
+      "_id": "693c744937a66ebf8d5fcd1f",
+      "userId": "anonymous-user"
+    },
+    "skillTree": {
+      "_id": "(collection missing)"
+    },
+    "dashboardPrefs": {
+      "_id": "694ace2bbeb3a35e3d8fb286",
+      "userId": "demo_emotional_wellbeing"
+    },
+    "goalManualLogs": {
+      "_id": "694084c7be93ea5b384bf51f",
+      "userId": "8013bd6a-1af4-4dc1-84ec-9e6d51dec7fb"
+    },
+    "habitPotentialEvidence": {
+      "_id": "(collection missing)"
+    }
+  }
+}
