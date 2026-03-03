@@ -214,6 +214,25 @@ app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
+// Debug: identity + DB info (dev-only, never in production)
+app.get('/api/debug/whoami', (req, res) => {
+  if (process.env.NODE_ENV === 'production') {
+    res.status(404).json({ error: 'Not found' });
+    return;
+  }
+
+  const userId = (req as any).userId ?? '(not set)';
+
+  res.json({
+    userId,
+    userIdSource: req.headers['x-user-id'] ? 'X-User-Id header' : 'fallback',
+    dbName: process.env.MONGODB_DB_NAME ?? '(unset)',
+    nodeEnv: process.env.NODE_ENV ?? '(unset)',
+    mongoUriPresent: !!process.env.MONGODB_URI,
+    timestamp: new Date().toISOString(),
+  });
+});
+
 // Start server
 const server = app.listen(PORT, () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);
