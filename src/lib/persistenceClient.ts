@@ -18,30 +18,53 @@ import { warnIfPersonaLeaksIntoHabitEntryRequest } from '../shared/invariants/pe
 
 
 
+const USER_ID_STORAGE_KEY = 'habitflow_user_id';
+
+/**
+ * Default user ID used on first launch or when localStorage is empty.
+ * After the initial identity migration this should be the canonical user.
+ */
+const DEFAULT_USER_ID = '8013bd6a-1af4-4dc1-84ec-9e6d51dec7fb';
+
 /**
  * Get or create a persistent user ID.
- * 
- * Generates a UUID and stores it in localStorage to ensure the same user ID
- * is used across browser sessions and refreshes.
+ *
+ * On first visit the DEFAULT_USER_ID is used and persisted.
+ * Once set, the value in localStorage is stable across sessions.
+ * To switch users call `setActiveRealUserId(newId)`.
  */
 function getOrCreateUserId(): string {
   if (typeof window === 'undefined') {
     return 'server-side-rendering-placeholder';
   }
 
-  const STORAGE_KEY = 'habitflow_user_id';
-  const KNOWN_USER_ID = '8013bd6a-1af4-4dc1-84ec-9e6d51dec7fb'; // Auto-restore known user
+  let userId = localStorage.getItem(USER_ID_STORAGE_KEY);
 
-  let userId = localStorage.getItem(STORAGE_KEY);
-
-  if (!userId || userId !== KNOWN_USER_ID) {
-    // Force restore the known ID if missing or different (to fix data loss)
-    userId = KNOWN_USER_ID;
-    localStorage.setItem(STORAGE_KEY, userId);
-    console.log('[Auth] Restored known persistent User ID:', userId);
+  if (!userId) {
+    userId = DEFAULT_USER_ID;
+    localStorage.setItem(USER_ID_STORAGE_KEY, userId);
+    console.log('[Auth] Initialized persistent User ID:', userId);
   }
 
   return userId;
+}
+
+/**
+ * Explicitly switch the active real-mode userId.
+ * Useful for reclaiming orphaned data or dev debugging.
+ */
+export function setActiveRealUserId(newUserId: string): void {
+  if (typeof window === 'undefined') return;
+  localStorage.setItem(USER_ID_STORAGE_KEY, newUserId);
+  console.log('[Auth] Switched User ID to:', newUserId);
+}
+
+/**
+ * Read the current real-mode userId without side-effects.
+ */
+export function getActiveRealUserId(): string {
+  if (typeof window === 'undefined') return DEFAULT_USER_ID;
+  return localStorage.getItem(USER_ID_STORAGE_KEY) || DEFAULT_USER_ID;
 }
 
 export function getActiveUserMode(): ActiveUserMode {

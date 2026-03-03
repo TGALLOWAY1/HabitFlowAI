@@ -28,6 +28,7 @@ import { DayView } from './components/day-view/DayView';
 import { JournalPage } from './pages/JournalPage';
 import { TasksPage } from './pages/TasksPage';
 import { DebugEntriesPage } from './pages/DebugEntriesPage';
+import { DevIdentityPanel } from './components/DevIdentityPanel';
 import { WellbeingHistoryPage } from './pages/WellbeingHistoryPage';
 
 // Simple router state
@@ -514,6 +515,7 @@ function App() {
             <Layout>
               <HabitTrackerContent />
             </Layout>
+            <DevIdentityPanel />
           </TaskProvider>
         </RoutineProvider>
       </HabitProvider>
