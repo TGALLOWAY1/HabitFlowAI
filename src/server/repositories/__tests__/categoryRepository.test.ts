@@ -2,19 +2,12 @@
  * Category Repository Tests
  * 
  * Integration tests for the Category repository.
- * Requires MongoDB to be running (use test database).
+ * Uses mongodb-memory-server — no external MongoDB required.
  */
 
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
-import { MongoClient, Db } from 'mongodb';
 import type { Category } from '../../../models/persistenceTypes';
-
-// Set environment variables BEFORE importing modules that use them
-// This ensures the env module reads the correct values
-if (!process.env.MONGODB_URI) {
-  process.env.MONGODB_URI = 'mongodb://localhost:27017';
-}
-process.env.USE_MONGO_PERSISTENCE = 'true';
+import { setupTestMongo, teardownTestMongo, getTestDb } from '../../../test/mongoTestHelper';
 
 import {
   createCategory,
@@ -24,67 +17,20 @@ import {
   deleteCategory,
   reorderCategories,
 } from '../categoryRepository';
-import { getDb, closeConnection } from '../../lib/mongoClient';
 
-// Use test database
-const TEST_DB_NAME = 'habitflowai_test';
 const TEST_USER_ID = 'test-user-123';
 
-// Store original env values
-let originalDbName: string | undefined;
-let originalUseMongo: string | undefined;
-let testClient: MongoClient | null = null;
-
 describe('CategoryRepository', () => {
-  let testDb: Db;
-
   beforeAll(async () => {
-    // Use test database (env vars already set at top of file)
-    originalDbName = process.env.MONGODB_DB_NAME;
-    process.env.MONGODB_DB_NAME = TEST_DB_NAME;
-
-    // Reload env module to pick up new MONGODB_DB_NAME
-    // Note: In ES modules, we need to ensure env vars are set before first import
-    // which we've done at the top of the file
-
-    // Get test database
-    testDb = await getDb();
-    
-    // Get client from MongoDB URI for cleanup
-    const uri = process.env.MONGODB_URI;
-    if (uri) {
-      testClient = new MongoClient(uri);
-      await testClient.connect();
-    }
+    await setupTestMongo();
   });
 
   afterAll(async () => {
-    // Clean up test database
-    if (testClient) {
-      const adminDb = testClient.db(TEST_DB_NAME);
-      await adminDb.dropDatabase();
-      await testClient.close();
-    }
-    
-    await closeConnection();
-
-    // Restore original env
-    if (originalDbName) {
-      process.env.MONGODB_DB_NAME = originalDbName;
-    } else {
-      delete process.env.MONGODB_DB_NAME;
-    }
-    if (originalUseMongo) {
-      process.env.USE_MONGO_PERSISTENCE = originalUseMongo;
-    } else {
-      delete process.env.USE_MONGO_PERSISTENCE;
-    }
+    await teardownTestMongo();
   });
 
   beforeEach(async () => {
-    // Clear ALL categories collection before each test to ensure isolation
-    // This prevents test pollution from previous tests
-    const db = await getDb();
+    const db = await getTestDb();
     await db.collection('categories').deleteMany({});
   });
 
@@ -111,7 +57,8 @@ describe('CategoryRepository', () => {
 
       const category = await createCategory(categoryData, TEST_USER_ID);
 
-      const stored = await testDb.collection('categories').findOne({ id: category.id });
+      const db = await getTestDb();
+      const stored = await db.collection('categories').findOne({ id: category.id });
       expect(stored).toBeDefined();
       expect(stored?.userId).toBe(TEST_USER_ID);
     });

@@ -8,13 +8,14 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import express, { type Express } from 'express';
 import request from 'supertest';
 import { getDayView } from '../dayView';
-import { closeConnection } from '../../lib/mongoClient';
+import { setupTestMongo, teardownTestMongo } from '../../../test/mongoTestHelper';
 
 const TEST_USER_ID = 'test-user-dayview-validation';
 
 let app: Express;
 
 beforeAll(async () => {
+  await setupTestMongo();
   app = express();
   app.use(express.json());
   app.use((req, res, next) => {
@@ -25,7 +26,7 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  await closeConnection();
+  await teardownTestMongo();
 });
 
 describe('GET /api/dayView - DayKey and TimeZone Validation', () => {

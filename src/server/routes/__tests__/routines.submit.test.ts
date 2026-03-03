@@ -8,27 +8,15 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import express, { type Express } from 'express';
 import request from 'supertest';
-
-// Set environment variables BEFORE importing modules that use them
-if (!process.env.MONGODB_URI) {
-  process.env.MONGODB_URI = 'mongodb://localhost:27017';
-}
-process.env.USE_MONGO_PERSISTENCE = 'true';
-
+import { setupTestMongo, teardownTestMongo, getTestDb } from '../../../test/mongoTestHelper';
 import { submitRoutineRoute } from '../routines';
-import { getDb, closeConnection } from '../../lib/mongoClient';
 import { createRoutine } from '../../repositories/routineRepository';
 import { createHabit } from '../../repositories/habitRepository';
 import { createCategory } from '../../repositories/categoryRepository';
 import { getHabitEntriesForDay } from '../../repositories/habitEntryRepository';
 import { getDayLog } from '../../repositories/dayLogRepository';
 
-// Use test database
-const TEST_DB_NAME = 'habitflowai_test_routines';
 const TEST_USER_ID = 'test-user-routines';
-
-// Store original env values
-let originalDbName: string | undefined;
 
 describe('Routine Submit Route', () => {
   let app: Express;
@@ -37,11 +25,8 @@ describe('Routine Submit Route', () => {
   let habitId2: string;
 
   beforeAll(async () => {
-    // Use test database
-    originalDbName = process.env.MONGODB_DB_NAME;
-    process.env.MONGODB_DB_NAME = TEST_DB_NAME;
+    await setupTestMongo();
 
-    // Set up Express app
     app = express();
     app.use(express.json());
 
@@ -100,22 +85,12 @@ describe('Routine Submit Route', () => {
   });
 
   afterAll(async () => {
-    // Clean up test database
-    const testDb = await getDb();
-    await testDb.dropDatabase();
-    await closeConnection();
-
-    // Restore original env
-    if (originalDbName) {
-      process.env.MONGODB_DB_NAME = originalDbName;
-    } else {
-      delete process.env.MONGODB_DB_NAME;
-    }
+    await teardownTestMongo();
   });
 
   beforeEach(async () => {
     // Clear entries and dayLogs before each test (but keep routines, habits, categories)
-    const testDb = await getDb();
+    const testDb = await getTestDb();
     await testDb.collection('habitEntries').deleteMany({ userId: TEST_USER_ID });
     await testDb.collection('dayLogs').deleteMany({ userId: TEST_USER_ID });
     await testDb.collection('routineLogs').deleteMany({ userId: TEST_USER_ID });
@@ -184,7 +159,7 @@ describe('Routine Submit Route', () => {
       await new Promise(resolve => setTimeout(resolve, 200));
       
       // Check for entries - they should exist with the testDate since we used dateOverride
-      const db = await getDb();
+      const db = await getTestDb();
       const allEntries = await db.collection('habitEntries')
         .find({ 
           habitId: habitId1, 
@@ -278,7 +253,7 @@ describe('Routine Submit Route', () => {
 
       // Verify entry was created
       // The deriveDateString function uses local timezone, so the date might differ
-      const db = await getDb();
+      const db = await getTestDb();
       const entries = await db.collection('habitEntries')
         .find({ 
           habitId: habitId1, 

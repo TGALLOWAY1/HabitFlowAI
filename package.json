@@ -12,6 +12,7 @@
     "preview": "vite preview",
     "test": "vitest",
     "test:run": "vitest run",
+    "compare:legacy-reads": "tsx scripts/compare-legacy-vs-canonical.ts",
     "check:invariants": "tsx scripts/check-invariants.ts",
     "seed:emotion": "tsx scripts/seed-emotion-regulation.ts",
     "seed:fitness": "tsx scripts/seed-fitness.ts"
@@ -53,6 +54,7 @@
     "express": "^5.2.1",
     "globals": "^16.5.0",
     "jsdom": "^27.2.0",
+    "mongodb-memory-server": "^11.0.1",
     "postcss": "^8.5.6",
     "supertest": "^7.1.4",
     "tailwindcss": "^3.4.18",

@@ -15,6 +15,8 @@
 
 import { getHabitEntriesByHabit, getHabitEntriesByUser } from '../repositories/habitEntryRepository';
 import { getDayLogsByHabit, getDayLogsByUser } from '../repositories/dayLogRepository';
+import { isLegacyDaylogReadsEnabled } from '../config';
+import { warnOncePerRequest } from '../middleware/requestContext';
 import type { HabitEntry, DayLog } from '../../models/persistenceTypes';
 import type { DayKey } from '../../domain/time/dayKey';
 import { formatDayKeyFromDate, isValidDayKey } from '../../domain/time/dayKey';
@@ -63,6 +65,26 @@ export interface EntryView {
   legacyValue?: number | null;
 }
 
+const LEGACY_DAYLOG_READS_WARNING = 'LEGACY_DAYLOG_READS enabled';
+
+function resolveLegacyFallback(
+  includeLegacyFallback: boolean | undefined
+): boolean {
+  if (includeLegacyFallback !== undefined) {
+    return includeLegacyFallback;
+  }
+
+  return isLegacyDaylogReadsEnabled();
+}
+
+function maybeWarnLegacyReads(includeLegacyFallback: boolean): void {
+  if (!includeLegacyFallback) {
+    return;
+  }
+
+  warnOncePerRequest(LEGACY_DAYLOG_READS_WARNING);
+}
+
 /**
  * Get entry views for a single habit.
  * 
@@ -82,7 +104,9 @@ export async function getEntryViewsForHabit(
   userId: string,
   args: { startDayKey?: DayKey; endDayKey?: DayKey; timeZone: string; includeLegacyFallback?: boolean }
 ): Promise<EntryView[]> {
-  const includeLegacyFallback = args.includeLegacyFallback ?? true;
+  const includeLegacyFallback = resolveLegacyFallback(args.includeLegacyFallback);
+  maybeWarnLegacyReads(includeLegacyFallback);
+
   const entries = await getHabitEntriesByHabit(habitId, userId);
   const dayLogs = includeLegacyFallback
     ? Object.values(await getDayLogsByHabit(habitId, userId))
@@ -141,7 +165,8 @@ export async function getEntryViewsForHabits(
   userId: string,
   args: { startDayKey?: DayKey; endDayKey?: DayKey; timeZone: string; includeLegacyFallback?: boolean }
 ): Promise<EntryView[]> {
-  const includeLegacyFallback = args.includeLegacyFallback ?? true;
+  const includeLegacyFallback = resolveLegacyFallback(args.includeLegacyFallback);
+  maybeWarnLegacyReads(includeLegacyFallback);
 
   // For batch queries, fetch all user entries and dayLogs, then filter by habitIds
   // This is more efficient than N queries for N habits

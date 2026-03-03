@@ -119,6 +119,24 @@ async function connectToMongo(): Promise<MongoClient> {
     );
   }
 
+  // Hard guard: reject non-test DB names when running in a test context.
+  // Detects test runners even if NODE_ENV was not explicitly set.
+  const isTestEnv = process.env.NODE_ENV === 'test'
+    || !!process.env.VITEST
+    || !!process.env.JEST_WORKER_ID;
+
+  if (isTestEnv) {
+    const TEST_DB_PATTERN = /(_test|test_)/i;
+    if (!TEST_DB_PATTERN.test(dbName)) {
+      throw new Error(
+        `🛑 SAFETY ABORT: Refusing to connect to non-test database "${dbName}" ` +
+        `in a test environment (NODE_ENV=${process.env.NODE_ENV}, ` +
+        `VITEST=${!!process.env.VITEST}, JEST=${!!process.env.JEST_WORKER_ID}). ` +
+        `DB name must contain "_test" or "test_".`
+      );
+    }
+  }
+
   console.log(`Connecting to MongoDB: ${uri.replace(/\/\/.*@/, '//***@')} (database: ${dbName})`);
 
   const options: MongoClientOptions = {
@@ -144,12 +162,18 @@ async function connectToMongo(): Promise<MongoClient> {
     // Verify we can access the database
     await client.db(dbName).admin().ping();
 
-    // Log connection details for persistence verification
-    // Mask credentials but show host to prove it's not in-memory
     const sanitizedUri = uri.replace(/\/\/([^:]+):([^@]+)@/, '//***:***@');
-    console.log(`✅ Successfully connected to MongoDB`);
-    console.log(`   Host: ${sanitizedUri}`);
-    console.log(`   Database: ${dbName}`);
+    let host = 'unknown';
+    try {
+      const parsed = new URL(uri.replace('mongodb+srv://', 'https://').replace('mongodb://', 'http://'));
+      host = parsed.hostname;
+    } catch { /* keep 'unknown' */ }
+
+    console.log(`✅ Connected Mongo: host=${host} db=${dbName} NODE_ENV=${process.env.NODE_ENV ?? '(unset)'}`);
+    console.log(`   Full URI (sanitized): ${sanitizedUri}`);
+    console.log(`   MONGODB_URI present: ${!!process.env.MONGODB_URI}`);
+    console.log(`   MONGODB_DB_NAME present: ${!!process.env.MONGODB_DB_NAME} (value: ${process.env.MONGODB_DB_NAME ?? '(unset)'})`);
+    console.log(`   USE_MONGO_PERSISTENCE: ${process.env.USE_MONGO_PERSISTENCE ?? '(unset)'}`);
 
     return client;
   } catch (error) {

@@ -36,9 +36,11 @@ const PORT = process.env.PORT || 3000;
 import { userIdMiddleware } from './middleware/auth';
 import { devUserIdOverride } from './middleware/devUserIdOverride';
 import { noPersonaInHabitEntryRequests } from './middleware/noPersonaInHabitEntryRequests';
+import { requestContextMiddleware } from './middleware/requestContext';
 
 // Middleware
 app.use(express.json());
+app.use(requestContextMiddleware);
 
 // Serve static files from public directory (for goal badge images)
 // Note: Routine images are served via API endpoints, not static files
@@ -210,6 +212,25 @@ app.get('/api/admin/integrity-report', getIntegrityReport);
 // Health check endpoint
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+// Debug: identity + DB info (dev-only, never in production)
+app.get('/api/debug/whoami', (req, res) => {
+  if (process.env.NODE_ENV === 'production') {
+    res.status(404).json({ error: 'Not found' });
+    return;
+  }
+
+  const userId = (req as any).userId ?? '(not set)';
+
+  res.json({
+    userId,
+    userIdSource: req.headers['x-user-id'] ? 'X-User-Id header' : 'fallback',
+    dbName: process.env.MONGODB_DB_NAME ?? '(unset)',
+    nodeEnv: process.env.NODE_ENV ?? '(unset)',
+    mongoUriPresent: !!process.env.MONGODB_URI,
+    timestamp: new Date().toISOString(),
+  });
 });
 
 // Start server

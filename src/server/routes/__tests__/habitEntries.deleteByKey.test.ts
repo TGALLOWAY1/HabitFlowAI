@@ -8,20 +8,21 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import express, { type Express } from 'express';
 import request from 'supertest';
+import { setupTestMongo, teardownTestMongo, getTestDb } from '../../../test/mongoTestHelper';
 import { deleteHabitEntryByKeyRoute } from '../habitEntries';
-import { getDb, closeConnection } from '../../lib/mongoClient';
 import { createHabit } from '../../repositories/habitRepository';
 import { createCategory } from '../../repositories/categoryRepository';
 import { createHabitEntry } from '../../repositories/habitEntryRepository';
 import { getHabitEntriesForDay } from '../../repositories/habitEntryRepository';
 
-const TEST_DB_NAME = 'test_habitflow_delete_by_key';
 const TEST_USER_ID = 'test-user-delete-by-key';
 
 let app: Express;
 let testHabitId: string;
 
 beforeAll(async () => {
+  await setupTestMongo();
+
   app = express();
   app.use(express.json());
   app.use((req, res, next) => {
@@ -32,11 +33,11 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  await closeConnection();
+  await teardownTestMongo();
 });
 
 beforeEach(async () => {
-  const db = await getDb();
+  const db = await getTestDb();
   await db.collection('habits').deleteMany({ userId: TEST_USER_ID });
   await db.collection('habitEntries').deleteMany({ userId: TEST_USER_ID });
   await db.collection('categories').deleteMany({ userId: TEST_USER_ID });
@@ -91,7 +92,7 @@ describe('DELETE /api/entries/key - Delete by habitId + dayKey', () => {
     expect(entriesAfter.length).toBe(0);
 
     // Verify entry still exists in DB but is soft-deleted
-    const db = await getDb();
+    const db = await getTestDb();
     const dbEntry = await db.collection('habitEntries').findOne({
       id: entry.id,
       userId: TEST_USER_ID,
@@ -162,7 +163,7 @@ describe('DELETE /api/entries/key - Delete by habitId + dayKey', () => {
     }, TEST_USER_ID);
 
     // Soft delete it manually
-    const db = await getDb();
+    const db = await getTestDb();
     await db.collection('habitEntries').updateOne(
       { id: entry.id, userId: TEST_USER_ID },
       { $set: { deletedAt: new Date().toISOString() } }
@@ -184,7 +185,7 @@ describe('DELETE /api/entries/key - Delete by habitId + dayKey', () => {
     const dayKey = '2025-01-30';
 
     // Create entry with legacy date field (simulating old records)
-    const db = await getDb();
+    const db = await getTestDb();
     const entryId = crypto.randomUUID();
     await db.collection('habitEntries').insertOne({
       _id: new (await import('mongodb')).ObjectId(),

@@ -11,20 +11,17 @@ import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import express, { type Express } from 'express';
 import request from 'supertest';
 import { createHabitEntryRoute, updateHabitEntryRoute, deleteHabitEntryRoute } from '../habitEntries';
-import { getDb, closeConnection } from '../../lib/mongoClient';
+import { setupTestMongo, teardownTestMongo, getTestDb } from '../../../test/mongoTestHelper';
 import { createHabit } from '../../repositories/habitRepository';
 import { createCategory } from '../../repositories/categoryRepository';
 
-const TEST_DB_NAME = 'test_habitflow_persona_regression';
 const TEST_USER_ID = 'test-user-persona-regression';
 
 let app: Express;
 let testHabitId: string;
 
 beforeAll(async () => {
-  // Ensure we use a test DB
-  process.env.MONGODB_DB_NAME = TEST_DB_NAME;
-  process.env.USE_MONGO_PERSISTENCE = 'true';
+  await setupTestMongo();
 
   app = express();
   app.use(express.json());
@@ -39,11 +36,11 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  await closeConnection();
+  await teardownTestMongo();
 });
 
 beforeEach(async () => {
-  const db = await getDb();
+  const db = await getTestDb();
   await db.collection('categories').deleteMany({ userId: TEST_USER_ID });
   await db.collection('habits').deleteMany({ userId: TEST_USER_ID });
   await db.collection('habitEntries').deleteMany({ userId: TEST_USER_ID });

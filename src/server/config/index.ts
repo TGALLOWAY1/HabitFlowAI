@@ -46,3 +46,17 @@ export function getFeatureFlag(key: string, defaultValue: boolean = false): bool
   return process.env[key] === 'true' || (process.env[key] === undefined && defaultValue);
 }
 
+/**
+ * Controls whether truthQuery may merge legacy DayLogs into EntryViews.
+ *
+ * Default: false across environments.
+ * Can be enabled in development/test via LEGACY_DAYLOG_READS=true.
+ * Production always forces this off.
+ */
+export function isLegacyDaylogReadsEnabled(): boolean {
+  if (process.env.NODE_ENV === 'production') {
+    return false;
+  }
+
+  return getFeatureFlag('LEGACY_DAYLOG_READS', false);
+}

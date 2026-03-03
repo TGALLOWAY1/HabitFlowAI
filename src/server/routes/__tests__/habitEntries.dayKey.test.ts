@@ -12,18 +12,18 @@ import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import express, { type Express } from 'express';
 import request from 'supertest';
 import { createHabitEntryRoute, updateHabitEntryRoute } from '../habitEntries';
-import { getDb, closeConnection } from '../../lib/mongoClient';
+import { setupTestMongo, teardownTestMongo, getTestDb } from '../../../test/mongoTestHelper';
 import { createHabit } from '../../repositories/habitRepository';
 import { createCategory } from '../../repositories/categoryRepository';
 import { getHabitEntriesForDay } from '../../repositories/habitEntryRepository';
 
-const TEST_DB_NAME = 'test_habitflow_daykey';
 const TEST_USER_ID = 'test-user-daykey';
 
 let app: Express;
 let testHabitId: string;
 
 beforeAll(async () => {
+  await setupTestMongo();
   app = express();
   app.use(express.json());
   app.use((req, res, next) => {
@@ -35,11 +35,11 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  await closeConnection();
+  await teardownTestMongo();
 });
 
 beforeEach(async () => {
-  const db = await getDb();
+  const db = await getTestDb();
   await db.collection('habits').deleteMany({ userId: TEST_USER_ID });
   await db.collection('habitEntries').deleteMany({ userId: TEST_USER_ID });
   await db.collection('categories').deleteMany({ userId: TEST_USER_ID });
@@ -184,8 +184,7 @@ describe('POST /api/entries - DayKey Normalization', () => {
     expect(createResponse.body.entry.date).toBe('2025-01-30');
 
     // Query directly from DB to verify date is NOT persisted
-    const { getDb } = await import('../../lib/mongoClient');
-    const db = await getDb();
+    const db = await getTestDb();
     const dbEntry = await db.collection('habitEntries').findOne({ id: entryId, userId: TEST_USER_ID });
 
     expect(dbEntry).toBeDefined();

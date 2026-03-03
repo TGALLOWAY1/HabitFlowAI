@@ -2,19 +2,12 @@
  * DayLog Repository Tests
  * 
  * Integration tests for the DayLog repository.
- * Requires MongoDB to be running (use test database).
+ * Uses mongodb-memory-server via shared test helper.
  */
 
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
-import { MongoClient } from 'mongodb';
 import type { DayLog } from '../../../models/persistenceTypes';
-
-// Set environment variables BEFORE importing modules that use them
-// This ensures the env module reads the correct values
-if (!process.env.MONGODB_URI) {
-  process.env.MONGODB_URI = 'mongodb://localhost:27017';
-}
-process.env.USE_MONGO_PERSISTENCE = 'true';
+import { setupTestMongo, teardownTestMongo, getTestDb } from '../../../test/mongoTestHelper';
 
 import {
   upsertDayLog,
@@ -24,64 +17,20 @@ import {
   deleteDayLog,
   deleteDayLogsByHabit,
 } from '../dayLogRepository';
-import { getDb, closeConnection } from '../../lib/mongoClient';
 
-// Use test database
-const TEST_DB_NAME = 'habitflowai_test';
 const TEST_USER_ID = 'test-user-123';
-// const OTHER_USER_ID = 'other-user-456';
-
-// Store original env values
-let originalDbName: string | undefined;
-let originalUseMongo: string | undefined;
-let testClient: MongoClient | null = null;
 
 describe('DayLogRepository', () => {
-  // let testDb: Db;
-
   beforeAll(async () => {
-    // Use test database (env vars already set at top of file)
-    originalDbName = process.env.MONGODB_DB_NAME;
-    process.env.MONGODB_DB_NAME = TEST_DB_NAME;
-
-    // Get test database
-    // Get test database
-    await getDb();
-
-    // Get client from MongoDB URI for cleanup
-    const uri = process.env.MONGODB_URI;
-    if (uri) {
-      testClient = new MongoClient(uri);
-      await testClient.connect();
-    }
+    await setupTestMongo();
   });
 
   afterAll(async () => {
-    // Clean up test database
-    if (testClient) {
-      const adminDb = testClient.db(TEST_DB_NAME);
-      await adminDb.dropDatabase();
-      await testClient.close();
-    }
-
-    await closeConnection();
-
-    // Restore original env
-    if (originalDbName) {
-      process.env.MONGODB_DB_NAME = originalDbName;
-    } else {
-      delete process.env.MONGODB_DB_NAME;
-    }
-    if (originalUseMongo) {
-      process.env.USE_MONGO_PERSISTENCE = originalUseMongo;
-    } else {
-      delete process.env.USE_MONGO_PERSISTENCE;
-    }
+    await teardownTestMongo();
   });
 
   beforeEach(async () => {
-    // Clear ALL dayLogs collection before each test to ensure isolation
-    const db = await getDb();
+    const db = await getTestDb();
     await db.collection('dayLogs').deleteMany({});
   });
 

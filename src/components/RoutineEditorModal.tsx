@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, Plus, Trash2, Link2, Clock, Image as ImageIcon, Loader2, ChevronDown } from 'lucide-react';
-import { uploadRoutineImage } from '../lib/persistenceClient';
+import { uploadRoutineImage, getActiveUserId } from '../lib/persistenceClient';
 import { API_BASE_URL } from '../lib/persistenceConfig';
 import { useRoutineStore } from '../store/RoutineContext';
 import { useHabitStore } from '../store/HabitContext';
@@ -282,7 +282,7 @@ export const RoutineEditorModal: React.FC<RoutineEditorModalProps> = ({
                                                                 const response = await fetch(`${API_BASE_URL}/routines/${initialRoutine.id}/image`, {
                                                                     method: 'DELETE',
                                                                     headers: {
-                                                                        'X-User-Id': localStorage.getItem('habitflow_user_id') || 'anonymous-user',
+                                                                        'X-User-Id': getActiveUserId(),
                                                                     },
                                                                 });
                                                                 if (response.ok) {

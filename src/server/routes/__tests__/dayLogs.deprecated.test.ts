@@ -8,37 +8,22 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import express, { type Express } from 'express';
 import request from 'supertest';
-
-// Set environment variables BEFORE importing modules that use them
-if (!process.env.MONGODB_URI) {
-  process.env.MONGODB_URI = 'mongodb://localhost:27017';
-}
-process.env.USE_MONGO_PERSISTENCE = 'true';
-
+import { setupTestMongo, teardownTestMongo, getTestDb } from '../../../test/mongoTestHelper';
 import {
   getDayLogs,
   upsertDayLogRoute,
   getDayLogRoute,
   deleteDayLogRoute,
 } from '../dayLogs';
-import { getDb, closeConnection } from '../../lib/mongoClient';
 
-// Use test database
-const TEST_DB_NAME = 'habitflowai_test_daylogs_deprecated';
 const TEST_USER_ID = 'test-user-daylogs';
-
-// Store original env values
-let originalDbName: string | undefined;
 
 describe('DayLog Routes Deprecation', () => {
   let app: Express;
 
   beforeAll(async () => {
-    // Use test database
-    originalDbName = process.env.MONGODB_DB_NAME;
-    process.env.MONGODB_DB_NAME = TEST_DB_NAME;
+    await setupTestMongo();
 
-    // Set up Express app
     app = express();
     app.use(express.json());
 
@@ -57,17 +42,7 @@ describe('DayLog Routes Deprecation', () => {
   });
 
   afterAll(async () => {
-    // Clean up test database
-    const testDb = await getDb();
-    await testDb.dropDatabase();
-    await closeConnection();
-
-    // Restore original env
-    if (originalDbName) {
-      process.env.MONGODB_DB_NAME = originalDbName;
-    } else {
-      delete process.env.MONGODB_DB_NAME;
-    }
+    await teardownTestMongo();
   });
 
   describe('Write Operations (Deprecated)', () => {
@@ -87,7 +62,7 @@ describe('DayLog Routes Deprecation', () => {
       expect(response.body).toHaveProperty('message');
 
       // Verify no DayLog was created
-      const testDb = await getDb();
+      const testDb = await getTestDb();
       const dayLogs = await testDb.collection('dayLogs')
         .find({ habitId: 'test-habit-123', userId: TEST_USER_ID })
         .toArray();
@@ -109,7 +84,7 @@ describe('DayLog Routes Deprecation', () => {
       expect(response.body).toHaveProperty('deprecated', true);
 
       // Verify no DayLog was created
-      const testDb = await getDb();
+      const testDb = await getTestDb();
       const dayLogs = await testDb.collection('dayLogs')
         .find({ habitId: 'test-habit-456', userId: TEST_USER_ID })
         .toArray();
