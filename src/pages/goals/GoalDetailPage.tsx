@@ -11,9 +11,9 @@
 import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { useGoalDetail } from '../../lib/useGoalDetail';
 import { useHabitStore } from '../../store/HabitContext';
-import { Loader2, ArrowLeft, Check, Plus, Edit, Trash2 } from 'lucide-react';
+import { Loader2, ArrowLeft, Check, Edit, Trash2 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
-import { GoalManualProgressModal } from '../../components/goals/GoalManualProgressModal';
+// GoalManualProgressModal removed — manual goal logs deprecated in V1
 import { DeleteGoalConfirmModal } from '../../components/goals/DeleteGoalConfirmModal';
 import { EditGoalModal } from '../../components/goals/EditGoalModal';
 import { deleteGoal, markGoalAsCompleted, fetchHabitEntries, getLocalTimeZone } from '../../lib/persistenceClient';
@@ -40,7 +40,6 @@ export const GoalDetailPage: React.FC<GoalDetailPageProps> = ({ goalId, onBack, 
     const { data, loading, error, refetch } = useGoalDetail(goalId);
     const { habits } = useHabitStore();
     const [activeTab, setActiveTab] = useState<Tab>('cumulative');
-    const [showManualProgressModal, setShowManualProgressModal] = useState(false);
     const [showEditModal, setShowEditModal] = useState(false);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
@@ -187,18 +186,6 @@ export const GoalDetailPage: React.FC<GoalDetailPageProps> = ({ goalId, onBack, 
             { percent: 75 }
         ];
     }, [data]);
-
-    // --- Handlers ---
-
-    // Manual Logging Logic with Habit Linking
-    const handleLogContribution = async () => {
-        if (!data) return;
-
-        // V2 PRD: Most progress comes from completing linked habits.
-        // We stick to the manual modal but rely on its helper text as per plan.
-
-        setShowManualProgressModal(true);
-    };
 
     const handleDeleteGoal = async () => {
         try {
@@ -464,35 +451,9 @@ export const GoalDetailPage: React.FC<GoalDetailPageProps> = ({ goalId, onBack, 
                 </div>
             </div>
 
-            {/* Manual Action Area */}
-            {goal.type === 'cumulative' && !goal.completedAt && (
-                <div className="mt-12 p-6 bg-neutral-900/30 rounded-xl border border-white/5">
-                    <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-                        <div>
-                            <h4 className="text-white font-medium mb-1">Add Contribution</h4>
-                            <p className="text-neutral-500 text-xs text-white">Most progress comes from completing linked habits.</p>
-                        </div>
-                        <button
-                            onClick={handleLogContribution}
-                            className="px-4 py-2 bg-neutral-800 hover:bg-neutral-700 text-white text-sm font-medium rounded-lg transition-colors border border-white/10 flex items-center gap-2"
-                        >
-                            <Plus size={16} />
-                            Log Contribution
-                        </button>
-                    </div>
-                </div>
-            )}
+            {/* Manual contribution area removed in V1: progress is derived from habit entries */}
 
             {/* Modals */}
-            {data && (
-                <GoalManualProgressModal
-                    isOpen={showManualProgressModal}
-                    onClose={() => setShowManualProgressModal(false)}
-                    goalWithProgress={data}
-                    onSuccess={refetch}
-                />
-            )}
-
             {data && (
                 <EditGoalModal
                     isOpen={showEditModal}

@@ -151,6 +151,14 @@ async function apiRequest<T>(
         );
       }
 
+      // Handle deprecated endpoints (410 Gone)
+      if (response.status === 410) {
+        throw new Error(
+          errorData.error?.message ||
+          'This feature has been deprecated'
+        );
+      }
+
       // Handle other errors
       throw new Error(
         errorData.error?.message ||

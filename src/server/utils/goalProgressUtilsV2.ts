@@ -9,10 +9,9 @@
 
 import { getGoalById } from '../repositories/goalRepository';
 import { getHabitsByUser } from '../repositories/habitRepository';
-import { getGoalManualLogsByGoal } from '../repositories/goalManualLogRepository';
 import { getEntryViewsForHabits } from '../services/truthQuery';
 import { getAggregationMode, getCountMode, unitsMatch } from './goalLinkSemantics';
-import type { Goal, GoalProgress, GoalManualLog, Habit, GoalProgressWarning } from '../../models/persistenceTypes';
+import type { Goal, GoalProgress, Habit, GoalProgressWarning } from '../../models/persistenceTypes';
 import type { EntryView } from '../services/truthQuery';
 import type { DayKey } from '../../domain/time/dayKey';
 
@@ -82,26 +81,16 @@ export async function computeGoalProgressV2(
   // Resolve any bundles in linkedHabitIds to their sub-habits
   const resolvedHabitIds = await resolveBundleIds(goal.linkedHabitIds, userId);
 
-  // Fetch EntryViews via truthQuery (unified HabitEntries + legacy DayLogs)
   const entryViews = await getEntryViewsForHabits(resolvedHabitIds, userId, {
     timeZone,
   });
 
-  // Filter out deleted entries
   const activeEntries = entryViews.filter(entry => !entry.deletedAt);
 
-  // Fetch manual logs for cumulative goals
-  let manualLogs: GoalManualLog[] = [];
-  if (goal.type === 'cumulative') {
-    manualLogs = await getGoalManualLogsByGoal(goalId, userId);
-  }
-
-  // Fetch relevant habits for unit checking
   const allHabits = await getHabitsByUser(userId);
   const habitMap = new Map(allHabits.map(h => [h.id, h]));
 
-  // Use the optimized function to compute full progress
-  return computeFullGoalProgressV2(goal, activeEntries, manualLogs, habitMap, timeZone);
+  return computeFullGoalProgressV2(goal, activeEntries, [], habitMap, timeZone);
 }
 
 /**
@@ -117,21 +106,18 @@ export async function computeGoalProgressV2(
 export function computeFullGoalProgressV2(
   goal: Goal,
   entryViews: EntryView[],
-  manualLogs: GoalManualLog[] = [],
+  _manualLogs: unknown[] = [],
   habitMap?: Map<string, Habit>,
-  timeZone: string = 'UTC'
+  _timeZone: string = 'UTC'
 ): GoalProgress {
-  // Determine aggregation semantics
   const aggregationMode = getAggregationMode(goal);
   const countMode = getCountMode(goal);
 
-  // Get date range for last 30 days (most recent first)
   const last30Days: DayKey[] = [];
   for (let i = 0; i < 30; i++) {
     last30Days.push(getDateString(i) as DayKey);
   }
 
-  // Build map of entries by date for efficient lookup
   const entriesByDate = new Map<DayKey, EntryView[]>();
   for (const entry of entryViews) {
     if (!entriesByDate.has(entry.dayKey)) {
@@ -140,40 +126,20 @@ export function computeFullGoalProgressV2(
     entriesByDate.get(entry.dayKey)!.push(entry);
   }
 
-  // Build map of manual logs by date (for sum-mode goals only)
-  const manualLogsByDate = new Map<DayKey, GoalManualLog[]>();
-  if (aggregationMode === 'sum') {
-    for (const manualLog of manualLogs) {
-      // Extract date from ISO timestamp (YYYY-MM-DD)
-      const loggedDate = manualLog.loggedAt.split('T')[0] as DayKey;
-      if (!manualLogsByDate.has(loggedDate)) {
-        manualLogsByDate.set(loggedDate, []);
-      }
-      manualLogsByDate.get(loggedDate)!.push(manualLog);
-    }
-  }
-
-  // Initialize warnings array
   const warnings: GoalProgressWarning[] = [];
 
-  // Compute current value based on aggregation mode
   let currentValue: number;
   if (aggregationMode === 'sum') {
-    // Sum mode: sum all entry values
-    const habitValue = entryViews.reduce((sum, entry) => {
-      // Type-Based Aggregation Logic
+    currentValue = entryViews.reduce((sum, entry) => {
       if (habitMap && goal.unit) {
         const habit = habitMap.get(entry.habitId);
         if (!habit) return sum;
 
-        // Exclude Boolean habits from sum-mode goals
         if (habit.goal.type === 'boolean') {
           return sum;
         }
 
-        // Check unit mismatch (if entry has unit)
         if (entry.unit && !unitsMatch(goal.unit, entry.unit)) {
-          // Collect warning but still include the value (deterministic: include with warning)
           warnings.push({
             type: 'UNIT_MISMATCH',
             habitId: entry.habitId,
@@ -184,16 +150,10 @@ export function computeFullGoalProgressV2(
       }
       return sum + (entry.value ?? 0);
     }, 0);
-    // Sum all manual log values
-    const manualValue = manualLogs.reduce((sum, log) => sum + log.value, 0);
-    currentValue = habitValue + manualValue;
   } else {
-    // Count mode: count entries or distinct days
     if (countMode === 'entries') {
-      // Count total number of entries
       currentValue = entryViews.length;
     } else {
-      // Count distinct dayKeys (default for count goals)
       const completedDayKeys = new Set<DayKey>();
       for (const entry of entryViews) {
         completedDayKeys.add(entry.dayKey);
@@ -202,53 +162,37 @@ export function computeFullGoalProgressV2(
     }
   }
 
-  // Calculate percentage
   let percent = 0;
   if (goal.type === 'onetime') {
-    // OneTime goals are binary: 0% or 100% based on completedAt
     percent = goal.completedAt ? 100 : 0;
   } else {
-    // Cumulative or Frequency
-    // Ensure targetValue exists and is > 0 to avoid division by zero/undefined
     percent = (goal.targetValue && goal.targetValue > 0)
       ? Math.min(100, Math.round((currentValue / goal.targetValue) * 100))
       : 0;
   }
 
-  // Compute last 30 days data
   const lastThirtyDaysData = last30Days.map(date => {
     const dayEntries = entriesByDate.get(date) || [];
     let dayValue = 0;
     let hasProgress = false;
 
     if (aggregationMode === 'sum') {
-      // Sum entry values for this day
-      const habitValue = dayEntries.reduce((sum, entry) => {
+      dayValue = dayEntries.reduce((sum, entry) => {
         if (habitMap && goal.unit) {
           const habit = habitMap.get(entry.habitId);
           if (!habit) return sum;
-
-          // Exclude Boolean habits from sum-mode goals
           if (habit.goal.type === 'boolean') {
             return sum;
           }
-          // Unit mismatch warnings are collected in main aggregation, not per-day
         }
         return sum + (entry.value ?? 0);
       }, 0);
-      // Sum manual log values for this day
-      const dayManualLogs = manualLogsByDate.get(date) || [];
-      const manualValue = dayManualLogs.reduce((sum, log) => sum + log.value, 0);
-      dayValue = habitValue + manualValue;
       hasProgress = dayValue > 0;
     } else {
-      // Count mode
       if (countMode === 'entries') {
-        // Count entries on this day
         dayValue = dayEntries.length;
         hasProgress = dayValue > 0;
       } else {
-        // Count distinct days: if any entry exists, count as 1
         hasProgress = dayEntries.length > 0;
         dayValue = hasProgress ? 1 : 0;
       }
@@ -261,13 +205,10 @@ export function computeFullGoalProgressV2(
     };
   });
 
-  // Extract last 7 days from the 30-day set
   const lastSevenDaysData = lastThirtyDaysData.slice(0, 7);
 
-  // Compute inactivity warning (≥4 days without progress in the last 7 days)
   const daysWithoutProgress = lastSevenDaysData.filter(day => !day.hasProgress).length;
 
-  // Only show inactivity warning if goal is NOT completed
   const inactivityWarning = !goal.completedAt && daysWithoutProgress >= 4;
 
   return {
@@ -294,9 +235,7 @@ export async function computeGoalsWithProgressV2(
   timeZone: string = 'UTC'
 ): Promise<Array<{ goal: Goal; progress: GoalProgress }>> {
   const { getGoalsByUser } = await import('../repositories/goalRepository');
-  const { getGoalManualLogsByGoals } = await import('../repositories/goalManualLogRepository');
 
-  // Fetch all goals for the user
   const goals = await getGoalsByUser(userId);
 
   // Fetch all habits for the user to resolve bundles
@@ -345,26 +284,9 @@ export async function computeGoalsWithProgressV2(
     entriesByHabitId.get(entry.habitId)!.push(entry);
   }
 
-  // Fetch all manual logs for all cumulative goals in one batch
-  const cumulativeGoalIds = goals.filter(g => g.type === 'cumulative').map(g => g.id);
-  const allManualLogs = cumulativeGoalIds.length > 0
-    ? await getGoalManualLogsByGoals(cumulativeGoalIds, userId)
-    : [];
-
-  // Build map of manual logs by goal ID
-  const manualLogsByGoalId = new Map<string, GoalManualLog[]>();
-  for (const manualLog of allManualLogs) {
-    if (!manualLogsByGoalId.has(manualLog.goalId)) {
-      manualLogsByGoalId.set(manualLog.goalId, []);
-    }
-    manualLogsByGoalId.get(manualLog.goalId)!.push(manualLog);
-  }
-
-  // Compute progress for each goal
   const results: Array<{ goal: Goal; progress: GoalProgress }> = [];
 
   for (const goal of goals) {
-    // Collect all EntryViews for this goal's linked habits
     const goalEntryViews: EntryView[] = [];
     const resolvedIds = getResolvedHabitsForGoal(goal);
 
@@ -373,13 +295,7 @@ export async function computeGoalsWithProgressV2(
       goalEntryViews.push(...habitEntries);
     }
 
-    // Get manual logs for this goal (only for cumulative goals)
-    const goalManualLogs = goal.type === 'cumulative'
-      ? (manualLogsByGoalId.get(goal.id) || [])
-      : [];
-
-    // Compute full progress
-    const progress = computeFullGoalProgressV2(goal, goalEntryViews, goalManualLogs, habitMap, timeZone);
+    const progress = computeFullGoalProgressV2(goal, goalEntryViews, [], habitMap, timeZone);
 
     results.push({
       goal,

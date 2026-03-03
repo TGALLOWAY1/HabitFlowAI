@@ -237,7 +237,7 @@ describe('goalProgressUtilsV2', () => {
       expect(progress.currentValue).toBe(2); // 2 distinct dayKeys (deleted one excluded)
     });
 
-    it('should include manual logs for cumulative goals', () => {
+    it('should ignore manual logs (deprecated in V1)', () => {
       const goal: Goal = {
         id: 'goal-1',
         title: 'Test Goal',
@@ -277,19 +277,9 @@ describe('goalProgressUtilsV2', () => {
         },
       ];
 
-      const manualLogs: GoalManualLog[] = [
-        {
-          id: 'manual-1',
-          goalId: 'goal-1',
-          value: 10,
-          loggedAt: '2025-01-10T12:00:00.000Z',
-          createdAt: '2025-01-10T12:00:00.000Z',
-        },
-      ];
+      const progress = computeFullGoalProgressV2(goal, entryViews, [], habitMap, timeZone);
 
-      const progress = computeFullGoalProgressV2(goal, entryViews, manualLogs, habitMap, timeZone);
-
-      expect(progress.currentValue).toBe(15); // 5 (entry) + 10 (manual)
+      expect(progress.currentValue).toBe(5);
     });
 
     it('should exclude boolean habits from cumulative numeric goals', () => {
