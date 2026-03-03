@@ -18,8 +18,8 @@ import {
   validateHabitIds,
 } from '../repositories/goalRepository';
 import { getHabitById } from '../repositories/habitRepository';
-import { createGoalManualLog, getGoalManualLogsByGoal } from '../repositories/goalManualLogRepository';
-import { computeGoalProgress, computeGoalsWithProgress } from '../utils/goalProgressUtils';
+import { getGoalManualLogsByGoal } from '../repositories/goalManualLogRepository';
+import { computeGoalProgressV2 } from '../utils/goalProgressUtilsV2';
 import { saveUploadedFile } from '../utils/fileStorage';
 import type { Goal } from '../../models/persistenceTypes';
 
@@ -749,112 +749,16 @@ export async function updateGoalRoute(req: Request, res: Response): Promise<void
  * 
  * POST /api/goals/:id/manual-logs
  * 
- * Body: { value: number; loggedAt?: string }
- * - value: amount added toward the goal (must be > 0)
- * - loggedAt: ISO 8601 timestamp (optional, defaults to now)
- * 
- * Only works for cumulative goals.
+ * DEPRECATED in V1: manual goal logs are no longer accepted.
+ * All goal progress is derived from HabitEntries via truthQuery.
  */
-export async function createGoalManualLogRoute(req: Request, res: Response): Promise<void> {
-  try {
-    const { id } = req.params;
-
-    if (!id) {
-      res.status(400).json({
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: 'Goal ID is required',
-        },
-      });
-      return;
-    }
-
-    // TODO: Extract userId from authentication token/session
-    const userId = (req as any).userId || 'anonymous-user';
-
-    // Verify goal exists and get it
-    const goal = await getGoalById(id, userId);
-    if (!goal) {
-      res.status(404).json({
-        error: {
-          code: 'NOT_FOUND',
-          message: 'Goal not found',
-        },
-      });
-      return;
-    }
-
-    // Only cumulative goals support manual logging
-    if (goal.type !== 'cumulative') {
-      res.status(400).json({
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: 'Manual logging is only supported for cumulative goals',
-        },
-      });
-      return;
-    }
-
-    // Validate request body
-    const { value, loggedAt } = req.body;
-
-    if (typeof value !== 'number' || value <= 0) {
-      res.status(400).json({
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: 'value must be a positive number',
-        },
-      });
-      return;
-    }
-
-    // Validate loggedAt if provided
-    if (loggedAt !== undefined) {
-      if (typeof loggedAt !== 'string') {
-        res.status(400).json({
-          error: {
-            code: 'VALIDATION_ERROR',
-            message: 'loggedAt must be a string (ISO 8601 format)',
-          },
-        });
-        return;
-      }
-      // Validate it's a valid ISO 8601 date
-      const date = new Date(loggedAt);
-      if (isNaN(date.getTime())) {
-        res.status(400).json({
-          error: {
-            code: 'VALIDATION_ERROR',
-            message: 'loggedAt must be a valid ISO 8601 date string',
-          },
-        });
-        return;
-      }
-    }
-
-    const log = await createGoalManualLog(
-      {
-        goalId: id,
-        value,
-        loggedAt: loggedAt || new Date().toISOString(),
-      },
-      userId
-    );
-
-    res.status(201).json({
-      log,
-    });
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    console.error('Error creating goal manual log:', errorMessage);
-    res.status(500).json({
-      error: {
-        code: 'INTERNAL_SERVER_ERROR',
-        message: 'Failed to create goal manual log',
-        details: process.env.NODE_ENV === 'development' ? errorMessage : undefined,
-      },
-    });
-  }
+export async function createGoalManualLogRoute(_req: Request, res: Response): Promise<void> {
+  res.status(410).json({
+    error: {
+      code: 'GONE',
+      message: 'Manual goal logs are deprecated in V1. Progress is derived from habit entries.',
+    },
+  });
 }
 
 /**
@@ -912,15 +816,15 @@ export async function getGoalManualLogsRoute(req: Request, res: Response): Promi
 }
 
 /**
- * Get goal detail with progress, manual logs, and history.
+ * Get goal detail with progress and history.
  * 
  * GET /api/goals/:id/detail
  * 
  * Returns comprehensive data for the goal detail page:
  * - goal: The goal entity
- * - progress: Current progress (currentValue, percent, lastSevenDays, inactivityWarning)
- * - manualLogs: All manual logs for the goal
- * - history: Optional aggregated history for last 30 days (date -> total value)
+ * - progress: Current progress from entries-derived computation (V2)
+ * - manualLogs: Legacy manual logs (returned for display, no longer counted)
+ * - history: Aggregated history for last 30 days derived from EntryViews
  */
 export async function getGoalDetailRoute(req: Request, res: Response): Promise<void> {
   try {
@@ -936,10 +840,10 @@ export async function getGoalDetailRoute(req: Request, res: Response): Promise<v
       return;
     }
 
-    // TODO: Extract userId from authentication token/session
     const userId = (req as any).userId || 'anonymous-user';
+    const { timeZone } = req.query;
+    const userTimeZone = (timeZone && typeof timeZone === 'string') ? timeZone : 'UTC';
 
-    // Fetch the goal
     const goal = await getGoalById(id, userId);
     if (!goal) {
       res.status(404).json({
@@ -951,8 +855,7 @@ export async function getGoalDetailRoute(req: Request, res: Response): Promise<v
       return;
     }
 
-    // Compute progress (includes habit logs and manual logs)
-    const progress = await computeGoalProgress(id, userId);
+    const progress = await computeGoalProgressV2(id, userId, userTimeZone);
     if (!progress) {
       res.status(500).json({
         error: {
@@ -963,59 +866,36 @@ export async function getGoalDetailRoute(req: Request, res: Response): Promise<v
       return;
     }
 
-    // Fetch manual logs (only for cumulative goals, but fetch for all to be consistent)
     const manualLogs = goal.type === 'cumulative'
       ? await getGoalManualLogsByGoal(id, userId)
       : [];
 
-    // Build aggregated history for last 30 days
-    // This aggregates both habit logs and manual logs by date
-    const { getDayLogsByHabit } = await import('../repositories/dayLogRepository');
+    const { getEntryViewsForHabits } = await import('../services/truthQuery');
 
-    // Fetch all logs for linked habits
-    const allLogs: Array<{ date: string; value: number }> = [];
-    for (const habitId of goal.linkedHabitIds) {
-      const habitLogs = await getDayLogsByHabit(habitId, userId);
-      const logsArray = Object.values(habitLogs);
-      for (const log of logsArray) {
-        if (goal.type === 'cumulative') {
-          allLogs.push({ date: log.date, value: log.value ?? 0 });
-        } else {
-          // For frequency goals, count completed logs as 1
-          if (log.completed) {
-            allLogs.push({ date: log.date, value: 1 });
-          }
-        }
-      }
-    }
+    const entryViews = await getEntryViewsForHabits(goal.linkedHabitIds, userId, {
+      timeZone: userTimeZone,
+    });
 
-    // Add manual logs to the aggregation (only for cumulative goals)
-    if (goal.type === 'cumulative') {
-      for (const manualLog of manualLogs) {
-        // Extract date from ISO timestamp (YYYY-MM-DD)
-        const loggedDate = manualLog.loggedAt.split('T')[0];
-        allLogs.push({ date: loggedDate, value: manualLog.value });
-      }
-    }
+    const activeEntries = entryViews.filter(e => !e.deletedAt);
 
-    // Aggregate by date for last 30 days
     const historyMap = new Map<string, number>();
     const last30Days: string[] = [];
     for (let i = 0; i < 30; i++) {
       const dateStr = getDateStringForHistory(i);
       last30Days.push(dateStr);
-      historyMap.set(dateStr, 0); // Initialize to 0
+      historyMap.set(dateStr, 0);
     }
 
-    // Aggregate values by date
-    for (const log of allLogs) {
-      if (historyMap.has(log.date)) {
-        const currentValue = historyMap.get(log.date) || 0;
-        historyMap.set(log.date, currentValue + log.value);
+    for (const entry of activeEntries) {
+      if (!historyMap.has(entry.dayKey)) continue;
+      const current = historyMap.get(entry.dayKey) || 0;
+      if (goal.type === 'cumulative') {
+        historyMap.set(entry.dayKey, current + (entry.value ?? 0));
+      } else {
+        historyMap.set(entry.dayKey, current + 1);
       }
     }
 
-    // Build history array (most recent first)
     const history = last30Days.reverse().map(date => ({
       date,
       value: historyMap.get(date) || 0,
