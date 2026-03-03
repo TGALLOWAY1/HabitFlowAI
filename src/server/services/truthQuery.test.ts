@@ -32,9 +32,9 @@ describe('truthQuery', () => {
 
   describe('getEntryViewsForHabit - merge and dedupe', () => {
     it('should prefer HabitEntry over DayLog when both exist for same (habitId, dayKey)', async () => {
+      process.env.LEGACY_DAYLOG_READS = 'true';
       const dayKey = '2025-01-15';
 
-      // HabitEntry with value 10
       const entry: HabitEntry = {
         id: 'entry-1',
         habitId,
@@ -47,7 +47,6 @@ describe('truthQuery', () => {
         updatedAt: '2025-01-15T10:00:00.000Z',
       };
 
-      // DayLog with different value 5 (should be ignored)
       const dayLog: DayLog = {
         habitId,
         date: dayKey,
@@ -72,9 +71,9 @@ describe('truthQuery', () => {
     });
 
     it('should use DayLog when no HabitEntry exists for (habitId, dayKey)', async () => {
+      process.env.LEGACY_DAYLOG_READS = 'true';
       const dayKey = '2025-01-15';
 
-      // No HabitEntry
       const dayLog: DayLog = {
         habitId,
         date: dayKey,
@@ -98,9 +97,9 @@ describe('truthQuery', () => {
     });
 
     it('should not set conflict when values match', async () => {
+      process.env.LEGACY_DAYLOG_READS = 'true';
       const dayKey = '2025-01-15';
 
-      // HabitEntry with value 10
       const entry: HabitEntry = {
         id: 'entry-1',
         habitId,
@@ -136,9 +135,9 @@ describe('truthQuery', () => {
     });
 
     it('should handle boolean completion (value null) correctly', async () => {
+      process.env.LEGACY_DAYLOG_READS = 'true';
       const dayKey = '2025-01-15';
 
-      // HabitEntry with value 1 (boolean completion)
       const entry: HabitEntry = {
         id: 'entry-1',
         habitId,
@@ -350,10 +349,25 @@ describe('truthQuery', () => {
       expect(views[0].source).toBe('legacy');
       expect(getDayLogsByHabit).toHaveBeenCalledTimes(1);
     });
+
+    it('should throw in dev when explicit legacy override conflicts with env flag', async () => {
+      process.env.LEGACY_DAYLOG_READS = 'false';
+      process.env.NODE_ENV = 'test';
+      vi.mocked(getHabitEntriesByHabit).mockResolvedValue([]);
+      vi.mocked(getDayLogsByHabit).mockResolvedValue({});
+
+      await expect(
+        getEntryViewsForHabit(habitId, userId, {
+          timeZone,
+          includeLegacyFallback: true,
+        })
+      ).rejects.toThrow('Legacy DayLog merge attempted');
+    });
   });
 
   describe('getEntryViewsForHabits - batch merge', () => {
     it('should merge entries from multiple habits correctly', async () => {
+      process.env.LEGACY_DAYLOG_READS = 'true';
       const habitId2 = 'habit-2';
       const dayKey = '2025-01-15';
 

@@ -77,9 +77,16 @@ function resolveLegacyFallback(
   return isLegacyDaylogReadsEnabled();
 }
 
-function maybeWarnLegacyReads(includeLegacyFallback: boolean): void {
-  if (!includeLegacyFallback) {
-    return;
+function assertNoLegacyMerge(resolved: boolean): void {
+  if (!resolved) return;
+
+  if (process.env.NODE_ENV !== 'production') {
+    const msg =
+      'Legacy DayLog merge attempted while LEGACY_DAYLOG_READS is off. ' +
+      'This is likely a bug \u2014 all reads should derive from HabitEntries.';
+    if (!isLegacyDaylogReadsEnabled()) {
+      throw new Error(msg);
+    }
   }
 
   warnOncePerRequest(LEGACY_DAYLOG_READS_WARNING);
@@ -105,21 +112,18 @@ export async function getEntryViewsForHabit(
   args: { startDayKey?: DayKey; endDayKey?: DayKey; timeZone: string; includeLegacyFallback?: boolean }
 ): Promise<EntryView[]> {
   const includeLegacyFallback = resolveLegacyFallback(args.includeLegacyFallback);
-  maybeWarnLegacyReads(includeLegacyFallback);
+  assertNoLegacyMerge(includeLegacyFallback);
 
   const entries = await getHabitEntriesByHabit(habitId, userId);
   const dayLogs = includeLegacyFallback
     ? Object.values(await getDayLogsByHabit(habitId, userId))
     : [];
 
-  // Map both sources to EntryView
   const entryViews = entries.map(entry => mapEntryToView(entry, args.timeZone));
   const legacyViews = dayLogs.map(log => mapDayLogToView(log, args.timeZone));
 
-  // Merge and dedupe: prefer HabitEntry over DayLog
   const mergedViews = mergeEntryViews(entryViews, legacyViews);
 
-  // Filter by date range if specified
   const filteredViews = mergedViews.filter(view => {
     if (args.startDayKey && view.dayKey < args.startDayKey) {
       return false;
@@ -130,8 +134,6 @@ export async function getEntryViewsForHabit(
     return true;
   });
 
-  // Sort: primary by dayKey asc, secondary by timestampUtc asc
-  // Guard against undefined dayKey or timestampUtc
   filteredViews.sort((a, b) => {
     const aDayKey = a.dayKey || '';
     const bDayKey = b.dayKey || '';
@@ -149,16 +151,8 @@ export async function getEntryViewsForHabit(
 /**
  * Get entry views for multiple habits (batch query).
  * 
- * Fetches both HabitEntries (primary truth) and DayLogs (legacy fallback),
- * merges them with HabitEntries taking precedence, and returns unified EntryViews.
- * 
- * @param habitIds - Array of habit IDs
- * @param userId - User ID
- * @param args - Query arguments
- * @param args.startDayKey - Optional start DayKey (inclusive)
- * @param args.endDayKey - Optional end DayKey (inclusive)
- * @param args.timeZone - User's timezone for DayKey derivation
- * @returns Array of EntryView, sorted by dayKey asc, then timestampUtc asc
+ * Default: HabitEntries only. Legacy DayLogs are merged only when
+ * LEGACY_DAYLOG_READS=true (never in production).
  */
 export async function getEntryViewsForHabits(
   habitIds: string[],
@@ -166,26 +160,20 @@ export async function getEntryViewsForHabits(
   args: { startDayKey?: DayKey; endDayKey?: DayKey; timeZone: string; includeLegacyFallback?: boolean }
 ): Promise<EntryView[]> {
   const includeLegacyFallback = resolveLegacyFallback(args.includeLegacyFallback);
-  maybeWarnLegacyReads(includeLegacyFallback);
+  assertNoLegacyMerge(includeLegacyFallback);
 
-  // For batch queries, fetch all user entries and dayLogs, then filter by habitIds
-  // This is more efficient than N queries for N habits
   const allEntries = await getHabitEntriesByUser(userId);
   const allDayLogsRecord = includeLegacyFallback ? await getDayLogsByUser(userId) : {};
 
-  // Filter to requested habits
   const habitIdSet = new Set(habitIds);
   const relevantEntries = allEntries.filter(entry => habitIdSet.has(entry.habitId));
   const relevantDayLogs = Object.values(allDayLogsRecord).filter(log => habitIdSet.has(log.habitId));
 
-  // Map both sources to EntryView
   const entryViews = relevantEntries.map(entry => mapEntryToView(entry, args.timeZone));
   const legacyViews = relevantDayLogs.map(log => mapDayLogToView(log, args.timeZone));
 
-  // Merge and dedupe: prefer HabitEntry over DayLog
   const mergedViews = mergeEntryViews(entryViews, legacyViews);
 
-  // Filter by date range if specified
   const filteredViews = mergedViews.filter(view => {
     if (args.startDayKey && view.dayKey < args.startDayKey) {
       return false;
@@ -196,8 +184,6 @@ export async function getEntryViewsForHabits(
     return true;
   });
 
-  // Sort: primary by dayKey asc, secondary by timestampUtc asc
-  // Guard against undefined dayKey or timestampUtc
   filteredViews.sort((a, b) => {
     const aDayKey = a.dayKey || '';
     const bDayKey = b.dayKey || '';
