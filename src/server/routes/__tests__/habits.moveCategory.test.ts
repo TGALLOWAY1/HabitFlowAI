@@ -8,12 +8,7 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import express, { type Express } from 'express';
 import request from 'supertest';
-
-if (!process.env.MONGODB_URI) {
-  process.env.MONGODB_URI = 'mongodb://localhost:27017';
-}
-process.env.USE_MONGO_PERSISTENCE = 'true';
-
+import { setupTestMongo, teardownTestMongo, getTestDb } from '../../../test/mongoTestHelper';
 import {
   getHabits,
   createHabitRoute,
@@ -23,12 +18,8 @@ import {
   createCategoryRoute,
   getCategories,
 } from '../categories';
-import { getDb, closeConnection } from '../../lib/mongoClient';
 
-const TEST_DB_NAME = 'habitflowai_test_move';
 const TEST_USER_ID = 'test-move-user';
-
-let originalDbName: string | undefined;
 
 describe('Habit Move-to-Category', () => {
   let app: Express;
@@ -37,8 +28,7 @@ describe('Habit Move-to-Category', () => {
   let habit: any;
 
   beforeAll(async () => {
-    originalDbName = process.env.MONGODB_DB_NAME;
-    process.env.MONGODB_DB_NAME = TEST_DB_NAME;
+    await setupTestMongo();
 
     app = express();
     app.use(express.json());
@@ -55,18 +45,11 @@ describe('Habit Move-to-Category', () => {
   });
 
   afterAll(async () => {
-    const testDb = await getDb();
-    await testDb.dropDatabase();
-    await closeConnection();
-    if (originalDbName) {
-      process.env.MONGODB_DB_NAME = originalDbName;
-    } else {
-      delete process.env.MONGODB_DB_NAME;
-    }
+    await teardownTestMongo();
   });
 
   beforeEach(async () => {
-    const testDb = await getDb();
+    const testDb = await getTestDb();
     await testDb.collection('habits').deleteMany({});
     await testDb.collection('categories').deleteMany({});
 

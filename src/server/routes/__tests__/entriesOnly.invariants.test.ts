@@ -4,7 +4,7 @@ import request from 'supertest';
 import { createCategory } from '../../repositories/categoryRepository';
 import { createHabit } from '../../repositories/habitRepository';
 import { createGoal } from '../../repositories/goalRepository';
-import { getDb, closeConnection } from '../../lib/mongoClient';
+import { setupTestMongo, teardownTestMongo, getTestDb } from '../../../test/mongoTestHelper';
 import { createHabitEntryRoute, deleteHabitEntryByKeyRoute } from '../habitEntries';
 import { getDayView } from '../dayView';
 import { getDaySummary } from '../daySummary';
@@ -12,7 +12,6 @@ import { getProgressOverview } from '../progress';
 import { getGoalsWithProgress, getGoalProgress } from '../goals';
 import { requestContextMiddleware } from '../../middleware/requestContext';
 
-const TEST_DB_NAME = 'test_habitflow_entries_only_invariants';
 const TEST_USER_ID = 'test-user-entries-only-invariants';
 
 type Snapshot = {
@@ -78,9 +77,7 @@ async function createTodayEntry(dayKey: string): Promise<void> {
 
 describe('Entries-only invariants across derived reads', () => {
   beforeAll(async () => {
-    process.env.MONGODB_DB_NAME = TEST_DB_NAME;
-    process.env.MONGODB_URI = 'mongodb://localhost:27017';
-    process.env.USE_MONGO_PERSISTENCE = 'true';
+    await setupTestMongo();
     process.env.LEGACY_DAYLOG_READS = 'false';
 
     app = express();
@@ -101,13 +98,13 @@ describe('Entries-only invariants across derived reads', () => {
   });
 
   afterAll(async () => {
-    await closeConnection();
+    await teardownTestMongo();
   });
 
   beforeEach(async () => {
     process.env.LEGACY_DAYLOG_READS = 'false';
 
-    const db = await getDb();
+    const db = await getTestDb();
     await Promise.all([
       db.collection('categories').deleteMany({ userId: TEST_USER_ID }),
       db.collection('habits').deleteMany({ userId: TEST_USER_ID }),

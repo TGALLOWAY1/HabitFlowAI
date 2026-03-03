@@ -119,13 +119,20 @@ async function connectToMongo(): Promise<MongoClient> {
     );
   }
 
-  // Hard guard: if NODE_ENV=test, only allow DB names containing _test or test_
-  if (process.env.NODE_ENV === 'test') {
+  // Hard guard: reject non-test DB names when running in a test context.
+  // Detects test runners even if NODE_ENV was not explicitly set.
+  const isTestEnv = process.env.NODE_ENV === 'test'
+    || !!process.env.VITEST
+    || !!process.env.JEST_WORKER_ID;
+
+  if (isTestEnv) {
     const TEST_DB_PATTERN = /(_test|test_)/i;
     if (!TEST_DB_PATTERN.test(dbName)) {
       throw new Error(
         `🛑 SAFETY ABORT: Refusing to connect to non-test database "${dbName}" ` +
-        `while NODE_ENV=test. DB name must contain "_test" or "test_".`
+        `in a test environment (NODE_ENV=${process.env.NODE_ENV}, ` +
+        `VITEST=${!!process.env.VITEST}, JEST=${!!process.env.JEST_WORKER_ID}). ` +
+        `DB name must contain "_test" or "test_".`
       );
     }
   }

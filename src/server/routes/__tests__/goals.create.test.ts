@@ -7,33 +7,18 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import express, { type Express } from 'express';
 import request from 'supertest';
-
-// Set environment variables BEFORE importing modules that use them
-if (!process.env.MONGODB_URI) {
-    process.env.MONGODB_URI = 'mongodb://localhost:27017';
-}
-process.env.USE_MONGO_PERSISTENCE = 'true';
-
+import { setupTestMongo, teardownTestMongo, getTestDb } from '../../../test/mongoTestHelper';
 import { createGoalRoute, getGoals } from '../goals';
-import { getDb, closeConnection } from '../../lib/mongoClient';
 import { getGoalsByUser } from '../../repositories/goalRepository';
 
-// Use test database
-const TEST_DB_NAME = 'habitflowai_test_goals';
 const TEST_USER_ID = 'test-user-123';
-
-// Store original env values
-let originalDbName: string | undefined;
 
 describe('Goal Create Routes', () => {
     let app: Express;
 
     beforeAll(async () => {
-        // Use test database (env vars already set at top of file)
-        originalDbName = process.env.MONGODB_DB_NAME;
-        process.env.MONGODB_DB_NAME = TEST_DB_NAME;
+        await setupTestMongo();
 
-        // Set up Express app
         app = express();
         app.use(express.json());
 
@@ -49,22 +34,12 @@ describe('Goal Create Routes', () => {
     });
 
     afterAll(async () => {
-        // Clean up test database
-        const testDb = await getDb();
-        await testDb.dropDatabase();
-        await closeConnection();
-
-        // Restore original env
-        if (originalDbName) {
-            process.env.MONGODB_DB_NAME = originalDbName;
-        } else {
-            delete process.env.MONGODB_DB_NAME;
-        }
+        await teardownTestMongo();
     });
 
     beforeEach(async () => {
         // Clear ALL goals collection before each test to ensure isolation
-        const testDb = await getDb();
+        const testDb = await getTestDb();
         await testDb.collection('goals').deleteMany({});
     });
 

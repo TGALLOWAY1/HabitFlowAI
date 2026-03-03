@@ -4,10 +4,13 @@
  * Tests that guardrails prevent storing completion/progress fields.
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { setupTestMongo, teardownTestMongo } from '../../../test/mongoTestHelper';
 import { createHabitEntry } from '../habitEntryRepository';
 
 describe('HabitEntry Repository Guardrails', () => {
+  beforeAll(async () => { await setupTestMongo(); });
+  afterAll(async () => { await teardownTestMongo(); });
   it('should throw error when trying to persist completed field', async () => {
     const entry = {
       habitId: 'test-habit',

@@ -2,62 +2,30 @@
  * Routine Image Repository Tests
  *
  * Integration tests for routine image persistence.
- * Requires MongoDB (uses test database).
+ * Uses mongodb-memory-server via shared test helper.
  */
 
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
-import { MongoClient } from 'mongodb';
-
-if (!process.env.MONGODB_URI) {
-  process.env.MONGODB_URI = 'mongodb://localhost:27017';
-}
-process.env.USE_MONGO_PERSISTENCE = 'true';
-
-import { getDb, closeConnection } from '../../lib/mongoClient';
+import { setupTestMongo, teardownTestMongo, getTestDb } from '../../../test/mongoTestHelper';
 import {
   upsertRoutineImage,
   getRoutineImageByRoutineId,
   deleteRoutineImageByRoutineId,
 } from '../routineImageRepository';
 
-const TEST_DB_NAME = 'habitflowai_test';
 const TEST_ROUTINE_ID = 'test-routine-123';
-
-let originalDbName: string | undefined;
-let originalUseMongo: string | undefined;
-let testClient: MongoClient | null = null;
 
 describe('RoutineImageRepository', () => {
   beforeAll(async () => {
-    originalDbName = process.env.MONGODB_DB_NAME;
-    originalUseMongo = process.env.USE_MONGO_PERSISTENCE;
-    process.env.MONGODB_DB_NAME = TEST_DB_NAME;
-
-    await getDb();
-
-    const uri = process.env.MONGODB_URI;
-    if (uri) {
-      testClient = new MongoClient(uri);
-      await testClient.connect();
-    }
+    await setupTestMongo();
   });
 
   afterAll(async () => {
-    if (testClient) {
-      const adminDb = testClient.db(TEST_DB_NAME);
-      await adminDb.dropDatabase();
-      await testClient.close();
-    }
-    await closeConnection();
-
-    if (originalDbName) process.env.MONGODB_DB_NAME = originalDbName;
-    else delete process.env.MONGODB_DB_NAME;
-    if (originalUseMongo) process.env.USE_MONGO_PERSISTENCE = originalUseMongo;
-    else delete process.env.USE_MONGO_PERSISTENCE;
+    await teardownTestMongo();
   });
 
   beforeEach(async () => {
-    const db = await getDb();
+    const db = await getTestDb();
     await db.collection('routineImages').deleteMany({});
   });
 

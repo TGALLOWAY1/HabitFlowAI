@@ -7,14 +7,7 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import express, { type Express } from 'express';
 import request from 'supertest';
-// import type { Category } from '../../../models/persistenceTypes';
-
-// Set environment variables BEFORE importing modules that use them
-if (!process.env.MONGODB_URI) {
-  process.env.MONGODB_URI = 'mongodb://localhost:27017';
-}
-process.env.USE_MONGO_PERSISTENCE = 'true';
-
+import { setupTestMongo, teardownTestMongo, getTestDb } from '../../../test/mongoTestHelper';
 import {
   getCategories,
   createCategoryRoute,
@@ -23,25 +16,15 @@ import {
   deleteCategoryRoute,
   reorderCategoriesRoute,
 } from '../categories';
-import { getDb, closeConnection } from '../../lib/mongoClient';
 
-// Use test database
-const TEST_DB_NAME = 'habitflowai_test';
 const TEST_USER_ID = 'test-user-123';
-
-// Store original env values
-let originalDbName: string | undefined;
-let originalUseMongo: string | undefined;
 
 describe('Category Routes', () => {
   let app: Express;
 
   beforeAll(async () => {
-    // Use test database (env vars already set at top of file)
-    originalDbName = process.env.MONGODB_DB_NAME;
-    process.env.MONGODB_DB_NAME = TEST_DB_NAME;
+    await setupTestMongo();
 
-    // Set up Express app
     app = express();
     app.use(express.json());
 
@@ -61,28 +44,13 @@ describe('Category Routes', () => {
   });
 
   afterAll(async () => {
-    // Clean up test database
-    const testDb = await getDb();
-    await testDb.dropDatabase();
-    await closeConnection();
-
-    // Restore original env
-    if (originalDbName) {
-      process.env.MONGODB_DB_NAME = originalDbName;
-    } else {
-      delete process.env.MONGODB_DB_NAME;
-    }
-    if (originalUseMongo) {
-      process.env.USE_MONGO_PERSISTENCE = originalUseMongo;
-    } else {
-      delete process.env.USE_MONGO_PERSISTENCE;
-    }
+    await teardownTestMongo();
   });
 
   beforeEach(async () => {
     // Clear ALL categories collection before each test to ensure isolation
     // This prevents test pollution from previous tests
-    const testDb = await getDb();
+    const testDb = await getTestDb();
     await testDb.collection('categories').deleteMany({});
   });
 

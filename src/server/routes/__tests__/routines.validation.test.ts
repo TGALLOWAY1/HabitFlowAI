@@ -8,18 +8,18 @@ import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import express, { type Express } from 'express';
 import request from 'supertest';
 import { submitRoutineRoute } from '../routines';
-import { getDb, closeConnection } from '../../lib/mongoClient';
+import { setupTestMongo, teardownTestMongo, getTestDb } from '../../../test/mongoTestHelper';
 import { createRoutine } from '../../repositories/routineRepository';
 import { createHabit } from '../../repositories/habitRepository';
 import { createCategory } from '../../repositories/categoryRepository';
 
-const TEST_DB_NAME = 'test_habitflow_routines_validation';
 const TEST_USER_ID = 'test-user-routines-validation';
 
 let app: Express;
 let testRoutineId: string;
 
 beforeAll(async () => {
+  await setupTestMongo();
   app = express();
   app.use(express.json());
   app.use((req, res, next) => {
@@ -30,11 +30,11 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  await closeConnection();
+  await teardownTestMongo();
 });
 
 beforeEach(async () => {
-  const db = await getDb();
+  const db = await getTestDb();
   await db.collection('routines').deleteMany({ userId: TEST_USER_ID });
   await db.collection('habits').deleteMany({ userId: TEST_USER_ID });
   await db.collection('categories').deleteMany({ userId: TEST_USER_ID });
