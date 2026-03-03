@@ -36,9 +36,11 @@ const PORT = process.env.PORT || 3000;
 import { userIdMiddleware } from './middleware/auth';
 import { devUserIdOverride } from './middleware/devUserIdOverride';
 import { noPersonaInHabitEntryRequests } from './middleware/noPersonaInHabitEntryRequests';
+import { requestContextMiddleware } from './middleware/requestContext';
 
 // Middleware
 app.use(express.json());
+app.use(requestContextMiddleware);
 
 // Serve static files from public directory (for goal badge images)
 // Note: Routine images are served via API endpoints, not static files

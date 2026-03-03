@@ -271,7 +271,6 @@ export async function computeDayView(
     startDayKey: weekWindow.startDayKey,
     endDayKey: weekWindow.endDayKey,
     timeZone,
-    includeLegacyFallback: false,
   });
 
   // Build habit statuses

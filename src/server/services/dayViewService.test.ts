@@ -54,6 +54,9 @@ describe('dayViewService', () => {
 
       const result = await computeDayView(userId, dayKey, timeZone);
 
+      const queryArgs = vi.mocked(getEntryViewsForHabits).mock.calls[0][2];
+      expect(queryArgs.includeLegacyFallback).toBeUndefined();
+
       expect(result.dayKey).toBe(dayKey);
       expect(result.habits).toHaveLength(1);
       expect(result.habits[0].habit.id).toBe('habit-1');
@@ -318,4 +321,3 @@ describe('dayViewService', () => {
     });
   });
 });
-

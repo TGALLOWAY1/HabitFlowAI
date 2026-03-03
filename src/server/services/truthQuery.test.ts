@@ -26,6 +26,7 @@ describe('truthQuery', () => {
   const timeZone = 'UTC';
 
   beforeEach(() => {
+    process.env.LEGACY_DAYLOG_READS = 'false';
     vi.clearAllMocks();
   });
 
@@ -58,7 +59,10 @@ describe('truthQuery', () => {
       vi.mocked(getHabitEntriesByHabit).mockResolvedValue([entry]);
       vi.mocked(getDayLogsByHabit).mockResolvedValue({ [`${habitId}-${dayKey}`]: dayLog });
 
-      const views = await getEntryViewsForHabit(habitId, userId, { timeZone });
+      const views = await getEntryViewsForHabit(habitId, userId, {
+        timeZone,
+        includeLegacyFallback: true,
+      });
 
       expect(views).toHaveLength(1);
       expect(views[0].value).toBe(10); // HabitEntry value wins
@@ -82,7 +86,10 @@ describe('truthQuery', () => {
       vi.mocked(getHabitEntriesByHabit).mockResolvedValue([]);
       vi.mocked(getDayLogsByHabit).mockResolvedValue({ [`${habitId}-${dayKey}`]: dayLog });
 
-      const views = await getEntryViewsForHabit(habitId, userId, { timeZone });
+      const views = await getEntryViewsForHabit(habitId, userId, {
+        timeZone,
+        includeLegacyFallback: true,
+      });
 
       expect(views).toHaveLength(1);
       expect(views[0].value).toBe(8); // DayLog value used
@@ -118,7 +125,10 @@ describe('truthQuery', () => {
       vi.mocked(getHabitEntriesByHabit).mockResolvedValue([entry]);
       vi.mocked(getDayLogsByHabit).mockResolvedValue({ [`${habitId}-${dayKey}`]: dayLog });
 
-      const views = await getEntryViewsForHabit(habitId, userId, { timeZone });
+      const views = await getEntryViewsForHabit(habitId, userId, {
+        timeZone,
+        includeLegacyFallback: true,
+      });
 
       expect(views).toHaveLength(1);
       expect(views[0].value).toBe(10);
@@ -154,7 +164,10 @@ describe('truthQuery', () => {
       vi.mocked(getHabitEntriesByHabit).mockResolvedValue([entry]);
       vi.mocked(getDayLogsByHabit).mockResolvedValue({ [`${habitId}-${dayKey}`]: dayLog });
 
-      const views = await getEntryViewsForHabit(habitId, userId, { timeZone });
+      const views = await getEntryViewsForHabit(habitId, userId, {
+        timeZone,
+        includeLegacyFallback: true,
+      });
 
       expect(views).toHaveLength(1);
       expect(views[0].value).toBe(1); // HabitEntry value wins
@@ -296,6 +309,47 @@ describe('truthQuery', () => {
       expect(views).toHaveLength(0);
       expect(getDayLogsByHabit).not.toHaveBeenCalled();
     });
+
+    it('should default to entries-only reads when LEGACY_DAYLOG_READS=false', async () => {
+      const dayKey = '2025-01-15';
+      const dayLog: DayLog = {
+        habitId,
+        date: dayKey,
+        value: 1,
+        completed: true,
+        source: 'manual',
+      };
+
+      process.env.LEGACY_DAYLOG_READS = 'false';
+      vi.mocked(getHabitEntriesByHabit).mockResolvedValue([]);
+      vi.mocked(getDayLogsByHabit).mockResolvedValue({ [`${habitId}-${dayKey}`]: dayLog });
+
+      const views = await getEntryViewsForHabit(habitId, userId, { timeZone });
+
+      expect(views).toHaveLength(0);
+      expect(getDayLogsByHabit).not.toHaveBeenCalled();
+    });
+
+    it('should use legacy fallback when LEGACY_DAYLOG_READS=true', async () => {
+      const dayKey = '2025-01-15';
+      const dayLog: DayLog = {
+        habitId,
+        date: dayKey,
+        value: 4,
+        completed: true,
+        source: 'manual',
+      };
+
+      process.env.LEGACY_DAYLOG_READS = 'true';
+      vi.mocked(getHabitEntriesByHabit).mockResolvedValue([]);
+      vi.mocked(getDayLogsByHabit).mockResolvedValue({ [`${habitId}-${dayKey}`]: dayLog });
+
+      const views = await getEntryViewsForHabit(habitId, userId, { timeZone });
+
+      expect(views).toHaveLength(1);
+      expect(views[0].source).toBe('legacy');
+      expect(getDayLogsByHabit).toHaveBeenCalledTimes(1);
+    });
   });
 
   describe('getEntryViewsForHabits - batch merge', () => {
@@ -341,7 +395,10 @@ describe('truthQuery', () => {
       vi.mocked(getHabitEntriesByUser).mockResolvedValue(entries);
       vi.mocked(getDayLogsByUser).mockResolvedValue(dayLogs);
 
-      const views = await getEntryViewsForHabits([habitId, habitId2], userId, { timeZone });
+      const views = await getEntryViewsForHabits([habitId, habitId2], userId, {
+        timeZone,
+        includeLegacyFallback: true,
+      });
 
       expect(views).toHaveLength(2);
       
