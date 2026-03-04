@@ -10,8 +10,8 @@ vi.mock('../repositories/goalRepository', () => ({
 vi.mock('../repositories/habitRepository', () => ({
     getHabitsByUser: vi.fn(),
 }));
-vi.mock('../utils/goalProgressUtils', () => ({
-    computeGoalProgress: vi.fn(),
+vi.mock('../utils/goalProgressUtilsV2', () => ({
+    computeGoalProgressV2: vi.fn(),
 }));
 
 describe('skillTreeService', () => {
