@@ -40,14 +40,15 @@ export const DeleteGoalConfirmModal: React.FC<DeleteGoalConfirmModalProps> = ({
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+        <div className="modal-overlay fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
             <div className="w-full max-w-md bg-neutral-900 border border-white/10 rounded-2xl p-6 shadow-2xl">
                 <div className="flex items-center justify-between mb-6">
                     <h3 className="text-xl font-bold text-white">Delete Goal</h3>
                     <button
                         onClick={handleCancel}
                         disabled={isDeleting}
-                        className="text-neutral-400 hover:text-white transition-colors disabled:opacity-50"
+                        className="min-h-[44px] min-w-[44px] flex items-center justify-center text-neutral-400 hover:text-white transition-colors disabled:opacity-50 -mr-2"
+                        aria-label="Close"
                     >
                         <X size={20} />
                     </button>

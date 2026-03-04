@@ -146,8 +146,8 @@ export const RoutineRunnerModal: React.FC<RoutineRunnerModalProps> = ({
     if (!isOpen || !routine) return null;
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
-            <div className="w-full max-w-4xl h-[85vh] bg-neutral-900 border border-white/10 rounded-2xl shadow-2xl flex flex-col overflow-hidden relative">
+        <div className="modal-overlay fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
+            <div className="w-full max-w-4xl max-h-[90dvh] h-[85vh] bg-neutral-900 border border-white/10 rounded-2xl shadow-2xl flex flex-col overflow-hidden relative">
 
                 {/* Header / Progress Bar */}
                 <div className="absolute top-0 left-0 w-full z-10">
@@ -163,14 +163,14 @@ export const RoutineRunnerModal: React.FC<RoutineRunnerModalProps> = ({
                         <h2 className="text-sm font-medium text-white/70 uppercase tracking-wider">
                             {isCompletionView ? 'Routine Complete' : routine.title}
                         </h2>
-                        <button onClick={handleClose} className="text-white/50 hover:text-white transition-colors" aria-label="Close">
+                        <button onClick={handleClose} className="min-h-[44px] min-w-[44px] flex items-center justify-center text-white/50 hover:text-white transition-colors -mr-2" aria-label="Close">
                             <X size={24} />
                         </button>
                     </div>
                 </div>
 
                 {/* Main Content Area */}
-                <div className="flex-1 overflow-y-auto flex flex-col items-center justify-between p-8 pt-16 mt-4">
+                <div className="flex-1 overflow-y-auto modal-scroll flex flex-col items-center justify-between p-8 pt-16 mt-4">
                     {isCompletionView ? (
                         <div className="max-w-md w-full space-y-8 animate-fade-in-up my-auto">
                             <div className="text-center space-y-2">
@@ -204,7 +204,7 @@ export const RoutineRunnerModal: React.FC<RoutineRunnerModalProps> = ({
                                             </button>
                                             <button
                                                 onClick={resetTimer}
-                                                className="p-2 bg-neutral-800 rounded-full text-neutral-400 hover:text-white hover:bg-neutral-700 transition-colors"
+                                                className="min-h-[44px] min-w-[44px] flex items-center justify-center bg-neutral-800 rounded-full text-neutral-400 hover:text-white hover:bg-neutral-700 transition-colors"
                                                 title="Reset Timer"
                                             >
                                                 <RotateCcw size={18} />

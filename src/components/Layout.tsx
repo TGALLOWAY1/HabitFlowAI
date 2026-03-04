@@ -133,7 +133,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
                     )}
                     <button
                         onClick={handleRefresh}
-                        className="p-2 hover:bg-white/5 rounded-full transition-colors text-neutral-400 hover:text-white"
+                        className="min-h-[44px] min-w-[44px] flex items-center justify-center hover:bg-white/5 rounded-full transition-colors text-neutral-400 hover:text-white"
                         title="Refresh Habits and Categories"
                     >
                         <Settings size={20} />
@@ -141,7 +141,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
                     <div ref={userMenuRef} className="relative">
                         <button
                             onClick={() => setUserMenuOpen(!userMenuOpen)}
-                            className="w-8 h-8 bg-neutral-800 rounded-full flex items-center justify-center border border-white/10 text-neutral-400 hover:bg-neutral-700 hover:text-white transition-colors"
+                            className="min-h-[44px] min-w-[44px] bg-neutral-800 rounded-full flex items-center justify-center border border-white/10 text-neutral-400 hover:bg-neutral-700 hover:text-white transition-colors"
                             aria-label="User menu"
                         >
                             <User size={16} />
@@ -177,8 +177,8 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
                 </div>
             </header>
 
-            {/* Main Content */}
-            <main className="pt-20 px-4 pb-20 max-w-7xl mx-auto min-h-screen">
+            {/* Main Content - safe-area for notched devices */}
+            <main className="pt-[max(5rem,env(safe-area-inset-top))] px-4 pb-20 max-w-7xl mx-auto min-h-screen">
                 {children}
             </main>
         </div>

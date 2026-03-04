@@ -24,6 +24,17 @@ body {
 }
 
 @layer utilities {
+  /* Modal scroll on iPhone: contain scroll and smooth momentum */
+  .modal-scroll {
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+  }
+  /* Overlay: contain layout so only inner panel scrolls (avoids body scroll lock bugs) */
+  .modal-overlay {
+    overflow: hidden;
+  }
+
   .no-scrollbar::-webkit-scrollbar {
     display: none;
   }

@@ -246,4 +246,30 @@ After replacing double-click delete with the cell kebab menu:
 
 ---
 
+## 9. Mobile QA Checklist (iPhone Safari / PWA)
+
+Use this for manual passes after mobile/PWA polish (modal scroll, tap targets, Safari quirks).
+
+### Modals
+- [ ] **Today / Tracker:** Open category picker (move habit). Modal scrolls when content is long; closing X is easy to tap (44px). No body scroll behind modal.
+- [ ] **Today / Tracker:** Open habit log modal (choice habit). Modal scrolls; close and options are tappable. Input focus (if any) does not close modal.
+- [ ] **Routine completion:** Run a routine to completion; open “Log selected habits” modal. List scrolls; “Check all” / “Uncheck all” and close are tappable. No rubber-band on body.
+- [ ] **Goals detail:** Open goal → Edit. Edit Goal modal scrolls; form fields and close are usable. Delete confirmation modal: Cancel and Delete buttons are tappable.
+- [ ] **Daily Check-in:** Open check-in modal. Tabs (Morning/Evening), sliders, and notes scroll if needed; close button is tappable. Focusing a control does not close the modal.
+
+### Tap targets
+- [ ] Header: Settings (gear) and User avatar are easy to tap (~44px), no mis-taps.
+- [ ] Goal detail: Edit (pencil) and Delete (trash) in the header are easy to tap.
+- [ ] Modal close (X) buttons across the app feel consistent and easy to hit.
+
+### Layout
+- [ ] Main content starts below the fixed header (no overlap). On notched devices, content is below the safe area.
+- [ ] No sticky header/footer overlapping content or inputs.
+
+### General
+- [ ] No unexpected modal close when tapping inside a modal (e.g. input focus).
+- [ ] Scrolling inside a modal is smooth (momentum on iOS where applied); body does not scroll when modal is open.
+
+---
+
 *Audit completed for M4 kickoff. Suggested commit: `docs(ux): map touch friction + payload drift for M4`.*

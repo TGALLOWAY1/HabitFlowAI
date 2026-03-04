@@ -53,7 +53,7 @@ export const CategoryPickerModal = ({
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm" onClick={onClose}>
+        <div className="modal-overlay fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm" onClick={onClose}>
             <div
                 className={cn(
                     "bg-neutral-900 border border-white/10 rounded-t-2xl sm:rounded-2xl w-full sm:max-w-sm shadow-2xl",
@@ -70,7 +70,8 @@ export const CategoryPickerModal = ({
                     </div>
                     <button
                         onClick={onClose}
-                        className="p-1.5 rounded-lg hover:bg-white/10 text-neutral-400 hover:text-white transition-colors"
+                        className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg hover:bg-white/10 text-neutral-400 hover:text-white transition-colors -m-1"
+                        aria-label="Close"
                     >
                         <X size={18} />
                     </button>
@@ -104,7 +105,7 @@ export const CategoryPickerModal = ({
                 )}
 
                 {/* Category list */}
-                <div className="flex-1 overflow-y-auto px-2 pb-4">
+                <div className="flex-1 overflow-y-auto modal-scroll px-2 pb-4">
                     {filtered.length === 0 ? (
                         <p className="text-center text-sm text-neutral-500 py-6">No categories found</p>
                     ) : (

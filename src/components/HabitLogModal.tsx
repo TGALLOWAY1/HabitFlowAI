@@ -73,8 +73,8 @@ export const HabitLogModal: React.FC<HabitLogModalProps> = ({ isOpen, onClose, h
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-            <div className="w-full max-w-sm bg-neutral-900 border border-white/10 rounded-2xl p-6 shadow-2xl scale-100 animate-in zoom-in-95 duration-200">
+        <div className="modal-overlay fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+            <div className="w-full max-w-sm bg-neutral-900 border border-white/10 rounded-2xl p-6 shadow-2xl scale-100 animate-in zoom-in-95 duration-200 max-h-[90dvh] flex flex-col">
 
                 {/* Header */}
                 <div className="flex items-center justify-between mb-6">
@@ -82,13 +82,13 @@ export const HabitLogModal: React.FC<HabitLogModalProps> = ({ isOpen, onClose, h
                         <h3 className="text-lg font-bold text-white">{habit.name}</h3>
                         <p className="text-xs text-neutral-400">{date}</p>
                     </div>
-                    <button onClick={onClose} className="text-neutral-400 hover:text-white transition-colors">
+                    <button onClick={onClose} className="min-h-[44px] min-w-[44px] flex items-center justify-center text-neutral-400 hover:text-white transition-colors -mr-2" aria-label="Close">
                         <X size={20} />
                     </button>
                 </div>
 
                 {/* Option List */}
-                <div className="space-y-3 mb-6 max-h-[50vh] overflow-y-auto custom-scrollbar">
+                <div className="space-y-3 mb-6 flex-1 min-h-0 max-h-[50vh] overflow-y-auto modal-scroll custom-scrollbar">
                     {options.map(option => {
                         const isSelected = selectedOptionId === option.id;
                         const hasMetric = option.metricConfig?.mode === 'required';

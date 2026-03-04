@@ -209,8 +209,8 @@ export const DailyCheckInModal: React.FC<DailyCheckInModalProps> = ({ isOpen, on
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-            <div className="bg-neutral-900 border border-white/10 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
+        <div className="modal-overlay fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+            <div className="bg-neutral-900 border border-white/10 rounded-2xl w-full max-w-md max-h-[90dvh] shadow-2xl overflow-hidden flex flex-col animate-in fade-in zoom-in duration-200">
                 {/* Header with Tabs */}
                 <div className="border-b border-white/5 bg-neutral-800/50">
                     <div className="flex items-center justify-between p-4 pb-0">
@@ -219,7 +219,8 @@ export const DailyCheckInModal: React.FC<DailyCheckInModalProps> = ({ isOpen, on
                         </h2>
                         <button
                             onClick={onClose}
-                            className="p-1 rounded-full hover:bg-white/10 text-neutral-400 hover:text-white transition-colors"
+                            className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-full hover:bg-white/10 text-neutral-400 hover:text-white transition-colors -mr-1"
+                            aria-label="Close"
                         >
                             <X size={20} />
                         </button>
@@ -250,7 +251,7 @@ export const DailyCheckInModal: React.FC<DailyCheckInModalProps> = ({ isOpen, on
                 </div>
 
                 {/* Body */}
-                <div className="p-6 space-y-6">
+                <div className="flex-1 overflow-y-auto modal-scroll p-6 space-y-6">
                     {/* Render persona-selected metric subset from the canonical superset */}
                     {checkinSubset
                         .filter((k): k is WellbeingMetricKey => (WELLBEING_METRIC_KEYS as readonly string[]).includes(k))

@@ -174,7 +174,7 @@ export const EditGoalModal: React.FC<EditGoalModalProps> = ({
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+        <div className="modal-overlay fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
             <div className="w-full max-w-2xl bg-neutral-900 border border-white/10 rounded-2xl flex flex-col max-h-[90vh] shadow-2xl">
                 {/* Header */}
                 <div className="flex items-center justify-between p-6 border-b border-white/10">
@@ -182,14 +182,15 @@ export const EditGoalModal: React.FC<EditGoalModalProps> = ({
                     <button
                         onClick={onClose}
                         disabled={isSubmitting}
-                        className="text-neutral-400 hover:text-white transition-colors disabled:opacity-50"
+                        className="min-h-[44px] min-w-[44px] flex items-center justify-center text-neutral-400 hover:text-white transition-colors disabled:opacity-50 -mr-2"
+                        aria-label="Close"
                     >
                         <X size={20} />
                     </button>
                 </div>
 
                 {/* Body - Scrollable */}
-                <div className="flex-1 overflow-y-auto p-6">
+                <div className="flex-1 overflow-y-auto modal-scroll p-6">
                     <form id="edit-goal-form" onSubmit={handleSubmit} className="space-y-6">
                         {/* Error Display */}
                         {error && (

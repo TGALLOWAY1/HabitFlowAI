@@ -85,21 +85,22 @@ export const HabitHistoryModal: React.FC<HabitHistoryModalProps> = ({ habitId, o
     if (!habit) return null;
 
     return (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-2xl max-h-[80vh] flex flex-col">
+        <div className="modal-overlay fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-2xl max-h-[85vh] flex flex-col">
                 <div className="flex justify-between items-center p-6 border-b border-gray-200 dark:border-gray-700">
                     <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">
                         History for {habit.name}
                     </h2>
                     <button
                         onClick={onClose}
-                        className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+                        className="min-h-[44px] min-w-[44px] flex items-center justify-center text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 -mr-2"
+                        aria-label="Close"
                     >
                         ✕
                     </button>
                 </div>
 
-                <div className="flex-1 overflow-y-auto p-6">
+                <div className="flex-1 overflow-y-auto modal-scroll p-6">
                     {loading ? (
                         <div className="text-center py-8 text-gray-500">Loading history...</div>
                     ) : entries.length === 0 ? (
