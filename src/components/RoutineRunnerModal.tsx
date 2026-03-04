@@ -1,8 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, ChevronLeft, ChevronRight, Check, Play, Pause, RotateCcw } from 'lucide-react';
+import { X, ChevronLeft, ChevronRight, Check, Play, Pause, RotateCcw, CircleCheck, Forward } from 'lucide-react';
 import type { Routine } from '../models/persistenceTypes';
-import { submitRoutine } from '../lib/persistenceClient';
+import { submitRoutine, batchCreateEntries } from '../lib/persistenceClient';
 import { useHabitStore } from '../store/HabitContext';
+import { useRoutineStore } from '../store/RoutineContext';
+import { useToast } from './Toast';
+import { CompletedHabitsModal } from './CompletedHabitsModal';
 
 interface RoutineRunnerModalProps {
     isOpen: boolean;
@@ -15,11 +18,17 @@ export const RoutineRunnerModal: React.FC<RoutineRunnerModalProps> = ({
     routine,
     onClose,
 }) => {
-    const { refreshDayLogs } = useHabitStore();
+    const { refreshDayLogs, habits } = useHabitStore();
+    const { selectRoutine, startRoutine, exitRoutine, stepStates, setStepState } = useRoutineStore();
+    const { showToast } = useToast();
 
     const [currentStepIndex, setCurrentStepIndex] = useState(0);
     const [isCompletionView, setIsCompletionView] = useState(false);
+    const [showCompletedHabitsModal, setShowCompletedHabitsModal] = useState(false);
     const [submitting, setSubmitting] = useState(false);
+    const [loggingHabits, setLoggingHabits] = useState(false);
+
+    const getHabitName = (habitId: string) => habits.find((h) => h.id === habitId)?.name ?? 'Habit';
 
     // Timer State
     const [timeLeft, setTimeLeft] = useState<number | null>(null);
@@ -30,7 +39,20 @@ export const RoutineRunnerModal: React.FC<RoutineRunnerModalProps> = ({
     const currentStep = steps[currentStepIndex];
     const isLastStep = currentStepIndex === steps.length - 1;
 
-    // Reset state when modal opens/closes or routine changes
+    // Sync execution state with context: init stepStates when runner opens
+    useEffect(() => {
+        if (isOpen && routine) {
+            selectRoutine(routine.id);
+            startRoutine();
+        }
+    }, [isOpen, routine?.id]);
+
+    const handleClose = () => {
+        exitRoutine();
+        onClose();
+    };
+
+    // Reset local UI state when modal opens/closes or routine changes
     useEffect(() => {
         if (isOpen && routine) {
             setCurrentStepIndex(0);
@@ -98,6 +120,7 @@ export const RoutineRunnerModal: React.FC<RoutineRunnerModalProps> = ({
                 habitIdsToComplete: logHabits ? routine.linkedHabitIds : undefined,
             });
             await refreshDayLogs();
+            exitRoutine();
             onClose();
         } catch (error) {
             console.error('Failed to submit routine:', error);
@@ -140,7 +163,7 @@ export const RoutineRunnerModal: React.FC<RoutineRunnerModalProps> = ({
                         <h2 className="text-sm font-medium text-white/70 uppercase tracking-wider">
                             {isCompletionView ? 'Routine Complete' : routine.title}
                         </h2>
-                        <button onClick={onClose} className="text-white/50 hover:text-white transition-colors">
+                        <button onClick={handleClose} className="text-white/50 hover:text-white transition-colors" aria-label="Close">
                             <X size={24} />
                         </button>
                     </div>
@@ -217,6 +240,56 @@ export const RoutineRunnerModal: React.FC<RoutineRunnerModalProps> = ({
                                     </p>
                                 </div>
                             )}
+
+                            {/* Step status indicators */}
+                            {steps.length > 1 && (
+                                <div className="flex flex-wrap justify-center gap-1.5" role="list" aria-label="Step progress">
+                                    {steps.map((s, idx) => {
+                                        const status = stepStates[s.id] ?? 'neutral';
+                                        const isCurrent = idx === currentStepIndex;
+                                        return (
+                                            <span
+                                                key={s.id}
+                                                role="listitem"
+                                                className={`inline-flex items-center justify-center w-8 h-8 rounded-full text-xs font-medium transition-colors ${
+                                                    status === 'done'
+                                                        ? 'bg-emerald-500/30 text-emerald-400'
+                                                        : status === 'skipped'
+                                                            ? 'bg-neutral-600/50 text-neutral-500'
+                                                            : isCurrent
+                                                                ? 'bg-white/20 text-white ring-1 ring-white/30'
+                                                                : 'bg-white/5 text-neutral-400'
+                                                }`}
+                                                title={status === 'done' ? `${s.title} – Done` : status === 'skipped' ? `${s.title} – Skipped` : s.title}
+                                            >
+                                                {status === 'done' ? <Check size={14} strokeWidth={2.5} /> : status === 'skipped' ? <Forward size={14} /> : idx + 1}
+                                            </span>
+                                        );
+                                    })}
+                                </div>
+                            )}
+
+                            {/* Mark step done / skip (per-step completion, no habit logging) */}
+                            {currentStep && (
+                                <div className="flex flex-wrap justify-center gap-3">
+                                    <button
+                                        type="button"
+                                        onClick={() => setStepState(currentStep.id, 'done')}
+                                        className="flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 transition-colors text-sm font-medium"
+                                    >
+                                        <CircleCheck size={18} />
+                                        Mark done
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setStepState(currentStep.id, 'skipped')}
+                                        className="flex items-center gap-2 px-4 py-2 rounded-lg bg-neutral-600/50 text-neutral-400 hover:bg-neutral-600/70 hover:text-neutral-300 transition-colors text-sm font-medium"
+                                    >
+                                        <Forward size={18} />
+                                        Skip step
+                                    </button>
+                                </div>
+                            )}
                         </div>
                     )}
                 </div>
@@ -257,11 +330,11 @@ export const RoutineRunnerModal: React.FC<RoutineRunnerModalProps> = ({
                                 </button>
                                 <div className="flex items-center gap-3">
                                     <button
-                                        onClick={() => handleFinish(false)}
-                                        disabled={submitting}
-                                        className="flex items-center gap-2 px-6 py-3 bg-neutral-700 text-white font-semibold rounded-lg hover:bg-neutral-600 transition-colors"
+                                        type="button"
+                                        onClick={() => setShowCompletedHabitsModal(true)}
+                                        className="flex items-center gap-2 px-6 py-3 bg-neutral-700 text-white font-semibold rounded-lg hover:bg-neutral-600 transition-colors touch-manipulation"
                                     >
-                                        {submitting ? 'Saving...' : 'Complete Routine'}
+                                        Complete Routine
                                     </button>
                                     {routine.linkedHabitIds && routine.linkedHabitIds.length > 0 && (
                                         <button
@@ -279,6 +352,38 @@ export const RoutineRunnerModal: React.FC<RoutineRunnerModalProps> = ({
                     </div>
                 </div>
 
+                <CompletedHabitsModal
+                    isOpen={showCompletedHabitsModal}
+                    routine={routine ?? null}
+                    stepStates={stepStates}
+                    getHabitName={getHabitName}
+                    onClose={() => setShowCompletedHabitsModal(false)}
+                    submitting={loggingHabits}
+                    onLogSelected={async (habitIds) => {
+                        if (habitIds.length === 0) {
+                            setShowCompletedHabitsModal(false);
+                            return;
+                        }
+                        setLoggingHabits(true);
+                        try {
+                            const timezone = typeof Intl !== 'undefined' ? Intl.DateTimeFormat().resolvedOptions().timeZone : undefined;
+                            await batchCreateEntries({
+                                habitIds,
+                                routineId: routine?.id,
+                                timezone,
+                            });
+                            await refreshDayLogs();
+                            setShowCompletedHabitsModal(false);
+                            exitRoutine();
+                            onClose();
+                        } catch (err) {
+                            const message = err instanceof Error ? err.message : 'Failed to log habits';
+                            showToast(message, 'error');
+                        } finally {
+                            setLoggingHabits(false);
+                        }
+                    }}
+                />
             </div>
         </div>
     );

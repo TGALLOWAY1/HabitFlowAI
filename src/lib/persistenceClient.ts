@@ -717,6 +717,42 @@ export async function submitRoutine(
   return response;
 }
 
+/** Response from POST /api/entries/batch */
+export interface BatchCreateEntriesResponse {
+  created: number;
+  updated: number;
+  results: Array<{ habitId: string; dayKey: string; id: string }>;
+}
+
+/**
+ * Batch create habit entries (e.g. routine-confirmed habits).
+ * POST /api/entries/batch
+ * Uses canonical dayKey; timezone optional (server fallback America/New_York).
+ */
+export async function batchCreateEntries(payload: {
+  habitIds: string[];
+  routineId?: string;
+  timezone?: string;
+  dayKey?: string;
+}): Promise<BatchCreateEntriesResponse> {
+  const { habitIds, routineId, timezone, dayKey } = payload;
+  const body: { timezone?: string; dayKey?: string; entries: Array<{ habitId: string; source: 'routine'; routineId?: string }> } = {
+    entries: habitIds.map((habitId) => ({
+      habitId,
+      source: 'routine' as const,
+      ...(routineId ? { routineId } : {}),
+    })),
+  };
+  if (timezone != null) body.timezone = timezone;
+  if (dayKey != null) body.dayKey = dayKey;
+
+  const response = await apiRequest<BatchCreateEntriesResponse>('/entries/batch', {
+    method: 'POST',
+    body: JSON.stringify(body),
+  });
+  return response;
+}
+
 /**
  * Fetch all routine logs for the current user.
  * 

@@ -10,13 +10,14 @@ import {
     updateHabitEntry,
     deleteHabitEntry,
     upsertHabitEntry,
+    getHabitEntriesForDay,
 } from '../repositories/habitEntryRepository';
 import { getHabitById } from '../repositories/habitRepository';
 import { validateHabitEntryPayload } from '../utils/habitValidation';
 import { recomputeDayLogForHabit } from '../utils/recomputeUtils';
 import { validateDayKey, assertTimeZone, validateHabitEntryPayloadStructure, assertNoStoredCompletion } from '../domain/canonicalValidators';
 import { normalizeHabitEntryPayload } from '../utils/dayKeyNormalization';
-import { resolveTimeZone } from '../utils/dayKey';
+import { resolveTimeZone, getNowDayKey } from '../utils/dayKey';
 
 /**
  * Get entry views for a habit (via truthQuery).
@@ -449,13 +450,83 @@ export async function upsertHabitEntryRoute(req: Request, res: Response): Promis
 }
 
 /**
- * Delete a habit entry by key.
- * DELETE /api/entries/key?habitId=...&dateKey=...
+ * Batch create habit entries (routine-confirmed habits).
+ * POST /api/entries/batch
+ *
+ * Request body: { timezone?: string, dayKey?: string, entries: [{ habitId, source?, routineId? }] }
+ * - If dayKey absent: computed via getNowDayKey(timezone), timezone defaults to America/New_York.
+ * - Uses req.userId (user-scoped); atomic upsert per (userId, habitId, dayKey).
+ * - Same write path as single entry (upsertHabitEntry + recomputeDayLogForHabit).
  */
+export async function batchCreateEntriesRoute(req: Request, res: Response): Promise<void> {
+    try {
+        const userId = (req as any).userId;
+        if (!userId) {
+            res.status(401).json({ error: 'User not authenticated' });
+            return;
+        }
+
+        const { timezone, dayKey: bodyDayKey, entries } = req.body;
+
+        if (!entries || !Array.isArray(entries)) {
+            res.status(400).json({ error: 'entries is required and must be an array' });
+            return;
+        }
+
+        const timeZone = resolveTimeZone(typeof timezone === 'string' ? timezone : undefined);
+        const dayKey = bodyDayKey != null && typeof bodyDayKey === 'string'
+            ? bodyDayKey
+            : getNowDayKey(timeZone);
+
+        const dayKeyValidation = validateDayKey(dayKey);
+        if (!dayKeyValidation.valid) {
+            res.status(400).json({ error: dayKeyValidation.error });
+            return;
+        }
+
+        let created = 0;
+        let updated = 0;
+        const results: { habitId: string; dayKey: string; id: string }[] = [];
+        const now = new Date().toISOString();
+
+        for (const item of entries) {
+            const habitId = item?.habitId;
+            if (!habitId || typeof habitId !== 'string') {
+                res.status(400).json({ error: 'Each entry must have a non-empty habitId string' });
+                return;
+            }
+
+            const habit = await getHabitById(habitId, userId);
+            if (!habit) {
+                res.status(404).json({ error: `Habit not found: ${habitId}` });
+                return;
+            }
+
+            const existing = await getHabitEntriesForDay(habitId, dayKey, userId);
+            const entry = await upsertHabitEntry(habitId, dayKey, userId, {
+                source: 'routine',
+                routineId: typeof item.routineId === 'string' ? item.routineId : undefined,
+                value: 1,
+                timestamp: now,
+            });
+            if (existing.length === 0) created += 1;
+            else updated += 1;
+
+            await recomputeDayLogForHabit(habitId, dayKey, userId);
+            results.push({ habitId: entry.habitId, dayKey: entry.dayKey ?? dayKey, id: entry.id });
+        }
+
+        res.status(200).json({ created, updated, results });
+    } catch (error) {
+        console.error('Error in batch create entries:', error);
+        res.status(500).json({ error: 'Failed to batch create entries' });
+    }
+}
+
 /**
  * Delete a habit entry by key (habitId + dayKey).
  * DELETE /api/entries/key?habitId=...&dateKey=...
- * 
+ *
  * Uses canonical dayKey format (YYYY-MM-DD). This is the preferred method
  * for deletion as it avoids issues with stale entry IDs.
  */

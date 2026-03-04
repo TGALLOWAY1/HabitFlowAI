@@ -9,6 +9,11 @@ import {
     getActiveUserId,
 } from '../lib/persistenceClient';
 
+/** Per-step completion state during routine execution. No habit logging. */
+export type StepStatus = 'neutral' | 'done' | 'skipped';
+
+export type StepStates = Record<string, StepStatus>;
+
 interface RoutineContextType {
     routines: Routine[];
     routineLogs: Record<string, RoutineLog>;
@@ -23,6 +28,8 @@ interface RoutineContextType {
     activeRoutine: Routine | null;
     executionState: 'browse' | 'preview' | 'execute';
     currentStepIndex: number;
+    /** Per-step status for current run. Keyed by stepId. Reset on start (all neutral) and cleared on exit. */
+    stepStates: StepStates;
 
     // Execution Actions
     selectRoutine: (routineId: string) => void;
@@ -31,6 +38,7 @@ interface RoutineContextType {
     nextStep: () => void;
     prevStep: () => void;
     skipStep: () => void;
+    setStepState: (stepId: string, status: StepStatus) => void;
 }
 
 const RoutineContext = createContext<RoutineContextType | undefined>(undefined);
@@ -56,6 +64,7 @@ export const RoutineProvider: React.FC<{ children: React.ReactNode }> = ({ child
     const [activeRoutine, setActiveRoutine] = useState<Routine | null>(null);
     const [executionState, setExecutionState] = useState<'browse' | 'preview' | 'execute'>('browse');
     const [currentStepIndex, setCurrentStepIndex] = useState<number>(0);
+    const [stepStates, setStepStates] = useState<StepStates>({});
 
     // Load routines from MongoDB on mount
     useEffect(() => {
@@ -165,6 +174,12 @@ export const RoutineProvider: React.FC<{ children: React.ReactNode }> = ({ child
         if (activeRoutine) {
             setExecutionState('execute');
             setCurrentStepIndex(0);
+            // Initialize all steps to neutral for this run
+            const initial: StepStates = {};
+            for (const step of activeRoutine.steps) {
+                initial[step.id] = 'neutral';
+            }
+            setStepStates(initial);
         }
     };
 
@@ -172,6 +187,11 @@ export const RoutineProvider: React.FC<{ children: React.ReactNode }> = ({ child
         setExecutionState('browse');
         setActiveRoutine(null);
         setCurrentStepIndex(0);
+        setStepStates({});
+    };
+
+    const setStepState = (stepId: string, status: StepStatus) => {
+        setStepStates(prev => ({ ...prev, [stepId]: status }));
     };
 
     const nextStep = () => {
@@ -247,12 +267,14 @@ export const RoutineProvider: React.FC<{ children: React.ReactNode }> = ({ child
                 activeRoutine,
                 executionState,
                 currentStepIndex,
+                stepStates,
                 selectRoutine,
                 startRoutine,
                 exitRoutine,
                 nextStep,
                 prevStep,
-                skipStep
+                skipStep,
+                setStepState
             }}
         >
             {children}
