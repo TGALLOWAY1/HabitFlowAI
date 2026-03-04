@@ -7,15 +7,16 @@
 
 import type { Request, Response } from 'express';
 import {
-    createHabitEntry,
     updateHabitEntry,
     deleteHabitEntry,
+    upsertHabitEntry,
 } from '../repositories/habitEntryRepository';
 import { getHabitById } from '../repositories/habitRepository';
 import { validateHabitEntryPayload } from '../utils/habitValidation';
 import { recomputeDayLogForHabit } from '../utils/recomputeUtils';
 import { validateDayKey, assertTimeZone, validateHabitEntryPayloadStructure, assertNoStoredCompletion } from '../domain/canonicalValidators';
 import { normalizeHabitEntryPayload } from '../utils/dayKeyNormalization';
+import { resolveTimeZone } from '../utils/dayKey';
 
 /**
  * Get entry views for a habit (via truthQuery).
@@ -34,12 +35,10 @@ export async function getHabitEntriesRoute(req: Request, res: Response): Promise
             return;
         }
 
-        // timeZone is required for DayKey derivation
-        const userTimeZone = (timeZone && typeof timeZone === 'string')
-            ? timeZone
-            : 'UTC'; // Default to UTC if not provided
+        // Use canonical default (America/New_York) when timeZone missing or invalid
+        const userTimeZone = resolveTimeZone(timeZone && typeof timeZone === 'string' ? timeZone : undefined);
 
-        // Validate timeZone
+        // Validate timeZone (resolution already produced a valid TZ; assert for consistency)
         const timeZoneValidation = assertTimeZone(userTimeZone);
         if (!timeZoneValidation.valid) {
             res.status(400).json({ error: timeZoneValidation.error });
@@ -113,9 +112,7 @@ export async function createHabitEntryRoute(req: Request, res: Response): Promis
         }
 
         // Normalize dayKey from various inputs (dayKey, date, or timestamp + timeZone)
-        const userTimeZone = (entryData.timeZone && typeof entryData.timeZone === 'string')
-            ? entryData.timeZone
-            : 'UTC'; // Default to UTC
+        const userTimeZone = resolveTimeZone(entryData.timeZone && typeof entryData.timeZone === 'string' ? entryData.timeZone : undefined);
 
         let normalizedPayload;
         try {
@@ -146,20 +143,21 @@ export async function createHabitEntryRoute(req: Request, res: Response): Promis
             return;
         }
 
-        // 1. Create Entry with normalized dayKey (date is NOT persisted, only accepted as input)
-        const { date: _, ...entryDataWithoutDate } = entryData;
-        const newEntry = await createHabitEntry({
-            ...entryDataWithoutDate,
-            dayKey: normalizedPayload.dayKey,
-            // date is NOT included - it's only accepted as input and normalized to dayKey
-            timestamp: normalizedPayload.timestampUtc,
-            source: entryData.source || 'manual' // Default source
-        }, userId);
+        // 1. Atomic upsert by (userId, habitId, dayKey) — no read-then-write; preserves "one entry per day" and avoids races
+        const { date: _d, habitId: _h, dayKey: _k, ...rest } = entryData;
+        const newEntry = await upsertHabitEntry(
+            entryData.habitId,
+            normalizedPayload.dayKey,
+            userId,
+            {
+                ...rest,
+                timestamp: normalizedPayload.timestampUtc,
+                source: entryData.source || 'manual',
+            }
+        );
 
-        // Add date to response for backward compatibility (derived from dayKey)
         const responseEntry = { ...newEntry, date: newEntry.dayKey };
 
-        // 2. Recompute DayLog (use dayKey)
         if (!newEntry.dayKey) {
             throw new Error('Entry missing dayKey after creation');
         }
@@ -170,8 +168,8 @@ export async function createHabitEntryRoute(req: Request, res: Response): Promis
         );
 
         res.status(201).json({
-            entry: responseEntry, // Includes date as derived alias for backward compatibility
-            dayLog: updatedDayLog // Return derived state
+            entry: responseEntry,
+            dayLog: updatedDayLog
         });
 
     } catch (error) {
@@ -292,9 +290,7 @@ export async function updateHabitEntryRoute(req: Request, res: Response): Promis
 
         // Normalize dayKey if date/dayKey/timestamp is being updated
         if (patch.date || patch.dayKey || patch.timestamp) {
-            const userTimeZone = (patch.timeZone && typeof patch.timeZone === 'string')
-                ? patch.timeZone
-                : 'UTC';
+            const userTimeZone = resolveTimeZone(patch.timeZone && typeof patch.timeZone === 'string' ? patch.timeZone : undefined);
 
             try {
                 const normalized = normalizeHabitEntryPayload({

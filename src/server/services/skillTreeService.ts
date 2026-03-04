@@ -1,7 +1,8 @@
 import { getCategoriesByUser } from '../repositories/categoryRepository';
 import { getGoalsByUser } from '../repositories/goalRepository';
 import { getHabitsByUser } from '../repositories/habitRepository';
-import { computeGoalProgress } from '../utils/goalProgressUtils';
+import { computeGoalProgressV2 } from '../utils/goalProgressUtilsV2';
+import { DEFAULT_DAYKEY_TIMEZONE } from '../utils/dayKey';
 import type { Goal } from '../../models/persistenceTypes';
 
 /**
@@ -103,7 +104,7 @@ export async function getSkillTree(userId: string): Promise<SkillTreeData> {
         for (const goal of categoryGoals) {
             // Compute Goal Progress
             // We use the existing utility which calculates cumulative/frequency progress
-            const progressData = await computeGoalProgress(goal.id, userId);
+            const progressData = await computeGoalProgressV2(goal.id, userId, DEFAULT_DAYKEY_TIMEZONE);
 
             // Build Habit Nodes (Leaves)
             const linkedHabitNodes: SkillTreeHabitNode[] = [];

@@ -17,6 +17,7 @@ import { getHabitEntriesByHabit, getHabitEntriesByUser } from '../repositories/h
 import { getDayLogsByHabit, getDayLogsByUser } from '../repositories/dayLogRepository';
 import { isLegacyDaylogReadsEnabled } from '../config';
 import { warnOncePerRequest } from '../middleware/requestContext';
+import { allowDayKeyLegacyFallback } from '../utils/dayKey';
 import type { HabitEntry, DayLog } from '../../models/persistenceTypes';
 import type { DayKey } from '../../domain/time/dayKey';
 import { formatDayKeyFromDate, isValidDayKey } from '../../domain/time/dayKey';
@@ -200,32 +201,40 @@ export async function getEntryViewsForHabits(
 
 /**
  * Maps a HabitEntry to an EntryView.
- * 
+ * Uses canonical dayKey only in production; date/dateKey/timestamp fallback only behind dev flag with log.
+ *
  * @param entry - HabitEntry from repository
  * @param timeZone - User's timezone for DayKey derivation
  * @returns EntryView
  */
 function mapEntryToView(entry: HabitEntry, timeZone: string): EntryView {
-  // Derive dayKey: prefer dayKey (canonical), then date (legacy), then dateKey (deprecated), then derive from timestamp
+  const allowFallback = allowDayKeyLegacyFallback();
+
   let dayKey: DayKey;
-  
+
   if (entry.dayKey && isValidDayKey(entry.dayKey)) {
-    // Canonical dayKey field (preferred)
     dayKey = entry.dayKey;
-  } else if (entry.date && isValidDayKey(entry.date)) {
-    // Legacy date field (backward compatibility)
+  } else if (allowFallback && entry.date && isValidDayKey(entry.date)) {
+    if (process.env.NODE_ENV !== 'production') {
+      console.warn(`[truthQuery] HabitEntry ${entry.id} using legacy "date" as dayKey. Prefer "dayKey".`);
+    }
     dayKey = entry.date;
-  } else if (entry.dateKey && isValidDayKey(entry.dateKey)) {
-    // Deprecated dateKey field (backward compatibility)
+  } else if (allowFallback && entry.dateKey && isValidDayKey(entry.dateKey)) {
+    if (process.env.NODE_ENV !== 'production') {
+      console.warn(`[truthQuery] HabitEntry ${entry.id} using legacy "dateKey" as dayKey. Prefer "dayKey".`);
+    }
     dayKey = entry.dateKey;
   } else {
-    // Derive from timestamp + timezone (fallback for legacy entries)
-    // TODO: This should not happen in production - all entries should have dayKey
-    console.warn(
-      `HabitEntry ${entry.id} missing dayKey/date/dateKey. Deriving from timestamp ${entry.timestamp} in timezone ${timeZone}`
-    );
+    // Derive from timestamp (always allowed so we don't drop entries; log when not in fallback mode)
     try {
       dayKey = formatDayKeyFromDate(new Date(entry.timestamp), timeZone);
+      if (!allowFallback && process.env.NODE_ENV === 'production') {
+        console.warn(`[truthQuery] HabitEntry ${entry.id} missing dayKey, derived from timestamp.`);
+      } else if (process.env.NODE_ENV !== 'production') {
+        console.warn(
+          `[truthQuery] HabitEntry ${entry.id} missing dayKey/date/dateKey. Deriving from timestamp in ${timeZone}.`
+        );
+      }
     } catch (error) {
       throw new Error(
         `Failed to derive dayKey for entry ${entry.id}: ${error instanceof Error ? error.message : String(error)}`

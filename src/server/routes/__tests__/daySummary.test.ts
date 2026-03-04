@@ -190,4 +190,59 @@ describe('getDaySummary', () => {
 
     expect(body.logs['habit-daily-2026-02-10']).toBeUndefined();
   });
+
+  it('returns consistent dayKeys for a week window (all log keys in range and YYYY-MM-DD)', async () => {
+    const habit: Habit = {
+      id: 'habit-1',
+      categoryId: 'cat-1',
+      name: 'Daily',
+      goal: { type: 'boolean', frequency: 'daily', target: 1 },
+      archived: false,
+      createdAt: '2026-01-01T00:00:00.000Z',
+    };
+    const entries: HabitEntry[] = [
+      createEntry({
+        id: 'e-1',
+        habitId: 'habit-1',
+        dayKey: '2026-02-17',
+        timestamp: '2026-02-17T10:00:00.000Z',
+        source: 'manual',
+        value: 1,
+      }),
+      createEntry({
+        id: 'e-2',
+        habitId: 'habit-1',
+        dayKey: '2026-02-20',
+        timestamp: '2026-02-20T10:00:00.000Z',
+        source: 'manual',
+        value: 1,
+      }),
+    ];
+    vi.mocked(getHabitsByUser).mockResolvedValue([habit]);
+    vi.mocked(getHabitEntriesByUser).mockResolvedValue(entries);
+
+    const req = {
+      userId: 'test-user',
+      query: {
+        startDayKey: '2026-02-17',
+        endDayKey: '2026-02-23',
+        timeZone: 'UTC',
+      },
+    } as unknown as Request;
+
+    const res = createRes();
+    await getDaySummary(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(200);
+    const body = vi.mocked(res.json).mock.calls[0][0];
+    expect(body.startDayKey).toBe('2026-02-17');
+    expect(body.endDayKey).toBe('2026-02-23');
+
+    const dayKeyRegex = /^\d{4}-\d{2}-\d{2}$/;
+    for (const log of Object.values(body.logs) as Array<{ date: string }>) {
+      const dayKey = log.date;
+      expect(dayKey).toMatch(dayKeyRegex);
+      expect(dayKey >= body.startDayKey && dayKey <= body.endDayKey).toBe(true);
+    }
+  });
 });

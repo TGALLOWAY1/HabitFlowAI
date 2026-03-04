@@ -6,6 +6,8 @@ import { createHabit } from '../../repositories/habitRepository';
 import { createGoal } from '../../repositories/goalRepository';
 import { setupTestMongo, teardownTestMongo, getTestDb } from '../../../test/mongoTestHelper';
 import { createHabitEntryRoute, deleteHabitEntryByKeyRoute } from '../habitEntries';
+import { getHabitEntriesForDay } from '../../repositories/habitEntryRepository';
+import { HABIT_ENTRIES_UNIQUE_INDEX_NAME } from '../../lib/mongoClient';
 import { getDayView } from '../dayView';
 import { getDaySummary } from '../daySummary';
 import { getProgressOverview } from '../progress';
@@ -206,5 +208,37 @@ describe('Entries-only invariants across derived reads', () => {
     expect(snapshot.goalsWithProgressRow.progress.percent).toBe(0);
     expect(snapshot.goalProgress.currentValue).toBe(0);
     expect(snapshot.goalProgress.percent).toBe(0);
+  });
+
+  it('concurrent upserts for same (habitId, dayKey) result in exactly one entry', async () => {
+    const dayKey = '2026-03-15';
+    const payload = {
+      habitId,
+      dayKey,
+      value: 1,
+      source: 'manual',
+      timeZone: 'UTC',
+    };
+
+    const [res1, res2] = await Promise.all([
+      request(app).post('/api/entries').send(payload),
+      request(app).post('/api/entries').send(payload),
+    ]);
+
+    expect(res1.status).toBe(201);
+    expect(res2.status).toBe(201);
+
+    const entries = await getHabitEntriesForDay(habitId, dayKey, TEST_USER_ID);
+    expect(entries.length).toBe(1);
+  });
+
+  it('habitEntries unique index config when present', async () => {
+    const db = await getTestDb();
+    const indexes = await db.collection('habitEntries').indexes();
+    const uniqueIndex = indexes.find((i: { name: string }) => i.name === HABIT_ENTRIES_UNIQUE_INDEX_NAME);
+    if (uniqueIndex) {
+      expect(uniqueIndex.unique).toBe(true);
+      expect(uniqueIndex.key).toEqual({ userId: 1, habitId: 1, dayKey: 1 });
+    }
   });
 });

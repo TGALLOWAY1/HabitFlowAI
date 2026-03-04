@@ -149,4 +149,22 @@ describe('getProgressOverview', () => {
     expect(habitToday.weekTarget).toBe(3);
     expect(habitToday.atRisk).toBe(true);
   });
+
+  it('timezone missing uses America/New_York day boundaries for todayDate', async () => {
+    // 2026-02-26 04:59 UTC = 23:59 Eastern on 2026-02-25 => today in America/New_York is 2026-02-25
+    vi.setSystemTime(new Date('2026-02-26T04:59:00.000Z'));
+
+    const habit = dailyHabit('habit-daily');
+    vi.mocked(getHabitsByUser).mockResolvedValue([habit]);
+    vi.mocked(getHabitEntriesByUser).mockResolvedValue([]);
+
+    const req = { userId: 'test-user', query: {} } as unknown as Request;
+    const res = createRes();
+
+    await getProgressOverview(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(200);
+    const body = vi.mocked(res.json).mock.calls[0][0];
+    expect(body.todayDate).toBe('2026-02-25');
+  });
 });

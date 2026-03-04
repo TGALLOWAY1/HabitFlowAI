@@ -3,6 +3,7 @@ import type { DayLog, HabitEntry } from '../../models/persistenceTypes';
 import { validateDayKey, assertTimeZone } from '../domain/canonicalValidators';
 import { getHabitsByUser } from '../repositories/habitRepository';
 import { getHabitEntriesByUser } from '../repositories/habitEntryRepository';
+import { resolveTimeZone, getNowDayKey, getDayKeyForDate, getCanonicalDayKeyFromEntry } from '../utils/dayKey';
 
 type AggregatedDayEntry = {
   habitId: string;
@@ -18,21 +19,12 @@ type AggregatedDayEntry = {
   completedOptions: Record<string, number>;
 };
 
-function toLocalDayKey(date: Date): string {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-}
-
-function getDefaultRange(): { startDayKey: string; endDayKey: string } {
-  const end = new Date();
-  const start = new Date();
-  start.setDate(start.getDate() - 400);
-  return {
-    startDayKey: toLocalDayKey(start),
-    endDayKey: toLocalDayKey(end),
-  };
+function getDefaultRange(timeZone: string): { startDayKey: string; endDayKey: string } {
+  const now = new Date();
+  const endDayKey = getNowDayKey(timeZone);
+  const startDate = new Date(now.getTime() - 400 * 24 * 60 * 60 * 1000);
+  const startDayKey = getDayKeyForDate(startDate, timeZone);
+  return { startDayKey, endDayKey };
 }
 
 function getUserIdFromRequest(req: Request): string {
@@ -57,7 +49,8 @@ function aggregateEntries(
   entries: HabitEntry[],
   allowedHabitIds: Set<string>,
   startDayKey: string,
-  endDayKey: string
+  endDayKey: string,
+  timeZone: string
 ): Map<string, AggregatedDayEntry> {
   const aggregates = new Map<string, AggregatedDayEntry>();
 
@@ -65,7 +58,7 @@ function aggregateEntries(
     if (entry.deletedAt) continue;
     if (!allowedHabitIds.has(entry.habitId)) continue;
 
-    const dayKey = entry.dayKey || entry.date || entry.dateKey;
+    const dayKey = getCanonicalDayKeyFromEntry(entry, { timeZone });
     if (!dayKey || !isDayKeyInRange(dayKey, startDayKey, endDayKey)) continue;
 
     const compositeKey = `${entry.habitId}-${dayKey}`;
@@ -114,9 +107,9 @@ export async function getDaySummary(req: Request, res: Response): Promise<void> 
     const userId = getUserIdFromRequest(req);
     const queryStart = typeof req.query.startDayKey === 'string' ? req.query.startDayKey : undefined;
     const queryEnd = typeof req.query.endDayKey === 'string' ? req.query.endDayKey : undefined;
-    const timeZone = typeof req.query.timeZone === 'string' ? req.query.timeZone : 'UTC';
+    const timeZone = resolveTimeZone(typeof req.query.timeZone === 'string' ? req.query.timeZone : undefined);
 
-    const defaultRange = getDefaultRange();
+    const defaultRange = getDefaultRange(timeZone);
     const startDayKey = queryStart ?? defaultRange.startDayKey;
     const endDayKey = queryEnd ?? defaultRange.endDayKey;
 
@@ -137,12 +130,6 @@ export async function getDaySummary(req: Request, res: Response): Promise<void> 
       return;
     }
 
-    const timeZoneValidation = assertTimeZone(timeZone);
-    if (!timeZoneValidation.valid) {
-      res.status(400).json({ error: timeZoneValidation.error });
-      return;
-    }
-
     const [habits, entries] = await Promise.all([
       getHabitsByUser(userId),
       getHabitEntriesByUser(userId),
@@ -150,7 +137,7 @@ export async function getDaySummary(req: Request, res: Response): Promise<void> 
 
     const activeHabits = habits.filter(habit => !habit.archived);
     const habitById = new Map(activeHabits.map(habit => [habit.id, habit]));
-    const aggregates = aggregateEntries(entries, new Set(habitById.keys()), startDayKey, endDayKey);
+    const aggregates = aggregateEntries(entries, new Set(habitById.keys()), startDayKey, endDayKey, timeZone);
 
     const logs: Record<string, DayLog> = {};
 

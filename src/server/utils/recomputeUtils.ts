@@ -76,8 +76,9 @@ export async function recomputeDayLogForHabit(
             }
         }
 
-        const target = habit.goal.target || 0;
-        const isNumeric = habit.goal.type === 'number';
+        const goal = habit.goal ?? { type: 'boolean' as const, frequency: 'daily' };
+        const target = goal.target ?? 0;
+        const isNumeric = goal.type === 'number';
 
         if (isNumeric) {
             completed = totalValue >= target;

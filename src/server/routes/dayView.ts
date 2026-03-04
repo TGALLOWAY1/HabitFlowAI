@@ -10,6 +10,7 @@
 import type { Request, Response } from 'express';
 import { computeDayView } from '../services/dayViewService';
 import { validateDayKey, assertTimeZone } from '../domain/canonicalValidators';
+import { resolveTimeZone } from '../utils/dayKey';
 import type { DayKey } from '../../domain/time/dayKey';
 
 /**
@@ -54,18 +55,9 @@ export async function getDayView(req: Request, res: Response): Promise<void> {
       return;
     }
 
-    // Validate timeZone
-    if (!timeZone || typeof timeZone !== 'string') {
-      res.status(400).json({
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: 'timeZone is required (e.g., "America/Los_Angeles", "UTC")',
-        },
-      });
-      return;
-    }
-
-    const timeZoneValidation = assertTimeZone(timeZone);
+    // Use canonical default (America/New_York) when timeZone missing or invalid
+    const resolvedTimeZone = resolveTimeZone(typeof timeZone === 'string' ? timeZone : undefined);
+    const timeZoneValidation = assertTimeZone(resolvedTimeZone);
     if (!timeZoneValidation.valid) {
       res.status(400).json({
         error: {
@@ -80,7 +72,7 @@ export async function getDayView(req: Request, res: Response): Promise<void> {
     const userId = (req as any).userId || 'anonymous-user';
 
     // Compute day view from truthQuery
-    const dayView = await computeDayView(userId, dayKey as DayKey, timeZone);
+    const dayView = await computeDayView(userId, dayKey as DayKey, resolvedTimeZone);
 
     res.status(200).json(dayView);
   } catch (error) {

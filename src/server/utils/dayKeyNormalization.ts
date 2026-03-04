@@ -1,7 +1,9 @@
 /**
  * DayKey Normalization Utilities
- * 
+ *
  * Normalizes dayKey from various input formats to ensure canonical DayKey (YYYY-MM-DD).
+ * Uses server canonical default timezone (America/New_York) when timeZone is missing/invalid.
+ *
  * Handles:
  * - Direct dayKey input (validated)
  * - Legacy date input (converted to dayKey)
@@ -10,6 +12,7 @@
 
 import { assertDayKey, formatDayKeyFromDate, type DayKey } from '../../domain/time/dayKey';
 import { validateDayKey } from '../domain/canonicalValidators';
+import { resolveTimeZone } from './dayKey';
 
 /**
  * Normalizes dayKey from various input formats.
@@ -56,17 +59,18 @@ export function normalizeDayKey(options: {
         return options.date;
     }
 
-    // Priority 3: Derive from timestamp + timeZone
-    if (options.timestamp && options.timeZone) {
+    // Priority 3: Derive from timestamp (timeZone optional; uses canonical default if missing)
+    if (options.timestamp) {
         try {
             const date = new Date(options.timestamp);
             if (isNaN(date.getTime())) {
                 throw new Error(`Invalid timestamp: "${options.timestamp}"`);
             }
-            return formatDayKeyFromDate(date, options.timeZone);
+            const tz = resolveTimeZone(options.timeZone);
+            return formatDayKeyFromDate(date, tz);
         } catch (error) {
             throw new Error(
-                `Failed to derive dayKey from timestamp + timeZone: ${error instanceof Error ? error.message : String(error)}`
+                `Failed to derive dayKey from timestamp: ${error instanceof Error ? error.message : String(error)}`
             );
         }
     }
@@ -95,11 +99,12 @@ export function normalizeHabitEntryPayload(
     const timestampUtc = payload.timestamp || payload.timestampUtc || new Date().toISOString();
 
     // Normalize dayKey from various inputs (dayKey, date, or timestamp + timeZone)
+    // Missing/invalid timeZone => canonical default America/New_York
     const dayKey = normalizeDayKey({
         dayKey: payload.dayKey,
         date: payload.date, // Accept date as legacy input, but normalize to dayKey
         timestamp: timestampUtc,
-        timeZone: timeZone || 'UTC', // Default to UTC if not provided
+        timeZone: resolveTimeZone(timeZone),
     });
 
     // Return only dayKey - date is NOT persisted, only accepted as input

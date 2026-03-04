@@ -11,29 +11,9 @@ import { getHabitsByUser } from '../repositories/habitRepository';
 // Note: computeGoalsWithProgress is now imported dynamically in getProgressOverview
 import { calculateGlobalMomentum, calculateCategoryMomentum, getMomentumCopy } from '../services/momentumService';
 import { calculateHabitStreakMetrics, type HabitDayState } from '../services/streakService';
-import { assertTimeZone } from '../domain/canonicalValidators';
+import { resolveTimeZone, getNowDayKey, getCanonicalDayKeyFromEntry } from '../utils/dayKey';
 import type { MomentumState } from '../../types';
 import type { DayLog } from '../../models/persistenceTypes';
-
-/**
- * Get today's date in YYYY-MM-DD format.
- */
-function getTodayDateString(timeZone: string): string {
-  const parts = new Intl.DateTimeFormat('en-US', {
-    timeZone,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).formatToParts(new Date());
-
-  const year = parts.find(part => part.type === 'year')?.value;
-  const month = parts.find(part => part.type === 'month')?.value;
-  const day = parts.find(part => part.type === 'day')?.value;
-  if (!year || !month || !day) {
-    return new Date().toISOString().slice(0, 10);
-  }
-  return `${year}-${month}-${day}`;
-}
 
 function getUserIdFromRequest(req: Request): string {
   const candidate = (req as Request & { userId?: unknown }).userId;
@@ -51,15 +31,10 @@ export async function getProgressOverview(req: Request, res: Response): Promise<
   try {
     // TODO: Extract userId from authentication token/session
     const userId = getUserIdFromRequest(req);
-    const requestedTimeZone = typeof req.query?.timeZone === 'string' ? req.query.timeZone : 'UTC';
-    const timeZoneValidation = assertTimeZone(requestedTimeZone);
-    if (!timeZoneValidation.valid) {
-      res.status(400).json({ error: timeZoneValidation.error });
-      return;
-    }
+    const requestedTimeZone = resolveTimeZone(typeof req.query?.timeZone === 'string' ? req.query.timeZone : undefined);
 
-    // Get today's date
-    const todayDate = getTodayDateString(requestedTimeZone);
+    // Get today's date (canonical dayKey in user timezone)
+    const todayDate = getNowDayKey(requestedTimeZone);
 
     // Fetch all habits for the user
     const habits = await getHabitsByUser(userId);
@@ -70,12 +45,14 @@ export async function getProgressOverview(req: Request, res: Response): Promise<
     // Fetch all habit entries (single source of truth)
     const habitEntries = await getHabitEntriesByUser(userId);
 
-    // Aggregate entries by habit + dayKey for canonical completion/value derivation
+    // Aggregate entries by habit + dayKey for canonical completion/value derivation (dayKey only in prod; legacy fallback in dev with log)
     const dayStatesByHabit = new Map<string, Map<string, HabitDayState>>();
     habitEntries.forEach(entry => {
-      const dayKey = entry.dayKey || entry.date;
+      const dayKey = getCanonicalDayKeyFromEntry(entry, { timeZone: requestedTimeZone });
       if (!dayKey) {
-        console.warn(`[progress] Entry ${entry.id} missing dayKey and date, skipping`);
+        if (process.env.NODE_ENV !== 'production') {
+          console.warn(`[progress] Entry ${entry.id} missing canonical dayKey, skipping`);
+        }
         return;
       }
 

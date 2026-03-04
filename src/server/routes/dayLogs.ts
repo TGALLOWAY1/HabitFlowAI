@@ -25,10 +25,18 @@ import type { DayLog } from '../../models/persistenceTypes';
  * GET /api/dayLogs
  * GET /api/dayLogs?habitId=xxx (optional filter)
  * 
- * ⚠️ LEGACY: This endpoint is deprecated and will be removed after Milestone B.
- * DayLogs are derived caches. Use HabitEntry endpoints for source of truth.
+ * ⚠️ LEGACY: Dev-only. In production returns 410 Gone.
+ * DayLogs are derived caches. Use /api/daySummary or HabitEntry endpoints for source of truth.
  */
 export async function getDayLogs(req: Request, res: Response): Promise<void> {
+  if (process.env.NODE_ENV === 'production') {
+    res.status(410).json({
+      error: 'DayLogs are deprecated. Use /api/daySummary or HabitEntry endpoints.',
+      message: 'This endpoint is dev-only. In production use /api/daySummary for derived day logs.',
+      deprecated: true,
+    });
+    return;
+  }
   try {
 
     // TODO: Extract userId from authentication token/session
@@ -87,10 +95,18 @@ export async function upsertDayLogRoute(_req: Request, res: Response): Promise<v
  * 
  * GET /api/dayLogs/:habitId/:date
  * 
- * ⚠️ LEGACY: This endpoint is deprecated and will be removed after Milestone B.
+ * ⚠️ LEGACY: Dev-only. In production returns 410 Gone.
  * DayLogs are derived caches. Use HabitEntry endpoints for source of truth.
  */
 export async function getDayLogRoute(req: Request, res: Response): Promise<void> {
+  if (process.env.NODE_ENV === 'production') {
+    res.status(410).json({
+      error: 'DayLogs are deprecated. Use /api/daySummary or HabitEntry endpoints.',
+      message: 'This endpoint is dev-only. In production use /api/daySummary for derived day logs.',
+      deprecated: true,
+    });
+    return;
+  }
   try {
 
     const { habitId, date } = req.params;
