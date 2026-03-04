@@ -6,57 +6,11 @@
 
 ## 1. Double-click and click-count logic
 
-### 1.1 TrackerGrid — primary friction hotspot
+### 1.1 TrackerGrid — **FIXED**
 
-| Location | Snippet / behavior |
-|----------|--------------------|
-| `src/components/TrackerGrid.tsx` | Grid cells use **onClick + onDoubleClick**; single-click is delayed 300ms to disambiguate from double-click. Double-click on a cell with an entry **deletes** the entry; single-click toggles/logs. |
-
-**Relevant code:**
-
-```414:431:src/components/TrackerGrid.tsx
-                                onDoubleClick={isInteractive ? (e) => {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                    // [DEBUG_ENTRY_DELETE] Log double-click event
-                                    if (DEBUG_ENTRY_DELETE) {
-                                        console.log('[DEBUG_ENTRY_DELETE] Double-click handler fired:', {
-                                            habitId: habit.id,
-                                            ...
-                                        });
-                                    }
-                                    handleCellClick(e, habit, dateStr, log);
-                                } : undefined}
-```
-
-```1083:1185:src/components/TrackerGrid.tsx
-        // Check for double-click deletion first
-        const isDoubleClick = e.type === 'dblclick';
-        // ...
-        if (isDoubleClick) {
-            if (hasExistingEntry) {
-                await deleteHabitEntryByKey(habit.id, dateStr);
-                // ...
-            }
-        }
-        // Single-click behavior: delay to allow double-click detection
-        if (e.type === 'click') {
-            // ...
-            clickTimeoutRef.current = setTimeout(() => {
-                // Execute single-click action (handleToggle or open popover)
-            }, 300); // 300ms delay to detect double-click
-        }
-```
-
-**Refs used for click timing:**
-
-```858:860:src/components/TrackerGrid.tsx
-    // Track click timing to prevent single-click from firing when double-click is intended
-    const clickTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
-    const lastClickTimeRef = React.useRef<number>(0);
-```
-
-**Impact:** On touch devices, `dblclick` is unreliable or fires with different timing; the 300ms delay adds perceived lag on every tap and makes the grid feel unresponsive. Delete is undiscoverable without double-tap.
+| Status | Change |
+|--------|--------|
+| **Resolved** | Double-click delete removed; clear entry is via cell kebab menu ("…" → "Clear entry"). Single tap runs immediately (no 300ms delay). No `onDoubleClick` or click-delay refs. |
 
 ---
 
@@ -79,23 +33,26 @@
 
 ---
 
-### 1.3 Tests that assume double-click
+### 1.3 Tests
 
 | File | Note |
 |------|------|
-| `src/components/TrackerGrid.doubleClickDelete.test.tsx` | Tests double-click delete for boolean and numeric habits. Should be updated when delete is replaced with an explicit action. |
+| `src/components/TrackerGrid.clearEntry.test.tsx` | Replaces old double-click tests; asserts clear via menu, no delete on double-click, canonical dayKey. |
 
 ---
 
-## 2. Delayed-click (300ms / setTimeout) logic
+## 2. Delayed-click (300ms / setTimeout) logic — **FIXED**
 
-| Location | Detail |
-|----------|--------|
-| `src/components/TrackerGrid.tsx` | **300ms setTimeout** in `handleCellClick` for single-click so that a possible second click can be treated as double-click. Only runs for `e.type === 'click'`. |
+| Status | Change |
+|--------|--------|
+| **Resolved** | No 300ms or other delayed-click logic remains. Grid cell tap runs synchronously in `handleCellClick`. |
 
-**Exact lines:** ~1151–1185 (single-click branch, `setTimeout(..., 300)`).
+**Tap responsiveness (current implementation):**
 
-**Impact:** Every grid tap has 300ms latency before toggle/popover; major cause of “sluggish” feel on mobile.
+- **`touch-action: manipulation`** on grid cell buttons (`touch-manipulation` class) so mobile browsers do not add an extra ~300ms before firing `click`. Works with standard `onClick`; no pointer-event switch required.
+- **Duplicate-event guard:** A short-lived ref (`lastHandledCellRef`) records the last handled `(habitId, dateStr)` and timestamp. If `handleCellClick` is invoked again for the same cell within **400ms**, the second invocation is ignored. This avoids double log when both a pointer event and a synthetic `click` fire (e.g. on some touch devices).
+- **Gotcha:** Very fast double-tap on the same cell within 400ms is treated as one tap (second is ignored). Acceptable for habit logging; the window can be reduced (e.g. 300ms) if needed after validating on target devices.
+
 
 ---
 

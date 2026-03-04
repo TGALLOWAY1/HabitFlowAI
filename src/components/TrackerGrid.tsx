@@ -398,7 +398,7 @@ const HabitRowContent = ({
                                 onClick={habit.type === 'bundle' && habit.bundleType !== 'choice' ? handleBundleClick : (isInteractive ? (e) => handleCellClick(e, habit, dateStr, log) : undefined)}
                                 disabled={!isInteractive}
                                 className={cn(
-                                    "w-10 h-10 rounded-lg flex items-center justify-center transition-all duration-200 relative overflow-hidden",
+                                    "w-10 h-10 rounded-lg flex items-center justify-center transition-all duration-200 relative overflow-hidden touch-manipulation",
                                     habit.type === 'bundle'
                                         ? "bg-neutral-800 border border-white/5 hover:bg-neutral-700 text-neutral-200"
                                         : isFrozen
@@ -853,6 +853,9 @@ export const TrackerGrid = ({
     const [choiceLogState, setChoiceLogState] = useState<{ habit: Habit; date: string } | null>(null);
     const [categoryPickerHabit, setCategoryPickerHabit] = useState<Habit | null>(null);
 
+    // Suppress duplicate tap when both pointer and synthetic click fire (e.g. touch devices)
+    const lastHandledCellRef = React.useRef<{ habitId: string; dateStr: string; t: number } | null>(null);
+
     const openCellMenu = (habitId: string, dateStr: string, e: React.MouseEvent) => {
         e.stopPropagation();
         const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
@@ -998,6 +1001,11 @@ export const TrackerGrid = ({
     };
 
     const handleCellClick = async (e: React.MouseEvent, habit: Habit, dateStr: string, log?: DayLog) => {
+        const now = Date.now();
+        const last = lastHandledCellRef.current;
+        if (last && last.habitId === habit.id && last.dateStr === dateStr && now - last.t < 400) return;
+        lastHandledCellRef.current = { habitId: habit.id, dateStr, t: now };
+
         // Handle Unified Choice Children (Real Habits)
         if (habit.bundleParentId && !habit.isVirtual) {
             const parent = habits.find(h => h.id === habit.bundleParentId);
