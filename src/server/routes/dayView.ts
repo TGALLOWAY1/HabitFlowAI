@@ -9,7 +9,7 @@
 
 import type { Request, Response } from 'express';
 import { computeDayView } from '../services/dayViewService';
-import { validateDayKey, assertTimeZone } from '../domain/canonicalValidators';
+import { validateDayKey } from '../domain/canonicalValidators';
 import { resolveTimeZone } from '../utils/dayKey';
 import type { DayKey } from '../../domain/time/dayKey';
 import { getRequestIdentity } from '../middleware/identity';
@@ -56,18 +56,8 @@ export async function getDayView(req: Request, res: Response): Promise<void> {
       return;
     }
 
-    // Use canonical default (America/New_York) when timeZone missing or invalid
+    // Resolve timezone: missing or invalid client value => safe server default (never throw or 400 for tz)
     const resolvedTimeZone = resolveTimeZone(typeof timeZone === 'string' ? timeZone : undefined);
-    const timeZoneValidation = assertTimeZone(resolvedTimeZone);
-    if (!timeZoneValidation.valid) {
-      res.status(400).json({
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: timeZoneValidation.error,
-        },
-      });
-      return;
-    }
 
     const { householdId, userId } = getRequestIdentity(req);
 

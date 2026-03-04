@@ -138,11 +138,25 @@ export function getActiveUserId(): string {
   return getActiveUserMode() === 'demo' ? DEMO_USER_ID : getOrCreateUserId();
 }
 
+const FALLBACK_TIMEZONE = 'UTC';
+
+/**
+ * Returns a valid IANA timezone for API calls and date formatting.
+ * Uses the browser's resolved timezone when valid; otherwise UTC.
+ * Never throws — invalid or missing timezone (e.g. garbage in localStorage) is handled.
+ */
 export function getLocalTimeZone(): string {
   try {
-    return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    if (!tz || typeof tz !== 'string' || !tz.trim()) return FALLBACK_TIMEZONE;
+    // Validate that the timezone is usable (avoid "invalid timezone" from Intl/API)
+    new Intl.DateTimeFormat('en-CA', { timeZone: tz }).format(new Date());
+    return tz;
   } catch {
-    return 'UTC';
+    if (import.meta.env?.DEV) {
+      console.warn('[getLocalTimeZone] Invalid or unsupported timezone, using UTC');
+    }
+    return FALLBACK_TIMEZONE;
   }
 }
 
