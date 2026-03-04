@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, Plus, Trash2, Link2, Clock, Image as ImageIcon, Loader2, ChevronDown } from 'lucide-react';
-import { uploadRoutineImage, getActiveUserId } from '../lib/persistenceClient';
-import { API_BASE_URL } from '../lib/persistenceConfig';
+import { uploadRoutineImage, deleteRoutineImage } from '../lib/persistenceClient';
 import { useRoutineStore } from '../store/RoutineContext';
 import { useHabitStore } from '../store/HabitContext';
 import type { Routine, RoutineStep } from '../models/persistenceTypes';
@@ -213,24 +212,24 @@ export const RoutineEditorModal: React.FC<RoutineEditorModalProps> = ({
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-            <div className="w-full max-w-4xl h-[85vh] bg-neutral-900 border border-white/10 rounded-2xl shadow-2xl flex flex-col overflow-hidden">
+        <div className="modal-overlay fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+            <div className="w-full max-w-4xl max-h-[90dvh] h-[85vh] bg-neutral-900 border border-white/10 rounded-2xl shadow-2xl flex flex-col overflow-hidden">
 
                 {/* Header */}
                 <div className="flex items-center justify-between p-6 border-b border-white/10 bg-neutral-900 z-10">
                     <h2 className="text-xl font-bold text-white">
                         {mode === 'create' ? 'Create Routine' : 'Edit Routine'}
                     </h2>
-                    <button onClick={onClose} className="text-neutral-400 hover:text-white">
+                    <button onClick={onClose} className="min-h-[44px] min-w-[44px] flex items-center justify-center text-neutral-400 hover:text-white -mr-2" aria-label="Close">
                         <X size={24} />
                     </button>
                 </div>
 
                 {/* Main Content (Split View) */}
-                <div className="flex-1 flex overflow-hidden">
+                <div className="flex-1 flex overflow-hidden min-h-0">
 
                     {/* Left: Routine Details & Steps */}
-                    <div className="flex-1 overflow-y-auto p-8 border-r border-white/5 space-y-8">
+                    <div className="flex-1 overflow-y-auto modal-scroll p-8 border-r border-white/5 space-y-8">
                         <div className="space-y-4">
                             <div>
                                 <label className="block text-sm font-medium text-neutral-400 mb-2">Title</label>
@@ -278,18 +277,10 @@ export const RoutineEditorModal: React.FC<RoutineEditorModalProps> = ({
                                                     onClick={async () => {
                                                         if (confirm('Delete this routine image?')) {
                                                             try {
-                                                                // Delete image via API
-                                                                const response = await fetch(`${API_BASE_URL}/routines/${initialRoutine.id}/image`, {
-                                                                    method: 'DELETE',
-                                                                    headers: {
-                                                                        'X-User-Id': getActiveUserId(),
-                                                                    },
-                                                                });
-                                                                if (response.ok) {
-                                                                    await updateRoutine(initialRoutine.id, { imageId: undefined });
-                                                                    setCurrentRoutineImageUrl(null);
-                                                                    await refreshRoutines();
-                                                                }
+                                                                await deleteRoutineImage(initialRoutine.id);
+                                                                await updateRoutine(initialRoutine.id, { imageId: undefined });
+                                                                setCurrentRoutineImageUrl(null);
+                                                                await refreshRoutines();
                                                             } catch (error) {
                                                                 console.error('Failed to delete image:', error);
                                                                 setRoutineImageError('Failed to delete image. Please try again.');

@@ -1,5 +1,11 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import type { Task, CreateTaskRequest, UpdateTaskRequest } from '../types/task';
+import {
+    fetchTasks as fetchTasksFromApi,
+    createTask as createTaskApi,
+    updateTask as updateTaskApi,
+    deleteTask as deleteTaskApi,
+} from '../lib/persistenceClient';
 
 interface TaskContextType {
     tasks: Task[];
@@ -29,10 +35,8 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const fetchTasks = useCallback(async () => {
         try {
             setLoading(true);
-            const response = await fetch('/api/tasks');
-            if (!response.ok) throw new Error('Failed to fetch tasks');
-            const data = await response.json();
-            setTasks(data.tasks);
+            const list = await fetchTasksFromApi();
+            setTasks(list);
             setError(null);
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Unknown error');
@@ -47,18 +51,8 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const addTask = async (req: CreateTaskRequest) => {
         try {
-            const response = await fetch('/api/tasks', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(req),
-            });
-
-            if (!response.ok) {
-                throw new Error('Failed to create task');
-            }
-
-            const data = await response.json();
-            setTasks(prev => [data.task, ...prev]);
+            const task = await createTaskApi(req);
+            setTasks(prev => [task, ...prev]);
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Failed to add task');
             throw err;
@@ -67,26 +61,13 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const updateTask = async (id: string, req: UpdateTaskRequest) => {
         try {
-            // Optimistic update
             setTasks(prev => prev.map(t =>
                 t.id === id ? { ...t, ...req, status: req.status || t.status } : t
             ));
-
-            const response = await fetch(`/api/tasks/${id}`, {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(req),
-            });
-
-            if (!response.ok) {
-                // Revert on failure (could implement more robust rollback)
-                await fetchTasks();
-                throw new Error('Failed to update task');
-            }
-
-            const data = await response.json();
-            setTasks(prev => prev.map(t => t.id === id ? data.task : t));
+            const task = await updateTaskApi(id, req);
+            setTasks(prev => prev.map(t => t.id === id ? task : t));
         } catch (err) {
+            await fetchTasks();
             setError(err instanceof Error ? err.message : 'Failed to update task');
             throw err;
         }
@@ -94,18 +75,10 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const deleteTask = async (id: string) => {
         try {
-            // Optimistic update
             setTasks(prev => prev.filter(t => t.id !== id));
-
-            const response = await fetch(`/api/tasks/${id}`, {
-                method: 'DELETE',
-            });
-
-            if (!response.ok) {
-                await fetchTasks();
-                throw new Error('Failed to delete task');
-            }
+            await deleteTaskApi(id);
         } catch (err) {
+            await fetchTasks();
             setError(err instanceof Error ? err.message : 'Failed to delete task');
             throw err;
         }

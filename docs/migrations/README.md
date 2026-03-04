@@ -124,6 +124,25 @@ Use `--include-demo` to also clean up `demo_*` users.
 
 ---
 
+### HabitEntries: backfill dayKey (fix index E11000 dup key dayKey: null)
+
+If the server logs show **E11000 duplicate key** on `idx_habitEntries_user_habit_dayKey_active_unique` with `dayKey: null`, you have entries that still use the legacy `date` field and no `dayKey`. The unique index cannot be built while multiple documents share `(userId, habitId, null)`.
+
+**1. Backfill dayKey from date/dateKey (dry-run then apply):**
+
+```bash
+npx tsx scripts/migrations/backfillDayKey.ts --dry-run
+npx tsx scripts/migrations/backfillDayKey.ts --apply --i-understand-this-will-modify-data
+```
+
+Reports are saved to `docs/migrations/backfill-dayKey-<timestamp>.json`.
+
+**2. Then run dedupe** (below) if multiple entries end up with the same (userId, habitId, dayKey).
+
+**3. Restart the server** so index assurance runs again; the unique index should then be created.
+
+---
+
 ### HabitEntries deduplication (before enabling unique index)
 
 Before enabling the unique index on `(userId, habitId, dayKey)` in production, duplicate active entries must be removed. Use the dedupe script (soft-deletes losers) and then the verify script.
@@ -149,3 +168,9 @@ npx tsx scripts/migrations/verifyNoDuplicateHabitEntries.ts
 ```
 
 Exits 0 if no duplicates, 1 if any duplicate groups exist.
+
+---
+
+### Console noise: legacy "date" and dayKey
+
+If you see many **`[DayKey] Entry ... using legacy "date" field as dayKey. Prefer "dayKey".`** or **`[truthQuery] HabitEntry ... using legacy "date" as dayKey`** in the server log, the app is still reading entries that have `date` but no `dayKey`. Run the **backfill dayKey** script above to set `dayKey` from `date` (or `dateKey`/`timestamp`). After backfill and restart, new writes use `dayKey` and those warnings go away.

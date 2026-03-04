@@ -11,7 +11,7 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import express, { type Express } from 'express';
 import request from 'supertest';
-import { getHabitEntriesRoute, createHabitEntryRoute } from '../habitEntries';
+import { getHabitEntriesRoute, createHabitEntryRoute, upsertHabitEntryRoute } from '../habitEntries';
 import { setupTestMongo, teardownTestMongo, getTestDb } from '../../../test/mongoTestHelper';
 import { createHabit } from '../../repositories/habitRepository';
 import { createCategory } from '../../repositories/categoryRepository';
@@ -30,6 +30,7 @@ beforeAll(async () => {
   });
   app.get('/api/entries', getHabitEntriesRoute);
   app.post('/api/entries', createHabitEntryRoute);
+  app.put('/api/entries', upsertHabitEntryRoute);
 });
 
 afterAll(async () => {
@@ -242,6 +243,73 @@ describe('POST /api/entries - Payload Validation', () => {
       expect(response.body.entry.habitId).toBe(testHabitId);
       expect(response.body.entry.date).toBe('2025-01-15');
     }
+  });
+});
+
+describe('PUT /api/entries - TrackerGrid-style payload (upsert)', () => {
+  let choiceHabitId: string;
+  const dayKey = '2025-01-20';
+
+  beforeEach(async () => {
+    const category = await createCategory({
+      name: 'Test Category',
+      color: '#000000',
+    }, TEST_USER_ID);
+
+    const habit = await createHabit({
+      name: 'Choice Habit',
+      categoryId: category.id,
+      goal: { type: 'boolean', frequency: 'daily' },
+      bundleType: 'choice',
+      bundleOptions: [
+        { id: 'opt-1', label: 'Option One', metricConfig: { mode: 'none' } },
+      ],
+    } as any, TEST_USER_ID);
+
+    choiceHabitId = habit.id;
+  });
+
+  it('accepts TrackerGrid-style choice select payload (no forbidden completed field)', async () => {
+    const response = await request(app)
+      .put('/api/entries')
+      .send({
+        habitId: choiceHabitId,
+        dateKey: dayKey,
+        bundleOptionId: 'opt-1',
+        bundleOptionLabel: 'Option One',
+      });
+
+    expect(response.status).toBe(200);
+    expect(response.body.entry).toBeDefined();
+    expect(response.body.entry.habitId).toBe(choiceHabitId);
+    expect(response.body.entry.dayKey).toBe(dayKey);
+    expect(response.body.entry.bundleOptionId).toBe('opt-1');
+    expect(response.body.dayLog).toBeDefined();
+  });
+
+  it('accepts simple boolean upsert (habitId, dateKey, value)', async () => {
+    const category = await createCategory({
+      name: 'Simple Cat',
+      color: '#111111',
+    }, TEST_USER_ID);
+    const habit = await createHabit({
+      name: 'Simple Habit',
+      categoryId: category.id,
+      goal: { type: 'boolean', frequency: 'daily' },
+    } as any, TEST_USER_ID);
+
+    const response = await request(app)
+      .put('/api/entries')
+      .send({
+        habitId: habit.id,
+        dateKey: '2025-01-21',
+        value: 1,
+      });
+
+    expect(response.status).toBe(200);
+    expect(response.body.entry).toBeDefined();
+    expect(response.body.entry.habitId).toBe(habit.id);
+    expect(response.body.entry.value).toBe(1);
   });
 });
 

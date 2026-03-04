@@ -2,15 +2,13 @@ import React, { useMemo, useState, useEffect } from 'react';
 import { format, eachDayOfInterval, subDays, isToday } from 'date-fns';
 import { type Habit, type DayLog, type Routine, type HabitPotentialEvidence } from '../types';
 import { cn } from '../utils/cn';
-import { Check, Plus, Trash2, GripVertical, Pencil, Play, Flame, History, Zap, Link2, FolderInput } from 'lucide-react';
+import { Check, Plus, Trash2, GripVertical, Pencil, Play, Flame, History, Zap, Link2, FolderInput, MoreVertical } from 'lucide-react';
 import { CategoryPickerModal } from './CategoryPickerModal';
-
-// [DEBUG_ENTRY_DELETE] Flag to enable debug logging for entry deletion
-const DEBUG_ENTRY_DELETE = false;
 
 import { NumericInputPopover } from './NumericInputPopover';
 import { HabitHistoryModal } from './HabitHistoryModal';
 import { HabitLogModal } from './HabitLogModal';
+import { useToast } from './Toast';
 import { useHabitStore } from '../store/HabitContext';
 import { useRoutineStore } from '../store/RoutineContext';
 import { useProgressOverview } from '../lib/useProgressOverview';
@@ -184,6 +182,7 @@ interface HabitRowContentProps {
     onContextMenu: (e: React.MouseEvent, habit: Habit) => void;
     isDeleteMode: boolean;
     onMoveToCategory?: (habit: Habit) => void;
+    onOpenCellMenu?: (habitId: string, dateStr: string, e: React.MouseEvent) => void;
 }
 
 const HabitRowContent = ({
@@ -212,7 +211,8 @@ const HabitRowContent = ({
     potentialEvidence,
     onContextMenu,
     isDeleteMode,
-    onMoveToCategory
+    onMoveToCategory,
+    onOpenCellMenu
 }: HabitRowContentProps) => {
 
     // Non-Negotiable Logic
@@ -389,49 +389,16 @@ const HabitRowContent = ({
                         });
                     };
 
-                    // [DEBUG_ENTRY_DELETE] Log cell render state
-                    if (DEBUG_ENTRY_DELETE) {
-                        console.log('[DEBUG_ENTRY_DELETE] Cell render:', {
-                            habitId: habit.id,
-                            habitName: habit.name,
-                            dayKey: dateStr,
-                            logExists: !!log,
-                            logCompleted: log?.completed,
-                            logValue: log?.value,
-                            isCompleted,
-                            hasValue,
-                            entryId: 'N/A (DayLog is derived cache, no entryId)'
-                        });
-                    }
-
                     return (
                         <div
                             key={dateStr}
-                            className="w-16 flex-shrink-0 border-r border-white/5 flex items-center justify-center p-2"
+                            className="w-16 flex-shrink-0 border-r border-white/5 flex items-center justify-center p-2 relative"
                         >
                             <button
                                 onClick={habit.type === 'bundle' && habit.bundleType !== 'choice' ? handleBundleClick : (isInteractive ? (e) => handleCellClick(e, habit, dateStr, log) : undefined)}
-                                onDoubleClick={isInteractive ? (e) => {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                    // [DEBUG_ENTRY_DELETE] Log double-click event
-                                    if (DEBUG_ENTRY_DELETE) {
-                                        console.log('[DEBUG_ENTRY_DELETE] Double-click handler fired:', {
-                                            habitId: habit.id,
-                                            habitName: habit.name,
-                                            dayKey: dateStr,
-                                            logExists: !!log,
-                                            logCompleted: log?.completed,
-                                            logValue: log?.value,
-                                            eventDetail: e.detail,
-                                            eventType: e.type
-                                        });
-                                    }
-                                    handleCellClick(e, habit, dateStr, log);
-                                } : undefined}
                                 disabled={!isInteractive}
                                 className={cn(
-                                    "w-10 h-10 rounded-lg flex items-center justify-center transition-all duration-200 relative overflow-hidden",
+                                    "w-10 h-10 rounded-lg flex items-center justify-center transition-all duration-200 relative overflow-hidden touch-manipulation",
                                     habit.type === 'bundle'
                                         ? "bg-neutral-800 border border-white/5 hover:bg-neutral-700 text-neutral-200"
                                         : isFrozen
@@ -493,6 +460,21 @@ const HabitRowContent = ({
                                     )
                                 )}
                             </button>
+                            {hasExistingEntry && isInteractive && onOpenCellMenu && (
+                                <button
+                                    type="button"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        e.preventDefault();
+                                        onOpenCellMenu(habit.id, dateStr, e);
+                                    }}
+                                    className="absolute right-1 top-1 p-1 rounded hover:bg-white/10 text-neutral-500 hover:text-white transition-colors z-10 focus:opacity-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+                                    title="Clear entry"
+                                    aria-label={`Options for entry on ${dateStr}`}
+                                >
+                                    <MoreVertical size={14} />
+                                </button>
+                            )}
                         </div>
                     );
                 })}
@@ -520,7 +502,8 @@ const SortableHabitRow = ({
     potentialEvidence,
     onContextMenu,
     isDeleteMode,
-    onMoveToCategory
+    onMoveToCategory,
+    onOpenCellMenu
 }: {
     habit: Habit;
     allHabits: Habit[];
@@ -541,6 +524,7 @@ const SortableHabitRow = ({
     onContextMenu: (e: React.MouseEvent, habit: Habit) => void;
     isDeleteMode: boolean;
     onMoveToCategory?: (habit: Habit) => void;
+    onOpenCellMenu?: (habitId: string, dateStr: string, e: React.MouseEvent) => void;
 }) => {
     const {
         attributes,
@@ -633,6 +617,7 @@ const SortableHabitRow = ({
                 onContextMenu={onContextMenu}
                 isDeleteMode={isDeleteMode}
                 onMoveToCategory={onMoveToCategory}
+                onOpenCellMenu={onOpenCellMenu}
             />
 
             {/* Child Rows - Rendered when expanded */}
@@ -658,6 +643,7 @@ const SortableHabitRow = ({
                     potentialEvidence={potentialEvidence}
                     onContextMenu={onContextMenu}
                     isDeleteMode={isDeleteMode}
+                    onOpenCellMenu={onOpenCellMenu}
                 />
             ))}
         </div>
@@ -800,6 +786,7 @@ export const TrackerGrid = ({
     } = useHabitStore();
     const { routines } = useRoutineStore(); // Ensure we have routines for context menu
     const { data: progressData, refresh: refreshProgress } = useProgressOverview();
+    const { showToast } = useToast();
 
     const [contextMenu, setContextMenu] = useState<{
         x: number;
@@ -807,19 +794,30 @@ export const TrackerGrid = ({
         habitId: string;
     } | null>(null);
 
-    // Close Context Menu on click elsewhere
-    useEffect(() => {
-        const handleClick = () => setContextMenu(null);
-        window.addEventListener('click', handleClick);
-        return () => window.removeEventListener('click', handleClick);
-    }, []);
+    const [cellMenu, setCellMenu] = useState<{
+        habitId: string;
+        dateStr: string;
+        x: number;
+        y: number;
+    } | null>(null);
 
-    // Cleanup click timeout on unmount
+    // Close context menu and cell menu on click elsewhere or Escape
     useEffect(() => {
-        return () => {
-            if (clickTimeoutRef.current) {
-                clearTimeout(clickTimeoutRef.current);
+        const handleClick = () => {
+            setContextMenu(null);
+            setCellMenu(null);
+        };
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') {
+                setContextMenu(null);
+                setCellMenu(null);
             }
+        };
+        window.addEventListener('click', handleClick);
+        window.addEventListener('keydown', handleKeyDown);
+        return () => {
+            window.removeEventListener('click', handleClick);
+            window.removeEventListener('keydown', handleKeyDown);
         };
     }, []);
 
@@ -855,9 +853,26 @@ export const TrackerGrid = ({
     const [choiceLogState, setChoiceLogState] = useState<{ habit: Habit; date: string } | null>(null);
     const [categoryPickerHabit, setCategoryPickerHabit] = useState<Habit | null>(null);
 
-    // Track click timing to prevent single-click from firing when double-click is intended
-    const clickTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
-    const lastClickTimeRef = React.useRef<number>(0);
+    // Suppress duplicate tap when both pointer and synthetic click fire (e.g. touch devices)
+    const lastHandledCellRef = React.useRef<{ habitId: string; dateStr: string; t: number } | null>(null);
+
+    const openCellMenu = (habitId: string, dateStr: string, e: React.MouseEvent) => {
+        e.stopPropagation();
+        const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+        setCellMenu({ habitId, dateStr, x: rect.right, y: rect.top });
+    };
+
+    const handleClearEntry = async (habitId: string, dateStr: string) => {
+        setCellMenu(null);
+        try {
+            await deleteHabitEntryByKey(habitId, dateStr);
+            refreshProgress();
+            showToast('Entry cleared', 'success');
+        } catch (err) {
+            console.error('Failed to clear entry:', err);
+            showToast('Failed to clear entry', 'error');
+        }
+    };
 
     const toggleExpand = (id: string) => {
         setExpandedIds(prev => {
@@ -986,28 +1001,10 @@ export const TrackerGrid = ({
     };
 
     const handleCellClick = async (e: React.MouseEvent, habit: Habit, dateStr: string, log?: DayLog) => {
-        // [DEBUG_ENTRY_DELETE] Log handleCellClick invocation
-        if (DEBUG_ENTRY_DELETE) {
-            console.log('[DEBUG_ENTRY_DELETE] handleCellClick called:', {
-                habitId: habit.id,
-                habitName: habit.name,
-                dayKey: dateStr,
-                logExists: !!log,
-                logCompleted: log?.completed,
-                logValue: log?.value,
-                eventType: e.type,
-                eventDetail: e.detail,
-                isDoubleClick: e.type === 'dblclick' || e.detail === 2
-            });
-        }
-
-        // Cancel any pending single-click action if this is a double-click
-        if (e.type === 'dblclick') {
-            if (clickTimeoutRef.current) {
-                clearTimeout(clickTimeoutRef.current);
-                clickTimeoutRef.current = null;
-            }
-        }
+        const now = Date.now();
+        const last = lastHandledCellRef.current;
+        if (last && last.habitId === habit.id && last.dateStr === dateStr && now - last.t < 400) return;
+        lastHandledCellRef.current = { habitId: habit.id, dateStr, t: now };
 
         // Handle Unified Choice Children (Real Habits)
         if (habit.bundleParentId && !habit.isVirtual) {
@@ -1044,12 +1041,7 @@ export const TrackerGrid = ({
 
             if (habit.goal.type === 'boolean') {
                 if (isOptionCompleted) {
-                    await upsertHabitEntry(habit.bundleParentId, dateStr, {
-                        bundleOptionId: habit.associatedOptionId,
-                        bundleOptionLabel: habit.name,
-                        value: 0,
-                        completed: false
-                    });
+                    await deleteHabitEntryByKey(habit.bundleParentId, dateStr);
                 } else {
                     await upsertHabitEntry(habit.bundleParentId, dateStr, {
                         bundleOptionId: habit.associatedOptionId,
@@ -1079,27 +1071,8 @@ export const TrackerGrid = ({
             return;
         }
 
-        // Standard Habit Logic
-        // Check for double-click deletion first
-        const isDoubleClick = e.type === 'dblclick';
-        
-        // Resolve entry existence: check if log indicates an entry exists
-        // For boolean habits: completed === true means entry exists
-        // For numeric habits: value > 0 means entry exists
+        // Standard habit: delete mode clears entry on click
         const hasExistingEntry = log?.completed || (log?.value !== undefined && log.value > 0);
-        
-        if (DEBUG_ENTRY_DELETE) {
-            console.log('[DEBUG_ENTRY_DELETE] Standard habit logic check:', {
-                habitId: habit.id,
-                dayKey: dateStr,
-                isDoubleClick,
-                hasExistingEntry,
-                deleteMode,
-                goalType: habit.goal.type,
-                willAttemptDelete: isDoubleClick && hasExistingEntry
-            });
-        }
-
         if (deleteMode) {
             if (hasExistingEntry) {
                 try {
@@ -1112,77 +1085,19 @@ export const TrackerGrid = ({
             return;
         }
 
-        // Handle double-click deletion
-        if (isDoubleClick) {
-            if (hasExistingEntry) {
-                // [DEBUG_ENTRY_DELETE] Double-click on existing entry - delete it
-                if (DEBUG_ENTRY_DELETE) {
-                    console.log('[DEBUG_ENTRY_DELETE] Attempting deletion via deleteHabitEntryByKey:', {
-                        habitId: habit.id,
-                        dayKey: dateStr,
-                        logState: log
-                    });
-                }
-                try {
-                    // Use canonical dayKey (dateStr is already in YYYY-MM-DD format)
-                    await deleteHabitEntryByKey(habit.id, dateStr);
-                    if (DEBUG_ENTRY_DELETE) {
-                        console.log('[DEBUG_ENTRY_DELETE] deleteHabitEntryByKey call completed successfully');
-                    }
-                    refreshProgress();
-                    return;
-                } catch (error) {
-                    if (DEBUG_ENTRY_DELETE) {
-                        console.error('[DEBUG_ENTRY_DELETE] deleteHabitEntryByKey failed:', error);
-                    }
-                    console.error('Failed to delete habit entry:', error);
-                    // Don't throw - allow user to try again
-                    return;
-                }
-            } else {
-                // Double-click on empty cell - do nothing (or could show toast)
-                if (DEBUG_ENTRY_DELETE) {
-                    console.log('[DEBUG_ENTRY_DELETE] Double-click on empty cell - no action');
-                }
-                return;
-            }
-        }
-
-        // Single-click behavior: delay to allow double-click detection
-        // Only proceed if this is a single-click (not a double-click)
-        if (e.type === 'click') {
-            // Clear any existing timeout
-            if (clickTimeoutRef.current) {
-                clearTimeout(clickTimeoutRef.current);
-            }
-            
-            // Capture element reference before setTimeout (React nullifies e.currentTarget after handler)
-            const targetElement = e.currentTarget as HTMLElement;
-            
-            // Set a delay to allow double-click to cancel this
-            clickTimeoutRef.current = setTimeout(() => {
-                clickTimeoutRef.current = null;
-                
-                // Check if element still exists (may have been unmounted)
-                if (!targetElement || !document.body.contains(targetElement)) {
-                    return;
-                }
-                
-                // Execute single-click action
-                if (habit.goal.type === 'boolean') {
-                    handleToggle(habit.id, dateStr);
-                } else {
-                    const rect = targetElement.getBoundingClientRect();
-                    setPopoverState({
-                        isOpen: true,
-                        habitId: habit.id,
-                        date: dateStr,
-                        initialValue: log?.value || 0,
-                        unit: habit.goal.unit,
-                        position: { top: rect.bottom + 8, left: rect.left - 40 },
-                    });
-                }
-            }, 300); // 300ms delay to detect double-click
+        // Single tap: toggle (boolean) or open popover (numeric). Clear entry is via cell kebab menu.
+        if (habit.goal.type === 'boolean') {
+            handleToggle(habit.id, dateStr);
+        } else {
+            const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+            setPopoverState({
+                isOpen: true,
+                habitId: habit.id,
+                date: dateStr,
+                initialValue: log?.value || 0,
+                unit: habit.goal.unit,
+                position: { top: rect.bottom + 8, left: rect.left - 40 },
+            });
         }
     };
 
@@ -1279,6 +1194,7 @@ export const TrackerGrid = ({
                                         onContextMenu={handleContextMenu}
                                         isDeleteMode={deleteMode}
                                         onMoveToCategory={(h) => setCategoryPickerHabit(h)}
+                                        onOpenCellMenu={openCellMenu}
                                     />
                                 ))}
                             </SortableContext>
@@ -1389,6 +1305,26 @@ export const TrackerGrid = ({
                     habitId={historyModalHabitId}
                     onClose={() => setHistoryModalHabitId(null)}
                 />
+            )}
+
+            {/* Cell entry menu (Clear entry) */}
+            {cellMenu && (
+                <div
+                    className="fixed z-50 bg-neutral-800 border border-white/10 rounded-lg shadow-xl py-1 min-w-[140px] animate-in fade-in zoom-in-95 duration-100"
+                    style={{ top: cellMenu.y, left: cellMenu.x - 140 }}
+                    onClick={(e) => e.stopPropagation()}
+                    role="menu"
+                    aria-label="Entry options"
+                >
+                    <button
+                        type="button"
+                        role="menuitem"
+                        onClick={() => handleClearEntry(cellMenu.habitId, cellMenu.dateStr)}
+                        className="flex items-center gap-2 px-3 py-2 text-sm text-neutral-300 hover:bg-neutral-700/50 hover:text-white w-full text-left rounded-none"
+                    >
+                        <Trash2 size={14} className="text-red-400/80" /> Clear entry
+                    </button>
+                </div>
             )}
 
             {/* Context Menu */}
