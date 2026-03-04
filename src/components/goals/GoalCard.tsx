@@ -12,7 +12,7 @@
  * - Manual progress is only available for cumulative goals, not frequency goals
  */
 import React, { useMemo, useState, useRef, useEffect } from 'react';
-import { ChevronDown, ChevronRight, Check, ExternalLink, Edit, Plus } from 'lucide-react';
+import { ChevronDown, ChevronRight, Check, ExternalLink, Edit } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { useHabitStore } from '../../store/HabitContext';
 import type { GoalWithProgress } from '../../models/persistenceTypes';

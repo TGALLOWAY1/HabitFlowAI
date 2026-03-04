@@ -481,41 +481,6 @@ export async function reorderHabits(habitIds: string[]): Promise<void> {
 }
 
 /**
- * Manual Freeze.
- * 
- * POST /api/habits/:id/freeze
- * 
- * @param id - Habit ID
- * @param date - Date to freeze (YYYY-MM-DD)
- * @returns Promise<{ habit: Habit, log: DayLog, message: string }>
- */
-export async function freezeHabit(id: string, date: string): Promise<{ habit: Habit, log: DayLog, message: string }> {
-  const response = await apiRequest<{ habit: Habit, log: DayLog, message: string }>(`/habits/${id}/freeze`, {
-    method: 'POST',
-    body: JSON.stringify({ date }),
-  });
-  return response;
-}
-
-/**
- * Fetch all day logs for the current user.
- * 
- * ⚠️ LEGACY: DayLogs are derived caches from HabitEntries.
- * This function is kept temporarily for reading DayLogs (derived cache).
- * Write operations should use HabitEntry endpoints instead.
- * 
- * @param habitId - Optional habit ID to filter logs
- * @returns Promise<Record<string, DayLog>> - Record of day logs keyed by `${habitId}-${date}`
- * @throws Error if API request fails
- */
-export async function fetchDayLogs(habitId?: string): Promise<Record<string, DayLog>> {
-
-  const url = habitId ? `/dayLogs?habitId=${habitId}` : '/dayLogs';
-  const response = await apiRequest<{ logs: Record<string, DayLog> }>(url);
-  return response.logs;
-}
-
-/**
  * Fetch canonical day summary logs derived directly from HabitEntries.
  *
  * GET /api/daySummary?startDayKey=...&endDayKey=...&timeZone=...

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Plus, Edit, ArrowUpRight, Check } from 'lucide-react';
+import { Edit, ArrowUpRight, Check } from 'lucide-react';
 import type { GoalWithProgress } from '../../types';
 import { MiniHeatmap } from './MiniHeatmap';
 
