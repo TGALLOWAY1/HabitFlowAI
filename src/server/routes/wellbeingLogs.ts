@@ -6,6 +6,7 @@
  */
 
 import type { Request, Response } from 'express';
+import { getRequestIdentity } from '../middleware/identity';
 import {
   upsertWellbeingLog,
   getWellbeingLogsByUser,
@@ -73,8 +74,7 @@ function deriveEntriesFromDailyWellbeing(payload: DailyWellbeing): WellbeingEntr
 export async function getWellbeingLogs(req: Request, res: Response): Promise<void> {
   try {
 
-    // TODO: Extract userId from authentication token/session
-    const userId = (req as any).userId || 'anonymous-user';
+    const { userId } = getRequestIdentity(req);
 
     const logs = await getWellbeingLogsByUser(userId);
 
@@ -121,8 +121,7 @@ export async function upsertWellbeingLogRoute(req: Request, res: Response): Prom
       return;
     }
 
-    // TODO: Extract userId from authentication token/session
-    const userId = (req as any).userId || 'anonymous-user';
+    const { userId } = getRequestIdentity(req);
 
     const log: DailyWellbeing = {
       date,
@@ -186,8 +185,7 @@ export async function getWellbeingLogRoute(req: Request, res: Response): Promise
       return;
     }
 
-    // TODO: Extract userId from authentication token/session
-    const userId = (req as any).userId || 'anonymous-user';
+    const { userId } = getRequestIdentity(req);
 
     const log = await getWellbeingLog(date, userId);
 
@@ -237,8 +235,7 @@ export async function deleteWellbeingLogRoute(req: Request, res: Response): Prom
       return;
     }
 
-    // TODO: Extract userId from authentication token/session
-    const userId = (req as any).userId || 'anonymous-user';
+    const { userId } = getRequestIdentity(req);
 
     const deleted = await deleteWellbeingLog(date, userId);
 

@@ -5,6 +5,7 @@
  */
 
 import type { Request, Response } from 'express';
+import { getRequestIdentity } from '../middleware/identity';
 import {
     createTask,
     getTasks,
@@ -19,8 +20,7 @@ import {
  */
 export async function getTasksRoute(req: Request, res: Response): Promise<void> {
     try {
-        // TODO: Extract userId from authentication token/session
-        const userId = (req as any).userId || 'anonymous-user';
+        const { userId } = getRequestIdentity(req);
 
         const tasks = await getTasks(userId);
 
@@ -59,8 +59,7 @@ export async function createTaskRoute(req: Request, res: Response): Promise<void
             return;
         }
 
-        // TODO: Extract userId from authentication token/session
-        const userId = (req as any).userId || 'anonymous-user';
+        const { userId } = getRequestIdentity(req);
 
         const task = await createTask(
             {
@@ -164,8 +163,7 @@ export async function updateTaskRoute(req: Request, res: Response): Promise<void
             return;
         }
 
-        // TODO: Extract userId from authentication token/session
-        const userId = (req as any).userId || 'anonymous-user';
+        const { userId } = getRequestIdentity(req);
 
         const task = await updateTask(id, userId, patch);
 
@@ -214,8 +212,7 @@ export async function deleteTaskRoute(req: Request, res: Response): Promise<void
             return;
         }
 
-        // TODO: Extract userId from authentication token/session
-        const userId = (req as any).userId || 'anonymous-user';
+        const { userId } = getRequestIdentity(req);
 
         const deleted = await deleteTask(id, userId);
 

@@ -71,7 +71,9 @@ export function identityMiddleware(req: Request, res: Response, next: NextFuncti
     return;
   }
 
-  // Dev-only bootstrap: never use anonymous-user when we have explicit identity contract
+  // DEV/TEST ONLY: bootstrap identity when headers are missing.
+  // This branch cannot run in production (we 401 above when isProduction).
+  // Do not use anonymous-user; use explicit bootstrap IDs for traceability.
   (req as RequestWithIdentity).householdId = DEV_BOOTSTRAP_HOUSEHOLD_ID;
   (req as RequestWithIdentity).userId = DEV_BOOTSTRAP_USER_ID;
   next();

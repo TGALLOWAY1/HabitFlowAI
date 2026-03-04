@@ -5,6 +5,7 @@
  */
 
 import type { Request, Response } from 'express';
+import { getRequestIdentity } from '../middleware/identity';
 import {
     createEntry,
     getEntriesByUser,
@@ -22,8 +23,7 @@ import type { JournalEntry } from '../../models/persistenceTypes';
  */
 export async function getEntriesRoute(req: Request, res: Response): Promise<void> {
     try {
-        // TODO: Extract userId from authentication token/session
-        const userId = (req as any).userId || 'anonymous-user';
+        const { userId } = getRequestIdentity(req);
 
         const entries = await getEntriesByUser(userId);
 
@@ -80,8 +80,7 @@ export async function createEntryRoute(req: Request, res: Response): Promise<voi
             return;
         }
 
-        // TODO: Extract userId from authentication token/session
-        const userId = (req as any).userId || 'anonymous-user';
+        const { userId } = getRequestIdentity(req);
 
         const entry = await createEntry(
             {
@@ -136,7 +135,7 @@ export async function upsertEntryByKeyRoute(req: Request, res: Response): Promis
             return;
         }
 
-        const userId = (req as any).userId || 'anonymous-user';
+        const { userId } = getRequestIdentity(req);
 
         const entry = await upsertEntryByTemplateAndDate(
             {
@@ -178,8 +177,7 @@ export async function getEntryRoute(req: Request, res: Response): Promise<void> 
             return;
         }
 
-        // TODO: Extract userId from authentication token/session
-        const userId = (req as any).userId || 'anonymous-user';
+        const { userId } = getRequestIdentity(req);
 
         const entry = await getEntryById(id, userId);
 
@@ -238,8 +236,7 @@ export async function updateEntryRoute(req: Request, res: Response): Promise<voi
             return;
         }
 
-        // TODO: Extract userId from authentication token/session
-        const userId = (req as any).userId || 'anonymous-user';
+        const { userId } = getRequestIdentity(req);
 
         const entry = await updateEntry(id, userId, patch);
 
@@ -282,8 +279,7 @@ export async function deleteEntryRoute(req: Request, res: Response): Promise<voi
             return;
         }
 
-        // TODO: Extract userId from authentication token/session
-        const userId = (req as any).userId || 'anonymous-user';
+        const { userId } = getRequestIdentity(req);
 
         const deleted = await deleteEntry(id, userId);
 

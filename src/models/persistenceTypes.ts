@@ -1000,7 +1000,7 @@ export type GoalManualLogsStorage = GoalManualLog[];
  * - wellbeingLogs → 'wellbeingLogs' collection
  * - routines → 'routines' collection
  * 
- * All MongoDB documents are scoped by userId (currently 'anonymous-user' placeholder).
+ * All MongoDB documents are scoped by householdId and userId (from identity headers).
  */
 export interface PersistenceSchema {
     /** Array of all categories */

@@ -6,6 +6,7 @@
  */
 
 import type { Request, Response } from 'express';
+import { getRequestIdentity } from '../middleware/identity';
 import { validateDayKey } from '../domain/canonicalValidators';
 import { createWellbeingEntries, getWellbeingEntries, softDeleteWellbeingEntry, type WellbeingEntryUpsertInput } from '../repositories/wellbeingEntryRepository';
 
@@ -16,7 +17,7 @@ import { createWellbeingEntries, getWellbeingEntries, softDeleteWellbeingEntry, 
  */
 export async function getWellbeingEntriesRoute(req: Request, res: Response): Promise<void> {
   try {
-    const userId = (req as any).userId || 'anonymous-user';
+    const { userId } = getRequestIdentity(req);
     const { startDayKey, endDayKey } = req.query as any;
 
     if (!startDayKey || typeof startDayKey !== 'string') {
@@ -61,7 +62,7 @@ export async function getWellbeingEntriesRoute(req: Request, res: Response): Pro
  */
 export async function upsertWellbeingEntriesRoute(req: Request, res: Response): Promise<void> {
   try {
-    const userId = (req as any).userId || 'anonymous-user';
+    const { userId } = getRequestIdentity(req);
     const { entries, defaultTimeZone } = req.body || {};
 
     if (!Array.isArray(entries)) {
@@ -93,7 +94,7 @@ export async function upsertWellbeingEntriesRoute(req: Request, res: Response): 
  */
 export async function deleteWellbeingEntryRoute(req: Request, res: Response): Promise<void> {
   try {
-    const userId = (req as any).userId || 'anonymous-user';
+    const { userId } = getRequestIdentity(req);
     const { id } = req.params;
 
     if (!id) {

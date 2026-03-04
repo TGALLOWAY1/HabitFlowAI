@@ -63,6 +63,18 @@ describe('identityMiddleware', () => {
       process.env.NODE_ENV = 'production';
     });
 
+    it('production requires identity headers (401 when headers missing)', () => {
+      const req = mockRequest({});
+      const res = mockResponse();
+
+      identityMiddleware(req, res, () => {
+        expect.fail('next must not be called when identity headers are missing in production');
+      });
+
+      expect((res as any).statusCode).toBe(401);
+      expect((res as any).body?.error).toMatch(/Missing identity|X-Household-Id|X-User-Id/i);
+    });
+
     it('returns 401 when X-Household-Id is missing', () => {
       const req = mockRequest({ 'x-user-id': 'user-1' });
       const res = mockResponse();

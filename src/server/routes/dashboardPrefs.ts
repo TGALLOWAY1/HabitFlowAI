@@ -11,7 +11,7 @@ import { getRequestIdentity } from '../middleware/identity';
 
 export async function getDashboardPrefsRoute(req: Request, res: Response): Promise<void> {
   try {
-    const userId = (req as any).userId || 'anonymous-user';
+    const { userId } = getRequestIdentity(req);
     const prefs = await getDashboardPrefs(userId);
     res.status(200).json({ dashboardPrefs: prefs });
   } catch (error) {
