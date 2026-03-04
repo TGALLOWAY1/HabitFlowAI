@@ -121,3 +121,31 @@ Use `--include-demo` to also clean up `demo_*` users.
    ```bash
    npx tsx scripts/debug/userIdDistribution.ts
    ```
+
+---
+
+### HabitEntries deduplication (before enabling unique index)
+
+Before enabling the unique index on `(userId, habitId, dayKey)` in production, duplicate active entries must be removed. Use the dedupe script (soft-deletes losers) and then the verify script.
+
+**Dedupe — dry-run (read-only, writes report only):**
+
+```bash
+npx tsx scripts/migrations/dedupeHabitEntries.ts --dry-run
+```
+
+**Dedupe — apply (modifies data; requires confirmation flag):**
+
+```bash
+npx tsx scripts/migrations/dedupeHabitEntries.ts --apply --i-understand-this-will-modify-data
+```
+
+Reports are saved to `docs/migrations/dedupe-habitEntries-<timestamp>.json`.
+
+**Verify no duplicate active entries remain (read-only):**
+
+```bash
+npx tsx scripts/migrations/verifyNoDuplicateHabitEntries.ts
+```
+
+Exits 0 if no duplicates, 1 if any duplicate groups exist.
