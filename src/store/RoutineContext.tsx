@@ -6,6 +6,7 @@ import {
     createRoutine as createRoutineApi,
     updateRoutine as updateRoutineApi,
     deleteRoutine as deleteRoutineApi,
+    getActiveUserId,
 } from '../lib/persistenceClient';
 
 interface RoutineContextType {
@@ -218,7 +219,10 @@ export const RoutineProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
                 fetch('/api/evidence/step-reached', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-User-Id': getActiveUserId(),
+                    },
                     body: JSON.stringify({
                         routineId: activeRoutine.id,
                         stepId: step.id,

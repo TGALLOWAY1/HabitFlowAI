@@ -15,8 +15,11 @@ import { getRoutine } from '../repositories/routineRepository';
 
 const router = Router();
 
-// Placeholder for user ID until auth is implemented
-const USER_ID = 'anonymous-user';
+function getUserId(req: any): string {
+    return typeof req.userId === 'string' && req.userId.length > 0
+        ? req.userId
+        : 'anonymous-user';
+}
 
 /**
  * POST /api/evidence/step-reached
@@ -28,39 +31,32 @@ const USER_ID = 'anonymous-user';
  */
 router.post('/step-reached', async (req, res) => {
     try {
+        const userId = getUserId(req);
         const { routineId, stepId, date } = req.body;
 
         if (!routineId || !stepId || !date) {
             return res.status(400).json({ error: 'Missing required fields: routineId, stepId, date' });
         }
 
-        // 1. Check if evidence already exists for this step instantiation (de-dupe)
-        const exists = await evidenceExistsForStep(routineId, stepId, date, USER_ID);
+        const exists = await evidenceExistsForStep(routineId, stepId, date, userId);
         if (exists) {
-            // Idempotent success - we already have it
-            return res.status(200).json({ status: 'exists', message: 'Evidence already recorded' });
+            return res.status(200).json({ data: { status: 'exists', message: 'Evidence already recorded' } });
         }
 
-        // 2. Load the routine to check for habit linkage
-        const routine = await getRoutine(USER_ID, routineId);
+        const routine = await getRoutine(userId, routineId);
         if (!routine) {
             return res.status(404).json({ error: 'Routine not found' });
         }
 
-        // 3. Find the step
         const step = routine.steps.find((s) => s.id === stepId);
         if (!step) {
             return res.status(404).json({ error: 'Step not found in routine' });
         }
 
-        // 4. Check if linked to a habit
-        // Note: 'linkedHabitId' is the field in RoutineStep (see persistenceTypes.ts)
         if (!step.linkedHabitId) {
-            // Not linked, so no evidence to generate. This is normal.
-            return res.status(200).json({ status: 'ignored', message: 'Step not linked to habit' });
+            return res.status(200).json({ data: { status: 'ignored', message: 'Step not linked to habit' } });
         }
 
-        // 5. Create potential evidence
         const evidence = await createPotentialEvidence({
             habitId: step.linkedHabitId,
             routineId,
@@ -68,9 +64,9 @@ router.post('/step-reached', async (req, res) => {
             date,
             timestamp: new Date().toISOString(),
             source: 'routine-step'
-        }, USER_ID);
+        }, userId);
 
-        res.status(201).json(evidence);
+        res.status(201).json({ data: evidence });
 
     } catch (error) {
         console.error('Error recording step reached:', error);
@@ -83,17 +79,20 @@ router.post('/step-reached', async (req, res) => {
  * 
  * Get potential evidence for a specific day.
  * Query: ?date=YYYY-MM-DD
+ * 
+ * Returns: { data: { evidence: HabitPotentialEvidence[] } }
  */
 router.get('/', async (req, res) => {
     try {
+        const userId = getUserId(req);
         const { date } = req.query;
 
         if (!date || typeof date !== 'string') {
             return res.status(400).json({ error: 'Missing required query param: date' });
         }
 
-        const evidence = await getPotentialEvidence(date, USER_ID);
-        res.json(evidence);
+        const evidence = await getPotentialEvidence(date, userId);
+        res.json({ evidence });
 
     } catch (error) {
         console.error('Error fetching evidence:', error);
