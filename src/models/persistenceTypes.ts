@@ -1057,7 +1057,19 @@ export const MONGO_COLLECTIONS = {
     TASKS: 'tasks',
     HABIT_ENTRIES: 'habitEntries',
     HABIT_POTENTIAL_EVIDENCE: 'habitPotentialEvidence',
+    HOUSEHOLD_USERS: 'householdUsers',
 } as const;
+
+/**
+ * Household user registry (lightweight; no passwords/auth).
+ * Used for Switch User UI and to avoid random UUID drift.
+ */
+export interface HouseholdUser {
+  householdId: string;
+  userId: string;
+  displayName?: string;
+  createdAt: string;
+}
 
 
 

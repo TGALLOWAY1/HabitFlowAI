@@ -7,7 +7,7 @@
 
 import type { Category, Habit, DayLog, DailyWellbeing, Goal, GoalWithProgress, GoalManualLog, Routine, RoutineLog, HabitEntry } from '../models/persistenceTypes';
 import type { WellbeingEntry, WellbeingMetricKey } from '../models/persistenceTypes';
-import type { DashboardPrefs } from '../models/persistenceTypes';
+import type { DashboardPrefs, HouseholdUser } from '../models/persistenceTypes';
 
 import type { GoalDetail, CompletedGoal, ProgressOverview, DashboardStreaksOverview } from '../types';
 import type { Task, CreateTaskRequest, UpdateTaskRequest } from '../types/task';
@@ -1279,6 +1279,22 @@ export async function updateTask(id: string, req: UpdateTaskRequest): Promise<Ta
 
 export async function deleteTask(id: string): Promise<void> {
   await apiRequest(`/tasks/${id}`, { method: 'DELETE' });
+}
+
+/**
+ * Household user registry (Switch User list/create).
+ */
+export async function fetchHouseholdUsers(): Promise<HouseholdUser[]> {
+  const response = await apiRequest<{ users: HouseholdUser[] }>('/household/users');
+  return response.users ?? [];
+}
+
+export async function createHouseholdUser(options: { displayName?: string } = {}): Promise<HouseholdUser> {
+  const response = await apiRequest<{ user: HouseholdUser }>('/household/users', {
+    method: 'POST',
+    body: JSON.stringify({ displayName: options.displayName }),
+  });
+  return response.user;
 }
 
 /**

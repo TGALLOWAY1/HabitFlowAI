@@ -26,6 +26,7 @@ import { getTasksRoute, createTaskRoute, updateTaskRoute, deleteTaskRoute } from
 import { skillTreeRouter } from './routes/skillTree';
 import { getDashboardPrefsRoute, updateDashboardPrefsRoute } from './routes/dashboardPrefs';
 import { getAuthMe } from './routes/auth';
+import householdUsersRouter from './routes/householdUsers';
 import { closeConnection } from './lib/mongoClient';
 
 // Assert MongoDB is enabled at startup (fail fast if misconfigured)
@@ -68,6 +69,9 @@ app.use(noPersonaInHabitEntryRequests);
 // Note: Specific routes (like /reorder) must come before parameterized routes (like /:id)
 
 app.get('/api/auth/me', getAuthMe);
+
+// Household user registry (Switch User list/create)
+app.use('/api/household', householdUsersRouter);
 
 // Category routes
 app.get('/api/categories', getCategories);

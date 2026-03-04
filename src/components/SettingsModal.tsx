@@ -1,8 +1,9 @@
 /**
  * Settings modal: identity (household + user), refresh, and other app settings.
- * V1: minimal household/user selection so multiple users can use the same household.
+ * V1: minimal household/user selection; Switch User list from household registry API.
  */
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
+import type { HouseholdUser } from '../models/persistenceTypes';
 import {
   getActiveHouseholdId,
   setActiveHouseholdId,
@@ -11,6 +12,8 @@ import {
   getActiveUserId,
   getKnownUserIds,
   addKnownUserId,
+  fetchHouseholdUsers,
+  createHouseholdUser,
 } from '../lib/persistenceClient';
 
 interface SettingsModalProps {
@@ -19,12 +22,37 @@ interface SettingsModalProps {
   onRefresh?: () => void;
 }
 
+/** Union of API household users and local known IDs so we show everyone. */
+function mergeUserList(apiUsers: HouseholdUser[], knownIds: string[]): Array<{ userId: string; displayName?: string }> {
+  const byId = new Map<string, { userId: string; displayName?: string }>();
+  for (const u of apiUsers) {
+    byId.set(u.userId, { userId: u.userId, displayName: u.displayName });
+  }
+  for (const id of knownIds) {
+    if (!byId.has(id)) byId.set(id, { userId: id });
+  }
+  return Array.from(byId.values());
+}
+
 export function SettingsModal({ isOpen, onClose, onRefresh }: SettingsModalProps) {
   const [householdId, setHouseholdId] = useState(getActiveHouseholdId());
   const [customUserId, setCustomUserId] = useState('');
+  const [householdUsers, setHouseholdUsers] = useState<HouseholdUser[]>([]);
+  const [usersLoading, setUsersLoading] = useState(false);
+  const [createLoading, setCreateLoading] = useState(false);
   const currentUserId = getActiveRealUserId();
   const effectiveUserId = getActiveUserId();
   const knownIds = getKnownUserIds();
+  const userList = mergeUserList(householdUsers, knownIds);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    setUsersLoading(true);
+    fetchHouseholdUsers()
+      .then(setHouseholdUsers)
+      .catch(() => setHouseholdUsers([]))
+      .finally(() => setUsersLoading(false));
+  }, [isOpen]);
 
   const handleSwitchUser = useCallback(
     (userId: string) => {
@@ -36,12 +64,23 @@ export function SettingsModal({ isOpen, onClose, onRefresh }: SettingsModalProps
     [onClose]
   );
 
-  const handleCreateNewUser = useCallback(() => {
-    const newId = crypto.randomUUID();
-    setActiveRealUserId(newId);
-    addKnownUserId(newId);
-    onClose();
-    window.location.reload();
+  const handleCreateNewUser = useCallback(async () => {
+    setCreateLoading(true);
+    try {
+      const user = await createHouseholdUser({ displayName: 'New user' });
+      setActiveRealUserId(user.userId);
+      addKnownUserId(user.userId);
+      onClose();
+      window.location.reload();
+    } catch {
+      const newId = crypto.randomUUID();
+      setActiveRealUserId(newId);
+      addKnownUserId(newId);
+      onClose();
+      window.location.reload();
+    } finally {
+      setCreateLoading(false);
+    }
   }, [onClose]);
 
   const handleSaveHousehold = useCallback(() => {
@@ -108,20 +147,23 @@ export function SettingsModal({ isOpen, onClose, onRefresh }: SettingsModalProps
               <div>
                 <label className="block text-neutral-500 mb-1">Switch user</label>
                 <div className="space-y-2">
-                  {knownIds.length > 0 && (
+                  {usersLoading && (
+                    <div className="text-neutral-500 text-xs">Loading users…</div>
+                  )}
+                  {!usersLoading && userList.length > 0 && (
                     <div className="flex flex-wrap gap-1">
-                      {knownIds.map((id) => (
+                      {userList.map(({ userId, displayName }) => (
                         <button
-                          key={id}
+                          key={userId}
                           type="button"
-                          onClick={() => handleSwitchUser(id)}
+                          onClick={() => handleSwitchUser(userId)}
                           className={`px-2 py-1 rounded text-xs font-mono ${
-                            id === currentUserId
+                            userId === currentUserId
                               ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
                               : 'bg-neutral-800 text-neutral-300 border border-white/10 hover:bg-neutral-700'
                           }`}
                         >
-                          {id.slice(0, 8)}…
+                          {displayName || `${userId.slice(0, 8)}…`}
                         </button>
                       ))}
                     </div>
@@ -145,9 +187,10 @@ export function SettingsModal({ isOpen, onClose, onRefresh }: SettingsModalProps
                   <button
                     type="button"
                     onClick={handleCreateNewUser}
-                    className="w-full px-3 py-2 rounded-lg bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/25 text-sm"
+                    disabled={createLoading}
+                    className="w-full px-3 py-2 rounded-lg bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/25 text-sm disabled:opacity-50"
                   >
-                    Create new user
+                    {createLoading ? 'Creating…' : 'Create new user'}
                   </button>
                 </div>
               </div>
