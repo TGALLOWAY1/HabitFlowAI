@@ -174,10 +174,12 @@ import {
   updateHabitEntryRoute,
   deleteHabitEntriesForDayRoute,
   upsertHabitEntryRoute,
-  deleteHabitEntryByKeyRoute
+  deleteHabitEntryByKeyRoute,
+  batchCreateEntriesRoute
 } from './routes/habitEntries';
 
 app.get('/api/entries', getHabitEntriesRoute);
+app.post('/api/entries/batch', batchCreateEntriesRoute);
 app.post('/api/entries', createHabitEntryRoute);
 app.put('/api/entries', upsertHabitEntryRoute); // Upsert (New)
 app.delete('/api/entries/key', deleteHabitEntryByKeyRoute); // Delete by Key (New)
