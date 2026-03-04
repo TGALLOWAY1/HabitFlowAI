@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, ChevronLeft, ChevronRight, Check, Play, Pause, RotateCcw } from 'lucide-react';
+import { X, ChevronLeft, ChevronRight, Check, Play, Pause, RotateCcw, CircleCheck, Forward } from 'lucide-react';
 import type { Routine } from '../models/persistenceTypes';
 import { submitRoutine } from '../lib/persistenceClient';
 import { useHabitStore } from '../store/HabitContext';
+import { useRoutineStore } from '../store/RoutineContext';
 
 interface RoutineRunnerModalProps {
     isOpen: boolean;
@@ -16,6 +17,7 @@ export const RoutineRunnerModal: React.FC<RoutineRunnerModalProps> = ({
     onClose,
 }) => {
     const { refreshDayLogs } = useHabitStore();
+    const { selectRoutine, startRoutine, exitRoutine, stepStates, setStepState } = useRoutineStore();
 
     const [currentStepIndex, setCurrentStepIndex] = useState(0);
     const [isCompletionView, setIsCompletionView] = useState(false);
@@ -30,7 +32,20 @@ export const RoutineRunnerModal: React.FC<RoutineRunnerModalProps> = ({
     const currentStep = steps[currentStepIndex];
     const isLastStep = currentStepIndex === steps.length - 1;
 
-    // Reset state when modal opens/closes or routine changes
+    // Sync execution state with context: init stepStates when runner opens
+    useEffect(() => {
+        if (isOpen && routine) {
+            selectRoutine(routine.id);
+            startRoutine();
+        }
+    }, [isOpen, routine?.id]);
+
+    const handleClose = () => {
+        exitRoutine();
+        onClose();
+    };
+
+    // Reset local UI state when modal opens/closes or routine changes
     useEffect(() => {
         if (isOpen && routine) {
             setCurrentStepIndex(0);
@@ -98,6 +113,7 @@ export const RoutineRunnerModal: React.FC<RoutineRunnerModalProps> = ({
                 habitIdsToComplete: logHabits ? routine.linkedHabitIds : undefined,
             });
             await refreshDayLogs();
+            exitRoutine();
             onClose();
         } catch (error) {
             console.error('Failed to submit routine:', error);
@@ -140,7 +156,7 @@ export const RoutineRunnerModal: React.FC<RoutineRunnerModalProps> = ({
                         <h2 className="text-sm font-medium text-white/70 uppercase tracking-wider">
                             {isCompletionView ? 'Routine Complete' : routine.title}
                         </h2>
-                        <button onClick={onClose} className="text-white/50 hover:text-white transition-colors">
+                        <button onClick={handleClose} className="text-white/50 hover:text-white transition-colors" aria-label="Close">
                             <X size={24} />
                         </button>
                     </div>
@@ -215,6 +231,56 @@ export const RoutineRunnerModal: React.FC<RoutineRunnerModalProps> = ({
                                     <p className="text-neutral-200 text-lg whitespace-pre-wrap leading-relaxed">
                                         {currentStep.instruction}
                                     </p>
+                                </div>
+                            )}
+
+                            {/* Step status indicators */}
+                            {steps.length > 1 && (
+                                <div className="flex flex-wrap justify-center gap-1.5" role="list" aria-label="Step progress">
+                                    {steps.map((s, idx) => {
+                                        const status = stepStates[s.id] ?? 'neutral';
+                                        const isCurrent = idx === currentStepIndex;
+                                        return (
+                                            <span
+                                                key={s.id}
+                                                role="listitem"
+                                                className={`inline-flex items-center justify-center w-8 h-8 rounded-full text-xs font-medium transition-colors ${
+                                                    status === 'done'
+                                                        ? 'bg-emerald-500/30 text-emerald-400'
+                                                        : status === 'skipped'
+                                                            ? 'bg-neutral-600/50 text-neutral-500'
+                                                            : isCurrent
+                                                                ? 'bg-white/20 text-white ring-1 ring-white/30'
+                                                                : 'bg-white/5 text-neutral-400'
+                                                }`}
+                                                title={status === 'done' ? `${s.title} – Done` : status === 'skipped' ? `${s.title} – Skipped` : s.title}
+                                            >
+                                                {status === 'done' ? <Check size={14} strokeWidth={2.5} /> : status === 'skipped' ? <Forward size={14} /> : idx + 1}
+                                            </span>
+                                        );
+                                    })}
+                                </div>
+                            )}
+
+                            {/* Mark step done / skip (per-step completion, no habit logging) */}
+                            {currentStep && (
+                                <div className="flex flex-wrap justify-center gap-3">
+                                    <button
+                                        type="button"
+                                        onClick={() => setStepState(currentStep.id, 'done')}
+                                        className="flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 transition-colors text-sm font-medium"
+                                    >
+                                        <CircleCheck size={18} />
+                                        Mark done
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setStepState(currentStep.id, 'skipped')}
+                                        className="flex items-center gap-2 px-4 py-2 rounded-lg bg-neutral-600/50 text-neutral-400 hover:bg-neutral-600/70 hover:text-neutral-300 transition-colors text-sm font-medium"
+                                    >
+                                        <Forward size={18} />
+                                        Skip step
+                                    </button>
                                 </div>
                             )}
                         </div>
