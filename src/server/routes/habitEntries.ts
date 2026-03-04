@@ -64,7 +64,7 @@ export async function getHabitEntriesRoute(req: Request, res: Response): Promise
             }
         }
 
-        // Fetch via truthQuery (unified HabitEntries + legacy DayLogs)
+        // Fetch via truthQuery (HabitEntries only)
         const { getEntryViewsForHabit } = await import('../services/truthQuery');
         const entryViews = await getEntryViewsForHabit(habitId, householdId, userId, {
             startDayKey: startDayKey as string | undefined,

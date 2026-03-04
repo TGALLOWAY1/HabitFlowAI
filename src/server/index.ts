@@ -10,7 +10,6 @@ import './config/env'; // Load environment variables first
 import { assertMongoEnabled } from './config';
 import { getCategories, createCategoryRoute, getCategory, updateCategoryRoute, deleteCategoryRoute, reorderCategoriesRoute } from './routes/categories';
 import { getHabits, createHabitRoute, getHabit, updateHabitRoute, deleteHabitRoute, reorderHabitsRoute } from './routes/habits';
-import { getDayLogs, upsertDayLogRoute, getDayLogRoute, deleteDayLogRoute } from './routes/dayLogs';
 import { getDaySummary } from './routes/daySummary';
 import { getWellbeingLogs, upsertWellbeingLogRoute, getWellbeingLogRoute, deleteWellbeingLogRoute } from './routes/wellbeingLogs';
 import { getWellbeingEntriesRoute, upsertWellbeingEntriesRoute, deleteWellbeingEntryRoute } from './routes/wellbeingEntries';
@@ -90,13 +89,8 @@ app.patch('/api/habits/:id', updateHabitRoute);
 app.delete('/api/habits/:id', deleteHabitRoute);
 
 
-// DayLog routes (habit tracking results)
-app.get('/api/dayLogs', getDayLogs);
+// Day summary (derived from HabitEntries only)
 app.get('/api/daySummary', getDaySummary);
-app.post('/api/dayLogs', upsertDayLogRoute);
-app.put('/api/dayLogs', upsertDayLogRoute);
-app.get('/api/dayLogs/:habitId/:date', getDayLogRoute);
-app.delete('/api/dayLogs/:habitId/:date', deleteDayLogRoute);
 
 // WellbeingLog routes
 app.get('/api/wellbeingLogs', getWellbeingLogs);
@@ -199,19 +193,6 @@ app.get('/api/dayView', getDayView);
 // Habit Potential Evidence routes
 import habitPotentialEvidenceRoutes from './routes/habitPotentialEvidence';
 app.use('/api/evidence', habitPotentialEvidenceRoutes);
-
-// --- MIGRATION ROUTES ---
-import { backfillDayLogsToEntries } from './utils/migrationUtils';
-
-app.post('/api/admin/migrations/backfill-daylogs', async (req: Request, res: Response) => {
-  try {
-    const { householdId, userId } = getRequestIdentity(req);
-    const result = await backfillDayLogsToEntries(householdId, userId);
-    res.json({ success: true, ...result });
-  } catch (err: any) {
-    res.status(500).json({ error: err.message });
-  }
-});
 
 app.get('/api/admin/integrity-report', getIntegrityReport);
 

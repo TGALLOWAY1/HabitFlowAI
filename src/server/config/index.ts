@@ -37,26 +37,11 @@ export function assertMongoEnabled(): void {
 
 /**
  * Get feature flag value with optional default.
- * 
+ *
  * @param key - Environment variable name
  * @param defaultValue - Default value if not set
  * @returns Boolean value of the feature flag
  */
 export function getFeatureFlag(key: string, defaultValue: boolean = false): boolean {
   return process.env[key] === 'true' || (process.env[key] === undefined && defaultValue);
-}
-
-/**
- * Controls whether truthQuery may merge legacy DayLogs into EntryViews.
- *
- * Default: false across environments.
- * Can be enabled in development/test via LEGACY_DAYLOG_READS=true.
- * Production always forces this off.
- */
-export function isLegacyDaylogReadsEnabled(): boolean {
-  if (process.env.NODE_ENV === 'production') {
-    return false;
-  }
-
-  return getFeatureFlag('LEGACY_DAYLOG_READS', false);
 }

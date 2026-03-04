@@ -43,8 +43,7 @@ MongoDB collections are defined in `src/models/persistenceTypes.ts` (`MONGO_COLL
 
 Behavioral truth boundary:
 
-- Canonical truth object: `HabitEntry` in `habitEntries` collection.
-- Derived/compatibility surface: `dayLogs` still exists but is non-canonical.
+- Canonical truth: `HabitEntry` in `habitEntries` collection only. Day view, day summary, and progress are derived from entries at read time. DayLogs have been removed from the server.
 
 ## Canonical Data Flow (Behavior)
 

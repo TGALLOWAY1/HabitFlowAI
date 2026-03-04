@@ -52,10 +52,7 @@ describe('dayViewService', () => {
       vi.mocked(getHabitsByUser).mockResolvedValue([habit]);
       vi.mocked(getEntryViewsForHabits).mockResolvedValue([entryView]);
 
-      const result = await computeDayView(userId, dayKey, timeZone);
-
-      const queryArgs = vi.mocked(getEntryViewsForHabits).mock.calls[0][2];
-      expect(queryArgs.includeLegacyFallback).toBeUndefined();
+      const result = await computeDayView('household-1', userId, dayKey, timeZone);
 
       expect(result.dayKey).toBe(dayKey);
       expect(result.habits).toHaveLength(1);
@@ -93,7 +90,7 @@ describe('dayViewService', () => {
       vi.mocked(getHabitsByUser).mockResolvedValue([habit]);
       vi.mocked(getEntryViewsForHabits).mockResolvedValue([deletedEntryView]);
 
-      const result = await computeDayView(userId, dayKey, timeZone);
+      const result = await computeDayView('household-1', userId, dayKey, timeZone);
 
       expect(result.habits[0].isComplete).toBe(false);
       expect(result.habits[0].currentValue).toBe(0);
@@ -129,7 +126,7 @@ describe('dayViewService', () => {
       vi.mocked(getHabitsByUser).mockResolvedValue([habit]);
       vi.mocked(getEntryViewsForHabits).mockResolvedValue([entryView]);
 
-      const result = await computeDayView(userId, dayKey, timeZone);
+      const result = await computeDayView('household-1', userId, dayKey, timeZone);
 
       expect(result.habits[0].isComplete).toBe(true);
       expect(result.habits[0].currentValue).toBe(1);
@@ -188,7 +185,7 @@ describe('dayViewService', () => {
       vi.mocked(getHabitsByUser).mockResolvedValue([habit]);
       vi.mocked(getEntryViewsForHabits).mockResolvedValue(entryViews);
 
-      const result = await computeDayView(userId, dayKey, timeZone);
+      const result = await computeDayView('household-1', userId, dayKey, timeZone);
 
       expect(result.habits[0].isComplete).toBe(true);
       expect(result.habits[0].currentValue).toBe(3); // 3 distinct days
@@ -248,7 +245,7 @@ describe('dayViewService', () => {
       vi.mocked(getHabitsByUser).mockResolvedValue([habit]);
       vi.mocked(getEntryViewsForHabits).mockResolvedValue(entryViews);
 
-      const result = await computeDayView(userId, dayKey, timeZone);
+      const result = await computeDayView('household-1', userId, dayKey, timeZone);
 
       expect(result.habits[0].isComplete).toBe(true);
       expect(result.habits[0].currentValue).toBe(10); // 3 + 4 + 3
@@ -310,7 +307,7 @@ describe('dayViewService', () => {
       vi.mocked(getHabitsByUser).mockResolvedValue([bundleHabit, childHabit1, childHabit2]);
       vi.mocked(getEntryViewsForHabits).mockResolvedValue([entryView]);
 
-      const result = await computeDayView(userId, dayKey, timeZone);
+      const result = await computeDayView('household-1', userId, dayKey, timeZone);
 
       const bundleStatus = result.habits.find(h => h.habit.id === 'bundle-1');
       expect(bundleStatus).toBeDefined();
@@ -332,9 +329,9 @@ describe('dayViewService', () => {
       vi.mocked(getHabitsByUser).mockResolvedValue([habit]);
       vi.mocked(getEntryViewsForHabits).mockResolvedValue([]);
 
-      await computeDayView(userId, '2025-01-15', timeZone);
+      await computeDayView('household-1', userId, '2025-01-15', timeZone);
 
-      const args = vi.mocked(getEntryViewsForHabits).mock.calls[0][2];
+      const args = vi.mocked(getEntryViewsForHabits).mock.calls[0][3];
       expect(args.startDayKey).toBe('2025-01-13');
       expect(args.endDayKey).toBe('2025-01-19');
       expect(args.timeZone).toBe(timeZone);

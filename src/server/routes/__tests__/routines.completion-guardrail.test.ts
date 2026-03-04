@@ -33,7 +33,6 @@ describe('Routine completion does not auto-log habits', () => {
 
   beforeAll(async () => {
     await setupTestMongo();
-    process.env.LEGACY_DAYLOG_READS = 'false';
 
     app = express();
     app.use(express.json());
@@ -55,7 +54,6 @@ describe('Routine completion does not auto-log habits', () => {
   beforeEach(async () => {
     const db = await getTestDb();
     await db.collection('habitEntries').deleteMany({ householdId: TEST_HOUSEHOLD_ID, userId: TEST_USER_ID });
-    await db.collection('dayLogs').deleteMany({ userId: TEST_USER_ID });
     await db.collection('routineLogs').deleteMany({ userId: TEST_USER_ID });
     await db.collection('habits').deleteMany({ householdId: TEST_HOUSEHOLD_ID, userId: TEST_USER_ID });
     await db.collection('routines').deleteMany({ householdId: TEST_HOUSEHOLD_ID, userId: TEST_USER_ID });

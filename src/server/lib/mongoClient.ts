@@ -103,8 +103,6 @@ async function ensureCoreIndexes(database: Db): Promise<void> {
 
   await createIndexSafe('habitEntries', { userId: 1, id: 1 }, { unique: true, name: 'idx_habitEntries_user_id_unique' });
   await createIndexSafe('habitEntries', { userId: 1, habitId: 1, timestamp: -1 }, { name: 'idx_habitEntries_user_habit_timestamp' });
-  await createIndexSafe('dayLogs', { userId: 1, compositeKey: 1 }, { unique: true, name: 'idx_dayLogs_user_composite_unique' });
-  await createIndexSafe('dayLogs', { userId: 1, habitId: 1, date: 1 }, { name: 'idx_dayLogs_user_habit_date' });
 
   await ensureHabitEntriesUniqueIndex(database);
 

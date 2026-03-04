@@ -29,7 +29,6 @@ For **DayKey and timezone** semantics (America/New_York default, single source o
 | `MONGODB_URI` | `getMongoDbUri()` | `''` (empty → throws) | Full connection string |
 | `MONGODB_DB_NAME` | `getMongoDbName()` | `''` (empty → throws) | Database name |
 | `USE_MONGO_PERSISTENCE` | `getMongoEnabled()` | `true` (unless `'false'`) | Feature gate |
-| `LEGACY_DAYLOG_READS` | `isLegacyDaylogReadsEnabled()` | `false` | Legacy fallback reads |
 | `NODE_ENV` | various guards | `undefined` | Environment mode |
 
 ## Default fallback logic

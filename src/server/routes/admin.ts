@@ -24,18 +24,12 @@ type HabitEntryDoc = {
   choiceChildHabitId?: string;
 };
 
-type DayLogDoc = {
-  habitId: string;
-  date: string;
-  compositeKey?: string;
-};
-
 export async function getIntegrityReport(req: Request, res: Response): Promise<void> {
   try {
     const { userId } = getRequestIdentity(req);
     const db = await getDb();
 
-    const [habits, goals, entries, dayLogs] = await Promise.all([
+    const [habits, goals, entries] = await Promise.all([
       db.collection('habits')
         .find({ userId }, { projection: { _id: 0, id: 1 } })
         .toArray() as Promise<HabitDoc[]>,
@@ -57,9 +51,6 @@ export async function getIntegrityReport(req: Request, res: Response): Promise<v
           }
         })
         .toArray() as Promise<HabitEntryDoc[]>,
-      db.collection('dayLogs')
-        .find({ userId }, { projection: { _id: 0, habitId: 1, date: 1, compositeKey: 1 } })
-        .toArray() as Promise<DayLogDoc[]>,
     ]);
 
     const habitIdSet = new Set(habits.map(habit => habit.id));
@@ -90,22 +81,8 @@ export async function getIntegrityReport(req: Request, res: Response): Promise<v
       .map(([signature, ids]) => ({ signature, count: ids.length, ids }))
       .slice(0, 100);
 
-    const dayLogDuplicateMap = new Map<string, number>();
-    for (const dayLog of dayLogs) {
-      const compositeKey = dayLog.compositeKey ?? `${dayLog.habitId}-${dayLog.date}`;
-      const existing = dayLogDuplicateMap.get(compositeKey) ?? 0;
-      dayLogDuplicateMap.set(compositeKey, existing + 1);
-    }
-    const duplicateDayLogs = Array.from(dayLogDuplicateMap.entries())
-      .filter(([, count]) => count > 1)
-      .map(([compositeKey, count]) => ({ compositeKey, count }))
-      .slice(0, 100);
-
     const orphanHabitEntries = entries
       .filter(entry => !habitIdSet.has(entry.habitId))
-      .slice(0, 100);
-    const orphanDayLogs = dayLogs
-      .filter(dayLog => !habitIdSet.has(dayLog.habitId))
       .slice(0, 100);
 
     const goalLinksMissingHabits = goals
@@ -128,21 +105,16 @@ export async function getIntegrityReport(req: Request, res: Response): Promise<v
         habits: habits.length,
         goals: goals.length,
         activeHabitEntries: entries.length,
-        dayLogs: dayLogs.length,
         invalidDayKeys: invalidDayKeyEntries.length,
         missingDayKeys: entriesMissingDayKey.length,
         duplicateHabitEntrySignatures: duplicateHabitEntries.length,
-        duplicateDayLogCompositeKeys: duplicateDayLogs.length,
         orphanHabitEntries: orphanHabitEntries.length,
-        orphanDayLogs: orphanDayLogs.length,
         goalLinksMissingHabits: goalLinksMissingHabits.length,
       },
       samples: {
         invalidDayKeyEntries: invalidDayKeyEntries.slice(0, 50),
         duplicateHabitEntries,
-        duplicateDayLogs,
         orphanHabitEntries,
-        orphanDayLogs,
         goalLinksMissingHabits,
       },
     });

@@ -28,7 +28,6 @@ function todayKey(): string {
 describe('Goals entries-derived regression', () => {
   beforeAll(async () => {
     await setupTestMongo();
-    process.env.LEGACY_DAYLOG_READS = 'false';
 
     app = express();
     app.use(express.json());
