@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { X, Loader2, AlertCircle, Image as ImageIcon, Upload } from 'lucide-react';
-import { invalidateGoalCaches } from '../../lib/goalDataCache';
+import { uploadGoalBadge } from '../../lib/persistenceClient';
 
 interface BadgeUploadModalProps {
     isOpen: boolean;
@@ -90,37 +90,7 @@ export const BadgeUploadModal: React.FC<BadgeUploadModalProps> = ({
         setIsUploading(true);
 
         try {
-            // Create FormData
-            const formData = new FormData();
-            formData.append('image', selectedFile);
-
-            // Upload badge
-            const response = await fetch(`/api/goals/${goalId}/badge`, {
-                method: 'POST',
-                body: formData,
-            });
-
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
-                const errorMessage = errorData.error?.message || 'Failed to upload badge';
-                
-                // Provide more specific error messages
-                if (response.status === 400) {
-                    throw new Error(errorMessage || 'Invalid file. Please select a PNG or JPG image under 10MB.');
-                } else if (response.status === 404) {
-                    throw new Error('Goal not found. Please refresh the page and try again.');
-                } else if (response.status === 500) {
-                    throw new Error('Server error. Please try again later.');
-                }
-                
-                throw new Error(errorMessage);
-            }
-
-            const data = await response.json();
-            const badgeImageUrl = data.badgeImageUrl;
-
-            // Invalidate goal caches since badge was uploaded
-            invalidateGoalCaches(goalId);
+            const { badgeImageUrl } = await uploadGoalBadge(goalId, selectedFile);
 
             // Reset form
             setSelectedFile(null);

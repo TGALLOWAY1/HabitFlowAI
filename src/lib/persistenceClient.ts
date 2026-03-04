@@ -10,10 +10,11 @@ import type { WellbeingEntry, WellbeingMetricKey } from '../models/persistenceTy
 import type { DashboardPrefs } from '../models/persistenceTypes';
 
 import type { GoalDetail, CompletedGoal, ProgressOverview, DashboardStreaksOverview } from '../types';
+import type { Task, CreateTaskRequest, UpdateTaskRequest } from '../types/task';
 
 import { API_BASE_URL } from './persistenceConfig';
 import { buildHabitEntryUpsertPayload } from './habitEntryPayload';
-import { invalidateGoalDataCache } from './goalDataCache';
+import { invalidateGoalDataCache, invalidateGoalCaches } from './goalDataCache';
 import { ACTIVE_USER_MODE_STORAGE_KEY, DEMO_USER_ID, type ActiveUserMode } from '../shared/demo';
 import { warnIfPersonaLeaksIntoHabitEntryRequest } from '../shared/invariants/personaInvariants';
 
@@ -621,7 +622,7 @@ export async function uploadRoutineImage(
   file: File
 ): Promise<{ imageId: string; imageUrl: string }> {
   const url = `${API_BASE_URL}/routines/${routineId}/image`;
-  const userId = getOrCreateUserId();
+  const userId = getActiveUserId();
 
   const formData = new FormData();
   formData.append('file', file);
@@ -672,6 +673,16 @@ export async function uploadRoutineImage(
     console.error('Error uploading routine image:', error);
     throw new Error('Network error. Please check your connection and try again.');
   }
+}
+
+/**
+ * Delete a routine's image.
+ * DELETE /api/routines/:id/image
+ */
+export async function deleteRoutineImage(routineId: string): Promise<void> {
+  await apiRequest<{ message?: string }>(`/routines/${routineId}/image`, {
+    method: 'DELETE',
+  });
 }
 
 /**
@@ -883,6 +894,32 @@ export async function reorderGoals(goalIds: string[]): Promise<void> {
 
   // Invalidate cache after successful reorder
   invalidateGoalDataCache();
+}
+
+/**
+ * Upload badge image for a completed goal.
+ * POST /api/goals/:id/badge (multipart/form-data, field: image)
+ */
+export async function uploadGoalBadge(goalId: string, file: File): Promise<{ badgeImageUrl: string }> {
+  const url = `${API_BASE_URL}/goals/${goalId}/badge`;
+  const userId = getActiveUserId();
+  const formData = new FormData();
+  formData.append('image', file);
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: { 'X-User-Id': userId },
+    body: formData,
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    const msg = errorData?.error?.message || `Upload failed: ${response.status} ${response.statusText}`;
+    throw new Error(msg);
+  }
+  const data = await response.json();
+  invalidateGoalCaches(goalId);
+  return { badgeImageUrl: data.badgeImageUrl };
 }
 
 /**
@@ -1159,6 +1196,45 @@ import type { HabitPotentialEvidence } from '../models/persistenceTypes';
 export async function fetchPotentialEvidence(date: string): Promise<HabitPotentialEvidence[]> {
   const response = await apiRequest<{ evidence: HabitPotentialEvidence[] }>(`/evidence?date=${date}`);
   return response.evidence || [];
+}
+
+/**
+ * Record that a routine step was reached (creates potential evidence when step is linked to a habit).
+ * POST /api/evidence/step-reached
+ */
+export async function recordRoutineStepReached(routineId: string, stepId: string, date: string): Promise<void> {
+  await apiRequest<{ data?: unknown }>('/evidence/step-reached', {
+    method: 'POST',
+    body: JSON.stringify({ routineId, stepId, date }),
+  });
+}
+
+/**
+ * Tasks API (all requests send X-User-Id via shared client).
+ */
+export async function fetchTasks(): Promise<Task[]> {
+  const response = await apiRequest<{ tasks: Task[] }>('/tasks');
+  return response.tasks ?? [];
+}
+
+export async function createTask(req: CreateTaskRequest): Promise<Task> {
+  const response = await apiRequest<{ task: Task }>('/tasks', {
+    method: 'POST',
+    body: JSON.stringify(req),
+  });
+  return response.task;
+}
+
+export async function updateTask(id: string, req: UpdateTaskRequest): Promise<Task> {
+  const response = await apiRequest<{ task: Task }>(`/tasks/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(req),
+  });
+  return response.task;
+}
+
+export async function deleteTask(id: string): Promise<void> {
+  await apiRequest(`/tasks/${id}`, { method: 'DELETE' });
 }
 
 /**

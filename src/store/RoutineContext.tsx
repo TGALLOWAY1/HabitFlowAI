@@ -6,7 +6,7 @@ import {
     createRoutine as createRoutineApi,
     updateRoutine as updateRoutineApi,
     deleteRoutine as deleteRoutineApi,
-    getActiveUserId,
+    recordRoutineStepReached,
 } from '../lib/persistenceClient';
 
 /** Per-step completion state during routine execution. No habit logging. */
@@ -219,36 +219,10 @@ export const RoutineProvider: React.FC<{ children: React.ReactNode }> = ({ child
             const step = activeRoutine.steps[currentStepIndex];
             // Check for Linked Habit ID
             if (step && step.linkedHabitId) {
-                // Generate Evidence via API (fire and forget)
                 const today = new Date().toLocaleDateString('en-CA');
-
-                // We need to import 'api' or use fetch. 
-                // Since this file uses 'persistenceClient' functions, we should probably add a function there.
-                // But for now, to avoid circular deps or complexity, I'll use fetch directly or assume api client is available.
-                // Creating a one-off import or function is cleaner.
-
-                // I'll add recordRoutineStepReached to persistenceClient.ts later or duplicate fetch logic here briefly?
-                // Better: Update persistenceClient.ts. For this tool call I can't update another file.
-                // I'll assume I'll update persistenceClient.ts next.
-                // recordRoutineStepReached(activeRoutine.id, step.id, today);
-
-                // Actually I need to implement the call. I will use fetch for now or similar. 
-                // Wait, I can't import `recordRoutineStepReached` if it doesn't exist.
-                // I'll comment it out and IMPLEMENT IT in persistenceClient NEXT, then uncomment.
-                // Or I can define the fetch here inside the effect. 
-
-                fetch('/api/evidence/step-reached', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-User-Id': getActiveUserId(),
-                    },
-                    body: JSON.stringify({
-                        routineId: activeRoutine.id,
-                        stepId: step.id,
-                        date: today
-                    })
-                }).catch(err => console.error('Failed to record potential evidence:', err));
+                recordRoutineStepReached(activeRoutine.id, step.id, today).catch(err =>
+                    console.error('Failed to record potential evidence:', err)
+                );
             }
         }
     }, [executionState, activeRoutine, currentStepIndex]);
