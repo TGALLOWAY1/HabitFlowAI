@@ -3,7 +3,7 @@ import type { DayLog, HabitEntry } from '../../models/persistenceTypes';
 import { validateDayKey, assertTimeZone } from '../domain/canonicalValidators';
 import { getHabitsByUser } from '../repositories/habitRepository';
 import { getHabitEntriesByUser } from '../repositories/habitEntryRepository';
-import { resolveTimeZone, getNowDayKey, getDayKeyForDate } from '../utils/dayKey';
+import { resolveTimeZone, getNowDayKey, getDayKeyForDate, getCanonicalDayKeyFromEntry } from '../utils/dayKey';
 
 type AggregatedDayEntry = {
   habitId: string;
@@ -49,7 +49,8 @@ function aggregateEntries(
   entries: HabitEntry[],
   allowedHabitIds: Set<string>,
   startDayKey: string,
-  endDayKey: string
+  endDayKey: string,
+  timeZone: string
 ): Map<string, AggregatedDayEntry> {
   const aggregates = new Map<string, AggregatedDayEntry>();
 
@@ -57,7 +58,7 @@ function aggregateEntries(
     if (entry.deletedAt) continue;
     if (!allowedHabitIds.has(entry.habitId)) continue;
 
-    const dayKey = entry.dayKey || entry.date || entry.dateKey;
+    const dayKey = getCanonicalDayKeyFromEntry(entry, { timeZone });
     if (!dayKey || !isDayKeyInRange(dayKey, startDayKey, endDayKey)) continue;
 
     const compositeKey = `${entry.habitId}-${dayKey}`;
@@ -136,7 +137,7 @@ export async function getDaySummary(req: Request, res: Response): Promise<void> 
 
     const activeHabits = habits.filter(habit => !habit.archived);
     const habitById = new Map(activeHabits.map(habit => [habit.id, habit]));
-    const aggregates = aggregateEntries(entries, new Set(habitById.keys()), startDayKey, endDayKey);
+    const aggregates = aggregateEntries(entries, new Set(habitById.keys()), startDayKey, endDayKey, timeZone);
 
     const logs: Record<string, DayLog> = {};
 

@@ -8,11 +8,65 @@
  * default to America/New_York (do not mix UTC day boundaries with user-relative ones).
  */
 
-import { formatDayKeyFromDate, type DayKey } from '../../domain/time/dayKey';
+import { formatDayKeyFromDate, isValidDayKey, type DayKey } from '../../domain/time/dayKey';
 import { assertTimeZone } from '../domain/canonicalValidators';
 
 /** Default timezone when client does not provide one or provides an invalid value. */
 export const DEFAULT_DAYKEY_TIMEZONE = 'America/New_York';
+
+/** When true, allow using entry.date / entry.dateKey (and timestamp derivation) when entry.dayKey is missing. Log when used. */
+export function allowDayKeyLegacyFallback(): boolean {
+  return (
+    process.env.NODE_ENV !== 'production' ||
+    process.env.ALLOW_DAYKEY_LEGACY_FALLBACK === '1' ||
+    process.env.ALLOW_DAYKEY_LEGACY_FALLBACK === 'true'
+  );
+}
+
+/**
+ * Canonical dayKey from a stored entry (HabitEntry). Prefer dayKey; legacy date/dateKey only in dev (or when ALLOW_DAYKEY_LEGACY_FALLBACK is set) with log.
+ * Avoids silently mixing date and dayKey logic in production.
+ */
+export function getCanonicalDayKeyFromEntry(
+  entry: { dayKey?: string; date?: string; dateKey?: string; timestamp?: string; id?: string },
+  options: { timeZone?: string | null; allowLegacyFallback?: boolean } = {}
+): string | null {
+  const allow = options.allowLegacyFallback ?? allowDayKeyLegacyFallback();
+
+  if (entry.dayKey && isValidDayKey(entry.dayKey)) {
+    return entry.dayKey;
+  }
+
+  if (allow) {
+    if (entry.date && isValidDayKey(entry.date)) {
+      if (process.env.NODE_ENV !== 'production') {
+        console.warn(`[DayKey] Entry ${entry.id ?? 'unknown'} using legacy "date" field as dayKey. Prefer "dayKey".`);
+      }
+      return entry.date;
+    }
+    if (entry.dateKey && isValidDayKey(entry.dateKey)) {
+      if (process.env.NODE_ENV !== 'production') {
+        console.warn(`[DayKey] Entry ${entry.id ?? 'unknown'} using legacy "dateKey" field as dayKey. Prefer "dayKey".`);
+      }
+      return entry.dateKey;
+    }
+    if (entry.timestamp && options.timeZone) {
+      try {
+        const d = new Date(entry.timestamp);
+        if (!isNaN(d.getTime())) {
+          if (process.env.NODE_ENV !== 'production') {
+            console.warn(`[DayKey] Entry ${entry.id ?? 'unknown'} deriving dayKey from timestamp in ${options.timeZone}.`);
+          }
+          return formatDayKeyFromDate(d, resolveTimeZone(options.timeZone));
+        }
+      } catch {
+        // fall through to null
+      }
+    }
+  }
+
+  return null;
+}
 
 /**
  * Resolves the timezone to use for dayKey computation.

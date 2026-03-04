@@ -319,5 +319,25 @@ describe('dayViewService', () => {
       expect(bundleStatus?.totalChildrenCount).toBe(2);
       expect(bundleStatus?.progressPercent).toBe(50);
     });
+
+    it('requests a week window (Mon-Sun) of dayKeys from truthQuery for the given dayKey', async () => {
+      const habit: Habit = {
+        id: 'habit-1',
+        categoryId: 'cat-1',
+        name: 'Daily',
+        goal: { type: 'boolean', frequency: 'daily' },
+        archived: false,
+        createdAt: '2025-01-01T00:00:00.000Z',
+      };
+      vi.mocked(getHabitsByUser).mockResolvedValue([habit]);
+      vi.mocked(getEntryViewsForHabits).mockResolvedValue([]);
+
+      await computeDayView(userId, '2025-01-15', timeZone);
+
+      const args = vi.mocked(getEntryViewsForHabits).mock.calls[0][2];
+      expect(args.startDayKey).toBe('2025-01-13');
+      expect(args.endDayKey).toBe('2025-01-19');
+      expect(args.timeZone).toBe(timeZone);
+    });
   });
 });

@@ -11,7 +11,7 @@ import { getHabitsByUser } from '../repositories/habitRepository';
 // Note: computeGoalsWithProgress is now imported dynamically in getProgressOverview
 import { calculateGlobalMomentum, calculateCategoryMomentum, getMomentumCopy } from '../services/momentumService';
 import { calculateHabitStreakMetrics, type HabitDayState } from '../services/streakService';
-import { resolveTimeZone, getNowDayKey } from '../utils/dayKey';
+import { resolveTimeZone, getNowDayKey, getCanonicalDayKeyFromEntry } from '../utils/dayKey';
 import type { MomentumState } from '../../types';
 import type { DayLog } from '../../models/persistenceTypes';
 
@@ -45,12 +45,14 @@ export async function getProgressOverview(req: Request, res: Response): Promise<
     // Fetch all habit entries (single source of truth)
     const habitEntries = await getHabitEntriesByUser(userId);
 
-    // Aggregate entries by habit + dayKey for canonical completion/value derivation
+    // Aggregate entries by habit + dayKey for canonical completion/value derivation (dayKey only in prod; legacy fallback in dev with log)
     const dayStatesByHabit = new Map<string, Map<string, HabitDayState>>();
     habitEntries.forEach(entry => {
-      const dayKey = entry.dayKey || entry.date;
+      const dayKey = getCanonicalDayKeyFromEntry(entry, { timeZone: requestedTimeZone });
       if (!dayKey) {
-        console.warn(`[progress] Entry ${entry.id} missing dayKey and date, skipping`);
+        if (process.env.NODE_ENV !== 'production') {
+          console.warn(`[progress] Entry ${entry.id} missing canonical dayKey, skipping`);
+        }
         return;
       }
 
