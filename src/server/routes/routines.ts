@@ -821,7 +821,7 @@ export async function submitRoutineRoute(req: Request, res: Response): Promise<v
     const entryTimestamp = submittedAt ? new Date(submittedAt).toISOString() : new Date().toISOString();
 
     // Do not write DayLogs directly. DayLogs are derived from HabitEntries.
-    // Create HabitEntries for each requested habit
+    // Guardrail: Routines never imply completion. Only create HabitEntries when habitIdsToComplete is explicitly provided.
     const habitIds = habitIdsToComplete || [];
 
     // Create entries in parallel for better performance
