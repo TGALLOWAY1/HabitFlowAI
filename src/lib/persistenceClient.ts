@@ -213,6 +213,14 @@ async function apiRequest<T>(
         );
       }
 
+      // Handle conflict (409)
+      if (response.status === 409) {
+        throw new Error(
+          errorData.error?.message ||
+          'Category already exists. Choose a different name.'
+        );
+      }
+
       // Handle deprecated endpoints (410 Gone)
       if (response.status === 410) {
         throw new Error(
