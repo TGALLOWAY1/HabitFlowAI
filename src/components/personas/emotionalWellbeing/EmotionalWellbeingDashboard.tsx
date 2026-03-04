@@ -29,7 +29,6 @@ import { useHabitStore } from '../../../store/HabitContext';
 import { getActivePersonaConfig } from '../../../shared/personas/activePersona';
 import type { WellbeingMetricKey } from '../../../models/persistenceTypes';
 import { GratitudeJarIcon } from '../../icons/GratitudeJarIcon';
-import { getHeatmapColor } from '../../../utils/analytics';
 import { PersonaSwitcher } from '../PersonaSwitcher';
 
 type Props = {
@@ -97,6 +96,11 @@ const SNAPSHOT_METRIC_META: Record<WellbeingMetricKey, SnapshotMetric> = {
   stress: { key: 'stress', label: 'Stress', icon: <Target size={14} className="text-orange-400" />, scale: '0_4' },
   focus: { key: 'focus', label: 'Focus', icon: <Crosshair size={14} className="text-amber-300" />, scale: '0_4' },
   notes: { key: 'notes', label: 'Notes', icon: <Sparkles size={14} className="text-neutral-400" />, scale: '0_4' },
+  readiness: { key: 'readiness', label: 'Readiness', icon: <Sparkles size={14} className="text-neutral-400" />, scale: '0_4' },
+  soreness: { key: 'soreness', label: 'Soreness', icon: <Sparkles size={14} className="text-neutral-400" />, scale: '0_4' },
+  hydration: { key: 'hydration', label: 'Hydration', icon: <Sparkles size={14} className="text-neutral-400" />, scale: '0_4' },
+  fueling: { key: 'fueling', label: 'Fueling', icon: <Sparkles size={14} className="text-neutral-400" />, scale: '0_4' },
+  recovery: { key: 'recovery', label: 'Recovery', icon: <Sparkles size={14} className="text-neutral-400" />, scale: '0_4' },
 };
 
 function clampInt(n: number, min: number, max: number): number {
@@ -123,7 +127,7 @@ function filledPips(scale: SnapshotMetric['scale'], value: number | null | undef
 
 const CurrentVibeCard: React.FC = () => {
   const [vibe, setVibe] = useState<Vibe | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [, setLoading] = useState(false);
 
   const today = new Date().toISOString().slice(0, 10);
 
@@ -783,10 +787,10 @@ const GratitudeJarCard: React.FC = () => {
   );
 };
 
-const EmotionalTrendCard: React.FC<{ onNavigateWellbeingHistory?: () => void }> = ({ onNavigateWellbeingHistory }) => {
+const _EmotionalTrendCard: React.FC<{ onNavigateWellbeingHistory?: () => void }> = ({ onNavigateWellbeingHistory }) => {
   const [windowDays, setWindowDays] = useState<7 | 14 | 30 | 90>(14);
   const [mode, setMode] = useState<'avg' | 'am_pm'>('avg');
-  const { startDayKey, endDayKey, loading, error, getDailyAverage } = useWellbeingEntriesRange(windowDays);
+  const { startDayKey: _startDayKey, endDayKey: _endDayKey, loading: _loading, error, getDailyAverage } = useWellbeingEntriesRange(windowDays);
   const [activeMetrics, setActiveMetrics] = useState<Array<'anxiety' | 'lowMood' | 'calm' | 'energy' | 'stress' | 'focus' | 'sleepScore' | 'sleepQuality'>>([
     'anxiety',
     'lowMood',
@@ -990,7 +994,7 @@ const EmotionalTrendCard: React.FC<{ onNavigateWellbeingHistory?: () => void }> 
         })}
       </div>
 
-      {loading ? (
+      {_loading ? (
         <div className="text-sm text-neutral-400">Loading…</div>
       ) : error ? (
         <div className="text-sm text-red-300">{error}</div>
@@ -1011,7 +1015,7 @@ const EmotionalTrendCard: React.FC<{ onNavigateWellbeingHistory?: () => void }> 
                   type="monotone"
                   dataKey={s.key}
                   stroke={s.color}
-                  strokeDasharray={s.dashed ? '4 3' : undefined}
+                  strokeDasharray={'dashed' in s && s.dashed ? '4 3' : undefined}
                   strokeWidth={2}
                   dot={false}
                   connectNulls
@@ -1073,5 +1077,7 @@ export const EmotionalWellbeingDashboard: React.FC<Props> = ({ onOpenCheckIn, on
     </div>
   );
 };
+
+export { _EmotionalTrendCard };
 
 

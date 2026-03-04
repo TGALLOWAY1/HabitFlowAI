@@ -18,7 +18,7 @@ beforeAll(async () => {
   await setupTestMongo();
   app = express();
   app.use(express.json());
-  app.use((req, res, next) => {
+  app.use((req, _res, next) => {
     (req as any).userId = TEST_USER_ID;
     next();
   });

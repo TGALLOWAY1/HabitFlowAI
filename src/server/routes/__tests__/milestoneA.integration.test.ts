@@ -17,11 +17,6 @@ vi.mock('../../repositories/habitEntryRepository', () => ({
   getHabitEntriesByUser: vi.fn(),
 }));
 
-vi.mock('../../repositories/dayLogRepository', () => ({
-  getDayLogsByHabit: vi.fn(),
-  getDayLogsByUser: vi.fn(),
-}));
-
 vi.mock('../../repositories/habitRepository', () => ({
   getHabitsByUser: vi.fn(),
 }));
@@ -30,24 +25,15 @@ vi.mock('../../repositories/goalRepository', () => ({
   getGoalById: vi.fn(),
 }));
 
-vi.mock('../../repositories/goalManualLogRepository', () => ({
-  getGoalManualLogsByGoal: vi.fn(),
-}));
-
 vi.mock('../../services/truthQuery', () => ({
   getEntryViewsForHabits: vi.fn(),
   getEntryViewsForHabit: vi.fn(),
 }));
 
-import { getEntryViewsForHabit as getEntryViewsForHabitMock } from '../../services/truthQuery';
-
-import { getHabitEntriesByHabit } from '../../repositories/habitEntryRepository';
-import { getDayLogsByHabit } from '../../repositories/dayLogRepository';
 import { getHabitsByUser } from '../../repositories/habitRepository';
 import { getGoalById } from '../../repositories/goalRepository';
-import { getGoalManualLogsByGoal } from '../../repositories/goalManualLogRepository';
 import { getEntryViewsForHabits, getEntryViewsForHabit } from '../../services/truthQuery';
-import type { HabitEntry, DayLog, Habit, Goal } from '../../../models/persistenceTypes';
+import type { Habit, Goal } from '../../../models/persistenceTypes';
 
 describe('Milestone A Integration Tests', () => {
   const userId = 'test-user';
@@ -77,7 +63,8 @@ describe('Milestone A Integration Tests', () => {
 
       const req = {
         query: { habitId, timeZone: 'UTC' },
-        userId: userId,
+        householdId: 'household-1',
+        userId,
       } as unknown as Request;
       const res = {
         json: vi.fn(),
@@ -129,7 +116,8 @@ describe('Milestone A Integration Tests', () => {
 
       const req = {
         query: { dayKey, timeZone: 'UTC' },
-        userId: userId,
+        householdId: 'household-1',
+        userId,
       } as unknown as Request;
       const res = {
         json: vi.fn(),
@@ -185,12 +173,11 @@ describe('Milestone A Integration Tests', () => {
       vi.mocked(getGoalById).mockResolvedValue(goal);
       vi.mocked(getHabitsByUser).mockResolvedValue([habit]);
       vi.mocked(getEntryViewsForHabits).mockResolvedValue([entryView]);
-      vi.mocked(getGoalManualLogsByGoal).mockResolvedValue([]);
-
       const req = {
         params: { id: 'goal-1' },
         query: { timeZone: 'UTC' },
-        userId: userId,
+        householdId: 'household-1',
+        userId,
       } as unknown as Request;
       const res = {
         json: vi.fn(),

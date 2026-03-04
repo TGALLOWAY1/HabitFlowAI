@@ -48,6 +48,7 @@ export function migrateDayLogsToEntries(data: PersistenceSchema): PersistenceSch
         const newEntry: HabitEntry = {
             id: randomUUID(),
             habitId: log.habitId,
+            dayKey: log.date,
             // Use noon to avoid timezone edge cases, but strictly rely on dateKey
             timestamp: `${log.date}T12:00:00.000Z`,
             dateKey: log.date, // THE source of truth

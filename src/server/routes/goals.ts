@@ -18,7 +18,6 @@ import {
   validateHabitIds,
 } from '../repositories/goalRepository';
 import { getHabitById } from '../repositories/habitRepository';
-import { getGoalManualLogsByGoal } from '../repositories/goalManualLogRepository';
 import { computeGoalProgressV2 } from '../utils/goalProgressUtilsV2';
 import { saveUploadedFile } from '../utils/fileStorage';
 import type { Goal } from '../../models/persistenceTypes';
@@ -737,85 +736,11 @@ export async function updateGoalRoute(req: Request, res: Response): Promise<void
 }
 
 /**
- * Create a manual log for a goal.
- * 
- * POST /api/goals/:id/manual-logs
- * 
- * DEPRECATED in V1: manual goal logs are no longer accepted.
- * All goal progress is derived from HabitEntries via truthQuery.
- */
-export async function createGoalManualLogRoute(_req: Request, res: Response): Promise<void> {
-  res.status(410).json({
-    error: {
-      code: 'GONE',
-      message: 'Manual goal logs are deprecated in V1. Progress is derived from habit entries.',
-    },
-  });
-}
-
-/**
- * Get all manual logs for a goal.
- * 
- * GET /api/goals/:id/manual-logs
- * 
- * Returns all manual logs for the goal, sorted by loggedAt ascending.
- */
-export async function getGoalManualLogsRoute(req: Request, res: Response): Promise<void> {
-  try {
-    const { id } = req.params;
-
-    if (!id) {
-      res.status(400).json({
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: 'Goal ID is required',
-        },
-      });
-      return;
-    }
-
-    // TODO: Extract userId from authentication token/session
-    const { householdId, userId } = getRequestIdentity(req);
-
-    const goal = await getGoalById(id, householdId, userId);
-    if (!goal) {
-      res.status(404).json({
-        error: {
-          code: 'NOT_FOUND',
-          message: 'Goal not found',
-        },
-      });
-      return;
-    }
-
-    const logs = await getGoalManualLogsByGoal(id, userId);
-
-    res.status(200).json({
-      logs,
-    });
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    console.error('Error fetching goal manual logs:', errorMessage);
-    res.status(500).json({
-      error: {
-        code: 'INTERNAL_SERVER_ERROR',
-        message: 'Failed to fetch goal manual logs',
-        details: process.env.NODE_ENV === 'development' ? errorMessage : undefined,
-      },
-    });
-  }
-}
-
-/**
  * Get goal detail with progress and history.
- * 
+ *
  * GET /api/goals/:id/detail
- * 
- * Returns comprehensive data for the goal detail page:
- * - goal: The goal entity
- * - progress: Current progress from entries-derived computation (V2)
- * - manualLogs: Legacy manual logs (returned for display, no longer counted)
- * - history: Aggregated history for last 30 days derived from EntryViews
+ *
+ * Returns: goal, progress (entries-derived), and history (last 30 days from EntryViews).
  */
 export async function getGoalDetailRoute(req: Request, res: Response): Promise<void> {
   try {
@@ -857,10 +782,6 @@ export async function getGoalDetailRoute(req: Request, res: Response): Promise<v
       return;
     }
 
-    const manualLogs = goal.type === 'cumulative'
-      ? await getGoalManualLogsByGoal(id, userId)
-      : [];
-
     const { getEntryViewsForHabits } = await import('../services/truthQuery');
 
     const entryViews = await getEntryViewsForHabits(goal.linkedHabitIds, householdId, userId, {
@@ -895,7 +816,6 @@ export async function getGoalDetailRoute(req: Request, res: Response): Promise<v
     res.status(200).json({
       goal,
       progress,
-      manualLogs,
       history,
     });
   } catch (error) {

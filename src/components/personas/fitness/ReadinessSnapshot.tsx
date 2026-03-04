@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, memo } from 'react';
 import { Battery, Droplet, UtensilsCrossed, Heart, Activity } from 'lucide-react';
 import { fetchWellbeingEntries, upsertWellbeingEntries } from '../../../lib/persistenceClient';
-import type { WellbeingEntry, WellbeingMetricKey } from '../../../models/persistenceTypes';
+import type { WellbeingEntry } from '../../../models/persistenceTypes';
 import { formatDayKeyFromDate } from '../../../domain/time/dayKey';
 
 function getTimeZone(): string {

@@ -73,8 +73,6 @@ Base URL: `/api`
 - `PATCH /goals/reorder`
 - `GET /goals/:id/progress`
 - `GET /goals/:id/detail`
-- `POST /goals/:id/manual-logs`
-- `GET /goals/:id/manual-logs`
 - `POST /goals/:id/badge`
 - `GET /goals/:id`
 - `PUT /goals/:id`

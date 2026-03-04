@@ -80,6 +80,7 @@ async function migrate() {
   console.log(`Uploads directory: ${UPLOADS_DIR}`);
   console.log('');
 
+  if (!MONGODB_URI) throw new Error('MONGODB_URI is required');
   const client = new MongoClient(MONGODB_URI);
 
   try {

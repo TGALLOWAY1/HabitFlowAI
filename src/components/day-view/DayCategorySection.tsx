@@ -3,7 +3,6 @@ import { ChevronDown, ChevronRight, CheckCircle2 } from 'lucide-react';
 import type { Category, Habit } from '../../types';
 import { HabitGridCell } from './HabitGridCell';
 import { cn } from '../../utils/cn';
-import { warnLegacyCompletionRead } from '../../utils/legacyReadWarning';
 
 interface DayViewHabitStatus {
     habit: Habit;

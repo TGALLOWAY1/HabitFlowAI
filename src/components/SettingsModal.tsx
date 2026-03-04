@@ -2,7 +2,7 @@
  * Settings modal: identity (household + user), refresh, and other app settings.
  * V1: minimal household/user selection; Switch User list from household registry API.
  */
-import React, { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import type { HouseholdUser } from '../models/persistenceTypes';
 import {
   getActiveHouseholdId,

@@ -12,6 +12,7 @@
     "preview": "vite preview",
     "test": "vitest",
     "test:run": "vitest run",
+    "verify": "bash scripts/verify.sh",
     "compare:legacy-reads": "tsx scripts/compare-legacy-vs-canonical.ts",
     "check:invariants": "tsx scripts/check-invariants.ts",
     "seed:emotion": "tsx scripts/seed-emotion-regulation.ts",

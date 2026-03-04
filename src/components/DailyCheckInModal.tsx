@@ -53,6 +53,11 @@ const METRIC_UI: Record<WellbeingMetricKey, MetricUiConfig> = {
     stress: { key: 'stress', label: 'Stress', icon: <Target size={16} className="text-orange-400" />, colorClass: 'text-orange-400', min: 0, max: 4, step: 1, kind: 'number' },
     focus: { key: 'focus', label: 'Focus', icon: <FocusIcon size={16} className="text-amber-300" />, colorClass: 'text-amber-300', min: 0, max: 4, step: 1, kind: 'number' },
     notes: { key: 'notes', label: 'Notes (Optional)', icon: null, colorClass: 'text-neutral-300', min: 0, max: 0, step: 1, kind: 'text' },
+    readiness: { key: 'readiness', label: 'Readiness', icon: null, colorClass: 'text-neutral-400', min: 0, max: 4, step: 1, kind: 'number' },
+    soreness: { key: 'soreness', label: 'Soreness', icon: null, colorClass: 'text-neutral-400', min: 0, max: 4, step: 1, kind: 'number' },
+    hydration: { key: 'hydration', label: 'Hydration', icon: null, colorClass: 'text-neutral-400', min: 0, max: 4, step: 1, kind: 'number' },
+    fueling: { key: 'fueling', label: 'Fueling', icon: null, colorClass: 'text-neutral-400', min: 0, max: 4, step: 1, kind: 'number' },
+    recovery: { key: 'recovery', label: 'Recovery', icon: null, colorClass: 'text-neutral-400', min: 0, max: 4, step: 1, kind: 'number' },
 };
 
 export const DailyCheckInModal: React.FC<DailyCheckInModalProps> = ({ isOpen, onClose }) => {

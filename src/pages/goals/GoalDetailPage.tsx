@@ -13,7 +13,6 @@ import { useGoalDetail } from '../../lib/useGoalDetail';
 import { useHabitStore } from '../../store/HabitContext';
 import { Loader2, ArrowLeft, Check, Edit, Trash2 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
-// GoalManualProgressModal removed — manual goal logs deprecated in V1
 import { DeleteGoalConfirmModal } from '../../components/goals/DeleteGoalConfirmModal';
 import { EditGoalModal } from '../../components/goals/EditGoalModal';
 import { deleteGoal, markGoalAsCompleted, fetchHabitEntries, getLocalTimeZone } from '../../lib/persistenceClient';
@@ -111,14 +110,6 @@ export const GoalDetailPage: React.FC<GoalDetailPageProps> = ({ goalId, onBack, 
     const combinedEntries = useMemo(() => {
         if (!data) return [];
 
-        const manual = data.manualLogs.map(log => ({
-            id: log.id,
-            date: log.loggedAt, // Ensure this is also just YYYY-MM-DD if possible, or ISO is fine
-            value: log.value,
-            source: 'manual' as const,
-            unit: data.goal.unit
-        }));
-
         const fromHabits = linkedHabitEntries
             .filter(entry => {
                 const habit = habitMap.get(entry.habitId);
@@ -157,7 +148,7 @@ export const GoalDetailPage: React.FC<GoalDetailPageProps> = ({ goalId, onBack, 
                 };
             });
 
-        const combined = [...manual, ...fromHabits].filter(item => item.date);
+        const combined = fromHabits.filter(item => item.date);
         console.log('[GoalDetail] Final combined entries:', combined);
         return combined.sort((a, b) => (a.date || '').localeCompare(b.date || ''));
     }, [data, linkedHabitEntries, habitMap]);

@@ -10,7 +10,7 @@
  * - Timestamp + timeZone derivation
  */
 
-import { assertDayKey, formatDayKeyFromDate, type DayKey } from '../../domain/time/dayKey';
+import { formatDayKeyFromDate, type DayKey } from '../../domain/time/dayKey';
 import { validateDayKey } from '../domain/canonicalValidators';
 import { resolveTimeZone } from './dayKey';
 

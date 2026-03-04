@@ -710,27 +710,6 @@ export async function uploadRoutineImageRoute(req: Request, res: Response): Prom
  * @param dateInput - ISO datetime string, Date object, or undefined
  * @returns YYYY-MM-DD formatted string
  */
-function deriveDateString(dateInput?: string | Date): string {
-  let date: Date;
-
-  if (dateInput) {
-    if (typeof dateInput === 'string') {
-      date = new Date(dateInput);
-    } else {
-      date = dateInput;
-    }
-  } else {
-    date = new Date();
-  }
-
-  // Extract YYYY-MM-DD
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-
-  return `${year}-${month}-${day}`;
-}
-
 /**
  * Submit routine completion and optionally complete linked habits.
  * 
@@ -818,19 +797,17 @@ export async function submitRoutineRoute(req: Request, res: Response): Promise<v
     const habitIds = habitIdsToComplete || [];
 
     // Create entries in parallel for better performance
-    const entryPromises = habitIds.map(async (habitId) => {
+    const entryPromises = habitIds.map(async (habitId: string) => {
       // Security check: Only allow completing habits that are actually linked to this routine?
       // For now, implicit trust if user requests it, assuming frontend filters correctly.
       // Ideally, check if habitId is in routine.linkedHabitIds or allow flexibility.
 
-      // Upsert HabitEntry with routine provenance
+      // Upsert HabitEntry with routine provenance (dayKey/logDate are set by upsertHabitEntry from args)
       const entry = await upsertHabitEntry(habitId, logDate, householdId, userId, {
         timestamp: entryTimestamp,
         value: 1,
         source: 'routine',
         routineId: routine.id,
-        dayKey: logDate,
-        date: logDate,
       });
 
       await recomputeDayLogForHabit(habitId, logDate, householdId, userId);

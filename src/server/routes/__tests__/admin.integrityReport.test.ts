@@ -72,11 +72,6 @@ describe('getIntegrityReport', () => {
           value: 1,
         },
       ],
-      dayLogs: [
-        { habitId: 'habit-1', date: '2026-02-20', compositeKey: 'habit-1-2026-02-20' },
-        { habitId: 'habit-1', date: '2026-02-20', compositeKey: 'habit-1-2026-02-20' },
-        { habitId: 'habit-orphan', date: '2026-02-20', compositeKey: 'habit-orphan-2026-02-20' },
-      ],
     };
 
     vi.mocked(getDb).mockResolvedValue(createMockDb(dataset) as unknown as Awaited<ReturnType<typeof getDb>>);
@@ -91,9 +86,7 @@ describe('getIntegrityReport', () => {
     expect(body.summary.invalidDayKeys).toBe(1);
     expect(body.summary.missingDayKeys).toBe(1);
     expect(body.summary.duplicateHabitEntrySignatures).toBe(1);
-    expect(body.summary.duplicateDayLogCompositeKeys).toBe(1);
     expect(body.summary.orphanHabitEntries).toBe(1);
-    expect(body.summary.orphanDayLogs).toBe(1);
     expect(body.summary.goalLinksMissingHabits).toBe(1);
   });
 });

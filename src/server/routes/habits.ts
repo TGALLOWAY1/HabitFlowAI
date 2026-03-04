@@ -17,7 +17,6 @@ import {
 } from '../repositories/habitRepository';
 import { getCategoryById } from '../repositories/categoryRepository';
 import { deleteHabitEntriesByHabit } from '../repositories/habitEntryRepository';
-import { deleteDayLogsByHabit } from '../repositories/dayLogRepository';
 import type { Habit } from '../../models/persistenceTypes';
 import { getRequestIdentity } from '../middleware/identity';
 
@@ -319,7 +318,6 @@ export async function deleteHabitRoute(req: Request, res: Response): Promise<voi
     }
 
     const deletedEntriesCount = await deleteHabitEntriesByHabit(id, householdId, userId);
-    const deletedDayLogsCount = await deleteDayLogsByHabit(id, userId);
 
     const deleted = await deleteHabit(id, householdId, userId);
 
@@ -336,7 +334,6 @@ export async function deleteHabitRoute(req: Request, res: Response): Promise<voi
     res.status(200).json({
       message: 'Habit deleted successfully',
       deletedEntriesCount,
-      deletedDayLogsCount,
     });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';

@@ -130,27 +130,25 @@ export type Theme = 'dark' | 'light';
 
 // Re-export Goal and GoalProgress from persistenceTypes for frontend use
 // Re-export Goal and GoalProgress from persistenceTypes for frontend use
-import type { Goal, GoalProgress, GoalWithProgress, GoalManualLog } from '../models/persistenceTypes';
-export type { Goal, GoalProgress, GoalWithProgress, GoalManualLog };
+import type { Goal, GoalProgress, GoalWithProgress } from '../models/persistenceTypes';
+export type { Goal, GoalProgress, GoalWithProgress };
 
 /**
  * Completed Goal
- * 
+ *
  * Type alias for a completed goal (used in Win Archive).
- * A completed goal is simply a Goal where completedAt is not null.
  */
 export type CompletedGoal = Goal;
 
 /**
  * Goal Detail
- * 
- * Comprehensive data for a goal detail page, including the goal,
- * its progress, and manual logs.
+ *
+ * Data for goal detail page: goal, progress, and history (entries-derived).
  */
 export interface GoalDetail {
     goal: Goal;
     progress: GoalProgress;
-    manualLogs: GoalManualLog[];
+    history?: { date: string; value: number }[];
 }
 
 /**

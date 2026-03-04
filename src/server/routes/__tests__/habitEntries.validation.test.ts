@@ -16,6 +16,7 @@ import { setupTestMongo, teardownTestMongo, getTestDb } from '../../../test/mong
 import { createHabit } from '../../repositories/habitRepository';
 import { createCategory } from '../../repositories/categoryRepository';
 
+const TEST_HOUSEHOLD_ID = 'test-household-validation';
 const TEST_USER_ID = 'test-user-validation';
 
 let app: Express;
@@ -24,7 +25,8 @@ beforeAll(async () => {
   await setupTestMongo();
   app = express();
   app.use(express.json());
-  app.use((req, res, next) => {
+  app.use((req, _res, next) => {
+    (req as any).householdId = TEST_HOUSEHOLD_ID;
     (req as any).userId = TEST_USER_ID;
     next();
   });
@@ -85,16 +87,17 @@ describe('GET /api/entries - DayKey and TimeZone Validation', () => {
 
   it('should accept valid DayKey and TimeZone', async () => {
     // Create a test habit first
-    const category = await createCategory({
-      name: 'Test Category',
-      color: '#000000',
-    }, TEST_USER_ID);
+    const category = await createCategory(
+      { name: 'Test Category', color: '#000000' },
+      TEST_HOUSEHOLD_ID,
+      TEST_USER_ID
+    );
 
-    const habit = await createHabit({
-      name: 'Test Habit',
-      categoryId: category.id,
-      type: 'boolean',
-    }, TEST_USER_ID);
+    const habit = await createHabit(
+      { name: 'Test Habit', categoryId: category.id, goal: { type: 'boolean', frequency: 'daily' } },
+      TEST_HOUSEHOLD_ID,
+      TEST_USER_ID
+    );
 
     const response = await request(app)
       .get('/api/entries')
@@ -115,16 +118,17 @@ describe('POST /api/entries - Payload Validation', () => {
   let testHabitId: string;
 
   beforeEach(async () => {
-    const category = await createCategory({
-      name: 'Test Category',
-      color: '#000000',
-    }, TEST_USER_ID);
+    const category = await createCategory(
+      { name: 'Test Category', color: '#000000' },
+      TEST_HOUSEHOLD_ID,
+      TEST_USER_ID
+    );
 
-    const habit = await createHabit({
-      name: 'Test Habit',
-      categoryId: category.id,
-      type: 'boolean',
-    }, TEST_USER_ID);
+    const habit = await createHabit(
+      { name: 'Test Habit', categoryId: category.id, goal: { type: 'boolean', frequency: 'daily' } },
+      TEST_HOUSEHOLD_ID,
+      TEST_USER_ID
+    );
 
     testHabitId = habit.id;
   });
@@ -251,20 +255,25 @@ describe('PUT /api/entries - TrackerGrid-style payload (upsert)', () => {
   const dayKey = '2025-01-20';
 
   beforeEach(async () => {
-    const category = await createCategory({
-      name: 'Test Category',
-      color: '#000000',
-    }, TEST_USER_ID);
+    const category = await createCategory(
+      { name: 'Test Category', color: '#000000' },
+      TEST_HOUSEHOLD_ID,
+      TEST_USER_ID
+    );
 
-    const habit = await createHabit({
-      name: 'Choice Habit',
-      categoryId: category.id,
-      goal: { type: 'boolean', frequency: 'daily' },
-      bundleType: 'choice',
-      bundleOptions: [
-        { id: 'opt-1', label: 'Option One', metricConfig: { mode: 'none' } },
-      ],
-    } as any, TEST_USER_ID);
+    const habit = await createHabit(
+      {
+        name: 'Choice Habit',
+        categoryId: category.id,
+        goal: { type: 'boolean', frequency: 'daily' },
+        bundleType: 'choice',
+        bundleOptions: [
+          { id: 'opt-1', label: 'Option One', metricConfig: { mode: 'none' } },
+        ],
+      } as any,
+      TEST_HOUSEHOLD_ID,
+      TEST_USER_ID
+    );
 
     choiceHabitId = habit.id;
   });
@@ -288,15 +297,16 @@ describe('PUT /api/entries - TrackerGrid-style payload (upsert)', () => {
   });
 
   it('accepts simple boolean upsert (habitId, dateKey, value)', async () => {
-    const category = await createCategory({
-      name: 'Simple Cat',
-      color: '#111111',
-    }, TEST_USER_ID);
-    const habit = await createHabit({
-      name: 'Simple Habit',
-      categoryId: category.id,
-      goal: { type: 'boolean', frequency: 'daily' },
-    } as any, TEST_USER_ID);
+    const category = await createCategory(
+      { name: 'Simple Cat', color: '#111111' },
+      TEST_HOUSEHOLD_ID,
+      TEST_USER_ID
+    );
+    const habit = await createHabit(
+      { name: 'Simple Habit', categoryId: category.id, goal: { type: 'boolean', frequency: 'daily' } },
+      TEST_HOUSEHOLD_ID,
+      TEST_USER_ID
+    );
 
     const response = await request(app)
       .put('/api/entries')

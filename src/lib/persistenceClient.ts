@@ -5,7 +5,7 @@
  * All persistent data is stored in MongoDB via this client.
  */
 
-import type { Category, Habit, DayLog, DailyWellbeing, Goal, GoalWithProgress, GoalManualLog, Routine, RoutineLog, HabitEntry } from '../models/persistenceTypes';
+import type { Category, Habit, DayLog, DailyWellbeing, Goal, GoalWithProgress, Routine, RoutineLog, HabitEntry } from '../models/persistenceTypes';
 import type { WellbeingEntry, WellbeingMetricKey } from '../models/persistenceTypes';
 import type { DashboardPrefs, HouseholdUser } from '../models/persistenceTypes';
 
@@ -478,41 +478,6 @@ export async function reorderHabits(habitIds: string[]): Promise<void> {
     method: 'PATCH',
     body: JSON.stringify({ habits: habitIds }),
   });
-}
-
-/**
- * Manual Freeze.
- * 
- * POST /api/habits/:id/freeze
- * 
- * @param id - Habit ID
- * @param date - Date to freeze (YYYY-MM-DD)
- * @returns Promise<{ habit: Habit, log: DayLog, message: string }>
- */
-export async function freezeHabit(id: string, date: string): Promise<{ habit: Habit, log: DayLog, message: string }> {
-  const response = await apiRequest<{ habit: Habit, log: DayLog, message: string }>(`/habits/${id}/freeze`, {
-    method: 'POST',
-    body: JSON.stringify({ date }),
-  });
-  return response;
-}
-
-/**
- * Fetch all day logs for the current user.
- * 
- * ⚠️ LEGACY: DayLogs are derived caches from HabitEntries.
- * This function is kept temporarily for reading DayLogs (derived cache).
- * Write operations should use HabitEntry endpoints instead.
- * 
- * @param habitId - Optional habit ID to filter logs
- * @returns Promise<Record<string, DayLog>> - Record of day logs keyed by `${habitId}-${date}`
- * @throws Error if API request fails
- */
-export async function fetchDayLogs(habitId?: string): Promise<Record<string, DayLog>> {
-
-  const url = habitId ? `/dayLogs?habitId=${habitId}` : '/dayLogs';
-  const response = await apiRequest<{ logs: Record<string, DayLog> }>(url);
-  return response.logs;
 }
 
 /**
@@ -1008,13 +973,12 @@ export async function fetchDashboardStreaks(): Promise<DashboardStreaksOverview>
 }
 
 /**
- * Fetch goal detail with progress, manual logs, and history.
- * 
+ * Fetch goal detail with progress and history.
+ *
  * GET /api/goals/:id/detail
- * 
+ *
  * @param goalId - Goal ID to fetch
- * @returns Promise<GoalDetail> - Goal with progress and manual logs
- * @throws Error if API request fails or goal not found
+ * @returns Promise<GoalDetail> - Goal with progress and history
  */
 export async function fetchGoalDetail(goalId: string): Promise<GoalDetail> {
   const response = await apiRequest<GoalDetail>(`/goals/${goalId}/detail`);
@@ -1023,43 +987,16 @@ export async function fetchGoalDetail(goalId: string): Promise<GoalDetail> {
 
 /**
  * Fetch all completed goals for the Win Archive.
- * 
+ *
  * GET /api/goals/completed
- * 
- * Returns all goals where completedAt is not null, sorted by completedAt descending.
- * 
+ *
  * @returns Promise<CompletedGoal[]> - Array of completed goals
- * @throws Error if API request fails
  */
 export async function fetchCompletedGoals(): Promise<CompletedGoal[]> {
   const response = await apiRequest<Array<{ goal: Goal }>>('/goals/completed');
-  // Extract goal from each response item
   return response.map(item => item.goal);
 }
 
-/**
- * Create a manual log for a goal.
- * 
- * POST /api/goals/:id/manual-logs
- * 
- * @param goalId - Goal ID
- * @param data - Manual log data: { value: number; loggedAt?: string }
- * @returns Promise<GoalManualLog> - Created manual log
- * @throws Error if API request fails
- */
-export async function createGoalManualLog(
-  goalId: string,
-  data: { value: number; loggedAt?: string }
-): Promise<GoalManualLog> {
-  const response = await apiRequest<{ log: GoalManualLog }>(
-    `/goals/${goalId}/manual-logs`,
-    {
-      method: 'POST',
-      body: JSON.stringify(data),
-    }
-  );
-  return response.log;
-}
 /**
  * Habit Entry (History) Persistence Functions
  */

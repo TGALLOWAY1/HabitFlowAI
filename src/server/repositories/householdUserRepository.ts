@@ -47,7 +47,7 @@ export async function createHouseholdUser(
   };
   if (displayName) doc.displayName = displayName;
 
-  await col.insertOne(doc);
+  await col.insertOne(doc as any);
   const { _id, ...rest } = doc;
   return rest as HouseholdUser;
 }

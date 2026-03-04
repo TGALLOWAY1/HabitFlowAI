@@ -81,7 +81,6 @@ async function createTodayEntry(dayKey: string): Promise<void> {
 describe('Entries-only invariants across derived reads', () => {
   beforeAll(async () => {
     await setupTestMongo();
-    process.env.LEGACY_DAYLOG_READS = 'false';
 
     app = express();
     app.use(express.json());
@@ -106,14 +105,11 @@ describe('Entries-only invariants across derived reads', () => {
   });
 
   beforeEach(async () => {
-    process.env.LEGACY_DAYLOG_READS = 'false';
-
     const db = await getTestDb();
     await Promise.all([
       db.collection('categories').deleteMany({ householdId: TEST_HOUSEHOLD_ID, userId: TEST_USER_ID }),
       db.collection('habits').deleteMany({ householdId: TEST_HOUSEHOLD_ID, userId: TEST_USER_ID }),
       db.collection('habitEntries').deleteMany({ householdId: TEST_HOUSEHOLD_ID, userId: TEST_USER_ID }),
-      db.collection('dayLogs').deleteMany({ userId: TEST_USER_ID }),
       db.collection('goals').deleteMany({ householdId: TEST_HOUSEHOLD_ID, userId: TEST_USER_ID }),
       db.collection('goalManualLogs').deleteMany({ userId: TEST_USER_ID }),
     ]);
@@ -236,7 +232,7 @@ describe('Entries-only invariants across derived reads', () => {
   it('habitEntries unique index config when present', async () => {
     const db = await getTestDb();
     const indexes = await db.collection('habitEntries').indexes();
-    const uniqueIndex = indexes.find((i: { name: string }) => i.name === HABIT_ENTRIES_UNIQUE_INDEX_NAME);
+    const uniqueIndex = indexes.find((i: { name?: string }) => i.name === HABIT_ENTRIES_UNIQUE_INDEX_NAME);
     if (uniqueIndex) {
       expect(uniqueIndex.unique).toBe(true);
       expect(uniqueIndex.key).toEqual({ householdId: 1, userId: 1, habitId: 1, dayKey: 1 });

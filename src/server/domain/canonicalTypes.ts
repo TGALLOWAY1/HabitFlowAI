@@ -10,13 +10,8 @@
  * - DayKey is the aggregation boundary
  */
 
-import type { DayKey } from '../../domain/time/dayKey';
-import type { EntryView } from '../services/truthQuery';
-
-// Re-export DayKey for convenience
+// Re-export for convenience
 export type { DayKey } from '../../domain/time/dayKey';
-
-// Re-export EntryView for convenience
 export type { EntryView } from '../services/truthQuery';
 
 /**

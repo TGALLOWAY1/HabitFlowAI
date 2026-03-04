@@ -18,6 +18,7 @@ import {
   reorderCategories,
 } from '../categoryRepository';
 
+const TEST_HOUSEHOLD_ID = 'test-household-cat';
 const TEST_USER_ID = 'test-user-123';
 
 describe('CategoryRepository', () => {
@@ -41,7 +42,7 @@ describe('CategoryRepository', () => {
         color: 'bg-blue-500',
       };
 
-      const category = await createCategory(categoryData, TEST_USER_ID);
+      const category = await createCategory(categoryData, TEST_HOUSEHOLD_ID, TEST_USER_ID);
 
       expect(category).toBeDefined();
       expect(category.id).toBeDefined();
@@ -55,7 +56,7 @@ describe('CategoryRepository', () => {
         color: 'bg-blue-500',
       };
 
-      const category = await createCategory(categoryData, TEST_USER_ID);
+      const category = await createCategory(categoryData, TEST_HOUSEHOLD_ID, TEST_USER_ID);
 
       const db = await getTestDb();
       const stored = await db.collection('categories').findOne({ id: category.id });
@@ -66,7 +67,7 @@ describe('CategoryRepository', () => {
 
   describe('getCategoriesByUser', () => {
     it('should return empty array when user has no categories', async () => {
-      const categories = await getCategoriesByUser(TEST_USER_ID);
+      const categories = await getCategoriesByUser(TEST_HOUSEHOLD_ID, TEST_USER_ID);
       expect(categories).toEqual([]);
     });
 
@@ -74,13 +75,13 @@ describe('CategoryRepository', () => {
       const otherUserId = 'other-user-456';
 
       // Create categories for test user
-      await createCategory({ name: 'User Category 1', color: 'bg-red-500' }, TEST_USER_ID);
-      await createCategory({ name: 'User Category 2', color: 'bg-green-500' }, TEST_USER_ID);
+      await createCategory({ name: 'User Category 1', color: 'bg-red-500' }, TEST_HOUSEHOLD_ID, TEST_USER_ID);
+      await createCategory({ name: 'User Category 2', color: 'bg-green-500' }, TEST_HOUSEHOLD_ID, TEST_USER_ID);
 
       // Create category for other user
-      await createCategory({ name: 'Other User Category', color: 'bg-blue-500' }, otherUserId);
+      await createCategory({ name: 'Other User Category', color: 'bg-blue-500' }, TEST_HOUSEHOLD_ID, otherUserId);
 
-      const categories = await getCategoriesByUser(TEST_USER_ID);
+      const categories = await getCategoriesByUser(TEST_HOUSEHOLD_ID, TEST_USER_ID);
 
       expect(categories).toHaveLength(2);
       expect(categories.every(c => c.name.startsWith('User Category'))).toBe(true);
@@ -90,17 +91,18 @@ describe('CategoryRepository', () => {
 
   describe('getCategoryById', () => {
     it('should return null for non-existent category', async () => {
-      const category = await getCategoryById('non-existent-id', TEST_USER_ID);
+      const category = await getCategoryById('non-existent-id', TEST_HOUSEHOLD_ID, TEST_USER_ID);
       expect(category).toBeNull();
     });
 
     it('should return category if it exists and belongs to user', async () => {
       const created = await createCategory(
         { name: 'Test Category', color: 'bg-blue-500' },
+        TEST_HOUSEHOLD_ID,
         TEST_USER_ID
       );
 
-      const category = await getCategoryById(created.id, TEST_USER_ID);
+      const category = await getCategoryById(created.id, TEST_HOUSEHOLD_ID, TEST_USER_ID);
 
       expect(category).toBeDefined();
       expect(category?.id).toBe(created.id);
@@ -111,10 +113,11 @@ describe('CategoryRepository', () => {
       const otherUserId = 'other-user-456';
       const created = await createCategory(
         { name: 'Test Category', color: 'bg-blue-500' },
+        TEST_HOUSEHOLD_ID,
         otherUserId
       );
 
-      const category = await getCategoryById(created.id, TEST_USER_ID);
+      const category = await getCategoryById(created.id, TEST_HOUSEHOLD_ID, TEST_USER_ID);
       expect(category).toBeNull();
     });
   });
@@ -123,11 +126,13 @@ describe('CategoryRepository', () => {
     it('should update category name', async () => {
       const created = await createCategory(
         { name: 'Original Name', color: 'bg-blue-500' },
+        TEST_HOUSEHOLD_ID,
         TEST_USER_ID
       );
 
       const updated = await updateCategory(
         created.id,
+        TEST_HOUSEHOLD_ID,
         TEST_USER_ID,
         { name: 'Updated Name' }
       );
@@ -140,11 +145,13 @@ describe('CategoryRepository', () => {
     it('should update category color', async () => {
       const created = await createCategory(
         { name: 'Test Category', color: 'bg-blue-500' },
+        TEST_HOUSEHOLD_ID,
         TEST_USER_ID
       );
 
       const updated = await updateCategory(
         created.id,
+        TEST_HOUSEHOLD_ID,
         TEST_USER_ID,
         { color: 'bg-red-500' }
       );
@@ -157,6 +164,7 @@ describe('CategoryRepository', () => {
     it('should return null if category does not exist', async () => {
       const updated = await updateCategory(
         'non-existent-id',
+        TEST_HOUSEHOLD_ID,
         TEST_USER_ID,
         { name: 'Updated Name' }
       );
@@ -168,11 +176,13 @@ describe('CategoryRepository', () => {
       const otherUserId = 'other-user-456';
       const created = await createCategory(
         { name: 'Test Category', color: 'bg-blue-500' },
+        TEST_HOUSEHOLD_ID,
         otherUserId
       );
 
       const updated = await updateCategory(
         created.id,
+        TEST_HOUSEHOLD_ID,
         TEST_USER_ID,
         { name: 'Updated Name' }
       );
@@ -185,20 +195,21 @@ describe('CategoryRepository', () => {
     it('should delete category and return true', async () => {
       const created = await createCategory(
         { name: 'Test Category', color: 'bg-blue-500' },
+        TEST_HOUSEHOLD_ID,
         TEST_USER_ID
       );
 
-      const deleted = await deleteCategory(created.id, TEST_USER_ID);
+      const deleted = await deleteCategory(created.id, TEST_HOUSEHOLD_ID, TEST_USER_ID);
 
       expect(deleted).toBe(true);
 
       // Verify it's gone
-      const category = await getCategoryById(created.id, TEST_USER_ID);
+      const category = await getCategoryById(created.id, TEST_HOUSEHOLD_ID, TEST_USER_ID);
       expect(category).toBeNull();
     });
 
     it('should return false if category does not exist', async () => {
-      const deleted = await deleteCategory('non-existent-id', TEST_USER_ID);
+      const deleted = await deleteCategory('non-existent-id', TEST_HOUSEHOLD_ID, TEST_USER_ID);
       expect(deleted).toBe(false);
     });
 
@@ -206,10 +217,11 @@ describe('CategoryRepository', () => {
       const otherUserId = 'other-user-456';
       const created = await createCategory(
         { name: 'Test Category', color: 'bg-blue-500' },
+        TEST_HOUSEHOLD_ID,
         otherUserId
       );
 
-      const deleted = await deleteCategory(created.id, TEST_USER_ID);
+      const deleted = await deleteCategory(created.id, TEST_HOUSEHOLD_ID, TEST_USER_ID);
       expect(deleted).toBe(false);
     });
   });
@@ -217,13 +229,13 @@ describe('CategoryRepository', () => {
   describe('reorderCategories', () => {
     it('should replace all categories with new order', async () => {
       // Create initial categories
-      const cat1 = await createCategory({ name: 'Category 1', color: 'bg-red-500' }, TEST_USER_ID);
-      const cat2 = await createCategory({ name: 'Category 2', color: 'bg-green-500' }, TEST_USER_ID);
-      const cat3 = await createCategory({ name: 'Category 3', color: 'bg-blue-500' }, TEST_USER_ID);
+      const cat1 = await createCategory({ name: 'Category 1', color: 'bg-red-500' }, TEST_HOUSEHOLD_ID, TEST_USER_ID);
+      const cat2 = await createCategory({ name: 'Category 2', color: 'bg-green-500' }, TEST_HOUSEHOLD_ID, TEST_USER_ID);
+      const cat3 = await createCategory({ name: 'Category 3', color: 'bg-blue-500' }, TEST_HOUSEHOLD_ID, TEST_USER_ID);
 
       // Reorder (reverse order)
       const newOrder: Category[] = [cat3, cat2, cat1];
-      const result = await reorderCategories(TEST_USER_ID, newOrder);
+      const result = await reorderCategories(TEST_HOUSEHOLD_ID, TEST_USER_ID, newOrder);
 
       expect(result).toHaveLength(3);
       expect(result[0].id).toBe(cat3.id);
@@ -231,19 +243,19 @@ describe('CategoryRepository', () => {
       expect(result[2].id).toBe(cat1.id);
 
       // Verify in database
-      const allCategories = await getCategoriesByUser(TEST_USER_ID);
+      const allCategories = await getCategoriesByUser(TEST_HOUSEHOLD_ID, TEST_USER_ID);
       expect(allCategories).toHaveLength(3);
       expect(allCategories[0].id).toBe(cat3.id);
     });
 
     it('should handle empty array', async () => {
-      await createCategory({ name: 'Category 1', color: 'bg-red-500' }, TEST_USER_ID);
+      await createCategory({ name: 'Category 1', color: 'bg-red-500' }, TEST_HOUSEHOLD_ID, TEST_USER_ID);
 
-      const result = await reorderCategories(TEST_USER_ID, []);
+      const result = await reorderCategories(TEST_HOUSEHOLD_ID, TEST_USER_ID, []);
 
       expect(result).toEqual([]);
 
-      const allCategories = await getCategoriesByUser(TEST_USER_ID);
+      const allCategories = await getCategoriesByUser(TEST_HOUSEHOLD_ID, TEST_USER_ID);
       expect(allCategories).toEqual([]);
     });
   });
