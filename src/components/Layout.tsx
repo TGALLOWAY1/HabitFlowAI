@@ -5,6 +5,7 @@ import { getActiveUserMode, seedDemoEmotionalWellbeing, resetDemoEmotionalWellbe
 import { getActivePersonaId, setActivePersonaId } from '../shared/personas/activePersona';
 import { DEFAULT_PERSONA_ID, EMOTIONAL_PERSONA_ID, FITNESS_PERSONA_ID } from '../shared/personas/personaConstants';
 import type { PersonaId } from '../shared/personas/personaTypes';
+import { SettingsModal } from './SettingsModal';
 
 interface LayoutProps {
     children: React.ReactNode;
@@ -16,6 +17,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
     const isDemo = getActiveUserMode() === 'demo';
     const [devNotice, setDevNotice] = useState<string | null>(null);
     const [userMenuOpen, setUserMenuOpen] = useState(false);
+    const [settingsOpen, setSettingsOpen] = useState(false);
     const [activePersonaId, setActivePersonaIdState] = useState<PersonaId>(getActivePersonaId());
     const userMenuRef = useRef<HTMLDivElement>(null);
 
@@ -132,12 +134,17 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
                                 </div>
                     )}
                     <button
-                        onClick={handleRefresh}
+                        onClick={() => setSettingsOpen(true)}
                         className="min-h-[44px] min-w-[44px] flex items-center justify-center hover:bg-white/5 rounded-full transition-colors text-neutral-400 hover:text-white"
-                        title="Refresh Habits and Categories"
+                        title="Settings"
                     >
                         <Settings size={20} />
                     </button>
+                    <SettingsModal
+                        isOpen={settingsOpen}
+                        onClose={() => setSettingsOpen(false)}
+                        onRefresh={handleRefresh}
+                    />
                     <div ref={userMenuRef} className="relative">
                         <button
                             onClick={() => setUserMenuOpen(!userMenuOpen)}

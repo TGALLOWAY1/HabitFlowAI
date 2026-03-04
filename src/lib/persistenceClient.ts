@@ -21,19 +21,14 @@ import { warnIfPersonaLeaksIntoHabitEntryRequest } from '../shared/invariants/pe
 
 
 const USER_ID_STORAGE_KEY = 'habitflow_user_id';
+const HOUSEHOLD_ID_STORAGE_KEY = 'habitflow_household_id';
 
-/**
- * Default user ID used on first launch or when localStorage is empty.
- * After the initial identity migration this should be the canonical user.
- */
-const DEFAULT_USER_ID = '8013bd6a-1af4-4dc1-84ec-9e6d51dec7fb';
+const DEFAULT_HOUSEHOLD_ID = 'default-household';
 
 /**
  * Get or create a persistent user ID.
- *
- * On first visit the DEFAULT_USER_ID is used and persisted.
- * Once set, the value in localStorage is stable across sessions.
- * To switch users call `setActiveRealUserId(newId)`.
+ * On first visit a new UUID is generated and persisted (no shared hardcoded user).
+ * To switch users use Settings > Switch User or setActiveRealUserId(newId).
  */
 function getOrCreateUserId(): string {
   if (typeof window === 'undefined') {
@@ -42,9 +37,10 @@ function getOrCreateUserId(): string {
 
   let userId = localStorage.getItem(USER_ID_STORAGE_KEY);
 
-  if (!userId) {
-    userId = DEFAULT_USER_ID;
+  if (!userId || userId.trim() === '') {
+    userId = crypto.randomUUID();
     localStorage.setItem(USER_ID_STORAGE_KEY, userId);
+    addKnownUserId(userId);
     console.log('[Auth] Initialized persistent User ID:', userId);
   }
 
@@ -57,16 +53,69 @@ function getOrCreateUserId(): string {
  */
 export function setActiveRealUserId(newUserId: string): void {
   if (typeof window === 'undefined') return;
-  localStorage.setItem(USER_ID_STORAGE_KEY, newUserId);
-  console.log('[Auth] Switched User ID to:', newUserId);
+  const id = newUserId.trim();
+  if (!id) return;
+  localStorage.setItem(USER_ID_STORAGE_KEY, id);
+  addKnownUserId(id);
+  console.log('[Auth] Switched User ID to:', id);
 }
 
 /**
  * Read the current real-mode userId without side-effects.
  */
 export function getActiveRealUserId(): string {
-  if (typeof window === 'undefined') return DEFAULT_USER_ID;
-  return localStorage.getItem(USER_ID_STORAGE_KEY) || DEFAULT_USER_ID;
+  if (typeof window === 'undefined') return 'server-placeholder';
+  return localStorage.getItem(USER_ID_STORAGE_KEY) || getOrCreateUserId();
+}
+
+/**
+ * Active household ID for API scoping. Default "default-household".
+ */
+export function getActiveHouseholdId(): string {
+  if (typeof window === 'undefined') return DEFAULT_HOUSEHOLD_ID;
+  return localStorage.getItem(HOUSEHOLD_ID_STORAGE_KEY) || DEFAULT_HOUSEHOLD_ID;
+}
+
+export function setActiveHouseholdId(householdId: string): void {
+  if (typeof window === 'undefined') return;
+  localStorage.setItem(HOUSEHOLD_ID_STORAGE_KEY, householdId.trim() || DEFAULT_HOUSEHOLD_ID);
+  console.log('[Auth] Switched Household ID to:', getActiveHouseholdId());
+}
+
+/**
+ * Returns the identity headers to send with every API request.
+ */
+export function getIdentityHeaders(): Record<string, string> {
+  return {
+    'X-Household-Id': getActiveHouseholdId(),
+    'X-User-Id': getActiveUserId(),
+  };
+}
+
+const KNOWN_USER_IDS_STORAGE_KEY = 'habitflow_known_user_ids';
+const MAX_KNOWN_USERS = 10;
+
+/** List of userIds the user has used (for Switch User dropdown). */
+export function getKnownUserIds(): string[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const raw = localStorage.getItem(KNOWN_USER_IDS_STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as unknown;
+    return Array.isArray(parsed) ? parsed.filter((x): x is string => typeof x === 'string') : [];
+  } catch {
+    return [];
+  }
+}
+
+/** Add a userId to the known list (e.g. after creating or switching to it). */
+export function addKnownUserId(userId: string): void {
+  if (typeof window === 'undefined') return;
+  const id = userId.trim();
+  if (!id) return;
+  const known = getKnownUserIds();
+  const next = [id, ...known.filter((x) => x !== id)].slice(0, MAX_KNOWN_USERS);
+  localStorage.setItem(KNOWN_USER_IDS_STORAGE_KEY, JSON.stringify(next));
 }
 
 export function getActiveUserMode(): ActiveUserMode {
@@ -106,9 +155,6 @@ async function apiRequest<T>(
 ): Promise<T> {
   const url = `${API_BASE_URL}${endpoint}`;
 
-  // Get effective user ID (demo vs real)
-  const userId = getActiveUserId();
-
   try {
     // Dev-only safety rail: persona must never leak into HabitEntry data-layer calls.
     warnIfPersonaLeaksIntoHabitEntryRequest({
@@ -121,7 +167,7 @@ async function apiRequest<T>(
       ...options,
       headers: {
         'Content-Type': 'application/json',
-        'X-User-Id': userId, // Send identity header
+        ...getIdentityHeaders(),
         ...options.headers,
       },
     });
@@ -622,7 +668,6 @@ export async function uploadRoutineImage(
   file: File
 ): Promise<{ imageId: string; imageUrl: string }> {
   const url = `${API_BASE_URL}/routines/${routineId}/image`;
-  const userId = getActiveUserId();
 
   const formData = new FormData();
   formData.append('file', file);
@@ -631,7 +676,7 @@ export async function uploadRoutineImage(
     const response = await fetch(url, {
       method: 'POST',
       headers: {
-        'X-User-Id': userId,
+        ...getIdentityHeaders(),
         // Content-Type is left undefined so browser sets it with boundary for FormData
       },
       body: formData,
@@ -902,13 +947,12 @@ export async function reorderGoals(goalIds: string[]): Promise<void> {
  */
 export async function uploadGoalBadge(goalId: string, file: File): Promise<{ badgeImageUrl: string }> {
   const url = `${API_BASE_URL}/goals/${goalId}/badge`;
-  const userId = getActiveUserId();
   const formData = new FormData();
   formData.append('image', file);
 
   const response = await fetch(url, {
     method: 'POST',
-    headers: { 'X-User-Id': userId },
+    headers: { ...getIdentityHeaders() },
     body: formData,
   });
 

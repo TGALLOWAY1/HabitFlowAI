@@ -6,7 +6,7 @@
 
 import { API_BASE_URL } from '../lib/persistenceConfig';
 import type { JournalEntry } from '../models/persistenceTypes';
-import { getActiveUserId } from '../lib/persistenceClient';
+import { getIdentityHeaders } from '../lib/persistenceClient';
 
 /**
  * Make an API request with error handling.
@@ -16,14 +16,13 @@ async function apiRequest<T>(
     options: RequestInit = {}
 ): Promise<T> {
     const url = `${API_BASE_URL}${endpoint}`;
-    const userId = getActiveUserId();
 
     try {
         const response = await fetch(url, {
             ...options,
             headers: {
                 'Content-Type': 'application/json',
-                'X-User-Id': userId,
+                ...getIdentityHeaders(),
                 ...options.headers,
             },
         });
