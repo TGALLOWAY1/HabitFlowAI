@@ -1,8 +1,10 @@
 #!/usr/bin/env tsx
 /**
  * Backfill habitEntries.dayKey from legacy "date" or "dateKey" so the unique index
- * (userId, habitId, dayKey) can be created. Run this when you see:
+ * (householdId, userId, habitId, dayKey) can be enforced. Run this when you see:
  *   E11000 duplicate key ... idx_habitEntries_user_habit_dayKey_active_unique dup key: { ..., dayKey: null }
+ *
+ * Does not modify householdId; operates per-document. Report includes householdId for auditing.
  *
  * Default: --dry-run (read-only). Use --apply to update documents.
  *
@@ -25,6 +27,7 @@ const DAYKEY_REGEX = /^\d{4}-\d{2}-\d{2}$/;
 type Doc = {
   _id: ObjectId;
   id?: string;
+  householdId?: string | null;
   userId: string;
   habitId: string;
   dayKey?: string;
@@ -43,7 +46,7 @@ type Report = {
   docsMissingDayKey: number;
   docsUpdated: number;
   docsSkippedNoSource: number;
-  sampleUpdated: Array<{ id: string; date?: string; dateKey?: string; dayKeySet: string }>;
+  sampleUpdated: Array<{ id: string; householdId?: string | null; date?: string; dateKey?: string; dayKeySet: string }>;
 };
 
 function parseArgs(): { dryRun: boolean; apply: boolean; confirm: boolean } {
@@ -129,6 +132,7 @@ async function main(): Promise<void> {
       docsSkippedNoSource: skipped,
       sampleUpdated: toUpdate.slice(0, 15).map(({ doc, dayKey }) => ({
         id: doc.id ?? doc._id.toString(),
+        householdId: doc.householdId ?? undefined,
         date: doc.date,
         dateKey: doc.dateKey,
         dayKeySet: dayKey,

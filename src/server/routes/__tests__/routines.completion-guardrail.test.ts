@@ -17,6 +17,7 @@ import { createHabit } from '../../repositories/habitRepository';
 import { createCategory } from '../../repositories/categoryRepository';
 import { getHabitEntriesForDay } from '../../repositories/habitEntryRepository';
 
+const TEST_HOUSEHOLD_ID = 'test-household-guardrail';
 const TEST_USER_ID = 'test-user-routine-guardrail';
 
 function getTodayDayKey(): string {
@@ -37,6 +38,7 @@ describe('Routine completion does not auto-log habits', () => {
     app = express();
     app.use(express.json());
     app.use((req, _res, next) => {
+      (req as any).householdId = TEST_HOUSEHOLD_ID;
       (req as any).userId = TEST_USER_ID;
       next();
     });
@@ -52,15 +54,16 @@ describe('Routine completion does not auto-log habits', () => {
 
   beforeEach(async () => {
     const db = await getTestDb();
-    await db.collection('habitEntries').deleteMany({ userId: TEST_USER_ID });
+    await db.collection('habitEntries').deleteMany({ householdId: TEST_HOUSEHOLD_ID, userId: TEST_USER_ID });
     await db.collection('dayLogs').deleteMany({ userId: TEST_USER_ID });
     await db.collection('routineLogs').deleteMany({ userId: TEST_USER_ID });
-    await db.collection('habits').deleteMany({ userId: TEST_USER_ID });
-    await db.collection('routines').deleteMany({ userId: TEST_USER_ID });
-    await db.collection('categories').deleteMany({ userId: TEST_USER_ID });
+    await db.collection('habits').deleteMany({ householdId: TEST_HOUSEHOLD_ID, userId: TEST_USER_ID });
+    await db.collection('routines').deleteMany({ householdId: TEST_HOUSEHOLD_ID, userId: TEST_USER_ID });
+    await db.collection('categories').deleteMany({ householdId: TEST_HOUSEHOLD_ID, userId: TEST_USER_ID });
 
     const category = await createCategory(
       { name: 'Guardrail Category', color: '#000000', order: 0 },
+      TEST_HOUSEHOLD_ID,
       TEST_USER_ID
     );
 
@@ -71,6 +74,7 @@ describe('Routine completion does not auto-log habits', () => {
         goal: { type: 'daily', target: 1, unit: 'times', frequency: 'daily' },
         order: 0,
       },
+      TEST_HOUSEHOLD_ID,
       TEST_USER_ID
     );
     habitId1 = habit1.id;
@@ -82,11 +86,12 @@ describe('Routine completion does not auto-log habits', () => {
         goal: { type: 'daily', target: 1, unit: 'times', frequency: 'daily' },
         order: 1,
       },
+      TEST_HOUSEHOLD_ID,
       TEST_USER_ID
     );
     habitId2 = habit2.id;
 
-    const routine = await createRoutine(TEST_USER_ID, {
+    const routine = await createRoutine(TEST_HOUSEHOLD_ID, TEST_USER_ID, {
       title: 'Guardrail Routine',
       linkedHabitIds: [habitId1, habitId2],
       steps: [
@@ -122,8 +127,8 @@ describe('Routine completion does not auto-log habits', () => {
     expect(res.body.createdOrUpdatedCount).toBe(0);
     expect(res.body.completedHabitIds).toEqual([]);
 
-    const entries1 = await getHabitEntriesForDay(habitId1, dayKey, TEST_USER_ID);
-    const entries2 = await getHabitEntriesForDay(habitId2, dayKey, TEST_USER_ID);
+    const entries1 = await getHabitEntriesForDay(habitId1, dayKey, TEST_HOUSEHOLD_ID, TEST_USER_ID);
+    const entries2 = await getHabitEntriesForDay(habitId2, dayKey, TEST_HOUSEHOLD_ID, TEST_USER_ID);
     expect(entries1).toHaveLength(0);
     expect(entries2).toHaveLength(0);
 

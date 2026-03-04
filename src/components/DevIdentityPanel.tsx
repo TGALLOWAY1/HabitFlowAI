@@ -1,21 +1,23 @@
 /**
- * Dev-only panel for inspecting and switching the active userId.
- * Renders nothing in production builds.
+ * Dev-only panel for inspecting and switching the active userId/householdId.
+ * Renders nothing in production builds. For full identity UI use Settings.
  */
 import React, { useState, useCallback } from 'react';
-import { getActiveRealUserId, setActiveRealUserId, getActiveUserId } from '../lib/persistenceClient';
-
-const WELL_KNOWN_USERS = [
-  { label: 'Primary', id: '8013bd6a-1af4-4dc1-84ec-9e6d51dec7fb' },
-  { label: 'anonymous-user', id: 'anonymous-user' },
-  { label: '32ba4231…', id: '32ba4231-79d9-4d07-8aa9-398aee800ce6' },
-];
+import {
+  getActiveRealUserId,
+  setActiveRealUserId,
+  getActiveUserId,
+  getActiveHouseholdId,
+  getKnownUserIds,
+} from '../lib/persistenceClient';
 
 export function DevIdentityPanel() {
   const [isOpen, setIsOpen] = useState(false);
   const [customId, setCustomId] = useState('');
   const currentId = getActiveRealUserId();
   const effectiveId = getActiveUserId();
+  const householdId = getActiveHouseholdId();
+  const knownIds = getKnownUserIds();
 
   const isProd = import.meta.env.PROD;
   if (isProd) return null;
@@ -43,6 +45,10 @@ export function DevIdentityPanel() {
             <button onClick={() => setIsOpen(false)} className="text-neutral-500 hover:text-white">✕</button>
           </div>
 
+          <div className="text-neutral-500 mb-1">Household:</div>
+          <div className="text-neutral-200 font-mono text-[10px] bg-neutral-800 px-2 py-1 rounded mb-2 break-all">
+            {householdId}
+          </div>
           <div className="text-neutral-500 mb-1">Effective userId:</div>
           <div className="text-neutral-200 font-mono text-[10px] bg-neutral-800 px-2 py-1 rounded mb-2 break-all">
             {effectiveId}
@@ -50,17 +56,17 @@ export function DevIdentityPanel() {
 
           <div className="text-neutral-500 mb-1">Switch to:</div>
           <div className="space-y-1 mb-2">
-            {WELL_KNOWN_USERS.map(u => (
+            {knownIds.slice(0, 8).map((id) => (
               <button
-                key={u.id}
-                onClick={() => switchTo(u.id)}
+                key={id}
+                onClick={() => switchTo(id)}
                 className={`block w-full text-left px-2 py-1 rounded transition-colors ${
-                  currentId === u.id
+                  currentId === id
                     ? 'bg-emerald-900/50 text-emerald-300 border border-emerald-700'
                     : 'bg-neutral-800 text-neutral-400 hover:text-white hover:bg-neutral-700'
                 }`}
               >
-                {u.label} <span className="text-neutral-600 font-mono text-[9px]">{u.id.slice(0, 12)}…</span>
+                <span className="font-mono text-[9px]">{id.slice(0, 8)}…</span>
               </button>
             ))}
           </div>

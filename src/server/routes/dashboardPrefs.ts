@@ -7,10 +7,11 @@
 
 import type { Request, Response } from 'express';
 import { getDashboardPrefs, updateDashboardPrefs } from '../repositories/dashboardPrefsRepository';
+import { getRequestIdentity } from '../middleware/identity';
 
 export async function getDashboardPrefsRoute(req: Request, res: Response): Promise<void> {
   try {
-    const userId = (req as any).userId || 'anonymous-user';
+    const { userId } = getRequestIdentity(req);
     const prefs = await getDashboardPrefs(userId);
     res.status(200).json({ dashboardPrefs: prefs });
   } catch (error) {
@@ -27,10 +28,10 @@ export async function getDashboardPrefsRoute(req: Request, res: Response): Promi
 
 export async function updateDashboardPrefsRoute(req: Request, res: Response): Promise<void> {
   try {
-    const userId = (req as any).userId || 'anonymous-user';
+    const { householdId, userId } = getRequestIdentity(req);
     const { pinnedRoutineIds, checkinExtraMetricKeys } = req.body || {};
 
-    const prefs = await updateDashboardPrefs(userId, { pinnedRoutineIds, checkinExtraMetricKeys });
+    const prefs = await updateDashboardPrefs(householdId, userId, { pinnedRoutineIds, checkinExtraMetricKeys });
     res.status(200).json({ dashboardPrefs: prefs });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';

@@ -52,17 +52,15 @@ export interface SkillTreeData {
  * - Only Categories that have at least one Goal.
  * - Only Goals that have a Category assigned.
  */
-export async function getSkillTree(userId: string): Promise<SkillTreeData> {
+export async function getSkillTree(householdId: string, userId: string): Promise<SkillTreeData> {
     if (!SKILL_TREE_ENABLED) {
         return { identities: [] };
     }
 
-    // 1. Fetch all raw data
-    // Parallelize for performance
     const [categories, goals, habits] = await Promise.all([
-        getCategoriesByUser(userId),
-        getGoalsByUser(userId),
-        getHabitsByUser(userId)
+        getCategoriesByUser(householdId, userId),
+        getGoalsByUser(householdId, userId),
+        getHabitsByUser(householdId, userId)
     ]);
 
     // Create a lookup for habits
@@ -104,7 +102,7 @@ export async function getSkillTree(userId: string): Promise<SkillTreeData> {
         for (const goal of categoryGoals) {
             // Compute Goal Progress
             // We use the existing utility which calculates cumulative/frequency progress
-            const progressData = await computeGoalProgressV2(goal.id, userId, DEFAULT_DAYKEY_TIMEZONE);
+            const progressData = await computeGoalProgressV2(goal.id, householdId, userId, DEFAULT_DAYKEY_TIMEZONE);
 
             // Build Habit Nodes (Leaves)
             const linkedHabitNodes: SkillTreeHabitNode[] = [];

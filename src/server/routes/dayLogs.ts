@@ -12,6 +12,7 @@
  */
 
 import type { Request, Response } from 'express';
+import { getRequestIdentity } from '../middleware/identity';
 import {
   getDayLogsByUser,
   getDayLogsByHabit,
@@ -39,8 +40,7 @@ export async function getDayLogs(req: Request, res: Response): Promise<void> {
   }
   try {
 
-    // TODO: Extract userId from authentication token/session
-    const userId = (req as any).userId || 'anonymous-user';
+    const { userId } = getRequestIdentity(req);
 
     const habitId = req.query.habitId as string | undefined;
 
@@ -121,8 +121,7 @@ export async function getDayLogRoute(req: Request, res: Response): Promise<void>
       return;
     }
 
-    // TODO: Extract userId from authentication token/session
-    const userId = (req as any).userId || 'anonymous-user';
+    const { userId } = getRequestIdentity(req);
 
     const log = await getDayLog(habitId, date, userId);
 

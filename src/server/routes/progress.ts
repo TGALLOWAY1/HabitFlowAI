@@ -14,11 +14,7 @@ import { calculateHabitStreakMetrics, type HabitDayState } from '../services/str
 import { resolveTimeZone, getNowDayKey, getCanonicalDayKeyFromEntry } from '../utils/dayKey';
 import type { MomentumState } from '../../types';
 import type { DayLog } from '../../models/persistenceTypes';
-
-function getUserIdFromRequest(req: Request): string {
-  const candidate = (req as Request & { userId?: unknown }).userId;
-  return typeof candidate === 'string' && candidate.length > 0 ? candidate : 'anonymous-user';
-}
+import { getRequestIdentity } from '../middleware/identity';
 
 function parseFreezeType(note?: string): 'manual' | 'auto' | 'soft' | undefined {
   if (!note || !note.startsWith('freeze:')) return undefined;
@@ -29,21 +25,16 @@ function parseFreezeType(note?: string): 'manual' | 'auto' | 'soft' | undefined 
 
 export async function getProgressOverview(req: Request, res: Response): Promise<void> {
   try {
-    // TODO: Extract userId from authentication token/session
-    const userId = getUserIdFromRequest(req);
+    const { householdId, userId } = getRequestIdentity(req);
     const requestedTimeZone = resolveTimeZone(typeof req.query?.timeZone === 'string' ? req.query.timeZone : undefined);
 
-    // Get today's date (canonical dayKey in user timezone)
     const todayDate = getNowDayKey(requestedTimeZone);
 
-    // Fetch all habits for the user
-    const habits = await getHabitsByUser(userId);
+    const habits = await getHabitsByUser(householdId, userId);
 
-    // Filter out archived habits
     const activeHabits = habits.filter(h => !h.archived);
 
-    // Fetch all habit entries (single source of truth)
-    const habitEntries = await getHabitEntriesByUser(userId);
+    const habitEntries = await getHabitEntriesByUser(householdId, userId);
 
     // Aggregate entries by habit + dayKey for canonical completion/value derivation (dayKey only in prod; legacy fallback in dev with log)
     const dayStatesByHabit = new Map<string, Map<string, HabitDayState>>();

@@ -36,6 +36,7 @@ export async function getDashboardPrefs(userId: string): Promise<DashboardPrefs>
 }
 
 export async function updateDashboardPrefs(
+  householdId: string,
   userId: string,
   patch: { pinnedRoutineIds?: string[]; checkinExtraMetricKeys?: string[] }
 ): Promise<DashboardPrefs> {
@@ -56,8 +57,7 @@ export async function updateDashboardPrefs(
       .map((x) => x.trim())
       .filter((x) => x.length > 0);
 
-    // Validate existence for this user (soft validation: only keep IDs that exist)
-    const routines = await getRoutines(userId);
+    const routines = await getRoutines(householdId, userId);
     const validIdSet = new Set(routines.map((r) => r.id));
     const filtered = ids.filter((id) => validIdSet.has(id));
 

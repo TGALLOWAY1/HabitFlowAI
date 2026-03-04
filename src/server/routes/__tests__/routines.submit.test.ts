@@ -16,6 +16,7 @@ import { createCategory } from '../../repositories/categoryRepository';
 import { getHabitEntriesForDay } from '../../repositories/habitEntryRepository';
 import { getDayLog } from '../../repositories/dayLogRepository';
 
+const TEST_HOUSEHOLD_ID = 'test-household-routines';
 const TEST_USER_ID = 'test-user-routines';
 
 describe('Routine Submit Route', () => {
@@ -30,18 +31,17 @@ describe('Routine Submit Route', () => {
     app = express();
     app.use(express.json());
 
-    // Add userId to request (simulating auth middleware)
     app.use((req, _res, next) => {
+      (req as any).householdId = TEST_HOUSEHOLD_ID;
       (req as any).userId = TEST_USER_ID;
       next();
     });
 
-    // Register route
     app.post('/api/routines/:id/submit', submitRoutineRoute);
 
-    // Create test data
     const category = await createCategory(
       { name: 'Test Category', color: '#000000', order: 0 },
+      TEST_HOUSEHOLD_ID,
       TEST_USER_ID
     );
 
@@ -52,6 +52,7 @@ describe('Routine Submit Route', () => {
         goal: { type: 'daily', target: 1, unit: 'times', frequency: 'daily' },
         order: 0,
       },
+      TEST_HOUSEHOLD_ID,
       TEST_USER_ID
     )).id;
 
@@ -62,22 +63,19 @@ describe('Routine Submit Route', () => {
         goal: { type: 'daily', target: 1, unit: 'times', frequency: 'daily' },
         order: 1,
       },
+      TEST_HOUSEHOLD_ID,
       TEST_USER_ID
     )).id;
 
     const routine = await createRoutine(
+      TEST_HOUSEHOLD_ID,
       TEST_USER_ID,
       {
         name: 'Test Routine',
         description: 'Test routine description',
         linkedHabitIds: [habitId1, habitId2],
         steps: [
-          {
-            id: 'step-1',
-            title: 'Step 1',
-            instruction: 'Test step',
-            order: 0,
-          },
+          { id: 'step-1', title: 'Step 1', instruction: 'Test step', order: 0 },
         ],
       }
     );
@@ -91,7 +89,7 @@ describe('Routine Submit Route', () => {
   beforeEach(async () => {
     // Clear entries and dayLogs before each test (but keep routines, habits, categories)
     const testDb = await getTestDb();
-    await testDb.collection('habitEntries').deleteMany({ userId: TEST_USER_ID });
+    await testDb.collection('habitEntries').deleteMany({ householdId: TEST_HOUSEHOLD_ID, userId: TEST_USER_ID });
     await testDb.collection('dayLogs').deleteMany({ userId: TEST_USER_ID });
     await testDb.collection('routineLogs').deleteMany({ userId: TEST_USER_ID });
   });
@@ -116,8 +114,8 @@ describe('Routine Submit Route', () => {
       expect(response.body.completedHabitIds).toEqual([habitId1, habitId2]);
 
       // Verify HabitEntries were created
-      const entries1 = await getHabitEntriesForDay(habitId1, testDate, TEST_USER_ID);
-      const entries2 = await getHabitEntriesForDay(habitId2, testDate, TEST_USER_ID);
+      const entries1 = await getHabitEntriesForDay(habitId1, testDate, TEST_HOUSEHOLD_ID, TEST_USER_ID);
+      const entries2 = await getHabitEntriesForDay(habitId2, testDate, TEST_HOUSEHOLD_ID, TEST_USER_ID);
 
       expect(entries1.length).toBeGreaterThan(0);
       expect(entries2.length).toBeGreaterThan(0);
@@ -228,7 +226,7 @@ describe('Routine Submit Route', () => {
         .expect(200);
 
       // Verify entry was created with dateOverride, not submittedAt date
-      const entries = await getHabitEntriesForDay(habitId1, dateOverride, TEST_USER_ID);
+      const entries = await getHabitEntriesForDay(habitId1, dateOverride, TEST_HOUSEHOLD_ID, TEST_USER_ID);
       expect(entries.length).toBeGreaterThan(0);
       expect(entries[0].date).toBe(dateOverride);
     });

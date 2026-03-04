@@ -14,6 +14,7 @@ import { getProgressOverview } from '../progress';
 import { getGoalsWithProgress, getGoalProgress } from '../goals';
 import { requestContextMiddleware } from '../../middleware/requestContext';
 
+const TEST_HOUSEHOLD_ID = 'test-household-entries-only';
 const TEST_USER_ID = 'test-user-entries-only-invariants';
 
 type Snapshot = {
@@ -86,6 +87,7 @@ describe('Entries-only invariants across derived reads', () => {
     app.use(express.json());
     app.use(requestContextMiddleware);
     app.use((req, _res, next) => {
+      (req as any).householdId = TEST_HOUSEHOLD_ID;
       (req as any).userId = TEST_USER_ID;
       next();
     });
@@ -108,19 +110,17 @@ describe('Entries-only invariants across derived reads', () => {
 
     const db = await getTestDb();
     await Promise.all([
-      db.collection('categories').deleteMany({ userId: TEST_USER_ID }),
-      db.collection('habits').deleteMany({ userId: TEST_USER_ID }),
-      db.collection('habitEntries').deleteMany({ userId: TEST_USER_ID }),
+      db.collection('categories').deleteMany({ householdId: TEST_HOUSEHOLD_ID, userId: TEST_USER_ID }),
+      db.collection('habits').deleteMany({ householdId: TEST_HOUSEHOLD_ID, userId: TEST_USER_ID }),
+      db.collection('habitEntries').deleteMany({ householdId: TEST_HOUSEHOLD_ID, userId: TEST_USER_ID }),
       db.collection('dayLogs').deleteMany({ userId: TEST_USER_ID }),
-      db.collection('goals').deleteMany({ userId: TEST_USER_ID }),
+      db.collection('goals').deleteMany({ householdId: TEST_HOUSEHOLD_ID, userId: TEST_USER_ID }),
       db.collection('goalManualLogs').deleteMany({ userId: TEST_USER_ID }),
     ]);
 
     const category = await createCategory(
-      {
-        name: 'Invariant Category',
-        color: '#0A84FF',
-      },
+      { name: 'Invariant Category', color: '#0A84FF' },
+      TEST_HOUSEHOLD_ID,
       TEST_USER_ID
     );
 
@@ -128,12 +128,9 @@ describe('Entries-only invariants across derived reads', () => {
       {
         name: 'Invariant Habit',
         categoryId: category.id,
-        goal: {
-          type: 'boolean',
-          frequency: 'daily',
-          target: 1,
-        },
+        goal: { type: 'boolean', frequency: 'daily', target: 1 },
       },
+      TEST_HOUSEHOLD_ID,
       TEST_USER_ID
     );
 
@@ -148,6 +145,7 @@ describe('Entries-only invariants across derived reads', () => {
         aggregationMode: 'count',
         countMode: 'distinctDays',
       },
+      TEST_HOUSEHOLD_ID,
       TEST_USER_ID
     );
 
@@ -225,10 +223,13 @@ describe('Entries-only invariants across derived reads', () => {
       request(app).post('/api/entries').send(payload),
     ]);
 
-    expect(res1.status).toBe(201);
-    expect(res2.status).toBe(201);
+    // Both requests succeed (201 created or 200 updated); race may yield 201+201 or 200+201
+    expect(res1.status).toBeGreaterThanOrEqual(200);
+    expect(res1.status).toBeLessThan(300);
+    expect(res2.status).toBeGreaterThanOrEqual(200);
+    expect(res2.status).toBeLessThan(300);
 
-    const entries = await getHabitEntriesForDay(habitId, dayKey, TEST_USER_ID);
+    const entries = await getHabitEntriesForDay(habitId, dayKey, TEST_HOUSEHOLD_ID, TEST_USER_ID);
     expect(entries.length).toBe(1);
   });
 
@@ -238,7 +239,7 @@ describe('Entries-only invariants across derived reads', () => {
     const uniqueIndex = indexes.find((i: { name: string }) => i.name === HABIT_ENTRIES_UNIQUE_INDEX_NAME);
     if (uniqueIndex) {
       expect(uniqueIndex.unique).toBe(true);
-      expect(uniqueIndex.key).toEqual({ userId: 1, habitId: 1, dayKey: 1 });
+      expect(uniqueIndex.key).toEqual({ householdId: 1, userId: 1, habitId: 1, dayKey: 1 });
     }
   });
 });

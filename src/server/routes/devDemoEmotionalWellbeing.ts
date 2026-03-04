@@ -9,6 +9,7 @@
  */
 
 import type { Request, Response } from 'express';
+import { getRequestIdentity } from '../middleware/identity';
 import { getDb } from '../lib/mongoClient';
 import { isDemoModeEnabled, DEMO_USER_ID } from '../config/demo';
 import { MONGO_COLLECTIONS, type DailyWellbeing, type Routine, type RoutineStep } from '../../models/persistenceTypes';
@@ -50,7 +51,7 @@ function assertDemoRequest(req: Request): string {
   }
 
   // Guard 3: user must be DEMO_USER_ID
-  const userId = (req as any).userId || 'anonymous-user';
+  const { userId } = getRequestIdentity(req);
   if (userId !== DEMO_USER_ID) {
     const msg = 'Forbidden: demo seed/reset may only run for DEMO_USER_ID';
     logDemoGuardFailure(req, 'req.userId!==DEMO_USER_ID', msg);

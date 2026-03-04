@@ -39,9 +39,9 @@ function getDateString(daysAgo: number): string {
  * @param userId - User ID
  * @returns Array of resolved habit IDs (flattened)
  */
-async function resolveBundleIds(habitIds: string[], userId: string): Promise<string[]> {
+async function resolveBundleIds(habitIds: string[], householdId: string, userId: string): Promise<string[]> {
   const resolvedIds = new Set<string>();
-  const allHabits = await getHabitsByUser(userId);
+  const allHabits = await getHabitsByUser(householdId, userId);
   const habitMap = new Map(allHabits.map(h => [h.id, h]));
 
   for (const id of habitIds) {
@@ -69,25 +69,24 @@ async function resolveBundleIds(habitIds: string[], userId: string): Promise<str
  */
 export async function computeGoalProgressV2(
   goalId: string,
+  householdId: string,
   userId: string,
   timeZone: string = 'UTC'
 ): Promise<GoalProgress | null> {
-  // Fetch the goal
-  const goal = await getGoalById(goalId, userId);
+  const goal = await getGoalById(goalId, householdId, userId);
   if (!goal) {
     return null;
   }
 
-  // Resolve any bundles in linkedHabitIds to their sub-habits
-  const resolvedHabitIds = await resolveBundleIds(goal.linkedHabitIds, userId);
+  const resolvedHabitIds = await resolveBundleIds(goal.linkedHabitIds, householdId, userId);
 
-  const entryViews = await getEntryViewsForHabits(resolvedHabitIds, userId, {
+  const entryViews = await getEntryViewsForHabits(resolvedHabitIds, householdId, userId, {
     timeZone,
   });
 
   const activeEntries = entryViews.filter(entry => !entry.deletedAt);
 
-  const allHabits = await getHabitsByUser(userId);
+  const allHabits = await getHabitsByUser(householdId, userId);
   const habitMap = new Map(allHabits.map(h => [h.id, h]));
 
   return computeFullGoalProgressV2(goal, activeEntries, [], habitMap, timeZone);
@@ -231,16 +230,16 @@ export function computeFullGoalProgressV2(
  * @returns Array of goals with their computed progress
  */
 export async function computeGoalsWithProgressV2(
+  householdId: string,
   userId: string,
   timeZone: string = 'UTC'
 ): Promise<Array<{ goal: Goal; progress: GoalProgress }>> {
   const { getGoalsByUser } = await import('../repositories/goalRepository');
 
-  const goals = await getGoalsByUser(userId);
+  const goals = await getGoalsByUser(householdId, userId);
 
-  // Fetch all habits for the user to resolve bundles
   const { getHabitsByUser } = await import('../repositories/habitRepository');
-  const allHabits = await getHabitsByUser(userId);
+  const allHabits = await getHabitsByUser(householdId, userId);
   const habitMap = new Map(allHabits.map(h => [h.id, h]));
 
   // Collect all unique habit IDs from all goals, resolving bundles
@@ -268,7 +267,7 @@ export async function computeGoalsWithProgressV2(
   }
 
   // Fetch all EntryViews for all habits in one batch via truthQuery
-  const allEntryViews = await getEntryViewsForHabits(Array.from(allHabitIds), userId, {
+  const allEntryViews = await getEntryViewsForHabits(Array.from(allHabitIds), householdId, userId, {
     timeZone,
   });
 

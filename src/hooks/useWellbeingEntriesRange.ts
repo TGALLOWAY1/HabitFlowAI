@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, useCallback } from 'react';
-import { fetchWellbeingEntries } from '../lib/persistenceClient';
+import { fetchWellbeingEntries, getActiveUserId } from '../lib/persistenceClient';
 import type { WellbeingEntry, WellbeingMetricKey, WellbeingTimeOfDay } from '../models/persistenceTypes';
 import { formatDayKeyFromDate } from '../domain/time/dayKey';
 
@@ -93,7 +93,7 @@ export function useWellbeingEntriesRange(windowDays: WindowDays) {
 
         const newEntry: WellbeingEntry = {
           id: existingIndex >= 0 ? prev[existingIndex].id : `temp-${Date.now()}`,
-          userId: existingIndex >= 0 ? prev[existingIndex].userId : 'anonymous-user',
+          userId: existingIndex >= 0 ? prev[existingIndex].userId : getActiveUserId(),
           dayKey,
           timeOfDay: timeOfDay ?? null,
           metricKey: metricKey as WellbeingMetricKey,

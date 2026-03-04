@@ -1,5 +1,6 @@
 import type { Request, Response } from 'express';
 import { validateDayKey } from '../domain/canonicalValidators';
+import { getRequestIdentity } from '../middleware/identity';
 import { getDb } from '../lib/mongoClient';
 
 type HabitDoc = {
@@ -29,14 +30,9 @@ type DayLogDoc = {
   compositeKey?: string;
 };
 
-function getUserIdFromRequest(req: Request): string {
-  const candidate = (req as Request & { userId?: unknown }).userId;
-  return typeof candidate === 'string' && candidate.length > 0 ? candidate : 'anonymous-user';
-}
-
 export async function getIntegrityReport(req: Request, res: Response): Promise<void> {
   try {
-    const userId = getUserIdFromRequest(req);
+    const { userId } = getRequestIdentity(req);
     const db = await getDb();
 
     const [habits, goals, entries, dayLogs] = await Promise.all([

@@ -13,6 +13,7 @@ import {
   updateRoutine,
   deleteRoutine,
 } from '../repositories/routineRepository';
+import { getRequestIdentity } from '../middleware/identity';
 import { saveRoutineLog } from '../repositories/routineLogRepository';
 import { upsertHabitEntry } from '../repositories/habitEntryRepository';
 import { recomputeDayLogForHabit } from '../utils/recomputeUtils';
@@ -122,9 +123,9 @@ async function getRoutineImageUrl(routineId: string): Promise<string | null> {
 export async function getRoutinesRoute(req: Request, res: Response): Promise<void> {
   try {
     // TODO: Extract userId from authentication token/session
-    const userId = (req as any).userId || 'anonymous-user';
+    const { householdId, userId } = getRequestIdentity(req);
 
-    const routines = await getRoutines(userId);
+    const routines = await getRoutines(householdId, userId);
 
     // Add imageUrl to each routine
     const routinesWithImages = await Promise.all(
@@ -175,9 +176,9 @@ export async function getRoutineRoute(req: Request, res: Response): Promise<void
     }
 
     // TODO: Extract userId from authentication token/session
-    const userId = (req as any).userId || 'anonymous-user';
+    const { householdId, userId } = getRequestIdentity(req);
 
-    const routine = await getRoutine(userId, id);
+    const routine = await getRoutine(householdId, userId, id);
 
     if (!routine) {
       res.status(404).json({
@@ -275,9 +276,10 @@ export async function createRoutineRoute(req: Request, res: Response): Promise<v
     }
 
     // TODO: Extract userId from authentication token/session
-    const userId = (req as any).userId || 'anonymous-user';
+    const { householdId, userId } = getRequestIdentity(req);
 
     const routine = await createRoutine(
+      householdId,
       userId,
       {
         title: title.trim(),
@@ -407,9 +409,9 @@ export async function updateRoutineRoute(req: Request, res: Response): Promise<v
     }
 
     // TODO: Extract userId from authentication token/session
-    const userId = (req as any).userId || 'anonymous-user';
+    const { householdId, userId } = getRequestIdentity(req);
 
-    const routine = await updateRoutine(userId, id, patch);
+    const routine = await updateRoutine(householdId, userId, id, patch);
 
     if (!routine) {
       res.status(404).json({
@@ -463,9 +465,9 @@ export async function deleteRoutineRoute(req: Request, res: Response): Promise<v
     }
 
     // TODO: Extract userId from authentication token/session
-    const userId = (req as any).userId || 'anonymous-user';
+    const { householdId, userId } = getRequestIdentity(req);
 
-    const deleted = await deleteRoutine(userId, id);
+    const deleted = await deleteRoutine(householdId, userId, id);
 
     if (!deleted) {
       res.status(404).json({
@@ -513,11 +515,9 @@ export async function getRoutineImageRoute(req: Request, res: Response): Promise
       return;
     }
 
-    // TODO: Extract userId from authentication token/session
-    const userId = (req as any).userId || 'anonymous-user';
+    const { householdId, userId } = getRequestIdentity(req);
 
-    // Verify routine exists and belongs to user
-    const routine = await getRoutine(userId, routineId);
+    const routine = await getRoutine(householdId, userId, routineId);
     if (!routine) {
       res.status(404).json({
         error: {
@@ -579,11 +579,9 @@ export async function deleteRoutineImageRoute(req: Request, res: Response): Prom
       return;
     }
 
-    // TODO: Extract userId from authentication token/session
-    const userId = (req as any).userId || 'anonymous-user';
+    const { householdId, userId } = getRequestIdentity(req);
 
-    // Verify routine exists and belongs to user
-    const routine = await getRoutine(userId, routineId);
+    const routine = await getRoutine(householdId, userId, routineId);
     if (!routine) {
       res.status(404).json({
         error: {
@@ -643,11 +641,9 @@ export async function uploadRoutineImageRoute(req: Request, res: Response): Prom
       return;
     }
 
-    // TODO: Extract userId from authentication token/session
-    const userId = (req as any).userId || 'anonymous-user';
+    const { householdId, userId } = getRequestIdentity(req);
 
-    // Verify routine exists and belongs to user
-    const routine = await getRoutine(userId, routineId);
+    const routine = await getRoutine(householdId, userId, routineId);
     if (!routine) {
       res.status(404).json({
         error: {
@@ -687,8 +683,7 @@ export async function uploadRoutineImageRoute(req: Request, res: Response): Prom
       data: req.file.buffer,
     });
 
-    // Update routine with imageId reference
-    await updateRoutine(userId, routineId, {
+    await updateRoutine(householdId, userId, routineId, {
       imageId,
     });
 
@@ -791,11 +786,9 @@ export async function submitRoutineRoute(req: Request, res: Response): Promise<v
       }
     }
 
-    // TODO: Extract userId from authentication token/session
-    const userId = (req as any).userId || 'anonymous-user';
+    const { householdId, userId } = getRequestIdentity(req);
 
-    // Load the Routine
-    const routine = await getRoutine(userId, id);
+    const routine = await getRoutine(householdId, userId, id);
 
     if (!routine) {
       res.status(404).json({
@@ -831,17 +824,16 @@ export async function submitRoutineRoute(req: Request, res: Response): Promise<v
       // Ideally, check if habitId is in routine.linkedHabitIds or allow flexibility.
 
       // Upsert HabitEntry with routine provenance
-      const entry = await upsertHabitEntry(habitId, logDate, userId, {
+      const entry = await upsertHabitEntry(habitId, logDate, householdId, userId, {
         timestamp: entryTimestamp,
-        value: 1, // Assume bool completion for simple flow
+        value: 1,
         source: 'routine',
         routineId: routine.id,
-        dayKey: logDate, // Canonical dayKey
-        date: logDate, // Legacy alias
+        dayKey: logDate,
+        date: logDate,
       });
 
-      // Recompute DayLog to keep derived cache in sync
-      await recomputeDayLogForHabit(habitId, logDate, userId);
+      await recomputeDayLogForHabit(habitId, logDate, householdId, userId);
 
       return entry;
     });

@@ -15,6 +15,7 @@ import { createCategory } from '../../repositories/categoryRepository';
 import { createHabitEntry } from '../../repositories/habitEntryRepository';
 import { getHabitEntriesForDay } from '../../repositories/habitEntryRepository';
 
+const TEST_HOUSEHOLD_ID = 'test-household-delete-by-key';
 const TEST_USER_ID = 'test-user-delete-by-key';
 
 let app: Express;
@@ -26,6 +27,7 @@ beforeAll(async () => {
   app = express();
   app.use(express.json());
   app.use((req, res, next) => {
+    (req as any).householdId = TEST_HOUSEHOLD_ID;
     (req as any).userId = TEST_USER_ID;
     next();
   });
@@ -38,21 +40,21 @@ afterAll(async () => {
 
 beforeEach(async () => {
   const db = await getTestDb();
-  await db.collection('habits').deleteMany({ userId: TEST_USER_ID });
-  await db.collection('habitEntries').deleteMany({ userId: TEST_USER_ID });
-  await db.collection('categories').deleteMany({ userId: TEST_USER_ID });
+  await db.collection('habits').deleteMany({ householdId: TEST_HOUSEHOLD_ID, userId: TEST_USER_ID });
+  await db.collection('habitEntries').deleteMany({ householdId: TEST_HOUSEHOLD_ID, userId: TEST_USER_ID });
+  await db.collection('categories').deleteMany({ householdId: TEST_HOUSEHOLD_ID, userId: TEST_USER_ID });
 
-  // Create test habit
-  const category = await createCategory({
-    name: 'Test Category',
-    color: '#000000',
-  }, TEST_USER_ID);
+  const category = await createCategory(
+    { name: 'Test Category', color: '#000000' },
+    TEST_HOUSEHOLD_ID,
+    TEST_USER_ID
+  );
 
-  const habit = await createHabit({
-    name: 'Test Habit',
-    categoryId: category.id,
-    type: 'boolean',
-  }, TEST_USER_ID);
+  const habit = await createHabit(
+    { name: 'Test Habit', categoryId: category.id, type: 'boolean' },
+    TEST_HOUSEHOLD_ID,
+    TEST_USER_ID
+  );
 
   testHabitId = habit.id;
 });
@@ -68,10 +70,10 @@ describe('DELETE /api/entries/key - Delete by habitId + dayKey', () => {
       value: 1,
       source: 'manual',
       timestamp: new Date().toISOString(),
-    }, TEST_USER_ID);
+    }, TEST_HOUSEHOLD_ID, TEST_USER_ID);
 
     // Verify entry exists
-    const entriesBefore = await getHabitEntriesForDay(testHabitId, dayKey, TEST_USER_ID);
+    const entriesBefore = await getHabitEntriesForDay(testHabitId, dayKey, TEST_HOUSEHOLD_ID, TEST_USER_ID);
     expect(entriesBefore.length).toBe(1);
     expect(entriesBefore[0].id).toBe(entry.id);
 
@@ -88,13 +90,14 @@ describe('DELETE /api/entries/key - Delete by habitId + dayKey', () => {
     expect(response.body.dayLog).toBeDefined(); // DayLog should be recomputed
 
     // Verify entry is soft-deleted (not in active queries)
-    const entriesAfter = await getHabitEntriesForDay(testHabitId, dayKey, TEST_USER_ID);
+    const entriesAfter = await getHabitEntriesForDay(testHabitId, dayKey, TEST_HOUSEHOLD_ID, TEST_USER_ID);
     expect(entriesAfter.length).toBe(0);
 
     // Verify entry still exists in DB but is soft-deleted
     const db = await getTestDb();
     const dbEntry = await db.collection('habitEntries').findOne({
       id: entry.id,
+      householdId: TEST_HOUSEHOLD_ID,
       userId: TEST_USER_ID,
     });
     expect(dbEntry).toBeDefined();
@@ -160,12 +163,12 @@ describe('DELETE /api/entries/key - Delete by habitId + dayKey', () => {
       value: 1,
       source: 'manual',
       timestamp: new Date().toISOString(),
-    }, TEST_USER_ID);
+    }, TEST_HOUSEHOLD_ID, TEST_USER_ID);
 
     // Soft delete it manually
     const db = await getTestDb();
     await db.collection('habitEntries').updateOne(
-      { id: entry.id, userId: TEST_USER_ID },
+      { id: entry.id, householdId: TEST_HOUSEHOLD_ID, userId: TEST_USER_ID },
       { $set: { deletedAt: new Date().toISOString() } }
     );
 
@@ -191,6 +194,7 @@ describe('DELETE /api/entries/key - Delete by habitId + dayKey', () => {
       _id: new (await import('mongodb')).ObjectId(),
       id: entryId,
       habitId: testHabitId,
+      householdId: TEST_HOUSEHOLD_ID,
       userId: TEST_USER_ID,
       date: dayKey, // Legacy field (no dayKey)
       value: 1,
@@ -201,7 +205,7 @@ describe('DELETE /api/entries/key - Delete by habitId + dayKey', () => {
     });
 
     // Verify entry exists
-    const entriesBefore = await getHabitEntriesForDay(testHabitId, dayKey, TEST_USER_ID);
+    const entriesBefore = await getHabitEntriesForDay(testHabitId, dayKey, TEST_HOUSEHOLD_ID, TEST_USER_ID);
     expect(entriesBefore.length).toBe(1);
 
     // Delete by key - should work with legacy date field
@@ -216,7 +220,7 @@ describe('DELETE /api/entries/key - Delete by habitId + dayKey', () => {
     expect(response.body.success).toBe(true);
 
     // Verify entry is soft-deleted
-    const entriesAfter = await getHabitEntriesForDay(testHabitId, dayKey, TEST_USER_ID);
+    const entriesAfter = await getHabitEntriesForDay(testHabitId, dayKey, TEST_HOUSEHOLD_ID, TEST_USER_ID);
     expect(entriesAfter.length).toBe(0);
   });
 
@@ -230,7 +234,7 @@ describe('DELETE /api/entries/key - Delete by habitId + dayKey', () => {
       value: 1,
       source: 'manual',
       timestamp: new Date().toISOString(),
-    }, TEST_USER_ID);
+    }, TEST_HOUSEHOLD_ID, TEST_USER_ID);
 
     // Delete entry
     const response = await request(app)

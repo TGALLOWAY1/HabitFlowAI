@@ -2,100 +2,78 @@
  * Routine Repository
  *
  * Handles persistence for Routine entities.
- * Default sort: updatedAt descending (most recently modified first)
+ * All queries are scoped by householdId + userId (user-owned in household).
  */
 
 import { randomUUID } from 'crypto';
 import { getDb } from '../lib/mongoClient';
 import { MONGO_COLLECTIONS, type Routine } from '../../models/persistenceTypes';
+import { scopeFilter, requireScope } from '../lib/scoping';
 
 const COLLECTION = MONGO_COLLECTIONS.ROUTINES;
 
-/**
- * Fetch all routines for a user.
- * 
- * @param userId - ID of the user
- * @returns Promise<Routine[]> - Array of routines
- */
-export async function getRoutines(userId: string): Promise<Routine[]> {
+function stripScope(doc: any): Routine {
+  const { _id, userId: _, householdId: __, ...routine } = doc;
+  return routine as Routine;
+}
+
+export async function getRoutines(householdId: string, userId: string): Promise<Routine[]> {
   const db = await getDb();
 
-  // Find all routines for the user, sort by updatedAt desc
-  const routines = await db.collection<Routine>(COLLECTION)
-    .find({ userId })
+  const routines = await db
+    .collection<Routine>(COLLECTION)
+    .find(scopeFilter(householdId, userId))
     .sort({ updatedAt: -1 })
     .toArray();
 
-  // Clean up MongoDB specific fields (_id)
-  return routines.map(({ _id, ...routine }) => routine as Routine);
+  return routines.map(stripScope);
 }
 
-/**
- * Get a single routine by ID.
- * 
- * @param userId - ID of the user
- * @param routineId - ID of the routine
- * @returns Promise<Routine | null> - Routine or null if not found
- */
-export async function getRoutine(userId: string, routineId: string): Promise<Routine | null> {
+export async function getRoutine(
+  householdId: string,
+  userId: string,
+  routineId: string
+): Promise<Routine | null> {
   const db = await getDb();
 
-  const routine = await db.collection<Routine>(COLLECTION).findOne({
-    id: routineId,
-    userId
-  });
+  const routine = await db.collection<Routine>(COLLECTION).findOne(
+    scopeFilter(householdId, userId, { id: routineId })
+  );
 
   if (!routine) return null;
-
-  const { _id, ...cleanRoutine } = routine;
-  return cleanRoutine as Routine;
+  return stripScope(routine);
 }
 
-/**
- * Create a new routine.
- * 
- * @param userId - ID of the user
- * @param data - Routine data
- * @returns Promise<Routine> - Created routine
- */
 export async function createRoutine(
+  householdId: string,
   userId: string,
   data: Omit<Routine, 'id' | 'userId' | 'createdAt' | 'updatedAt'>
 ): Promise<Routine> {
+  const scope = requireScope(householdId, userId);
   const db = await getDb();
 
   const now = new Date().toISOString();
 
-  const newRoutine: Routine = {
+  const newRoutine: Routine & { householdId: string } = {
     ...data,
     id: randomUUID(),
-    userId,
+    userId: scope.userId,
     createdAt: now,
     updatedAt: now,
-    // Ensure steps have IDs if not provided (though frontend should provide them)
     steps: data.steps.map(step => ({
       ...step,
-      id: step.id || randomUUID()
-    }))
-  };
+      id: step.id || randomUUID(),
+    })),
+  } as any;
 
-  await db.collection<Routine>(COLLECTION).insertOne(newRoutine);
+  const document = { ...newRoutine, householdId: scope.householdId };
+  await db.collection<Routine>(COLLECTION).insertOne(document as any);
 
-  // Return without _id
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const { _id, ...cleanRoutine } = newRoutine as any;
-  return cleanRoutine as Routine;
+  return stripScope(document);
 }
 
-/**
- * Update a routine.
- * 
- * @param userId - ID of the user
- * @param routineId - ID of the routine
- * @param patch - Partial routine data
- * @returns Promise<Routine | null> - Updated routine or null if not found
- */
 export async function updateRoutine(
+  householdId: string,
   userId: string,
   routineId: string,
   patch: Partial<Omit<Routine, 'id' | 'userId' | 'createdAt' | 'updatedAt'>>
@@ -103,47 +81,35 @@ export async function updateRoutine(
   const db = await getDb();
 
   const now = new Date().toISOString();
+  const updateData: any = { ...patch, updatedAt: now };
 
-  // Prepare update data
-  const updateData: any = {
-    ...patch,
-    updatedAt: now
-  };
-
-  // If steps are being updated, ensure they have IDs
   if (patch.steps) {
     updateData.steps = patch.steps.map((step: any) => ({
       ...step,
-      id: step.id || randomUUID()
+      id: step.id || randomUUID(),
     }));
   }
 
   const result = await db.collection<Routine>(COLLECTION).findOneAndUpdate(
-    { id: routineId, userId },
+    scopeFilter(householdId, userId, { id: routineId }),
     { $set: updateData },
     { returnDocument: 'after' }
   );
 
   if (!result) return null;
-
-  const { _id, ...cleanRoutine } = result;
-  return cleanRoutine as Routine;
+  return stripScope(result);
 }
 
-/**
- * Delete a routine.
- * 
- * @param userId - ID of the user
- * @param routineId - ID of the routine
- * @returns Promise<boolean> - True if deleted, false if not found
- */
-export async function deleteRoutine(userId: string, routineId: string): Promise<boolean> {
+export async function deleteRoutine(
+  householdId: string,
+  userId: string,
+  routineId: string
+): Promise<boolean> {
   const db = await getDb();
 
-  const result = await db.collection<Routine>(COLLECTION).deleteOne({
-    id: routineId,
-    userId
-  });
+  const result = await db.collection<Routine>(COLLECTION).deleteOne(
+    scopeFilter(householdId, userId, { id: routineId })
+  );
 
   return result.deletedCount === 1;
 }

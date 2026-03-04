@@ -8,21 +8,19 @@ import { getHabitsByUser } from '../repositories/habitRepository';
  * 
  * Idempotent: Checks if entry exists for (habitId + date) before creating.
  */
-export async function backfillDayLogsToEntries(userId: string): Promise<{ created: number; skipped: number; errors: number }> {
+export async function backfillDayLogsToEntries(householdId: string, userId: string): Promise<{ created: number; skipped: number; errors: number }> {
     let created = 0;
     let skipped = 0;
     let errors = 0;
 
     try {
-        // 1. Get all habits for user
-        const habits = await getHabitsByUser(userId);
+        const habits = await getHabitsByUser(householdId, userId);
 
-        // 2. For each habit, get all day logs and existing entries
         for (const habit of habits) {
             const dayLogsMap = await getDayLogsByHabit(habit.id, userId);
             const dayLogs = Object.values(dayLogsMap);
 
-            const existingEntries = await getHabitEntriesByHabit(habit.id, userId);
+            const existingEntries = await getHabitEntriesByHabit(habit.id, householdId, userId);
             const entryDateMap = new Set(existingEntries.map(e => e.date));
 
             for (const log of dayLogs) {
@@ -61,11 +59,9 @@ export async function backfillDayLogsToEntries(userId: string): Promise<{ create
                         habitId: log.habitId,
                         date: log.date,
                         value: log.value,
-                        source: 'import', // Mark as imported
-                        // timestamp? DayLog doesn't have time. Use date + noon? Or just date string in timestamp field if permitted?
-                        // Schema: timestamp is string (ISO). 
+                        source: 'import',
                         timestamp: `${log.date}T12:00:00.000Z`,
-                    }, userId);
+                    }, householdId, userId);
                     created++;
                 } catch (e) {
                     console.error(`Failed to backfill log ${log.habitId}-${log.date}`, e);

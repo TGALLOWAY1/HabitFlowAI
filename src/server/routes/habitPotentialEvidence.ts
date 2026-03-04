@@ -12,14 +12,9 @@ import {
     evidenceExistsForStep
 } from '../repositories/habitPotentialEvidenceRepository';
 import { getRoutine } from '../repositories/routineRepository';
+import { getRequestIdentity } from '../middleware/identity';
 
 const router = Router();
-
-function getUserId(req: any): string {
-    return typeof req.userId === 'string' && req.userId.length > 0
-        ? req.userId
-        : 'anonymous-user';
-}
 
 /**
  * POST /api/evidence/step-reached
@@ -31,19 +26,19 @@ function getUserId(req: any): string {
  */
 router.post('/step-reached', async (req, res) => {
     try {
-        const userId = getUserId(req);
+        const { householdId, userId } = getRequestIdentity(req);
         const { routineId, stepId, date } = req.body;
 
         if (!routineId || !stepId || !date) {
             return res.status(400).json({ error: 'Missing required fields: routineId, stepId, date' });
         }
 
-        const exists = await evidenceExistsForStep(routineId, stepId, date, userId);
+        const exists = await evidenceExistsForStep(routineId, stepId, date, householdId, userId);
         if (exists) {
             return res.status(200).json({ data: { status: 'exists', message: 'Evidence already recorded' } });
         }
 
-        const routine = await getRoutine(userId, routineId);
+        const routine = await getRoutine(householdId, userId, routineId);
         if (!routine) {
             return res.status(404).json({ error: 'Routine not found' });
         }
@@ -64,7 +59,7 @@ router.post('/step-reached', async (req, res) => {
             date,
             timestamp: new Date().toISOString(),
             source: 'routine-step'
-        }, userId);
+        }, householdId, userId);
 
         res.status(201).json({ data: evidence });
 
@@ -84,14 +79,14 @@ router.post('/step-reached', async (req, res) => {
  */
 router.get('/', async (req, res) => {
     try {
-        const userId = getUserId(req);
+        const { householdId, userId } = getRequestIdentity(req);
         const { date } = req.query;
 
         if (!date || typeof date !== 'string') {
             return res.status(400).json({ error: 'Missing required query param: date' });
         }
 
-        const evidence = await getPotentialEvidence(date, userId);
+        const evidence = await getPotentialEvidence(date, householdId, userId);
         res.json({ evidence });
 
     } catch (error) {

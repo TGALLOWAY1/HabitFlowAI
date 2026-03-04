@@ -109,13 +109,14 @@ function assertNoLegacyMerge(resolved: boolean): void {
  */
 export async function getEntryViewsForHabit(
   habitId: string,
+  householdId: string,
   userId: string,
   args: { startDayKey?: DayKey; endDayKey?: DayKey; timeZone: string; includeLegacyFallback?: boolean }
 ): Promise<EntryView[]> {
   const includeLegacyFallback = resolveLegacyFallback(args.includeLegacyFallback);
   assertNoLegacyMerge(includeLegacyFallback);
 
-  const entries = await getHabitEntriesByHabit(habitId, userId);
+  const entries = await getHabitEntriesByHabit(habitId, householdId, userId);
   const dayLogs = includeLegacyFallback
     ? Object.values(await getDayLogsByHabit(habitId, userId))
     : [];
@@ -157,13 +158,14 @@ export async function getEntryViewsForHabit(
  */
 export async function getEntryViewsForHabits(
   habitIds: string[],
+  householdId: string,
   userId: string,
   args: { startDayKey?: DayKey; endDayKey?: DayKey; timeZone: string; includeLegacyFallback?: boolean }
 ): Promise<EntryView[]> {
   const includeLegacyFallback = resolveLegacyFallback(args.includeLegacyFallback);
   assertNoLegacyMerge(includeLegacyFallback);
 
-  const allEntries = await getHabitEntriesByUser(userId);
+  const allEntries = await getHabitEntriesByUser(householdId, userId);
   const allDayLogsRecord = includeLegacyFallback ? await getDayLogsByUser(userId) : {};
 
   const habitIdSet = new Set(habitIds);
