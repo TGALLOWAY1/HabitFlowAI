@@ -276,4 +276,17 @@
 
 ---
 
+## 8. Manual QA checklist (after explicit clear-entry change)
+
+After replacing double-click delete with the cell kebab menu:
+
+- [ ] **Desktop:** Single tap on a habit cell toggles completion (boolean) or opens numeric popover; no 300ms delay.
+- [ ] **Desktop:** On a cell that has an entry, the "…" (kebab) icon is visible (top-right of cell); click it → "Clear entry" → entry is removed and toast "Entry cleared" appears.
+- [ ] **Desktop:** Double-click on a cell does **not** delete the entry; no accidental deletes.
+- [ ] **iPhone / touch:** Same as above: tap to log, kebab to clear; no double-tap required.
+- [ ] **Keyboard:** Focus a cell (Tab), then focus the kebab button; Enter/Space opens menu; "Clear entry" is focusable; Escape closes menu.
+- [ ] **Delete mode:** Toolbar "Delete mode" (if present) still allows clicking a cell to clear that day’s entry.
+
+---
+
 *Audit completed for M4 kickoff. Suggested commit: `docs(ux): map touch friction + payload drift for M4`.*
