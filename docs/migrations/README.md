@@ -2,6 +2,13 @@
 
 Tools for safe, auditable data migrations on the HabitFlowAI MongoDB database.
 
+## Safe-run rules
+
+- **Never point migrations at production by default.** Use a dedicated DB or URI (e.g. `MONGODB_URI` and `MONGODB_DB_NAME`) that you explicitly set for the migration target.
+- **Always dry-run first.** Scripts that modify data support `--dry-run` (or similar); run them and review the report before using `--apply` or `--i-understand-this-will-modify-data`.
+- **Confirm the target.** Before `--apply`, verify `MONGODB_URI` and `MONGODB_DB_NAME` (or script args) point at the intended database, not production, unless you intend a production migration with proper backups and approval.
+- **Reports.** Migration reports are written under `docs/migrations/` with timestamps; keep them for audit.
+
 ## Scripts
 
 ### `scripts/migrations/migrateUserData.ts`
