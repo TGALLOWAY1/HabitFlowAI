@@ -1,6 +1,7 @@
 #!/usr/bin/env tsx
 /**
- * Deduplicate HabitEntries by (userId, habitId, dayKey).
+ * Deduplicate HabitEntries by (householdId, userId, habitId, dayKey).
+ * Operates within a single household only; never merges or dedupes across households.
  * Active docs only (deletedAt not set). Deterministic winner: most recent updatedAt, else createdAt, else _id.
  * Losers are soft-deleted (deletedAt + meta.dedupe).
  *
@@ -21,9 +22,12 @@ import { writeFileSync, mkdirSync } from 'fs';
 
 const COLLECTION = 'habitEntries';
 
+const DEFAULT_HOUSEHOLD_ID = 'default-household';
+
 type Doc = {
   _id: ObjectId;
   id?: string;
+  householdId?: string | null;
   userId: string;
   habitId: string;
   dayKey?: string;
@@ -35,7 +39,7 @@ type Doc = {
 };
 
 type DupeGroup = {
-  key: { userId: string; habitId: string; dayKey: string };
+  key: { householdId: string; userId: string; habitId: string; dayKey: string };
   winner: Doc;
   losers: Doc[];
 };
@@ -50,7 +54,7 @@ type Report = {
   docsArchived: number;
   docsSoftDeleted: number;
   sampleGroups: Array<{
-    key: { userId: string; habitId: string; dayKey: string };
+    key: { householdId: string; userId: string; habitId: string; dayKey: string };
     winnerId: string;
     loserIds: string[];
   }>;
@@ -121,7 +125,10 @@ async function main(): Promise<void> {
     for (const doc of active) {
       const dk = canonicalDayKey(doc);
       if (!dk) continue;
-      const key = `${doc.userId}\t${doc.habitId}\t${dk}`;
+      const householdId = doc.householdId != null && String(doc.householdId).trim() !== ''
+        ? String(doc.householdId).trim()
+        : DEFAULT_HOUSEHOLD_ID;
+      const key = `${householdId}\t${doc.userId}\t${doc.habitId}\t${dk}`;
       const list = byKey.get(key) ?? [];
       list.push(doc);
       byKey.set(key, list);
@@ -131,8 +138,12 @@ async function main(): Promise<void> {
     for (const list of byKey.values()) {
       if (list.length <= 1) continue;
       list.sort(compareDocs);
+      const householdId = list[0].householdId != null && String(list[0].householdId).trim() !== ''
+        ? String(list[0].householdId).trim()
+        : DEFAULT_HOUSEHOLD_ID;
       groups.push({
         key: {
+          householdId,
           userId: list[0].userId,
           habitId: list[0].habitId,
           dayKey: canonicalDayKey(list[0]),
@@ -164,7 +175,7 @@ async function main(): Promise<void> {
     if (dryRun) {
       console.log('[dry-run] Duplicate groups:', groups.length, 'Total duplicate docs:', duplicatesFound);
       if (groups.length > 0) {
-        console.log('[dry-run] Sample keys:', sampleGroups.map((s) => s.key));
+        console.log('[dry-run] Sample keys (householdId, userId, habitId, dayKey):', sampleGroups.map((s) => s.key));
       }
     } else {
       console.log('DB:', dbName, 'Host:', host);

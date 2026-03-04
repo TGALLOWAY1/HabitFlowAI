@@ -1,7 +1,8 @@
 #!/usr/bin/env tsx
 /**
- * Verify no duplicate active HabitEntries exist by (userId, habitId, dayKey).
+ * Verify no duplicate active HabitEntries exist by (householdId, userId, habitId, dayKey).
  * Read-only. Exits 0 if no duplicates, 1 if any duplicate groups remain.
+ * Does not operate cross-household; each household is checked independently.
  *
  * Usage:
  *   npx tsx scripts/migrations/verifyNoDuplicateHabitEntries.ts
@@ -15,6 +16,7 @@ import { MongoClient } from 'mongodb';
 import { getMongoDbUri, getMongoDbName } from '../../src/server/config/env';
 
 const COLLECTION = 'habitEntries';
+const DEFAULT_HOUSEHOLD_ID = 'default-household';
 
 async function main(): Promise<void> {
   const uri = getMongoDbUri();
@@ -35,6 +37,7 @@ async function main(): Promise<void> {
       {
         $group: {
           _id: {
+            householdId: { $ifNull: ['$householdId', DEFAULT_HOUSEHOLD_ID] },
             userId: '$userId',
             habitId: '$habitId',
             dayKey: { $ifNull: ['$dayKey', '$date'] },
@@ -49,11 +52,15 @@ async function main(): Promise<void> {
     const duplicateKeyCount = result?.count ?? 0;
 
     if (duplicateKeyCount > 0) {
-      console.error('FAIL: Found', duplicateKeyCount, 'duplicate (userId, habitId, dayKey) group(s) among active habit entries.');
+      console.error(
+        'FAIL: Found',
+        duplicateKeyCount,
+        'duplicate (householdId, userId, habitId, dayKey) group(s) among active habit entries.'
+      );
       process.exit(1);
     }
 
-    console.log('OK: No duplicate active habit entries.');
+    console.log('OK: No duplicate active habit entries (per householdId, userId, habitId, dayKey).');
   } finally {
     await client.close();
   }
