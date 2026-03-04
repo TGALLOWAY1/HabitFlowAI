@@ -88,13 +88,9 @@ Deletion of the **repository** depends on: (a) removing DayLog writes (recompute
 
 ## 2. Manual goal log code paths
 
-### 2.1 Backend: manual log routes and repo
+### 2.1 Backend: manual log routes and repo — **REMOVED (M6)**
 
-| Location | Description |
-|----------|-------------|
-| `src/server/routes/goals.ts` | `createGoalManualLogRoute` (POST) → always 410. `getGoalManualLogsRoute` (GET) → returns manual logs. `getGoalDetailRoute` → still fetches `manualLogs` via `getGoalManualLogsByGoal` for display. |
-| `src/server/index.ts` (lines 20, 159–160) | `POST /api/goals/:id/manual-logs` → 410; `GET /api/goals/:id/manual-logs` → live. |
-| `src/server/repositories/goalManualLogRepository.ts` | `createGoalManualLog`, `getGoalManualLogsByGoal`, `getGoalManualLogsByGoals`, `deleteGoalManualLog`. |
+Manual goal log routes, `goalManualLogRepository`, and manualLogs in goal detail have been removed. Goal progress is entries-derived only.
 
 **Callers:**
 

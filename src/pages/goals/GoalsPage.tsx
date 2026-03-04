@@ -3,7 +3,6 @@ import { Plus, Trophy, Target, TrendingUp, BookOpen, ChevronDown, ChevronRight }
 import { useGoalsWithProgress } from '../../lib/useGoalsWithProgress';
 import { GoalGridCard } from '../../components/goals/GoalGridCard';
 import { Loader2, AlertCircle } from 'lucide-react';
-import { GoalManualProgressModal } from '../../components/goals/GoalManualProgressModal';
 import { EditGoalModal } from '../../components/goals/EditGoalModal';
 import { SkillTreeTab } from '../../components/SkillTree/SkillTreeTab';
 import { useHabitStore } from '../../store/HabitContext';
@@ -24,7 +23,6 @@ interface StackProps {
     getGoalWithProgress: (goalId: string) => { goal: { id: string }; progress: unknown } | undefined;
     onViewGoal?: (goalId: string) => void;
     onEdit: (goalId: string) => void;
-    onAddManualProgress: (goalId: string, event: React.MouseEvent) => void;
     onNavigateToCompleted?: (goalId: string) => void;
 }
 
@@ -36,7 +34,6 @@ const Stack: React.FC<StackProps> = ({
     getGoalWithProgress,
     onViewGoal,
     onEdit,
-    onAddManualProgress,
     onNavigateToCompleted,
 }) => {
     return (
@@ -84,7 +81,6 @@ const Stack: React.FC<StackProps> = ({
                                         }
                                     }}
                                     onEdit={onEdit}
-                                    onAddManualProgress={onAddManualProgress}
                                     onNavigateToCompleted={onNavigateToCompleted}
                                 />
                             );
@@ -104,7 +100,6 @@ export const GoalsPage: React.FC<GoalsPageProps> = ({
 }) => {
     const { data, loading, error, refetch } = useGoalsWithProgress();
     const { categories } = useHabitStore();
-    const [manualProgressGoalId, setManualProgressGoalId] = useState<string | null>(null);
     const [editingGoalId, setEditingGoalId] = useState<string | null>(null);
     const [activeTab, setActiveTab] = useState<'overview' | 'progress' | 'skills'>('overview');
     // Track expanded/collapsed state for each stack (category ID -> boolean)
@@ -290,10 +285,6 @@ export const GoalsPage: React.FC<GoalsPageProps> = ({
                                     getGoalWithProgress={getGoalWithProgress}
                                     onViewGoal={onViewGoal}
                                     onEdit={(goalId) => setEditingGoalId(goalId)}
-                                    onAddManualProgress={(goalId, event) => {
-                                        event.preventDefault();
-                                        setManualProgressGoalId(goalId);
-                                    }}
                                     onNavigateToCompleted={onNavigateToCompleted}
                                 />
                             );
@@ -314,19 +305,6 @@ export const GoalsPage: React.FC<GoalsPageProps> = ({
             )}
 
             {/* Modals */}
-            {manualProgressGoalId && (() => {
-                const goal = getGoalById(manualProgressGoalId);
-                if (!goal) return null;
-                return (
-                    <GoalManualProgressModal
-                        isOpen={true}
-                        onClose={() => setManualProgressGoalId(null)}
-                        goalWithProgress={goal}
-                        onSuccess={refetch}
-                    />
-                );
-            })()}
-
             {editingGoalId && (() => {
                 const goal = getGoalById(editingGoalId);
                 if (!goal) return null;

@@ -12,9 +12,10 @@ import { createHabit } from '../../repositories/habitRepository';
 import { createGoal } from '../../repositories/goalRepository';
 import { setupTestMongo, teardownTestMongo, getTestDb } from '../../../test/mongoTestHelper';
 import { createHabitEntryRoute } from '../habitEntries';
-import { getGoalsWithProgress, getGoalDetailRoute, getGoalProgress, createGoalManualLogRoute } from '../goals';
+import { getGoalsWithProgress, getGoalDetailRoute, getGoalProgress } from '../goals';
 import { requestContextMiddleware } from '../../middleware/requestContext';
 
+const TEST_HOUSEHOLD = 'test-household-goals-entries-derived';
 const TEST_USER = 'test-user-goals-entries-derived';
 
 let app: Express;
@@ -33,6 +34,7 @@ describe('Goals entries-derived regression', () => {
     app.use(express.json());
     app.use(requestContextMiddleware);
     app.use((req, _res, next) => {
+      (req as any).householdId = TEST_HOUSEHOLD;
       (req as any).userId = TEST_USER;
       next();
     });
@@ -41,7 +43,6 @@ describe('Goals entries-derived regression', () => {
     app.get('/api/goals-with-progress', getGoalsWithProgress);
     app.get('/api/goals/:id/detail', getGoalDetailRoute);
     app.get('/api/goals/:id/progress', getGoalProgress);
-    app.post('/api/goals/:id/manual-logs', createGoalManualLogRoute);
   });
 
   afterAll(async () => {
@@ -51,20 +52,21 @@ describe('Goals entries-derived regression', () => {
   beforeEach(async () => {
     const db = await getTestDb();
     await Promise.all([
-      db.collection('categories').deleteMany({ userId: TEST_USER }),
-      db.collection('habits').deleteMany({ userId: TEST_USER }),
-      db.collection('habitEntries').deleteMany({ userId: TEST_USER }),
-      db.collection('goals').deleteMany({ userId: TEST_USER }),
+      db.collection('categories').deleteMany({ householdId: TEST_HOUSEHOLD, userId: TEST_USER }),
+      db.collection('habits').deleteMany({ householdId: TEST_HOUSEHOLD, userId: TEST_USER }),
+      db.collection('habitEntries').deleteMany({ householdId: TEST_HOUSEHOLD, userId: TEST_USER }),
+      db.collection('goals').deleteMany({ householdId: TEST_HOUSEHOLD, userId: TEST_USER }),
       db.collection('goalManualLogs').deleteMany({ userId: TEST_USER }),
     ]);
 
-    const cat = await createCategory({ name: 'Test', color: '#FF0000' }, TEST_USER);
+    const cat = await createCategory({ name: 'Test', color: '#FF0000' }, TEST_HOUSEHOLD, TEST_USER);
     const habit = await createHabit(
       {
         name: 'Running',
         categoryId: cat.id,
         goal: { type: 'number', frequency: 'daily', target: 5, unit: 'miles' },
       },
+      TEST_HOUSEHOLD,
       TEST_USER
     );
     habitId = habit.id;
@@ -78,6 +80,7 @@ describe('Goals entries-derived regression', () => {
         linkedHabitIds: [habit.id],
         aggregationMode: 'sum',
       },
+      TEST_HOUSEHOLD,
       TEST_USER
     );
     goalId = goal.id;
@@ -117,13 +120,12 @@ describe('Goals entries-derived regression', () => {
     expect(progressRes.body.progress.percent).toBe(10);
   });
 
-  it('manual goal log write returns 410 Gone', async () => {
+  it('manual-logs endpoint does not exist (404)', async () => {
     const res = await request(app)
       .post(`/api/goals/${goalId}/manual-logs`)
       .send({ value: 5, loggedAt: new Date().toISOString() });
 
-    expect(res.status).toBe(410);
-    expect(res.body.error.code).toBe('GONE');
+    expect(res.status).toBe(404);
   });
 
   it('with no entries, all progress endpoints report zero', async () => {

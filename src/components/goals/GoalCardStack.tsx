@@ -6,7 +6,6 @@ interface GoalCardStackProps {
     goals: GoalWithProgress[];
     onViewDetails?: (goalId: string) => void;
     onEdit?: (goalId: string) => void;
-    onAddManualProgress?: (goalId: string) => void;
     onNavigateToCompleted?: (goalId: string) => void;
     onRefetch?: () => void;
 }
@@ -15,7 +14,6 @@ export const GoalCardStack: React.FC<GoalCardStackProps> = ({
     goals,
     onViewDetails,
     onEdit,
-    onAddManualProgress,
     onNavigateToCompleted,
     onRefetch,
 }) => {
@@ -35,7 +33,6 @@ export const GoalCardStack: React.FC<GoalCardStackProps> = ({
                     onToggleExpand={() => handleToggle(goalWithProgress.goal.id)}
                     onViewDetails={onViewDetails}
                     onEdit={onEdit}
-                    onAddManualProgress={onAddManualProgress}
                     onNavigateToCompleted={onNavigateToCompleted}
                     onRefetch={onRefetch}
                 />

@@ -25,10 +25,6 @@ vi.mock('../../repositories/goalRepository', () => ({
   getGoalById: vi.fn(),
 }));
 
-vi.mock('../../repositories/goalManualLogRepository', () => ({
-  getGoalManualLogsByGoal: vi.fn(),
-}));
-
 vi.mock('../../services/truthQuery', () => ({
   getEntryViewsForHabits: vi.fn(),
   getEntryViewsForHabit: vi.fn(),
@@ -39,7 +35,6 @@ import { getEntryViewsForHabit as getEntryViewsForHabitMock } from '../../servic
 import { getHabitEntriesByHabit } from '../../repositories/habitEntryRepository';
 import { getHabitsByUser } from '../../repositories/habitRepository';
 import { getGoalById } from '../../repositories/goalRepository';
-import { getGoalManualLogsByGoal } from '../../repositories/goalManualLogRepository';
 import { getEntryViewsForHabits, getEntryViewsForHabit } from '../../services/truthQuery';
 import type { HabitEntry, Habit, Goal } from '../../../models/persistenceTypes';
 
@@ -181,8 +176,6 @@ describe('Milestone A Integration Tests', () => {
       vi.mocked(getGoalById).mockResolvedValue(goal);
       vi.mocked(getHabitsByUser).mockResolvedValue([habit]);
       vi.mocked(getEntryViewsForHabits).mockResolvedValue([entryView]);
-      vi.mocked(getGoalManualLogsByGoal).mockResolvedValue([]);
-
       const req = {
         params: { id: 'goal-1' },
         query: { timeZone: 'UTC' },

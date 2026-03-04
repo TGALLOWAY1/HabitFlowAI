@@ -7,7 +7,6 @@ interface GoalGridCardProps {
     goalWithProgress: GoalWithProgress;
     onViewDetails: (goalId: string) => void;
     onEdit: (goalId: string) => void;
-    onAddManualProgress: (goalId: string, event: React.MouseEvent) => void;
     onNavigateToCompleted?: (goalId: string) => void;
 }
 
@@ -15,7 +14,6 @@ export const GoalGridCard: React.FC<GoalGridCardProps> = ({
     goalWithProgress,
     onViewDetails,
     onEdit,
-    onAddManualProgress
 }) => {
     const { goal, progress } = goalWithProgress;
 
@@ -63,18 +61,6 @@ export const GoalGridCard: React.FC<GoalGridCardProps> = ({
 
                     {/* Actions - Hover only */}
                     <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-neutral-900/80 backdrop-blur-sm rounded-lg ml-1">
-                        {!goal.completedAt && goal.type === 'cumulative' && (
-                            <button
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    onAddManualProgress(goal.id, e);
-                                }}
-                                className="p-1.5 text-neutral-400 hover:text-emerald-400 hover:bg-emerald-500/10 rounded-md transition-colors"
-                                title="Log Progress"
-                            >
-                                <Plus size={16} />
-                            </button>
-                        )}
                         <button
                             onClick={(e) => {
                                 e.stopPropagation();

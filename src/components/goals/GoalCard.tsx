@@ -36,7 +36,6 @@ interface GoalCardProps {
     onToggleExpand: () => void;
     onViewDetails?: (goalId: string) => void;
     onEdit?: (goalId: string) => void;
-    onAddManualProgress?: (goalId: string) => void;
     onNavigateToCompleted?: (goalId: string) => void;
     onRefetch?: () => void;
 }
@@ -47,7 +46,6 @@ export const GoalCard: React.FC<GoalCardProps> = ({
     onToggleExpand,
     onViewDetails,
     onEdit,
-    onAddManualProgress,
     onNavigateToCompleted,
     onRefetch,
 }) => {
@@ -379,18 +377,6 @@ export const GoalCard: React.FC<GoalCardProps> = ({
 
                         {/* Actions */}
                         <div className="flex flex-wrap gap-2 pt-2 border-t border-white/5">
-                            {onAddManualProgress && goal.type === 'cumulative' && (
-                                <button
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        onAddManualProgress(goal.id);
-                                    }}
-                                    className="flex items-center gap-2 px-3 py-1.5 bg-neutral-700 hover:bg-neutral-600 text-white text-sm rounded-lg transition-colors"
-                                >
-                                    <Plus size={14} />
-                                    Add manual progress
-                                </button>
-                            )}
                             {onViewDetails && (
                                 <button
                                     onClick={(e) => {

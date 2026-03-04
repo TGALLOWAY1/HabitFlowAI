@@ -7,7 +7,7 @@
 
 import { describe, it, expect } from 'vitest';
 import { computeFullGoalProgressV2 } from './goalProgressUtilsV2';
-import type { Goal, GoalManualLog, Habit } from '../../models/persistenceTypes';
+import type { Goal, Habit } from '../../models/persistenceTypes';
 import type { EntryView } from '../services/truthQuery';
 
 describe('goalProgressUtilsV2', () => {
@@ -57,7 +57,7 @@ describe('goalProgressUtilsV2', () => {
         },
       ];
 
-      const progress = computeFullGoalProgressV2(goal, entryViews, [], undefined, timeZone);
+      const progress = computeFullGoalProgressV2(goal, entryViews, undefined, timeZone);
 
       // Frequency goal counts distinct dayKeys
       expect(progress.currentValue).toBe(3);
@@ -124,7 +124,7 @@ describe('goalProgressUtilsV2', () => {
         },
       ];
 
-      const progress = computeFullGoalProgressV2(goal, entryViews, [], habitMap, timeZone);
+      const progress = computeFullGoalProgressV2(goal, entryViews, habitMap, timeZone);
 
       expect(progress.currentValue).toBe(10); // 3 + 5 + 2
       expect(progress.percent).toBe(10); // 10/100 * 100
@@ -180,7 +180,7 @@ describe('goalProgressUtilsV2', () => {
         },
       ];
 
-      const progress = computeFullGoalProgressV2(goal, entryViews, [], habitMap, timeZone);
+      const progress = computeFullGoalProgressV2(goal, entryViews, habitMap, timeZone);
 
       expect(progress.currentValue).toBe(5); // 5 + 0 (null treated as 0)
     });
@@ -231,13 +231,13 @@ describe('goalProgressUtilsV2', () => {
       // Filter out deleted entries before passing to function
       // (The function expects pre-filtered entries, but we test the filtering logic here)
       const activeEntries = entryViews.filter(entry => !entry.deletedAt);
-      const progress = computeFullGoalProgressV2(goal, activeEntries, [], undefined, timeZone);
+      const progress = computeFullGoalProgressV2(goal, activeEntries, undefined, timeZone);
 
       // Only non-deleted entries count
       expect(progress.currentValue).toBe(2); // 2 distinct dayKeys (deleted one excluded)
     });
 
-    it('should ignore manual logs (deprecated in V1)', () => {
+    it('cumulative goal sums entry values only', () => {
       const goal: Goal = {
         id: 'goal-1',
         title: 'Test Goal',
@@ -277,7 +277,7 @@ describe('goalProgressUtilsV2', () => {
         },
       ];
 
-      const progress = computeFullGoalProgressV2(goal, entryViews, [], habitMap, timeZone);
+      const progress = computeFullGoalProgressV2(goal, entryViews, habitMap, timeZone);
 
       expect(progress.currentValue).toBe(5);
     });
@@ -347,7 +347,7 @@ describe('goalProgressUtilsV2', () => {
         },
       ];
 
-      const progress = computeFullGoalProgressV2(goal, entryViews, [], habitMap, timeZone);
+      const progress = computeFullGoalProgressV2(goal, entryViews, habitMap, timeZone);
 
       // Only numeric habit contributes
       expect(progress.currentValue).toBe(5);
@@ -375,7 +375,7 @@ describe('goalProgressUtilsV2', () => {
         },
       ];
 
-      const progress = computeFullGoalProgressV2(goal, entryViews, [], undefined, timeZone);
+      const progress = computeFullGoalProgressV2(goal, entryViews, undefined, timeZone);
 
       // Onetime goals: percent is 0% or 100% based on completedAt
       expect(progress.percent).toBe(0); // Not completed
@@ -394,7 +394,7 @@ describe('goalProgressUtilsV2', () => {
 
       const entryViews: EntryView[] = [];
 
-      const progress = computeFullGoalProgressV2(goal, entryViews, [], undefined, timeZone);
+      const progress = computeFullGoalProgressV2(goal, entryViews, undefined, timeZone);
 
       expect(progress.percent).toBe(100); // Completed
     });
@@ -444,7 +444,7 @@ describe('goalProgressUtilsV2', () => {
         },
       ];
 
-      const progress = computeFullGoalProgressV2(goal, entryViews, [], undefined, timeZone);
+      const progress = computeFullGoalProgressV2(goal, entryViews, undefined, timeZone);
 
       // distinctDays: 2 entries on same day count as 1 day
       expect(progress.currentValue).toBe(2); // 2 distinct dayKeys
@@ -495,7 +495,7 @@ describe('goalProgressUtilsV2', () => {
         },
       ];
 
-      const progress = computeFullGoalProgressV2(goal, entryViews, [], undefined, timeZone);
+      const progress = computeFullGoalProgressV2(goal, entryViews, undefined, timeZone);
 
       // entries: count all entries, even on same day
       expect(progress.currentValue).toBe(3); // All 3 entries
@@ -535,7 +535,7 @@ describe('goalProgressUtilsV2', () => {
         },
       ];
 
-      const progress = computeFullGoalProgressV2(goal, entryViews, [], undefined, timeZone);
+      const progress = computeFullGoalProgressV2(goal, entryViews, undefined, timeZone);
 
       // Default: distinctDays
       expect(progress.currentValue).toBe(1); // 1 distinct dayKey
@@ -594,7 +594,7 @@ describe('goalProgressUtilsV2', () => {
         },
       ];
 
-      const progress = computeFullGoalProgressV2(goal, entryViews, [], habitMap, timeZone);
+      const progress = computeFullGoalProgressV2(goal, entryViews, habitMap, timeZone);
 
       // Value still included (deterministic: include with warning)
       expect(progress.currentValue).toBe(8); // 5 + 3
@@ -648,7 +648,7 @@ describe('goalProgressUtilsV2', () => {
         },
       ];
 
-      const progress = computeFullGoalProgressV2(goal, entryViews, [], habitMap, timeZone);
+      const progress = computeFullGoalProgressV2(goal, entryViews, habitMap, timeZone);
 
       expect(progress.currentValue).toBe(5);
       expect(progress.warnings).toBeUndefined(); // No warnings
@@ -689,7 +689,7 @@ describe('goalProgressUtilsV2', () => {
         },
       ];
 
-      const progress = computeFullGoalProgressV2(goal, entryViews, [], undefined, timeZone);
+      const progress = computeFullGoalProgressV2(goal, entryViews, undefined, timeZone);
 
       // Should count days, not sum values
       expect(progress.currentValue).toBe(2); // 2 distinct dayKeys

@@ -59,7 +59,7 @@ async function resolveBundleIds(habitIds: string[], householdId: string, userId:
 /**
  * Compute goal progress using truthQuery (EntryViews).
  * 
- * For cumulative goals: sums all entry values from linked habits + manual logs.
+ * For cumulative goals: sums entry values from linked habits.
  * For frequency goals: counts distinct dayKeys where entries exist.
  * 
  * @param goalId - Goal ID
@@ -89,15 +89,14 @@ export async function computeGoalProgressV2(
   const allHabits = await getHabitsByUser(householdId, userId);
   const habitMap = new Map(allHabits.map(h => [h.id, h]));
 
-  return computeFullGoalProgressV2(goal, activeEntries, [], habitMap, timeZone);
+  return computeFullGoalProgressV2(goal, activeEntries, habitMap, timeZone);
 }
 
 /**
  * Compute full goal progress from EntryViews.
- * 
+ *
  * @param goal - Goal object
  * @param entryViews - EntryViews from truthQuery (already filtered to linked habits)
- * @param manualLogs - Manual logs for cumulative goals
  * @param habitMap - Map of habitId -> Habit for unit checking
  * @param timeZone - User's timezone for date operations
  * @returns GoalProgress
@@ -105,7 +104,6 @@ export async function computeGoalProgressV2(
 export function computeFullGoalProgressV2(
   goal: Goal,
   entryViews: EntryView[],
-  _manualLogs: unknown[] = [],
   habitMap?: Map<string, Habit>,
   _timeZone: string = 'UTC'
 ): GoalProgress {
@@ -294,7 +292,7 @@ export async function computeGoalsWithProgressV2(
       goalEntryViews.push(...habitEntries);
     }
 
-    const progress = computeFullGoalProgressV2(goal, goalEntryViews, [], habitMap, timeZone);
+    const progress = computeFullGoalProgressV2(goal, goalEntryViews, habitMap, timeZone);
 
     results.push({
       goal,
