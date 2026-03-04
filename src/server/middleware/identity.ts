@@ -22,6 +22,20 @@ export interface RequestWithIdentity extends Request {
   userId?: string;
 }
 
+/**
+ * Get identity from request (set by identityMiddleware).
+ * Use in route handlers to pass to repositories.
+ */
+export function getRequestIdentity(req: Request): { householdId: string; userId: string } {
+  const r = req as RequestWithIdentity;
+  const householdId = r.householdId;
+  const userId = r.userId;
+  if (householdId == null || userId == null) {
+    throw new Error('Identity not set on request. Ensure identityMiddleware ran and headers are present.');
+  }
+  return { householdId, userId };
+}
+
 function trimHeader(value: unknown): string | null {
   if (value == null) return null;
   if (typeof value !== 'string') return null;

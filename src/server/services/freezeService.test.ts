@@ -52,7 +52,7 @@ describe('processAutoFreezes', () => {
         updatedAt: '2026-02-24T10:00:00.000Z',
       }]); // day-2: streak exists
 
-    await processAutoFreezes([dailyHabit()], {}, 'test-user');
+    await processAutoFreezes([dailyHabit()], {}, 'test-household', 'test-user');
 
     expect(createHabitEntry).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -61,9 +61,10 @@ describe('processAutoFreezes', () => {
         value: 0,
         note: 'freeze:auto',
       }),
+      'test-household',
       'test-user'
     );
-    expect(updateHabit).toHaveBeenCalledWith('habit-1', 'test-user', { freezeCount: 1 });
+    expect(updateHabit).toHaveBeenCalledWith('habit-1', 'test-household', 'test-user', { freezeCount: 1 });
   });
 
   it('skips freeze when yesterday already has entries', async () => {
@@ -78,7 +79,7 @@ describe('processAutoFreezes', () => {
       updatedAt: '2026-02-25T10:00:00.000Z',
     }]);
 
-    await processAutoFreezes([dailyHabit()], {}, 'test-user');
+    await processAutoFreezes([dailyHabit()], {}, 'test-household', 'test-user');
 
     expect(createHabitEntry).not.toHaveBeenCalled();
     expect(updateHabit).not.toHaveBeenCalled();

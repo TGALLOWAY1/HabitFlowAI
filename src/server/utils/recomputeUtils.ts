@@ -20,11 +20,11 @@ import type { DayLog } from '../../models/persistenceTypes';
 export async function recomputeDayLogForHabit(
     habitId: string,
     date: string,
+    householdId: string,
     userId: string
 ): Promise<DayLog | null> {
 
-    // 1. Fetch all active entries for this day
-    const entries = await getHabitEntriesForDay(habitId, date, userId);
+    const entries = await getHabitEntriesForDay(habitId, date, householdId, userId);
 
     // 2. If no entries, delete the DayLog and return null (clean up)
     if (entries.length === 0) {
@@ -32,8 +32,7 @@ export async function recomputeDayLogForHabit(
         return null;
     }
 
-    // 3. Fetch Habit to check goals
-    const habit = await getHabitById(habitId, userId);
+    const habit = await getHabitById(habitId, householdId, userId);
     if (!habit) {
         throw new Error(`Habit not found during recompute: ${habitId}`);
     }

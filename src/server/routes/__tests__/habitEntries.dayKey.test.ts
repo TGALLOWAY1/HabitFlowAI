@@ -17,6 +17,7 @@ import { createHabit } from '../../repositories/habitRepository';
 import { createCategory } from '../../repositories/categoryRepository';
 import { getHabitEntriesForDay } from '../../repositories/habitEntryRepository';
 
+const TEST_HOUSEHOLD_ID = 'test-household-daykey';
 const TEST_USER_ID = 'test-user-daykey';
 
 let app: Express;
@@ -27,6 +28,7 @@ beforeAll(async () => {
   app = express();
   app.use(express.json());
   app.use((req, res, next) => {
+    (req as any).householdId = TEST_HOUSEHOLD_ID;
     (req as any).userId = TEST_USER_ID;
     next();
   });
@@ -40,21 +42,21 @@ afterAll(async () => {
 
 beforeEach(async () => {
   const db = await getTestDb();
-  await db.collection('habits').deleteMany({ userId: TEST_USER_ID });
-  await db.collection('habitEntries').deleteMany({ userId: TEST_USER_ID });
-  await db.collection('categories').deleteMany({ userId: TEST_USER_ID });
+  await db.collection('habits').deleteMany({ householdId: TEST_HOUSEHOLD_ID, userId: TEST_USER_ID });
+  await db.collection('habitEntries').deleteMany({ householdId: TEST_HOUSEHOLD_ID, userId: TEST_USER_ID });
+  await db.collection('categories').deleteMany({ householdId: TEST_HOUSEHOLD_ID, userId: TEST_USER_ID });
 
-  // Create test habit
-  const category = await createCategory({
-    name: 'Test Category',
-    color: '#000000',
-  }, TEST_USER_ID);
+  const category = await createCategory(
+    { name: 'Test Category', color: '#000000' },
+    TEST_HOUSEHOLD_ID,
+    TEST_USER_ID
+  );
 
-  const habit = await createHabit({
-    name: 'Test Habit',
-    categoryId: category.id,
-    type: 'boolean',
-  }, TEST_USER_ID);
+  const habit = await createHabit(
+    { name: 'Test Habit', categoryId: category.id, type: 'boolean' },
+    TEST_HOUSEHOLD_ID,
+    TEST_USER_ID
+  );
 
   testHabitId = habit.id;
 });
@@ -172,7 +174,7 @@ describe('POST /api/entries - DayKey Normalization', () => {
     const entryId = createResponse.body.entry.id;
 
     // Query by dayKey using repository
-    const entries = await getHabitEntriesForDay(testHabitId, '2025-01-25', TEST_USER_ID);
+    const entries = await getHabitEntriesForDay(testHabitId, '2025-01-25', TEST_HOUSEHOLD_ID, TEST_USER_ID);
     expect(entries.length).toBe(1);
     expect(entries[0].id).toBe(entryId);
     expect(entries[0].dayKey).toBe('2025-01-25');
@@ -298,12 +300,12 @@ describe('PATCH /api/entries/:id - DayKey Normalization', () => {
     expect(updateResponse.body.entry.dayKey).toBe('2025-02-02');
 
     // Verify entry is on new day
-    const entriesDay2 = await getHabitEntriesForDay(testHabitId, '2025-02-02', TEST_USER_ID);
+    const entriesDay2 = await getHabitEntriesForDay(testHabitId, '2025-02-02', TEST_HOUSEHOLD_ID, TEST_USER_ID);
     expect(entriesDay2.length).toBe(1);
     expect(entriesDay2[0].id).toBe(entryId2);
 
     // Verify entry is not on old day
-    const entriesDay1 = await getHabitEntriesForDay(testHabitId, '2025-02-01', TEST_USER_ID);
+    const entriesDay1 = await getHabitEntriesForDay(testHabitId, '2025-02-01', TEST_HOUSEHOLD_ID, TEST_USER_ID);
     expect(entriesDay1.length).toBe(0);
   });
 });

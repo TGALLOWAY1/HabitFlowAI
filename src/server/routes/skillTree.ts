@@ -1,6 +1,6 @@
-
 import express from 'express';
 import { getSkillTree } from '../services/skillTreeService';
+import { getRequestIdentity } from '../middleware/identity';
 
 const router = express.Router();
 
@@ -10,14 +10,8 @@ const router = express.Router();
  */
 router.get('/', async (req, res) => {
     try {
-        const userId = (req as any).userId;
-        console.log(`[SkillTree API] Request from userId: ${userId}`);
-        if (!userId) {
-            res.status(401).json({ error: 'Unauthorized' });
-            return;
-        }
-
-        const data = await getSkillTree(userId);
+        const { householdId, userId } = getRequestIdentity(req);
+        const data = await getSkillTree(householdId, userId);
 
         res.json(data);
     } catch (error) {

@@ -22,6 +22,7 @@ import { getGoalManualLogsByGoal } from '../repositories/goalManualLogRepository
 import { computeGoalProgressV2 } from '../utils/goalProgressUtilsV2';
 import { saveUploadedFile } from '../utils/fileStorage';
 import type { Goal } from '../../models/persistenceTypes';
+import { getRequestIdentity } from '../middleware/identity';
 
 // Configure multer for in-memory file storage
 const upload = multer({
@@ -48,12 +49,13 @@ const upload = multer({
  */
 async function validateHabitIdsExist(
   habitIds: string[],
+  householdId: string,
   userId: string
 ): Promise<string[]> {
   const invalidIds: string[] = [];
 
   for (const habitId of habitIds) {
-    const habit = await getHabitById(habitId, userId);
+    const habit = await getHabitById(habitId, householdId, userId);
     if (!habit) {
       invalidIds.push(habitId);
     }
@@ -185,9 +187,9 @@ function buildIteratedGoalData(goal: Goal, currentValue: number | null): Omit<Go
 export async function getGoals(req: Request, res: Response): Promise<void> {
   try {
     // TODO: Extract userId from authentication token/session
-    const userId = (req as any).userId || 'anonymous-user';
+    const { householdId, userId } = getRequestIdentity(req);
 
-    const goals = await getGoalsByUser(userId);
+    const goals = await getGoalsByUser(householdId, userId);
 
     res.status(200).json({
       goals,
@@ -215,10 +217,9 @@ export async function getGoals(req: Request, res: Response): Promise<void> {
  */
 export async function getCompletedGoals(req: Request, res: Response): Promise<void> {
   try {
-    // TODO: Extract userId from authentication token/session
-    const userId = (req as any).userId || 'anonymous-user';
+    const { householdId, userId } = getRequestIdentity(req);
 
-    const goals = await getCompletedGoalsByUser(userId);
+    const goals = await getCompletedGoalsByUser(householdId, userId);
 
     // Return array of goal objects (progress optional for V1, not included here)
     res.status(200).json(goals.map(goal => ({ goal })));
@@ -254,10 +255,9 @@ export async function getGoal(req: Request, res: Response): Promise<void> {
       return;
     }
 
-    // TODO: Extract userId from authentication token/session
-    const userId = (req as any).userId || 'anonymous-user';
+    const { householdId, userId } = getRequestIdentity(req);
 
-    const goal = await getGoalById(id, userId);
+    const goal = await getGoalById(id, householdId, userId);
 
     if (!goal) {
       res.status(404).json({
@@ -295,16 +295,13 @@ export async function getGoal(req: Request, res: Response): Promise<void> {
  */
 export async function getGoalsWithProgress(req: Request, res: Response): Promise<void> {
   try {
-    // TODO: Extract userId from authentication token/session
-    const userId = (req as any).userId || 'anonymous-user';
+    const { householdId, userId } = getRequestIdentity(req);
     const { timeZone } = req.query;
 
-    // Get timezone from query or default to UTC
     const userTimeZone = (timeZone && typeof timeZone === 'string') ? timeZone : 'UTC';
 
-    // Use V2 computation (truthQuery-based)
     const { computeGoalsWithProgressV2 } = await import('../utils/goalProgressUtilsV2');
-    const goalsWithProgress = await computeGoalsWithProgressV2(userId, userTimeZone);
+    const goalsWithProgress = await computeGoalsWithProgressV2(householdId, userId, userTimeZone);
 
     res.status(200).json({
       goals: goalsWithProgress,
@@ -345,15 +342,12 @@ export async function getGoalProgress(req: Request, res: Response): Promise<void
       return;
     }
 
-    // TODO: Extract userId from authentication token/session
-    const userId = (req as any).userId || 'anonymous-user';
+    const { householdId, userId } = getRequestIdentity(req);
 
-    // Get timezone from query or default to UTC
     const userTimeZone = (timeZone && typeof timeZone === 'string') ? timeZone : 'UTC';
 
-    // Use V2 computation (truthQuery-based)
     const { computeGoalProgressV2 } = await import('../utils/goalProgressUtilsV2');
-    const progress = await computeGoalProgressV2(id, userId, userTimeZone);
+    const progress = await computeGoalProgressV2(id, householdId, userId, userTimeZone);
 
     if (!progress) {
       res.status(404).json({
@@ -400,11 +394,9 @@ export async function createGoalRoute(req: Request, res: Response): Promise<void
       return;
     }
 
-    // TODO: Extract userId from authentication token/session
-    const userId = (req as any).userId || 'anonymous-user';
+    const { householdId, userId } = getRequestIdentity(req);
 
-    // Validate that all linked habit IDs exist
-    const invalidHabitIds = await validateHabitIdsExist(req.body.linkedHabitIds, userId);
+    const invalidHabitIds = await validateHabitIdsExist(req.body.linkedHabitIds, householdId, userId);
     if (invalidHabitIds.length > 0) {
       res.status(400).json({
         error: {
@@ -423,7 +415,7 @@ export async function createGoalRoute(req: Request, res: Response): Promise<void
     let sortOrder: number | undefined = req.body.sortOrder;
     if (sortOrder === undefined) {
       // Fetch existing goals in the same category to determine next sortOrder
-      const existingGoals = await getGoalsByUser(userId);
+      const existingGoals = await getGoalsByUser(householdId, userId);
       const goalsInCategory = existingGoals.filter(
         g => g.categoryId === req.body.categoryId || (!g.categoryId && !req.body.categoryId)
       );
@@ -457,6 +449,7 @@ export async function createGoalRoute(req: Request, res: Response): Promise<void
         categoryId: req.body.categoryId,
         sortOrder,
       },
+      householdId,
       userId
     );
 
@@ -669,15 +662,14 @@ export async function updateGoalRoute(req: Request, res: Response): Promise<void
       return;
     }
 
-    // TODO: Extract userId from authentication token/session
-    const userId = (req as any).userId || 'anonymous-user';
+    const { householdId, userId } = getRequestIdentity(req);
 
     let existingGoal: Goal | null = null;
     let shouldIterateGoal = false;
     let currentValueForIteration = 0;
 
     if (patch.completedAt) {
-      existingGoal = await getGoalById(id, userId);
+      existingGoal = await getGoalById(id, householdId, userId);
       if (!existingGoal) {
         res.status(404).json({
           error: {
@@ -690,7 +682,7 @@ export async function updateGoalRoute(req: Request, res: Response): Promise<void
 
       if (!existingGoal.completedAt) {
         const { computeGoalProgressV2 } = await import('../utils/goalProgressUtilsV2');
-        const progress = await computeGoalProgressV2(id, userId, 'UTC');
+        const progress = await computeGoalProgressV2(id, householdId, userId, 'UTC');
         currentValueForIteration = progress?.currentValue ?? 0;
         shouldIterateGoal = true;
       }
@@ -698,7 +690,7 @@ export async function updateGoalRoute(req: Request, res: Response): Promise<void
 
     // If linkedHabitIds is being updated, validate that all IDs exist
     if (patch.linkedHabitIds) {
-      const invalidHabitIds = await validateHabitIdsExist(patch.linkedHabitIds, userId);
+      const invalidHabitIds = await validateHabitIdsExist(patch.linkedHabitIds, householdId, userId);
       if (invalidHabitIds.length > 0) {
         res.status(400).json({
           error: {
@@ -710,7 +702,7 @@ export async function updateGoalRoute(req: Request, res: Response): Promise<void
       }
     }
 
-    const goal = await updateGoal(id, userId, patch);
+    const goal = await updateGoal(id, householdId, userId, patch);
 
     if (!goal) {
       res.status(404).json({
@@ -724,7 +716,7 @@ export async function updateGoalRoute(req: Request, res: Response): Promise<void
 
     let iteratedGoal: Goal | null = null;
     if (shouldIterateGoal) {
-      iteratedGoal = await createGoal(buildIteratedGoalData(goal, currentValueForIteration), userId);
+      iteratedGoal = await createGoal(buildIteratedGoalData(goal, currentValueForIteration), householdId, userId);
     }
 
     res.status(200).json({
@@ -783,10 +775,9 @@ export async function getGoalManualLogsRoute(req: Request, res: Response): Promi
     }
 
     // TODO: Extract userId from authentication token/session
-    const userId = (req as any).userId || 'anonymous-user';
+    const { householdId, userId } = getRequestIdentity(req);
 
-    // Verify goal exists
-    const goal = await getGoalById(id, userId);
+    const goal = await getGoalById(id, householdId, userId);
     if (!goal) {
       res.status(404).json({
         error: {
@@ -840,11 +831,11 @@ export async function getGoalDetailRoute(req: Request, res: Response): Promise<v
       return;
     }
 
-    const userId = (req as any).userId || 'anonymous-user';
+    const { householdId, userId } = getRequestIdentity(req);
     const { timeZone } = req.query;
     const userTimeZone = (timeZone && typeof timeZone === 'string') ? timeZone : 'UTC';
 
-    const goal = await getGoalById(id, userId);
+    const goal = await getGoalById(id, householdId, userId);
     if (!goal) {
       res.status(404).json({
         error: {
@@ -855,7 +846,7 @@ export async function getGoalDetailRoute(req: Request, res: Response): Promise<v
       return;
     }
 
-    const progress = await computeGoalProgressV2(id, userId, userTimeZone);
+    const progress = await computeGoalProgressV2(id, householdId, userId, userTimeZone);
     if (!progress) {
       res.status(500).json({
         error: {
@@ -872,7 +863,7 @@ export async function getGoalDetailRoute(req: Request, res: Response): Promise<v
 
     const { getEntryViewsForHabits } = await import('../services/truthQuery');
 
-    const entryViews = await getEntryViewsForHabits(goal.linkedHabitIds, userId, {
+    const entryViews = await getEntryViewsForHabits(goal.linkedHabitIds, householdId, userId, {
       timeZone: userTimeZone,
     });
 
@@ -957,11 +948,9 @@ export async function uploadGoalBadgeRoute(req: Request, res: Response): Promise
       return;
     }
 
-    // TODO: Extract userId from authentication token/session
-    const userId = (req as any).userId || 'anonymous-user';
+    const { householdId, userId } = getRequestIdentity(req);
 
-    // Verify goal exists
-    const goal = await getGoalById(id, userId);
+    const goal = await getGoalById(id, householdId, userId);
     if (!goal) {
       res.status(404).json({
         error: {
@@ -998,8 +987,7 @@ export async function uploadGoalBadgeRoute(req: Request, res: Response): Promise
     // Save file and get URL
     const badgeImageUrl = saveUploadedFile(file, 'badges');
 
-    // Update goal with badge URL
-    const updatedGoal = await updateGoal(id, userId, {
+    const updatedGoal = await updateGoal(id, householdId, userId, {
       badgeImageUrl,
     });
 
@@ -1058,10 +1046,9 @@ export async function reorderGoalsRoute(req: Request, res: Response): Promise<vo
       return;
     }
 
-    // TODO: Extract userId from authentication token/session
-    const userId = (req as any).userId || 'anonymous-user';
+    const { householdId, userId } = getRequestIdentity(req);
 
-    const success = await reorderGoals(userId, goalIds);
+    const success = await reorderGoals(householdId, userId, goalIds);
 
     if (!success) {
       res.status(500).json({
@@ -1108,10 +1095,9 @@ export async function deleteGoalRoute(req: Request, res: Response): Promise<void
       return;
     }
 
-    // TODO: Extract userId from authentication token/session
-    const userId = (req as any).userId || 'anonymous-user';
+    const { householdId, userId } = getRequestIdentity(req);
 
-    const deleted = await deleteGoal(id, userId);
+    const deleted = await deleteGoal(id, householdId, userId);
 
     if (!deleted) {
       res.status(404).json({

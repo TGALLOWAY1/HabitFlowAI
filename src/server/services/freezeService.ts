@@ -14,7 +14,7 @@ import { subDays, format } from 'date-fns';
  * - Auto Freeze: Consumes 1 inventory if habit missed AND streak would break.
  */
 
-export const processAutoFreezes = async (habits: Habit[], _logs: Record<string, DayLog>, userId: string): Promise<void> => {
+export const processAutoFreezes = async (habits: Habit[], _logs: Record<string, DayLog>, householdId: string, userId: string): Promise<void> => {
     // We only check "Yesterday". 
     // If today is missed, it's not a freeze YET (user might still do it).
     // If we missed yesterday and didn't freeze, streak is already broken? 
@@ -34,7 +34,7 @@ export const processAutoFreezes = async (habits: Habit[], _logs: Record<string, 
         const habitId = habit.id;
 
         // Canonical check: if yesterday already has any entry (completed or freeze marker), skip.
-        const yesterdayEntries = await getHabitEntriesForDay(habitId, yesterdayStr, userId);
+        const yesterdayEntries = await getHabitEntriesForDay(habitId, yesterdayStr, householdId, userId);
         if (yesterdayEntries.length > 0) {
             continue;
         }
@@ -48,7 +48,7 @@ export const processAutoFreezes = async (habits: Habit[], _logs: Record<string, 
         const dayMinus2Str = format(dayMinus2, 'yyyy-MM-dd');
 
         // Canonical check: Day-2 must have an entry to indicate an active streak to protect.
-        const dayMinus2Entries = await getHabitEntriesForDay(habitId, dayMinus2Str, userId);
+        const dayMinus2Entries = await getHabitEntriesForDay(habitId, dayMinus2Str, householdId, userId);
 
         if (dayMinus2Entries.length > 0) {
             // Yes, we have a streak to protect!
@@ -61,10 +61,10 @@ export const processAutoFreezes = async (habits: Habit[], _logs: Record<string, 
                 value: 0,
                 source: 'manual',
                 note: 'freeze:auto',
-            }, userId);
+            }, householdId, userId);
 
             // 2. Decrement Inventory
-            await updateHabit(habitId, userId, {
+            await updateHabit(habitId, householdId, userId, {
                 freezeCount: currentInventory - 1
             });
         }

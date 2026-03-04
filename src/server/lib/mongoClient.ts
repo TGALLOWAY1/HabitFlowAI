@@ -27,7 +27,7 @@ function isTestEnv(): boolean {
   );
 }
 
-/** Returns count of (userId, habitId, dayKey) groups that have more than one active doc. */
+/** Returns count of (householdId, userId, habitId, dayKey) groups that have more than one active doc. */
 async function countDuplicateActiveHabitEntryKeys(database: Db): Promise<number> {
   const coll = database.collection('habitEntries');
   const cursor = coll.aggregate<{ count: number }>([
@@ -35,6 +35,7 @@ async function countDuplicateActiveHabitEntryKeys(database: Db): Promise<number>
     {
       $group: {
         _id: {
+          householdId: { $ifNull: ['$householdId', ''] },
           userId: '$userId',
           habitId: '$habitId',
           dayKey: { $ifNull: ['$dayKey', '$date'] },
@@ -67,11 +68,10 @@ async function ensureHabitEntriesUniqueIndex(database: Db): Promise<void> {
     return;
   }
 
-  // One document per (userId, habitId, dayKey). Soft-delete sets deletedAt on that doc; we do not use a second doc.
-  // Partial index with $exists: false is not supported in all MongoDB versions, so we use a full unique index.
+  // One document per (householdId, userId, habitId, dayKey). Soft-delete sets deletedAt on that doc.
   try {
     await coll.createIndex(
-      { userId: 1, habitId: 1, dayKey: 1 },
+      { householdId: 1, userId: 1, habitId: 1, dayKey: 1 },
       { unique: true, name: HABIT_ENTRIES_UNIQUE_INDEX_NAME }
     );
   } catch (error: unknown) {
@@ -109,7 +109,7 @@ async function ensureCoreIndexes(database: Db): Promise<void> {
   await ensureHabitEntriesUniqueIndex(database);
 
   if (!isTestEnv()) {
-    console.log('[MongoDB] Indexes ensured (habitEntries unique active: userId, habitId, dayKey)');
+    console.log('[MongoDB] Indexes ensured (habitEntries unique: householdId, userId, habitId, dayKey)');
   }
   indexesEnsuredForDbName = database.databaseName;
 }

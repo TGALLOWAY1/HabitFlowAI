@@ -12,6 +12,7 @@ import { computeDayView } from '../services/dayViewService';
 import { validateDayKey, assertTimeZone } from '../domain/canonicalValidators';
 import { resolveTimeZone } from '../utils/dayKey';
 import type { DayKey } from '../../domain/time/dayKey';
+import { getRequestIdentity } from '../middleware/identity';
 
 /**
  * Get day view for a specific dayKey.
@@ -68,11 +69,9 @@ export async function getDayView(req: Request, res: Response): Promise<void> {
       return;
     }
 
-    // TODO: Extract userId from authentication token/session
-    const userId = (req as any).userId || 'anonymous-user';
+    const { householdId, userId } = getRequestIdentity(req);
 
-    // Compute day view from truthQuery
-    const dayView = await computeDayView(userId, dayKey as DayKey, resolvedTimeZone);
+    const dayView = await computeDayView(householdId, userId, dayKey as DayKey, resolvedTimeZone);
 
     res.status(200).json(dayView);
   } catch (error) {

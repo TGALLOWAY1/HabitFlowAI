@@ -245,12 +245,12 @@ function deriveBundleCompletion(
  * @returns DayViewResponse
  */
 export async function computeDayView(
+  householdId: string,
   userId: string,
   dayKey: DayKey,
   timeZone: string
 ): Promise<DayViewResponse> {
-  // Fetch all active habits for the user
-  const allHabits = await getHabitsByUser(userId);
+  const allHabits = await getHabitsByUser(householdId, userId);
   const activeHabits = allHabits.filter(h => !h.archived);
 
   // Get week window for weekly habits
@@ -267,7 +267,7 @@ export async function computeDayView(
 
   // Fetch all EntryViews for all habits via truthQuery
   // Fetch a wider range to cover weekly habits (entire week)
-  const allEntryViews = await getEntryViewsForHabits(Array.from(allHabitIds), userId, {
+  const allEntryViews = await getEntryViewsForHabits(Array.from(allHabitIds), householdId, userId, {
     startDayKey: weekWindow.startDayKey,
     endDayKey: weekWindow.endDayKey,
     timeZone,

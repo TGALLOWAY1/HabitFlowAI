@@ -4,6 +4,7 @@ import { getHabitsByUser } from '../repositories/habitRepository';
 import { getHabitEntriesByUser } from '../repositories/habitEntryRepository';
 import { calculateHabitStreakMetrics, type HabitDayState } from '../services/streakService';
 import { resolveTimeZone, getNowDayKey } from '../utils/dayKey';
+import { getRequestIdentity } from '../middleware/identity';
 
 type HabitLast7Cell = {
   dayKey: string;
@@ -15,10 +16,6 @@ function toDayKey(date: Date): string {
   return format(date, 'yyyy-MM-dd');
 }
 
-function getUserIdFromRequest(req: Request): string {
-  const candidate = (req as Request & { userId?: unknown }).userId;
-  return typeof candidate === 'string' && candidate.length > 0 ? candidate : 'anonymous-user';
-}
 
 function parseFreezeType(note?: string): 'manual' | 'auto' | 'soft' | undefined {
   if (!note || !note.startsWith('freeze:')) return undefined;
@@ -70,7 +67,7 @@ function aggregateDayStatesByHabit(
 
 export async function getDashboardStreaks(req: Request, res: Response): Promise<void> {
   try {
-    const userId = getUserIdFromRequest(req);
+    const { householdId, userId } = getRequestIdentity(req);
     const requestedTimeZone = resolveTimeZone(typeof req.query?.timeZone === 'string' ? req.query.timeZone : undefined);
 
     const referenceDate = new Date();
@@ -78,8 +75,8 @@ export async function getDashboardStreaks(req: Request, res: Response): Promise<
     const weekStartDayKey = toDayKey(startOfWeek(parseISO(todayDayKey + 'T12:00:00.000'), { weekStartsOn: 1 }));
 
     const [habits, entries] = await Promise.all([
-      getHabitsByUser(userId),
-      getHabitEntriesByUser(userId),
+      getHabitsByUser(householdId, userId),
+      getHabitEntriesByUser(householdId, userId),
     ]);
 
     const activeHabits = habits.filter(habit => !habit.archived);

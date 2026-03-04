@@ -34,7 +34,7 @@ assertMongoEnabled();
 const app: Express = express();
 const PORT = process.env.PORT || 3000;
 
-import { identityMiddleware } from './middleware/identity';
+import { identityMiddleware, getRequestIdentity } from './middleware/identity';
 import { noPersonaInHabitEntryRequests } from './middleware/noPersonaInHabitEntryRequests';
 import { requestContextMiddleware } from './middleware/requestContext';
 
@@ -201,8 +201,8 @@ import { backfillDayLogsToEntries } from './utils/migrationUtils';
 
 app.post('/api/admin/migrations/backfill-daylogs', async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).userId || 'anonymous-user'; // Or known ID
-    const result = await backfillDayLogsToEntries(userId);
+    const { householdId, userId } = getRequestIdentity(req);
+    const result = await backfillDayLogsToEntries(householdId, userId);
     res.json({ success: true, ...result });
   } catch (err: any) {
     res.status(500).json({ error: err.message });

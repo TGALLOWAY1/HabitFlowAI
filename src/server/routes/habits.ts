@@ -19,6 +19,7 @@ import { getCategoryById } from '../repositories/categoryRepository';
 import { deleteHabitEntriesByHabit } from '../repositories/habitEntryRepository';
 import { deleteDayLogsByHabit } from '../repositories/dayLogRepository';
 import type { Habit } from '../../models/persistenceTypes';
+import { getRequestIdentity } from '../middleware/identity';
 
 /**
  * Get all habits for the current user.
@@ -29,16 +30,14 @@ import type { Habit } from '../../models/persistenceTypes';
 export async function getHabits(req: Request, res: Response): Promise<void> {
   try {
 
-    // TODO: Extract userId from authentication token/session
-    const userId = (req as any).userId || 'anonymous-user';
-
+    const { householdId, userId } = getRequestIdentity(req);
     const categoryId = req.query.categoryId as string | undefined;
 
     let habits: Habit[];
     if (categoryId) {
-      habits = await getHabitsByCategory(categoryId, userId);
+      habits = await getHabitsByCategory(categoryId, householdId, userId);
     } else {
-      habits = await getHabitsByUser(userId);
+      habits = await getHabitsByUser(householdId, userId);
     }
 
     res.status(200).json({
@@ -105,8 +104,7 @@ export async function createHabitRoute(req: Request, res: Response): Promise<voi
       return;
     }
 
-    // TODO: Extract userId from authentication token/session
-    const userId = (req as any).userId || 'anonymous-user';
+    const { householdId, userId } = getRequestIdentity(req);
 
     const habit = await createHabit(
       {
@@ -131,6 +129,7 @@ export async function createHabitRoute(req: Request, res: Response): Promise<voi
         linkedGoalId,
         linkedRoutineIds,
       },
+      householdId,
       userId
     );
 
@@ -170,10 +169,9 @@ export async function getHabit(req: Request, res: Response): Promise<void> {
       return;
     }
 
-    // TODO: Extract userId from authentication token/session
-    const userId = (req as any).userId || 'anonymous-user';
+    const { householdId, userId } = getRequestIdentity(req);
 
-    const habit = await getHabitById(id, userId);
+    const habit = await getHabitById(id, householdId, userId);
 
     if (!habit) {
       res.status(404).json({
@@ -251,11 +249,10 @@ export async function updateHabitRoute(req: Request, res: Response): Promise<voi
       return;
     }
 
-    const userId = (req as any).userId || 'anonymous-user';
+    const { householdId, userId } = getRequestIdentity(req);
 
-    // Validate target category exists when categoryId is being changed
     if (patch.categoryId) {
-      const targetCategory = await getCategoryById(patch.categoryId, userId);
+      const targetCategory = await getCategoryById(patch.categoryId, householdId, userId);
       if (!targetCategory) {
         res.status(400).json({
           error: {
@@ -267,7 +264,7 @@ export async function updateHabitRoute(req: Request, res: Response): Promise<voi
       }
     }
 
-    const habit = await updateHabit(id, userId, patch);
+    const habit = await updateHabit(id, householdId, userId, patch);
 
     if (!habit) {
       res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Habit not found' } });
@@ -308,10 +305,9 @@ export async function deleteHabitRoute(req: Request, res: Response): Promise<voi
       return;
     }
 
-    // TODO: Extract userId from authentication token/session
-    const userId = (req as any).userId || 'anonymous-user';
+    const { householdId, userId } = getRequestIdentity(req);
 
-    const existing = await getHabitById(id, userId);
+    const existing = await getHabitById(id, householdId, userId);
     if (!existing) {
       res.status(404).json({
         error: {
@@ -322,11 +318,10 @@ export async function deleteHabitRoute(req: Request, res: Response): Promise<voi
       return;
     }
 
-    // Cascade delete entries (source of truth) first, then derived day logs.
-    const deletedEntriesCount = await deleteHabitEntriesByHabit(id, userId);
+    const deletedEntriesCount = await deleteHabitEntriesByHabit(id, householdId, userId);
     const deletedDayLogsCount = await deleteDayLogsByHabit(id, userId);
 
-    const deleted = await deleteHabit(id, userId);
+    const deleted = await deleteHabit(id, householdId, userId);
 
     if (!deleted) {
       res.status(500).json({
@@ -376,10 +371,9 @@ export async function reorderHabitsRoute(req: Request, res: Response): Promise<v
       return;
     }
 
-    // TODO: Extract userId from authentication token/session
-    const userId = (req as any).userId || 'anonymous-user';
+    const { householdId, userId } = getRequestIdentity(req);
 
-    const success = await reorderHabits(userId, habits);
+    const success = await reorderHabits(householdId, userId, habits);
 
     if (!success) {
       res.status(500).json({

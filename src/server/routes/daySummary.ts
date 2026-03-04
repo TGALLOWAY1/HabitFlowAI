@@ -4,6 +4,7 @@ import { validateDayKey, assertTimeZone } from '../domain/canonicalValidators';
 import { getHabitsByUser } from '../repositories/habitRepository';
 import { getHabitEntriesByUser } from '../repositories/habitEntryRepository';
 import { resolveTimeZone, getNowDayKey, getDayKeyForDate, getCanonicalDayKeyFromEntry } from '../utils/dayKey';
+import { getRequestIdentity } from '../middleware/identity';
 
 type AggregatedDayEntry = {
   habitId: string;
@@ -27,10 +28,6 @@ function getDefaultRange(timeZone: string): { startDayKey: string; endDayKey: st
   return { startDayKey, endDayKey };
 }
 
-function getUserIdFromRequest(req: Request): string {
-  const candidate = (req as Request & { userId?: unknown }).userId;
-  return typeof candidate === 'string' && candidate.length > 0 ? candidate : 'anonymous-user';
-}
 
 function isDayKeyInRange(dayKey: string, startDayKey: string, endDayKey: string): boolean {
   return dayKey >= startDayKey && dayKey <= endDayKey;
@@ -104,7 +101,7 @@ function aggregateEntries(
 
 export async function getDaySummary(req: Request, res: Response): Promise<void> {
   try {
-    const userId = getUserIdFromRequest(req);
+    const { householdId, userId } = getRequestIdentity(req);
     const queryStart = typeof req.query.startDayKey === 'string' ? req.query.startDayKey : undefined;
     const queryEnd = typeof req.query.endDayKey === 'string' ? req.query.endDayKey : undefined;
     const timeZone = resolveTimeZone(typeof req.query.timeZone === 'string' ? req.query.timeZone : undefined);
@@ -131,8 +128,8 @@ export async function getDaySummary(req: Request, res: Response): Promise<void> 
     }
 
     const [habits, entries] = await Promise.all([
-      getHabitsByUser(userId),
-      getHabitEntriesByUser(userId),
+      getHabitsByUser(householdId, userId),
+      getHabitEntriesByUser(householdId, userId),
     ]);
 
     const activeHabits = habits.filter(habit => !habit.archived);

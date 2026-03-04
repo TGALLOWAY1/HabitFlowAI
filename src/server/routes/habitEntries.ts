@@ -18,6 +18,7 @@ import { recomputeDayLogForHabit } from '../utils/recomputeUtils';
 import { validateDayKey, assertTimeZone, validateHabitEntryPayloadStructure, assertNoStoredCompletion } from '../domain/canonicalValidators';
 import { normalizeHabitEntryPayload } from '../utils/dayKeyNormalization';
 import { resolveTimeZone, getNowDayKey } from '../utils/dayKey';
+import { getRequestIdentity } from '../middleware/identity';
 
 /**
  * Get entry views for a habit (via truthQuery).
@@ -28,7 +29,7 @@ import { resolveTimeZone, getNowDayKey } from '../utils/dayKey';
  */
 export async function getHabitEntriesRoute(req: Request, res: Response): Promise<void> {
     try {
-        const userId = (req as any).userId || 'anonymous-user';
+        const { householdId, userId } = getRequestIdentity(req);
         const { habitId, startDayKey, endDayKey, timeZone } = req.query;
 
         if (!habitId || typeof habitId !== 'string') {
@@ -65,7 +66,7 @@ export async function getHabitEntriesRoute(req: Request, res: Response): Promise
 
         // Fetch via truthQuery (unified HabitEntries + legacy DayLogs)
         const { getEntryViewsForHabit } = await import('../services/truthQuery');
-        const entryViews = await getEntryViewsForHabit(habitId, userId, {
+        const entryViews = await getEntryViewsForHabit(habitId, householdId, userId, {
             startDayKey: startDayKey as string | undefined,
             endDayKey: endDayKey as string | undefined,
             timeZone: userTimeZone,
@@ -84,8 +85,7 @@ export async function getHabitEntriesRoute(req: Request, res: Response): Promise
  */
 export async function createHabitEntryRoute(req: Request, res: Response): Promise<void> {
     try {
-        const userId = (req as any).userId || 'anonymous-user';
-        // habitId, value, date (required), note, source...
+        const { householdId, userId } = getRequestIdentity(req);
         const entryData = req.body;
 
         if (!entryData.habitId || !entryData.date || entryData.value === undefined) {
@@ -130,25 +130,23 @@ export async function createHabitEntryRoute(req: Request, res: Response): Promis
             return;
         }
 
-        // 0. Fetch Habit & Validate
-        const habit = await getHabitById(entryData.habitId, userId);
+        const habit = await getHabitById(entryData.habitId, householdId, userId);
         if (!habit) {
             res.status(404).json({ error: 'Habit not found' });
             return;
         }
 
-        // Validate habit-specific rules (Choice Bundle, etc.)
         const validation = validateHabitEntryPayload(habit, entryData);
         if (!validation.valid) {
             res.status(400).json({ error: validation.error });
             return;
         }
 
-        // 1. Atomic upsert by (userId, habitId, dayKey) — no read-then-write; preserves "one entry per day" and avoids races
         const { date: _d, habitId: _h, dayKey: _k, ...rest } = entryData;
         const newEntry = await upsertHabitEntry(
             entryData.habitId,
             normalizedPayload.dayKey,
+            householdId,
             userId,
             {
                 ...rest,
@@ -165,6 +163,7 @@ export async function createHabitEntryRoute(req: Request, res: Response): Promis
         const updatedDayLog = await recomputeDayLogForHabit(
             newEntry.habitId,
             newEntry.dayKey,
+            householdId,
             userId
         );
 
@@ -185,7 +184,7 @@ export async function createHabitEntryRoute(req: Request, res: Response): Promis
  */
 export async function deleteHabitEntryRoute(req: Request, res: Response): Promise<void> {
     try {
-        const userId = (req as any).userId || 'anonymous-user';
+        const { householdId, userId } = getRequestIdentity(req);
         const { id } = req.params;
 
         // We need to know habitId and date to recompute.
@@ -224,7 +223,7 @@ export async function deleteHabitEntryRoute(req: Request, res: Response): Promis
 
         const { getDb } = await import('../lib/mongoClient');
         const db = await getDb();
-        const entry = await db.collection('habitEntries').findOne({ id, userId });
+        const entry = await db.collection('habitEntries').findOne({ id, householdId, userId });
 
         if (!entry) {
             res.status(404).json({ error: 'Entry not found' });
@@ -237,15 +236,13 @@ export async function deleteHabitEntryRoute(req: Request, res: Response): Promis
             return;
         }
 
-        // 1. Delete
-        const deleted = await deleteHabitEntry(id, userId);
+        const deleted = await deleteHabitEntry(id, householdId, userId);
         if (!deleted) {
             res.status(500).json({ error: 'Failed to delete' });
             return;
         }
 
-        // 2. Recompute
-        const updatedDayLog = await recomputeDayLogForHabit(habitId, dayKey, userId);
+        const updatedDayLog = await recomputeDayLogForHabit(habitId, dayKey, householdId, userId);
 
         res.json({
             success: true,
@@ -264,7 +261,7 @@ export async function deleteHabitEntryRoute(req: Request, res: Response): Promis
  */
 export async function updateHabitEntryRoute(req: Request, res: Response): Promise<void> {
     try {
-        const userId = (req as any).userId || 'anonymous-user';
+        const { householdId, userId } = getRequestIdentity(req);
         const { id } = req.params;
         const patch = req.body;
 
@@ -279,7 +276,7 @@ export async function updateHabitEntryRoute(req: Request, res: Response): Promis
         // This is necessary to recompute both old and new dates if dayKey changes
         const { getDb } = await import('../lib/mongoClient');
         const db = await getDb();
-        const oldEntry = await db.collection('habitEntries').findOne({ id, userId });
+        const oldEntry = await db.collection('habitEntries').findOne({ id, householdId, userId });
 
         if (!oldEntry) {
             res.status(404).json({ error: 'Entry not found' });
@@ -312,8 +309,7 @@ export async function updateHabitEntryRoute(req: Request, res: Response): Promis
             }
         }
 
-        // 2. Update entry
-        const updatedEntry = await updateHabitEntry(id, userId, patch);
+        const updatedEntry = await updateHabitEntry(id, householdId, userId, patch);
 
         if (!updatedEntry) {
             res.status(404).json({ error: 'Entry not found' });
@@ -333,12 +329,11 @@ export async function updateHabitEntryRoute(req: Request, res: Response): Promis
             // DayKey changed: recompute both old and new dayKeys
             // This ensures no stale completion/progress remains on the old dayKey
             await Promise.all([
-                recomputeDayLogForHabit(habitId, oldDayKey, userId),
-                recomputeDayLogForHabit(habitId, newDayKey, userId)
+                recomputeDayLogForHabit(habitId, oldDayKey, householdId, userId),
+                recomputeDayLogForHabit(habitId, newDayKey, householdId, userId)
             ]);
 
-            // Recompute new dayKey's DayLog for response
-            const newDayLog = await recomputeDayLogForHabit(habitId, newDayKey, userId);
+            const newDayLog = await recomputeDayLogForHabit(habitId, newDayKey, householdId, userId);
 
             // Return the new dayLog (old one is cleaned up if no entries remain)
             res.json({
@@ -350,11 +345,12 @@ export async function updateHabitEntryRoute(req: Request, res: Response): Promis
             const updatedDayLog = await recomputeDayLogForHabit(
                 habitId,
                 newDayKey,
+                householdId,
                 userId
             );
 
             res.json({
-                entry: responseEntry, // Includes date as derived alias
+                entry: responseEntry,
                 dayLog: updatedDayLog
             });
         }
@@ -371,7 +367,7 @@ export async function updateHabitEntryRoute(req: Request, res: Response): Promis
  */
 export async function deleteHabitEntriesForDayRoute(req: Request, res: Response): Promise<void> {
     try {
-        const userId = (req as any).userId || 'anonymous-user';
+        const { householdId, userId } = getRequestIdentity(req);
         const { habitId, date } = req.query;
 
         if (!habitId || typeof habitId !== 'string' || !date || typeof date !== 'string') {
@@ -386,10 +382,9 @@ export async function deleteHabitEntriesForDayRoute(req: Request, res: Response)
         // 1. Bulk Delete
         // Normalize date to dayKey (both are YYYY-MM-DD format)
         const dayKey = date;
-        await deleteHabitEntriesForDay(habitId, dayKey, userId);
+        await deleteHabitEntriesForDay(habitId, dayKey, householdId, userId);
 
-        // 2. Recompute (should result in deleted/empty log)
-        const updatedDayLog = await recomputeDayLogForHabit(habitId, dayKey, userId);
+        const updatedDayLog = await recomputeDayLogForHabit(habitId, dayKey, householdId, userId);
 
         res.json({
             success: true,
@@ -409,7 +404,7 @@ export async function deleteHabitEntriesForDayRoute(req: Request, res: Response)
  */
 export async function upsertHabitEntryRoute(req: Request, res: Response): Promise<void> {
     try {
-        const userId = (req as any).userId || 'anonymous-user';
+        const { householdId, userId } = getRequestIdentity(req);
         const { habitId, dateKey, ...data } = req.body;
 
         if (!habitId || !dateKey) {
@@ -420,23 +415,21 @@ export async function upsertHabitEntryRoute(req: Request, res: Response): Promis
         const { upsertHabitEntry } = await import('../repositories/habitEntryRepository');
 
         // 0. Fetch Habit & Validate
-        const habit = await getHabitById(habitId, userId);
+        const habit = await getHabitById(habitId, householdId, userId);
         if (!habit) {
             res.status(404).json({ error: 'Habit not found' });
             return;
         }
 
-        const validation = validateHabitEntryPayload(habit, { ...data, habitId }); // data includes value, bundleOptionId
+        const validation = validateHabitEntryPayload(habit, { ...data, habitId });
         if (!validation.valid) {
             res.status(400).json({ error: validation.error });
             return;
         }
 
-        // 1. Upsert
-        const entry = await upsertHabitEntry(habitId, dateKey, userId, data);
+        const entry = await upsertHabitEntry(habitId, dateKey, householdId, userId, data);
 
-        // 2. Recompute DayLog (Legacy/Cache)
-        const updatedDayLog = await recomputeDayLogForHabit(habitId, dateKey, userId);
+        const updatedDayLog = await recomputeDayLogForHabit(habitId, dateKey, householdId, userId);
 
         res.json({
             entry,
@@ -460,11 +453,7 @@ export async function upsertHabitEntryRoute(req: Request, res: Response): Promis
  */
 export async function batchCreateEntriesRoute(req: Request, res: Response): Promise<void> {
     try {
-        const userId = (req as any).userId;
-        if (!userId) {
-            res.status(401).json({ error: 'User not authenticated' });
-            return;
-        }
+        const { householdId, userId } = getRequestIdentity(req);
 
         const { timezone, dayKey: bodyDayKey, entries } = req.body;
 
@@ -496,14 +485,14 @@ export async function batchCreateEntriesRoute(req: Request, res: Response): Prom
                 return;
             }
 
-            const habit = await getHabitById(habitId, userId);
+            const habit = await getHabitById(habitId, householdId, userId);
             if (!habit) {
                 res.status(404).json({ error: `Habit not found: ${habitId}` });
                 return;
             }
 
-            const existing = await getHabitEntriesForDay(habitId, dayKey, userId);
-            const entry = await upsertHabitEntry(habitId, dayKey, userId, {
+            const existing = await getHabitEntriesForDay(habitId, dayKey, householdId, userId);
+            const entry = await upsertHabitEntry(habitId, dayKey, householdId, userId, {
                 source: 'routine',
                 routineId: typeof item.routineId === 'string' ? item.routineId : undefined,
                 value: 1,
@@ -512,7 +501,7 @@ export async function batchCreateEntriesRoute(req: Request, res: Response): Prom
             if (existing.length === 0) created += 1;
             else updated += 1;
 
-            await recomputeDayLogForHabit(habitId, dayKey, userId);
+            await recomputeDayLogForHabit(habitId, dayKey, householdId, userId);
             results.push({ habitId: entry.habitId, dayKey: entry.dayKey ?? dayKey, id: entry.id });
         }
 
@@ -532,7 +521,7 @@ export async function batchCreateEntriesRoute(req: Request, res: Response): Prom
  */
 export async function deleteHabitEntryByKeyRoute(req: Request, res: Response): Promise<void> {
     try {
-        const userId = (req as any).userId || 'anonymous-user';
+        const { householdId, userId } = getRequestIdentity(req);
         const { habitId, dateKey } = req.query;
 
         if (!habitId || typeof habitId !== 'string' || !dateKey || typeof dateKey !== 'string') {
@@ -549,8 +538,7 @@ export async function deleteHabitEntryByKeyRoute(req: Request, res: Response): P
 
         const { deleteHabitEntryByKey } = await import('../repositories/habitEntryRepository');
 
-        // 1. Delete (soft delete - sets deletedAt)
-        const deleted = await deleteHabitEntryByKey(habitId, dateKey, userId);
+        const deleted = await deleteHabitEntryByKey(habitId, dateKey, householdId, userId);
 
         if (!deleted) {
             // No active entry found to delete
@@ -559,11 +547,11 @@ export async function deleteHabitEntryByKeyRoute(req: Request, res: Response): P
         }
 
         // 2. Recompute dayLog after deletion
-        const updatedDayLog = await recomputeDayLogForHabit(habitId, dateKey, userId);
+        const updatedDayLog = await recomputeDayLogForHabit(habitId, dateKey, householdId, userId);
 
         res.json({
             success: true,
-            dayLog: updatedDayLog // May be null if all entries for the day were deleted
+            dayLog: updatedDayLog
         });
 
     } catch (error) {

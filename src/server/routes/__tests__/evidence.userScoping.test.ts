@@ -5,14 +5,16 @@ import { setupTestMongo, teardownTestMongo, getTestDb } from '../../../test/mong
 import { requestContextMiddleware } from '../../middleware/requestContext';
 import habitPotentialEvidenceRoutes from '../habitPotentialEvidence';
 
+const HOUSEHOLD_ID = 'household-evidence-test';
 const USER_A = 'user-evidence-a';
 const USER_B = 'user-evidence-b';
 
-function buildApp(userId: string): Express {
+function buildApp(householdId: string, userId: string): Express {
   const app = express();
   app.use(express.json());
   app.use(requestContextMiddleware);
   app.use((req, _res, next) => {
+    (req as any).householdId = householdId;
     (req as any).userId = userId;
     next();
   });
@@ -26,8 +28,8 @@ describe('Evidence user scoping', () => {
 
   beforeAll(async () => {
     await setupTestMongo();
-    appA = buildApp(USER_A);
-    appB = buildApp(USER_B);
+    appA = buildApp(HOUSEHOLD_ID, USER_A);
+    appB = buildApp(HOUSEHOLD_ID, USER_B);
   });
 
   afterAll(async () => {
@@ -49,6 +51,7 @@ describe('Evidence user scoping', () => {
       date: '2025-06-01',
       timestamp: new Date().toISOString(),
       source: 'routine-step',
+      householdId: HOUSEHOLD_ID,
       userId: USER_A,
     });
 

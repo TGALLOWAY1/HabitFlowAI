@@ -1,14 +1,14 @@
 /**
  * HabitEntry Repository
- * 
+ *
  * MongoDB data access layer for HabitEntry entities.
- * Provides CRUD operations for habit entries with user-scoped queries.
+ * All queries are scoped by householdId + userId (user-owned in household).
  */
 
 import { getDb } from '../lib/mongoClient';
 import type { HabitEntry } from '../../models/persistenceTypes';
-import { ObjectId } from 'mongodb';
 import { randomUUID } from 'crypto';
+import { scopeFilter, requireScope } from '../lib/scoping';
 
 /**
  * Assert that an object does not contain stored completion/progress fields.
@@ -52,12 +52,19 @@ function assertNoStoredCompletionOrProgress(obj: any): void {
 
 const COLLECTION_NAME = 'habitEntries';
 
+function mapDocToEntry(doc: any): HabitEntry {
+  const { _id, userId: _, householdId: __, ...entry } = doc;
+  const entryWithDate = entry.dayKey ? { ...entry, date: entry.dayKey } : entry;
+  return entryWithDate as HabitEntry;
+}
+
 /**
  * Create a new habit entry (atomic upsert by userId, habitId, dayKey).
  * Delegates to upsertHabitEntry so all write paths are race-safe.
  */
 export async function createHabitEntry(
     entry: Omit<HabitEntry, 'id' | 'createdAt' | 'updatedAt' | 'deletedAt'>,
+    householdId: string,
     userId: string
 ): Promise<HabitEntry> {
     const dayKey = entry.dayKey || entry.date;
@@ -65,7 +72,7 @@ export async function createHabitEntry(
         throw new Error('HabitEntry must have dayKey or date (legacy input)');
     }
     const { date: _d, habitId, dayKey: _k, ...rest } = entry;
-    return upsertHabitEntry(habitId, dayKey, userId, {
+    return upsertHabitEntry(habitId, dayKey, householdId, userId, {
         ...rest,
         timestamp: entry.timestamp,
         source: entry.source || 'manual',
@@ -73,66 +80,41 @@ export async function createHabitEntry(
 }
 
 /**
- * Get habit entries by habit ID.
- * 
- * @param habitId - Habit ID
- * @param userId - User ID
- * @returns Array of HabitEntry
- */
-/**
- * Get habit entries by habit ID.
- * 
- * @param habitId - Habit ID
- * @returns Array of HabitEntry
+ * Get habit entries by habit ID (scoped to household + user).
  */
 export async function getHabitEntries(
-    habitId: string
+    habitId: string,
+    householdId: string,
+    userId: string
 ): Promise<HabitEntry[]> {
-
     const db = await getDb();
     const collection = db.collection(COLLECTION_NAME);
 
-    // Note: This fetches purely by habitId. Without userId scoping it might be unsafe if habit IDs aren't unique global UUIDs.
-    // Assuming habit IDs are unique UUIDs.
     const documents = await collection
-        .find({ habitId, deletedAt: { $exists: false } })
+        .find(scopeFilter(householdId, userId, { habitId, deletedAt: { $exists: false } }))
         .sort({ timestamp: -1 })
         .toArray();
 
-    return documents.map(doc => {
-        const { _id, userId: _, ...entry } = doc;
-        // For reads: derive date from dayKey for backward compatibility in API responses
-        const entryWithDate = entry.dayKey ? { ...entry, date: entry.dayKey } : entry;
-        return entryWithDate as HabitEntry;
-    });
+    return documents.map(doc => mapDocToEntry(doc));
 }
 
 /**
- * Get habit entries by habit ID (Scoped to User).
- * 
- * @param habitId - Habit ID
- * @param userId - User ID
- * @returns Array of HabitEntry
+ * Get habit entries by habit ID (scoped to household + user).
  */
 export async function getHabitEntriesByHabit(
     habitId: string,
+    householdId: string,
     userId: string
 ): Promise<HabitEntry[]> {
-
     const db = await getDb();
     const collection = db.collection(COLLECTION_NAME);
 
     const documents = await collection
-        .find({ habitId, userId, deletedAt: { $exists: false } }) // Exclude soft-deleted
-        .sort({ timestamp: -1 }) // Newest first
+        .find(scopeFilter(householdId, userId, { habitId, deletedAt: { $exists: false } }))
+        .sort({ timestamp: -1 })
         .toArray();
 
-    return documents.map(doc => {
-        const { _id, userId: _, ...entry } = doc;
-        // For reads: derive date from dayKey for backward compatibility in API responses
-        const entryWithDate = entry.dayKey ? { ...entry, date: entry.dayKey } : entry;
-        return entryWithDate as HabitEntry;
-    });
+    return documents.map(doc => mapDocToEntry(doc));
 }
 
 /**
@@ -147,30 +129,20 @@ export async function getHabitEntriesByHabit(
 export async function getHabitEntriesForDay(
     habitId: string,
     dayKey: string,
+    householdId: string,
     userId: string
 ): Promise<HabitEntry[]> {
     const db = await getDb();
     const collection = db.collection(COLLECTION_NAME);
 
-    // Query by dayKey (preferred) or date (legacy fallback)
-    const documents = await collection
-        .find({
-            habitId,
-            userId,
-            $or: [
-                { dayKey },
-                { date: dayKey } // Legacy fallback
-            ],
-            deletedAt: { $exists: false }
-        })
-        .toArray();
-
-    return documents.map(doc => {
-        const { _id, userId: _, ...entry } = doc;
-        // For reads: derive date from dayKey for backward compatibility in API responses
-        const entryWithDate = entry.dayKey ? { ...entry, date: entry.dayKey } : entry;
-        return entryWithDate as HabitEntry;
+    const filter = scopeFilter(householdId, userId, {
+        habitId,
+        $or: [{ dayKey }, { date: dayKey }],
+        deletedAt: { $exists: false },
     });
+
+    const documents = await collection.find(filter).toArray();
+    return documents.map(doc => mapDocToEntry(doc));
 }
 
 /**
@@ -183,37 +155,26 @@ export async function getHabitEntriesForDay(
  */
 export async function updateHabitEntry(
     id: string,
+    householdId: string,
     userId: string,
     patch: Partial<Omit<HabitEntry, 'id' | 'habitId' | 'createdAt' | 'updatedAt'>>
 ): Promise<HabitEntry | null> {
-
-    // Ban stored completion/progress fields
     assertNoStoredCompletionOrProgress(patch);
 
     const db = await getDb();
     const collection = db.collection(COLLECTION_NAME);
 
-    // Remove date from patch if present (date is not persisted)
     const { date: _, ...patchWithoutDate } = patch;
-
-    const update = {
-        ...patchWithoutDate,
-        updatedAt: new Date().toISOString(),
-    };
+    const update = { ...patchWithoutDate, updatedAt: new Date().toISOString() };
 
     const result = await collection.findOneAndUpdate(
-        { id, userId },
+        scopeFilter(householdId, userId, { id }),
         { $set: update },
         { returnDocument: 'after' }
     );
 
     if (!result) return null;
-
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { _id, userId: _userId, ...updatedEntry } = result;
-    // For reads: derive date from dayKey for backward compatibility in API responses
-    const entryWithDate = updatedEntry.dayKey ? { ...updatedEntry, date: updatedEntry.dayKey } : updatedEntry;
-    return entryWithDate as HabitEntry;
+    return mapDocToEntry(result);
 }
 
 /**
@@ -225,22 +186,21 @@ export async function updateHabitEntry(
  */
 export async function deleteHabitEntry(
     id: string,
+    householdId: string,
     userId: string
 ): Promise<boolean> {
-
     const db = await getDb();
     const collection = db.collection(COLLECTION_NAME);
 
     const result = await collection.findOneAndUpdate(
-        { id, userId },
+        scopeFilter(householdId, userId, { id }),
         {
             $set: {
                 deletedAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString()
-            }
+                updatedAt: new Date().toISOString(),
+            },
         }
     );
-
     return !!result;
 }
 
@@ -255,31 +215,24 @@ export async function deleteHabitEntry(
 export async function deleteHabitEntriesForDay(
     habitId: string,
     dayKey: string,
+    householdId: string,
     userId: string
 ): Promise<number> {
     const db = await getDb();
     const collection = db.collection(COLLECTION_NAME);
 
-    // Query by dayKey (preferred) or date (legacy fallback for existing records)
-    const result = await collection.updateMany(
-        {
-            habitId,
-            $or: [
-                { dayKey },
-                { date: dayKey } // Legacy fallback
-            ],
-            userId,
-            deletedAt: { $exists: false }
-        }, // Only active ones
-        {
-            $set: {
-                deletedAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString()
-            }
-        }
-    );
+    const filter = scopeFilter(householdId, userId, {
+        habitId,
+        $or: [{ dayKey }, { date: dayKey }],
+        deletedAt: { $exists: false },
+    });
 
-
+    const result = await collection.updateMany(filter, {
+        $set: {
+            deletedAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+        },
+    });
     return result.modifiedCount;
 }
 
@@ -292,25 +245,21 @@ export async function deleteHabitEntriesForDay(
  */
 export async function deleteHabitEntriesByHabit(
     habitId: string,
+    householdId: string,
     userId: string
 ): Promise<number> {
     const db = await getDb();
     const collection = db.collection(COLLECTION_NAME);
 
     const result = await collection.updateMany(
-        {
-            habitId,
-            userId,
-            deletedAt: { $exists: false }
-        },
+        scopeFilter(householdId, userId, { habitId, deletedAt: { $exists: false } }),
         {
             $set: {
                 deletedAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString()
-            }
+                updatedAt: new Date().toISOString(),
+            },
         }
     );
-
     return result.modifiedCount;
 }
 
@@ -324,9 +273,11 @@ export async function deleteHabitEntriesByHabit(
 export async function upsertHabitEntry(
     habitId: string,
     dayKey: string,
+    householdId: string,
     userId: string,
     updates: Partial<Omit<HabitEntry, 'id' | 'habitId' | 'dayKey' | 'date' | 'userId' | 'createdAt' | 'updatedAt'>>
 ): Promise<HabitEntry> {
+    const scope = requireScope(householdId, userId);
     const db = await getDb();
     const collection = db.collection(COLLECTION_NAME);
 
@@ -346,13 +297,15 @@ export async function upsertHabitEntry(
     };
 
     const result = await collection.findOneAndUpdate(
-        { userId, habitId, dayKey },
+        scopeFilter(householdId, userId, { habitId, dayKey }),
         {
             $set: setFields,
             $unset: { deletedAt: '' },
             $setOnInsert: {
                 id: randomUUID(),
                 createdAt: now,
+                householdId: scope.householdId,
+                userId: scope.userId,
             },
         },
         { upsert: true, returnDocument: 'after' }
@@ -363,9 +316,7 @@ export async function upsertHabitEntry(
         throw new Error('upsertHabitEntry: findOneAndUpdate returned null');
     }
 
-    const { _id: _oid, userId: _uid, ...entry } = doc;
-    const entryWithDate = (entry as HabitEntry).dayKey ? { ...entry, date: (entry as HabitEntry).dayKey } : entry;
-    return entryWithDate as HabitEntry;
+    return mapDocToEntry(doc);
 }
 
 /**
@@ -382,31 +333,24 @@ export async function upsertHabitEntry(
 export async function deleteHabitEntryByKey(
     habitId: string,
     dayKey: string,
+    householdId: string,
     userId: string
 ): Promise<boolean> {
     const db = await getDb();
     const collection = db.collection(COLLECTION_NAME);
 
-    // Query by dayKey (preferred) or date (legacy fallback)
-    // Only delete entries that are not already soft-deleted
-    const result = await collection.updateOne(
-        {
-            habitId,
-            userId,
-            $or: [
-                { dayKey },
-                { date: dayKey } // Legacy fallback
-            ],
-            deletedAt: { $exists: false } // Only delete active entries
-        },
-        {
-            $set: {
-                deletedAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString()
-            }
-        }
-    );
+    const filter = scopeFilter(householdId, userId, {
+        habitId,
+        $or: [{ dayKey }, { date: dayKey }],
+        deletedAt: { $exists: false },
+    });
 
+    const result = await collection.updateOne(filter, {
+        $set: {
+            deletedAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+        },
+    });
     return result.modifiedCount > 0;
 }
 
@@ -418,19 +362,15 @@ export async function deleteHabitEntryByKey(
  * @returns Array of HabitEntry
  */
 export async function getHabitEntriesByUser(
+    householdId: string,
     userId: string
 ): Promise<HabitEntry[]> {
     const db = await getDb();
     const collection = db.collection(COLLECTION_NAME);
 
     const documents = await collection
-        .find({ userId, deletedAt: { $exists: false } })
+        .find(scopeFilter(householdId, userId, { deletedAt: { $exists: false } }))
         .toArray();
 
-    return documents.map(doc => {
-        const { _id, userId: _, ...entry } = doc;
-        // For reads: derive date from dayKey for backward compatibility in API responses
-        const entryWithDate = entry.dayKey ? { ...entry, date: entry.dayKey } : entry;
-        return entryWithDate as HabitEntry;
-    });
+    return documents.map(doc => mapDocToEntry(doc));
 }

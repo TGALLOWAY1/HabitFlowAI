@@ -15,20 +15,16 @@ import {
   reorderCategories,
 } from '../repositories/categoryRepository';
 import type { Category } from '../../models/persistenceTypes';
+import { getRequestIdentity } from '../middleware/identity';
 
 /**
  * Get all categories for the authenticated user.
- * 
  * GET /api/categories
  */
 export async function getCategories(req: Request, res: Response): Promise<void> {
   try {
-
-    // TODO: Extract userId from authentication token/session
-    // For now, using a placeholder - replace with actual auth middleware
-    const userId = (req as any).userId || 'anonymous-user';
-
-    const categories = await getCategoriesByUser(userId);
+    const { householdId, userId } = getRequestIdentity(req);
+    const categories = await getCategoriesByUser(householdId, userId);
 
     res.status(200).json({
       categories,
@@ -77,10 +73,8 @@ export async function createCategoryRoute(req: Request, res: Response): Promise<
       return;
     }
 
-    // TODO: Extract userId from authentication token/session
-    const userId = (req as any).userId || 'anonymous-user';
-
-    const category = await createCategory({ name: name.trim(), color: color.trim() }, userId);
+    const { householdId, userId } = getRequestIdentity(req);
+    const category = await createCategory({ name: name.trim(), color: color.trim() }, householdId, userId);
 
     res.status(201).json({
       category,
@@ -130,10 +124,8 @@ export async function getCategory(req: Request, res: Response): Promise<void> {
       return;
     }
 
-    // TODO: Extract userId from authentication token/session
-    const userId = (req as any).userId || 'anonymous-user';
-
-    const category = await getCategoryById(id, userId);
+    const { householdId, userId } = getRequestIdentity(req);
+    const category = await getCategoryById(id, householdId, userId);
 
     if (!category) {
       res.status(404).json({
@@ -222,9 +214,8 @@ export async function updateCategoryRoute(req: Request, res: Response): Promise<
     }
 
     // TODO: Extract userId from authentication token/session
-    const userId = (req as any).userId || 'anonymous-user';
-
-    const category = await updateCategory(id, userId, patch);
+    const { householdId, userId } = getRequestIdentity(req);
+    const category = await updateCategory(id, householdId, userId, patch);
 
     if (!category) {
       res.status(404).json({
@@ -273,12 +264,10 @@ export async function deleteCategoryRoute(req: Request, res: Response): Promise<
     }
 
     // TODO: Extract userId from authentication token/session
-    const userId = (req as any).userId || 'anonymous-user';
-
-    // TODO: Check if category has associated habits (if cascade delete not implemented)
+    const { householdId, userId } = getRequestIdentity(req);
     // For now, we allow deletion (matches current frontend behavior)
 
-    const deleted = await deleteCategory(id, userId);
+    const deleted = await deleteCategory(id, householdId, userId);
 
     if (!deleted) {
       res.status(404).json({
@@ -360,9 +349,8 @@ export async function reorderCategoriesRoute(req: Request, res: Response): Promi
     }
 
     // TODO: Extract userId from authentication token/session
-    const userId = (req as any).userId || 'anonymous-user';
-
-    const updatedCategories = await reorderCategories(userId, categories as Category[]);
+    const { householdId, userId } = getRequestIdentity(req);
+    const updatedCategories = await reorderCategories(householdId, userId, categories as Category[]);
 
     res.status(200).json({
       categories: updatedCategories,

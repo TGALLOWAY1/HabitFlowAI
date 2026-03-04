@@ -15,6 +15,7 @@ import { createCategory } from '../../repositories/categoryRepository';
 import { createHabit } from '../../repositories/habitRepository';
 import { getHabitEntriesForDay } from '../../repositories/habitEntryRepository';
 
+const HOUSEHOLD_ID = 'household-batch';
 const USER_A = 'user-a-batch';
 const USER_B = 'user-b-batch';
 
@@ -33,6 +34,7 @@ describe('POST /api/entries/batch', () => {
     app = express();
     app.use(express.json());
     app.use((req, _res, next) => {
+      (req as any).householdId = HOUSEHOLD_ID;
       (req as any).userId = USER_A;
       next();
     });
@@ -45,15 +47,13 @@ describe('POST /api/entries/batch', () => {
 
   beforeEach(async () => {
     const db = await getTestDb();
-    await db.collection('habitEntries').deleteMany({ userId: USER_A });
-    await db.collection('habitEntries').deleteMany({ userId: USER_B });
-    await db.collection('habits').deleteMany({ userId: USER_A });
-    await db.collection('habits').deleteMany({ userId: USER_B });
-    await db.collection('categories').deleteMany({ userId: USER_A });
-    await db.collection('categories').deleteMany({ userId: USER_B });
+    await db.collection('habitEntries').deleteMany({ householdId: HOUSEHOLD_ID });
+    await db.collection('habits').deleteMany({ householdId: HOUSEHOLD_ID, userId: USER_A });
+    await db.collection('categories').deleteMany({ householdId: HOUSEHOLD_ID, userId: USER_A });
 
     const category = await createCategory(
       { name: 'Batch Test Category', color: '#000000', order: 0 },
+      HOUSEHOLD_ID,
       USER_A
     );
 
@@ -64,6 +64,7 @@ describe('POST /api/entries/batch', () => {
         goal: { type: 'daily', target: 1, unit: 'times', frequency: 'daily' },
         order: 0,
       },
+      HOUSEHOLD_ID,
       USER_A
     );
     habitId1 = habit1.id;
@@ -75,6 +76,7 @@ describe('POST /api/entries/batch', () => {
         goal: { type: 'daily', target: 1, unit: 'times', frequency: 'daily' },
         order: 1,
       },
+      HOUSEHOLD_ID,
       USER_A
     );
     habitId2 = habit2.id;
@@ -100,8 +102,8 @@ describe('POST /api/entries/batch', () => {
     const ids = res.body.results.map((r: { id: string }) => r.id);
     expect(new Set(ids).size).toBe(2);
 
-    const entries1 = await getHabitEntriesForDay(habitId1, dayKey, USER_A);
-    const entries2 = await getHabitEntriesForDay(habitId2, dayKey, USER_A);
+    const entries1 = await getHabitEntriesForDay(habitId1, dayKey, HOUSEHOLD_ID, USER_A);
+    const entries2 = await getHabitEntriesForDay(habitId2, dayKey, HOUSEHOLD_ID, USER_A);
     expect(entries1).toHaveLength(1);
     expect(entries2).toHaveLength(1);
     expect(entries1[0].source).toBe('routine');
@@ -138,8 +140,8 @@ describe('POST /api/entries/batch', () => {
     expect(res2.body.created).toBe(0);
     expect(res2.body.updated).toBe(2);
 
-    const entries1 = await getHabitEntriesForDay(habitId1, dayKey, USER_A);
-    const entries2 = await getHabitEntriesForDay(habitId2, dayKey, USER_A);
+    const entries1 = await getHabitEntriesForDay(habitId1, dayKey, HOUSEHOLD_ID, USER_A);
+    const entries2 = await getHabitEntriesForDay(habitId2, dayKey, HOUSEHOLD_ID, USER_A);
     expect(entries1).toHaveLength(1);
     expect(entries2).toHaveLength(1);
   });
@@ -148,6 +150,7 @@ describe('POST /api/entries/batch', () => {
     const appB = express();
     appB.use(express.json());
     appB.use((req, _res, next) => {
+      (req as any).householdId = HOUSEHOLD_ID;
       (req as any).userId = USER_B;
       next();
     });
@@ -166,7 +169,7 @@ describe('POST /api/entries/batch', () => {
     expect(res.status).toBe(404);
     expect(res.body.error).toMatch(/Habit not found/i);
 
-    const entriesA = await getHabitEntriesForDay(habitId1, dayKey, USER_A);
+    const entriesA = await getHabitEntriesForDay(habitId1, dayKey, HOUSEHOLD_ID, USER_A);
     expect(entriesA).toHaveLength(0);
   });
 });
