@@ -129,7 +129,7 @@ export async function getProgressOverview(req: Request, res: Response): Promise<
 
     // Fetch goals with progress (reuses efficient batch computation via truthQuery)
     const { computeGoalsWithProgressV2 } = await import('../utils/goalProgressUtilsV2');
-    const goalsWithProgress = await computeGoalsWithProgressV2(userId, requestedTimeZone);
+    const goalsWithProgress = await computeGoalsWithProgressV2(householdId, userId, requestedTimeZone);
 
     // Return combined response
     res.status(200).json({

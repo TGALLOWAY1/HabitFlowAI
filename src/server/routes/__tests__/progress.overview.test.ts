@@ -70,6 +70,18 @@ function entry(habitId: string, dayKey: string, value = 1): HabitEntry {
   };
 }
 
+const TEST_HOUSEHOLD_ID = 'test-household';
+const TEST_USER_ID = 'test-user';
+
+function createReq(overrides: Partial<Request & { householdId: string; userId: string }> = {}): Request {
+  return {
+    householdId: TEST_HOUSEHOLD_ID,
+    userId: TEST_USER_ID,
+    query: {},
+    ...overrides,
+  } as unknown as Request;
+}
+
 describe('getProgressOverview', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -91,7 +103,7 @@ describe('getProgressOverview', () => {
       entry(habit.id, '2026-02-25', 1),
     ]);
 
-    const req = { userId: 'test-user' } as unknown as Request;
+    const req = createReq();
     const res = createRes();
 
     await getProgressOverview(req, res);
@@ -130,7 +142,7 @@ describe('getProgressOverview', () => {
       entry(habit.id, '2026-02-17'),
     ]);
 
-    const req = { userId: 'test-user' } as unknown as Request;
+    const req = createReq();
     const res = createRes();
 
     await getProgressOverview(req, res);
@@ -158,7 +170,7 @@ describe('getProgressOverview', () => {
     vi.mocked(getHabitsByUser).mockResolvedValue([habit]);
     vi.mocked(getHabitEntriesByUser).mockResolvedValue([]);
 
-    const req = { userId: 'test-user', query: {} } as unknown as Request;
+    const req = createReq({ query: {} });
     const res = createRes();
 
     await getProgressOverview(req, res);
@@ -166,5 +178,38 @@ describe('getProgressOverview', () => {
     expect(res.status).toHaveBeenCalledWith(200);
     const body = vi.mocked(res.json).mock.calls[0][0];
     expect(body.todayDate).toBe('2026-02-25');
+  });
+
+  it('returns goalsWithProgress when goals exist (dashboard Goals at a glance)', async () => {
+    vi.setSystemTime(new Date('2026-02-26T12:00:00.000Z'));
+    const habit = dailyHabit('habit-daily');
+    vi.mocked(getHabitsByUser).mockResolvedValue([habit]);
+    vi.mocked(getHabitEntriesByUser).mockResolvedValue([]);
+    const mockGoalWithProgress = {
+      goal: {
+        id: 'goal-1',
+        title: 'Test Goal',
+        completedAt: null,
+        householdId: TEST_HOUSEHOLD_ID,
+        userId: TEST_USER_ID,
+        type: 'frequency',
+        linkedHabitIds: [habit.id],
+        createdAt: '2026-01-01T00:00:00.000Z',
+        updatedAt: '2026-01-01T00:00:00.000Z',
+      },
+      progress: { current: 0, target: 7, unit: 'days', percent: 0 },
+    };
+    vi.mocked(computeGoalsWithProgressV2).mockResolvedValue([mockGoalWithProgress]);
+
+    const req = createReq();
+    const res = createRes();
+
+    await getProgressOverview(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(200);
+    const body = vi.mocked(res.json).mock.calls[0][0];
+    expect(body.goalsWithProgress).toHaveLength(1);
+    expect(body.goalsWithProgress[0].goal.id).toBe('goal-1');
+    expect(computeGoalsWithProgressV2).toHaveBeenCalledWith(TEST_HOUSEHOLD_ID, TEST_USER_ID, expect.any(String));
   });
 });
