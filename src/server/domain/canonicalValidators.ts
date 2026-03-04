@@ -9,7 +9,7 @@
  * - No stored completion flags
  */
 
-import { assertDayKey, type DayKey } from '../../domain/time/dayKey';
+import { assertDayKey } from '../../domain/time/dayKey';
 import type { ValidationResult, HabitEntryPayload } from './canonicalTypes';
 
 /**
@@ -34,7 +34,12 @@ export function assertTimeZone(timeZone: string): ValidationResult {
         /^[A-Z]{3,}$/, // EST, PST, etc. (less common but valid)
     ];
 
-    const isValidFormat = validPatterns.some(pattern => pattern.test(timeZone));
+    if (!validPatterns.some(pattern => pattern.test(timeZone))) {
+        return {
+            valid: false,
+            error: `Invalid timezone format: "${timeZone}". Must be a valid IANA timezone identifier (e.g., "America/Los_Angeles", "UTC")`
+        };
+    }
 
     // Always try to create a date formatter with this timezone as a runtime check
     // This catches invalid timezones that pass format checks

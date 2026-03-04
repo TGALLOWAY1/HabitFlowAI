@@ -22,7 +22,7 @@ describe('HabitEntry Repository Guardrails', () => {
     };
 
     await expect(
-      createHabitEntry(entry, 'test-user')
+      createHabitEntry(entry, 'test-household', 'test-user')
     ).rejects.toThrow('Cannot persist completion/progress fields');
   });
 
@@ -37,7 +37,7 @@ describe('HabitEntry Repository Guardrails', () => {
     };
 
     await expect(
-      createHabitEntry(entry, 'test-user')
+      createHabitEntry(entry, 'test-household', 'test-user')
     ).rejects.toThrow('Cannot persist completion/progress fields');
   });
 
@@ -52,7 +52,7 @@ describe('HabitEntry Repository Guardrails', () => {
     };
 
     await expect(
-      createHabitEntry(entry, 'test-user')
+      createHabitEntry(entry, 'test-household', 'test-user')
     ).rejects.toThrow('Cannot persist completion/progress fields');
   });
 
@@ -67,7 +67,7 @@ describe('HabitEntry Repository Guardrails', () => {
     };
 
     await expect(
-      createHabitEntry(entry, 'test-user')
+      createHabitEntry(entry, 'test-household', 'test-user')
     ).rejects.toThrow('Cannot persist completion/progress fields');
   });
 });

@@ -9,8 +9,6 @@ import { format } from 'date-fns';
 import { TrackerGrid } from './TrackerGrid';
 import type { Habit, DayLog } from '../types';
 
-const todayKey = () => format(new Date(), 'yyyy-MM-dd');
-
 vi.mock('../store/HabitContext', () => ({ useHabitStore: vi.fn() }));
 vi.mock('../store/RoutineContext', () => ({ useRoutineStore: vi.fn() }));
 vi.mock('../lib/useProgressOverview', () => ({ useProgressOverview: vi.fn() }));
@@ -75,6 +73,8 @@ describe('TrackerGrid clear entry (explicit menu)', () => {
                 onAddHabit={() => {}}
                 onEditHabit={() => {}}
                 onViewHistory={() => {}}
+                onToggle={async () => {}}
+                onUpdateValue={async () => {}}
             />
         );
 
@@ -100,6 +100,8 @@ describe('TrackerGrid clear entry (explicit menu)', () => {
                 onAddHabit={() => {}}
                 onEditHabit={() => {}}
                 onViewHistory={() => {}}
+                onToggle={async () => {}}
+                onUpdateValue={async () => {}}
             />
         );
 
@@ -137,6 +139,8 @@ describe('TrackerGrid clear entry (explicit menu)', () => {
                 onAddHabit={() => {}}
                 onEditHabit={() => {}}
                 onViewHistory={() => {}}
+                onToggle={async () => {}}
+                onUpdateValue={async () => {}}
             />
         );
 
@@ -167,6 +171,8 @@ describe('TrackerGrid clear entry (explicit menu)', () => {
                 onAddHabit={() => {}}
                 onEditHabit={() => {}}
                 onViewHistory={() => {}}
+                onToggle={async () => {}}
+                onUpdateValue={async () => {}}
             />
         );
 

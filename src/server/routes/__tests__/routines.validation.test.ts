@@ -13,6 +13,7 @@ import { createRoutine } from '../../repositories/routineRepository';
 import { createHabit } from '../../repositories/habitRepository';
 import { createCategory } from '../../repositories/categoryRepository';
 
+const TEST_HOUSEHOLD_ID = 'test-household-routines-validation';
 const TEST_USER_ID = 'test-user-routines-validation';
 
 let app: Express;
@@ -22,7 +23,8 @@ beforeAll(async () => {
   await setupTestMongo();
   app = express();
   app.use(express.json());
-  app.use((req, res, next) => {
+  app.use((req, _res, next) => {
+    (req as any).householdId = TEST_HOUSEHOLD_ID;
     (req as any).userId = TEST_USER_ID;
     next();
   });
@@ -42,26 +44,23 @@ beforeEach(async () => {
   await db.collection('routineLogs').deleteMany({ userId: TEST_USER_ID });
 
   // Create test routine
-  const category = await createCategory({
-    name: 'Test Category',
-    color: '#000000',
-  }, TEST_USER_ID);
-
-  const habit = await createHabit({
-    name: 'Test Habit',
-    categoryId: category.id,
-    type: 'boolean',
-  }, TEST_USER_ID);
-
-  const routine = await createRoutine(
-    TEST_USER_ID,
-    {
-      name: 'Test Routine',
-      categoryId: category.id,
-      steps: [], // Empty steps array
-      linkedHabitIds: [habit.id],
-    }
+  const category = await createCategory(
+    { name: 'Test Category', color: '#000000' },
+    TEST_HOUSEHOLD_ID,
+    TEST_USER_ID
   );
+
+  const habit = await createHabit(
+    { name: 'Test Habit', categoryId: category.id, goal: { type: 'boolean', frequency: 'daily' } },
+    TEST_HOUSEHOLD_ID,
+    TEST_USER_ID
+  );
+
+  const routine = await createRoutine(TEST_HOUSEHOLD_ID, TEST_USER_ID, {
+    title: 'Test Routine',
+    linkedHabitIds: [habit.id],
+    steps: [],
+  });
 
   testRoutineId = routine.id;
 });

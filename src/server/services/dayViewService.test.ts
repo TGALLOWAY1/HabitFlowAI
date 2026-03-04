@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { computeDayView } from './dayViewService';
-import type { Habit, HabitEntry } from '../../models/persistenceTypes';
+import type { Habit } from '../../models/persistenceTypes';
 import type { EntryView } from './truthQuery';
 
 // Mock repositories and services

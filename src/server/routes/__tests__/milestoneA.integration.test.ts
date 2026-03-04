@@ -30,13 +30,10 @@ vi.mock('../../services/truthQuery', () => ({
   getEntryViewsForHabit: vi.fn(),
 }));
 
-import { getEntryViewsForHabit as getEntryViewsForHabitMock } from '../../services/truthQuery';
-
-import { getHabitEntriesByHabit } from '../../repositories/habitEntryRepository';
 import { getHabitsByUser } from '../../repositories/habitRepository';
 import { getGoalById } from '../../repositories/goalRepository';
 import { getEntryViewsForHabits, getEntryViewsForHabit } from '../../services/truthQuery';
-import type { HabitEntry, Habit, Goal } from '../../../models/persistenceTypes';
+import type { Habit, Goal } from '../../../models/persistenceTypes';
 
 describe('Milestone A Integration Tests', () => {
   const userId = 'test-user';

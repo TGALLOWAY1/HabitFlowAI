@@ -15,6 +15,7 @@ import { setupTestMongo, teardownTestMongo, getTestDb } from '../../../test/mong
 import { createHabit } from '../../repositories/habitRepository';
 import { createCategory } from '../../repositories/categoryRepository';
 
+const TEST_HOUSEHOLD_ID = 'test-household-persona';
 const TEST_USER_ID = 'test-user-persona-regression';
 
 let app: Express;
@@ -26,6 +27,7 @@ beforeAll(async () => {
   app = express();
   app.use(express.json());
   app.use((req, _res, next) => {
+    (req as any).householdId = TEST_HOUSEHOLD_ID;
     (req as any).userId = TEST_USER_ID;
     next();
   });
@@ -45,8 +47,8 @@ beforeEach(async () => {
   await db.collection('habits').deleteMany({ userId: TEST_USER_ID });
   await db.collection('habitEntries').deleteMany({ userId: TEST_USER_ID });
 
-  const category = await createCategory({ name: 'Test Category', color: '#000000' }, TEST_USER_ID);
-  const habit = await createHabit({ name: 'Test Habit', categoryId: category.id, type: 'boolean' } as any, TEST_USER_ID);
+  const category = await createCategory({ name: 'Test Category', color: '#000000' }, TEST_HOUSEHOLD_ID, TEST_USER_ID);
+  const habit = await createHabit({ name: 'Test Habit', categoryId: category.id, goal: { type: 'boolean', frequency: 'daily' } }, TEST_HOUSEHOLD_ID, TEST_USER_ID);
   testHabitId = habit.id;
 });
 

@@ -9,6 +9,7 @@ import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import { setupTestMongo, teardownTestMongo, getTestDb } from '../../../test/mongoTestHelper';
 import { getDashboardPrefs, updateDashboardPrefs } from '../dashboardPrefsRepository';
 
+const TEST_HOUSEHOLD_ID = 'test-household-dashboard';
 const TEST_USER_ID = 'test-user-dashboard-prefs';
 
 describe('DashboardPrefsRepository', () => {
@@ -39,7 +40,7 @@ describe('DashboardPrefsRepository', () => {
       { id: 'r2', userId: TEST_USER_ID, title: 'R2', linkedHabitIds: [], steps: [], createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
     ]);
 
-    const saved = await updateDashboardPrefs(TEST_USER_ID, { pinnedRoutineIds: ['r1', 'r2', 'missing'] });
+    const saved = await updateDashboardPrefs(TEST_HOUSEHOLD_ID, TEST_USER_ID, { pinnedRoutineIds: ['r1', 'r2', 'missing'] });
     expect(saved.pinnedRoutineIds).toEqual(['r1', 'r2']); // missing filtered
 
     const roundTrip = await getDashboardPrefs(TEST_USER_ID);
@@ -47,7 +48,7 @@ describe('DashboardPrefsRepository', () => {
   });
 
   it('should save and retrieve checkinExtraMetricKeys (filtering invalid keys and notes)', async () => {
-    const saved = await updateDashboardPrefs(TEST_USER_ID, {
+    const saved = await updateDashboardPrefs(TEST_HOUSEHOLD_ID, TEST_USER_ID, {
       checkinExtraMetricKeys: ['lowMood', 'calm', 'notes', 'not_a_key', 'stress'] as any,
     });
     expect(saved.checkinExtraMetricKeys).toEqual(['lowMood', 'calm', 'stress']);

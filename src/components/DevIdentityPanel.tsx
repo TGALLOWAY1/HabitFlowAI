@@ -2,7 +2,7 @@
  * Dev-only panel for inspecting and switching the active userId/householdId.
  * Renders nothing in production builds. For full identity UI use Settings.
  */
-import React, { useState, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import {
   getActiveRealUserId,
   setActiveRealUserId,

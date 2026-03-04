@@ -12,7 +12,7 @@ import { getEntryViewsForHabits } from './truthQuery';
 import type { Habit } from '../../models/persistenceTypes';
 import type { EntryView } from './truthQuery';
 import type { DayKey } from '../../domain/time/dayKey';
-import { startOfWeek, endOfWeek, parseISO, format, isWithinInterval } from 'date-fns';
+import { startOfWeek, endOfWeek, parseISO, format } from 'date-fns';
 
 /**
  * Day View Habit Status
@@ -138,7 +138,6 @@ function deriveWeeklyProgress(
   // Determine weekly type
   const isQuantity = habit.goal.type === 'number';
   const isFrequency = !isQuantity && target > 1;
-  const isBinary = !isQuantity && target === 1;
 
   let currentValue: number;
   let isComplete: boolean;

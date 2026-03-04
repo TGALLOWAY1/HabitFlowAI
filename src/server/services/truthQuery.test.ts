@@ -28,6 +28,7 @@ describe('truthQuery', () => {
       const entry: HabitEntry = {
         id: 'entry-1',
         habitId,
+        dayKey,
         timestamp: '2025-01-15T10:00:00.000Z',
         date: dayKey,
         dateKey: dayKey,
@@ -63,6 +64,7 @@ describe('truthQuery', () => {
         {
           id: 'entry-3',
           habitId,
+          dayKey: dayKey3,
           timestamp: '2025-01-15T15:00:00.000Z',
           date: dayKey3,
           dateKey: dayKey3,
@@ -74,6 +76,7 @@ describe('truthQuery', () => {
         {
           id: 'entry-1',
           habitId,
+          dayKey: dayKey1,
           timestamp: '2025-01-15T10:00:00.000Z',
           date: dayKey1,
           dateKey: dayKey1,
@@ -85,6 +88,7 @@ describe('truthQuery', () => {
         {
           id: 'entry-2',
           habitId,
+          dayKey: dayKey2,
           timestamp: '2025-01-16T10:00:00.000Z',
           date: dayKey2,
           dateKey: dayKey2,
@@ -115,6 +119,7 @@ describe('truthQuery', () => {
         {
           id: 'entry-1',
           habitId,
+          dayKey: '2025-01-10',
           timestamp: '2025-01-10T10:00:00.000Z',
           date: '2025-01-10',
           dateKey: '2025-01-10',
@@ -126,6 +131,7 @@ describe('truthQuery', () => {
         {
           id: 'entry-2',
           habitId,
+          dayKey: '2025-01-15',
           timestamp: '2025-01-15T10:00:00.000Z',
           date: '2025-01-15',
           dateKey: '2025-01-15',
@@ -137,6 +143,7 @@ describe('truthQuery', () => {
         {
           id: 'entry-3',
           habitId,
+          dayKey: '2025-01-20',
           timestamp: '2025-01-20T10:00:00.000Z',
           date: '2025-01-20',
           dateKey: '2025-01-20',
@@ -170,6 +177,7 @@ describe('truthQuery', () => {
         {
           id: 'entry-1',
           habitId,
+          dayKey,
           timestamp: '2025-01-15T10:00:00.000Z',
           date: dayKey,
           dateKey: dayKey,
@@ -181,6 +189,7 @@ describe('truthQuery', () => {
         {
           id: 'entry-2',
           habitId: habitId2,
+          dayKey,
           timestamp: '2025-01-15T11:00:00.000Z',
           date: dayKey,
           dateKey: dayKey,

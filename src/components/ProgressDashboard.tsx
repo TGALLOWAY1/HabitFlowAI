@@ -125,7 +125,7 @@ export const ProgressDashboard: React.FC<ProgressDashboardProps> = ({ onCreateGo
     }, [personaQueryParam]);
 
     // Track persona changes to trigger re-render
-    const [personaChangeKey, setPersonaChangeKey] = useState(0);
+    const [, setPersonaChangeKey] = useState(0);
     
     // Listen for persona changes (from PersonaSwitcher, User menu, or query param)
     useEffect(() => {

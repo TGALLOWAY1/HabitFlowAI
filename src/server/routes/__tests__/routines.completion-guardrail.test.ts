@@ -60,7 +60,7 @@ describe('Routine completion does not auto-log habits', () => {
     await db.collection('categories').deleteMany({ householdId: TEST_HOUSEHOLD_ID, userId: TEST_USER_ID });
 
     const category = await createCategory(
-      { name: 'Guardrail Category', color: '#000000', order: 0 },
+      { name: 'Guardrail Category', color: '#000000' },
       TEST_HOUSEHOLD_ID,
       TEST_USER_ID
     );
@@ -69,8 +69,7 @@ describe('Routine completion does not auto-log habits', () => {
       {
         name: 'Guardrail Habit 1',
         categoryId: category.id,
-        goal: { type: 'daily', target: 1, unit: 'times', frequency: 'daily' },
-        order: 0,
+        goal: { type: 'boolean', target: 1, frequency: 'daily' },
       },
       TEST_HOUSEHOLD_ID,
       TEST_USER_ID
@@ -81,8 +80,7 @@ describe('Routine completion does not auto-log habits', () => {
       {
         name: 'Guardrail Habit 2',
         categoryId: category.id,
-        goal: { type: 'daily', target: 1, unit: 'times', frequency: 'daily' },
-        order: 1,
+        goal: { type: 'boolean', target: 1, frequency: 'daily' },
       },
       TEST_HOUSEHOLD_ID,
       TEST_USER_ID

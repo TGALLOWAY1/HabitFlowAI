@@ -57,8 +57,9 @@ export const HabitHistoryModal: React.FC<HabitHistoryModalProps> = ({ habitId, o
     const handleStartEdit = (entry: HabitEntry) => {
         // Guardrail: Past edits
         const today = new Date().toISOString().split('T')[0];
-        if (entry.date < today) {
-            if (!confirm(`You are editing a past entry (${entry.date}). This will change historical data. Continue?`)) {
+        const entryDate = entry.dayKey ?? entry.date;
+        if (entryDate && entryDate < today) {
+            if (!confirm(`You are editing a past entry (${entryDate}). This will change historical data. Continue?`)) {
                 return;
             }
         }

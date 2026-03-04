@@ -39,7 +39,7 @@ describe('Routine Submit Route', () => {
     app.post('/api/routines/:id/submit', submitRoutineRoute);
 
     const category = await createCategory(
-      { name: 'Test Category', color: '#000000', order: 0 },
+      { name: 'Test Category', color: '#000000' },
       TEST_HOUSEHOLD_ID,
       TEST_USER_ID
     );
@@ -48,8 +48,7 @@ describe('Routine Submit Route', () => {
       {
         name: 'Test Habit 1',
         categoryId: category.id,
-        goal: { type: 'daily', target: 1, unit: 'times', frequency: 'daily' },
-        order: 0,
+        goal: { type: 'boolean', target: 1, frequency: 'daily' },
       },
       TEST_HOUSEHOLD_ID,
       TEST_USER_ID
@@ -59,25 +58,17 @@ describe('Routine Submit Route', () => {
       {
         name: 'Test Habit 2',
         categoryId: category.id,
-        goal: { type: 'daily', target: 1, unit: 'times', frequency: 'daily' },
-        order: 1,
+        goal: { type: 'boolean', target: 1, frequency: 'daily' },
       },
       TEST_HOUSEHOLD_ID,
       TEST_USER_ID
     )).id;
 
-    const routine = await createRoutine(
-      TEST_HOUSEHOLD_ID,
-      TEST_USER_ID,
-      {
-        name: 'Test Routine',
-        description: 'Test routine description',
-        linkedHabitIds: [habitId1, habitId2],
-        steps: [
-          { id: 'step-1', title: 'Step 1', instruction: 'Test step', order: 0 },
-        ],
-      }
-    );
+    const routine = await createRoutine(TEST_HOUSEHOLD_ID, TEST_USER_ID, {
+      title: 'Test Routine',
+      linkedHabitIds: [habitId1, habitId2],
+      steps: [{ id: 'step-1', title: 'Step 1', instruction: 'Test step' }],
+    });
     routineId = routine.id;
   });
 
@@ -160,7 +151,7 @@ describe('Routine Submit Route', () => {
 
       expect(allEntries.length).toBeGreaterThan(0);
       const createdEntry = allEntries[0];
-      expect(createdEntry.date).toBe(testDate);
+      expect(createdEntry.dayKey ?? createdEntry.date).toBe(testDate);
       expect(createdEntry.source).toBe('routine');
       expect(createdEntry.value).toBe(1);
       expect(createdEntry.routineId).toBeTruthy();
@@ -199,7 +190,7 @@ describe('Routine Submit Route', () => {
       // Verify entry was created with dateOverride, not submittedAt date
       const entries = await getHabitEntriesForDay(habitId1, dateOverride, TEST_HOUSEHOLD_ID, TEST_USER_ID);
       expect(entries.length).toBeGreaterThan(0);
-      expect(entries[0].date).toBe(dateOverride);
+      expect(entries[0].dayKey ?? entries[0].date).toBe(dateOverride);
     });
 
     it('should derive date from submittedAt when dateOverride not provided', async () => {
@@ -238,7 +229,7 @@ describe('Routine Submit Route', () => {
       const createdEntry = entries[0];
       expect(createdEntry.source).toBe('routine');
       // The date should be derived from submittedAt
-      const entryDate = createdEntry.date;
+      const entryDate = createdEntry.dayKey ?? createdEntry.date;
       expect(entryDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
       // Verify it's a reasonable date (within a day of expected due to timezone)
       const expectedDateObj = new Date(testDate + 'T12:00:00Z');

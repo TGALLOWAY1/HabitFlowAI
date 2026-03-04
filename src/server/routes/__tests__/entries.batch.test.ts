@@ -52,7 +52,7 @@ describe('POST /api/entries/batch', () => {
     await db.collection('categories').deleteMany({ householdId: HOUSEHOLD_ID, userId: USER_A });
 
     const category = await createCategory(
-      { name: 'Batch Test Category', color: '#000000', order: 0 },
+      { name: 'Batch Test Category', color: '#000000' },
       HOUSEHOLD_ID,
       USER_A
     );
@@ -61,8 +61,7 @@ describe('POST /api/entries/batch', () => {
       {
         name: 'Batch Habit 1',
         categoryId: category.id,
-        goal: { type: 'daily', target: 1, unit: 'times', frequency: 'daily' },
-        order: 0,
+        goal: { type: 'boolean', target: 1, frequency: 'daily' },
       },
       HOUSEHOLD_ID,
       USER_A
@@ -73,8 +72,7 @@ describe('POST /api/entries/batch', () => {
       {
         name: 'Batch Habit 2',
         categoryId: category.id,
-        goal: { type: 'daily', target: 1, unit: 'times', frequency: 'daily' },
-        order: 1,
+        goal: { type: 'boolean', target: 1, frequency: 'daily' },
       },
       HOUSEHOLD_ID,
       USER_A

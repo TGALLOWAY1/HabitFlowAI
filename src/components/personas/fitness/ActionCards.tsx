@@ -175,7 +175,7 @@ export function getLastWeekSameWeekday(today: string): string {
  */
 export function getRoutinesUsedOnDate(routineLogs: Record<string, RoutineLog>, date: string): Set<string> {
   const routineIds = new Set<string>();
-  for (const [compositeKey, log] of Object.entries(routineLogs)) {
+  for (const [_compositeKey, log] of Object.entries(routineLogs)) {
     if (log.date === date) {
       routineIds.add(log.routineId);
     }

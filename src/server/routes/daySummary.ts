@@ -1,6 +1,6 @@
 import type { Request, Response } from 'express';
 import type { DayLog, HabitEntry } from '../../models/persistenceTypes';
-import { validateDayKey, assertTimeZone } from '../domain/canonicalValidators';
+import { validateDayKey } from '../domain/canonicalValidators';
 import { getHabitsByUser } from '../repositories/habitRepository';
 import { getHabitEntriesByUser } from '../repositories/habitEntryRepository';
 import { resolveTimeZone, getNowDayKey, getDayKeyForDate, getCanonicalDayKeyFromEntry } from '../utils/dayKey';

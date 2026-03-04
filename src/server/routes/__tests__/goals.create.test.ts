@@ -11,6 +11,7 @@ import { setupTestMongo, teardownTestMongo, getTestDb } from '../../../test/mong
 import { createGoalRoute, getGoals } from '../goals';
 import { getGoalsByUser } from '../../repositories/goalRepository';
 
+const TEST_HOUSEHOLD_ID = 'test-household-goals';
 const TEST_USER_ID = 'test-user-123';
 
 describe('Goal Create Routes', () => {
@@ -22,8 +23,9 @@ describe('Goal Create Routes', () => {
         app = express();
         app.use(express.json());
 
-        // Add userId to request (simulating auth middleware)
+        // Add identity to request (simulating identity middleware)
         app.use((req, _res, next) => {
+            (req as any).householdId = TEST_HOUSEHOLD_ID;
             (req as any).userId = TEST_USER_ID;
             next();
         });
@@ -64,7 +66,7 @@ describe('Goal Create Routes', () => {
             expect(response.body.goal).toHaveProperty('id');
 
             // Verify persistence
-            const goals = await getGoalsByUser(TEST_USER_ID);
+            const goals = await getGoalsByUser(TEST_HOUSEHOLD_ID, TEST_USER_ID);
             expect(goals).toHaveLength(1);
             expect(goals[0].title).toBe('Run Marathon');
             expect(goals[0].type).toBe('onetime');
@@ -86,7 +88,7 @@ describe('Goal Create Routes', () => {
             expect(response.body.goal.type).toBe('onetime');
 
             // Verify persistence
-            const goals = await getGoalsByUser(TEST_USER_ID);
+            const goals = await getGoalsByUser(TEST_HOUSEHOLD_ID, TEST_USER_ID);
             expect(goals).toHaveLength(1);
             expect(goals[0].title).toBe('Calculus Final');
         });
@@ -109,7 +111,7 @@ describe('Goal Create Routes', () => {
             expect(response.body.goal.deadline === null || response.body.goal.deadline === undefined).toBe(true);
 
             // Verify persistence
-            const goals = await getGoalsByUser(TEST_USER_ID);
+            const goals = await getGoalsByUser(TEST_HOUSEHOLD_ID, TEST_USER_ID);
             expect(goals).toHaveLength(1);
             expect(goals[0].title).toBe('Flexible Event Goal');
             // Deadline should be null or undefined (database may store as null)

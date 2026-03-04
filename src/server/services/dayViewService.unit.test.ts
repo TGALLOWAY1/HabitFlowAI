@@ -6,7 +6,8 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import type { Habit, EntryView } from '../../models/persistenceTypes';
+import type { Habit } from '../../models/persistenceTypes';
+import type { EntryView } from './truthQuery';
 import type { DayKey } from '../../domain/time/dayKey';
 
 // Import the pure functions - we'll need to export them from dayViewService

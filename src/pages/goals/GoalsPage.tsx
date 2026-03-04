@@ -67,14 +67,14 @@ const Stack: React.FC<StackProps> = ({
             {isExpanded && (
                 <div className="px-3 sm:px-4 lg:px-6 py-4 border-t border-white/5 overflow-x-hidden">
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-                        {stack.goals.map((goal: { id: string }) => {
+                        {(stack.goals as Array<{ id: string }>).map((goal) => {
                             const goalWithProgress = getGoalWithProgress(goal.id);
                             if (!goalWithProgress) return null;
 
                             return (
                                 <GoalGridCard
                                     key={goal.id}
-                                    goalWithProgress={goalWithProgress}
+                                    goalWithProgress={goalWithProgress as import('../../types').GoalWithProgress}
                                     onViewDetails={(goalId) => {
                                         if (onViewGoal) {
                                             onViewGoal(goalId);

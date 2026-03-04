@@ -32,10 +32,10 @@ export async function getIntegrityReport(req: Request, res: Response): Promise<v
     const [habits, goals, entries] = await Promise.all([
       db.collection('habits')
         .find({ userId }, { projection: { _id: 0, id: 1 } })
-        .toArray() as Promise<HabitDoc[]>,
+        .toArray() as unknown as Promise<HabitDoc[]>,
       db.collection('goals')
         .find({ userId }, { projection: { _id: 0, id: 1, title: 1, linkedHabitIds: 1 } })
-        .toArray() as Promise<GoalDoc[]>,
+        .toArray() as unknown as Promise<GoalDoc[]>,
       db.collection('habitEntries')
         .find({ userId, deletedAt: { $exists: false } }, {
           projection: {
@@ -50,7 +50,7 @@ export async function getIntegrityReport(req: Request, res: Response): Promise<v
             choiceChildHabitId: 1,
           }
         })
-        .toArray() as Promise<HabitEntryDoc[]>,
+        .toArray() as unknown as Promise<HabitEntryDoc[]>,
     ]);
 
     const habitIdSet = new Set(habits.map(habit => habit.id));

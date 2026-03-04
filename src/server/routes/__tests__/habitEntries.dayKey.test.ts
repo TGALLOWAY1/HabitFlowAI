@@ -27,7 +27,7 @@ beforeAll(async () => {
   await setupTestMongo();
   app = express();
   app.use(express.json());
-  app.use((req, res, next) => {
+  app.use((req, _res, next) => {
     (req as any).householdId = TEST_HOUSEHOLD_ID;
     (req as any).userId = TEST_USER_ID;
     next();
@@ -53,7 +53,7 @@ beforeEach(async () => {
   );
 
   const habit = await createHabit(
-    { name: 'Test Habit', categoryId: category.id, type: 'boolean' },
+    { name: 'Test Habit', categoryId: category.id, goal: { type: 'boolean', frequency: 'daily' } },
     TEST_HOUSEHOLD_ID,
     TEST_USER_ID
   );
@@ -219,8 +219,6 @@ describe('POST /api/entries - DayKey Normalization', () => {
 
 describe('PATCH /api/entries/:id - DayKey Normalization', () => {
   let entryId: string;
-  let originalDayKey: string;
-
   beforeEach(async () => {
     // Create an entry first
     const createResponse = await request(app)
@@ -234,7 +232,6 @@ describe('PATCH /api/entries/:id - DayKey Normalization', () => {
 
     expect(createResponse.status).toBe(201);
     entryId = createResponse.body.entry.id;
-    originalDayKey = createResponse.body.entry.dayKey;
   });
 
   it('should update entry dayKey when dayKey is provided', async () => {

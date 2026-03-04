@@ -232,7 +232,7 @@ describe('Entries-only invariants across derived reads', () => {
   it('habitEntries unique index config when present', async () => {
     const db = await getTestDb();
     const indexes = await db.collection('habitEntries').indexes();
-    const uniqueIndex = indexes.find((i: { name: string }) => i.name === HABIT_ENTRIES_UNIQUE_INDEX_NAME);
+    const uniqueIndex = indexes.find((i: { name?: string }) => i.name === HABIT_ENTRIES_UNIQUE_INDEX_NAME);
     if (uniqueIndex) {
       expect(uniqueIndex.unique).toBe(true);
       expect(uniqueIndex.key).toEqual({ householdId: 1, userId: 1, habitId: 1, dayKey: 1 });

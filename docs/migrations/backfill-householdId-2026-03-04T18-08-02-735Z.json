@@ -1,0 +1,113 @@
+{
+  "timestamp": "2026-03-04T18:07:18.507Z",
+  "dryRun": false,
+  "dbName": "HabitFlowAI",
+  "host": "habitflowai.dgdrdui.mongodb.net",
+  "defaultHouseholdId": "default-household",
+  "collections": {
+    "habits": {
+      "collection": "habits",
+      "docsMissingHouseholdId": 233,
+      "docsToUpdate": 233,
+      "docsUpdated": 233,
+      "docsSkippedHasHouseholdId": 0,
+      "sampleIds": [
+        "ca2608bb-3d42-4c93-ab61-691467fd10ae",
+        "75b73837-d731-4a54-ab67-67a4392d9b9c",
+        "e18aa678-e94b-43cb-85b9-a8c22a8c8ebb",
+        "1b50623b-c521-4537-9deb-b66af73f0d5c",
+        "25692a9a-e338-4a15-897e-8822aaf3570c",
+        "b89d3b99-94e4-40dd-b7c3-e45906d136f0",
+        "02168fbc-451f-4c03-886b-3e588b63ae76",
+        "e4dd0b5b-ccbf-4bec-912b-1e7636edd4f2",
+        "1dc8a015-d7d0-4720-930a-5af8ebd392cd",
+        "89ad9c9d-d626-4e03-a73b-a458853fe89e"
+      ]
+    },
+    "categories": {
+      "collection": "categories",
+      "docsMissingHouseholdId": 28,
+      "docsToUpdate": 28,
+      "docsUpdated": 28,
+      "docsSkippedHasHouseholdId": 0,
+      "sampleIds": [
+        "34012431-c138-4aa3-a944-74612ed96420",
+        "2a20ec7c-b31d-4fce-bf34-a5d6be3bb0d4",
+        "af980f07-bead-4ecf-a789-0e0eb945de43",
+        "912acdfb-919c-4d98-8a9a-06bf147dde0c",
+        "2d78ad09-8c64-46f5-93ce-ca2f1dae2686",
+        "ddc8a96a-dba5-4e69-8e6f-7d530f9cb4d7",
+        "6dd79806-1583-4e22-a389-3c2beb1b14a7",
+        "5464b2d5-3dbb-40d9-8e1b-6a609b105f21",
+        "0787994f-6ec2-4c2a-8789-6be306bcc1e3",
+        "03ce0aff-96e8-409a-9ff0-7ee61532e341"
+      ]
+    },
+    "goals": {
+      "collection": "goals",
+      "docsMissingHouseholdId": 17,
+      "docsToUpdate": 17,
+      "docsUpdated": 17,
+      "docsSkippedHasHouseholdId": 0,
+      "sampleIds": [
+        "89dfe28e-7db9-41ea-af0a-3bc368f42518",
+        "c2188406-94b5-4bd2-b0f5-57da021cf40c",
+        "921b1715-b098-4138-842c-fa85157a4e49",
+        "b42b1118-1aa3-483e-9382-5ee2946b9838",
+        "e147b7b9-1edd-44b9-a0d1-ed30f5f2031a",
+        "908a7412-85f0-453d-aa03-ed999376272b",
+        "56ff6527-125c-4445-aa4f-cb1b1b7912ba",
+        "d2e69d12-1f08-4f05-83d7-0ff48a6d3272",
+        "e0ae00f1-cc0e-4946-9cda-5c8cf2a9d3b3",
+        "7907b722-a890-4239-8084-2ff950519757"
+      ]
+    },
+    "habitEntries": {
+      "collection": "habitEntries",
+      "docsMissingHouseholdId": 502,
+      "docsToUpdate": 502,
+      "docsUpdated": 502,
+      "docsSkippedHasHouseholdId": 0,
+      "sampleIds": [
+        "4d7bc7ec-65bb-41a9-a3f2-6d72f596e4ab",
+        "82cdb3e8-3b28-469a-947e-a0371f4769ca",
+        "200216bb-b7e4-436e-a3d9-520739895f90",
+        "98d497a8-3668-448f-b7ec-15f502559d4a",
+        "418bbf8b-879f-49b6-8560-00225cb8cc9f",
+        "b6031cd1-903a-416f-be6e-f392e28857f1",
+        "dc32c52d-56c6-4ceb-af9a-aa458a38ae0a",
+        "e59dcd45-17ca-45d8-986a-cfdffd1e4894",
+        "e6eeb7f1-4ad4-495b-a03e-3970506688cf",
+        "816caab5-ea96-46a2-ba2d-a1d22daab4cb"
+      ]
+    },
+    "routines": {
+      "collection": "routines",
+      "docsMissingHouseholdId": 15,
+      "docsToUpdate": 15,
+      "docsUpdated": 15,
+      "docsSkippedHasHouseholdId": 0,
+      "sampleIds": [
+        "1bcc852e-af74-4945-955c-8ab4d3251c34",
+        "fae5b050-65a8-4ce3-ad8e-c94fa70ac809",
+        "65b46e25-8010-4e2f-9e2a-fd880841229a",
+        "cebda3ca-4675-41c1-a221-005b9b1ebc72",
+        "468ab18e-c60e-49db-8e3f-fb8341783b01",
+        "demo_routine_breath_reset",
+        "demo_routine_gentle_walk",
+        "demo_routine_gratitude_pause",
+        "cef69513-50b0-461d-be18-cb610b584ce4",
+        "427733c3-906e-4435-9c3c-b2029500e10e"
+      ]
+    },
+    "habitPotentialEvidence": {
+      "collection": "habitPotentialEvidence",
+      "docsMissingHouseholdId": 0,
+      "docsToUpdate": 0,
+      "docsUpdated": 0,
+      "docsSkippedHasHouseholdId": 0,
+      "sampleIds": []
+    }
+  },
+  "totalUpdated": 795
+}
