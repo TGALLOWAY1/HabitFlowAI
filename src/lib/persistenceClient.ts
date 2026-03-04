@@ -12,6 +12,7 @@ import type { DashboardPrefs } from '../models/persistenceTypes';
 import type { GoalDetail, CompletedGoal, ProgressOverview, DashboardStreaksOverview } from '../types';
 
 import { API_BASE_URL } from './persistenceConfig';
+import { buildHabitEntryUpsertPayload } from './habitEntryPayload';
 import { invalidateGoalDataCache } from './goalDataCache';
 import { ACTIVE_USER_MODE_STORAGE_KEY, DEMO_USER_ID, type ActiveUserMode } from '../shared/demo';
 import { warnIfPersonaLeaksIntoHabitEntryRequest } from '../shared/invariants/personaInvariants';
@@ -1076,9 +1077,10 @@ export async function updateHabitEntry(id: string, patch: Partial<HabitEntry>): 
  * @param data - Entry data (value, optionKey, etc.)
  */
 export async function upsertHabitEntry(habitId: string, dateKey: string, data: any = {}): Promise<{ entry: HabitEntry, dayLog: DayLog | null }> {
+  const safe = buildHabitEntryUpsertPayload(typeof data === 'object' && data !== null ? data : {});
   const response = await apiRequest<{ entry: HabitEntry, dayLog: DayLog | null }>('/entries', {
     method: 'PUT',
-    body: JSON.stringify({ habitId, dateKey, ...data }),
+    body: JSON.stringify({ habitId, dateKey, ...safe }),
   });
   return response;
 }

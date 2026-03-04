@@ -1041,12 +1041,7 @@ export const TrackerGrid = ({
 
             if (habit.goal.type === 'boolean') {
                 if (isOptionCompleted) {
-                    await upsertHabitEntry(habit.bundleParentId, dateStr, {
-                        bundleOptionId: habit.associatedOptionId,
-                        bundleOptionLabel: habit.name,
-                        value: 0,
-                        completed: false
-                    });
+                    await deleteHabitEntryByKey(habit.bundleParentId, dateStr);
                 } else {
                     await upsertHabitEntry(habit.bundleParentId, dateStr, {
                         bundleOptionId: habit.associatedOptionId,
