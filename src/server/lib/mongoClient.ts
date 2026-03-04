@@ -52,16 +52,13 @@ async function countDuplicateActiveHabitEntryKeys(database: Db): Promise<number>
 async function ensureHabitEntriesUniqueIndex(database: Db): Promise<void> {
   const coll = database.collection('habitEntries');
 
-  // In test, skip duplicate check (aggregation) to avoid slowness; in dev/prod detect duplicates and fail or warn before creating index.
+  // In test, skip duplicate check (aggregation) to avoid slowness; in dev/prod detect duplicates and warn (do not create unique index until deduped).
   if (!isTestEnv()) {
     const duplicateCount = await countDuplicateActiveHabitEntryKeys(database);
     if (duplicateCount > 0) {
       const msg = `[MongoDB] Duplicate active habit entries detected (${duplicateCount} duplicate keys). ${DEDUPE_INSTRUCTIONS}`;
-      if (process.env.NODE_ENV === 'production') {
-        console.warn(msg);
-        return;
-      }
-      throw new Error(msg);
+      console.warn(msg);
+      return;
     }
   }
 
@@ -128,12 +125,21 @@ async function ensureCoreIndexes(database: Db): Promise<void> {
  * @throws Error if MongoDB connection fails
  */
 export async function getDb(): Promise<Db> {
+  const runIndexEnsurance = async (database: Db): Promise<void> => {
+    try {
+      await ensureCoreIndexes(database);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.warn('[MongoDB] Index assurance failed (continuing with DB):', msg);
+    }
+  };
+
   // Return existing database instance if available
   if (db && client) {
     // Verify connection is still alive
     try {
       await client.db().admin().ping();
-      await ensureCoreIndexes(db);
+      await runIndexEnsurance(db);
       return db;
     } catch {
       // Connection is dead, reset and reconnect
@@ -148,7 +154,7 @@ export async function getDb(): Promise<Db> {
   if (connectionPromise) {
     const connectedClient = await connectionPromise;
     db = connectedClient.db(getMongoDbName());
-    await ensureCoreIndexes(db);
+    await runIndexEnsurance(db);
     return db;
   }
 
@@ -158,7 +164,7 @@ export async function getDb(): Promise<Db> {
   try {
     const connectedClient = await connectionPromise;
     db = connectedClient.db(getMongoDbName());
-    await ensureCoreIndexes(db);
+    await runIndexEnsurance(db);
     return db;
   } catch (error) {
     // Reset connection promise on error so we can retry
