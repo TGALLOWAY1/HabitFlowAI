@@ -182,7 +182,10 @@ interface HabitRowContentProps {
     onContextMenu: (e: React.MouseEvent, habit: Habit) => void;
     isDeleteMode: boolean;
     onMoveToCategory?: (habit: Habit) => void;
-    onOpenCellMenu?: (habitId: string, dateStr: string, e: React.MouseEvent) => void;
+    onOpenCellMenu?: (habitId: string, dateStr: string, e: React.MouseEvent | { currentTarget: HTMLElement }) => void;
+    onCellPointerDown?: (habitId: string, dateStr: string, e: React.PointerEvent) => void;
+    onCellPointerUp?: () => void;
+    onCellPointerMove?: () => void;
 }
 
 const HabitRowContent = ({
@@ -212,7 +215,10 @@ const HabitRowContent = ({
     onContextMenu,
     isDeleteMode,
     onMoveToCategory,
-    onOpenCellMenu
+    onOpenCellMenu,
+    onCellPointerDown,
+    onCellPointerUp,
+    onCellPointerMove,
 }: HabitRowContentProps) => {
 
     // Non-Negotiable Logic
@@ -396,6 +402,11 @@ const HabitRowContent = ({
                         >
                             <button
                                 onClick={habit.type === 'bundle' && habit.bundleType !== 'choice' ? handleBundleClick : (isInteractive ? (e) => handleCellClick(e, habit, dateStr, log) : undefined)}
+                                onPointerDown={!habit.type || habit.bundleType === 'choice' ? undefined : hasExistingEntry && isInteractive && onCellPointerDown ? (e) => onCellPointerDown(habit.id, dateStr, e) : undefined}
+                                onPointerUp={onCellPointerUp}
+                                onPointerLeave={onCellPointerUp}
+                                onPointerCancel={onCellPointerUp}
+                                onPointerMove={onCellPointerMove}
                                 disabled={!isInteractive}
                                 className={cn(
                                     "w-10 h-10 rounded-lg flex items-center justify-center transition-all duration-200 relative overflow-hidden touch-manipulation",
@@ -503,7 +514,10 @@ const SortableHabitRow = ({
     onContextMenu,
     isDeleteMode,
     onMoveToCategory,
-    onOpenCellMenu
+    onOpenCellMenu,
+    onCellPointerDown,
+    onCellPointerUp,
+    onCellPointerMove,
 }: {
     habit: Habit;
     allHabits: Habit[];
@@ -524,7 +538,10 @@ const SortableHabitRow = ({
     onContextMenu: (e: React.MouseEvent, habit: Habit) => void;
     isDeleteMode: boolean;
     onMoveToCategory?: (habit: Habit) => void;
-    onOpenCellMenu?: (habitId: string, dateStr: string, e: React.MouseEvent) => void;
+    onOpenCellMenu?: (habitId: string, dateStr: string, e: React.MouseEvent | { currentTarget: HTMLElement }) => void;
+    onCellPointerDown?: (habitId: string, dateStr: string, e: React.PointerEvent) => void;
+    onCellPointerUp?: () => void;
+    onCellPointerMove?: () => void;
 }) => {
     const {
         attributes,
@@ -618,6 +635,9 @@ const SortableHabitRow = ({
                 isDeleteMode={isDeleteMode}
                 onMoveToCategory={onMoveToCategory}
                 onOpenCellMenu={onOpenCellMenu}
+                onCellPointerDown={onCellPointerDown}
+                onCellPointerUp={onCellPointerUp}
+                onCellPointerMove={onCellPointerMove}
             />
 
             {/* Child Rows - Rendered when expanded */}
@@ -644,6 +664,9 @@ const SortableHabitRow = ({
                     onContextMenu={onContextMenu}
                     isDeleteMode={isDeleteMode}
                     onOpenCellMenu={onOpenCellMenu}
+                    onCellPointerDown={onCellPointerDown}
+                    onCellPointerUp={onCellPointerUp}
+                    onCellPointerMove={onCellPointerMove}
                 />
             ))}
         </div>
@@ -856,10 +879,66 @@ export const TrackerGrid = ({
     // Suppress duplicate tap when both pointer and synthetic click fire (e.g. touch devices)
     const lastHandledCellRef = React.useRef<{ habitId: string; dateStr: string; t: number } | null>(null);
 
-    const openCellMenu = (habitId: string, dateStr: string, e: React.MouseEvent) => {
-        e.stopPropagation();
-        const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    // Double-click: delay single-click so second click can open menu instead of toggle
+    const pendingClickRef = React.useRef<{ habitId: string; dateStr: string; timeout: ReturnType<typeof setTimeout> } | null>(null);
+    const longPressRef = React.useRef<{ habitId: string; dateStr: string; element: HTMLElement; timeout: ReturnType<typeof setTimeout> } | null>(null);
+    const longPressJustFiredRef = React.useRef<{ habitId: string; dateStr: string } | null>(null);
+    const LONG_PRESS_MS = 500;
+    const DOUBLE_CLICK_DELAY_MS = 280;
+
+    /** Open cell actions menu. e can be MouseEvent or { currentTarget: HTMLElement } for long-press. */
+    const openCellMenu = (habitId: string, dateStr: string, e: React.MouseEvent | { currentTarget: HTMLElement }) => {
+        if ('stopPropagation' in e && typeof (e as React.MouseEvent).stopPropagation === 'function') {
+            (e as React.MouseEvent).stopPropagation();
+        }
+        const rect = e.currentTarget.getBoundingClientRect();
         setCellMenu({ habitId, dateStr, x: rect.right, y: rect.top });
+    };
+
+    const handleCellClickWrapped = (e: React.MouseEvent, habit: Habit, dateStr: string, log?: DayLog) => {
+        if (longPressJustFiredRef.current?.habitId === habit.id && longPressJustFiredRef.current?.dateStr === dateStr) {
+            longPressJustFiredRef.current = null;
+            return;
+        }
+        const existing = pendingClickRef.current;
+        if (existing && existing.habitId === habit.id && existing.dateStr === dateStr) {
+            clearTimeout(existing.timeout);
+            pendingClickRef.current = null;
+            openCellMenu(habit.id, dateStr, e);
+            return;
+        }
+        const timeout = setTimeout(() => {
+            pendingClickRef.current = null;
+            handleCellClick(e, habit, dateStr, log);
+        }, DOUBLE_CLICK_DELAY_MS);
+        pendingClickRef.current = { habitId: habit.id, dateStr, timeout };
+    };
+
+    const onCellPointerDown = (habitId: string, dateStr: string, e: React.PointerEvent) => {
+        if (longPressRef.current) return;
+        const element = e.currentTarget as HTMLElement;
+        const timeout = setTimeout(() => {
+            if (longPressRef.current?.habitId === habitId && longPressRef.current?.dateStr === dateStr) {
+                openCellMenu(habitId, dateStr, { currentTarget: element });
+                longPressJustFiredRef.current = { habitId, dateStr };
+            }
+            longPressRef.current = null;
+        }, LONG_PRESS_MS);
+        longPressRef.current = { habitId, dateStr, element, timeout };
+    };
+
+    const onCellPointerUp = () => {
+        if (longPressRef.current) {
+            clearTimeout(longPressRef.current.timeout);
+            longPressRef.current = null;
+        }
+    };
+
+    const onCellPointerMove = () => {
+        if (longPressRef.current) {
+            clearTimeout(longPressRef.current.timeout);
+            longPressRef.current = null;
+        }
     };
 
     const handleClearEntry = async (habitId: string, dateStr: string) => {
@@ -1181,7 +1260,7 @@ export const TrackerGrid = ({
                                         onToggleExpand={toggleExpand}
                                         logs={logs}
                                         dates={dates}
-                                        handleCellClick={handleCellClick}
+                                        handleCellClick={handleCellClickWrapped}
                                         deleteHabit={deleteHabit}
                                         deleteConfirmId={deleteConfirmId}
                                         setDeleteConfirmId={setDeleteConfirmId}
@@ -1195,6 +1274,9 @@ export const TrackerGrid = ({
                                         isDeleteMode={deleteMode}
                                         onMoveToCategory={(h) => setCategoryPickerHabit(h)}
                                         onOpenCellMenu={openCellMenu}
+                                        onCellPointerDown={onCellPointerDown}
+                                        onCellPointerUp={onCellPointerUp}
+                                        onCellPointerMove={onCellPointerMove}
                                     />
                                 ))}
                             </SortableContext>
