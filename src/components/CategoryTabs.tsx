@@ -1,8 +1,7 @@
 import React from 'react';
 import { useHabitStore } from '../store/HabitContext';
 import type { Category } from '../types';
-import { Plus, Download, X } from 'lucide-react';
-import { PREDEFINED_CATEGORIES, PREDEFINED_HABITS } from '../data/predefinedHabits';
+import { Plus, X } from 'lucide-react';
 import {
     DndContext,
     closestCenter,
@@ -168,12 +167,11 @@ export const CategoryTabs: React.FC<CategoryTabsProps> = ({
     activeCategoryId,
     onSelectCategory,
 }) => {
-    const { addCategory, importHabits, deleteCategory, reorderCategories, updateCategory } = useHabitStore();
+    const { addCategory, deleteCategory, reorderCategories, updateCategory } = useHabitStore();
     const [isAdding, setIsAdding] = React.useState(false);
     const [newCategoryName, setNewCategoryName] = React.useState('');
     const [addCategoryError, setAddCategoryError] = React.useState<string | null>(null);
     const [deleteConfirmId, setDeleteConfirmId] = React.useState<string | null>(null);
-    const [importStatus, setImportStatus] = React.useState<'idle' | 'success'>('idle');
 
     const normalizeCategoryName = (name: string) => name.trim().replace(/\s+/g, ' ').toLowerCase();
 
@@ -199,16 +197,6 @@ export const CategoryTabs: React.FC<CategoryTabsProps> = ({
             } catch (error) {
                 console.error('Failed to reorder categories:', error);
             }
-        }
-    };
-
-    const handleImport = async () => {
-        try {
-            await importHabits(PREDEFINED_CATEGORIES, PREDEFINED_HABITS);
-            setImportStatus('success');
-            setTimeout(() => setImportStatus('idle'), 3000);
-        } catch (error) {
-            console.error('Failed to import habits:', error);
         }
     };
 
@@ -310,18 +298,6 @@ export const CategoryTabs: React.FC<CategoryTabsProps> = ({
                 </button>
             )}
 
-            <div className="flex items-center gap-2 ml-auto">
-                {importStatus === 'success' && (
-                    <span className="text-xs text-emerald-400 font-medium animate-fade-in">Imported!</span>
-                )}
-                <button
-                    onClick={handleImport}
-                    className="px-3 py-2 rounded-full bg-neutral-800 text-neutral-400 hover:bg-emerald-900/50 hover:text-emerald-400 transition-colors"
-                    title="Import Default Habits"
-                >
-                    <Download size={18} />
-                </button>
-            </div>
         </div>
     );
 };
