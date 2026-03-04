@@ -15,7 +15,6 @@ import { getRoutinesRoute, getRoutineRoute, createRoutineRoute, updateRoutineRou
 import { getRoutineLogs } from './routes/routineLogs';
 import { getGoals, getGoal, getGoalProgress, getGoalsWithProgress, getCompletedGoals, createGoalRoute, updateGoalRoute, deleteGoalRoute, reorderGoalsRoute, getGoalDetailRoute, uploadGoalBadgeRoute, uploadBadgeMiddleware } from './routes/goals';
 import { getProgressOverview } from './routes/progress';
-import { getDashboardStreaks } from './routes/dashboard';
 import { getIntegrityReport } from './routes/admin';
 import { getEntriesRoute, createEntryRoute, upsertEntryByKeyRoute, getEntryRoute, updateEntryRoute, deleteEntryRoute } from './routes/journal';
 import { getTasksRoute, createTaskRoute, updateTaskRoute, deleteTaskRoute } from './routes/tasks';
@@ -100,7 +99,6 @@ export function createApp(): Express {
   app.post('/api/routines/:id/submit', submitRoutineRoute);
   app.get('/api/routineLogs', getRoutineLogs);
   app.get('/api/progress/overview', getProgressOverview);
-  app.get('/api/dashboard/streaks', getDashboardStreaks);
   app.get('/api/journal', getEntriesRoute);
   app.post('/api/journal', createEntryRoute);
   app.put('/api/journal/byKey', upsertEntryByKeyRoute);

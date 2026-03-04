@@ -9,7 +9,7 @@ import type { Category, Habit, DayLog, DailyWellbeing, Goal, GoalWithProgress, R
 import type { WellbeingEntry, WellbeingMetricKey } from '../models/persistenceTypes';
 import type { DashboardPrefs, HouseholdUser } from '../models/persistenceTypes';
 
-import type { GoalDetail, CompletedGoal, ProgressOverview, DashboardStreaksOverview } from '../types';
+import type { GoalDetail, CompletedGoal, ProgressOverview } from '../types';
 import type { Task, CreateTaskRequest, UpdateTaskRequest } from '../types/task';
 
 import { API_BASE_URL } from './persistenceConfig';
@@ -958,17 +958,6 @@ export async function fetchGoalsWithProgress(): Promise<GoalWithProgress[]> {
 export async function fetchProgressOverview(): Promise<ProgressOverview> {
   const timeZone = getLocalTimeZone();
   const response = await apiRequest<ProgressOverview>(`/progress/overview?timeZone=${encodeURIComponent(timeZone)}`);
-  return response;
-}
-
-/**
- * Fetch streak-centric dashboard payload derived from HabitEntries.
- *
- * GET /api/dashboard/streaks
- */
-export async function fetchDashboardStreaks(): Promise<DashboardStreaksOverview> {
-  const timeZone = getLocalTimeZone();
-  const response = await apiRequest<DashboardStreaksOverview>(`/dashboard/streaks?timeZone=${encodeURIComponent(timeZone)}`);
   return response;
 }
 
