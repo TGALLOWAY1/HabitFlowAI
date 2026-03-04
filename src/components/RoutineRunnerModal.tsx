@@ -4,6 +4,7 @@ import type { Routine } from '../models/persistenceTypes';
 import { submitRoutine } from '../lib/persistenceClient';
 import { useHabitStore } from '../store/HabitContext';
 import { useRoutineStore } from '../store/RoutineContext';
+import { CompletedHabitsModal } from './CompletedHabitsModal';
 
 interface RoutineRunnerModalProps {
     isOpen: boolean;
@@ -16,12 +17,15 @@ export const RoutineRunnerModal: React.FC<RoutineRunnerModalProps> = ({
     routine,
     onClose,
 }) => {
-    const { refreshDayLogs } = useHabitStore();
+    const { refreshDayLogs, habits } = useHabitStore();
     const { selectRoutine, startRoutine, exitRoutine, stepStates, setStepState } = useRoutineStore();
 
     const [currentStepIndex, setCurrentStepIndex] = useState(0);
     const [isCompletionView, setIsCompletionView] = useState(false);
+    const [showCompletedHabitsModal, setShowCompletedHabitsModal] = useState(false);
     const [submitting, setSubmitting] = useState(false);
+
+    const getHabitName = (habitId: string) => habits.find((h) => h.id === habitId)?.name ?? 'Habit';
 
     // Timer State
     const [timeLeft, setTimeLeft] = useState<number | null>(null);
@@ -323,11 +327,11 @@ export const RoutineRunnerModal: React.FC<RoutineRunnerModalProps> = ({
                                 </button>
                                 <div className="flex items-center gap-3">
                                     <button
-                                        onClick={() => handleFinish(false)}
-                                        disabled={submitting}
-                                        className="flex items-center gap-2 px-6 py-3 bg-neutral-700 text-white font-semibold rounded-lg hover:bg-neutral-600 transition-colors"
+                                        type="button"
+                                        onClick={() => setShowCompletedHabitsModal(true)}
+                                        className="flex items-center gap-2 px-6 py-3 bg-neutral-700 text-white font-semibold rounded-lg hover:bg-neutral-600 transition-colors touch-manipulation"
                                     >
-                                        {submitting ? 'Saving...' : 'Complete Routine'}
+                                        Complete Routine
                                     </button>
                                     {routine.linkedHabitIds && routine.linkedHabitIds.length > 0 && (
                                         <button
@@ -345,6 +349,17 @@ export const RoutineRunnerModal: React.FC<RoutineRunnerModalProps> = ({
                     </div>
                 </div>
 
+                <CompletedHabitsModal
+                    isOpen={showCompletedHabitsModal}
+                    routine={routine ?? null}
+                    stepStates={stepStates}
+                    getHabitName={getHabitName}
+                    onClose={() => setShowCompletedHabitsModal(false)}
+                    onLogSelected={(_habitIds) => {
+                        // Placeholder: no API or HabitEntry writes in this commit
+                        setShowCompletedHabitsModal(false);
+                    }}
+                />
             </div>
         </div>
     );
