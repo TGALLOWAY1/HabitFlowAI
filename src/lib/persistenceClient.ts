@@ -1157,16 +1157,6 @@ export async function deleteHabitEntryByKey(habitId: string, dateKey: string): P
  * Skill Tree Persistence Functions
  */
 
-/**
- * Fetch the Skill Tree data for the current user.
- * 
- * @returns Promise<any> - The full skill tree structure
- */
-export async function fetchSkillTree(): Promise<any> {
-  const response = await apiRequest<any>('/skill-tree');
-  return response;
-}
-
 export async function deleteHabitEntry(id: string): Promise<{ success: boolean, dayLog: DayLog | null }> {
   await apiRequest<{ message: string, dayLog: DayLog | null }>(`/entries/${id}`, {
     method: 'DELETE',

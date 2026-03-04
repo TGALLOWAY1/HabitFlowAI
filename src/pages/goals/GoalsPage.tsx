@@ -1,10 +1,9 @@
 import React, { useState, useMemo } from 'react';
-import { Plus, Trophy, Target, TrendingUp, BookOpen, ChevronDown, ChevronRight } from 'lucide-react';
+import { Plus, Trophy, Target, ChevronDown, ChevronRight } from 'lucide-react';
 import { useGoalsWithProgress } from '../../lib/useGoalsWithProgress';
 import { GoalGridCard } from '../../components/goals/GoalGridCard';
 import { Loader2, AlertCircle } from 'lucide-react';
 import { EditGoalModal } from '../../components/goals/EditGoalModal';
-import { SkillTreeTab } from '../../components/SkillTree/SkillTreeTab';
 import { useHabitStore } from '../../store/HabitContext';
 import { buildGoalStacks } from '../../utils/goalUtils';
 
@@ -101,7 +100,6 @@ export const GoalsPage: React.FC<GoalsPageProps> = ({
     const { data, loading, error, refetch } = useGoalsWithProgress();
     const { categories } = useHabitStore();
     const [editingGoalId, setEditingGoalId] = useState<string | null>(null);
-    const [activeTab, setActiveTab] = useState<'overview' | 'progress' | 'skills'>('overview');
     // Track expanded/collapsed state for each stack (category ID -> boolean)
     // Default to expanded on desktop (all true initially)
     const [expandedStacks, setExpandedStacks] = useState<Set<string>>(new Set());
@@ -181,45 +179,13 @@ export const GoalsPage: React.FC<GoalsPageProps> = ({
     }
 
     return (
-        <div className={`w-full mx-auto py-6 sm:py-8 overflow-x-hidden ${
-            activeTab === 'skills' 
-                ? 'max-w-[98vw] px-3 sm:px-4 lg:px-6' 
-                : 'max-w-4xl px-4 sm:px-6 lg:px-8'
-        }`}>
+        <div className="w-full max-w-4xl mx-auto py-6 sm:py-8 overflow-x-hidden px-4 sm:px-6 lg:px-8">
             <div className="mb-6 sm:mb-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                <div className="flex p-1 bg-neutral-800 rounded-lg overflow-x-auto">
-                    <button
-                        onClick={() => setActiveTab('overview')}
-                        className={`flex items-center gap-2 px-4 py-2 rounded-md transition-all whitespace-nowrap ${activeTab === 'overview'
-                            ? 'bg-neutral-700 shadow text-white'
-                            : 'text-neutral-400 hover:text-white'
-                            }`}
-                    >
+                <div className="flex p-1 bg-neutral-800 rounded-lg overflow-x-auto items-center gap-2">
+                    <span className="flex items-center gap-2 px-4 py-2 rounded-md bg-neutral-700 text-white font-medium text-sm">
                         <Target size={16} />
-                        <span className="font-medium text-sm">Overview</span>
-                    </button>
-
-                    <button
-                        onClick={() => setActiveTab('progress')}
-                        className={`flex items-center gap-2 px-4 py-2 rounded-md transition-all whitespace-nowrap ${activeTab === 'progress'
-                            ? 'bg-neutral-700 shadow text-white'
-                            : 'text-neutral-400 hover:text-white'
-                            }`}
-                    >
-                        <TrendingUp size={16} />
-                        <span className="font-medium text-sm">Progress</span>
-                    </button>
-
-                    <button
-                        onClick={() => setActiveTab('skills')}
-                        className={`flex items-center gap-2 px-4 py-2 rounded-md transition-all whitespace-nowrap ${activeTab === 'skills'
-                            ? 'bg-neutral-700 shadow text-white'
-                            : 'text-neutral-400 hover:text-white'
-                            }`}
-                    >
-                        <BookOpen size={16} />
-                        <span className="font-medium text-sm">Skill Tree</span>
-                    </button>
+                        Overview
+                    </span>
                 </div>
 
                 <div className="flex items-center gap-3">
@@ -245,8 +211,7 @@ export const GoalsPage: React.FC<GoalsPageProps> = ({
             </div>
 
             {/* Content Area */}
-            {activeTab === 'overview' && (
-                goalStacks.length === 0 ? (
+            {goalStacks.length === 0 ? (
                     <div className="text-center py-16 sm:py-20">
                         <div className="max-w-md mx-auto">
                             <div className="mb-6">
@@ -290,19 +255,7 @@ export const GoalsPage: React.FC<GoalsPageProps> = ({
                             );
                         })}
                     </div>
-                )
-            )}
-
-            {activeTab === 'progress' && (
-                <div className="text-center py-12 text-neutral-500">
-                    <TrendingUp className="mx-auto mb-4 opacity-50" size={48} />
-                    <p>Detailed Progress Views Coming Soon</p>
-                </div>
-            )}
-
-            {activeTab === 'skills' && (
-                <SkillTreeTab onCreateGoal={onCreateGoal || (() => { })} />
-            )}
+                )}
 
             {/* Modals */}
             {editingGoalId && (() => {

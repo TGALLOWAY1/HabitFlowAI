@@ -18,7 +18,6 @@ import { getProgressOverview } from './routes/progress';
 import { getIntegrityReport } from './routes/admin';
 import { getEntriesRoute, createEntryRoute, upsertEntryByKeyRoute, getEntryRoute, updateEntryRoute, deleteEntryRoute } from './routes/journal';
 import { getTasksRoute, createTaskRoute, updateTaskRoute, deleteTaskRoute } from './routes/tasks';
-import { skillTreeRouter } from './routes/skillTree';
 import { getDashboardPrefsRoute, updateDashboardPrefsRoute } from './routes/dashboardPrefs';
 import { getAuthMe } from './routes/auth';
 import householdUsersRouter from './routes/householdUsers';
@@ -122,7 +121,6 @@ export function createApp(): Express {
   app.post('/api/tasks', createTaskRoute);
   app.patch('/api/tasks/:id', updateTaskRoute);
   app.delete('/api/tasks/:id', deleteTaskRoute);
-  app.use('/api/skill-tree', skillTreeRouter);
   app.get('/api/entries', getHabitEntriesRoute);
   app.post('/api/entries/batch', batchCreateEntriesRoute);
   app.post('/api/entries', createHabitEntryRoute);
