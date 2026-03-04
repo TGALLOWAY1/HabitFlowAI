@@ -15,6 +15,77 @@ let db: Db | null = null;
 let connectionPromise: Promise<MongoClient> | null = null;
 let indexesEnsuredForDbName: string | null = null;
 
+const HABIT_ENTRIES_UNIQUE_INDEX_NAME = 'idx_habitEntries_user_habit_dayKey_active_unique';
+const DEDUPE_INSTRUCTIONS =
+  'Run the dedupe script to collapse duplicate active entries (see docs/audits/m2_writepaths_daykey_map.md or docs/debug/db-config.md).';
+
+function isTestEnv(): boolean {
+  return (
+    process.env.NODE_ENV === 'test' ||
+    !!process.env.VITEST ||
+    !!process.env.JEST_WORKER_ID
+  );
+}
+
+/** Returns count of (userId, habitId, dayKey) groups that have more than one active doc. */
+async function countDuplicateActiveHabitEntryKeys(database: Db): Promise<number> {
+  const coll = database.collection('habitEntries');
+  const cursor = coll.aggregate<{ count: number }>([
+    { $match: { deletedAt: { $exists: false } } },
+    {
+      $group: {
+        _id: {
+          userId: '$userId',
+          habitId: '$habitId',
+          dayKey: { $ifNull: ['$dayKey', '$date'] },
+        },
+        n: { $sum: 1 },
+      },
+    },
+    { $match: { n: { $gt: 1 } } },
+    { $count: 'count' },
+  ]);
+  const result = await cursor.next();
+  return result?.count ?? 0;
+}
+
+async function ensureHabitEntriesUniqueIndex(database: Db): Promise<void> {
+  const coll = database.collection('habitEntries');
+
+  // In test, skip duplicate check (aggregation) to avoid slowness; in dev/prod detect duplicates and fail or warn before creating index.
+  if (!isTestEnv()) {
+    const duplicateCount = await countDuplicateActiveHabitEntryKeys(database);
+    if (duplicateCount > 0) {
+      const msg = `[MongoDB] Duplicate active habit entries detected (${duplicateCount} duplicate keys). ${DEDUPE_INSTRUCTIONS}`;
+      if (process.env.NODE_ENV === 'production') {
+        console.warn(msg);
+        return;
+      }
+      throw new Error(msg);
+    }
+  }
+
+  // Optional: skip index creation in test for even faster runs (set SKIP_HABIT_ENTRY_INDEX_IN_TEST=1).
+  if (isTestEnv() && (process.env.SKIP_HABIT_ENTRY_INDEX_IN_TEST === '1' || process.env.SKIP_HABIT_ENTRY_INDEX_IN_TEST === 'true')) {
+    return;
+  }
+
+  // One document per (userId, habitId, dayKey). Soft-delete sets deletedAt on that doc; we do not use a second doc.
+  // Partial index with $exists: false is not supported in all MongoDB versions, so we use a full unique index.
+  try {
+    await coll.createIndex(
+      { userId: 1, habitId: 1, dayKey: 1 },
+      { unique: true, name: HABIT_ENTRIES_UNIQUE_INDEX_NAME }
+    );
+  } catch (error: unknown) {
+    const code = (error as { code?: number })?.code;
+    if (code === 85 || code === 86) {
+      return;
+    }
+    throw error;
+  }
+}
+
 async function ensureCoreIndexes(database: Db): Promise<void> {
   if (indexesEnsuredForDbName === database.databaseName) {
     return;
@@ -33,15 +104,16 @@ async function ensureCoreIndexes(database: Db): Promise<void> {
     }
   };
 
-  await Promise.all([
-    createIndexSafe('habitEntries', { userId: 1, id: 1 }, { unique: true, name: 'idx_habitEntries_user_id_unique' }),
-    // One document per (userId, habitId, dayKey). Soft-delete sets deletedAt; upsert revives by $unset deletedAt.
-    createIndexSafe('habitEntries', { userId: 1, habitId: 1, dayKey: 1 }, { unique: true, name: 'idx_habitEntries_user_habit_dayKey_unique' }),
-    createIndexSafe('habitEntries', { userId: 1, habitId: 1, timestamp: -1 }, { name: 'idx_habitEntries_user_habit_timestamp' }),
-    createIndexSafe('dayLogs', { userId: 1, compositeKey: 1 }, { unique: true, name: 'idx_dayLogs_user_composite_unique' }),
-    createIndexSafe('dayLogs', { userId: 1, habitId: 1, date: 1 }, { name: 'idx_dayLogs_user_habit_date' }),
-  ]);
+  await createIndexSafe('habitEntries', { userId: 1, id: 1 }, { unique: true, name: 'idx_habitEntries_user_id_unique' });
+  await createIndexSafe('habitEntries', { userId: 1, habitId: 1, timestamp: -1 }, { name: 'idx_habitEntries_user_habit_timestamp' });
+  await createIndexSafe('dayLogs', { userId: 1, compositeKey: 1 }, { unique: true, name: 'idx_dayLogs_user_composite_unique' });
+  await createIndexSafe('dayLogs', { userId: 1, habitId: 1, date: 1 }, { name: 'idx_dayLogs_user_habit_date' });
 
+  await ensureHabitEntriesUniqueIndex(database);
+
+  if (!isTestEnv()) {
+    console.log('[MongoDB] Indexes ensured (habitEntries unique active: userId, habitId, dayKey)');
+  }
   indexesEnsuredForDbName = database.databaseName;
 }
 
@@ -239,3 +311,5 @@ export async function isConnected(): Promise<boolean> {
     return false;
   }
 }
+
+export { HABIT_ENTRIES_UNIQUE_INDEX_NAME };

@@ -55,6 +55,18 @@ For **DayKey and timezone** semantics (America/New_York default, single source o
 - Backend middleware (`auth.ts`) reads `X-User-Id`; falls back to `'anonymous-user'` if missing.
 - Demo mode uses separate `DEMO_USER_ID = 'demo_emotional_wellbeing'`.
 
+## HabitEntries unique index (no duplicate entries per key)
+
+- **Invariant:** At most one habit entry document per `(userId, habitId, dayKey)`. Soft-delete sets `deletedAt` on that same document; we never create a second document for the same key.
+- **Index:** A **unique** index is created at startup in `src/server/lib/mongoClient.ts` (ensureCoreIndexes):
+  - Keys: `{ userId: 1, habitId: 1, dayKey: 1 }`
+  - Name: `idx_habitEntries_user_habit_dayKey_active_unique`
+  - (A partial index limited to active docs would require `deletedAt: { $exists: false }`, which is not supported in all MongoDB deployments; we use a full unique index and enforce one doc per key in application logic.)
+- **Duplicate handling:** Before creating the index, the server runs an aggregation to detect duplicate active keys. If any exist:
+  - **Dev:** Fails fast (throws) with a message to run the dedupe script.
+  - **Prod:** Logs a warning and skips creating this index (other indexes are still ensured). Run the dedupe script (see docs/audits/m2_writepaths_daykey_map.md or this file) then restart.
+- **Test:** In test env, the **duplicate check** is skipped (to avoid aggregation slowness); the index is still created so the invariant is enforced. Set `SKIP_HABIT_ENTRY_INDEX_IN_TEST=1` to skip creating this index in tests for faster runs (e.g. in-memory or minimal harness).
+
 ## Test DB configuration
 
 - Tests swap `process.env.MONGODB_DB_NAME` to a test-specific name (e.g. `habitflowai_test`) in `beforeAll`.

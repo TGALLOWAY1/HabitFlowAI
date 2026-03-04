@@ -7,6 +7,7 @@ import { createGoal } from '../../repositories/goalRepository';
 import { setupTestMongo, teardownTestMongo, getTestDb } from '../../../test/mongoTestHelper';
 import { createHabitEntryRoute, deleteHabitEntryByKeyRoute } from '../habitEntries';
 import { getHabitEntriesForDay } from '../../repositories/habitEntryRepository';
+import { HABIT_ENTRIES_UNIQUE_INDEX_NAME } from '../../lib/mongoClient';
 import { getDayView } from '../dayView';
 import { getDaySummary } from '../daySummary';
 import { getProgressOverview } from '../progress';
@@ -229,5 +230,15 @@ describe('Entries-only invariants across derived reads', () => {
 
     const entries = await getHabitEntriesForDay(habitId, dayKey, TEST_USER_ID);
     expect(entries.length).toBe(1);
+  });
+
+  it('habitEntries unique index config when present', async () => {
+    const db = await getTestDb();
+    const indexes = await db.collection('habitEntries').indexes();
+    const uniqueIndex = indexes.find((i: { name: string }) => i.name === HABIT_ENTRIES_UNIQUE_INDEX_NAME);
+    if (uniqueIndex) {
+      expect(uniqueIndex.unique).toBe(true);
+      expect(uniqueIndex.key).toEqual({ userId: 1, habitId: 1, dayKey: 1 });
+    }
   });
 });
