@@ -3,7 +3,7 @@ import { format, parseISO, startOfWeek, subDays } from 'date-fns';
 import { getHabitsByUser } from '../repositories/habitRepository';
 import { getHabitEntriesByUser } from '../repositories/habitEntryRepository';
 import { calculateHabitStreakMetrics, type HabitDayState } from '../services/streakService';
-import { assertTimeZone } from '../domain/canonicalValidators';
+import { resolveTimeZone, getNowDayKey } from '../utils/dayKey';
 
 type HabitLast7Cell = {
   dayKey: string;
@@ -27,29 +27,15 @@ function parseFreezeType(note?: string): 'manual' | 'auto' | 'soft' | undefined 
   return 'auto';
 }
 
-function buildLast7DayKeys(referenceDate: Date): string[] {
+function buildLast7DayKeys(todayDayKey: string): string[] {
   const dayKeys: string[] = [];
+  const todayParsed = parseISO(todayDayKey + 'T12:00:00.000');
   for (let i = 6; i >= 0; i--) {
-    dayKeys.push(toDayKey(subDays(referenceDate, i)));
+    dayKeys.push(toDayKey(subDays(todayParsed, i)));
   }
   return dayKeys;
 }
 
-function getTodayDayKeyForTimeZone(timeZone: string): string {
-  const parts = new Intl.DateTimeFormat('en-US', {
-    timeZone,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).formatToParts(new Date());
-  const year = parts.find(part => part.type === 'year')?.value;
-  const month = parts.find(part => part.type === 'month')?.value;
-  const day = parts.find(part => part.type === 'day')?.value;
-  if (!year || !month || !day) {
-    return new Date().toISOString().slice(0, 10);
-  }
-  return `${year}-${month}-${day}`;
-}
 
 function aggregateDayStatesByHabit(
   entries: Awaited<ReturnType<typeof getHabitEntriesByUser>>
@@ -85,16 +71,11 @@ function aggregateDayStatesByHabit(
 export async function getDashboardStreaks(req: Request, res: Response): Promise<void> {
   try {
     const userId = getUserIdFromRequest(req);
-    const requestedTimeZone = typeof req.query?.timeZone === 'string' ? req.query.timeZone : 'UTC';
-    const timeZoneValidation = assertTimeZone(requestedTimeZone);
-    if (!timeZoneValidation.valid) {
-      res.status(400).json({ error: timeZoneValidation.error });
-      return;
-    }
+    const requestedTimeZone = resolveTimeZone(typeof req.query?.timeZone === 'string' ? req.query.timeZone : undefined);
 
     const referenceDate = new Date();
-    const todayDayKey = getTodayDayKeyForTimeZone(requestedTimeZone);
-    const weekStartDayKey = toDayKey(startOfWeek(parseISO(todayDayKey), { weekStartsOn: 1 }));
+    const todayDayKey = getNowDayKey(requestedTimeZone);
+    const weekStartDayKey = toDayKey(startOfWeek(parseISO(todayDayKey + 'T12:00:00.000'), { weekStartsOn: 1 }));
 
     const [habits, entries] = await Promise.all([
       getHabitsByUser(userId),
@@ -103,7 +84,7 @@ export async function getDashboardStreaks(req: Request, res: Response): Promise<
 
     const activeHabits = habits.filter(habit => !habit.archived);
     const dayStatesByHabit = aggregateDayStatesByHabit(entries);
-    const last7DayKeys = buildLast7DayKeys(referenceDate);
+    const last7DayKeys = buildLast7DayKeys(todayDayKey);
 
     const habitSummaries = activeHabits.map(habit => {
       const habitDayMap = dayStatesByHabit.get(habit.id) ?? new Map<string, HabitDayState>();

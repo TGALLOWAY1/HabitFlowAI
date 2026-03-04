@@ -1,5 +1,7 @@
 # DB & Environment Configuration — Resolution Trace
 
+For **DayKey and timezone** semantics (America/New_York default, single source of truth), see [docs/semantics/daykey.md](../semantics/daykey.md).
+
 ## How the server loads its environment
 
 1. **Entry point**: `src/server/index.ts`

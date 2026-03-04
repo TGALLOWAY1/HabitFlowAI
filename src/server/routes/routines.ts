@@ -17,6 +17,7 @@ import { saveRoutineLog } from '../repositories/routineLogRepository';
 import { upsertHabitEntry } from '../repositories/habitEntryRepository';
 import { recomputeDayLogForHabit } from '../utils/recomputeUtils';
 import { validateDayKey } from '../domain/canonicalValidators';
+import { resolveTimeZone, getDayKeyForTimestamp, getNowDayKey } from '../utils/dayKey';
 import type { Routine, RoutineStep, RoutineLog } from '../../models/persistenceTypes';
 import multer from 'multer';
 import {
@@ -743,7 +744,7 @@ function deriveDateString(dateInput?: string | Date): string {
 export async function submitRoutineRoute(req: Request, res: Response): Promise<void> {
   try {
     const { id } = req.params;
-    const { habitIdsToComplete, submittedAt, dateOverride } = req.body;
+    const { habitIdsToComplete, submittedAt, dateOverride, timeZone } = req.body;
 
     // Validate routine ID
     if (!id) {
@@ -806,8 +807,15 @@ export async function submitRoutineRoute(req: Request, res: Response): Promise<v
       return;
     }
 
-    // Determine the log date
-    const logDate = dateOverride || deriveDateString(submittedAt);
+    // Determine the log date (canonical dayKey; default timezone America/New_York when missing)
+    const userTz = resolveTimeZone(typeof timeZone === 'string' ? timeZone : undefined);
+    const logDate = dateOverride
+      || (submittedAt
+        ? getDayKeyForTimestamp(
+            typeof submittedAt === 'string' ? submittedAt : new Date(submittedAt).toISOString(),
+            userTz
+          )
+        : getNowDayKey(userTz));
     
     // Determine timestamp for entries (use submittedAt if provided, otherwise current time)
     const entryTimestamp = submittedAt ? new Date(submittedAt).toISOString() : new Date().toISOString();

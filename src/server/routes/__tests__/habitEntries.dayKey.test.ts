@@ -127,18 +127,34 @@ describe('POST /api/entries - DayKey Normalization', () => {
     expect(response.body.entry.date).toBe('2025-01-15'); // Uses dayKey, not date
   });
 
-  it('should reject entry without dayKey, date, or timestamp+timeZone', async () => {
+  it('should create entry when only timestamp provided (no timeZone) using America/New_York default', () => {
+    // 2025-01-01 05:00:00 UTC = midnight in America/New_York => dayKey 2025-01-01
+    const timestamp = '2025-01-01T05:00:00.000Z';
+    return request(app)
+      .post('/api/entries')
+      .send({
+        habitId: testHabitId,
+        timestamp,
+        value: 1,
+        source: 'manual',
+        // no timeZone => canonical default America/New_York
+      })
+      .then((response) => {
+        expect(response.status).toBe(201);
+        expect(response.body.entry.dayKey).toBe('2025-01-01');
+      });
+  });
+
+  it('when no dayKey/date/timestamp provided, derives dayKey from now in default timezone', async () => {
     const response = await request(app)
       .post('/api/entries')
       .send({
         habitId: testHabitId,
         value: 1,
         source: 'manual',
-        // No dayKey, date, or timestamp+timeZone
       });
-
-    expect(response.status).toBe(400);
-    expect(response.body.error).toContain('dayKey is required');
+    expect(response.status).toBe(201);
+    expect(response.body.entry.dayKey).toMatch(/^\d{4}-\d{2}-\d{2}$/);
   });
 
   it('should store dayKey in database and query by dayKey', async () => {

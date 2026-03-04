@@ -16,6 +16,7 @@ import { validateHabitEntryPayload } from '../utils/habitValidation';
 import { recomputeDayLogForHabit } from '../utils/recomputeUtils';
 import { validateDayKey, assertTimeZone, validateHabitEntryPayloadStructure, assertNoStoredCompletion } from '../domain/canonicalValidators';
 import { normalizeHabitEntryPayload } from '../utils/dayKeyNormalization';
+import { resolveTimeZone } from '../utils/dayKey';
 
 /**
  * Get entry views for a habit (via truthQuery).
@@ -34,12 +35,10 @@ export async function getHabitEntriesRoute(req: Request, res: Response): Promise
             return;
         }
 
-        // timeZone is required for DayKey derivation
-        const userTimeZone = (timeZone && typeof timeZone === 'string')
-            ? timeZone
-            : 'UTC'; // Default to UTC if not provided
+        // Use canonical default (America/New_York) when timeZone missing or invalid
+        const userTimeZone = resolveTimeZone(timeZone && typeof timeZone === 'string' ? timeZone : undefined);
 
-        // Validate timeZone
+        // Validate timeZone (resolution already produced a valid TZ; assert for consistency)
         const timeZoneValidation = assertTimeZone(userTimeZone);
         if (!timeZoneValidation.valid) {
             res.status(400).json({ error: timeZoneValidation.error });
@@ -113,9 +112,7 @@ export async function createHabitEntryRoute(req: Request, res: Response): Promis
         }
 
         // Normalize dayKey from various inputs (dayKey, date, or timestamp + timeZone)
-        const userTimeZone = (entryData.timeZone && typeof entryData.timeZone === 'string')
-            ? entryData.timeZone
-            : 'UTC'; // Default to UTC
+        const userTimeZone = resolveTimeZone(entryData.timeZone && typeof entryData.timeZone === 'string' ? entryData.timeZone : undefined);
 
         let normalizedPayload;
         try {
@@ -292,9 +289,7 @@ export async function updateHabitEntryRoute(req: Request, res: Response): Promis
 
         // Normalize dayKey if date/dayKey/timestamp is being updated
         if (patch.date || patch.dayKey || patch.timestamp) {
-            const userTimeZone = (patch.timeZone && typeof patch.timeZone === 'string')
-                ? patch.timeZone
-                : 'UTC';
+            const userTimeZone = resolveTimeZone(patch.timeZone && typeof patch.timeZone === 'string' ? patch.timeZone : undefined);
 
             try {
                 const normalized = normalizeHabitEntryPayload({
