@@ -10,8 +10,10 @@ export interface CompletedHabitsModalProps {
     /** Resolve habit ID to display name */
     getHabitName: (habitId: string) => string;
     onClose: () => void;
-    /** Placeholder: called with selected habit IDs when user clicks "Log selected habits". No API in this commit. */
-    onLogSelected: (habitIds: string[]) => void;
+    /** Called when user clicks "Log selected habits". Parent should call API, refresh, then close modal on success. */
+    onLogSelected: (habitIds: string[]) => void | Promise<void>;
+    /** When true, show "Saving..." and disable the Log button */
+    submitting?: boolean;
 }
 
 /** Steps that are linked to a habit (have linkedHabitId). */
@@ -26,6 +28,7 @@ export const CompletedHabitsModal: React.FC<CompletedHabitsModalProps> = ({
     getHabitName,
     onClose,
     onLogSelected,
+    submitting = false,
 }) => {
     const habitSteps = routine ? getHabitSteps(routine) : [];
     const [checkedStepIds, setCheckedStepIds] = useState<Set<string>>(new Set());
@@ -61,9 +64,10 @@ export const CompletedHabitsModal: React.FC<CompletedHabitsModalProps> = ({
     };
 
     const handleLogSelected = () => {
+        if (submitting) return;
         const habitIds = habitSteps.filter((s) => checkedStepIds.has(s.id)).map((s) => s.linkedHabitId);
         onLogSelected(habitIds);
-        onClose();
+        // Parent closes modal and runner on success
     };
 
     if (!isOpen) return null;
@@ -141,9 +145,10 @@ export const CompletedHabitsModal: React.FC<CompletedHabitsModalProps> = ({
                     <button
                         type="button"
                         onClick={handleLogSelected}
-                        className="flex-1 min-w-[120px] px-4 py-3 rounded-lg bg-emerald-500 text-neutral-900 font-semibold hover:bg-emerald-400 transition-colors touch-manipulation"
+                        disabled={submitting}
+                        className="flex-1 min-w-[120px] px-4 py-3 rounded-lg bg-emerald-500 text-neutral-900 font-semibold hover:bg-emerald-400 transition-colors touch-manipulation disabled:opacity-60 disabled:pointer-events-none"
                     >
-                        Log selected habits
+                        {submitting ? 'Saving...' : 'Log selected habits'}
                     </button>
                 </div>
             </div>

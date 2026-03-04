@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { X, ChevronLeft, ChevronRight, Check, Play, Pause, RotateCcw, CircleCheck, Forward } from 'lucide-react';
 import type { Routine } from '../models/persistenceTypes';
-import { submitRoutine } from '../lib/persistenceClient';
+import { submitRoutine, batchCreateEntries } from '../lib/persistenceClient';
 import { useHabitStore } from '../store/HabitContext';
 import { useRoutineStore } from '../store/RoutineContext';
+import { useToast } from './Toast';
 import { CompletedHabitsModal } from './CompletedHabitsModal';
 
 interface RoutineRunnerModalProps {
@@ -19,11 +20,13 @@ export const RoutineRunnerModal: React.FC<RoutineRunnerModalProps> = ({
 }) => {
     const { refreshDayLogs, habits } = useHabitStore();
     const { selectRoutine, startRoutine, exitRoutine, stepStates, setStepState } = useRoutineStore();
+    const { showToast } = useToast();
 
     const [currentStepIndex, setCurrentStepIndex] = useState(0);
     const [isCompletionView, setIsCompletionView] = useState(false);
     const [showCompletedHabitsModal, setShowCompletedHabitsModal] = useState(false);
     const [submitting, setSubmitting] = useState(false);
+    const [loggingHabits, setLoggingHabits] = useState(false);
 
     const getHabitName = (habitId: string) => habits.find((h) => h.id === habitId)?.name ?? 'Habit';
 
@@ -355,9 +358,30 @@ export const RoutineRunnerModal: React.FC<RoutineRunnerModalProps> = ({
                     stepStates={stepStates}
                     getHabitName={getHabitName}
                     onClose={() => setShowCompletedHabitsModal(false)}
-                    onLogSelected={(_habitIds) => {
-                        // Placeholder: no API or HabitEntry writes in this commit
-                        setShowCompletedHabitsModal(false);
+                    submitting={loggingHabits}
+                    onLogSelected={async (habitIds) => {
+                        if (habitIds.length === 0) {
+                            setShowCompletedHabitsModal(false);
+                            return;
+                        }
+                        setLoggingHabits(true);
+                        try {
+                            const timezone = typeof Intl !== 'undefined' ? Intl.DateTimeFormat().resolvedOptions().timeZone : undefined;
+                            await batchCreateEntries({
+                                habitIds,
+                                routineId: routine?.id,
+                                timezone,
+                            });
+                            await refreshDayLogs();
+                            setShowCompletedHabitsModal(false);
+                            exitRoutine();
+                            onClose();
+                        } catch (err) {
+                            const message = err instanceof Error ? err.message : 'Failed to log habits';
+                            showToast(message, 'error');
+                        } finally {
+                            setLoggingHabits(false);
+                        }
                     }}
                 />
             </div>
