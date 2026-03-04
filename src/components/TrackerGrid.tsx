@@ -80,7 +80,7 @@ const HabitActionButtons = ({
     const linkedRoutines = routines.filter(r => r.linkedHabitIds?.includes(habit.id));
 
     return (
-        <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-20">
+        <div className="flex-shrink-0 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-20 ml-2">
             {linkedRoutines.length > 0 && onRunRoutine && (
                 <button
                     onClick={(e) => {
@@ -254,10 +254,10 @@ const HabitRowContent = ({
             onContextMenu={(e) => onContextMenu(e, habit)}
         >
             <div
-                className="w-64 flex-shrink-0 p-4 border-r border-white/5 flex items-center justify-between group-hover:bg-white/[0.02] transition-colors relative"
+                className="w-64 flex-shrink-0 p-4 border-r border-white/5 flex items-center justify-between gap-2 group-hover:bg-white/[0.02] transition-colors relative"
                 style={{ paddingLeft: `${16 + (depth * 24)}px` }} // Dynamic Indentation
             >
-                <div className="flex items-center gap-3 overflow-hidden">
+                <div className="flex items-center gap-3 overflow-hidden min-w-0 flex-1">
                     {/* Drag Handle (Only for depth 0 and NOT virtual) */}
                     {depth === 0 && !habit.isVirtual && (
                         <button
@@ -270,11 +270,11 @@ const HabitRowContent = ({
                         </button>
                     )}
 
-                    <div className="flex flex-col overflow-hidden">
-                        <div className="flex items-center gap-2">
+                    <div className="flex flex-col overflow-hidden min-w-0 flex-1">
+                        <div className="flex items-center gap-2 min-w-0">
                             <span
                                 className={cn(
-                                    "font-medium truncate transition-colors",
+                                    "font-medium truncate transition-colors min-w-0",
                                     (depth > 0 || habit.isVirtual) ? "text-neutral-400 italic text-sm" : "text-neutral-200"
                                 )}
                                 title={habit.name}
