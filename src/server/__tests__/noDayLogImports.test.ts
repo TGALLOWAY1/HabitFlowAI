@@ -1,17 +1,24 @@
 /**
- * Regression test: no server module may import DayLogs routes or repository.
- * Ensures DayLogs removal is complete and no accidental re-introduction.
+ * Regression tests: no server module may import DayLogs or manual goal log modules.
+ * Ensures M6 legacy removal is complete and no accidental re-introduction.
  */
 import { describe, it, expect } from 'vitest';
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 const SERVER_ROOT = join(__dirname, '..');
-const FORBIDDEN_PATTERNS = [
+
+const DAYLOG_FORBIDDEN = [
   /from\s+['\"].*dayLogRepository['\"]/,
   /require\s*\(\s*['\"].*dayLogRepository['\"]\s*\)/,
   /from\s+['\"].*\/dayLogs['\"]/,
   /from\s+['\"].*routes\/dayLogs['\"]/,
+];
+
+const MANUAL_LOG_FORBIDDEN = [
+  /from\s+['\"].*goalManualLogRepository['\"]/,
+  /require\s*\(\s*['\"].*goalManualLogRepository['\"]\s*\)/,
+  /from\s+['\"].*routes\/.*[Mm]anual[Ll]og['\"]/,
 ];
 
 function* walkTsFiles(dir: string, relative = ''): Generator<{ path: string; content: string }> {
@@ -30,16 +37,26 @@ function* walkTsFiles(dir: string, relative = ''): Generator<{ path: string; con
   }
 }
 
-describe('No DayLog imports (regression)', () => {
-  it('no server source file imports dayLogRepository or dayLogs route', () => {
-    const violations: string[] = [];
-    for (const { path: filePath, content } of walkTsFiles(SERVER_ROOT)) {
-      for (const pattern of FORBIDDEN_PATTERNS) {
-        if (pattern.test(content)) {
-          violations.push(`${filePath}: matches ${pattern.source}`);
-        }
+function collectViolations(patterns: RegExp[]): string[] {
+  const violations: string[] = [];
+  for (const { path: filePath, content } of walkTsFiles(SERVER_ROOT)) {
+    for (const pattern of patterns) {
+      if (pattern.test(content)) {
+        violations.push(`${filePath}: matches ${pattern.source}`);
       }
     }
+  }
+  return violations;
+}
+
+describe('No legacy DayLog / manual-log imports (M6 guardrails)', () => {
+  it('no server source file imports dayLogRepository or dayLogs route', () => {
+    const violations = collectViolations(DAYLOG_FORBIDDEN);
+    expect(violations).toEqual([]);
+  });
+
+  it('no server source file imports goalManualLogRepository or manual-log routes', () => {
+    const violations = collectViolations(MANUAL_LOG_FORBIDDEN);
     expect(violations).toEqual([]);
   });
 });
