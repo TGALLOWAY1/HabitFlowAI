@@ -25,6 +25,7 @@ import { getEntriesRoute, createEntryRoute, upsertEntryByKeyRoute, getEntryRoute
 import { getTasksRoute, createTaskRoute, updateTaskRoute, deleteTaskRoute } from './routes/tasks';
 import { skillTreeRouter } from './routes/skillTree';
 import { getDashboardPrefsRoute, updateDashboardPrefsRoute } from './routes/dashboardPrefs';
+import { getAuthMe } from './routes/auth';
 import { closeConnection } from './lib/mongoClient';
 
 // Assert MongoDB is enabled at startup (fail fast if misconfigured)
@@ -33,8 +34,7 @@ assertMongoEnabled();
 const app: Express = express();
 const PORT = process.env.PORT || 3000;
 
-import { userIdMiddleware } from './middleware/auth';
-import { devUserIdOverride } from './middleware/devUserIdOverride';
+import { identityMiddleware } from './middleware/identity';
 import { noPersonaInHabitEntryRequests } from './middleware/noPersonaInHabitEntryRequests';
 import { requestContextMiddleware } from './middleware/requestContext';
 
@@ -50,7 +50,7 @@ app.use('/uploads', express.static('public/uploads'));
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');
   res.header('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-User-Id');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-User-Id, X-Household-Id');
 
   if (req.method === 'OPTIONS') {
     res.sendStatus(200);
@@ -60,13 +60,14 @@ app.use((req, res, next) => {
   next();
 });
 
-// Authentication Middleware
-app.use(userIdMiddleware);
-app.use(devUserIdOverride);
+// V1 Identity: householdId + userId (headers or dev-only bootstrap)
+app.use(identityMiddleware);
 app.use(noPersonaInHabitEntryRequests);
 
 // API Routes
 // Note: Specific routes (like /reorder) must come before parameterized routes (like /:id)
+
+app.get('/api/auth/me', getAuthMe);
 
 // Category routes
 app.get('/api/categories', getCategories);
@@ -223,11 +224,13 @@ app.get('/api/debug/whoami', (req, res) => {
     return;
   }
 
+  const householdId = (req as any).householdId ?? '(not set)';
   const userId = (req as any).userId ?? '(not set)';
 
   res.json({
+    householdId,
     userId,
-    userIdSource: req.headers['x-user-id'] ? 'X-User-Id header' : 'fallback',
+    identitySource: req.headers['x-household-id'] && req.headers['x-user-id'] ? 'headers' : 'fallback',
     dbName: process.env.MONGODB_DB_NAME ?? '(unset)',
     nodeEnv: process.env.NODE_ENV ?? '(unset)',
     mongoUriPresent: !!process.env.MONGODB_URI,
