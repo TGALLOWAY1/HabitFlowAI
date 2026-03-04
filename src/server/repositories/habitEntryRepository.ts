@@ -53,58 +53,23 @@ function assertNoStoredCompletionOrProgress(obj: any): void {
 const COLLECTION_NAME = 'habitEntries';
 
 /**
- * Create a new habit entry.
- * 
- * @param entry - HabitEntry data (excluding id, createdAt, updatedAt)
- * @param userId - User ID to associate with the entry
- * @returns Created habit entry
+ * Create a new habit entry (atomic upsert by userId, habitId, dayKey).
+ * Delegates to upsertHabitEntry so all write paths are race-safe.
  */
 export async function createHabitEntry(
     entry: Omit<HabitEntry, 'id' | 'createdAt' | 'updatedAt' | 'deletedAt'>,
     userId: string
 ): Promise<HabitEntry> {
-
-    const db = await getDb();
-    const collection = db.collection(COLLECTION_NAME);
-
-    const now = new Date().toISOString();
-    const id = randomUUID();
-
-    // Ensure dayKey is present (required)
     const dayKey = entry.dayKey || entry.date;
     if (!dayKey) {
         throw new Error('HabitEntry must have dayKey or date (legacy input)');
     }
-
-    // Ban stored completion/progress fields
-    assertNoStoredCompletionOrProgress(entry);
-
-    // Create entry object (exclude date from persistence)
-    const { date: _, ...entryWithoutDate } = entry;
-    const newEntry: HabitEntry = {
-        ...entryWithoutDate,
-        id,
-        dayKey, // Store canonical dayKey only
-        createdAt: now,
-        updatedAt: now,
-    };
-
-    // Create document to store in MongoDB (includes userId, excludes date)
-    const document = {
-        ...newEntry,
-        userId,
-        dayKey, // Store canonical dayKey only (date is NOT persisted)
-    };
-
-    const result = await collection.insertOne(document);
-
-    if (!result.acknowledged) {
-        throw new Error('Failed to create habit entry');
-    }
-
-    // For reads: derive date from dayKey for backward compatibility in API responses
-    const entryWithDate = { ...newEntry, date: newEntry.dayKey };
-    return entryWithDate as HabitEntry;
+    const { date: _d, habitId, dayKey: _k, ...rest } = entry;
+    return upsertHabitEntry(habitId, dayKey, userId, {
+        ...rest,
+        timestamp: entry.timestamp,
+        source: entry.source || 'manual',
+    });
 }
 
 /**
@@ -350,11 +315,11 @@ export async function deleteHabitEntriesByHabit(
 }
 
 /**
- * Upsert a habit entry for a specific dayKey (create or update)
- * @param habitId - Habit ID
- * @param dayKey - DayKey string YYYY-MM-DD (canonical)
- * @param userId - User ID
- * @param updates - Updates to apply (value, source, etc)
+ * Upsert a habit entry for a specific dayKey (create or update).
+ * Single atomic operation keyed by (userId, habitId, dayKey). Race-safe: no read-then-write.
+ *
+ * Soft-delete: One document per (userId, habitId, dayKey). Deleted docs have deletedAt set.
+ * Upsert updates that doc and $unset deletedAt (revive if soft-deleted); never creates a second doc for the same key.
  */
 export async function upsertHabitEntry(
     habitId: string,
@@ -365,64 +330,42 @@ export async function upsertHabitEntry(
     const db = await getDb();
     const collection = db.collection(COLLECTION_NAME);
 
-    const now = new Date().toISOString();
-
-    // Check if exists (active) - query by dayKey (preferred) or date (legacy)
-    const existing = await collection.findOne({
-        habitId,
-        $or: [
-            { dayKey },
-            { date: dayKey } // Legacy fallback
-        ],
-        userId,
-        deletedAt: { $exists: false }
-    }) as unknown as HabitEntry | null;
-
-    // Ban stored completion/progress fields
     assertNoStoredCompletionOrProgress(updates);
 
-    if (existing) {
-        // Update - ensure dayKey is set (exclude date from persistence)
-        // Type assertion needed because updates type omits date, but we want to be explicit
-        const updatesWithoutDate = updates as any;
-        delete updatesWithoutDate.date;
-        const patch = {
-            ...updatesWithoutDate,
-            dayKey, // Ensure canonical dayKey is set
-            updatedAt: now
-        };
+    const now = new Date().toISOString();
+    const updatesCopy = { ...updates } as Record<string, unknown>;
+    delete updatesCopy.date;
 
-        await collection.updateOne(
-            { _id: new ObjectId((existing as any)._id) },
-            { $set: patch }
-        );
-        const updated = { ...existing, ...patch };
-        // For reads: derive date from dayKey for backward compatibility in API responses
-        const entryWithDate = updated.dayKey ? { ...updated, date: updated.dayKey } : updated;
-        return entryWithDate as HabitEntry;
-    } else {
-        // Create - ensure dayKey is set (exclude date from persistence)
-        // Type assertion needed because updates type omits date, but we want to be explicit
-        const updatesWithoutDate = updates as any;
-        delete updatesWithoutDate.date;
-        const newEntry = {
-            _id: new ObjectId(),
-            id: randomUUID(),
-            habitId,
-            userId,
-            dayKey, // Canonical dayKey only (date is NOT persisted)
-            value: updates.value ?? undefined,
-            timestamp: updates.timestamp || now,
-            source: updates.source || 'manual',
-            createdAt: now,
-            updatedAt: now,
-            ...updatesWithoutDate
-        } as HabitEntry;
-        await collection.insertOne(newEntry as any);
-        // For reads: derive date from dayKey for backward compatibility in API responses
-        const entryWithDate = { ...newEntry, date: newEntry.dayKey };
-        return entryWithDate as HabitEntry;
+    const setFields: Record<string, unknown> = {
+        dayKey,
+        updatedAt: now,
+        value: updates.value ?? undefined,
+        timestamp: updates.timestamp || now,
+        source: updates.source || 'manual',
+        ...updatesCopy,
+    };
+
+    const result = await collection.findOneAndUpdate(
+        { userId, habitId, dayKey },
+        {
+            $set: setFields,
+            $unset: { deletedAt: '' },
+            $setOnInsert: {
+                id: randomUUID(),
+                createdAt: now,
+            },
+        },
+        { upsert: true, returnDocument: 'after' }
+    );
+
+    const doc = result as { _id?: unknown; id?: string; createdAt?: string; [k: string]: unknown } | null;
+    if (!doc) {
+        throw new Error('upsertHabitEntry: findOneAndUpdate returned null');
     }
+
+    const { _id: _oid, userId: _uid, ...entry } = doc;
+    const entryWithDate = (entry as HabitEntry).dayKey ? { ...entry, date: (entry as HabitEntry).dayKey } : entry;
+    return entryWithDate as HabitEntry;
 }
 
 /**

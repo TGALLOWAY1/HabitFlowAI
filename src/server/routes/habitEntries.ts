@@ -7,9 +7,9 @@
 
 import type { Request, Response } from 'express';
 import {
-    createHabitEntry,
     updateHabitEntry,
     deleteHabitEntry,
+    upsertHabitEntry,
 } from '../repositories/habitEntryRepository';
 import { getHabitById } from '../repositories/habitRepository';
 import { validateHabitEntryPayload } from '../utils/habitValidation';
@@ -143,20 +143,21 @@ export async function createHabitEntryRoute(req: Request, res: Response): Promis
             return;
         }
 
-        // 1. Create Entry with normalized dayKey (date is NOT persisted, only accepted as input)
-        const { date: _, ...entryDataWithoutDate } = entryData;
-        const newEntry = await createHabitEntry({
-            ...entryDataWithoutDate,
-            dayKey: normalizedPayload.dayKey,
-            // date is NOT included - it's only accepted as input and normalized to dayKey
-            timestamp: normalizedPayload.timestampUtc,
-            source: entryData.source || 'manual' // Default source
-        }, userId);
+        // 1. Atomic upsert by (userId, habitId, dayKey) — no read-then-write; preserves "one entry per day" and avoids races
+        const { date: _d, habitId: _h, dayKey: _k, ...rest } = entryData;
+        const newEntry = await upsertHabitEntry(
+            entryData.habitId,
+            normalizedPayload.dayKey,
+            userId,
+            {
+                ...rest,
+                timestamp: normalizedPayload.timestampUtc,
+                source: entryData.source || 'manual',
+            }
+        );
 
-        // Add date to response for backward compatibility (derived from dayKey)
         const responseEntry = { ...newEntry, date: newEntry.dayKey };
 
-        // 2. Recompute DayLog (use dayKey)
         if (!newEntry.dayKey) {
             throw new Error('Entry missing dayKey after creation');
         }
@@ -167,8 +168,8 @@ export async function createHabitEntryRoute(req: Request, res: Response): Promis
         );
 
         res.status(201).json({
-            entry: responseEntry, // Includes date as derived alias for backward compatibility
-            dayLog: updatedDayLog // Return derived state
+            entry: responseEntry,
+            dayLog: updatedDayLog
         });
 
     } catch (error) {
