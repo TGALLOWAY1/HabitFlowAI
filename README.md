@@ -6,11 +6,15 @@ Canonical project docs live in **`docs/DOC_INDEX.md`**.
 
 ```bash
 npm install
-npm run dev:all
+npm run dev
 ```
 
-- API server: `http://localhost:3000`
-- Frontend: Vite default (`http://localhost:5173`)
+This starts **both** the API server and the frontend:
+
+- **API:** `http://localhost:3001` (handles all `/api/*` routes; set `PORT` in env to use a different port)
+- **App:** `http://localhost:5176` (Vite proxies `/api` to the server)
+
+**If you see 404 on `/api/*`**, the API may have failed to start (e.g. MongoDB not running or missing `MONGODB_URI`). Check the terminal where you ran `npm run dev`. To run only the frontend (when the API is already running elsewhere): `npm run dev:vite`.
 
 ## Core invariants
 

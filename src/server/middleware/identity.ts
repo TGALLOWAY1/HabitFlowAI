@@ -1,10 +1,9 @@
 /**
- * V1 Identity Middleware
+ * Identity Middleware
  *
  * Single source of truth for request identity: { householdId, userId }.
- * - Prefer explicit headers: X-Household-Id, X-User-Id.
- * - Production: missing headers → 401.
- * - Dev only: missing headers → bootstrap identity (default-household, default-user).
+ * - Production: identity is derived ONLY from session (valid session cookie). Headers are ignored.
+ * - Development: header identity (X-Household-Id, X-User-Id) allowed only when DEMO_MODE_ENABLED=true for local debugging; otherwise session required.
  */
 
 import type { Request, Response, NextFunction } from 'express';
@@ -17,9 +16,14 @@ export type RequestIdentity = {
   userId: string;
 };
 
+/** How identity was set: session (from cookie), demo_headers, or bootstrap (dev only). */
+export type IdentitySource = 'session' | 'demo_headers' | 'bootstrap';
+
 export interface RequestWithIdentity extends Request {
   householdId?: string;
   userId?: string;
+  /** Set by identityMiddleware when using demo headers or bootstrap; omitted when identity came from session. */
+  identitySource?: IdentitySource;
 }
 
 /**
@@ -31,7 +35,7 @@ export function getRequestIdentity(req: Request): { householdId: string; userId:
   const householdId = r.householdId;
   const userId = r.userId;
   if (householdId == null || userId == null) {
-    throw new Error('Identity not set on request. Ensure identityMiddleware ran and headers are present.');
+    throw new Error('Identity not set on request. Session required (or DEMO_MODE_ENABLED with headers in dev).');
   }
   return { householdId, userId };
 }
@@ -43,38 +47,51 @@ function trimHeader(value: unknown): string | null {
   return t.length > 0 ? t : null;
 }
 
+function isDemoModeEnabled(): boolean {
+  return process.env.DEMO_MODE_ENABLED === 'true' || process.env.DEMO_MODE_ENABLED === '1';
+}
+
 /**
  * Middleware that sets req.householdId and req.userId.
- * Production: returns 401 if X-Household-Id or X-User-Id is missing.
- * Dev (NODE_ENV !== 'production'): uses bootstrap identity when headers missing.
+ * - If session middleware already set them (from cookie), keep and next().
+ * - Production: never use headers; 401 if no session-derived identity.
+ * - Development with DEMO_MODE_ENABLED=true: use X-Household-Id / X-User-Id when both present; else bootstrap when both missing.
+ * - Development without demo mode: 401 if no session-derived identity (same as production).
  */
 export function identityMiddleware(req: Request, res: Response, next: NextFunction): void {
-  const householdIdRaw = req.headers['x-household-id'];
-  const userIdRaw = req.headers['x-user-id'];
-
-  const householdId = trimHeader(householdIdRaw);
-  const userId = trimHeader(userIdRaw);
-
-  const isProduction = process.env.NODE_ENV === 'production';
-
-  if (householdId !== null && userId !== null) {
-    (req as RequestWithIdentity).householdId = householdId;
-    (req as RequestWithIdentity).userId = userId;
+  const r = req as RequestWithIdentity;
+  if (r.householdId != null && r.userId != null) {
     next();
     return;
   }
 
+  const isProduction = process.env.NODE_ENV === 'production';
+
   if (isProduction) {
     res.status(401).json({
-      error: 'Missing identity. Send X-Household-Id and X-User-Id headers.',
+      error: 'Session required. Log in to continue.',
     });
     return;
   }
 
-  // DEV/TEST ONLY: bootstrap identity when headers are missing.
-  // This branch cannot run in production (we 401 above when isProduction).
-  // Do not use anonymous-user; use explicit bootstrap IDs for traceability.
-  (req as RequestWithIdentity).householdId = DEV_BOOTSTRAP_HOUSEHOLD_ID;
-  (req as RequestWithIdentity).userId = DEV_BOOTSTRAP_USER_ID;
-  next();
+  if (isDemoModeEnabled()) {
+    const householdId = trimHeader(req.headers['x-household-id']);
+    const userId = trimHeader(req.headers['x-user-id']);
+    if (householdId !== null && userId !== null) {
+      r.householdId = householdId;
+      r.userId = userId;
+      r.identitySource = 'demo_headers';
+      next();
+      return;
+    }
+    r.householdId = DEV_BOOTSTRAP_HOUSEHOLD_ID;
+    r.userId = DEV_BOOTSTRAP_USER_ID;
+    r.identitySource = 'bootstrap';
+    next();
+    return;
+  }
+
+  res.status(401).json({
+    error: 'Session required. Log in to continue.',
+  });
 }

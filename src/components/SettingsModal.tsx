@@ -40,13 +40,17 @@ export function SettingsModal({ isOpen, onClose, onRefresh }: SettingsModalProps
   const [householdUsers, setHouseholdUsers] = useState<HouseholdUser[]>([]);
   const [usersLoading, setUsersLoading] = useState(false);
   const [createLoading, setCreateLoading] = useState(false);
+  const [showRefreshConfirm, setShowRefreshConfirm] = useState(false);
   const currentUserId = getActiveRealUserId();
   const effectiveUserId = getActiveUserId();
   const knownIds = getKnownUserIds();
   const userList = mergeUserList(householdUsers, knownIds);
 
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen) {
+      setShowRefreshConfirm(false);
+      return;
+    }
     setUsersLoading(true);
     fetchHouseholdUsers()
       .then(setHouseholdUsers)
@@ -203,16 +207,41 @@ export function SettingsModal({ isOpen, onClose, onRefresh }: SettingsModalProps
               <h3 className="text-sm font-medium text-neutral-400 uppercase tracking-wider mb-3">
                 Data
               </h3>
-              <button
-                type="button"
-                onClick={() => {
-                  onRefresh();
-                  onClose();
-                }}
-                className="px-4 py-2 rounded-lg bg-neutral-800 text-neutral-200 border border-white/10 hover:bg-neutral-700"
-              >
-                Refresh habits & categories
-              </button>
+              {!showRefreshConfirm ? (
+                <button
+                  type="button"
+                  onClick={() => setShowRefreshConfirm(true)}
+                  className="px-4 py-2 rounded-lg bg-neutral-800 text-neutral-200 border border-white/10 hover:bg-neutral-700"
+                >
+                  Refresh habits & categories
+                </button>
+              ) : (
+                <div className="space-y-3 rounded-lg bg-neutral-800/50 border border-amber-500/30 p-3">
+                  <p className="text-sm text-neutral-200">
+                    Reload habits and categories from the server? Your current list will be replaced with server data. If the server is unavailable, the list may appear empty.
+                  </p>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowRefreshConfirm(false)}
+                      className="px-3 py-1.5 rounded-lg bg-neutral-700 text-neutral-200 border border-white/10 hover:bg-neutral-600"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onRefresh();
+                        setShowRefreshConfirm(false);
+                        onClose();
+                      }}
+                      className="px-3 py-1.5 rounded-lg bg-amber-600/80 text-white hover:bg-amber-600"
+                    >
+                      Yes, refresh
+                    </button>
+                  </div>
+                </div>
+              )}
             </section>
           )}
         </div>

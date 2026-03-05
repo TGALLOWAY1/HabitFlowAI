@@ -9,7 +9,7 @@ import type { Category, Habit, DayLog, DailyWellbeing, Goal, GoalWithProgress, R
 import type { WellbeingEntry, WellbeingMetricKey } from '../models/persistenceTypes';
 import type { DashboardPrefs, HouseholdUser } from '../models/persistenceTypes';
 
-import type { GoalDetail, CompletedGoal, ProgressOverview, DashboardStreaksOverview } from '../types';
+import type { GoalDetail, CompletedGoal, ProgressOverview } from '../types';
 import type { Task, CreateTaskRequest, UpdateTaskRequest } from '../types/task';
 
 import { API_BASE_URL } from './persistenceConfig';
@@ -138,11 +138,25 @@ export function getActiveUserId(): string {
   return getActiveUserMode() === 'demo' ? DEMO_USER_ID : getOrCreateUserId();
 }
 
+const FALLBACK_TIMEZONE = 'UTC';
+
+/**
+ * Returns a valid IANA timezone for API calls and date formatting.
+ * Uses the browser's resolved timezone when valid; otherwise UTC.
+ * Never throws — invalid or missing timezone (e.g. garbage in localStorage) is handled.
+ */
 export function getLocalTimeZone(): string {
   try {
-    return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    if (!tz || typeof tz !== 'string' || !tz.trim()) return FALLBACK_TIMEZONE;
+    // Validate that the timezone is usable (avoid "invalid timezone" from Intl/API)
+    new Intl.DateTimeFormat('en-CA', { timeZone: tz }).format(new Date());
+    return tz;
   } catch {
-    return 'UTC';
+    if (import.meta.env?.DEV) {
+      console.warn('[getLocalTimeZone] Invalid or unsupported timezone, using UTC');
+    }
+    return FALLBACK_TIMEZONE;
   }
 }
 
@@ -196,6 +210,14 @@ async function apiRequest<T>(
         throw new Error(
           errorData.error?.message ||
           'Resource not found'
+        );
+      }
+
+      // Handle conflict (409)
+      if (response.status === 409) {
+        throw new Error(
+          errorData.error?.message ||
+          'Category already exists. Choose a different name.'
         );
       }
 
@@ -962,17 +984,6 @@ export async function fetchProgressOverview(): Promise<ProgressOverview> {
 }
 
 /**
- * Fetch streak-centric dashboard payload derived from HabitEntries.
- *
- * GET /api/dashboard/streaks
- */
-export async function fetchDashboardStreaks(): Promise<DashboardStreaksOverview> {
-  const timeZone = getLocalTimeZone();
-  const response = await apiRequest<DashboardStreaksOverview>(`/dashboard/streaks?timeZone=${encodeURIComponent(timeZone)}`);
-  return response;
-}
-
-/**
  * Fetch goal detail with progress and history.
  *
  * GET /api/goals/:id/detail
@@ -1145,16 +1156,6 @@ export async function deleteHabitEntryByKey(habitId: string, dateKey: string): P
 /**
  * Skill Tree Persistence Functions
  */
-
-/**
- * Fetch the Skill Tree data for the current user.
- * 
- * @returns Promise<any> - The full skill tree structure
- */
-export async function fetchSkillTree(): Promise<any> {
-  const response = await apiRequest<any>('/skill-tree');
-  return response;
-}
 
 export async function deleteHabitEntry(id: string): Promise<{ success: boolean, dayLog: DayLog | null }> {
   await apiRequest<{ message: string, dayLog: DayLog | null }>(`/entries/${id}`, {

@@ -17,6 +17,11 @@ import {
 import type { Category } from '../../models/persistenceTypes';
 import { getRequestIdentity } from '../middleware/identity';
 
+/** Normalize category name for duplicate check: trim, collapse spaces, lowercase. */
+function normalizeCategoryName(name: string): string {
+  return name.trim().replace(/\s+/g, ' ').toLowerCase();
+}
+
 /**
  * Get all categories for the authenticated user.
  * GET /api/categories
@@ -74,7 +79,22 @@ export async function createCategoryRoute(req: Request, res: Response): Promise<
     }
 
     const { householdId, userId } = getRequestIdentity(req);
-    const category = await createCategory({ name: name.trim(), color: color.trim() }, householdId, userId);
+    const trimmedName = name.trim();
+    const normalizedNew = normalizeCategoryName(trimmedName);
+    const existingCategories = await getCategoriesByUser(householdId, userId);
+    const duplicate = existingCategories.some(
+      (c) => normalizeCategoryName(c.name) === normalizedNew
+    );
+    if (duplicate) {
+      res.status(409).json({
+        error: {
+          code: 'CONFLICT',
+          message: 'Category already exists. Choose a different name.',
+        },
+      });
+      return;
+    }
+    const category = await createCategory({ name: trimmedName, color: color.trim() }, householdId, userId);
 
     res.status(201).json({
       category,

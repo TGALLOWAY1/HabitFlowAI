@@ -1036,8 +1036,55 @@ export interface PersistenceSchema {
 
 
 /**
+ * Auth User (invite-only; server sessions).
+ * Stored in 'users' collection. _id is the application-level userId (UUID).
+ */
+export interface AuthUser {
+  _id: string;
+  householdId: string;
+  email: string;
+  displayName: string;
+  passwordHash: string;
+  role: 'admin' | 'member';
+  createdAt: string;
+  lastLoginAt?: string;
+}
+
+/**
+ * Invite (hashed code; never store raw code).
+ * Stored in 'invites' collection.
+ */
+export interface Invite {
+  _id: string;
+  householdId: string;
+  codeHash: string;
+  role: 'admin' | 'member';
+  maxUses: number;
+  uses: number;
+  expiresAt: string;
+  revokedAt?: string;
+  createdAt: string;
+  createdByUserId: string;
+}
+
+/**
+ * Session (token stored hashed in DB; cookie holds raw token).
+ * Stored in 'sessions' collection.
+ */
+export interface Session {
+  _id: string;
+  householdId: string;
+  userId: string;
+  tokenHash: string;
+  createdAt: string;
+  expiresAt: string;
+  ip?: string;
+  userAgent?: string;
+}
+
+/**
  * MongoDB Collection Names
- * 
+ *
  * Constants for MongoDB collection names.
  * These are used in the repository layer (src/server/repositories/).
  */
@@ -1058,6 +1105,9 @@ export const MONGO_COLLECTIONS = {
     HABIT_ENTRIES: 'habitEntries',
     HABIT_POTENTIAL_EVIDENCE: 'habitPotentialEvidence',
     HOUSEHOLD_USERS: 'householdUsers',
+    USERS: 'users',
+    INVITES: 'invites',
+    SESSIONS: 'sessions',
 } as const;
 
 /**

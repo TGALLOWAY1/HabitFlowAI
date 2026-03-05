@@ -1,8 +1,7 @@
 import React from 'react';
 import { useHabitStore } from '../store/HabitContext';
 import type { Category } from '../types';
-import { Plus, Download, X } from 'lucide-react';
-import { PREDEFINED_CATEGORIES, PREDEFINED_HABITS } from '../data/predefinedHabits';
+import { Plus, X } from 'lucide-react';
 import {
     DndContext,
     closestCenter,
@@ -168,11 +167,13 @@ export const CategoryTabs: React.FC<CategoryTabsProps> = ({
     activeCategoryId,
     onSelectCategory,
 }) => {
-    const { addCategory, importHabits, deleteCategory, reorderCategories, updateCategory } = useHabitStore();
+    const { addCategory, deleteCategory, reorderCategories, updateCategory } = useHabitStore();
     const [isAdding, setIsAdding] = React.useState(false);
     const [newCategoryName, setNewCategoryName] = React.useState('');
+    const [addCategoryError, setAddCategoryError] = React.useState<string | null>(null);
     const [deleteConfirmId, setDeleteConfirmId] = React.useState<string | null>(null);
-    const [importStatus, setImportStatus] = React.useState<'idle' | 'success'>('idle');
+
+    const normalizeCategoryName = (name: string) => name.trim().replace(/\s+/g, ' ').toLowerCase();
 
     const sensors = useSensors(
         useSensor(PointerSensor, {
@@ -199,26 +200,25 @@ export const CategoryTabs: React.FC<CategoryTabsProps> = ({
         }
     };
 
-    const handleImport = async () => {
-        try {
-            await importHabits(PREDEFINED_CATEGORIES, PREDEFINED_HABITS);
-            setImportStatus('success');
-            setTimeout(() => setImportStatus('idle'), 3000);
-        } catch (error) {
-            console.error('Failed to import habits:', error);
-        }
-    };
-
     const handleAddCategory = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (newCategoryName.trim()) {
-            try {
-                await addCategory({ name: newCategoryName.trim(), color: 'bg-neutral-600' });
-                setNewCategoryName('');
-                setIsAdding(false);
-            } catch (error) {
-                console.error('Failed to add category:', error);
-            }
+        setAddCategoryError(null);
+        const trimmed = newCategoryName.trim();
+        if (!trimmed) return;
+        const normalized = normalizeCategoryName(trimmed);
+        const duplicate = categories.some((c) => normalizeCategoryName(c.name) === normalized);
+        if (duplicate) {
+            setAddCategoryError('Category already exists. Choose a different name.');
+            return;
+        }
+        try {
+            await addCategory({ name: trimmed, color: 'bg-neutral-600' });
+            setNewCategoryName('');
+            setIsAdding(false);
+        } catch (error) {
+            const msg = error instanceof Error ? error.message : 'Failed to add category';
+            setAddCategoryError(msg.includes('already exists') ? 'Category already exists. Choose a different name.' : msg);
+            console.error('Failed to add category:', error);
         }
     };
 
@@ -265,19 +265,28 @@ export const CategoryTabs: React.FC<CategoryTabsProps> = ({
             </DndContext>
 
             {isAdding ? (
-                <form onSubmit={handleAddCategory} className="flex items-center gap-1">
-                    <input
-                        autoFocus
-                        type="text"
-                        value={newCategoryName}
-                        onChange={(e) => setNewCategoryName(e.target.value)}
-                        placeholder="Category name..."
-                        className="px-3 py-2 rounded-full bg-neutral-800 text-white text-sm border border-neutral-700 focus:border-emerald-500 outline-none w-32"
-                        onBlur={() => !newCategoryName && setIsAdding(false)}
-                    />
-                    <button type="submit" className="p-2 rounded-full bg-emerald-500 text-white hover:bg-emerald-600">
-                        <Plus size={14} />
-                    </button>
+                <form onSubmit={handleAddCategory} className="flex flex-col gap-1">
+                    <div className="flex items-center gap-1">
+                        <input
+                            autoFocus
+                            type="text"
+                            value={newCategoryName}
+                            onChange={(e) => { setNewCategoryName(e.target.value); setAddCategoryError(null); }}
+                            placeholder="Category name..."
+                            className="px-3 py-2 rounded-full bg-neutral-800 text-white text-sm border border-neutral-700 focus:border-emerald-500 outline-none w-32"
+                            onBlur={() => !newCategoryName && !addCategoryError && setIsAdding(false)}
+                            aria-invalid={!!addCategoryError}
+                            aria-describedby={addCategoryError ? 'add-category-error' : undefined}
+                        />
+                        <button type="submit" className="p-2 rounded-full bg-emerald-500 text-white hover:bg-emerald-600">
+                            <Plus size={14} />
+                        </button>
+                    </div>
+                    {addCategoryError && (
+                        <p id="add-category-error" className="text-xs text-amber-400 px-2">
+                            {addCategoryError}
+                        </p>
+                    )}
                 </form>
             ) : (
                 <button
@@ -289,18 +298,6 @@ export const CategoryTabs: React.FC<CategoryTabsProps> = ({
                 </button>
             )}
 
-            <div className="flex items-center gap-2 ml-auto">
-                {importStatus === 'success' && (
-                    <span className="text-xs text-emerald-400 font-medium animate-fade-in">Imported!</span>
-                )}
-                <button
-                    onClick={handleImport}
-                    className="px-3 py-2 rounded-full bg-neutral-800 text-neutral-400 hover:bg-emerald-900/50 hover:text-emerald-400 transition-colors"
-                    title="Import Default Habits"
-                >
-                    <Download size={18} />
-                </button>
-            </div>
         </div>
     );
 };
