@@ -30,6 +30,7 @@ export const DayView = () => {
     const {
         habits,
         categories,
+        logs,
         toggleHabit,
         updateHabit,
         upsertHabitEntry,
@@ -66,7 +67,7 @@ export const DayView = () => {
         loadDayView();
     }, [dateStr]);
 
-    // Create lookup map for habit statuses
+    // Create lookup map for habit statuses (from API)
     const habitStatusMap = useMemo(() => {
         if (!dayViewData) return new Map<string, DayViewHabitStatus>();
         return new Map(dayViewData.habits.map(status => [status.habit.id, status]));
@@ -77,6 +78,33 @@ export const DayView = () => {
         if (!habits) return [];
         return getHabitsForDate(habits, today);
     }, [habits, today]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    // Merge with context logs so toggles from Today view update UI immediately
+    const resolvedHabitStatusMap = useMemo(() => {
+        const map = new Map(habitStatusMap);
+        todaysHabits.forEach(habit => {
+            const key = `${habit.id}-${dateStr}`;
+            const log = logs[key];
+            if (log !== undefined) {
+                const isComplete = habit.goal?.type === 'number'
+                    ? (habit.goal.target ? (log.value >= habit.goal.target) : (log.value ?? 0) > 0)
+                    : !!log.completed;
+                const existing = map.get(habit.id);
+                if (existing) {
+                    map.set(habit.id, { ...existing, isComplete });
+                } else {
+                    map.set(habit.id, {
+                        habit,
+                        isComplete,
+                        currentValue: log.value ?? 0,
+                        targetValue: habit.goal?.target ?? 0,
+                        progressPercent: habit.goal?.target ? Math.min(100, ((log.value ?? 0) / habit.goal.target) * 100) : 0
+                    });
+                }
+            }
+        });
+        return map;
+    }, [habitStatusMap, logs, todaysHabits, dateStr]);
 
     // 2. Identify Pinned Habits
     const pinnedHabits = useMemo(() => {
@@ -167,7 +195,7 @@ export const DayView = () => {
                     onUnpin={handlePin}
                     onToggle={handleToggle}
                     checkStatus={(id) => {
-                        const status = habitStatusMap.get(id);
+                        const status = resolvedHabitStatusMap.get(id);
                         return status?.isComplete ?? false;
                     }}
                 />
@@ -185,7 +213,7 @@ export const DayView = () => {
                                 key={cat.id}
                                 category={cat}
                                 habits={catHabits}
-                                habitStatusMap={habitStatusMap}
+                                habitStatusMap={resolvedHabitStatusMap}
                                 dateStr={dateStr}
                                 onToggle={handleToggle}
                                 onPin={handlePin}

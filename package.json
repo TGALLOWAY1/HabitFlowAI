@@ -4,9 +4,10 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "concurrently \"npm run dev:server\" \"npm run dev:vite\"",
+    "dev:vite": "vite",
     "dev:server": "NODE_OPTIONS='--no-warnings' tsx watch src/server/index.ts",
-    "dev:all": "concurrently \"npm run dev:server\" \"npm run dev\"",
+    "dev:all": "npm run dev",
     "build": "tsc -b && vite build",
     "start": "tsx src/server/index.ts",
     "lint": "eslint .",

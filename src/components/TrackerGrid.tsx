@@ -80,7 +80,7 @@ const HabitActionButtons = ({
     const linkedRoutines = routines.filter(r => r.linkedHabitIds?.includes(habit.id));
 
     return (
-        <div className="flex-shrink-0 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-20 ml-2">
+        <div className="flex-shrink-0 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-20">
             {linkedRoutines.length > 0 && onRunRoutine && (
                 <button
                     onClick={(e) => {
@@ -254,70 +254,64 @@ const HabitRowContent = ({
             onContextMenu={(e) => onContextMenu(e, habit)}
         >
             <div
-                className="w-64 flex-shrink-0 p-4 border-r border-white/5 flex items-center justify-between gap-2 group-hover:bg-white/[0.02] transition-colors relative"
+                className="w-64 flex-shrink-0 p-4 border-r border-white/5 flex flex-col gap-1.5 group-hover:bg-white/[0.02] transition-colors relative"
                 style={{ paddingLeft: `${16 + (depth * 24)}px` }} // Dynamic Indentation
             >
-                <div className="flex items-center gap-3 overflow-hidden min-w-0 flex-1">
-                    {/* Drag Handle (Only for depth 0 and NOT virtual) */}
+                {/* Top row: drag handle + full habit name (no icons) */}
+                <div className="flex items-start gap-2 min-w-0">
                     {depth === 0 && !habit.isVirtual && (
                         <button
                             {...attributes}
                             {...listeners}
-                            className="text-neutral-600 hover:text-neutral-400 cursor-grab active:cursor-grabbing p-1 -ml-2 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
+                            className="text-neutral-600 hover:text-neutral-400 cursor-grab active:cursor-grabbing p-1 -ml-2 mt-0.5 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
                             title="Drag to reorder"
                         >
                             <GripVertical size={16} />
                         </button>
                     )}
-
-                    <div className="flex flex-col overflow-hidden min-w-0 flex-1">
-                        <div className="flex items-center gap-2 min-w-0">
-                            <span
-                                className={cn(
-                                    "font-medium truncate transition-colors min-w-0",
-                                    (depth > 0 || habit.isVirtual) ? "text-neutral-400 italic text-sm" : "text-neutral-200"
-                                )}
-                                title={habit.name}
-                            >
-                                {habit.name}
-                            </span>
-                        </div>
-                        <div className="flex items-center gap-3 mt-1">
-                            {habit.goal.type === 'number' && habit.goal.target && (
-                                <span className="text-xs text-neutral-500 truncate">
-                                    Target: {habit.goal.target} {habit.goal.unit}
-                                </span>
-                            )}
-
-                            {/* Streak Display */}
-                            {streak !== undefined && streak > 0 && (
-                                <div className="flex items-center gap-1 text-[10px] text-orange-400 bg-orange-400/10 px-1.5 py-0.5 rounded-full border border-orange-400/20">
-                                    <Flame size={10} className="fill-orange-400" />
-                                    <span className="font-bold">{streak}</span>
-                                </div>
-                            )}
-
-                            {/* Potential Evidence Indicator */}
-                            {potentialEvidence && potentialEvidence.some(e => e.habitId === habit.id && e.date === todayStr) && !isCompletedToday && (
-                                <div className="flex items-center gap-1 text-[10px] text-purple-400 bg-purple-400/10 px-1.5 py-0.5 rounded-full border border-purple-400/20 animate-pulse" title="Routine Execution Detected: Verify completion">
-                                    <Zap size={10} className="fill-purple-400" />
-                                    <span className="font-bold">Routine Execution</span>
-                                </div>
-                            )}
-                        </div>
-                    </div>
+                    <span
+                        className={cn(
+                            "font-medium transition-colors min-w-0 break-words line-clamp-2",
+                            (depth > 0 || habit.isVirtual) ? "text-neutral-400 italic text-sm" : "text-neutral-200"
+                        )}
+                        title={habit.name}
+                    >
+                        {habit.name}
+                    </span>
                 </div>
 
-                <HabitActionButtons
-                    habit={habit}
-                    onEdit={() => onEditHabit(habit)}
-                    onDelete={deleteHabit}
-                    deleteConfirmId={deleteConfirmId}
-                    setDeleteConfirmId={setDeleteConfirmId}
-                    onRunRoutine={onRunRoutine}
-                    onViewHistory={() => onViewHistory(habit)}
-                    onMoveToCategory={onMoveToCategory ? () => onMoveToCategory(habit) : undefined}
-                />
+                {/* Bottom row: target/streak/evidence + action icons */}
+                <div className="flex items-center justify-between gap-2 min-w-0">
+                    <div className="flex items-center gap-3 min-w-0 flex-wrap">
+                        {habit.goal.type === 'number' && habit.goal.target && (
+                            <span className="text-xs text-neutral-500 truncate">
+                                Target: {habit.goal.target} {habit.goal.unit}
+                            </span>
+                        )}
+                        {streak !== undefined && streak > 0 && (
+                            <div className="flex items-center gap-1 text-[10px] text-orange-400 bg-orange-400/10 px-1.5 py-0.5 rounded-full border border-orange-400/20 flex-shrink-0">
+                                <Flame size={10} className="fill-orange-400" />
+                                <span className="font-bold">{streak}</span>
+                            </div>
+                        )}
+                        {potentialEvidence && potentialEvidence.some(e => e.habitId === habit.id && e.date === todayStr) && !isCompletedToday && (
+                            <div className="flex items-center gap-1 text-[10px] text-purple-400 bg-purple-400/10 px-1.5 py-0.5 rounded-full border border-purple-400/20 animate-pulse flex-shrink-0" title="Routine Execution Detected: Verify completion">
+                                <Zap size={10} className="fill-purple-400" />
+                                <span className="font-bold">Routine Execution</span>
+                            </div>
+                        )}
+                    </div>
+                    <HabitActionButtons
+                        habit={habit}
+                        onEdit={() => onEditHabit(habit)}
+                        onDelete={deleteHabit}
+                        deleteConfirmId={deleteConfirmId}
+                        setDeleteConfirmId={setDeleteConfirmId}
+                        onRunRoutine={onRunRoutine}
+                        onViewHistory={() => onViewHistory(habit)}
+                        onMoveToCategory={onMoveToCategory ? () => onMoveToCategory(habit) : undefined}
+                    />
+                </div>
 
                 {/* Bundle Expand/Collapse "Drawer Handle" */}
                 {hasChildren && (
@@ -886,12 +880,27 @@ export const TrackerGrid = ({
     const LONG_PRESS_MS = 500;
     const DOUBLE_CLICK_DELAY_MS = 280;
 
+    /** Safe popover position from event; use fallback when currentTarget is null (e.g. after setTimeout). */
+    const getPopoverPosition = (e: React.MouseEvent | { currentTarget?: HTMLElement | null }) => {
+        const el = e?.currentTarget;
+        if (el?.getBoundingClientRect) {
+            const rect = el.getBoundingClientRect();
+            return { top: rect.bottom + 8, left: rect.left - 40 };
+        }
+        return { top: Math.min(200, window.innerHeight - 120), left: Math.min(80, window.innerWidth - 220) };
+    };
+
     /** Open cell actions menu. e can be MouseEvent or { currentTarget: HTMLElement } for long-press. */
     const openCellMenu = (habitId: string, dateStr: string, e: React.MouseEvent | { currentTarget: HTMLElement }) => {
         if ('stopPropagation' in e && typeof (e as React.MouseEvent).stopPropagation === 'function') {
             (e as React.MouseEvent).stopPropagation();
         }
-        const rect = e.currentTarget.getBoundingClientRect();
+        const el = e?.currentTarget;
+        if (!el?.getBoundingClientRect) {
+            setCellMenu({ habitId, dateStr, x: window.innerWidth / 2, y: 200 });
+            return;
+        }
+        const rect = el.getBoundingClientRect();
         setCellMenu({ habitId, dateStr, x: rect.right, y: rect.top });
     };
 
@@ -1068,14 +1077,14 @@ export const TrackerGrid = ({
     };
 
     const handleOpenPopover = (e: React.MouseEvent, habit: Habit, date: string, val: number) => {
-        const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+        const position = getPopoverPosition(e);
         setPopoverState({
             isOpen: true,
             habitId: habit.id,
             date: date,
             initialValue: val,
             unit: habit.goal.unit,
-            position: { top: rect.bottom + 8, left: rect.left - 40 },
+            position,
         });
     };
 
@@ -1130,7 +1139,7 @@ export const TrackerGrid = ({
                 }
                 refreshProgress();
             } else {
-                const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                const position = getPopoverPosition(e);
                 setPopoverState({
                     isOpen: true,
                     habitId: habit.bundleParentId,
@@ -1138,7 +1147,7 @@ export const TrackerGrid = ({
                     initialValue: typeof currentOptionValue === 'number' ? currentOptionValue : 0,
                     unit: habit.goal.unit,
                     bundleOptionId: habit.associatedOptionId,
-                    position: { top: rect.bottom + 8, left: rect.left - 40 },
+                    position,
                 });
             }
             return;
@@ -1168,14 +1177,14 @@ export const TrackerGrid = ({
         if (habit.goal.type === 'boolean') {
             handleToggle(habit.id, dateStr);
         } else {
-            const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+            const position = getPopoverPosition(e);
             setPopoverState({
                 isOpen: true,
                 habitId: habit.id,
                 date: dateStr,
                 initialValue: log?.value || 0,
                 unit: habit.goal.unit,
-                position: { top: rect.bottom + 8, left: rect.left - 40 },
+                position,
             });
         }
     };
