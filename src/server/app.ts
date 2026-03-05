@@ -4,6 +4,8 @@
  */
 
 import express from 'express';
+import helmet from 'helmet';
+import cookieParser from 'cookie-parser';
 import type { Express, Request, Response } from 'express';
 import { getCategories, createCategoryRoute, getCategory, updateCategoryRoute, deleteCategoryRoute, reorderCategoriesRoute } from './routes/categories';
 import { getHabits, createHabitRoute, getHabit, updateHabitRoute, deleteHabitRoute, reorderHabitsRoute } from './routes/habits';
@@ -19,11 +21,22 @@ import { getIntegrityReport } from './routes/admin';
 import { getEntriesRoute, createEntryRoute, upsertEntryByKeyRoute, getEntryRoute, updateEntryRoute, deleteEntryRoute } from './routes/journal';
 import { getTasksRoute, createTaskRoute, updateTaskRoute, deleteTaskRoute } from './routes/tasks';
 import { getDashboardPrefsRoute, updateDashboardPrefsRoute } from './routes/dashboardPrefs';
-import { getAuthMe } from './routes/auth';
+import {
+  getAuthMe,
+  postInviteRedeem,
+  postLogin,
+  postLogout,
+  postBootstrapAdmin,
+} from './routes/auth';
+import { postCreateInvite, getInvites, postRevokeInvite } from './routes/adminInvites';
 import householdUsersRouter from './routes/householdUsers';
 import { identityMiddleware } from './middleware/identity';
+import { sessionMiddleware } from './middleware/session';
+import { requireAdmin } from './middleware/requireAdmin';
 import { noPersonaInHabitEntryRequests } from './middleware/noPersonaInHabitEntryRequests';
 import { requestContextMiddleware } from './middleware/requestContext';
+import { requestLoggingMiddleware } from './middleware/requestLogging';
+import { authRateLimiter, adminInviteRateLimiter, entriesWriteRateLimiter } from './middleware/rateLimitAuth';
 import {
   getHabitEntriesRoute,
   createHabitEntryRoute,
@@ -40,14 +53,27 @@ import habitPotentialEvidenceRoutes from './routes/habitPotentialEvidence';
 export function createApp(): Express {
   const app = express();
 
+  // Safe behind a reverse proxy (Vercel → Render/Railway); required for correct client IP and secure cookies
+  app.set('trust proxy', 1);
+
+  app.use(helmet({ contentSecurityPolicy: false }));
   app.use(express.json());
+  app.use(cookieParser());
   app.use(requestContextMiddleware);
+  app.use(requestLoggingMiddleware);
   app.use('/uploads', express.static('public/uploads'));
 
   app.use((req, res, next) => {
-    res.header('Access-Control-Allow-Origin', '*');
+    const isProduction = process.env.NODE_ENV === 'production';
+    const origin = isProduction && process.env.FRONTEND_ORIGIN
+      ? process.env.FRONTEND_ORIGIN
+      : '*';
+    res.header('Access-Control-Allow-Origin', origin);
     res.header('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE, OPTIONS');
-    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-User-Id, X-Household-Id');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-User-Id, X-Household-Id, X-Bootstrap-Key');
+    if (origin !== '*') {
+      res.header('Access-Control-Allow-Credentials', 'true');
+    }
     if (req.method === 'OPTIONS') {
       res.sendStatus(200);
       return;
@@ -55,10 +81,26 @@ export function createApp(): Express {
     next();
   });
 
+  // Public health check (no auth); for Render/Railway and proxy smoke tests
+  app.get('/api/health', (_req, res) => {
+    res.status(200).json({
+      status: 'ok',
+      timestamp: new Date().toISOString(),
+      env: process.env.NODE_ENV ?? 'development',
+    });
+  });
+
+  // Auth routes that do not require identity (rate-limited)
+  app.post('/api/auth/invite/redeem', authRateLimiter, postInviteRedeem);
+  app.post('/api/auth/login', authRateLimiter, postLogin);
+  app.post('/api/auth/bootstrap-admin', authRateLimiter, postBootstrapAdmin);
+
+  app.use(sessionMiddleware);
   app.use(identityMiddleware);
   app.use(noPersonaInHabitEntryRequests);
 
   app.get('/api/auth/me', getAuthMe);
+  app.post('/api/auth/logout', postLogout);
   app.use('/api/household', householdUsersRouter);
   app.get('/api/categories', getCategories);
   app.post('/api/categories', createCategoryRoute);
@@ -122,28 +164,30 @@ export function createApp(): Express {
   app.patch('/api/tasks/:id', updateTaskRoute);
   app.delete('/api/tasks/:id', deleteTaskRoute);
   app.get('/api/entries', getHabitEntriesRoute);
-  app.post('/api/entries/batch', batchCreateEntriesRoute);
-  app.post('/api/entries', createHabitEntryRoute);
-  app.put('/api/entries', upsertHabitEntryRoute);
-  app.delete('/api/entries/key', deleteHabitEntryByKeyRoute);
-  app.delete('/api/entries', deleteHabitEntriesForDayRoute);
-  app.delete('/api/entries/:id', deleteHabitEntryRoute);
-  app.patch('/api/entries/:id', updateHabitEntryRoute);
+  app.post('/api/entries/batch', entriesWriteRateLimiter, batchCreateEntriesRoute);
+  app.post('/api/entries', entriesWriteRateLimiter, createHabitEntryRoute);
+  app.put('/api/entries', entriesWriteRateLimiter, upsertHabitEntryRoute);
+  app.delete('/api/entries/key', entriesWriteRateLimiter, deleteHabitEntryByKeyRoute);
+  app.delete('/api/entries', entriesWriteRateLimiter, deleteHabitEntriesForDayRoute);
+  app.delete('/api/entries/:id', entriesWriteRateLimiter, deleteHabitEntryRoute);
+  app.patch('/api/entries/:id', entriesWriteRateLimiter, updateHabitEntryRoute);
   app.get('/api/dayView', getDayView);
   app.use('/api/evidence', habitPotentialEvidenceRoutes);
   app.get('/api/admin/integrity-report', getIntegrityReport);
-  app.get('/api/health', (_req, res) => {
-    res.json({ status: 'ok', timestamp: new Date().toISOString() });
-  });
+  app.post('/api/admin/invites', adminInviteRateLimiter, requireAdmin, postCreateInvite);
+  app.get('/api/admin/invites', adminInviteRateLimiter, requireAdmin, getInvites);
+  app.post('/api/admin/invites/:id/revoke', adminInviteRateLimiter, requireAdmin, postRevokeInvite);
 
   if (process.env.NODE_ENV !== 'production') {
     app.get('/api/debug/whoami', (req: Request, res: Response) => {
-      const householdId = (req as any).householdId ?? '(not set)';
-      const userId = (req as any).userId ?? '(not set)';
+      const r = req as import('./middleware/identity').RequestWithIdentity;
+      const householdId = r.householdId ?? '(not set)';
+      const userId = r.userId ?? '(not set)';
+      const identitySource = r.identitySource ?? (householdId !== '(not set)' ? 'session' : 'none');
       res.json({
         householdId,
         userId,
-        identitySource: req.headers['x-household-id'] && req.headers['x-user-id'] ? 'headers' : 'fallback',
+        identitySource,
         dbName: process.env.MONGODB_DB_NAME ?? '(unset)',
         nodeEnv: process.env.NODE_ENV ?? '(unset)',
         mongoUriPresent: !!process.env.MONGODB_URI,

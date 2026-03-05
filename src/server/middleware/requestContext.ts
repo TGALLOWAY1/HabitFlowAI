@@ -1,16 +1,27 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
+import { randomUUID } from 'node:crypto';
 import type { NextFunction, Request, Response } from 'express';
 
-type RequestContext = {
+export type RequestContext = {
+  requestId: string;
   warnings: Set<string>;
 };
 
 const requestContextStore = new AsyncLocalStorage<RequestContext>();
 
 export function requestContextMiddleware(_req: Request, _res: Response, next: NextFunction): void {
-  requestContextStore.run({ warnings: new Set<string>() }, () => {
+  const requestId = randomUUID();
+  requestContextStore.run({ requestId, warnings: new Set<string>() }, () => {
     next();
   });
+}
+
+export function getRequestContext(): RequestContext | undefined {
+  return requestContextStore.getStore();
+}
+
+export function getRequestId(): string | undefined {
+  return requestContextStore.getStore()?.requestId;
 }
 
 /**

@@ -69,6 +69,7 @@ async function ensureHabitEntriesUniqueIndex(database: Db): Promise<void> {
   }
 
   // One document per (householdId, userId, habitId, dayKey). Soft-delete sets deletedAt on that doc.
+  // Index/connection warnings are intentional and non-fatal: we log and continue so production never crashes.
   try {
     await coll.createIndex(
       { householdId: 1, userId: 1, habitId: 1, dayKey: 1 },
@@ -79,7 +80,7 @@ async function ensureHabitEntriesUniqueIndex(database: Db): Promise<void> {
     if (code === 85 || code === 86) {
       return;
     }
-    throw error;
+    console.warn('[MongoDB] habitEntries unique index creation failed (non-fatal):', error);
   }
 }
 
@@ -105,11 +106,32 @@ async function ensureCoreIndexes(database: Db): Promise<void> {
   await createIndexSafe('habitEntries', { userId: 1, habitId: 1, timestamp: -1 }, { name: 'idx_habitEntries_user_habit_timestamp' });
 
   await ensureHabitEntriesUniqueIndex(database);
+  await ensureAuthIndexes(database);
 
   if (!isTestEnv()) {
     console.log('[MongoDB] Indexes ensured (habitEntries unique: householdId, userId, habitId, dayKey)');
   }
   indexesEnsuredForDbName = database.databaseName;
+}
+
+async function ensureAuthIndexes(database: Db): Promise<void> {
+  const createIndexSafe = async (
+    collectionName: string,
+    keys: Record<string, 1 | -1>,
+    options?: CreateIndexesOptions
+  ) => {
+    try {
+      await database.collection(collectionName).createIndex(keys, options);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.warn(`[MongoDB] Failed to ensure index on ${collectionName}: ${message}`);
+    }
+  };
+
+  await createIndexSafe('users', { email: 1, householdId: 1 }, { unique: true, name: 'idx_users_email_household_unique' });
+  await createIndexSafe('sessions', { tokenHash: 1 }, { unique: true, name: 'idx_sessions_tokenHash_unique' });
+  await createIndexSafe('sessions', { expiresAt: 1 }, { expireAfterSeconds: 0, name: 'idx_sessions_ttl' });
+  await createIndexSafe('invites', { codeHash: 1 }, { name: 'idx_invites_codeHash' });
 }
 
 /**
