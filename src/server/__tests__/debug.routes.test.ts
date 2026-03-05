@@ -18,39 +18,46 @@ describe('debug and dev-only routes', () => {
       process.env.NODE_ENV = 'production';
     });
 
-    it('GET /api/debug/whoami is not registered and returns 404', async () => {
+    it('GET /api/debug/whoami requires session in production (401; route not registered)', async () => {
       const app = createApp();
       const res = await request(app)
         .get('/api/debug/whoami')
         .set('X-Household-Id', 'h1')
         .set('X-User-Id', 'u1');
-      expect(res.status).toBe(404);
+      expect(res.status).toBe(401);
     });
 
-    it('POST /api/dev/seedDemoEmotionalWellbeing is not registered and returns 404', async () => {
+    it('POST /api/dev/seedDemoEmotionalWellbeing requires session in production (401; route not registered)', async () => {
       const app = createApp();
       const res = await request(app)
         .post('/api/dev/seedDemoEmotionalWellbeing')
         .set('X-Household-Id', 'h1')
         .set('X-User-Id', 'u1')
         .send({});
-      expect(res.status).toBe(404);
+      expect(res.status).toBe(401);
     });
 
-    it('POST /api/dev/resetDemoEmotionalWellbeing is not registered and returns 404', async () => {
+    it('POST /api/dev/resetDemoEmotionalWellbeing requires session in production (401; route not registered)', async () => {
       const app = createApp();
       const res = await request(app)
         .post('/api/dev/resetDemoEmotionalWellbeing')
         .set('X-Household-Id', 'h1')
         .set('X-User-Id', 'u1')
         .send({});
-      expect(res.status).toBe(404);
+      expect(res.status).toBe(401);
     });
   });
 
   describe('NODE_ENV !== production (dev smoke)', () => {
+    const originalDemoMode = process.env.DEMO_MODE_ENABLED;
+
     beforeEach(() => {
       process.env.NODE_ENV = 'test';
+      process.env.DEMO_MODE_ENABLED = 'true';
+    });
+
+    afterEach(() => {
+      process.env.DEMO_MODE_ENABLED = originalDemoMode;
     });
 
     it('GET /api/debug/whoami is registered and returns identity + env info', async () => {
@@ -59,6 +66,7 @@ describe('debug and dev-only routes', () => {
       expect(res.status).toBe(200);
       expect(res.body).toHaveProperty('householdId');
       expect(res.body).toHaveProperty('userId');
+      expect(res.body).toHaveProperty('identitySource');
       expect(res.body).toHaveProperty('nodeEnv');
       expect(res.body).toHaveProperty('timestamp');
     });

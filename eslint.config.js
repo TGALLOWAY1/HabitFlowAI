@@ -20,4 +20,13 @@ export default defineConfig([
       globals: globals.browser,
     },
   },
+  // Beta gate: server + shared + domain — enforce no errors; allow unused _prefixed vars and explicit any as warnings
+  {
+    files: ['src/server/**/*.ts', 'src/shared/**/*.ts', 'src/domain/**/*.ts'],
+    ignores: ['**/__tests__/**', '**/*.test.ts'],
+    rules: {
+      '@typescript-eslint/no-unused-vars': ['error', { varsIgnorePattern: '^_', argsIgnorePattern: '^_', destructuredArrayIgnorePattern: '^_' }],
+      '@typescript-eslint/no-explicit-any': 'warn',
+    },
+  },
 ])

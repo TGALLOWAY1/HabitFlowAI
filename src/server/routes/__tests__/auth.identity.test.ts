@@ -11,9 +11,11 @@ import { getAuthMe } from '../auth';
 describe('GET /api/auth/me', () => {
   let app: Express;
   const originalNodeEnv = process.env.NODE_ENV;
+  const originalDemoMode = process.env.DEMO_MODE_ENABLED;
 
   afterEach(() => {
     process.env.NODE_ENV = originalNodeEnv;
+    process.env.DEMO_MODE_ENABLED = originalDemoMode;
   });
 
   beforeEach(() => {
@@ -22,7 +24,10 @@ describe('GET /api/auth/me', () => {
     app.get('/api/auth/me', getAuthMe);
   });
 
-  it('returns householdId and userId when identity headers are provided', async () => {
+  it('returns householdId and userId when demo mode and identity headers are provided', async () => {
+    process.env.NODE_ENV = 'test';
+    process.env.DEMO_MODE_ENABLED = 'true';
+
     const response = await request(app)
       .get('/api/auth/me')
       .set('X-Household-Id', 'house-abc')
@@ -35,26 +40,44 @@ describe('GET /api/auth/me', () => {
     });
   });
 
-  it('returns 401 when identity middleware did not set identity (production)', async () => {
+  it('returns 401 in production when no session (headers ignored)', async () => {
     process.env.NODE_ENV = 'production';
 
     const response = await request(app)
       .get('/api/auth/me')
+      .set('X-Household-Id', 'house-abc')
+      .set('X-User-Id', 'user-xyz')
       .expect(401);
 
-    expect(response.body.error).toMatch(/Identity not set|X-Household-Id|X-User-Id/i);
+    expect(response.body.error).toMatch(/Session required|Log in/i);
   });
 
-  it('returns bootstrap identity in dev when no headers sent', async () => {
-    process.env.NODE_ENV = 'test';
+  it('returns 401 in production when no headers and no session', async () => {
+    process.env.NODE_ENV = 'production';
 
-    const response = await request(app)
-      .get('/api/auth/me')
-      .expect(200);
+    const response = await request(app).get('/api/auth/me').expect(401);
+
+    expect(response.body.error).toMatch(/Session required|Log in/i);
+  });
+
+  it('returns bootstrap identity in dev when DEMO_MODE_ENABLED and no headers sent', async () => {
+    process.env.NODE_ENV = 'test';
+    process.env.DEMO_MODE_ENABLED = 'true';
+
+    const response = await request(app).get('/api/auth/me').expect(200);
 
     expect(response.body).toEqual({
       householdId: 'default-household',
       userId: 'default-user',
     });
+  });
+
+  it('returns 401 in dev without demo mode when no session', async () => {
+    process.env.NODE_ENV = 'test';
+    delete process.env.DEMO_MODE_ENABLED;
+
+    const response = await request(app).get('/api/auth/me').expect(401);
+
+    expect(response.body.error).toMatch(/Session required|Log in/i);
   });
 });

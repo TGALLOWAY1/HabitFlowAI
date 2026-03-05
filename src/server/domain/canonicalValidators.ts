@@ -45,7 +45,7 @@ export function assertTimeZone(timeZone: string): ValidationResult {
     // This catches invalid timezones that pass format checks
     try {
         new Intl.DateTimeFormat('en-US', { timeZone });
-    } catch (error) {
+    } catch {
         return {
             valid: false,
             error: `Invalid timezone: "${timeZone}". Must be a valid IANA timezone identifier (e.g., "America/Los_Angeles", "UTC")`
@@ -146,9 +146,9 @@ export function validateHabitEntryPayloadStructure(payload: Partial<HabitEntryPa
  * @param payload - Any payload object to check
  * @returns ValidationResult
  */
-export function assertNoStoredCompletion(payload: any): ValidationResult {
+export function assertNoStoredCompletion(payload: unknown): ValidationResult {
+    if (typeof payload !== 'object' || payload === null) return { valid: true };
     const completionFields = ['completed', 'isComplete', 'isCompleted', 'progress', 'currentValue', 'percent'];
-    
     for (const field of completionFields) {
         if (field in payload) {
             return {
