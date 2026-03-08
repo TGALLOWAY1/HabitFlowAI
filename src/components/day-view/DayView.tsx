@@ -87,7 +87,7 @@ export const DayView = () => {
             const log = logs[key];
             if (log !== undefined) {
                 const isComplete = habit.goal?.type === 'number'
-                    ? (habit.goal.target ? (log.value >= habit.goal.target) : (log.value ?? 0) > 0)
+                    ? (habit.goal.target ? ((log.value ?? 0) >= habit.goal.target) : (log.value ?? 0) > 0)
                     : !!log.completed;
                 const existing = map.get(habit.id);
                 if (existing) {

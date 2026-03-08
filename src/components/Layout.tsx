@@ -1,6 +1,7 @@
 import React, { useMemo, useState, useRef, useEffect } from 'react';
-import { LayoutGrid, Settings, User } from 'lucide-react';
+import { LayoutGrid, Settings, User, LogOut } from 'lucide-react';
 import { useHabitStore } from '../store/HabitContext';
+import { useAuth } from '../store/AuthContext';
 import { getActiveUserMode, seedDemoEmotionalWellbeing, resetDemoEmotionalWellbeing } from '../lib/persistenceClient';
 import { SettingsModal } from './SettingsModal';
 
@@ -10,6 +11,7 @@ interface LayoutProps {
 
 export const Layout: React.FC<LayoutProps> = ({ children }) => {
     const { refreshHabitsAndCategories } = useHabitStore();
+    const { user, logout } = useAuth();
     const isDev = import.meta.env.DEV;
     const isDemo = getActiveUserMode() === 'demo';
     const [devNotice, setDevNotice] = useState<string | null>(null);
@@ -132,9 +134,26 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
                         {userMenuOpen && (
                             <div className="absolute right-0 top-full mt-2 w-56 bg-neutral-900 border border-white/10 rounded-xl shadow-lg overflow-hidden z-50 animate-in fade-in slide-in-from-top-2">
                                 <div className="py-1">
-                                    <div className="px-4 py-2 text-xs text-neutral-500">
-                                        Account menu (expand as needed)
-                                    </div>
+                                    {user?.displayName && (
+                                        <div className="px-4 py-2 text-sm text-neutral-300 border-b border-white/5">
+                                            {user.displayName}
+                                        </div>
+                                    )}
+                                    {user?.email && (
+                                        <div className="px-4 py-1.5 text-xs text-neutral-500">
+                                            {user.email}
+                                        </div>
+                                    )}
+                                    <button
+                                        onClick={async () => {
+                                            setUserMenuOpen(false);
+                                            await logout();
+                                        }}
+                                        className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-neutral-400 hover:text-white hover:bg-white/5 transition-colors"
+                                    >
+                                        <LogOut size={14} />
+                                        Sign out
+                                    </button>
                                 </div>
                             </div>
                         )}

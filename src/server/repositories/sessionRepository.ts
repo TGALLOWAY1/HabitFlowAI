@@ -36,7 +36,7 @@ export async function createSession(params: {
     ip: params.ip,
     userAgent: params.userAgent,
   };
-  await db.collection(COL).insertOne(doc);
+  await db.collection(COL).insertOne(doc as any);
   return doc as unknown as Session;
 }
 

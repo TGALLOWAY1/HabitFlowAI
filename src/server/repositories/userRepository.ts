@@ -52,14 +52,14 @@ export async function createUser(params: {
     createdAt: now,
     lastLoginAt: now,
   };
-  await db.collection(COL).insertOne(doc);
+  await db.collection(COL).insertOne(doc as any);
   return doc as unknown as AuthUser;
 }
 
 export async function updateLastLogin(userId: string): Promise<void> {
   const db = await getDb();
   await db.collection(COL).updateOne(
-    { _id: userId },
+    { _id: userId } as any,
     { $set: { lastLoginAt: new Date().toISOString() } }
   );
 }
@@ -67,7 +67,7 @@ export async function updateLastLogin(userId: string): Promise<void> {
 export async function findUserById(userId: string): Promise<AuthUser | null> {
   const db = await getDb();
   const doc = await db.collection(COL).findOne(
-    { _id: userId },
+    { _id: userId } as any,
     { projection: { _id: 1, householdId: 1, email: 1, displayName: 1, passwordHash: 1, role: 1, createdAt: 1, lastLoginAt: 1 } }
   );
   if (!doc) return null;

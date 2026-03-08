@@ -179,6 +179,7 @@ async function apiRequest<T>(
 
     const response = await fetch(url, {
       ...options,
+      credentials: 'include',
       headers: {
         'Content-Type': 'application/json',
         ...getIdentityHeaders(),
@@ -188,6 +189,12 @@ async function apiRequest<T>(
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
+
+      // Handle auth failure (401) — session expired or missing
+      if (response.status === 401) {
+        window.dispatchEvent(new Event('habitflow:session-expired'));
+        throw new Error('Session expired. Please log in again.');
+      }
 
       // Handle feature flag disabled (501)
       if (response.status === 501) {
@@ -662,6 +669,7 @@ export async function uploadRoutineImage(
   try {
     const response = await fetch(url, {
       method: 'POST',
+      credentials: 'include',
       headers: {
         ...getIdentityHeaders(),
         // Content-Type is left undefined so browser sets it with boundary for FormData
@@ -939,6 +947,7 @@ export async function uploadGoalBadge(goalId: string, file: File): Promise<{ bad
 
   const response = await fetch(url, {
     method: 'POST',
+    credentials: 'include',
     headers: { ...getIdentityHeaders() },
     body: formData,
   });

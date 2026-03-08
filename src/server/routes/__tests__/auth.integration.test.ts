@@ -47,7 +47,7 @@ describe('Auth integration', () => {
       const db = await getTestDb();
       const codeHash = hashInviteCode('VALIDCODE');
       await db.collection('invites').insertOne({
-        _id: 'inv-1',
+        _id: 'inv-1' as any,
         householdId: 'hh1',
         codeHash,
         role: 'member',
@@ -68,7 +68,7 @@ describe('Auth integration', () => {
       const db = await getTestDb();
       const codeHash = hashInviteCode('REVOKED');
       await db.collection('invites').insertOne({
-        _id: 'inv-2',
+        _id: 'inv-2' as any,
         householdId: 'hh1',
         codeHash,
         role: 'member',
@@ -90,7 +90,7 @@ describe('Auth integration', () => {
       const db = await getTestDb();
       const codeHash = hashInviteCode('MAXED');
       await db.collection('invites').insertOne({
-        _id: 'inv-3',
+        _id: 'inv-3' as any,
         householdId: 'hh1',
         codeHash,
         role: 'member',
@@ -133,7 +133,7 @@ describe('Auth integration', () => {
       expect(res.body.user.displayName).toBe('New User');
       expect(res.body.user.role).toBe('member');
       expect(res.headers['set-cookie']).toBeDefined();
-      expect(res.headers['set-cookie'].some((c: string) => c.includes('hf_session'))).toBe(true);
+      expect((res.headers['set-cookie'] as unknown as string[]).some((c: string) => c.includes('hf_session'))).toBe(true);
 
       const db = await getTestDb();
       const userCount = await db.collection('users').countDocuments({ email: 'new@example.com' });
@@ -162,7 +162,7 @@ describe('Auth integration', () => {
 
     it('sets cookie and returns user on correct password', async () => {
       const passwordHash = await bcrypt.hash('correctpass', SALT_ROUNDS);
-      const user = await createUser({
+      await createUser({
         householdId: 'hh1',
         email: 'correct@test.com',
         displayName: 'Correct',
@@ -177,7 +177,7 @@ describe('Auth integration', () => {
       expect(res.body.user.email).toBe('correct@test.com');
       expect(res.body.user.role).toBe('admin');
       expect(res.headers['set-cookie']).toBeDefined();
-      expect(res.headers['set-cookie'].some((c: string) => c.includes('hf_session'))).toBe(true);
+      expect((res.headers['set-cookie'] as unknown as string[]).some((c: string) => c.includes('hf_session'))).toBe(true);
     });
   });
 
