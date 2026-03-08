@@ -196,5 +196,12 @@ export function createApp(): Express {
     });
   }
 
+  // Error handler: return JSON with error message so crashes are diagnosable
+  app.use((err: unknown, _req: Request, res: Response, _next: import('express').NextFunction) => {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error('[Express error handler]', message, err instanceof Error ? err.stack : '');
+    res.status(500).json({ error: message });
+  });
+
   return app;
 }
