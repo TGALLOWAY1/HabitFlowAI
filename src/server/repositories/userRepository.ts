@@ -38,9 +38,10 @@ export async function createUser(params: {
   displayName: string;
   passwordHash: string;
   role: 'admin' | 'member';
+  userId?: string;
 }): Promise<AuthUser> {
   const db = await getDb();
-  const userId = randomUUID();
+  const userId = params.userId ?? randomUUID();
   const now = new Date().toISOString();
   const doc = {
     _id: userId,
