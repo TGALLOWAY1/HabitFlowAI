@@ -271,6 +271,7 @@ export async function postBootstrapAdmin(req: Request, res: Response): Promise<v
     displayName: body.displayName != null ? String(body.displayName).trim() || normalizedEmail : normalizedEmail,
     passwordHash,
     role: 'admin',
+    ...(body.userId ? { userId: String(body.userId).trim() } : {}),
   });
 
   res.status(201).json({
