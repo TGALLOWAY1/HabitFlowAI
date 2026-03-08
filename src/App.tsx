@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from 'react';
+import { AuthProvider } from './store/AuthContext';
 import { HabitProvider, useHabitStore } from './store/HabitContext';
 import { RoutineProvider } from './store/RoutineContext';
 import { TaskProvider } from './context/TaskContext';
 import { ToastProvider } from './components/Toast';
+import { AuthGate } from './components/AuthGate';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { Layout } from './components/Layout';
 import { CategoryTabs } from './components/CategoryTabs';
 import { TrackerGrid } from './components/TrackerGrid';
@@ -497,18 +500,24 @@ const HabitTrackerContent: React.FC = () => {
 
 function App() {
   return (
-    <ToastProvider>
-      <HabitProvider>
-        <RoutineProvider>
-          <TaskProvider>
-            <Layout>
-              <HabitTrackerContent />
-            </Layout>
-            <DevIdentityPanel />
-          </TaskProvider>
-        </RoutineProvider>
-      </HabitProvider>
-    </ToastProvider>
+    <ErrorBoundary>
+      <AuthProvider>
+        <AuthGate>
+          <ToastProvider>
+            <HabitProvider>
+              <RoutineProvider>
+                <TaskProvider>
+                  <Layout>
+                    <HabitTrackerContent />
+                  </Layout>
+                  {import.meta.env.DEV && <DevIdentityPanel />}
+                </TaskProvider>
+              </RoutineProvider>
+            </HabitProvider>
+          </ToastProvider>
+        </AuthGate>
+      </AuthProvider>
+    </ErrorBoundary>
   );
 }
 
