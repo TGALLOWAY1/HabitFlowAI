@@ -22,7 +22,7 @@ declare module './identity' {
   }
 }
 
-export async function sessionMiddleware(req: Request, res: Response, next: NextFunction): Promise<void> {
+export async function sessionMiddleware(req: Request, _res: Response, next: NextFunction): Promise<void> {
   const r = req as RequestWithIdentity;
   const raw = req.cookies?.[SESSION_COOKIE_NAME];
   if (!raw || typeof raw !== 'string') {

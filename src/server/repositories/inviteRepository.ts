@@ -39,7 +39,7 @@ export async function createInvite(params: {
     createdAt: now,
     createdByUserId: params.createdByUserId,
   };
-  await db.collection(COL).insertOne(doc);
+  await db.collection(COL).insertOne(doc as any);
   return doc as unknown as Invite;
 }
 
@@ -67,7 +67,7 @@ export async function createInviteWithCode(params: {
 export async function incrementInviteUses(inviteId: string): Promise<void> {
   const db = await getDb();
   await db.collection(COL).updateOne(
-    { _id: inviteId },
+    { _id: inviteId } as any,
     { $inc: { uses: 1 } }
   );
 }
@@ -75,7 +75,7 @@ export async function incrementInviteUses(inviteId: string): Promise<void> {
 export async function revokeInvite(inviteId: string): Promise<boolean> {
   const db = await getDb();
   const result = await db.collection(COL).updateOne(
-    { _id: inviteId },
+    { _id: inviteId } as any,
     { $set: { revokedAt: new Date().toISOString() } }
   );
   return result.matchedCount > 0;
@@ -83,7 +83,7 @@ export async function revokeInvite(inviteId: string): Promise<boolean> {
 
 export async function findInviteById(inviteId: string): Promise<Invite | null> {
   const db = await getDb();
-  const doc = await db.collection(COL).findOne({ _id: inviteId });
+  const doc = await db.collection(COL).findOne({ _id: inviteId } as any);
   if (!doc) return null;
   return doc as unknown as Invite;
 }
