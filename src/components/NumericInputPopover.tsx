@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Check } from 'lucide-react';
+import { Check, Trash2 } from 'lucide-react';
 
 interface NumericInputPopoverProps {
     isOpen: boolean;
     onClose: () => void;
     onSubmit: (value: number) => void;
+    onClear?: () => void;
     initialValue?: number;
     unit?: string;
     position: { top: number; left: number };
@@ -14,6 +15,7 @@ export const NumericInputPopover: React.FC<NumericInputPopoverProps> = ({
     isOpen,
     onClose,
     onSubmit,
+    onClear,
     initialValue = 0,
     unit,
     position,
@@ -57,6 +59,8 @@ export const NumericInputPopover: React.FC<NumericInputPopoverProps> = ({
         onClose();
     };
 
+    const showClear = initialValue > 0 && onClear;
+
     return (
         <div
             className="fixed z-50"
@@ -83,6 +87,19 @@ export const NumericInputPopover: React.FC<NumericInputPopoverProps> = ({
                 >
                     <Check size={14} strokeWidth={3} />
                 </button>
+                {showClear && (
+                    <button
+                        type="button"
+                        onClick={() => {
+                            onClear();
+                            onClose();
+                        }}
+                        className="p-1.5 text-red-400 hover:bg-red-500/20 rounded-lg transition-colors"
+                        title="Clear entry"
+                    >
+                        <Trash2 size={14} />
+                    </button>
+                )}
             </form>
         </div>
     );

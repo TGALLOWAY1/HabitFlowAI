@@ -2,7 +2,7 @@ import React, { useMemo, useState, useEffect } from 'react';
 import { format, eachDayOfInterval, subDays, isToday } from 'date-fns';
 import { type Habit, type DayLog, type Routine, type HabitPotentialEvidence } from '../types';
 import { cn } from '../utils/cn';
-import { Check, Plus, Trash2, GripVertical, Pencil, Play, Flame, History, Zap, Link2, FolderInput, MoreVertical } from 'lucide-react';
+import { Check, Plus, Trash2, GripVertical, Pencil, Play, Flame, History, Zap, Link2, FolderInput } from 'lucide-react';
 import { CategoryPickerModal } from './CategoryPickerModal';
 
 import { NumericInputPopover } from './NumericInputPopover';
@@ -182,7 +182,7 @@ interface HabitRowContentProps {
     onContextMenu: (e: React.MouseEvent, habit: Habit) => void;
     isDeleteMode: boolean;
     onMoveToCategory?: (habit: Habit) => void;
-    onOpenCellMenu?: (habitId: string, dateStr: string, e: React.MouseEvent | { currentTarget: HTMLElement }) => void;
+
     onCellPointerDown?: (habitId: string, dateStr: string, e: React.PointerEvent) => void;
     onCellPointerUp?: () => void;
     onCellPointerMove?: () => void;
@@ -215,7 +215,6 @@ const HabitRowContent = ({
     onContextMenu,
     isDeleteMode,
     onMoveToCategory,
-    onOpenCellMenu,
     onCellPointerDown,
     onCellPointerUp,
     onCellPointerMove,
@@ -465,21 +464,6 @@ const HabitRowContent = ({
                                     )
                                 )}
                             </button>
-                            {hasExistingEntry && isInteractive && onOpenCellMenu && (
-                                <button
-                                    type="button"
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        e.preventDefault();
-                                        onOpenCellMenu(habit.id, dateStr, e);
-                                    }}
-                                    className="absolute right-1 top-1 p-1 rounded hover:bg-white/10 text-neutral-500 hover:text-white transition-colors z-10 focus:opacity-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
-                                    title="Clear entry"
-                                    aria-label={`Options for entry on ${dateStr}`}
-                                >
-                                    <MoreVertical size={14} />
-                                </button>
-                            )}
                         </div>
                     );
                 })}
@@ -508,7 +492,6 @@ const SortableHabitRow = ({
     onContextMenu,
     isDeleteMode,
     onMoveToCategory,
-    onOpenCellMenu,
     onCellPointerDown,
     onCellPointerUp,
     onCellPointerMove,
@@ -532,7 +515,7 @@ const SortableHabitRow = ({
     onContextMenu: (e: React.MouseEvent, habit: Habit) => void;
     isDeleteMode: boolean;
     onMoveToCategory?: (habit: Habit) => void;
-    onOpenCellMenu?: (habitId: string, dateStr: string, e: React.MouseEvent | { currentTarget: HTMLElement }) => void;
+
     onCellPointerDown?: (habitId: string, dateStr: string, e: React.PointerEvent) => void;
     onCellPointerUp?: () => void;
     onCellPointerMove?: () => void;
@@ -628,7 +611,6 @@ const SortableHabitRow = ({
                 onContextMenu={onContextMenu}
                 isDeleteMode={isDeleteMode}
                 onMoveToCategory={onMoveToCategory}
-                onOpenCellMenu={onOpenCellMenu}
                 onCellPointerDown={onCellPointerDown}
                 onCellPointerUp={onCellPointerUp}
                 onCellPointerMove={onCellPointerMove}
@@ -657,7 +639,6 @@ const SortableHabitRow = ({
                     potentialEvidence={potentialEvidence}
                     onContextMenu={onContextMenu}
                     isDeleteMode={isDeleteMode}
-                    onOpenCellMenu={onOpenCellMenu}
                     onCellPointerDown={onCellPointerDown}
                     onCellPointerUp={onCellPointerUp}
                     onCellPointerMove={onCellPointerMove}
@@ -811,23 +792,14 @@ export const TrackerGrid = ({
         habitId: string;
     } | null>(null);
 
-    const [cellMenu, setCellMenu] = useState<{
-        habitId: string;
-        dateStr: string;
-        x: number;
-        y: number;
-    } | null>(null);
-
-    // Close context menu and cell menu on click elsewhere or Escape
+    // Close context menu on click elsewhere or Escape
     useEffect(() => {
         const handleClick = () => {
             setContextMenu(null);
-            setCellMenu(null);
         };
         const handleKeyDown = (e: KeyboardEvent) => {
             if (e.key === 'Escape') {
                 setContextMenu(null);
-                setCellMenu(null);
             }
         };
         window.addEventListener('click', handleClick);
@@ -873,12 +845,9 @@ export const TrackerGrid = ({
     // Suppress duplicate tap when both pointer and synthetic click fire (e.g. touch devices)
     const lastHandledCellRef = React.useRef<{ habitId: string; dateStr: string; t: number } | null>(null);
 
-    // Double-click: delay single-click so second click can open menu instead of toggle
-    const pendingClickRef = React.useRef<{ habitId: string; dateStr: string; timeout: ReturnType<typeof setTimeout> } | null>(null);
     const longPressRef = React.useRef<{ habitId: string; dateStr: string; element: HTMLElement; timeout: ReturnType<typeof setTimeout> } | null>(null);
     const longPressJustFiredRef = React.useRef<{ habitId: string; dateStr: string } | null>(null);
-    const LONG_PRESS_MS = 500;
-    const DOUBLE_CLICK_DELAY_MS = 280;
+    const LONG_PRESS_MS = 400;
 
     /** Safe popover position from event; use fallback when currentTarget is null (e.g. after setTimeout). */
     const getPopoverPosition = (e: React.MouseEvent | { currentTarget?: HTMLElement | null }) => {
@@ -890,37 +859,13 @@ export const TrackerGrid = ({
         return { top: Math.min(200, window.innerHeight - 120), left: Math.min(80, window.innerWidth - 220) };
     };
 
-    /** Open cell actions menu. e can be MouseEvent or { currentTarget: HTMLElement } for long-press. */
-    const openCellMenu = (habitId: string, dateStr: string, e: React.MouseEvent | { currentTarget: HTMLElement }) => {
-        if ('stopPropagation' in e && typeof (e as React.MouseEvent).stopPropagation === 'function') {
-            (e as React.MouseEvent).stopPropagation();
-        }
-        const el = e?.currentTarget;
-        if (!el?.getBoundingClientRect) {
-            setCellMenu({ habitId, dateStr, x: window.innerWidth / 2, y: 200 });
-            return;
-        }
-        const rect = el.getBoundingClientRect();
-        setCellMenu({ habitId, dateStr, x: rect.right, y: rect.top });
-    };
 
-    const handleCellClickWrapped = (e: React.MouseEvent, habit: Habit, dateStr: string, log?: DayLog) => {
+    const handleCellClickDirect = (e: React.MouseEvent, habit: Habit, dateStr: string, log?: DayLog) => {
         if (longPressJustFiredRef.current?.habitId === habit.id && longPressJustFiredRef.current?.dateStr === dateStr) {
             longPressJustFiredRef.current = null;
             return;
         }
-        const existing = pendingClickRef.current;
-        if (existing && existing.habitId === habit.id && existing.dateStr === dateStr) {
-            clearTimeout(existing.timeout);
-            pendingClickRef.current = null;
-            openCellMenu(habit.id, dateStr, e);
-            return;
-        }
-        const timeout = setTimeout(() => {
-            pendingClickRef.current = null;
-            handleCellClick(e, habit, dateStr, log);
-        }, DOUBLE_CLICK_DELAY_MS);
-        pendingClickRef.current = { habitId: habit.id, dateStr, timeout };
+        handleCellClick(e, habit, dateStr, log);
     };
 
     const onCellPointerDown = (habitId: string, dateStr: string, e: React.PointerEvent) => {
@@ -928,7 +873,7 @@ export const TrackerGrid = ({
         const element = e.currentTarget as HTMLElement;
         const timeout = setTimeout(() => {
             if (longPressRef.current?.habitId === habitId && longPressRef.current?.dateStr === dateStr) {
-                openCellMenu(habitId, dateStr, { currentTarget: element });
+                handleClearEntry(habitId, dateStr);
                 longPressJustFiredRef.current = { habitId, dateStr };
             }
             longPressRef.current = null;
@@ -951,7 +896,6 @@ export const TrackerGrid = ({
     };
 
     const handleClearEntry = async (habitId: string, dateStr: string) => {
-        setCellMenu(null);
         try {
             await deleteHabitEntryByKey(habitId, dateStr);
             refreshProgress();
@@ -1269,7 +1213,7 @@ export const TrackerGrid = ({
                                         onToggleExpand={toggleExpand}
                                         logs={logs}
                                         dates={dates}
-                                        handleCellClick={handleCellClickWrapped}
+                                        handleCellClick={handleCellClickDirect}
                                         deleteHabit={deleteHabit}
                                         deleteConfirmId={deleteConfirmId}
                                         setDeleteConfirmId={setDeleteConfirmId}
@@ -1282,7 +1226,6 @@ export const TrackerGrid = ({
                                         onContextMenu={handleContextMenu}
                                         isDeleteMode={deleteMode}
                                         onMoveToCategory={(h) => setCategoryPickerHabit(h)}
-                                        onOpenCellMenu={openCellMenu}
                                         onCellPointerDown={onCellPointerDown}
                                         onCellPointerUp={onCellPointerUp}
                                         onCellPointerMove={onCellPointerMove}
@@ -1389,6 +1332,16 @@ export const TrackerGrid = ({
                 initialValue={popoverState.initialValue}
                 unit={popoverState.unit}
                 position={popoverState.position}
+                onClear={popoverState.initialValue > 0 ? async () => {
+                    try {
+                        await deleteHabitEntryByKey(popoverState.habitId, popoverState.date);
+                        refreshProgress();
+                        showToast('Entry cleared', 'success');
+                    } catch (err) {
+                        console.error('Failed to clear entry:', err);
+                        showToast('Failed to clear entry', 'error');
+                    }
+                } : undefined}
             />
 
             {historyModalHabitId && (
@@ -1398,25 +1351,6 @@ export const TrackerGrid = ({
                 />
             )}
 
-            {/* Cell entry menu (Clear entry) */}
-            {cellMenu && (
-                <div
-                    className="fixed z-50 bg-neutral-800 border border-white/10 rounded-lg shadow-xl py-1 min-w-[140px] animate-in fade-in zoom-in-95 duration-100"
-                    style={{ top: cellMenu.y, left: cellMenu.x - 140 }}
-                    onClick={(e) => e.stopPropagation()}
-                    role="menu"
-                    aria-label="Entry options"
-                >
-                    <button
-                        type="button"
-                        role="menuitem"
-                        onClick={() => handleClearEntry(cellMenu.habitId, cellMenu.dateStr)}
-                        className="flex items-center gap-2 px-3 py-2 text-sm text-neutral-300 hover:bg-neutral-700/50 hover:text-white w-full text-left rounded-none"
-                    >
-                        <Trash2 size={14} className="text-red-400/80" /> Clear entry
-                    </button>
-                </div>
-            )}
 
             {/* Context Menu */}
             {contextMenu && (
