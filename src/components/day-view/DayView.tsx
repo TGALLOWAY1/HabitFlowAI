@@ -37,8 +37,8 @@ export const DayView = () => {
         deleteHabitEntryByKey
     } = useHabitStore();
 
-    // Use Today
-    const today = new Date();
+    // Use Today — stable reference to avoid re-computation on every render
+    const today = useMemo(() => new Date(), []);
     const dateStr = format(today, 'yyyy-MM-dd');
     const displayDate = format(today, 'EEEE · MMM d');
 
@@ -77,7 +77,7 @@ export const DayView = () => {
     const todaysHabits = useMemo(() => {
         if (!habits) return [];
         return getHabitsForDate(habits, today);
-    }, [habits, today]); // eslint-disable-line react-hooks/exhaustive-deps
+    }, [habits, today]);
 
     // Merge with context logs so toggles from Today view update UI immediately
     const resolvedHabitStatusMap = useMemo(() => {
