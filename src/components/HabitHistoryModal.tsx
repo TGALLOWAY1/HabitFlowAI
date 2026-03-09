@@ -87,7 +87,7 @@ export const HabitHistoryModal: React.FC<HabitHistoryModalProps> = ({ habitId, o
 
     return (
         <div className="modal-overlay fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-2xl max-h-[85vh] flex flex-col">
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-2xl max-h-[85dvh] flex flex-col">
                 <div className="flex justify-between items-center p-6 border-b border-gray-200 dark:border-gray-700">
                     <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">
                         History for {habit.name}

@@ -98,7 +98,7 @@ export function SettingsModal({ isOpen, onClose, onRefresh }: SettingsModalProps
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
       <div
-        className="bg-neutral-900 border border-white/10 rounded-xl shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto"
+        className="bg-neutral-900 border border-white/10 rounded-xl shadow-xl max-w-md w-full max-h-[90dvh] overflow-y-auto"
         role="dialog"
         aria-labelledby="settings-title"
       >

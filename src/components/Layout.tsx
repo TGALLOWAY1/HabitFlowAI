@@ -162,7 +162,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
             </header>
 
             {/* Main Content - safe-area for notched devices */}
-            <main className="pt-[max(5rem,env(safe-area-inset-top))] px-4 pb-20 max-w-7xl mx-auto min-h-screen">
+            <main className="pt-[calc(4rem+env(safe-area-inset-top,0px))] px-4 pb-20 max-w-7xl mx-auto min-h-screen">
                 {children}
             </main>
         </div>

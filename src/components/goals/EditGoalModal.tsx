@@ -175,7 +175,7 @@ export const EditGoalModal: React.FC<EditGoalModalProps> = ({
 
     return (
         <div className="modal-overlay fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-            <div className="w-full max-w-2xl bg-neutral-900 border border-white/10 rounded-2xl flex flex-col max-h-[90vh] shadow-2xl">
+            <div className="w-full max-w-2xl bg-neutral-900 border border-white/10 rounded-2xl flex flex-col max-h-[90dvh] shadow-2xl">
                 {/* Header */}
                 <div className="flex items-center justify-between p-6 border-b border-white/10">
                     <h3 className="text-xl font-bold text-white">Edit Goal</h3>
