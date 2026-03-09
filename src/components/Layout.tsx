@@ -75,7 +75,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
     return (
         <div className="min-h-screen bg-neutral-900 text-white font-sans selection:bg-emerald-500/30">
             {/* Header */}
-            <header className="fixed top-0 left-0 right-0 h-16 bg-neutral-900/80 backdrop-blur-md border-b border-white/5 flex items-center justify-between px-6 z-50">
+            <header className="fixed top-0 left-0 right-0 pt-[env(safe-area-inset-top,0px)] h-[calc(4rem+env(safe-area-inset-top,0px))] bg-neutral-900/80 backdrop-blur-md border-b border-white/5 flex items-center justify-between px-6 z-50">
                 <div className="flex items-center gap-3">
                     <div className="w-8 h-8 bg-gradient-to-br from-emerald-400 to-cyan-500 rounded-lg flex items-center justify-center shadow-lg shadow-emerald-500/20">
                         <LayoutGrid size={18} className="text-white" />
