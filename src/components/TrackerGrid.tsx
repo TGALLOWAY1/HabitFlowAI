@@ -854,7 +854,24 @@ export const TrackerGrid = ({
         const el = e?.currentTarget;
         if (el?.getBoundingClientRect) {
             const rect = el.getBoundingClientRect();
-            return { top: rect.bottom + 8, left: rect.left - 40 };
+            const popoverWidth = 192; // w-48
+            const popoverHeight = 56;
+
+            let top = rect.bottom + 8;
+            let left = rect.left - 40;
+
+            // Clamp horizontally within viewport
+            if (left + popoverWidth > window.innerWidth - 8) {
+                left = window.innerWidth - popoverWidth - 8;
+            }
+            if (left < 8) left = 8;
+
+            // If popover would go below 60% of viewport (likely behind keyboard), flip above
+            if (top + popoverHeight > window.innerHeight * 0.6) {
+                top = rect.top - popoverHeight - 8;
+            }
+
+            return { top, left };
         }
         return { top: Math.min(200, window.innerHeight - 120), left: Math.min(80, window.innerWidth - 220) };
     };

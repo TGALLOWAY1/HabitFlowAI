@@ -26,10 +26,13 @@ export const NumericInputPopover: React.FC<NumericInputPopoverProps> = ({
     useEffect(() => {
         if (isOpen) {
             setValue(initialValue.toString());
-            setTimeout(() => {
-                inputRef.current?.focus();
-                inputRef.current?.select();
-            }, 50);
+            // Double-rAF ensures DOM is painted before focus (more reliable than setTimeout on iOS)
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    inputRef.current?.focus();
+                    inputRef.current?.select();
+                });
+            });
         }
     }, [isOpen, initialValue]);
 
@@ -73,8 +76,9 @@ export const NumericInputPopover: React.FC<NumericInputPopoverProps> = ({
             >
                 <input
                     ref={inputRef}
-                    type="number"
-                    step="any"
+                    type="text"
+                    inputMode="decimal"
+                    pattern="[0-9]*\.?[0-9]*"
                     value={value}
                     onChange={(e) => setValue(e.target.value)}
                     className="w-full bg-neutral-900 border border-white/10 rounded-lg px-3 py-1.5 text-white text-sm focus:outline-none focus:border-emerald-500"
