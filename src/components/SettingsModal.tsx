@@ -96,154 +96,163 @@ export function SettingsModal({ isOpen, onClose, onRefresh }: SettingsModalProps
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+    <div className="fixed inset-0 z-[100]">
+      {/* Backdrop */}
       <div
-        className="bg-neutral-900 border border-white/10 rounded-xl shadow-xl max-w-md w-full max-h-[90dvh] overflow-y-auto"
-        role="dialog"
-        aria-labelledby="settings-title"
-      >
-        <div className="p-4 border-b border-white/5 flex items-center justify-between">
-          <h2 id="settings-title" className="text-lg font-semibold text-white">
-            Settings
-          </h2>
-          <button
-            type="button"
-            onClick={onClose}
-            className="p-2 text-neutral-400 hover:text-white rounded-lg hover:bg-white/5"
-            aria-label="Close"
-          >
-            ✕
-          </button>
-        </div>
+        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+        onClick={onClose}
+      />
+      {/* Scroll wrapper — centers the panel via auto margins */}
+      <div className="absolute inset-0 overflow-y-auto modal-scroll p-4">
+        <div
+          className="relative bg-neutral-900 border border-white/10 rounded-xl shadow-xl max-w-md w-full mx-auto my-8 sm:my-16"
+          role="dialog"
+          aria-labelledby="settings-title"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="p-4 border-b border-white/5 flex items-center justify-between sticky top-0 bg-neutral-900 rounded-t-xl z-10">
+            <h2 id="settings-title" className="text-lg font-semibold text-white">
+              Settings
+            </h2>
+            <button
+              type="button"
+              onClick={onClose}
+              className="p-2 text-neutral-400 hover:text-white rounded-lg hover:bg-white/5"
+              aria-label="Close"
+            >
+              ✕
+            </button>
+          </div>
 
-        <div className="p-4 space-y-6">
-          {/* Identity */}
-          <section>
-            <h3 className="text-sm font-medium text-neutral-400 uppercase tracking-wider mb-3">
-              Identity
-            </h3>
-            <div className="space-y-3 text-sm">
-              <div>
-                <label className="block text-neutral-500 mb-1">Household</label>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={householdId}
-                    onChange={(e) => setHouseholdId(e.target.value)}
-                    className="flex-1 bg-neutral-800 text-white px-3 py-2 rounded-lg border border-white/10 font-mono text-xs"
-                    placeholder="default-household"
-                  />
-                  <button
-                    type="button"
-                    onClick={handleSaveHousehold}
-                    className="px-3 py-2 rounded-lg bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/30"
-                  >
-                    Save
-                  </button>
-                </div>
-              </div>
-              <div>
-                <label className="block text-neutral-500 mb-1">Current user</label>
-                <div className="bg-neutral-800 px-3 py-2 rounded-lg border border-white/10 font-mono text-xs text-neutral-300 break-all">
-                  {effectiveUserId}
-                </div>
-              </div>
-              <div>
-                <label className="block text-neutral-500 mb-1">Switch user</label>
-                <div className="space-y-2">
-                  {usersLoading && (
-                    <div className="text-neutral-500 text-xs">Loading users…</div>
-                  )}
-                  {!usersLoading && userList.length > 0 && (
-                    <div className="flex flex-wrap gap-1">
-                      {userList.map(({ userId, displayName }) => (
-                        <button
-                          key={userId}
-                          type="button"
-                          onClick={() => handleSwitchUser(userId)}
-                          className={`px-2 py-1 rounded text-xs font-mono ${
-                            userId === currentUserId
-                              ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
-                              : 'bg-neutral-800 text-neutral-300 border border-white/10 hover:bg-neutral-700'
-                          }`}
-                        >
-                          {displayName || `${userId.slice(0, 8)}…`}
-                        </button>
-                      ))}
-                    </div>
-                  )}
+          <div className="p-4 space-y-6">
+            {/* Identity */}
+            <section>
+              <h3 className="text-sm font-medium text-neutral-400 uppercase tracking-wider mb-3">
+                Identity
+              </h3>
+              <div className="space-y-3 text-sm">
+                <div>
+                  <label className="block text-neutral-500 mb-1">Household</label>
                   <div className="flex gap-2">
                     <input
                       type="text"
-                      value={customUserId}
-                      onChange={(e) => setCustomUserId(e.target.value)}
-                      placeholder="Paste or enter user ID"
+                      value={householdId}
+                      onChange={(e) => setHouseholdId(e.target.value)}
                       className="flex-1 bg-neutral-800 text-white px-3 py-2 rounded-lg border border-white/10 font-mono text-xs"
+                      placeholder="default-household"
                     />
                     <button
                       type="button"
-                      onClick={() => handleSwitchUser(customUserId)}
-                      className="px-3 py-2 rounded-lg bg-neutral-700 text-neutral-200 hover:bg-neutral-600"
+                      onClick={handleSaveHousehold}
+                      className="px-3 py-2 rounded-lg bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/30"
                     >
-                      Go
+                      Save
                     </button>
                   </div>
-                  <button
-                    type="button"
-                    onClick={handleCreateNewUser}
-                    disabled={createLoading}
-                    className="w-full px-3 py-2 rounded-lg bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/25 text-sm disabled:opacity-50"
-                  >
-                    {createLoading ? 'Creating…' : 'Create new user'}
-                  </button>
+                </div>
+                <div>
+                  <label className="block text-neutral-500 mb-1">Current user</label>
+                  <div className="bg-neutral-800 px-3 py-2 rounded-lg border border-white/10 font-mono text-xs text-neutral-300 break-all">
+                    {effectiveUserId}
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-neutral-500 mb-1">Switch user</label>
+                  <div className="space-y-2">
+                    {usersLoading && (
+                      <div className="text-neutral-500 text-xs">Loading users…</div>
+                    )}
+                    {!usersLoading && userList.length > 0 && (
+                      <div className="flex flex-wrap gap-1">
+                        {userList.map(({ userId, displayName }) => (
+                          <button
+                            key={userId}
+                            type="button"
+                            onClick={() => handleSwitchUser(userId)}
+                            className={`px-2 py-1 rounded text-xs font-mono ${
+                              userId === currentUserId
+                                ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                                : 'bg-neutral-800 text-neutral-300 border border-white/10 hover:bg-neutral-700'
+                            }`}
+                          >
+                            {displayName || `${userId.slice(0, 8)}…`}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={customUserId}
+                        onChange={(e) => setCustomUserId(e.target.value)}
+                        placeholder="Paste or enter user ID"
+                        className="flex-1 bg-neutral-800 text-white px-3 py-2 rounded-lg border border-white/10 font-mono text-xs"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleSwitchUser(customUserId)}
+                        className="px-3 py-2 rounded-lg bg-neutral-700 text-neutral-200 hover:bg-neutral-600"
+                      >
+                        Go
+                      </button>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleCreateNewUser}
+                      disabled={createLoading}
+                      className="w-full px-3 py-2 rounded-lg bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/25 text-sm disabled:opacity-50"
+                    >
+                      {createLoading ? 'Creating…' : 'Create new user'}
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
-          </section>
-
-          {/* Refresh */}
-          {onRefresh && (
-            <section>
-              <h3 className="text-sm font-medium text-neutral-400 uppercase tracking-wider mb-3">
-                Data
-              </h3>
-              {!showRefreshConfirm ? (
-                <button
-                  type="button"
-                  onClick={() => setShowRefreshConfirm(true)}
-                  className="px-4 py-2 rounded-lg bg-neutral-800 text-neutral-200 border border-white/10 hover:bg-neutral-700"
-                >
-                  Refresh habits & categories
-                </button>
-              ) : (
-                <div className="space-y-3 rounded-lg bg-neutral-800/50 border border-amber-500/30 p-3">
-                  <p className="text-sm text-neutral-200">
-                    Reload habits and categories from the server? Your current list will be replaced with server data. If the server is unavailable, the list may appear empty.
-                  </p>
-                  <div className="flex gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setShowRefreshConfirm(false)}
-                      className="px-3 py-1.5 rounded-lg bg-neutral-700 text-neutral-200 border border-white/10 hover:bg-neutral-600"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        onRefresh();
-                        setShowRefreshConfirm(false);
-                        onClose();
-                      }}
-                      className="px-3 py-1.5 rounded-lg bg-amber-600/80 text-white hover:bg-amber-600"
-                    >
-                      Yes, refresh
-                    </button>
-                  </div>
-                </div>
-              )}
             </section>
-          )}
+
+            {/* Refresh */}
+            {onRefresh && (
+              <section>
+                <h3 className="text-sm font-medium text-neutral-400 uppercase tracking-wider mb-3">
+                  Data
+                </h3>
+                {!showRefreshConfirm ? (
+                  <button
+                    type="button"
+                    onClick={() => setShowRefreshConfirm(true)}
+                    className="px-4 py-2 rounded-lg bg-neutral-800 text-neutral-200 border border-white/10 hover:bg-neutral-700"
+                  >
+                    Refresh habits & categories
+                  </button>
+                ) : (
+                  <div className="space-y-3 rounded-lg bg-neutral-800/50 border border-amber-500/30 p-3">
+                    <p className="text-sm text-neutral-200">
+                      Reload habits and categories from the server? Your current list will be replaced with server data. If the server is unavailable, the list may appear empty.
+                    </p>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setShowRefreshConfirm(false)}
+                        className="px-3 py-1.5 rounded-lg bg-neutral-700 text-neutral-200 border border-white/10 hover:bg-neutral-600"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          onRefresh();
+                          setShowRefreshConfirm(false);
+                          onClose();
+                        }}
+                        className="px-3 py-1.5 rounded-lg bg-amber-600/80 text-white hover:bg-amber-600"
+                      >
+                        Yes, refresh
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </section>
+            )}
+          </div>
         </div>
       </div>
     </div>
