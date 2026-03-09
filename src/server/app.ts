@@ -94,13 +94,13 @@ export function createApp(): Express {
   app.post('/api/auth/invite/redeem', authRateLimiter, postInviteRedeem);
   app.post('/api/auth/login', authRateLimiter, postLogin);
   app.post('/api/auth/bootstrap-admin', authRateLimiter, postBootstrapAdmin);
+  app.post('/api/auth/logout', postLogout); // No session required — just clears cookie
 
   app.use(sessionMiddleware);
   app.use(identityMiddleware);
   app.use(noPersonaInHabitEntryRequests);
 
   app.get('/api/auth/me', getAuthMe);
-  app.post('/api/auth/logout', postLogout);
   app.use('/api/household', householdUsersRouter);
   app.get('/api/categories', getCategories);
   app.post('/api/categories', createCategoryRoute);
