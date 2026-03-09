@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Check } from 'lucide-react';
+import { Check, Trash2 } from 'lucide-react';
 
 interface NumericInputPopoverProps {
     isOpen: boolean;
     onClose: () => void;
     onSubmit: (value: number) => void;
+    onClear?: () => void;
     initialValue?: number;
     unit?: string;
     position: { top: number; left: number };
@@ -14,6 +15,7 @@ export const NumericInputPopover: React.FC<NumericInputPopoverProps> = ({
     isOpen,
     onClose,
     onSubmit,
+    onClear,
     initialValue = 0,
     unit,
     position,
@@ -24,10 +26,13 @@ export const NumericInputPopover: React.FC<NumericInputPopoverProps> = ({
     useEffect(() => {
         if (isOpen) {
             setValue(initialValue.toString());
-            setTimeout(() => {
-                inputRef.current?.focus();
-                inputRef.current?.select();
-            }, 50);
+            // Double-rAF ensures DOM is painted before focus (more reliable than setTimeout on iOS)
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    inputRef.current?.focus();
+                    inputRef.current?.select();
+                });
+            });
         }
     }, [isOpen, initialValue]);
 
@@ -57,6 +62,8 @@ export const NumericInputPopover: React.FC<NumericInputPopoverProps> = ({
         onClose();
     };
 
+    const showClear = initialValue > 0 && onClear;
+
     return (
         <div
             className="fixed z-50"
@@ -69,8 +76,9 @@ export const NumericInputPopover: React.FC<NumericInputPopoverProps> = ({
             >
                 <input
                     ref={inputRef}
-                    type="number"
-                    step="any"
+                    type="text"
+                    inputMode="decimal"
+                    pattern="[0-9]*\.?[0-9]*"
                     value={value}
                     onChange={(e) => setValue(e.target.value)}
                     className="w-full bg-neutral-900 border border-white/10 rounded-lg px-3 py-1.5 text-white text-sm focus:outline-none focus:border-emerald-500"
@@ -83,6 +91,19 @@ export const NumericInputPopover: React.FC<NumericInputPopoverProps> = ({
                 >
                     <Check size={14} strokeWidth={3} />
                 </button>
+                {showClear && (
+                    <button
+                        type="button"
+                        onClick={() => {
+                            onClear();
+                            onClose();
+                        }}
+                        className="p-1.5 text-red-400 hover:bg-red-500/20 rounded-lg transition-colors"
+                        title="Clear entry"
+                    >
+                        <Trash2 size={14} />
+                    </button>
+                )}
             </form>
         </div>
     );

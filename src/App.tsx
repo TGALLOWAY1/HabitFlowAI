@@ -227,7 +227,7 @@ const HabitTrackerContent: React.FC = () => {
             </div>
           )}
 
-          <div className="flex items-center gap-2 bg-neutral-800 rounded-lg p-1">
+          <div className="flex items-center gap-2 bg-neutral-800 rounded-lg p-1 overflow-x-auto no-scrollbar max-w-[calc(100vw-120px)] sm:max-w-none">
             {/* Removed standalone Sun button to fix layout issues */}
 
 

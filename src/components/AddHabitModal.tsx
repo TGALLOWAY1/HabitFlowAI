@@ -462,7 +462,7 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
 
     return (
         <div className="modal-overlay fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-            <div className="w-full max-w-md bg-neutral-900 border border-white/10 rounded-2xl p-6 shadow-2xl max-h-[90vh] overflow-y-auto modal-scroll">
+            <div className="w-full max-w-md bg-neutral-900 border border-white/10 rounded-2xl p-6 shadow-2xl max-h-[90dvh] overflow-y-auto modal-scroll">
                 <div className="flex items-center justify-between mb-6">
                     <h3 className="text-xl font-bold text-white">
                         {isEditMode ? 'Edit Habit' : 'Add New Habit'}

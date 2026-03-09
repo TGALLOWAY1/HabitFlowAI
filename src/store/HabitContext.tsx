@@ -426,7 +426,7 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                     setLogs(prev => ({ ...prev, [key]: dayLog }));
                 }
             }
-            await refreshDayLogs();
+            scheduleBackgroundSync();
         } catch (error) {
             console.error('Failed to toggle habit:', error instanceof Error ? error.message : 'Unknown error');
             // Rollback to previous state
@@ -468,7 +468,7 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             if (dayLog) {
                 setLogs(prev => ({ ...prev, [key]: dayLog }));
             }
-            await refreshDayLogs();
+            scheduleBackgroundSync();
         } catch (error) {
             console.error('Failed to update log:', error instanceof Error ? error.message : 'Unknown error');
             // Rollback to previous state
@@ -646,10 +646,30 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             setLogs(apiLogs);
         } catch (error) {
             console.error('Failed to refresh day logs', error);
-            // Optional: you may set lastPersistenceError here, but it's OK to just log for now.
         }
     };
 
+    // Debounced background sync — ensures eventual consistency without
+    // blocking every mutation with a full 400-day refetch.
+    const bgSyncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const scheduleBackgroundSync = () => {
+        if (bgSyncTimerRef.current) clearTimeout(bgSyncTimerRef.current);
+        bgSyncTimerRef.current = setTimeout(() => {
+            bgSyncTimerRef.current = null;
+            refreshDayLogs();
+        }, 30_000);
+    };
+
+    // Also sync when the app regains visibility (e.g. switching back from another tab/app)
+    useEffect(() => {
+        const handleVisibility = () => {
+            if (document.visibilityState === 'visible') {
+                refreshDayLogs();
+            }
+        };
+        document.addEventListener('visibilitychange', handleVisibility);
+        return () => document.removeEventListener('visibilitychange', handleVisibility);
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
     const upsertHabitEntryContext = async (habitId: string, dateKey: string, data: any = {}) => {
         try {
@@ -664,9 +684,7 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 }));
             }
 
-            await refreshDayLogs();
-
-            // Re-fetch evidence or habits if needed?
+            scheduleBackgroundSync();
         } catch (error) {
             console.error('Failed to upsert habit entry:', error);
             setLastPersistenceError("Failed to save habit entry.");
@@ -711,7 +729,7 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 }
                 return newLogs;
             });
-            await refreshDayLogs();
+            scheduleBackgroundSync();
         } catch (error) {
             if (DEBUG_ENTRY_DELETE) {
                 console.error('[DEBUG_ENTRY_DELETE] deleteHabitEntryByKeyContext failed:', error);

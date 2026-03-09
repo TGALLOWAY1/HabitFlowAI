@@ -74,7 +74,7 @@ export const CompletedHabitsModal: React.FC<CompletedHabitsModalProps> = ({
 
     return (
         <div className="modal-overlay fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4" role="dialog" aria-modal="true" aria-labelledby="completed-habits-title">
-            <div className="w-full max-w-md bg-neutral-900 border border-white/10 rounded-2xl shadow-2xl flex flex-col max-h-[85vh] animate-fade-in-up">
+            <div className="w-full max-w-md bg-neutral-900 border border-white/10 rounded-2xl shadow-2xl flex flex-col max-h-[85dvh] animate-fade-in-up">
                 <div className="flex items-center justify-between p-4 border-b border-white/10">
                     <h2 id="completed-habits-title" className="text-lg font-semibold text-white">Completed Habits</h2>
                     <button
