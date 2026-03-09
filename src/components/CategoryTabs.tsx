@@ -1,7 +1,7 @@
 import React from 'react';
 import { useHabitStore } from '../store/HabitContext';
 import type { Category } from '../types';
-import { Plus, X } from 'lucide-react';
+import { Plus, X, Check } from 'lucide-react';
 import {
     DndContext,
     closestCenter,
@@ -33,6 +33,8 @@ interface SortableCategoryPillProps {
     onDelete: (e: React.MouseEvent) => void;
     onRename: (newName: string) => Promise<void>;
     deleteConfirmId: string | null;
+    reorderMode: boolean;
+    onEnterReorderMode: () => void;
 }
 
 const SortableCategoryPill: React.FC<SortableCategoryPillProps> = ({
@@ -42,6 +44,8 @@ const SortableCategoryPill: React.FC<SortableCategoryPillProps> = ({
     onDelete,
     onRename,
     deleteConfirmId,
+    reorderMode,
+    onEnterReorderMode,
 }) => {
     const {
         attributes,
@@ -54,6 +58,7 @@ const SortableCategoryPill: React.FC<SortableCategoryPillProps> = ({
 
     const [isEditing, setIsEditing] = React.useState(false);
     const [editName, setEditName] = React.useState(category.name);
+    const longPressRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
     // Update local state if prop changes
     React.useEffect(() => {
@@ -73,12 +78,27 @@ const SortableCategoryPill: React.FC<SortableCategoryPillProps> = ({
                 await onRename(trimmed);
             } catch (error) {
                 console.error('Failed to rename category:', error);
-                setEditName(category.name); // Revert on failure
+                setEditName(category.name);
             }
         } else {
-            setEditName(category.name); // Revert if empty or unchanged
+            setEditName(category.name);
         }
         setIsEditing(false);
+    };
+
+    const handleLongPressStart = () => {
+        if (reorderMode) return;
+        longPressRef.current = setTimeout(() => {
+            longPressRef.current = null;
+            onEnterReorderMode();
+        }, 500);
+    };
+
+    const handleLongPressCancel = () => {
+        if (longPressRef.current) {
+            clearTimeout(longPressRef.current);
+            longPressRef.current = null;
+        }
     };
 
     if (isEditing) {
@@ -87,8 +107,7 @@ const SortableCategoryPill: React.FC<SortableCategoryPillProps> = ({
                 ref={setNodeRef}
                 style={style}
                 {...attributes}
-                {...listeners}
-                className="relative group touch-none"
+                className="relative group"
             >
                 <form
                     onSubmit={(e) => {
@@ -109,7 +128,6 @@ const SortableCategoryPill: React.FC<SortableCategoryPillProps> = ({
                                 setIsEditing(false);
                                 e.stopPropagation();
                             }
-                            // Stop event propagation to prevent dnd conflicts
                             e.stopPropagation();
                         }}
                         onPointerDown={(e) => e.stopPropagation()}
@@ -120,32 +138,40 @@ const SortableCategoryPill: React.FC<SortableCategoryPillProps> = ({
         );
     }
 
+    // Only spread drag listeners when in reorder mode
+    const dragProps = reorderMode ? listeners : {};
+
     return (
         <div
             ref={setNodeRef}
             style={style}
             {...attributes}
-            {...listeners}
-            className="relative group touch-none"
+            {...dragProps}
+            className={`relative group ${reorderMode ? 'animate-wiggle' : ''}`}
             onDoubleClick={(e) => {
                 e.stopPropagation();
-                setIsEditing(true);
+                if (!reorderMode) setIsEditing(true);
             }}
+            onPointerDown={!reorderMode ? handleLongPressStart : undefined}
+            onPointerUp={handleLongPressCancel}
+            onPointerLeave={handleLongPressCancel}
+            onPointerCancel={handleLongPressCancel}
         >
             <button
-                onClick={onSelect}
+                onClick={reorderMode ? undefined : onSelect}
                 className={`
           px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all select-none
           ${isActive
                         ? `${category.color} text-white shadow-lg shadow-white/10 pr-8`
                         : 'bg-neutral-800 text-neutral-400 hover:bg-neutral-700 hover:text-white'
                     }
+          ${reorderMode ? 'ring-1 ring-emerald-500/40 cursor-grab' : ''}
         `}
             >
                 {category.name}
             </button>
 
-            {isActive && (
+            {isActive && !reorderMode && (
                 <button
                     onClick={onDelete}
                     className={`absolute right-1 top-1/2 -translate-y-1/2 p-1.5 rounded-full transition-colors z-10 ${deleteConfirmId === category.id
@@ -153,7 +179,7 @@ const SortableCategoryPill: React.FC<SortableCategoryPillProps> = ({
                         : 'hover:bg-black/20 text-white/70 hover:text-white'
                         }`}
                     title={deleteConfirmId === category.id ? "Click again to confirm delete" : "Delete Category"}
-                    onPointerDown={(e) => e.stopPropagation()} // Prevent drag start on delete button
+                    onPointerDown={(e) => e.stopPropagation()}
                 >
                     <X size={14} />
                 </button>
@@ -172,13 +198,14 @@ export const CategoryTabs: React.FC<CategoryTabsProps> = ({
     const [newCategoryName, setNewCategoryName] = React.useState('');
     const [addCategoryError, setAddCategoryError] = React.useState<string | null>(null);
     const [deleteConfirmId, setDeleteConfirmId] = React.useState<string | null>(null);
+    const [reorderMode, setReorderMode] = React.useState(false);
 
     const normalizeCategoryName = (name: string) => name.trim().replace(/\s+/g, ' ').toLowerCase();
 
     const sensors = useSensors(
         useSensor(PointerSensor, {
             activationConstraint: {
-                distance: 8, // Require 8px movement before drag starts to allow clicking
+                distance: 8,
             },
         }),
         useSensor(KeyboardSensor, {
@@ -222,8 +249,22 @@ export const CategoryTabs: React.FC<CategoryTabsProps> = ({
         }
     };
 
+    const scrollRef = React.useRef<HTMLDivElement>(null);
+    const [showRightFade, setShowRightFade] = React.useState(false);
+
+    React.useEffect(() => {
+        const el = scrollRef.current;
+        if (!el) return;
+        const check = () => setShowRightFade(el.scrollWidth > el.clientWidth + el.scrollLeft + 8);
+        check();
+        el.addEventListener('scroll', check, { passive: true });
+        window.addEventListener('resize', check);
+        return () => { el.removeEventListener('scroll', check); window.removeEventListener('resize', check); };
+    }, [categories]);
+
     return (
-        <div className="flex items-center gap-2 overflow-x-auto p-2 no-scrollbar">
+        <div className="relative">
+        <div ref={scrollRef} className="flex items-center gap-2 overflow-x-auto p-2 no-scrollbar scroll-smooth">
             <DndContext
                 sensors={sensors}
                 collisionDetection={closestCenter}
@@ -243,6 +284,8 @@ export const CategoryTabs: React.FC<CategoryTabsProps> = ({
                                 await updateCategory(category.id, { name: newName });
                             }}
                             deleteConfirmId={deleteConfirmId}
+                            reorderMode={reorderMode}
+                            onEnterReorderMode={() => setReorderMode(true)}
                             onDelete={async (e) => {
                                 e.stopPropagation();
                                 if (deleteConfirmId === category.id) {
@@ -264,7 +307,14 @@ export const CategoryTabs: React.FC<CategoryTabsProps> = ({
                 </SortableContext>
             </DndContext>
 
-            {isAdding ? (
+            {reorderMode ? (
+                <button
+                    onClick={() => setReorderMode(false)}
+                    className="px-3 py-2 rounded-full bg-emerald-500 text-neutral-900 text-sm font-medium hover:bg-emerald-400 transition-colors flex items-center gap-1 whitespace-nowrap flex-shrink-0"
+                >
+                    <Check size={14} strokeWidth={3} /> Done
+                </button>
+            ) : isAdding ? (
                 <form onSubmit={handleAddCategory} className="flex flex-col gap-1">
                     <div className="flex items-center gap-1">
                         <input
@@ -298,6 +348,10 @@ export const CategoryTabs: React.FC<CategoryTabsProps> = ({
                 </button>
             )}
 
+        </div>
+        {showRightFade && (
+            <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-neutral-900 pointer-events-none" />
+        )}
         </div>
     );
 };
