@@ -26,29 +26,13 @@ export function assertTimeZone(timeZone: string): ValidationResult {
         };
     }
 
-    // Basic sanity check: IANA timezones are typically in format "Area/Location" or "UTC"
-    // We can't fully validate without a timezone database, but we can check basic format
-    const validPatterns = [
-        /^UTC([+-]\d{1,2}(:\d{2})?)?$/, // UTC, UTC+5, UTC-8, etc.
-        /^[A-Z][a-z]+\/[A-Z][a-z_]+$/, // America/Los_Angeles, Europe/London, etc.
-        /^[A-Z]{3,}$/, // EST, PST, etc. (less common but valid)
-    ];
-
-    if (!validPatterns.some(pattern => pattern.test(timeZone))) {
-        return {
-            valid: false,
-            error: `Invalid timezone format: "${timeZone}". Must be a valid IANA timezone identifier (e.g., "America/Los_Angeles", "UTC")`
-        };
-    }
-
-    // Always try to create a date formatter with this timezone as a runtime check
-    // This catches invalid timezones that pass format checks
+    // Validate using Intl.DateTimeFormat — the runtime knows all valid IANA timezones
     try {
         new Intl.DateTimeFormat('en-US', { timeZone });
     } catch {
         return {
             valid: false,
-            error: `Invalid timezone: "${timeZone}". Must be a valid IANA timezone identifier (e.g., "America/Los_Angeles", "UTC")`
+            error: `Invalid timezone: "${timeZone}". Must be a valid IANA timezone identifier (e.g., "America/New_York", "UTC")`
         };
     }
 
