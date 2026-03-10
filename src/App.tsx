@@ -25,6 +25,8 @@ import { CreateGoalFlow } from './pages/goals/CreateGoalFlow';
 import { GoalDetailPage } from './pages/goals/GoalDetailPage';
 import { GoalCompletedPage } from './pages/goals/GoalCompletedPage';
 import { WinArchivePage } from './pages/goals/WinArchivePage';
+import { iterateGoal, createGoal, fetchGoal } from './lib/persistenceClient';
+import { invalidateAllGoalCaches } from './lib/goalDataCache';
 import { DayView } from './components/day-view/DayView';
 
 import { JournalPage } from './pages/JournalPage';
@@ -48,12 +50,11 @@ function parseRouteFromLocation(location: Location): AppRoute {
     case "streak-dashboard":
     case "streaks":
       return "dashboard";
-    case "routines": // Renamed from activities
+    case "routines":
+      return "routines";
     case "goals":
-    case "daily": // Legacy alias? or rename 'day' route to be internal state?
-      // User requested "Day View" to be part of "Habits" page.
-      // So 'day' route should redirect to 'tracker' with a param? 
-      // Let's just remove 'day' route entirely and handle it as state.
+      return "goals";
+    case "daily":
       return "tracker";
     case "wins":
       return "wins";
@@ -356,6 +357,35 @@ const HabitTrackerContent: React.FC = () => {
             onViewGoalDetail={(goalId) => {
               setCompletedGoalId(null);
               handleNavigate('goals', { goalId });
+            }}
+            onLevelUp={async (goalId) => {
+              try {
+                const result = await iterateGoal(goalId);
+                setCompletedGoalId(null);
+                if (result.iteratedGoal) {
+                  handleNavigate('goals', { goalId: result.iteratedGoal.id });
+                } else {
+                  handleNavigate('goals');
+                }
+              } catch (err) {
+                console.error('Failed to level up goal:', err);
+              }
+            }}
+            onRepeat={async (goalId) => {
+              try {
+                const original = await fetchGoal(goalId);
+                const { id, createdAt, completedAt, badgeImageUrl, sortOrder, ...goalData } = original;
+                await createGoal(goalData);
+                invalidateAllGoalCaches();
+                setCompletedGoalId(null);
+                handleNavigate('goals');
+              } catch (err) {
+                console.error('Failed to repeat goal:', err);
+              }
+            }}
+            onArchive={() => {
+              setCompletedGoalId(null);
+              handleNavigate('wins');
             }}
           />
         ) : view === 'wins' ? (

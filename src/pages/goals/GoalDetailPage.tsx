@@ -73,29 +73,31 @@ export const GoalDetailPage: React.FC<GoalDetailPageProps> = ({ goalId, onBack, 
             }
 
             try {
-                const allEntries: HabitEntry[] = [];
                 console.log('[GoalDetail] Loading entries for habits:', data.goal.linkedHabitIds);
-                for (const habitId of data.goal.linkedHabitIds) {
-                    // Fetch via truthQuery endpoint (unified HabitEntries + legacy DayLogs)
-                    const entries = await fetchHabitEntries(habitId, undefined, undefined, getLocalTimeZone());
-                    console.log(`[GoalDetail] Fetched ${entries.length} entries for habit ${habitId}`, entries);
-                    // Map EntryView to HabitEntry shape for compatibility
-                    allEntries.push(...entries.map((ev: any) => ({
-                        id: ev.id || `entry-${ev.habitId}-${ev.dayKey}`,
-                        habitId: ev.habitId,
-                        timestamp: ev.timestampUtc,
-                        dayKey: ev.dayKey,
-                        date: ev.dayKey,
-                        dateKey: ev.dayKey,
-                        value: ev.value,
-                        source: ev.source,
-                        routineId: ev.provenance.routineId,
-                        deletedAt: ev.deletedAt,
-                        createdAt: ev.timestampUtc,
-                        updatedAt: ev.timestampUtc,
-                    })));
-                }
-                setLinkedHabitEntries(allEntries);
+                // Fetch all habit entries in parallel
+                const entryArrays = await Promise.all(
+                    data.goal.linkedHabitIds.map(habitId =>
+                        fetchHabitEntries(habitId, undefined, undefined, getLocalTimeZone())
+                            .then(entries => {
+                                console.log(`[GoalDetail] Fetched ${entries.length} entries for habit ${habitId}`);
+                                return entries.map((ev: any) => ({
+                                    id: ev.id || `entry-${ev.habitId}-${ev.dayKey}`,
+                                    habitId: ev.habitId,
+                                    timestamp: ev.timestampUtc,
+                                    dayKey: ev.dayKey,
+                                    date: ev.dayKey,
+                                    dateKey: ev.dayKey,
+                                    value: ev.value,
+                                    source: ev.source,
+                                    routineId: ev.provenance.routineId,
+                                    deletedAt: ev.deletedAt,
+                                    createdAt: ev.timestampUtc,
+                                    updatedAt: ev.timestampUtc,
+                                }));
+                            })
+                    )
+                );
+                setLinkedHabitEntries(entryArrays.flat());
             } catch (err) {
                 console.error("Failed to load habit entries", err);
             }
@@ -117,11 +119,7 @@ export const GoalDetailPage: React.FC<GoalDetailPageProps> = ({ goalId, onBack, 
 
                 // Type-Based Aggregation Logic
                 if (data.goal.type === 'cumulative') {
-                    // 1. Exclude Boolean habits from Cumulative/Numeric goals
-                    if (habit.goal.type === 'boolean') {
-                        return false;
-                    }
-                    // 2. Include all Numeric habits
+                    // Include all habits (boolean habits contribute their target per entry)
                     return true;
                 }
 
@@ -141,7 +139,14 @@ export const GoalDetailPage: React.FC<GoalDetailPageProps> = ({ goalId, onBack, 
                     // If value is undefined but unit matched (unlikely if strictly checked, but possible for some data shapes),
                     // we might default to 0 or 1.
                     // If goal is cumulative, we expect a number.
-                    value: entry.value !== undefined ? entry.value : (data.goal.type === 'frequency' ? 1 : 0),
+                    value: (() => {
+                        const h = habitMap.get(entry.habitId);
+                        // Boolean habits contribute their target value per entry
+                        if (h?.goal.type === 'boolean' && data.goal.type === 'cumulative') {
+                            return h.goal.target ?? 1;
+                        }
+                        return entry.value !== undefined ? entry.value : (data.goal.type === 'frequency' ? 1 : 0);
+                    })(),
                     source: 'habit' as const,
                     habitName: habit?.name,
                     unit: habit?.goal.unit || data.goal.unit

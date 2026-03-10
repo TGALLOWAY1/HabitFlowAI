@@ -282,7 +282,7 @@ describe('goalProgressUtilsV2', () => {
       expect(progress.currentValue).toBe(5);
     });
 
-    it('should exclude boolean habits from cumulative numeric goals', () => {
+    it('should count boolean habits using their target value for cumulative goals', () => {
       const goal: Goal = {
         id: 'goal-1',
         title: 'Test Goal',
@@ -349,8 +349,76 @@ describe('goalProgressUtilsV2', () => {
 
       const progress = computeFullGoalProgressV2(goal, entryViews, habitMap, timeZone);
 
-      // Only numeric habit contributes
-      expect(progress.currentValue).toBe(5);
+      // Numeric habit contributes 5, boolean habit contributes 1 (no target set, defaults to 1)
+      expect(progress.currentValue).toBe(6);
+    });
+
+    it('should use boolean habit target value for cumulative goals', () => {
+      const goal: Goal = {
+        id: 'goal-1',
+        title: 'Do 500 pull ups',
+        type: 'cumulative',
+        targetValue: 500,
+        unit: 'reps',
+        linkedHabitIds: ['habit-pullups'],
+        createdAt: '2025-01-01T00:00:00.000Z',
+      };
+
+      const pullupHabit: Habit = {
+        id: 'habit-pullups',
+        categoryId: 'cat-1',
+        name: 'Do 25 pull ups',
+        goal: {
+          type: 'boolean',
+          frequency: 'daily',
+          target: 25,
+        },
+        archived: false,
+        createdAt: '2025-01-01T00:00:00.000Z',
+      };
+
+      const habitMap = new Map<string, Habit>([
+        ['habit-pullups', pullupHabit],
+      ]);
+
+      const entryViews: EntryView[] = [
+        {
+          habitId: 'habit-pullups',
+          dayKey: '2025-01-10',
+          timestampUtc: '2025-01-10T10:00:00.000Z',
+          value: 1,
+          source: 'manual',
+          provenance: {},
+          deletedAt: null,
+          conflict: false,
+        },
+        {
+          habitId: 'habit-pullups',
+          dayKey: '2025-01-11',
+          timestampUtc: '2025-01-11T10:00:00.000Z',
+          value: 1,
+          source: 'manual',
+          provenance: {},
+          deletedAt: null,
+          conflict: false,
+        },
+        {
+          habitId: 'habit-pullups',
+          dayKey: '2025-01-12',
+          timestampUtc: '2025-01-12T10:00:00.000Z',
+          value: 1,
+          source: 'manual',
+          provenance: {},
+          deletedAt: null,
+          conflict: false,
+        },
+      ];
+
+      const progress = computeFullGoalProgressV2(goal, entryViews, habitMap, timeZone);
+
+      // 3 entries × 25 (habit target) = 75
+      expect(progress.currentValue).toBe(75);
+      expect(progress.percent).toBe(15); // 75/500 = 15%
     });
 
     it('should handle onetime goals correctly', () => {

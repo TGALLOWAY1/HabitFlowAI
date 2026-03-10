@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { Trophy, Sparkles, Image } from 'lucide-react';
+import { Trophy, Sparkles, Image, TrendingUp, RotateCcw, Archive, Clock } from 'lucide-react';
 import { useGoalDetail } from '../../lib/useGoalDetail';
 import { format, parseISO, differenceInDays } from 'date-fns';
 import { Loader2 } from 'lucide-react';
@@ -10,6 +10,9 @@ interface GoalCompletedPageProps {
     onBack?: () => void;
     onAddBadge?: (goalId: string) => void;
     onViewGoalDetail?: (goalId: string) => void;
+    onLevelUp?: (goalId: string) => void;
+    onRepeat?: (goalId: string) => void;
+    onArchive?: (goalId: string) => void;
 }
 
 /**
@@ -21,7 +24,10 @@ export const GoalCompletedPage: React.FC<GoalCompletedPageProps> = ({
     goalId,
     onBack,
     onAddBadge,
-    onViewGoalDetail
+    onViewGoalDetail,
+    onLevelUp,
+    onRepeat,
+    onArchive,
 }) => {
     const { data, loading, refetch } = useGoalDetail(goalId);
     const [showConfetti, setShowConfetti] = useState(true);
@@ -199,6 +205,69 @@ export const GoalCompletedPage: React.FC<GoalCompletedPageProps> = ({
                         Skip for now
                     </button>
                 </div>
+
+                {/* What's Next? Decision Flow */}
+                {goal.type !== 'onetime' && (
+                    <div className="max-w-lg mx-auto mt-12 pt-8 border-t border-white/10">
+                        <h3 className="text-lg font-semibold text-white mb-2">What feels right next?</h3>
+                        <p className="text-neutral-400 text-sm mb-6">
+                            Choose how you want to continue — or come back to this later.
+                        </p>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <button
+                                onClick={() => onLevelUp?.(goalId)}
+                                className="p-4 bg-neutral-800/50 border border-white/10 rounded-xl hover:bg-neutral-800 hover:border-emerald-500/30 transition-all text-left"
+                            >
+                                <div className="flex items-center gap-2 mb-1">
+                                    <TrendingUp size={16} className="text-emerald-400" />
+                                    <span className="text-emerald-400 font-medium">Level Up</span>
+                                </div>
+                                <div className="text-neutral-500 text-xs">
+                                    Raise the target and keep pushing
+                                </div>
+                            </button>
+                            <button
+                                onClick={() => onRepeat?.(goalId)}
+                                className="p-4 bg-neutral-800/50 border border-white/10 rounded-xl hover:bg-neutral-800 hover:border-blue-500/30 transition-all text-left"
+                            >
+                                <div className="flex items-center gap-2 mb-1">
+                                    <RotateCcw size={16} className="text-blue-400" />
+                                    <span className="text-blue-400 font-medium">Repeat</span>
+                                </div>
+                                <div className="text-neutral-500 text-xs">
+                                    Same target, fresh start
+                                </div>
+                            </button>
+                            <button
+                                onClick={() => {
+                                    onArchive?.(goalId);
+                                    if (onBack) onBack();
+                                }}
+                                className="p-4 bg-neutral-800/50 border border-white/10 rounded-xl hover:bg-neutral-800 hover:border-yellow-500/30 transition-all text-left"
+                            >
+                                <div className="flex items-center gap-2 mb-1">
+                                    <Archive size={16} className="text-yellow-400" />
+                                    <span className="text-yellow-400 font-medium">Archive</span>
+                                </div>
+                                <div className="text-neutral-500 text-xs">
+                                    Save to Win Archive, done for now
+                                </div>
+                            </button>
+                            <button
+                                onClick={onBack}
+                                className="p-4 bg-neutral-800/50 border border-white/10 rounded-xl hover:bg-neutral-800 hover:border-white/20 transition-all text-left"
+                            >
+                                <div className="flex items-center gap-2 mb-1">
+                                    <Clock size={16} className="text-neutral-300" />
+                                    <span className="text-neutral-300 font-medium">Decide Later</span>
+                                </div>
+                                <div className="text-neutral-500 text-xs">
+                                    Come back to this anytime
+                                </div>
+                            </button>
+                        </div>
+                    </div>
+                )}
             </div>
 
             {/* Badge Upload Modal */}
