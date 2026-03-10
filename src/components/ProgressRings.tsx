@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip } from 'recharts';
 import { useHabitStore } from '../store/HabitContext';
 import { format, subDays } from 'date-fns';
@@ -50,14 +50,22 @@ export const ProgressRings: React.FC = React.memo(() => {
     const { habits, logs, wellbeingLogs } = useHabitStore();
     const today = format(new Date(), 'yyyy-MM-dd');
 
-    // Calculate Habit Completion
-    const activeHabits = habits.filter(h => !h.archived);
-    const completedCount = activeHabits.filter(h => {
+    // Calculate Habit Completion (exclude bundle sub-habits)
+    const rootHabits = useMemo(() => {
+        const childIds = new Set<string>();
+        habits.forEach(h => {
+            if (h.type === 'bundle' && h.subHabitIds) {
+                h.subHabitIds.forEach((id: string) => childIds.add(id));
+            }
+        });
+        return habits.filter(h => !h.archived && !childIds.has(h.id));
+    }, [habits]);
+    const completedCount = rootHabits.filter(h => {
         const log = logs[`${h.id}-${today}`];
         return log?.completed;
     }).length;
-    const completionRate = activeHabits.length > 0
-        ? Math.round((completedCount / activeHabits.length) * 100)
+    const completionRate = rootHabits.length > 0
+        ? Math.round((completedCount / rootHabits.length) * 100)
         : 0;
 
     const habitData = [
