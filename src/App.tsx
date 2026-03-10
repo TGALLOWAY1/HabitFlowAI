@@ -25,6 +25,8 @@ import { CreateGoalFlow } from './pages/goals/CreateGoalFlow';
 import { GoalDetailPage } from './pages/goals/GoalDetailPage';
 import { GoalCompletedPage } from './pages/goals/GoalCompletedPage';
 import { WinArchivePage } from './pages/goals/WinArchivePage';
+import { iterateGoal, createGoal, fetchGoal } from './lib/persistenceClient';
+import { invalidateAllGoalCaches } from './lib/goalDataCache';
 import { DayView } from './components/day-view/DayView';
 
 import { JournalPage } from './pages/JournalPage';
@@ -356,6 +358,35 @@ const HabitTrackerContent: React.FC = () => {
             onViewGoalDetail={(goalId) => {
               setCompletedGoalId(null);
               handleNavigate('goals', { goalId });
+            }}
+            onLevelUp={async (goalId) => {
+              try {
+                const result = await iterateGoal(goalId);
+                setCompletedGoalId(null);
+                if (result.iteratedGoal) {
+                  handleNavigate('goals', { goalId: result.iteratedGoal.id });
+                } else {
+                  handleNavigate('goals');
+                }
+              } catch (err) {
+                console.error('Failed to level up goal:', err);
+              }
+            }}
+            onRepeat={async (goalId) => {
+              try {
+                const original = await fetchGoal(goalId);
+                const { id, createdAt, completedAt, badgeImageUrl, sortOrder, ...goalData } = original;
+                await createGoal(goalData);
+                invalidateAllGoalCaches();
+                setCompletedGoalId(null);
+                handleNavigate('goals');
+              } catch (err) {
+                console.error('Failed to repeat goal:', err);
+              }
+            }}
+            onArchive={() => {
+              setCompletedGoalId(null);
+              handleNavigate('wins');
             }}
           />
         ) : view === 'wins' ? (
