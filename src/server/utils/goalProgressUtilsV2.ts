@@ -133,7 +133,9 @@ export function computeFullGoalProgressV2(
         if (!habit) return sum;
 
         if (habit.goal.type === 'boolean') {
-          return sum;
+          // Boolean habits contribute their target value per entry
+          // e.g. "do 25 pull ups" (boolean, target=25) contributes 25 per check-in
+          return sum + (habit.goal.target ?? 1);
         }
 
         if (entry.unit && !unitsMatch(goal.unit, entry.unit)) {
@@ -179,7 +181,7 @@ export function computeFullGoalProgressV2(
           const habit = habitMap.get(entry.habitId);
           if (!habit) return sum;
           if (habit.goal.type === 'boolean') {
-            return sum;
+            return sum + (habit.goal.target ?? 1);
           }
         }
         return sum + (entry.value ?? 0);

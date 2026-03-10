@@ -117,11 +117,7 @@ export const GoalDetailPage: React.FC<GoalDetailPageProps> = ({ goalId, onBack, 
 
                 // Type-Based Aggregation Logic
                 if (data.goal.type === 'cumulative') {
-                    // 1. Exclude Boolean habits from Cumulative/Numeric goals
-                    if (habit.goal.type === 'boolean') {
-                        return false;
-                    }
-                    // 2. Include all Numeric habits
+                    // Include all habits (boolean habits contribute their target per entry)
                     return true;
                 }
 
@@ -141,7 +137,14 @@ export const GoalDetailPage: React.FC<GoalDetailPageProps> = ({ goalId, onBack, 
                     // If value is undefined but unit matched (unlikely if strictly checked, but possible for some data shapes),
                     // we might default to 0 or 1.
                     // If goal is cumulative, we expect a number.
-                    value: entry.value !== undefined ? entry.value : (data.goal.type === 'frequency' ? 1 : 0),
+                    value: (() => {
+                        const h = habitMap.get(entry.habitId);
+                        // Boolean habits contribute their target value per entry
+                        if (h?.goal.type === 'boolean' && data.goal.type === 'cumulative') {
+                            return h.goal.target ?? 1;
+                        }
+                        return entry.value !== undefined ? entry.value : (data.goal.type === 'frequency' ? 1 : 0);
+                    })(),
                     source: 'habit' as const,
                     habitName: habit?.name,
                     unit: habit?.goal.unit || data.goal.unit
