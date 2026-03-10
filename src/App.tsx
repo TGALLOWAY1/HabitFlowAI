@@ -50,12 +50,11 @@ function parseRouteFromLocation(location: Location): AppRoute {
     case "streak-dashboard":
     case "streaks":
       return "dashboard";
-    case "routines": // Renamed from activities
+    case "routines":
+      return "routines";
     case "goals":
-    case "daily": // Legacy alias? or rename 'day' route to be internal state?
-      // User requested "Day View" to be part of "Habits" page.
-      // So 'day' route should redirect to 'tracker' with a param? 
-      // Let's just remove 'day' route entirely and handle it as state.
+      return "goals";
+    case "daily":
       return "tracker";
     case "wins":
       return "wins";
