@@ -73,29 +73,31 @@ export const GoalDetailPage: React.FC<GoalDetailPageProps> = ({ goalId, onBack, 
             }
 
             try {
-                const allEntries: HabitEntry[] = [];
                 console.log('[GoalDetail] Loading entries for habits:', data.goal.linkedHabitIds);
-                for (const habitId of data.goal.linkedHabitIds) {
-                    // Fetch via truthQuery endpoint (unified HabitEntries + legacy DayLogs)
-                    const entries = await fetchHabitEntries(habitId, undefined, undefined, getLocalTimeZone());
-                    console.log(`[GoalDetail] Fetched ${entries.length} entries for habit ${habitId}`, entries);
-                    // Map EntryView to HabitEntry shape for compatibility
-                    allEntries.push(...entries.map((ev: any) => ({
-                        id: ev.id || `entry-${ev.habitId}-${ev.dayKey}`,
-                        habitId: ev.habitId,
-                        timestamp: ev.timestampUtc,
-                        dayKey: ev.dayKey,
-                        date: ev.dayKey,
-                        dateKey: ev.dayKey,
-                        value: ev.value,
-                        source: ev.source,
-                        routineId: ev.provenance.routineId,
-                        deletedAt: ev.deletedAt,
-                        createdAt: ev.timestampUtc,
-                        updatedAt: ev.timestampUtc,
-                    })));
-                }
-                setLinkedHabitEntries(allEntries);
+                // Fetch all habit entries in parallel
+                const entryArrays = await Promise.all(
+                    data.goal.linkedHabitIds.map(habitId =>
+                        fetchHabitEntries(habitId, undefined, undefined, getLocalTimeZone())
+                            .then(entries => {
+                                console.log(`[GoalDetail] Fetched ${entries.length} entries for habit ${habitId}`);
+                                return entries.map((ev: any) => ({
+                                    id: ev.id || `entry-${ev.habitId}-${ev.dayKey}`,
+                                    habitId: ev.habitId,
+                                    timestamp: ev.timestampUtc,
+                                    dayKey: ev.dayKey,
+                                    date: ev.dayKey,
+                                    dateKey: ev.dayKey,
+                                    value: ev.value,
+                                    source: ev.source,
+                                    routineId: ev.provenance.routineId,
+                                    deletedAt: ev.deletedAt,
+                                    createdAt: ev.timestampUtc,
+                                    updatedAt: ev.timestampUtc,
+                                }));
+                            })
+                    )
+                );
+                setLinkedHabitEntries(entryArrays.flat());
             } catch (err) {
                 console.error("Failed to load habit entries", err);
             }
