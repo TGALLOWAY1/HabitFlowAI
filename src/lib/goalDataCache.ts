@@ -40,6 +40,19 @@ const cache = new Map<string, CacheEntry<any>>();
 // Cache version counter - increments on invalidation to trigger refetch in hooks
 let cacheVersion = 0;
 
+// Event-based cache invalidation listeners (replaces 100ms polling)
+type CacheListener = () => void;
+const listeners = new Set<CacheListener>();
+
+/**
+ * Subscribe to cache invalidation events.
+ * Returns an unsubscribe function.
+ */
+export function subscribeToCacheInvalidation(listener: CacheListener): () => void {
+    listeners.add(listener);
+    return () => listeners.delete(listener);
+}
+
 /**
  * Get cached data if it exists and is not stale.
  * 
@@ -92,6 +105,8 @@ export function invalidateCache(key: string): void {
 export function invalidateAllGoalCaches(): void {
     cache.clear();
     cacheVersion++;
+    // Notify all subscribed hooks
+    listeners.forEach(listener => listener());
 }
 
 /**
