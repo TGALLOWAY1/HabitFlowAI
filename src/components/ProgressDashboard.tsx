@@ -2,11 +2,15 @@ import React, { useState } from 'react';
 import { useHabitStore } from '../store/HabitContext';
 import { useProgressOverview } from '../lib/useProgressOverview';
 import { Heatmap } from './Heatmap';
-import { ProgressRings } from './ProgressRings';
 import { DailyCheckInModal } from './DailyCheckInModal';
-import { Sun, Loader2 } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { GoalPulseCard } from './goals/GoalPulseCard';
 import { CategoryCompletionRow } from './CategoryCompletionRow';
+import { DailyOverviewCard } from './dashboard/DailyOverviewCard';
+import { DailyCheckInCard } from './dashboard/DailyCheckInCard';
+import { JournalCard } from './dashboard/JournalCard';
+import { TasksCard } from './dashboard/TasksCard';
+import { PinnedRoutinesCard } from './dashboard/PinnedRoutinesCard';
 import type { Routine } from '../models/persistenceTypes';
 
 interface ProgressDashboardProps {
@@ -15,9 +19,20 @@ interface ProgressDashboardProps {
     onSelectCategory?: (categoryId: string) => void;
     onNavigateWellbeingHistory?: () => void;
     onStartRoutine?: (routine: Routine) => void;
+    onNavigateToJournal?: () => void;
+    onNavigateToRoutines?: () => void;
+    onNavigateToTasks?: () => void;
 }
 
-export const ProgressDashboard: React.FC<ProgressDashboardProps> = ({ onCreateGoal, onViewGoal, onSelectCategory }) => {
+export const ProgressDashboard: React.FC<ProgressDashboardProps> = ({
+    onCreateGoal,
+    onViewGoal,
+    onSelectCategory,
+    onStartRoutine,
+    onNavigateToJournal,
+    onNavigateToRoutines,
+    onNavigateToTasks,
+}) => {
     const { habits, categories } = useHabitStore();
     const { data: progressData, loading: progressLoading } = useProgressOverview();
     const [isCheckInOpen, setIsCheckInOpen] = useState(false);
@@ -37,7 +52,6 @@ export const ProgressDashboard: React.FC<ProgressDashboardProps> = ({ onCreateGo
         return (params.get('categoryRange') as '7d' | '14d') || '14d';
     });
 
-    // Helper to update URL without page reload
     const updateUrlParams = (updates: Record<string, string>, method: 'push' | 'replace' = 'replace') => {
         const url = new URL(window.location.href);
         Object.entries(updates).forEach(([key, value]) => {
@@ -65,32 +79,38 @@ export const ProgressDashboard: React.FC<ProgressDashboardProps> = ({ onCreateGo
         updateUrlParams({ categoryRange: range }, 'replace');
     };
 
-
-
-
-
     return (
-        <div className="space-y-6 overflow-y-auto pb-20">
-            <div className="flex justify-end gap-2">
-                <button
-                    onClick={() => setIsCheckInOpen(true)}
-                    className="flex items-center gap-2 px-4 py-2 bg-neutral-800 hover:bg-neutral-700 text-white rounded-lg transition-colors text-sm font-medium border border-white/5"
-                >
-                    <Sun size={16} className="text-amber-400" />
-                    Daily Check-in
-                </button>
+        <div className="space-y-4 overflow-y-auto pb-20">
+            {/* Daily Overview + Check-In — side by side on md+ */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <DailyOverviewCard />
+                <DailyCheckInCard onOpenCheckIn={() => setIsCheckInOpen(true)} />
             </div>
 
+            {/* Journal + Tasks — side by side */}
+            <div className="grid grid-cols-2 gap-4">
+                {onNavigateToJournal && (
+                    <JournalCard onNavigateToJournal={onNavigateToJournal} />
+                )}
+                {onNavigateToTasks && (
+                    <TasksCard onNavigateToTasks={onNavigateToTasks} />
+                )}
+            </div>
 
-            {/* Progress Rings */}
-            <ProgressRings />
+            {/* Pinned Routines */}
+            {onStartRoutine && (
+                <PinnedRoutinesCard
+                    onStartRoutine={onStartRoutine}
+                    onViewAllRoutines={onNavigateToRoutines}
+                />
+            )}
 
             {/* Goals at a glance */}
             <div className="bg-neutral-900/50 rounded-2xl border border-white/5 p-6 backdrop-blur-sm">
                 <div className="flex items-center justify-between mb-4">
                     <h3 className="text-lg font-semibold text-white">Goals at a glance</h3>
                     <button
-                        onClick={() => onViewGoal && onViewGoal('all')} // Use a safe fallback if 'all' isn't standard, but typically routing handles it. Or just rely on sidebar. 
+                        onClick={() => onViewGoal && onViewGoal('all')}
                         className="text-xs text-neutral-500 hover:text-white transition-colors"
                     >
                         View all
@@ -116,8 +136,8 @@ export const ProgressDashboard: React.FC<ProgressDashboardProps> = ({ onCreateGo
                 ) : (
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                         {progressData.goalsWithProgress
-                            .filter(({ goal }) => !goal.completedAt) // active only
-                            .slice(0, 4) // max 4
+                            .filter(({ goal }) => !goal.completedAt)
+                            .slice(0, 4)
                             .map((goalWithProgress) => (
                                 <GoalPulseCard
                                     key={goalWithProgress.goal.id}
@@ -133,7 +153,7 @@ export const ProgressDashboard: React.FC<ProgressDashboardProps> = ({ onCreateGo
                 )}
             </div>
 
-            {/* Activity Heatmap Section */}
+            {/* Activity Heatmap */}
             <div className="bg-neutral-900/50 rounded-2xl border border-white/5 p-6 backdrop-blur-sm">
                 <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6">
                     <div className="flex items-center gap-4">
@@ -211,9 +231,6 @@ export const ProgressDashboard: React.FC<ProgressDashboardProps> = ({ onCreateGo
                 </div>
             </div>
 
-
-
-
             <DailyCheckInModal
                 isOpen={isCheckInOpen}
                 onClose={() => setIsCheckInOpen(false)}
@@ -221,7 +238,3 @@ export const ProgressDashboard: React.FC<ProgressDashboardProps> = ({ onCreateGo
         </div>
     );
 };
-
-
-
-
