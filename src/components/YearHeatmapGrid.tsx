@@ -19,11 +19,19 @@ export const YearHeatmapGrid: React.FC<YearHeatmapGridProps> = React.memo(({ hab
 
         const days = eachDayOfInterval({ start: startDate, end: endDate });
 
+        // Exclude bundle sub-habits from counting
+        const childIds = new Set<string>();
+        habits.forEach(h => {
+            if (h.type === 'bundle' && h.subHabitIds) {
+                h.subHabitIds.forEach((id: string) => childIds.add(id));
+            }
+        });
+
         // First pass: Calculate activity counts and find max
         let maxCount = 0;
         const processedDays = days.map(date => {
             const dateStr = format(date, 'yyyy-MM-dd');
-            const activeHabits = habits.filter(h => new Date(h.createdAt) <= date && !h.archived);
+            const activeHabits = habits.filter(h => new Date(h.createdAt) <= date && !h.archived && !childIds.has(h.id));
 
             let completionCount = 0;
             const categoryIds = new Set<string>();

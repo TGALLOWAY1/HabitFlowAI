@@ -28,12 +28,20 @@ export const RecentHeatmapGrid: React.FC<RecentHeatmapGridProps> = React.memo(({
 
         const dateInterval = eachDayOfInterval({ start: startDate, end: today });
 
+        // Exclude bundle sub-habits from counting
+        const childIds = new Set<string>();
+        habits.forEach(h => {
+            if (h.type === 'bundle' && h.subHabitIds) {
+                h.subHabitIds.forEach((id: string) => childIds.add(id));
+            }
+        });
+
         // Calculate max daily count for normalization
         let maxDailyCount = 0;
 
         const processedDays = dateInterval.map(date => {
             const dateStr = format(date, 'yyyy-MM-dd');
-            const activeHabits = habits.filter(h => new Date(h.createdAt) <= date && !h.archived);
+            const activeHabits = habits.filter(h => new Date(h.createdAt) <= date && !h.archived && !childIds.has(h.id));
 
             let completionCount = 0;
             const categoryIds = new Set<string>();
