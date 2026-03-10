@@ -779,6 +779,7 @@ export const TrackerGrid = ({
     const {
         deleteHabit,
         reorderHabits,
+        toggleHabit,
         upsertHabitEntry,
         deleteHabitEntryByKey
     } = useHabitStore();
@@ -1002,18 +1003,12 @@ export const TrackerGrid = ({
         }
     };
 
-    // Toggle Handler
+    // Toggle Handler — uses optimistic toggleHabit for instant UI feedback
     const handleToggle = async (habitId: string, date: string) => {
-        const log = logs[`${habitId}-${date}`];
-        const isCompleted = log?.completed || false;
         const habit = habits.find(h => h.id === habitId);
         if (!habit) return;
 
-        if (isCompleted) {
-            await deleteHabitEntryByKey(habitId, date);
-        } else {
-            await upsertHabitEntry(habitId, date, { value: 1 });
-        }
+        await toggleHabit(habitId, date);
         refreshProgress();
     };
 
