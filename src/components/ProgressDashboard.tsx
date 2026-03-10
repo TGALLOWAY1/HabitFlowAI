@@ -81,8 +81,8 @@ export const ProgressDashboard: React.FC<ProgressDashboardProps> = ({
 
     return (
         <div className="space-y-4 overflow-y-auto pb-20">
-            {/* Daily Overview + Check-In — side by side on md+ */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Daily Overview + Check-In — always side by side */}
+            <div className="grid grid-cols-2 gap-4">
                 <DailyOverviewCard />
                 <DailyCheckInCard onOpenCheckIn={() => setIsCheckInOpen(true)} />
             </div>
