@@ -904,8 +904,25 @@ export async function markGoalAsCompleted(id: string): Promise<Goal> {
 }
 
 /**
+ * Mark a goal as completed AND create an iterated follow-up goal with a higher target.
+ * Used when the user explicitly chooses "Level Up" after completion.
+ *
+ * @param id - Goal ID
+ * @returns Promise with the updated goal and the new iterated goal
+ */
+export async function iterateGoal(id: string): Promise<{ goal: Goal; iteratedGoal: Goal | null }> {
+  const now = new Date().toISOString();
+  const response = await apiRequest<{ goal: Goal; iteratedGoal: Goal | null }>(`/goals/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify({ completedAt: now, iterate: true }),
+  });
+  invalidateGoalDataCache();
+  return response;
+}
+
+/**
  * Delete a goal.
- * 
+ *
  * @param id - Goal ID
  * @returns Promise<void>
  * @throws Error if API request fails or goal not found

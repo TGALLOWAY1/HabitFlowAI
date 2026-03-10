@@ -683,7 +683,8 @@ export async function updateGoalRoute(req: Request, res: Response): Promise<void
         const { computeGoalProgressV2 } = await import('../utils/goalProgressUtilsV2');
         const progress = await computeGoalProgressV2(id, householdId, userId, 'UTC');
         currentValueForIteration = progress?.currentValue ?? 0;
-        shouldIterateGoal = true;
+        // Only iterate if explicitly requested by the client
+        shouldIterateGoal = req.body.iterate === true;
       }
     }
 
