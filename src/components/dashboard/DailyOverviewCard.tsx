@@ -44,12 +44,21 @@ export const DailyOverviewCard: React.FC = () => {
 
     const today = useMemo(() => format(new Date(), 'yyyy-MM-dd'), []);
 
-    const activeHabits = useMemo(() => habits.filter(h => !h.archived), [habits]);
+    const rootHabits = useMemo(() => {
+        const childIds = new Set<string>();
+        habits.forEach(h => {
+            if (h.type === 'bundle' && h.subHabitIds) {
+                h.subHabitIds.forEach(id => childIds.add(id));
+            }
+        });
+        return habits.filter(h => !h.archived && !childIds.has(h.id));
+    }, [habits]);
+
     const completedCount = useMemo(() =>
-        activeHabits.filter(h => logs[`${h.id}-${today}`]?.completed).length,
-        [activeHabits, logs, today]
+        rootHabits.filter(h => logs[`${h.id}-${today}`]?.completed).length,
+        [rootHabits, logs, today]
     );
-    const totalCount = activeHabits.length;
+    const totalCount = rootHabits.length;
 
     const momentum = progressData?.momentum?.global;
 
