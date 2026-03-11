@@ -180,34 +180,30 @@ export const GoalsPage: React.FC<GoalsPageProps> = ({
 
     return (
         <div className="w-full max-w-4xl mx-auto py-6 sm:py-8 overflow-x-hidden px-4 sm:px-6 lg:px-8">
-            <div className="mb-6 sm:mb-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                <div className="flex p-1 bg-neutral-800 rounded-lg overflow-x-auto items-center gap-2">
-                    <span className="flex items-center gap-2 px-4 py-2 rounded-md bg-neutral-700 text-white font-medium text-sm">
-                        <Target size={16} />
-                        Overview
-                    </span>
-                </div>
+            <div className="mb-6 sm:mb-8 flex items-center gap-3 flex-wrap">
+                <span className="flex items-center gap-2 px-4 py-2 rounded-lg bg-neutral-700 text-white font-medium text-sm">
+                    <Target size={16} />
+                    Overview
+                </span>
 
-                <div className="flex items-center gap-3">
-                    {onViewWinArchive && (
-                        <button
-                            onClick={onViewWinArchive}
-                            className="flex items-center gap-2 px-4 py-2 bg-neutral-700 hover:bg-neutral-600 text-white font-medium rounded-lg transition-colors text-sm sm:text-base whitespace-nowrap"
-                        >
-                            <Trophy size={18} />
-                            <span className="hidden sm:inline">Win Archive</span>
-                        </button>
-                    )}
-                    {onCreateGoal && (
-                        <button
-                            onClick={onCreateGoal}
-                            className="flex items-center gap-2 px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-neutral-900 font-medium rounded-lg transition-colors text-sm sm:text-base whitespace-nowrap"
-                        >
-                            <Plus size={18} />
-                            <span className="hidden sm:inline">Create Goal</span>
-                        </button>
-                    )}
-                </div>
+                {onViewWinArchive && (
+                    <button
+                        onClick={onViewWinArchive}
+                        className="flex items-center gap-2 px-4 py-2 bg-neutral-700 hover:bg-neutral-600 text-white font-medium rounded-lg transition-colors text-sm whitespace-nowrap"
+                    >
+                        <Trophy size={18} />
+                        <span className="hidden sm:inline">Win Archive</span>
+                    </button>
+                )}
+                {onCreateGoal && (
+                    <button
+                        onClick={onCreateGoal}
+                        className="flex items-center gap-2 px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-neutral-900 font-medium rounded-lg transition-colors text-sm whitespace-nowrap"
+                    >
+                        <Plus size={18} />
+                        <span className="hidden sm:inline">Create Goal</span>
+                    </button>
+                )}
             </div>
 
             {/* Content Area */}
