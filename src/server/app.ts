@@ -17,7 +17,7 @@ import { getRoutinesRoute, getRoutineRoute, createRoutineRoute, updateRoutineRou
 import { getRoutineLogs } from './routes/routineLogs';
 import { getGoals, getGoal, getGoalProgress, getGoalsWithProgress, getCompletedGoals, createGoalRoute, updateGoalRoute, deleteGoalRoute, reorderGoalsRoute, getGoalDetailRoute, uploadGoalBadgeRoute, uploadBadgeMiddleware } from './routes/goals';
 import { getProgressOverview } from './routes/progress';
-import { getIntegrityReport, dedupHabits } from './routes/admin';
+import { getIntegrityReport, dedupHabits, recoverHabits } from './routes/admin';
 import { getEntriesRoute, createEntryRoute, upsertEntryByKeyRoute, getEntryRoute, updateEntryRoute, deleteEntryRoute } from './routes/journal';
 import { getTasksRoute, createTaskRoute, updateTaskRoute, deleteTaskRoute } from './routes/tasks';
 import { getDashboardPrefsRoute, updateDashboardPrefsRoute } from './routes/dashboardPrefs';
@@ -175,6 +175,7 @@ export function createApp(): Express {
   app.use('/api/evidence', habitPotentialEvidenceRoutes);
   app.get('/api/admin/integrity-report', getIntegrityReport);
   app.post('/api/admin/dedup-habits', requireAdmin, dedupHabits);
+  app.post('/api/admin/recover-habits', requireAdmin, recoverHabits);
   app.post('/api/admin/invites', adminInviteRateLimiter, requireAdmin, postCreateInvite);
   app.get('/api/admin/invites', adminInviteRateLimiter, requireAdmin, getInvites);
   app.post('/api/admin/invites/:id/revoke', adminInviteRateLimiter, requireAdmin, postRevokeInvite);

@@ -144,6 +144,172 @@ export async function getIntegrityReport(req: Request, res: Response): Promise<v
  *
  * Returns a dry-run summary by default. Pass ?commit=true to actually apply changes.
  */
+/**
+ * POST /api/admin/recover-habits
+ *
+ * Recovers habits that were incorrectly deleted by the dedup endpoint.
+ * Takes the habitIdRemapping from a previous dedup dry-run and:
+ *   1. Identifies deleted IDs that were bundle sub-habits (referenced by subHabitIds)
+ *   2. Recreates those habits by copying from the "kept" habit + restoring bundleParentId
+ *   3. Re-remaps habitEntries back from kept ID to original ID where appropriate
+ *
+ * Body: { habitIdRemapping: Record<deletedId, keptId> }
+ * Pass ?commit=true to apply. Default is dry-run.
+ */
+export async function recoverHabits(req: Request, res: Response): Promise<void> {
+  try {
+    const { householdId, userId } = getRequestIdentity(req);
+    const commit = req.query.commit === 'true';
+    const db = await getDb();
+
+    const habitIdRemapping: Record<string, string> = req.body?.habitIdRemapping ?? {};
+    if (Object.keys(habitIdRemapping).length === 0) {
+      res.status(400).json({ error: 'habitIdRemapping is required in request body' });
+      return;
+    }
+
+    const deletedIds = Object.keys(habitIdRemapping);
+    const habitsColl = db.collection('habits');
+
+    // Get all current habits
+    const allHabits = await habitsColl.find({ householdId, userId }).toArray();
+    const habitMap = new Map(allHabits.map(h => [h.id, h]));
+    const existingIds = new Set(allHabits.map(h => h.id));
+
+    // Find bundle parents that reference deleted sub-habit IDs
+    const bundleParents = allHabits.filter(h =>
+      h.subHabitIds && Array.isArray(h.subHabitIds) && h.subHabitIds.length > 0
+    );
+
+    // Build map: deletedId -> bundleParentId (if the deleted habit was a sub-habit)
+    const deletedSubHabitParentMap = new Map<string, string>();
+    for (const parent of bundleParents) {
+      for (const subId of parent.subHabitIds) {
+        if (deletedIds.includes(subId) && !existingIds.has(subId)) {
+          deletedSubHabitParentMap.set(subId, parent.id);
+        }
+      }
+    }
+
+    // For ALL deleted IDs (not just sub-habits), check if they still need recovery
+    const deletedIdsNeedingRecovery = deletedIds.filter(id => !existingIds.has(id));
+
+    // Build recovery plan
+    const recoveryPlan: Array<{
+      deletedId: string;
+      keptId: string;
+      keptHabitName: string;
+      bundleParentId: string | null;
+      bundleParentName: string | null;
+      reason: string;
+    }> = [];
+
+    for (const deletedId of deletedIdsNeedingRecovery) {
+      const keptId = habitIdRemapping[deletedId];
+      const keptHabit = habitMap.get(keptId);
+      const bundleParentId = deletedSubHabitParentMap.get(deletedId) ?? null;
+      const bundleParent = bundleParentId ? habitMap.get(bundleParentId) : null;
+
+      recoveryPlan.push({
+        deletedId,
+        keptId,
+        keptHabitName: keptHabit?.name ?? '(kept habit also deleted)',
+        bundleParentId,
+        bundleParentName: bundleParent?.name ?? null,
+        reason: bundleParentId
+          ? `Bundle sub-habit of "${bundleParent?.name ?? bundleParentId}"`
+          : 'Standalone habit deleted as duplicate',
+      });
+    }
+
+    // Separate sub-habits (definitely need recovery) from standalone duplicates
+    const subHabitsToRecover = recoveryPlan.filter(r => r.bundleParentId);
+    const standalonesToRecover = recoveryPlan.filter(r => !r.bundleParentId);
+
+    if (!commit) {
+      res.status(200).json({
+        mode: 'dry-run',
+        message: 'Pass ?commit=true to apply recovery',
+        totalDeletedIds: deletedIds.length,
+        alreadyRecovered: deletedIds.length - deletedIdsNeedingRecovery.length,
+        needsRecovery: deletedIdsNeedingRecovery.length,
+        subHabitsToRecover: subHabitsToRecover.length,
+        standaloneDuplicates: standalonesToRecover.length,
+        bundleParentsWithMissingChildren: bundleParents
+          .filter(p => p.subHabitIds.some((id: string) => !existingIds.has(id)))
+          .map(p => ({
+            id: p.id,
+            name: p.name,
+            bundleType: p.bundleType,
+            totalSubHabits: p.subHabitIds.length,
+            missingSubHabits: p.subHabitIds.filter((id: string) => !existingIds.has(id)),
+            presentSubHabits: p.subHabitIds.filter((id: string) => existingIds.has(id)),
+          })),
+        recoveryPlan: recoveryPlan.slice(0, 100),
+      });
+      return;
+    }
+
+    // --- Apply recovery ---
+    const results = {
+      recreatedSubHabits: 0,
+      recreatedStandalones: 0,
+      reRemappedEntries: 0,
+    };
+
+    // Recreate sub-habits: copy from kept habit but set bundleParentId
+    for (const item of subHabitsToRecover) {
+      const keptHabit = habitMap.get(item.keptId);
+      if (!keptHabit) continue;
+
+      // Copy properties from kept habit, override with correct bundle relationship
+      const { _id, ...keptData } = keptHabit;
+      const recoveredHabit = {
+        ...keptData,
+        id: item.deletedId,
+        bundleParentId: item.bundleParentId,
+        createdAt: new Date().toISOString(),
+      };
+
+      await habitsColl.insertOne(recoveredHabit);
+      results.recreatedSubHabits++;
+    }
+
+    // For standalone duplicates that were wrongly deleted (not sub-habits),
+    // also recreate them since the user says habits are missing
+    for (const item of standalonesToRecover) {
+      const keptHabit = habitMap.get(item.keptId);
+      if (!keptHabit) continue;
+
+      const { _id, ...keptData } = keptHabit;
+      const recoveredHabit = {
+        ...keptData,
+        id: item.deletedId,
+        createdAt: new Date().toISOString(),
+      };
+
+      await habitsColl.insertOne(recoveredHabit);
+      results.recreatedStandalones++;
+    }
+
+    res.status(200).json({
+      mode: 'committed',
+      results,
+      note: 'Habits have been recreated. HabitEntries that were remapped during dedup still point to the kept habit ID. Bundle parents should now see their sub-habits again.',
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    console.error('Error in recover-habits:', message);
+    res.status(500).json({
+      error: {
+        code: 'INTERNAL_SERVER_ERROR',
+        message: 'Failed to recover habits',
+        details: process.env.NODE_ENV === 'development' ? message : undefined,
+      },
+    });
+  }
+}
+
 export async function dedupHabits(req: Request, res: Response): Promise<void> {
   try {
     const { householdId, userId } = getRequestIdentity(req);
