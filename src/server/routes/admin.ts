@@ -157,10 +157,12 @@ export async function dedupHabits(req: Request, res: Response): Promise<void> {
       .sort({ createdAt: 1 })
       .toArray();
 
-    // Group by (name, categoryId) — the natural uniqueness key
+    // Group by name only — duplicates were created with different categoryIds
+    // due to the race condition, so (name, categoryId) grouping misses them.
+    // The kept record's categoryId is preserved; duplicates are remapped.
     const habitGroups = new Map<string, Document[]>();
     for (const habit of allHabits) {
-      const key = `${habit.name}|||${habit.categoryId}`;
+      const key = habit.name;
       const group = habitGroups.get(key) ?? [];
       group.push(habit);
       habitGroups.set(key, group);
