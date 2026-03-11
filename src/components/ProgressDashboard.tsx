@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useHabitStore } from '../store/HabitContext';
 import { useProgressOverview } from '../lib/useProgressOverview';
 import { Heatmap } from './Heatmap';
 import { DailyCheckInModal } from './DailyCheckInModal';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Pin } from 'lucide-react';
 import { GoalPulseCard } from './goals/GoalPulseCard';
 import { CategoryCompletionRow } from './CategoryCompletionRow';
 import { DailyOverviewCard } from './dashboard/DailyOverviewCard';
@@ -12,6 +12,33 @@ import { JournalCard } from './dashboard/JournalCard';
 import { TasksCard } from './dashboard/TasksCard';
 import { PinnedRoutinesCard } from './dashboard/PinnedRoutinesCard';
 import type { Routine } from '../models/persistenceTypes';
+
+const PINNED_GOALS_KEY = 'hf_pinned_dashboard_goals';
+
+function usePinnedGoals() {
+    const [pinnedIds, setPinnedIds] = useState<string[]>(() => {
+        try {
+            const stored = localStorage.getItem(PINNED_GOALS_KEY);
+            return stored ? JSON.parse(stored) : [];
+        } catch {
+            return [];
+        }
+    });
+
+    const togglePin = useCallback((id: string) => {
+        setPinnedIds(prev => {
+            const next = prev.includes(id)
+                ? prev.filter(x => x !== id)
+                : [...prev, id];
+            localStorage.setItem(PINNED_GOALS_KEY, JSON.stringify(next));
+            return next;
+        });
+    }, []);
+
+    const isPinned = useCallback((id: string) => pinnedIds.includes(id), [pinnedIds]);
+
+    return { pinnedIds, togglePin, isPinned };
+}
 
 interface ProgressDashboardProps {
     onCreateGoal?: () => void;
@@ -36,6 +63,8 @@ export const ProgressDashboard: React.FC<ProgressDashboardProps> = ({
     const { habits, categories } = useHabitStore();
     const { data: progressData, loading: progressLoading } = useProgressOverview();
     const [isCheckInOpen, setIsCheckInOpen] = useState(false);
+    const { pinnedIds: pinnedGoalIds, togglePin: toggleGoalPin, isPinned: isGoalPinned } = usePinnedGoals();
+    const [showGoalManage, setShowGoalManage] = useState(false);
 
     const [activityTab, setActivityTab] = useState<'overall' | 'category'>(() => {
         const params = new URLSearchParams(window.location.search);
@@ -109,12 +138,22 @@ export const ProgressDashboard: React.FC<ProgressDashboardProps> = ({
             <div className="bg-neutral-900/50 rounded-2xl border border-white/5 p-6 backdrop-blur-sm">
                 <div className="flex items-center justify-between mb-4">
                     <h3 className="text-lg font-semibold text-white">Goals at a glance</h3>
-                    <button
-                        onClick={() => onViewGoal && onViewGoal('all')}
-                        className="text-xs text-neutral-500 hover:text-white transition-colors"
-                    >
-                        View all
-                    </button>
+                    <div className="flex items-center gap-2">
+                        {progressData && progressData.goalsWithProgress.length > 0 && (
+                            <button
+                                onClick={() => setShowGoalManage(s => !s)}
+                                className={`text-[11px] transition-colors ${showGoalManage ? 'text-emerald-400' : 'text-neutral-500 hover:text-white'}`}
+                            >
+                                {showGoalManage ? 'Done' : 'Manage'}
+                            </button>
+                        )}
+                        <button
+                            onClick={() => onViewGoal && onViewGoal('all')}
+                            className="text-xs text-neutral-500 hover:text-white transition-colors"
+                        >
+                            View all
+                        </button>
+                    </div>
                 </div>
 
                 {progressLoading ? (
@@ -133,12 +172,41 @@ export const ProgressDashboard: React.FC<ProgressDashboardProps> = ({
                             </button>
                         )}
                     </div>
-                ) : (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                ) : showGoalManage ? (
+                    <div className="space-y-1">
                         {progressData.goalsWithProgress
                             .filter(({ goal }) => !goal.completedAt)
-                            .slice(0, 4)
-                            .map((goalWithProgress) => (
+                            .map(({ goal }) => (
+                                <button
+                                    key={goal.id}
+                                    onClick={() => toggleGoalPin(goal.id)}
+                                    className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg hover:bg-neutral-800/50 transition-colors text-left min-h-[44px]"
+                                >
+                                    <Pin
+                                        size={14}
+                                        className={isGoalPinned(goal.id) ? 'text-emerald-400' : 'text-neutral-600'}
+                                        fill={isGoalPinned(goal.id) ? 'currentColor' : 'none'}
+                                    />
+                                    <span className={`text-sm ${isGoalPinned(goal.id) ? 'text-white' : 'text-neutral-400'}`}>
+                                        {goal.title}
+                                    </span>
+                                </button>
+                            ))}
+                        <p className="text-[10px] text-neutral-600 px-3 pt-2">
+                            {pinnedGoalIds.length === 0
+                                ? 'Pin goals to choose which ones appear here. Showing first 4 by default.'
+                                : `${pinnedGoalIds.length} goal${pinnedGoalIds.length !== 1 ? 's' : ''} pinned`}
+                        </p>
+                    </div>
+                ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                        {(() => {
+                            const activeGoals = progressData.goalsWithProgress.filter(({ goal }) => !goal.completedAt);
+                            // If user has pinned goals, show only those; otherwise show first 4
+                            const displayGoals = pinnedGoalIds.length > 0
+                                ? activeGoals.filter(({ goal }) => pinnedGoalIds.includes(goal.id)).slice(0, 4)
+                                : activeGoals.slice(0, 4);
+                            return displayGoals.map((goalWithProgress) => (
                                 <GoalPulseCard
                                     key={goalWithProgress.goal.id}
                                     goalWithProgress={goalWithProgress}
@@ -148,7 +216,8 @@ export const ProgressDashboard: React.FC<ProgressDashboardProps> = ({
                                         }
                                     }}
                                 />
-                            ))}
+                            ));
+                        })()}
                     </div>
                 )}
             </div>

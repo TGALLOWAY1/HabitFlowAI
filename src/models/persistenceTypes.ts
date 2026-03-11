@@ -400,6 +400,12 @@ export interface Routine {
     /** Array of steps that make up this routine */
     steps: RoutineStep[];
 
+    /** Optional icon name (lucide icon key) or emoji for display */
+    icon?: string;
+
+    /** Optional Tailwind CSS color class (e.g., "bg-emerald-500") for display */
+    color?: string;
+
     /** Optional image ID reference (points to routine_images collection) */
     imageId?: string;
 

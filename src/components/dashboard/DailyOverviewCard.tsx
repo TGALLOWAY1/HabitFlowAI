@@ -1,8 +1,7 @@
 import { useMemo } from 'react';
 import { format } from 'date-fns';
-import { Moon, Battery, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { Moon, Battery } from 'lucide-react';
 import { useHabitStore } from '../../store/HabitContext';
-import { useProgressOverview } from '../../lib/useProgressOverview';
 
 const CompletionRing: React.FC<{ completed: number; total: number; size?: number }> = ({ completed, total, size = 80 }) => {
     const percent = total > 0 ? (completed / total) * 100 : 0;
@@ -32,15 +31,8 @@ const CompletionRing: React.FC<{ completed: number; total: number; size?: number
     );
 };
 
-const trendIcon = (trend: 'up' | 'down' | 'neutral') => {
-    if (trend === 'up') return <TrendingUp size={12} />;
-    if (trend === 'down') return <TrendingDown size={12} />;
-    return <Minus size={12} />;
-};
-
 export const DailyOverviewCard: React.FC = () => {
     const { habits, logs, wellbeingLogs } = useHabitStore();
-    const { data: progressData } = useProgressOverview();
 
     const today = useMemo(() => format(new Date(), 'yyyy-MM-dd'), []);
 
@@ -60,8 +52,6 @@ export const DailyOverviewCard: React.FC = () => {
     );
     const totalCount = rootHabits.length;
 
-    const momentum = progressData?.momentum?.global;
-
     const todayWellbeing = wellbeingLogs[today];
     const sleepScore = todayWellbeing?.morning?.sleepScore ?? todayWellbeing?.sleepScore ?? null;
     const energy = todayWellbeing?.morning?.energy ?? todayWellbeing?.evening?.energy ?? todayWellbeing?.energy ?? null;
@@ -69,17 +59,7 @@ export const DailyOverviewCard: React.FC = () => {
     return (
         <div className="bg-neutral-900/50 rounded-2xl border border-white/5 p-4 backdrop-blur-sm flex flex-col items-center justify-center">
             <CompletionRing completed={completedCount} total={totalCount} />
-            {momentum && (
-                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium mt-2 ${
-                    momentum.state === 'Strong' ? 'bg-emerald-500/20 text-emerald-300' :
-                    momentum.state === 'Steady' ? 'bg-blue-500/20 text-blue-300' :
-                    momentum.state === 'Building' ? 'bg-amber-500/20 text-amber-300' :
-                    'bg-neutral-700 text-neutral-400'
-                }`}>
-                    {trendIcon(momentum.trend)}
-                    {momentum.state}
-                </span>
-            )}
+            <span className="text-[11px] text-neutral-400 font-medium mt-1.5">Daily Habits</span>
             {(sleepScore !== null || energy !== null) && (
                 <div className="flex gap-3 mt-2">
                     {sleepScore !== null && (
