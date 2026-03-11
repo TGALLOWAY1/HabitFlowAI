@@ -229,6 +229,29 @@ export async function dedupHabits(req: Request, res: Response): Promise<void> {
       },
     };
 
+    // --- Near-duplicate detection (case-insensitive, trimmed) ---
+    const normalizedGroups = new Map<string, Document[]>();
+    for (const habit of allHabits) {
+      const key = String(habit.name ?? '').trim().toLowerCase();
+      const group = normalizedGroups.get(key) ?? [];
+      group.push(habit);
+      normalizedGroups.set(key, group);
+    }
+    const nearDuplicates = Array.from(normalizedGroups.entries())
+      .filter(([, group]) => group.length > 1)
+      .map(([normalizedName, group]) => ({
+        normalizedName,
+        count: group.length,
+        variants: group.map(h => ({ id: h.id, name: h.name, categoryId: h.categoryId, createdAt: h.createdAt })),
+      }))
+      .slice(0, 50);
+
+    // --- Habit name frequency (top names for inspection) ---
+    const nameFrequency = Array.from(habitGroups.entries())
+      .map(([name, group]) => ({ name, count: group.length }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 30);
+
     if (!commit) {
       res.status(200).json({
         mode: 'dry-run',
@@ -236,6 +259,11 @@ export async function dedupHabits(req: Request, res: Response): Promise<void> {
         summary,
         habitIdRemapping: Object.fromEntries(habitIdRemapMap),
         categoryIdRemapping: Object.fromEntries(categoryIdRemapMap),
+        diagnostics: {
+          nearDuplicates,
+          nameFrequency,
+          totalUniqueNormalizedNames: normalizedGroups.size,
+        },
       });
       return;
     }
