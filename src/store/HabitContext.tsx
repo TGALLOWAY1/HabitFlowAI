@@ -320,8 +320,11 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const addHabit = async (habit: Omit<Habit, 'id' | 'createdAt' | 'archived'>): Promise<Habit> => {
         try {
             const newHabit = await saveHabit(habit);
-            // Updating state with functional update to ensure latest state
-            setHabits(prev => [...prev, newHabit]);
+            // Server uses atomic upsert — may return an existing habit instead of creating a new one.
+            // Only append if not already in state to prevent duplicate entries.
+            setHabits(prev =>
+                prev.some(h => h.id === newHabit.id) ? prev : [...prev, newHabit]
+            );
             return newHabit;
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : 'Unknown error';
