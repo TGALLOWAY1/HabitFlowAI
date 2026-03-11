@@ -133,18 +133,6 @@ export async function getIntegrityReport(req: Request, res: Response): Promise<v
 }
 
 /**
- * POST /api/admin/dedup-habits
- *
- * Deduplicates habits and categories for the authenticated user.
- * For each group of duplicates (same name + categoryId + user scope):
- *   1. Keeps the oldest record (earliest createdAt)
- *   2. Remaps any habitEntries referencing deleted IDs to the kept ID
- *   3. Remaps any goal linkedHabitIds referencing deleted IDs
- *   4. Deletes the duplicate records
- *
- * Returns a dry-run summary by default. Pass ?commit=true to actually apply changes.
- */
-/**
  * POST /api/admin/recover-habits
  *
  * Recovers habits that were incorrectly deleted by the dedup endpoint.
@@ -310,6 +298,160 @@ export async function recoverHabits(req: Request, res: Response): Promise<void> 
   }
 }
 
+/**
+ * POST /api/admin/remap-categories
+ *
+ * Remaps orphaned habits (referencing non-existent categoryIds) to correct current categories,
+ * and deletes habits from categories that have been intentionally removed.
+ *
+ * Body: {
+ *   categoryRemap: Record<oldCategoryId, newCategoryId>,
+ *   deleteFromCategories: string[]  // categoryIds whose habits should be deleted
+ * }
+ * Pass ?commit=true to apply. Default is dry-run.
+ */
+export async function remapOrphanedCategories(req: Request, res: Response): Promise<void> {
+  try {
+    const { householdId, userId } = getRequestIdentity(req);
+    const commit = req.query.commit === 'true';
+    const db = await getDb();
+
+    const categoryRemap: Record<string, string> = req.body?.categoryRemap ?? {};
+    const deleteFromCategories: string[] = req.body?.deleteFromCategories ?? [];
+
+    if (Object.keys(categoryRemap).length === 0 && deleteFromCategories.length === 0) {
+      res.status(400).json({ error: 'categoryRemap or deleteFromCategories is required in request body' });
+      return;
+    }
+
+    const habitsColl = db.collection('habits');
+    const categoriesColl = db.collection('categories');
+
+    // Get current categories to validate target IDs exist
+    const currentCategories = await categoriesColl.find({ householdId, userId }).toArray();
+    const currentCategoryIds = new Set(currentCategories.map(c => c.id));
+    const categoryNameMap = new Map(currentCategories.map(c => [c.id as string, c.name as string]));
+
+    // Validate all target category IDs exist
+    const invalidTargets = Object.values(categoryRemap).filter(id => !currentCategoryIds.has(id));
+    if (invalidTargets.length > 0) {
+      res.status(400).json({
+        error: 'Target category IDs do not exist',
+        invalidTargets,
+        availableCategories: currentCategories.map(c => ({ id: c.id, name: c.name })),
+      });
+      return;
+    }
+
+    // Get all habits
+    const allHabits = await habitsColl.find({ householdId, userId }).toArray();
+
+    // Build plan: habits to remap
+    const habitsToRemap: Array<{ id: string; name: string; oldCategoryId: string; newCategoryId: string; newCategoryName: string }> = [];
+    for (const habit of allHabits) {
+      const newCatId = categoryRemap[habit.categoryId];
+      if (newCatId) {
+        habitsToRemap.push({
+          id: habit.id,
+          name: habit.name,
+          oldCategoryId: habit.categoryId,
+          newCategoryId: newCatId,
+          newCategoryName: categoryNameMap.get(newCatId) ?? '(unknown)',
+        });
+      }
+    }
+
+    // Build plan: habits to delete
+    const deleteSet = new Set(deleteFromCategories);
+    const habitsToDelete: Array<{ id: string; name: string; categoryId: string }> = [];
+    for (const habit of allHabits) {
+      if (deleteSet.has(habit.categoryId)) {
+        habitsToDelete.push({
+          id: habit.id,
+          name: habit.name,
+          categoryId: habit.categoryId,
+        });
+      }
+    }
+
+    if (!commit) {
+      res.status(200).json({
+        mode: 'dry-run',
+        message: 'Pass ?commit=true to apply changes',
+        totalHabits: allHabits.length,
+        habitsToRemap: habitsToRemap.length,
+        habitsToDelete: habitsToDelete.length,
+        remapDetails: habitsToRemap,
+        deleteDetails: habitsToDelete,
+        currentCategories: currentCategories.map(c => ({ id: c.id, name: c.name })),
+      });
+      return;
+    }
+
+    // --- Apply changes ---
+    const results: Record<string, number> = {};
+
+    // 1. Remap habits to correct categories
+    if (Object.keys(categoryRemap).length > 0) {
+      let remappedCount = 0;
+      for (const [oldCatId, newCatId] of Object.entries(categoryRemap)) {
+        const r = await habitsColl.updateMany(
+          { householdId, userId, categoryId: oldCatId },
+          { $set: { categoryId: newCatId } }
+        );
+        remappedCount += r.modifiedCount;
+      }
+      results.remappedHabits = remappedCount;
+    }
+
+    // 2. Delete habits from removed categories
+    if (deleteFromCategories.length > 0) {
+      const r = await habitsColl.deleteMany({
+        householdId,
+        userId,
+        categoryId: { $in: deleteFromCategories },
+      });
+      results.deletedHabits = r.deletedCount;
+    }
+
+    // Verify: count orphaned habits remaining
+    const remainingHabits = await habitsColl.find({ householdId, userId }).toArray();
+    const orphanedRemaining = remainingHabits.filter(h => !currentCategoryIds.has(h.categoryId));
+
+    res.status(200).json({
+      mode: 'committed',
+      results,
+      verification: {
+        totalHabitsAfter: remainingHabits.length,
+        orphanedHabitsRemaining: orphanedRemaining.length,
+        orphanedDetails: orphanedRemaining.map(h => ({ id: h.id, name: h.name, categoryId: h.categoryId })),
+      },
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    console.error('Error in remap-categories:', message);
+    res.status(500).json({
+      error: {
+        code: 'INTERNAL_SERVER_ERROR',
+        message: 'Failed to remap categories',
+        details: process.env.NODE_ENV === 'development' ? message : undefined,
+      },
+    });
+  }
+}
+
+/**
+ * POST /api/admin/dedup-habits
+ *
+ * Deduplicates habits and categories for the authenticated user.
+ * For each group of duplicates (same name + categoryId + user scope):
+ *   1. Keeps the oldest record (earliest createdAt)
+ *   2. Remaps any habitEntries referencing deleted IDs to the kept ID
+ *   3. Remaps any goal linkedHabitIds referencing deleted IDs
+ *   4. Deletes the duplicate records
+ *
+ * Returns a dry-run summary by default. Pass ?commit=true to actually apply changes.
+ */
 export async function dedupHabits(req: Request, res: Response): Promise<void> {
   try {
     const { householdId, userId } = getRequestIdentity(req);
@@ -323,12 +465,13 @@ export async function dedupHabits(req: Request, res: Response): Promise<void> {
       .sort({ createdAt: 1 })
       .toArray();
 
-    // Group by name only — duplicates were created with different categoryIds
-    // due to the race condition, so (name, categoryId) grouping misses them.
-    // The kept record's categoryId is preserved; duplicates are remapped.
+    // Group by (name, categoryId) — the conservative approach.
+    // Now that orphaned categoryIds have been remapped, same-name habits with
+    // different categoryIds are in the same category and will be caught.
+    // The atomic upsert fix in repositories prevents future duplicates.
     const habitGroups = new Map<string, Document[]>();
     for (const habit of allHabits) {
-      const key = habit.name;
+      const key = `${habit.name}::${habit.categoryId}`;
       const group = habitGroups.get(key) ?? [];
       group.push(habit);
       habitGroups.set(key, group);

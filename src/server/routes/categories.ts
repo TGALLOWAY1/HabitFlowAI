@@ -14,6 +14,7 @@ import {
   deleteCategory,
   reorderCategories,
 } from '../repositories/categoryRepository';
+import { archiveHabitsByCategory } from '../repositories/habitRepository';
 import type { Category } from '../../models/persistenceTypes';
 import { getRequestIdentity } from '../middleware/identity';
 
@@ -283,9 +284,12 @@ export async function deleteCategoryRoute(req: Request, res: Response): Promise<
       return;
     }
 
-    // TODO: Extract userId from authentication token/session
     const { householdId, userId } = getRequestIdentity(req);
-    // For now, we allow deletion (matches current frontend behavior)
+
+    // Archive all habits in this category before deleting the category.
+    // This prevents orphaned habits (referencing a non-existent categoryId).
+    // Archived habits are preserved for history but hidden from active tracking.
+    const archivedCount = await archiveHabitsByCategory(id, householdId, userId);
 
     const deleted = await deleteCategory(id, householdId, userId);
 
@@ -301,6 +305,7 @@ export async function deleteCategoryRoute(req: Request, res: Response): Promise<
 
     res.status(200).json({
       message: 'Category deleted successfully',
+      archivedHabits: archivedCount,
     });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
