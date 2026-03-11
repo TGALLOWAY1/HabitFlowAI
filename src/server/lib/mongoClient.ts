@@ -84,6 +84,42 @@ async function ensureHabitEntriesUniqueIndex(database: Db): Promise<void> {
   }
 }
 
+async function ensureHabitAndCategoryIndexes(database: Db): Promise<void> {
+  const createIndexSafe = async (
+    collectionName: string,
+    keys: Record<string, 1 | -1>,
+    options?: CreateIndexesOptions
+  ) => {
+    try {
+      await database.collection(collectionName).createIndex(keys, options);
+    } catch (error) {
+      const code = (error as { code?: number })?.code;
+      // 85 = index with same name exists with different options
+      // 86 = index with same key spec exists with different name
+      if (code === 85 || code === 86) return;
+      // 11000 = duplicate key error — duplicates exist, need to run dedup first
+      if (code === 11000) {
+        console.warn(`[MongoDB] Cannot create unique index on ${collectionName}: duplicates exist. Run POST /api/admin/dedup-habits?commit=true first.`);
+        return;
+      }
+      const message = error instanceof Error ? error.message : String(error);
+      console.warn(`[MongoDB] Failed to ensure index on ${collectionName}: ${message}`);
+    }
+  };
+
+  // Prevent duplicate habits: same user can't have two habits with same name in same category
+  await createIndexSafe('habits',
+    { householdId: 1, userId: 1, name: 1, categoryId: 1 },
+    { unique: true, name: 'idx_habits_user_name_category_unique' }
+  );
+
+  // Prevent duplicate categories: same user can't have two categories with same name
+  await createIndexSafe('categories',
+    { householdId: 1, userId: 1, name: 1 },
+    { unique: true, name: 'idx_categories_user_name_unique' }
+  );
+}
+
 async function ensureCoreIndexes(database: Db): Promise<void> {
   if (indexesEnsuredForDbName === database.databaseName) {
     return;
@@ -106,10 +142,11 @@ async function ensureCoreIndexes(database: Db): Promise<void> {
   await createIndexSafe('habitEntries', { userId: 1, habitId: 1, timestamp: -1 }, { name: 'idx_habitEntries_user_habit_timestamp' });
 
   await ensureHabitEntriesUniqueIndex(database);
+  await ensureHabitAndCategoryIndexes(database);
   await ensureAuthIndexes(database);
 
   if (!isTestEnv()) {
-    console.log('[MongoDB] Indexes ensured (habitEntries unique: householdId, userId, habitId, dayKey)');
+    console.log('[MongoDB] Indexes ensured (habitEntries, habits, categories, auth)');
   }
   indexesEnsuredForDbName = database.databaseName;
 }

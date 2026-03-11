@@ -25,30 +25,37 @@ export async function createHabit(
   const db = await getDb();
   const collection = db.collection(COLLECTION_NAME);
 
-  const existing = await collection.findOne(
-    scopeFilter(householdId, userId, { name: data.name, categoryId: data.categoryId })
-  );
-
-  if (existing) {
-    return stripScope(existing);
-  }
-
   const id = crypto.randomUUID();
   const createdAt = new Date().toISOString();
 
-  const document = {
-    id,
-    ...data,
-    archived: false,
-    createdAt,
-    householdId: scope.householdId,
-    userId: scope.userId,
-  } as any;
+  // Atomic upsert: prevents TOCTOU race where concurrent requests both
+  // pass a findOne check and then both insert, creating duplicates.
+  // $setOnInsert only applies fields when a new document is created.
+  const result = await collection.findOneAndUpdate(
+    scopeFilter(householdId, userId, { name: data.name, categoryId: data.categoryId }),
+    {
+      $setOnInsert: {
+        id,
+        ...data,
+        archived: false,
+        createdAt,
+        householdId: scope.householdId,
+        userId: scope.userId,
+      },
+    },
+    { upsert: true, returnDocument: 'after' }
+  );
 
-  await collection.insertOne(document);
-  console.log(`[Persistence] Created habit '${data.name}' (ID: ${id}) for User: ${userId}`);
+  if (!result) {
+    throw new Error(`Failed to create or find habit '${data.name}'`);
+  }
 
-  return stripScope(document);
+  // Log only if we actually created a new document (id matches what we generated)
+  if ((result as any).id === id) {
+    console.log(`[Persistence] Created habit '${data.name}' (ID: ${id}) for User: ${userId}`);
+  }
+
+  return stripScope(result);
 }
 
 export async function getHabitsByUser(householdId: string, userId: string): Promise<Habit[]> {

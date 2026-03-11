@@ -24,26 +24,28 @@ export async function createCategory(
   const db = await getDb();
   const collection = db.collection(COLLECTION_NAME);
 
-  const existing = await collection.findOne(
-    scopeFilter(householdId, userId, { name: data.name })
+  const id = randomUUID();
+
+  // Atomic upsert: prevents TOCTOU race where concurrent requests both
+  // pass a findOne check and then both insert, creating duplicates.
+  const result = await collection.findOneAndUpdate(
+    scopeFilter(householdId, userId, { name: data.name }),
+    {
+      $setOnInsert: {
+        id,
+        ...data,
+        householdId: scope.householdId,
+        userId: scope.userId,
+      },
+    },
+    { upsert: true, returnDocument: 'after' }
   );
 
-  if (existing) {
-    const { _id, userId: _, householdId: __, ...category } = existing as any;
-    return category as Category;
+  if (!result) {
+    throw new Error(`Failed to create or find category '${data.name}'`);
   }
 
-  const id = randomUUID();
-  const document = {
-    id,
-    ...data,
-    householdId: scope.householdId,
-    userId: scope.userId,
-  } as any;
-
-  await collection.insertOne(document);
-
-  const { _id, userId: _, householdId: __, ...category } = document;
+  const { _id, userId: _, householdId: __, ...category } = result as any;
   return category as Category;
 }
 
