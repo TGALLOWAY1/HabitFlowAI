@@ -156,3 +156,25 @@ export async function reorderHabits(
     return false;
   }
 }
+
+/**
+ * Archive all habits belonging to a category.
+ * Called when a category is deleted to prevent orphaned habit references.
+ * Archived habits are preserved in the database but hidden from active tracking.
+ * Returns the number of habits archived.
+ */
+export async function archiveHabitsByCategory(
+  categoryId: string,
+  householdId: string,
+  userId: string
+): Promise<number> {
+  const db = await getDb();
+  const collection = db.collection(COLLECTION_NAME);
+
+  const result = await collection.updateMany(
+    scopeFilter(householdId, userId, { categoryId, archived: { $ne: true } }),
+    { $set: { archived: true, archivedAt: new Date().toISOString(), archivedReason: 'category_deleted' } }
+  );
+
+  return result.modifiedCount;
+}
