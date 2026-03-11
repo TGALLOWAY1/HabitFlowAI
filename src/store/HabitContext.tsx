@@ -522,6 +522,11 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         try {
             await deleteCategoryApi(id);
             setCategories(categories.filter(c => c.id !== id));
+            // Archive habits belonging to the deleted category in local state
+            // (backend already archived them in MongoDB during the delete)
+            setHabits(prev => prev.map(h =>
+                h.categoryId === id ? { ...h, archived: true } : h
+            ));
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : 'Unknown error';
             console.error('Failed to delete category from API:', errorMessage);

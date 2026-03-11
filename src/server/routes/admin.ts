@@ -133,6 +133,314 @@ export async function getIntegrityReport(req: Request, res: Response): Promise<v
 }
 
 /**
+ * POST /api/admin/recover-habits
+ *
+ * Recovers habits that were incorrectly deleted by the dedup endpoint.
+ * Takes the habitIdRemapping from a previous dedup dry-run and:
+ *   1. Identifies deleted IDs that were bundle sub-habits (referenced by subHabitIds)
+ *   2. Recreates those habits by copying from the "kept" habit + restoring bundleParentId
+ *   3. Re-remaps habitEntries back from kept ID to original ID where appropriate
+ *
+ * Body: { habitIdRemapping: Record<deletedId, keptId> }
+ * Pass ?commit=true to apply. Default is dry-run.
+ */
+export async function recoverHabits(req: Request, res: Response): Promise<void> {
+  try {
+    const { householdId, userId } = getRequestIdentity(req);
+    const commit = req.query.commit === 'true';
+    const db = await getDb();
+
+    const habitIdRemapping: Record<string, string> = req.body?.habitIdRemapping ?? {};
+    if (Object.keys(habitIdRemapping).length === 0) {
+      res.status(400).json({ error: 'habitIdRemapping is required in request body' });
+      return;
+    }
+
+    const deletedIds = Object.keys(habitIdRemapping);
+    const habitsColl = db.collection('habits');
+
+    // Get all current habits
+    const allHabits = await habitsColl.find({ householdId, userId }).toArray();
+    const habitMap = new Map(allHabits.map(h => [h.id, h]));
+    const existingIds = new Set(allHabits.map(h => h.id));
+
+    // Find bundle parents that reference deleted sub-habit IDs
+    const bundleParents = allHabits.filter(h =>
+      h.subHabitIds && Array.isArray(h.subHabitIds) && h.subHabitIds.length > 0
+    );
+
+    // Build map: deletedId -> bundleParentId (if the deleted habit was a sub-habit)
+    const deletedSubHabitParentMap = new Map<string, string>();
+    for (const parent of bundleParents) {
+      for (const subId of parent.subHabitIds) {
+        if (deletedIds.includes(subId) && !existingIds.has(subId)) {
+          deletedSubHabitParentMap.set(subId, parent.id);
+        }
+      }
+    }
+
+    // For ALL deleted IDs (not just sub-habits), check if they still need recovery
+    const deletedIdsNeedingRecovery = deletedIds.filter(id => !existingIds.has(id));
+
+    // Build recovery plan
+    const recoveryPlan: Array<{
+      deletedId: string;
+      keptId: string;
+      keptHabitName: string;
+      bundleParentId: string | null;
+      bundleParentName: string | null;
+      reason: string;
+    }> = [];
+
+    for (const deletedId of deletedIdsNeedingRecovery) {
+      const keptId = habitIdRemapping[deletedId];
+      const keptHabit = habitMap.get(keptId);
+      const bundleParentId = deletedSubHabitParentMap.get(deletedId) ?? null;
+      const bundleParent = bundleParentId ? habitMap.get(bundleParentId) : null;
+
+      recoveryPlan.push({
+        deletedId,
+        keptId,
+        keptHabitName: keptHabit?.name ?? '(kept habit also deleted)',
+        bundleParentId,
+        bundleParentName: bundleParent?.name ?? null,
+        reason: bundleParentId
+          ? `Bundle sub-habit of "${bundleParent?.name ?? bundleParentId}"`
+          : 'Standalone habit deleted as duplicate',
+      });
+    }
+
+    // Separate sub-habits (definitely need recovery) from standalone duplicates
+    const subHabitsToRecover = recoveryPlan.filter(r => r.bundleParentId);
+    const standalonesToRecover = recoveryPlan.filter(r => !r.bundleParentId);
+
+    if (!commit) {
+      res.status(200).json({
+        mode: 'dry-run',
+        message: 'Pass ?commit=true to apply recovery',
+        totalDeletedIds: deletedIds.length,
+        alreadyRecovered: deletedIds.length - deletedIdsNeedingRecovery.length,
+        needsRecovery: deletedIdsNeedingRecovery.length,
+        subHabitsToRecover: subHabitsToRecover.length,
+        standaloneDuplicates: standalonesToRecover.length,
+        bundleParentsWithMissingChildren: bundleParents
+          .filter(p => p.subHabitIds.some((id: string) => !existingIds.has(id)))
+          .map(p => ({
+            id: p.id,
+            name: p.name,
+            bundleType: p.bundleType,
+            totalSubHabits: p.subHabitIds.length,
+            missingSubHabits: p.subHabitIds.filter((id: string) => !existingIds.has(id)),
+            presentSubHabits: p.subHabitIds.filter((id: string) => existingIds.has(id)),
+          })),
+        recoveryPlan: recoveryPlan.slice(0, 100),
+      });
+      return;
+    }
+
+    // --- Apply recovery ---
+    const results = {
+      recreatedSubHabits: 0,
+      recreatedStandalones: 0,
+      reRemappedEntries: 0,
+    };
+
+    // Recreate sub-habits: copy from kept habit but set bundleParentId
+    for (const item of subHabitsToRecover) {
+      const keptHabit = habitMap.get(item.keptId);
+      if (!keptHabit) continue;
+
+      // Copy properties from kept habit, override with correct bundle relationship
+      const { _id, ...keptData } = keptHabit;
+      const recoveredHabit = {
+        ...keptData,
+        id: item.deletedId,
+        bundleParentId: item.bundleParentId,
+        createdAt: new Date().toISOString(),
+      };
+
+      await habitsColl.insertOne(recoveredHabit);
+      results.recreatedSubHabits++;
+    }
+
+    // For standalone duplicates that were wrongly deleted (not sub-habits),
+    // also recreate them since the user says habits are missing
+    for (const item of standalonesToRecover) {
+      const keptHabit = habitMap.get(item.keptId);
+      if (!keptHabit) continue;
+
+      const { _id, ...keptData } = keptHabit;
+      const recoveredHabit = {
+        ...keptData,
+        id: item.deletedId,
+        createdAt: new Date().toISOString(),
+      };
+
+      await habitsColl.insertOne(recoveredHabit);
+      results.recreatedStandalones++;
+    }
+
+    res.status(200).json({
+      mode: 'committed',
+      results,
+      note: 'Habits have been recreated. HabitEntries that were remapped during dedup still point to the kept habit ID. Bundle parents should now see their sub-habits again.',
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    console.error('Error in recover-habits:', message);
+    res.status(500).json({
+      error: {
+        code: 'INTERNAL_SERVER_ERROR',
+        message: 'Failed to recover habits',
+        details: process.env.NODE_ENV === 'development' ? message : undefined,
+      },
+    });
+  }
+}
+
+/**
+ * POST /api/admin/remap-categories
+ *
+ * Remaps orphaned habits (referencing non-existent categoryIds) to correct current categories,
+ * and deletes habits from categories that have been intentionally removed.
+ *
+ * Body: {
+ *   categoryRemap: Record<oldCategoryId, newCategoryId>,
+ *   deleteFromCategories: string[]  // categoryIds whose habits should be deleted
+ * }
+ * Pass ?commit=true to apply. Default is dry-run.
+ */
+export async function remapOrphanedCategories(req: Request, res: Response): Promise<void> {
+  try {
+    const { householdId, userId } = getRequestIdentity(req);
+    const commit = req.query.commit === 'true';
+    const db = await getDb();
+
+    const categoryRemap: Record<string, string> = req.body?.categoryRemap ?? {};
+    const deleteFromCategories: string[] = req.body?.deleteFromCategories ?? [];
+
+    if (Object.keys(categoryRemap).length === 0 && deleteFromCategories.length === 0) {
+      res.status(400).json({ error: 'categoryRemap or deleteFromCategories is required in request body' });
+      return;
+    }
+
+    const habitsColl = db.collection('habits');
+    const categoriesColl = db.collection('categories');
+
+    // Get current categories to validate target IDs exist
+    const currentCategories = await categoriesColl.find({ householdId, userId }).toArray();
+    const currentCategoryIds = new Set(currentCategories.map(c => c.id));
+    const categoryNameMap = new Map(currentCategories.map(c => [c.id as string, c.name as string]));
+
+    // Validate all target category IDs exist
+    const invalidTargets = Object.values(categoryRemap).filter(id => !currentCategoryIds.has(id));
+    if (invalidTargets.length > 0) {
+      res.status(400).json({
+        error: 'Target category IDs do not exist',
+        invalidTargets,
+        availableCategories: currentCategories.map(c => ({ id: c.id, name: c.name })),
+      });
+      return;
+    }
+
+    // Get all habits
+    const allHabits = await habitsColl.find({ householdId, userId }).toArray();
+
+    // Build plan: habits to remap
+    const habitsToRemap: Array<{ id: string; name: string; oldCategoryId: string; newCategoryId: string; newCategoryName: string }> = [];
+    for (const habit of allHabits) {
+      const newCatId = categoryRemap[habit.categoryId];
+      if (newCatId) {
+        habitsToRemap.push({
+          id: habit.id,
+          name: habit.name,
+          oldCategoryId: habit.categoryId,
+          newCategoryId: newCatId,
+          newCategoryName: categoryNameMap.get(newCatId) ?? '(unknown)',
+        });
+      }
+    }
+
+    // Build plan: habits to delete
+    const deleteSet = new Set(deleteFromCategories);
+    const habitsToDelete: Array<{ id: string; name: string; categoryId: string }> = [];
+    for (const habit of allHabits) {
+      if (deleteSet.has(habit.categoryId)) {
+        habitsToDelete.push({
+          id: habit.id,
+          name: habit.name,
+          categoryId: habit.categoryId,
+        });
+      }
+    }
+
+    if (!commit) {
+      res.status(200).json({
+        mode: 'dry-run',
+        message: 'Pass ?commit=true to apply changes',
+        totalHabits: allHabits.length,
+        habitsToRemap: habitsToRemap.length,
+        habitsToDelete: habitsToDelete.length,
+        remapDetails: habitsToRemap,
+        deleteDetails: habitsToDelete,
+        currentCategories: currentCategories.map(c => ({ id: c.id, name: c.name })),
+      });
+      return;
+    }
+
+    // --- Apply changes ---
+    const results: Record<string, number> = {};
+
+    // 1. Remap habits to correct categories
+    if (Object.keys(categoryRemap).length > 0) {
+      let remappedCount = 0;
+      for (const [oldCatId, newCatId] of Object.entries(categoryRemap)) {
+        const r = await habitsColl.updateMany(
+          { householdId, userId, categoryId: oldCatId },
+          { $set: { categoryId: newCatId } }
+        );
+        remappedCount += r.modifiedCount;
+      }
+      results.remappedHabits = remappedCount;
+    }
+
+    // 2. Delete habits from removed categories
+    if (deleteFromCategories.length > 0) {
+      const r = await habitsColl.deleteMany({
+        householdId,
+        userId,
+        categoryId: { $in: deleteFromCategories },
+      });
+      results.deletedHabits = r.deletedCount;
+    }
+
+    // Verify: count orphaned habits remaining
+    const remainingHabits = await habitsColl.find({ householdId, userId }).toArray();
+    const orphanedRemaining = remainingHabits.filter(h => !currentCategoryIds.has(h.categoryId));
+
+    res.status(200).json({
+      mode: 'committed',
+      results,
+      verification: {
+        totalHabitsAfter: remainingHabits.length,
+        orphanedHabitsRemaining: orphanedRemaining.length,
+        orphanedDetails: orphanedRemaining.map(h => ({ id: h.id, name: h.name, categoryId: h.categoryId })),
+      },
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    console.error('Error in remap-categories:', message);
+    res.status(500).json({
+      error: {
+        code: 'INTERNAL_SERVER_ERROR',
+        message: 'Failed to remap categories',
+        details: process.env.NODE_ENV === 'development' ? message : undefined,
+      },
+    });
+  }
+}
+
+/**
  * POST /api/admin/dedup-habits
  *
  * Deduplicates habits and categories for the authenticated user.
@@ -157,12 +465,13 @@ export async function dedupHabits(req: Request, res: Response): Promise<void> {
       .sort({ createdAt: 1 })
       .toArray();
 
-    // Group by name only — duplicates were created with different categoryIds
-    // due to the race condition, so (name, categoryId) grouping misses them.
-    // The kept record's categoryId is preserved; duplicates are remapped.
+    // Group by (name, categoryId) — the conservative approach.
+    // Now that orphaned categoryIds have been remapped, same-name habits with
+    // different categoryIds are in the same category and will be caught.
+    // The atomic upsert fix in repositories prevents future duplicates.
     const habitGroups = new Map<string, Document[]>();
     for (const habit of allHabits) {
-      const key = habit.name;
+      const key = `${habit.name}::${habit.categoryId}`;
       const group = habitGroups.get(key) ?? [];
       group.push(habit);
       habitGroups.set(key, group);
@@ -229,6 +538,29 @@ export async function dedupHabits(req: Request, res: Response): Promise<void> {
       },
     };
 
+    // --- Near-duplicate detection (case-insensitive, trimmed) ---
+    const normalizedGroups = new Map<string, Document[]>();
+    for (const habit of allHabits) {
+      const key = String(habit.name ?? '').trim().toLowerCase();
+      const group = normalizedGroups.get(key) ?? [];
+      group.push(habit);
+      normalizedGroups.set(key, group);
+    }
+    const nearDuplicates = Array.from(normalizedGroups.entries())
+      .filter(([, group]) => group.length > 1)
+      .map(([normalizedName, group]) => ({
+        normalizedName,
+        count: group.length,
+        variants: group.map(h => ({ id: h.id, name: h.name, categoryId: h.categoryId, createdAt: h.createdAt })),
+      }))
+      .slice(0, 50);
+
+    // --- Habit name frequency (top names for inspection) ---
+    const nameFrequency = Array.from(habitGroups.entries())
+      .map(([name, group]) => ({ name, count: group.length }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 30);
+
     if (!commit) {
       res.status(200).json({
         mode: 'dry-run',
@@ -236,6 +568,11 @@ export async function dedupHabits(req: Request, res: Response): Promise<void> {
         summary,
         habitIdRemapping: Object.fromEntries(habitIdRemapMap),
         categoryIdRemapping: Object.fromEntries(categoryIdRemapMap),
+        diagnostics: {
+          nearDuplicates,
+          nameFrequency,
+          totalUniqueNormalizedNames: normalizedGroups.size,
+        },
       });
       return;
     }
