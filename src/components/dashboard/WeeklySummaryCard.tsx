@@ -1,0 +1,160 @@
+import React, { useState } from 'react';
+import { Sparkles, Loader2, X, ChevronDown, ChevronUp, Settings } from 'lucide-react';
+import { hasGeminiApiKey, fetchWeeklySummary } from '../../lib/geminiClient';
+
+interface WeeklySummaryCardProps {
+  onOpenSettings?: () => void;
+}
+
+export const WeeklySummaryCard: React.FC<WeeklySummaryCardProps> = ({ onOpenSettings }) => {
+  const [summary, setSummary] = useState<string | null>(null);
+  const [period, setPeriod] = useState<{ start: string; end: string } | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [expanded, setExpanded] = useState(true);
+
+  const hasKey = hasGeminiApiKey();
+
+  const handleGenerate = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const result = await fetchWeeklySummary();
+      setSummary(result.summary);
+      setPeriod(result.period);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to generate summary');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // No key configured — show setup prompt
+  if (!hasKey) {
+    return (
+      <div className="bg-neutral-900/50 rounded-2xl border border-white/5 p-6 backdrop-blur-sm">
+        <div className="flex items-center gap-2 mb-3">
+          <Sparkles size={18} className="text-purple-400" />
+          <h3 className="text-lg font-semibold text-white">AI Weekly Summary</h3>
+        </div>
+        <p className="text-sm text-neutral-400 mb-4">
+          Get personalized weekly summaries of your habits and journal entries, powered by Google Gemini.
+          Add your API key in Settings to get started.
+        </p>
+        {onOpenSettings && (
+          <button
+            onClick={onOpenSettings}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-purple-600/20 text-purple-300 border border-purple-500/20 hover:bg-purple-600/30 text-sm transition-colors"
+          >
+            <Settings size={14} />
+            Add Gemini API Key
+          </button>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-neutral-900/50 rounded-2xl border border-white/5 p-6 backdrop-blur-sm">
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <Sparkles size={18} className="text-purple-400" />
+          <h3 className="text-lg font-semibold text-white">AI Weekly Summary</h3>
+        </div>
+        <div className="flex items-center gap-2">
+          {summary && (
+            <button
+              onClick={() => setExpanded(!expanded)}
+              className="p-1.5 text-neutral-500 hover:text-white rounded-lg hover:bg-white/5 transition-colors"
+              aria-label={expanded ? 'Collapse' : 'Expand'}
+            >
+              {expanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+            </button>
+          )}
+          {summary && (
+            <button
+              onClick={() => {
+                setSummary(null);
+                setPeriod(null);
+                setError(null);
+              }}
+              className="p-1.5 text-neutral-500 hover:text-white rounded-lg hover:bg-white/5 transition-colors"
+              aria-label="Dismiss"
+            >
+              <X size={16} />
+            </button>
+          )}
+        </div>
+      </div>
+
+      {!summary && !loading && !error && (
+        <div>
+          <p className="text-sm text-neutral-400 mb-4">
+            Generate a personalized summary of your past week's habits and journal entries.
+          </p>
+          <button
+            onClick={handleGenerate}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-purple-600/80 text-white hover:bg-purple-600 text-sm font-medium transition-colors"
+          >
+            <Sparkles size={14} />
+            Generate Weekly Summary
+          </button>
+        </div>
+      )}
+
+      {loading && (
+        <div className="flex items-center gap-3 py-4">
+          <Loader2 size={18} className="text-purple-400 animate-spin" />
+          <span className="text-sm text-neutral-400">Analyzing your week...</span>
+        </div>
+      )}
+
+      {error && (
+        <div className="space-y-3">
+          <div className="rounded-lg bg-red-500/10 border border-red-500/20 p-3">
+            <p className="text-sm text-red-300">{error}</p>
+          </div>
+          <button
+            onClick={handleGenerate}
+            className="text-xs text-purple-400 hover:text-purple-300 transition-colors"
+          >
+            Try again
+          </button>
+        </div>
+      )}
+
+      {summary && expanded && (
+        <div className="space-y-3">
+          {period && (
+            <p className="text-[11px] text-neutral-500">
+              {period.start} to {period.end}
+            </p>
+          )}
+          <div className="prose prose-sm prose-invert max-w-none text-neutral-300 leading-relaxed [&_h1]:text-base [&_h1]:font-semibold [&_h1]:text-white [&_h2]:text-sm [&_h2]:font-semibold [&_h2]:text-white [&_h3]:text-sm [&_h3]:font-medium [&_h3]:text-neutral-200 [&_strong]:text-white [&_ul]:space-y-1 [&_li]:text-sm">
+            {summary.split('\n').map((line, i) => {
+              if (!line.trim()) return <br key={i} />;
+              // Basic markdown rendering for bold and headers
+              const formatted = line
+                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                .replace(/^### (.*)/, '<h3>$1</h3>')
+                .replace(/^## (.*)/, '<h2>$1</h2>')
+                .replace(/^# (.*)/, '<h1>$1</h1>')
+                .replace(/^[*-] (.*)/, '<li>$1</li>');
+              return (
+                <div key={i} dangerouslySetInnerHTML={{ __html: formatted }} />
+              );
+            })}
+          </div>
+          <div className="pt-2 border-t border-white/5">
+            <button
+              onClick={handleGenerate}
+              className="text-xs text-purple-400 hover:text-purple-300 transition-colors"
+            >
+              Regenerate
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};

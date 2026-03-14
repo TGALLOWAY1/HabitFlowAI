@@ -453,6 +453,7 @@ const HabitTrackerContent: React.FC = () => {
             onNavigateToJournal={() => handleNavigate('journal')}
             onNavigateToRoutines={() => handleNavigate('routines')}
             onNavigateToTasks={() => handleNavigate('tasks')}
+            onOpenSettings={() => window.dispatchEvent(new Event('habitflow:open-settings'))}
           />
         ) : view === 'wellbeing-history' ? (
           <WellbeingHistoryPage onBack={() => handleNavigate('dashboard')} />
