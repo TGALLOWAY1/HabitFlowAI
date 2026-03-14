@@ -2,10 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { X, CheckSquare, Square } from 'lucide-react';
 import type { Routine } from '../models/persistenceTypes';
 import type { StepStates } from '../store/RoutineContext';
+import { resolveSteps } from '../lib/routineVariantUtils';
 
 export interface CompletedHabitsModalProps {
     isOpen: boolean;
     routine: Routine | null;
+    variantId?: string;
     stepStates: StepStates;
     /** Resolve habit ID to display name */
     getHabitName: (habitId: string) => string;
@@ -17,26 +19,28 @@ export interface CompletedHabitsModalProps {
 }
 
 /** Steps that are linked to a habit (have linkedHabitId). */
-function getHabitSteps(routine: Routine) {
-    return routine.steps.filter((s): s is typeof s & { linkedHabitId: string } => Boolean(s.linkedHabitId));
+function getHabitSteps(routine: Routine, variantId?: string) {
+    const steps = resolveSteps(routine, variantId);
+    return steps.filter((s): s is typeof s & { linkedHabitId: string } => Boolean(s.linkedHabitId));
 }
 
 export const CompletedHabitsModal: React.FC<CompletedHabitsModalProps> = ({
     isOpen,
     routine,
+    variantId,
     stepStates,
     getHabitName,
     onClose,
     onLogSelected,
     submitting = false,
 }) => {
-    const habitSteps = routine ? getHabitSteps(routine) : [];
+    const habitSteps = routine ? getHabitSteps(routine, variantId) : [];
     const [checkedStepIds, setCheckedStepIds] = useState<Set<string>>(new Set());
 
     // Initialize checked state from stepStates: checked if step is "done"
     useEffect(() => {
         if (!isOpen || !routine) return;
-        const steps = getHabitSteps(routine);
+        const steps = getHabitSteps(routine, variantId);
         const initial = new Set<string>();
         for (const step of steps) {
             if (stepStates[step.id] === 'done') {

@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import type { Routine, RoutineLog } from '../models/persistenceTypes';
+import type { StepStatus } from '../models/persistenceTypes';
 import {
     fetchRoutines,
     fetchRoutineLogs,
@@ -8,9 +9,10 @@ import {
     deleteRoutine as deleteRoutineApi,
     recordRoutineStepReached,
 } from '../lib/persistenceClient';
+import { resolveSteps } from '../lib/routineVariantUtils';
 
-/** Per-step completion state during routine execution. No habit logging. */
-export type StepStatus = 'neutral' | 'done' | 'skipped';
+// Re-export StepStatus from persistenceTypes (single source of truth)
+export type { StepStatus } from '../models/persistenceTypes';
 
 export type StepStates = Record<string, StepStatus>;
 
@@ -26,14 +28,16 @@ interface RoutineContextType {
 
     // Execution State
     activeRoutine: Routine | null;
+    activeVariantId: string | null;
     executionState: 'browse' | 'preview' | 'execute';
     currentStepIndex: number;
-    /** Per-step status for current run. Keyed by stepId. Reset on start (all neutral) and cleared on exit. */
     stepStates: StepStates;
+    startedAt: string | null;
 
     // Execution Actions
     selectRoutine: (routineId: string) => void;
-    startRoutine: () => void;
+    selectVariant: (variantId: string) => void;
+    startRoutine: (variantId?: string) => void;
     exitRoutine: () => void;
     nextStep: () => void;
     prevStep: () => void;
@@ -52,9 +56,6 @@ export const useRoutineStore = () => {
 };
 
 export const RoutineProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-    // All persistent data is stored in MongoDB via the backend API.
-
-    // All state starts empty and is loaded from MongoDB via API on mount
     const [routines, setRoutines] = useState<Routine[]>([]);
     const [routineLogs, setRoutineLogs] = useState<Record<string, RoutineLog>>({});
     const [loading, setLoading] = useState<boolean>(true);
@@ -62,9 +63,11 @@ export const RoutineProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
     // Execution State
     const [activeRoutine, setActiveRoutine] = useState<Routine | null>(null);
+    const [activeVariantId, setActiveVariantId] = useState<string | null>(null);
     const [executionState, setExecutionState] = useState<'browse' | 'preview' | 'execute'>('browse');
     const [currentStepIndex, setCurrentStepIndex] = useState<number>(0);
     const [stepStates, setStepStates] = useState<StepStates>({});
+    const [startedAt, setStartedAt] = useState<string | null>(null);
 
     // Load routines from MongoDB on mount
     useEffect(() => {
@@ -122,7 +125,6 @@ export const RoutineProvider: React.FC<{ children: React.ReactNode }> = ({ child
     const addRoutine = async (data: Omit<Routine, 'id' | 'createdAt' | 'updatedAt' | 'userId'>): Promise<Routine> => {
         try {
             const newRoutine = await createRoutineApi(data);
-            // Optimistic update: add to state immediately
             setRoutines([...routines, newRoutine]);
             return newRoutine;
         } catch (err) {
@@ -138,7 +140,6 @@ export const RoutineProvider: React.FC<{ children: React.ReactNode }> = ({ child
     ): Promise<Routine> => {
         try {
             const updatedRoutine = await updateRoutineApi(id, patch);
-            // Update state: replace the routine with the updated one
             setRoutines(routines.map(r => (r.id === id ? updatedRoutine : r)));
             return updatedRoutine;
         } catch (err) {
@@ -151,7 +152,6 @@ export const RoutineProvider: React.FC<{ children: React.ReactNode }> = ({ child
     const deleteRoutine = async (id: string): Promise<void> => {
         try {
             await deleteRoutineApi(id);
-            // Update state: remove the deleted routine
             setRoutines(routines.filter(r => r.id !== id));
         } catch (err) {
             const errorMessage = err instanceof Error ? err.message : 'Unknown error';
@@ -167,16 +167,27 @@ export const RoutineProvider: React.FC<{ children: React.ReactNode }> = ({ child
             setActiveRoutine(routine);
             setExecutionState('preview');
             setCurrentStepIndex(0);
+            // Pre-select default variant
+            setActiveVariantId(routine.defaultVariantId || routine.variants?.[0]?.id || null);
         }
     };
 
-    const startRoutine = () => {
+    const selectVariant = (variantId: string) => {
+        setActiveVariantId(variantId);
+    };
+
+    const startRoutine = (variantId?: string) => {
         if (activeRoutine) {
+            const effectiveVariantId = variantId || activeVariantId;
+            setActiveVariantId(effectiveVariantId);
             setExecutionState('execute');
             setCurrentStepIndex(0);
-            // Initialize all steps to neutral for this run
+            setStartedAt(new Date().toISOString());
+
+            // Initialize step states from the resolved variant's steps
+            const steps = resolveSteps(activeRoutine, effectiveVariantId || undefined);
             const initial: StepStates = {};
-            for (const step of activeRoutine.steps) {
+            for (const step of steps) {
                 initial[step.id] = 'neutral';
             }
             setStepStates(initial);
@@ -186,8 +197,10 @@ export const RoutineProvider: React.FC<{ children: React.ReactNode }> = ({ child
     const exitRoutine = () => {
         setExecutionState('browse');
         setActiveRoutine(null);
+        setActiveVariantId(null);
         setCurrentStepIndex(0);
         setStepStates({});
+        setStartedAt(null);
     };
 
     const setStepState = (stepId: string, status: StepStatus) => {
@@ -196,7 +209,8 @@ export const RoutineProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
     const nextStep = () => {
         if (!activeRoutine) return;
-        if (currentStepIndex < activeRoutine.steps.length - 1) {
+        const steps = resolveSteps(activeRoutine, activeVariantId || undefined);
+        if (currentStepIndex < steps.length - 1) {
             setCurrentStepIndex(prev => prev + 1);
         } else {
             exitRoutine();
@@ -216,16 +230,21 @@ export const RoutineProvider: React.FC<{ children: React.ReactNode }> = ({ child
     // Monitor step changes in Execute mode to generate evidence
     useEffect(() => {
         if (executionState === 'execute' && activeRoutine) {
-            const step = activeRoutine.steps[currentStepIndex];
-            // Check for Linked Habit ID
+            const steps = resolveSteps(activeRoutine, activeVariantId || undefined);
+            const step = steps[currentStepIndex];
             if (step && step.linkedHabitId) {
                 const today = new Date().toLocaleDateString('en-CA');
-                recordRoutineStepReached(activeRoutine.id, step.id, today).catch(err =>
+                recordRoutineStepReached(
+                    activeRoutine.id,
+                    step.id,
+                    today,
+                    activeVariantId || undefined
+                ).catch(err =>
                     console.error('Failed to record potential evidence:', err)
                 );
             }
         }
-    }, [executionState, activeRoutine, currentStepIndex]);
+    }, [executionState, activeRoutine, activeVariantId, currentStepIndex]);
 
     return (
         <RoutineContext.Provider
@@ -239,10 +258,13 @@ export const RoutineProvider: React.FC<{ children: React.ReactNode }> = ({ child
                 updateRoutine,
                 deleteRoutine,
                 activeRoutine,
+                activeVariantId,
                 executionState,
                 currentStepIndex,
                 stepStates,
+                startedAt,
                 selectRoutine,
+                selectVariant,
                 startRoutine,
                 exitRoutine,
                 nextStep,
