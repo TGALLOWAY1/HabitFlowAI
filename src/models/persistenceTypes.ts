@@ -290,13 +290,18 @@ export interface DayLog {
      */
     source?: 'manual' | 'routine';
 
-    /** 
+    /**
      * Optional: ID of the Routine that produced this log entry
      * Set when a habit is completed via a routine
      */
     routineId?: string;
 
-    /** 
+    /**
+     * Optional: ID of the RoutineVariant that produced this log entry
+     */
+    variantId?: string;
+
+    /**
      * Optional: Indicates if this day was frozen (streak protected)
      */
     isFrozen?: boolean;

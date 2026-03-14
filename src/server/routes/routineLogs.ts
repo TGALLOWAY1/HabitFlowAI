@@ -18,7 +18,13 @@ export const getRoutineLogs = async (req: Request, res: Response) => {
         if (!userId) {
             throw new Error('User not authenticated');
         }
-        const routineLogs = await getRoutineLogsByUser(userId);
+
+        // Optional filters from query params
+        const routineId = typeof req.query.routineId === 'string' ? req.query.routineId : undefined;
+        const variantId = typeof req.query.variantId === 'string' ? req.query.variantId : undefined;
+        const filters = (routineId || variantId) ? { routineId, variantId } : undefined;
+
+        const routineLogs = await getRoutineLogsByUser(userId, filters);
 
         res.status(200).json({
             routineLogs,
