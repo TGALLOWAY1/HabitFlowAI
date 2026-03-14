@@ -55,6 +55,13 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
         window.dispatchEvent(new Event('habitflow:demo-data-changed'));
     };
 
+    // Listen for requests to open settings from other components
+    useEffect(() => {
+        const handleOpenSettings = () => setSettingsOpen(true);
+        window.addEventListener('habitflow:open-settings', handleOpenSettings);
+        return () => window.removeEventListener('habitflow:open-settings', handleOpenSettings);
+    }, []);
+
     // Close user menu when clicking outside
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {

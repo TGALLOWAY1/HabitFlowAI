@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { useAuth } from '../store/AuthContext';
+import { getGeminiApiKey, setGeminiApiKey } from '../lib/geminiClient';
+import { Eye, EyeOff } from 'lucide-react';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -11,9 +13,18 @@ export function SettingsModal({ isOpen, onClose, onRefresh }: SettingsModalProps
   const { user } = useAuth();
   const [showRefreshConfirm, setShowRefreshConfirm] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [geminiKey, setGeminiKey] = useState(() => getGeminiApiKey());
+  const [showGeminiKey, setShowGeminiKey] = useState(false);
+  const [geminiKeySaved, setGeminiKeySaved] = useState(false);
 
   // Reset confirmations when modal closes
   if (!isOpen) return null;
+
+  const handleSaveGeminiKey = () => {
+    setGeminiApiKey(geminiKey);
+    setGeminiKeySaved(true);
+    setTimeout(() => setGeminiKeySaved(false), 2000);
+  };
 
   return (
     <div className="fixed inset-0 z-[100]">
@@ -56,6 +67,63 @@ export function SettingsModal({ isOpen, onClose, onRefresh }: SettingsModalProps
                 </div>
               </section>
             )}
+
+            {/* AI Integration */}
+            <section>
+              <h3 className="text-xs font-medium text-neutral-500 uppercase tracking-wider mb-3">
+                AI Integration
+              </h3>
+              <div className="space-y-3">
+                <div>
+                  <label htmlFor="gemini-key" className="block text-sm text-neutral-300 mb-1.5">
+                    Gemini API Key
+                  </label>
+                  <p className="text-[11px] text-neutral-500 mb-2">
+                    Add your Google Gemini API key to enable AI-powered weekly summaries.
+                    Your key is stored locally and never saved on the server.
+                  </p>
+                  <div className="flex gap-2">
+                    <div className="relative flex-1">
+                      <input
+                        id="gemini-key"
+                        type={showGeminiKey ? 'text' : 'password'}
+                        value={geminiKey}
+                        onChange={(e) => setGeminiKey(e.target.value)}
+                        placeholder="AIza..."
+                        className="w-full px-3 py-2 pr-9 rounded-lg bg-neutral-800 text-neutral-200 border border-white/10 text-sm placeholder:text-neutral-600 focus:outline-none focus:ring-1 focus:ring-emerald-500/50"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowGeminiKey(!showGeminiKey)}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-neutral-500 hover:text-neutral-300"
+                        aria-label={showGeminiKey ? 'Hide key' : 'Show key'}
+                      >
+                        {showGeminiKey ? <EyeOff size={14} /> : <Eye size={14} />}
+                      </button>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleSaveGeminiKey}
+                      className="px-3 py-2 rounded-lg bg-emerald-600/80 text-white hover:bg-emerald-600 text-sm whitespace-nowrap"
+                    >
+                      {geminiKeySaved ? 'Saved!' : 'Save'}
+                    </button>
+                  </div>
+                  {geminiKey && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setGeminiKey('');
+                        setGeminiApiKey('');
+                      }}
+                      className="mt-2 text-xs text-red-400 hover:text-red-300"
+                    >
+                      Remove key
+                    </button>
+                  )}
+                </div>
+              </div>
+            </section>
 
             {/* Data */}
             <section>

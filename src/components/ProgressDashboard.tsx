@@ -11,6 +11,7 @@ import { DailyCheckInCard } from './dashboard/DailyCheckInCard';
 import { JournalCard } from './dashboard/JournalCard';
 import { TasksCard } from './dashboard/TasksCard';
 import { PinnedRoutinesCard } from './dashboard/PinnedRoutinesCard';
+import { WeeklySummaryCard } from './dashboard/WeeklySummaryCard';
 import type { Routine } from '../models/persistenceTypes';
 
 const PINNED_GOALS_KEY = 'hf_pinned_dashboard_goals';
@@ -49,6 +50,7 @@ interface ProgressDashboardProps {
     onNavigateToJournal?: () => void;
     onNavigateToRoutines?: () => void;
     onNavigateToTasks?: () => void;
+    onOpenSettings?: () => void;
 }
 
 export const ProgressDashboard: React.FC<ProgressDashboardProps> = ({
@@ -59,6 +61,7 @@ export const ProgressDashboard: React.FC<ProgressDashboardProps> = ({
     onNavigateToJournal,
     onNavigateToRoutines,
     onNavigateToTasks,
+    onOpenSettings,
 }) => {
     const { habits, categories } = useHabitStore();
     const { data: progressData, loading: progressLoading } = useProgressOverview();
@@ -133,6 +136,9 @@ export const ProgressDashboard: React.FC<ProgressDashboardProps> = ({
                     onViewAllRoutines={onNavigateToRoutines}
                 />
             )}
+
+            {/* AI Weekly Summary */}
+            <WeeklySummaryCard onOpenSettings={onOpenSettings} />
 
             {/* Goals at a glance */}
             <div className="bg-neutral-900/50 rounded-2xl border border-white/5 p-6 backdrop-blur-sm">

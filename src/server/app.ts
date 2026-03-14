@@ -49,6 +49,7 @@ import {
 } from './routes/habitEntries';
 import { getDayView } from './routes/dayView';
 import habitPotentialEvidenceRoutes from './routes/habitPotentialEvidence';
+import { postWeeklySummary } from './routes/aiSummary';
 
 export function createApp(): Express {
   const app = express();
@@ -173,6 +174,7 @@ export function createApp(): Express {
   app.patch('/api/entries/:id', entriesWriteRateLimiter, updateHabitEntryRoute);
   app.get('/api/dayView', getDayView);
   app.use('/api/evidence', habitPotentialEvidenceRoutes);
+  app.post('/api/ai/weekly-summary', postWeeklySummary);
   app.get('/api/admin/integrity-report', getIntegrityReport);
   app.post('/api/admin/dedup-habits', requireAdmin, dedupHabits);
   app.post('/api/admin/recover-habits', requireAdmin, recoverHabits);
