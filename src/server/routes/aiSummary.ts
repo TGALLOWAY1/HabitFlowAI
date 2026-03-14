@@ -150,7 +150,9 @@ Please write a weekly summary now. Use markdown formatting for readability.`;
       return;
     }
 
-    const geminiData = await geminiResponse.json();
+    const geminiData = await geminiResponse.json() as {
+      candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
+    };
     const summaryText =
       geminiData?.candidates?.[0]?.content?.parts?.[0]?.text ||
       'Unable to generate summary. Please try again.';
