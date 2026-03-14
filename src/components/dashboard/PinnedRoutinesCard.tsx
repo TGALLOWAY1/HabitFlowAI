@@ -161,11 +161,10 @@ export const PinnedRoutinesCard: React.FC<PinnedRoutinesCardProps> = ({
         (routineId: string): { completed: boolean; variantName?: string } => {
             // Check legacy key first
             if (routineLogs[`${routineId}-${today}`]) {
-                const log = routineLogs[`${routineId}-${today}`];
                 return { completed: true, variantName: undefined };
             }
             // Check variant-aware keys
-            for (const [key, log] of Object.entries(routineLogs)) {
+            for (const [, log] of Object.entries(routineLogs)) {
                 if (log.routineId === routineId && log.date === today) {
                     // Find variant name from the routine
                     const routine = routines.find(r => r.id === routineId);
@@ -176,11 +175,6 @@ export const PinnedRoutinesCard: React.FC<PinnedRoutinesCardProps> = ({
             return { completed: false };
         },
         [routineLogs, routines, today]
-    );
-
-    const isCompleted = useCallback(
-        (routineId: string) => getCompletionInfo(routineId).completed,
-        [getCompletionInfo]
     );
 
     const handleCustomize = useCallback(async (id: string, patch: { icon?: string; color?: string }) => {

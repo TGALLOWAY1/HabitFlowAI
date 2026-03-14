@@ -23,7 +23,6 @@ function makeStep(overrides: Partial<RoutineStep> = {}): RoutineStep {
     return {
         id: 'step-1',
         title: 'Step 1',
-        sortOrder: 0,
         ...overrides,
     };
 }

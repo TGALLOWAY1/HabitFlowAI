@@ -4,9 +4,9 @@ import { uploadRoutineImage, deleteRoutineImage, suggestVariants } from '../lib/
 import { getGeminiApiKey, hasGeminiApiKey } from '../lib/geminiClient';
 import { useRoutineStore } from '../store/RoutineContext';
 import { useHabitStore } from '../store/HabitContext';
-import { resolveVariant, computeVariantLinkedHabits } from '../lib/routineVariantUtils';
+import { computeVariantLinkedHabits } from '../lib/routineVariantUtils';
 import { VariantEditor } from './VariantEditor';
-import type { Routine, RoutineVariant, RoutineStep } from '../models/persistenceTypes';
+import type { Routine, RoutineVariant } from '../models/persistenceTypes';
 
 interface RoutineEditorModalProps {
     isOpen: boolean;

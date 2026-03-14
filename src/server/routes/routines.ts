@@ -20,7 +20,6 @@ import { recomputeDayLogForHabit } from '../utils/recomputeUtils';
 import { validateDayKey } from '../domain/canonicalValidators';
 import { resolveTimeZone, getDayKeyForTimestamp, getNowDayKey } from '../utils/dayKey';
 import type { Routine, RoutineStep, RoutineVariant, RoutineLog } from '../../models/persistenceTypes';
-import { resolveVariant, resolveSteps } from '../../lib/routineVariantUtils';
 import multer from 'multer';
 import {
   getRoutineImageByRoutineId,

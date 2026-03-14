@@ -172,7 +172,6 @@ Rules:
                 title: String(s.title || `Step ${sIdx + 1}`).slice(0, 100),
                 instruction: s.instruction ? String(s.instruction).slice(0, 500) : undefined,
                 timerSeconds: typeof s.timerSeconds === 'number' && s.timerSeconds > 0 ? s.timerSeconds : undefined,
-                sortOrder: sIdx,
             })),
             linkedHabitIds: [],
             isAiGenerated: true,
