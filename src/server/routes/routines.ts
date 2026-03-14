@@ -19,7 +19,8 @@ import { upsertHabitEntry } from '../repositories/habitEntryRepository';
 import { recomputeDayLogForHabit } from '../utils/recomputeUtils';
 import { validateDayKey } from '../domain/canonicalValidators';
 import { resolveTimeZone, getDayKeyForTimestamp, getNowDayKey } from '../utils/dayKey';
-import type { Routine, RoutineStep, RoutineLog } from '../../models/persistenceTypes';
+import type { Routine, RoutineStep, RoutineVariant, RoutineLog } from '../../models/persistenceTypes';
+import { resolveVariant, resolveSteps } from '../../lib/routineVariantUtils';
 import multer from 'multer';
 import {
   getRoutineImageByRoutineId,
@@ -98,6 +99,75 @@ function validateSteps(steps: any): string | null {
     if (error) {
       return error;
     }
+  }
+
+  return null;
+}
+
+/**
+ * Validate a single RoutineVariant object.
+ */
+function validateVariant(variant: any, index: number): string | null {
+  if (!variant || typeof variant !== 'object') {
+    return `Variant ${index + 1}: must be an object`;
+  }
+
+  if (!variant.name || typeof variant.name !== 'string' || variant.name.trim().length === 0) {
+    return `Variant ${index + 1}: name is required and must be a non-empty string`;
+  }
+
+  if (variant.description !== undefined && typeof variant.description !== 'string') {
+    return `Variant ${index + 1}: description must be a string if provided`;
+  }
+
+  if (variant.estimatedDurationMinutes !== undefined) {
+    if (typeof variant.estimatedDurationMinutes !== 'number' || variant.estimatedDurationMinutes < 1) {
+      return `Variant ${index + 1}: estimatedDurationMinutes must be a number >= 1`;
+    }
+  }
+
+  if (!variant.steps || !Array.isArray(variant.steps)) {
+    return `Variant ${index + 1}: steps is required and must be an array`;
+  }
+
+  if (variant.steps.length === 0) {
+    return `Variant ${index + 1} "${variant.name}": must have at least one step`;
+  }
+
+  if (variant.steps.length > 50) {
+    return `Variant ${index + 1} "${variant.name}": cannot exceed 50 steps`;
+  }
+
+  // Validate each step within the variant
+  for (let i = 0; i < variant.steps.length; i++) {
+    const stepError = validateRoutineStep(variant.steps[i], i);
+    if (stepError) {
+      return `Variant "${variant.name}" ${stepError}`;
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Validate variants array.
+ */
+function validateVariants(variants: any): string | null {
+  if (!Array.isArray(variants)) {
+    return 'variants must be an array';
+  }
+
+  if (variants.length === 0) {
+    return 'At least one variant is required';
+  }
+
+  if (variants.length > 10) {
+    return 'Cannot exceed 10 variants per routine';
+  }
+
+  for (let i = 0; i < variants.length; i++) {
+    const error = validateVariant(variants[i], i);
+    if (error) return error;
   }
 
   return null;
@@ -220,8 +290,7 @@ export async function getRoutineRoute(req: Request, res: Response): Promise<void
 export async function createRoutineRoute(req: Request, res: Response): Promise<void> {
   try {
     // Validate request body
-    // Validate request body
-    const { title, categoryId, steps, linkedHabitIds } = req.body;
+    const { title, categoryId, steps, linkedHabitIds, variants, defaultVariantId } = req.body;
 
     if (!title || typeof title !== 'string' || title.trim().length === 0) {
       res.status(400).json({
@@ -229,26 +298,6 @@ export async function createRoutineRoute(req: Request, res: Response): Promise<v
           code: 'VALIDATION_ERROR',
           message: 'Routine title is required and must be a non-empty string',
         },
-      });
-      return;
-    }
-
-    if (!steps || !Array.isArray(steps)) {
-      res.status(400).json({
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: 'steps is required and must be an array',
-        },
-      });
-      return;
-    }
-
-    if (linkedHabitIds && !Array.isArray(linkedHabitIds)) {
-      res.status(400).json({
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: 'linkedHabitIds must be an array if provided'
-        }
       });
       return;
     }
@@ -263,19 +312,52 @@ export async function createRoutineRoute(req: Request, res: Response): Promise<v
       return;
     }
 
-    // Validate steps
-    const stepsError = validateSteps(steps);
-    if (stepsError) {
+    // Validate variants if provided (new variant-aware path)
+    if (variants !== undefined) {
+      const variantsError = validateVariants(variants);
+      if (variantsError) {
+        res.status(400).json({
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: variantsError,
+          },
+        });
+        return;
+      }
+    } else {
+      // Legacy path: steps required when no variants
+      if (!steps || !Array.isArray(steps)) {
+        res.status(400).json({
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: 'steps is required and must be an array',
+          },
+        });
+        return;
+      }
+
+      const stepsError = validateSteps(steps);
+      if (stepsError) {
+        res.status(400).json({
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: stepsError,
+          },
+        });
+        return;
+      }
+    }
+
+    if (linkedHabitIds && !Array.isArray(linkedHabitIds)) {
       res.status(400).json({
         error: {
           code: 'VALIDATION_ERROR',
-          message: stepsError,
-        },
+          message: 'linkedHabitIds must be an array if provided'
+        }
       });
       return;
     }
 
-    // TODO: Extract userId from authentication token/session
     const { householdId, userId } = getRequestIdentity(req);
 
     const routine = await createRoutine(
@@ -284,8 +366,9 @@ export async function createRoutineRoute(req: Request, res: Response): Promise<v
       {
         title: title.trim(),
         categoryId: categoryId || undefined,
-        steps: steps as RoutineStep[],
+        steps: (steps as RoutineStep[]) || [],
         linkedHabitIds: linkedHabitIds || [],
+        ...(variants ? { variants: variants as RoutineVariant[], defaultVariantId } : {}),
       }
     );
 
@@ -319,7 +402,7 @@ export async function createRoutineRoute(req: Request, res: Response): Promise<v
 export async function updateRoutineRoute(req: Request, res: Response): Promise<void> {
   try {
     const { id } = req.params;
-    const { title, categoryId, steps, linkedHabitIds } = req.body;
+    const { title, categoryId, steps, linkedHabitIds, variants, defaultVariantId } = req.body;
 
     if (!id) {
       res.status(400).json({
@@ -360,6 +443,23 @@ export async function updateRoutineRoute(req: Request, res: Response): Promise<v
       patch.categoryId = categoryId || undefined;
     }
 
+    if (variants !== undefined) {
+      const variantsError = validateVariants(variants);
+      if (variantsError) {
+        res.status(400).json({
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: variantsError,
+          },
+        });
+        return;
+      }
+      patch.variants = variants as RoutineVariant[];
+      if (defaultVariantId) {
+        patch.defaultVariantId = defaultVariantId;
+      }
+    }
+
     if (steps !== undefined) {
       if (!Array.isArray(steps)) {
         res.status(400).json({
@@ -371,7 +471,6 @@ export async function updateRoutineRoute(req: Request, res: Response): Promise<v
         return;
       }
 
-      // Validate steps
       const stepsError = validateSteps(steps);
       if (stepsError) {
         res.status(400).json({
@@ -718,7 +817,7 @@ export async function uploadRoutineImageRoute(req: Request, res: Response): Prom
 export async function submitRoutineRoute(req: Request, res: Response): Promise<void> {
   try {
     const { id } = req.params;
-    const { habitIdsToComplete, submittedAt, dateOverride, timeZone } = req.body;
+    const { habitIdsToComplete, submittedAt, dateOverride, timeZone, variantId, startedAt, stepResults } = req.body;
 
     // Validate routine ID
     if (!id) {
@@ -808,6 +907,7 @@ export async function submitRoutineRoute(req: Request, res: Response): Promise<v
         value: 1,
         source: 'routine',
         routineId: routine.id,
+        ...(variantId ? { variantId } : {}),
       });
 
       await recomputeDayLogForHabit(habitId, logDate, householdId, userId);
@@ -818,11 +918,25 @@ export async function submitRoutineRoute(req: Request, res: Response): Promise<v
     await Promise.all(entryPromises);
     const createdOrUpdatedCount = habitIds.length;
 
+    // Compute actual duration if we have both timestamps
+    let actualDurationSeconds: number | undefined;
+    if (startedAt && submittedAt) {
+      const startMs = new Date(startedAt).getTime();
+      const endMs = new Date(submittedAt).getTime();
+      if (!isNaN(startMs) && !isNaN(endMs) && endMs > startMs) {
+        actualDurationSeconds = Math.round((endMs - startMs) / 1000);
+      }
+    }
+
     // Save RoutineLog to record completion of the routine itself
     const routineLog: RoutineLog = {
       routineId: routine.id,
       date: logDate,
       completedAt: submittedAt ? new Date(submittedAt).toISOString() : new Date().toISOString(),
+      ...(variantId ? { variantId } : {}),
+      ...(startedAt ? { startedAt: new Date(startedAt).toISOString() } : {}),
+      ...(stepResults ? { stepResults } : {}),
+      ...(actualDurationSeconds !== undefined ? { actualDurationSeconds } : {}),
     };
     await saveRoutineLog(routineLog, userId);
 

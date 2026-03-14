@@ -365,11 +365,62 @@ export interface RoutineStep {
 }
 
 /**
+ * StepStatus — Per-step completion state during routine execution.
+ * Shared between RoutineContext (runtime) and RoutineLog (persisted).
+ */
+export type StepStatus = 'neutral' | 'done' | 'skipped';
+
+/**
+ * RoutineVariant Entity
+ *
+ * Embedded within Routine.variants[].
+ * Each variant owns its own ordered step list, linked habits, and duration.
+ * Users can label variants however they like (e.g., Quick / Standard / Deep).
+ */
+export interface RoutineVariant {
+    /** Unique identifier within the routine */
+    id: string;
+
+    /** Display name (e.g., "Quick", "Standard", "Deep") */
+    name: string;
+
+    /** Optional description of what this variant covers */
+    description?: string;
+
+    /** Estimated duration in minutes (explicit, not computed from steps) */
+    estimatedDurationMinutes: number;
+
+    /** Sort order for display (0 = first) */
+    sortOrder: number;
+
+    /** Steps specific to this variant */
+    steps: RoutineStep[];
+
+    /** Habit IDs linked via this variant's steps (computed on save) */
+    linkedHabitIds: string[];
+
+    /** Optional variant-specific icon */
+    icon?: string;
+
+    /** Optional variant-specific color */
+    color?: string;
+
+    /** Whether this variant was AI-generated */
+    isAiGenerated: boolean;
+
+    /** ISO 8601 timestamp of creation */
+    createdAt: string;
+
+    /** ISO 8601 timestamp of last update */
+    updatedAt: string;
+}
+
+/**
  * Routine Entity
- * 
+ *
  * Storage Key: 'routines'
  * Storage Format: Routine[] (array of Routine objects)
- * 
+ *
  * Represents a structured workflow designed to support one or more habits.
  * "Doing the work" (Routine) is separate from "Tracking the outcome" (Habit).
  */
@@ -412,6 +463,19 @@ export interface Routine {
     /** Optional image URL for displaying routine image (set by API) */
     imageUrl?: string | null;
 
+    /**
+     * Embedded array of routine variants. Each variant owns its own steps, linked habits, and duration.
+     * Post-migration, all routines should have at least one variant. Pre-migration routines may have
+     * an empty array — use resolveVariant()/resolveSteps() to safely access steps.
+     */
+    variants?: RoutineVariant[];
+
+    /**
+     * ID of the default variant to pre-select when starting the routine.
+     * References a RoutineVariant.id within variants[].
+     */
+    defaultVariantId?: string;
+
     /** ISO 8601 timestamp of when the routine was created */
     createdAt: string;
 
@@ -433,11 +497,23 @@ export interface RoutineLog {
     /** Foreign key reference to Routine.id */
     routineId: string;
 
+    /** FK to RoutineVariant.id (undefined for legacy logs pre-migration) */
+    variantId?: string;
+
     /** Date in YYYY-MM-DD format */
     date: string;
 
+    /** ISO 8601 timestamp when execution started */
+    startedAt?: string;
+
     /** ISO 8601 timestamp of when the routine was completed */
     completedAt: string;
+
+    /** Per-step completion results (step ID → status) */
+    stepResults?: Record<string, StepStatus>;
+
+    /** Actual execution duration in seconds (completedAt - startedAt) */
+    actualDurationSeconds?: number;
 }
 
 /**
@@ -1195,6 +1271,9 @@ export interface HabitEntry {
     /** Optional: linked routine ID */
     routineId?: string;
 
+    /** Optional: variant that generated this entry */
+    variantId?: string;
+
     /**
      * DayKey (YYYY-MM-DD) - Canonical aggregation boundary
      * Required: All entries must have a dayKey for aggregation.
@@ -1289,6 +1368,9 @@ export interface HabitPotentialEvidence {
 
     /** Source type (currently only 'routine-step') */
     source: 'routine-step';
+
+    /** Optional: variant context for the step */
+    variantId?: string;
 }
 
 export type HabitPotentialEvidenceStatsStorage = HabitPotentialEvidence[];
