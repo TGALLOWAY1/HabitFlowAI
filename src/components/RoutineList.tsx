@@ -2,8 +2,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useRoutineStore } from '../store/RoutineContext';
 import { useHabitStore } from '../store/HabitContext';
 import type { Routine, Category } from '../models/persistenceTypes';
-import { Plus, MoreVertical, ChevronRight, ClipboardList, Edit, Trash2 } from 'lucide-react';
+import { Plus, MoreVertical, ChevronRight, ClipboardList, Edit, Trash2, Layers } from 'lucide-react';
 import { cn } from '../utils/cn';
+import { resolveSteps, getEstimatedDurationMinutes, isMultiVariant } from '../lib/routineVariantUtils';
 
 interface RoutineListProps {
     onCreate: () => void;
@@ -35,11 +36,11 @@ const RoutineCard: React.FC<{
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, [menuOpen]);
 
-    const totalSteps = routine.steps?.length ?? 0;
-
-    // Estimate duration: sum of timerSeconds + arbitrary 60s buffer per step
-    const estimatedSeconds = routine.steps.reduce((acc, step) => acc + (step.timerSeconds || 60), 0);
-    const estimatedMinutes = Math.max(1, Math.ceil(estimatedSeconds / 60));
+    const steps = resolveSteps(routine);
+    const totalSteps = steps.length;
+    const estimatedMinutes = getEstimatedDurationMinutes(routine);
+    const hasMultipleVariants = isMultiVariant(routine);
+    const variantCount = routine.variants?.length || 0;
 
     return (
         <div
@@ -111,6 +112,15 @@ const RoutineCard: React.FC<{
                 <span>{totalSteps} steps</span>
                 <span className="mx-1.5 opacity-50">·</span>
                 <span>~{estimatedMinutes} min</span>
+                {hasMultipleVariants && (
+                    <>
+                        <span className="mx-1.5 opacity-50">·</span>
+                        <span className="flex items-center gap-1 text-purple-400/80">
+                            <Layers size={10} />
+                            {variantCount} variants
+                        </span>
+                    </>
+                )}
             </div>
         </div>
     );

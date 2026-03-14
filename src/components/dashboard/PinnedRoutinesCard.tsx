@@ -157,9 +157,30 @@ export const PinnedRoutinesCard: React.FC<PinnedRoutinesCardProps> = ({
         [routines, pinnedIds]
     );
 
+    const getCompletionInfo = useCallback(
+        (routineId: string): { completed: boolean; variantName?: string } => {
+            // Check legacy key first
+            if (routineLogs[`${routineId}-${today}`]) {
+                const log = routineLogs[`${routineId}-${today}`];
+                return { completed: true, variantName: undefined };
+            }
+            // Check variant-aware keys
+            for (const [key, log] of Object.entries(routineLogs)) {
+                if (log.routineId === routineId && log.date === today) {
+                    // Find variant name from the routine
+                    const routine = routines.find(r => r.id === routineId);
+                    const variant = routine?.variants?.find(v => v.id === log.variantId);
+                    return { completed: true, variantName: variant?.name };
+                }
+            }
+            return { completed: false };
+        },
+        [routineLogs, routines, today]
+    );
+
     const isCompleted = useCallback(
-        (routineId: string) => !!routineLogs[`${routineId}-${today}`],
-        [routineLogs, today]
+        (routineId: string) => getCompletionInfo(routineId).completed,
+        [getCompletionInfo]
     );
 
     const handleCustomize = useCallback(async (id: string, patch: { icon?: string; color?: string }) => {
@@ -262,11 +283,13 @@ export const PinnedRoutinesCard: React.FC<PinnedRoutinesCardProps> = ({
             ) : (
                 <div className="space-y-1">
                     {pinnedRoutines.map(routine => {
-                        const done = isCompleted(routine.id);
+                        const completionInfo = getCompletionInfo(routine.id);
+                        const done = completionInfo.completed;
                         const IconComp = getIconComponent(routine.icon);
                         const colorClass = routine.color
                             ? getColorTextClass(routine.color)
                             : (done ? 'text-emerald-400' : 'text-neutral-500');
+                        const resolvedSteps = routine.variants?.[0]?.steps || routine.steps || [];
 
                         return (
                             <button
@@ -282,9 +305,12 @@ export const PinnedRoutinesCard: React.FC<PinnedRoutinesCardProps> = ({
                                     )}
                                     <span className={`text-sm truncate ${done ? 'text-neutral-500' : 'text-white'}`}>
                                         {routine.title}
+                                        {done && completionInfo.variantName && (
+                                            <span className="text-emerald-500/60 ml-1">({completionInfo.variantName})</span>
+                                        )}
                                     </span>
                                     <span className="text-[11px] text-neutral-600 flex-shrink-0">
-                                        {routine.steps.length} steps
+                                        {resolvedSteps.length} steps
                                     </span>
                                 </div>
                                 {done ? (

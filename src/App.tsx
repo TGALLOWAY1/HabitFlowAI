@@ -143,6 +143,7 @@ const HabitTrackerContent: React.FC = () => {
   const [routineRunnerState, setRoutineRunnerState] = useState<{
     isOpen: boolean;
     routine?: Routine;
+    variantId?: string;
   }>({ isOpen: false });
 
   const [routinePreviewState, setRoutinePreviewState] = useState<{
@@ -449,7 +450,7 @@ const HabitTrackerContent: React.FC = () => {
               handleNavigate('tracker');
             }}
             onNavigateWellbeingHistory={() => handleNavigate('wellbeing-history')}
-            onStartRoutine={(routine) => setRoutineRunnerState({ isOpen: true, routine })}
+            onStartRoutine={(routine) => setRoutineRunnerState({ isOpen: true, routine, variantId: routine.defaultVariantId })}
             onNavigateToJournal={() => handleNavigate('journal')}
             onNavigateToRoutines={() => handleNavigate('routines')}
             onNavigateToTasks={() => handleNavigate('tasks')}
@@ -461,7 +462,7 @@ const HabitTrackerContent: React.FC = () => {
           <RoutineList
             onCreate={() => setRoutineEditorState({ isOpen: true, mode: 'create', routine: undefined })}
             onEdit={(routine) => setRoutineEditorState({ isOpen: true, mode: 'edit', routine })}
-            onStart={(routine) => setRoutineRunnerState({ isOpen: true, routine })}
+            onStart={(routine) => setRoutineRunnerState({ isOpen: true, routine, variantId: routine.defaultVariantId })}
             onPreview={(routine) => setRoutinePreviewState({ isOpen: true, routine })}
           />
         ) : view === 'journal' ? (
@@ -516,6 +517,7 @@ const HabitTrackerContent: React.FC = () => {
       <RoutineRunnerModal
         isOpen={routineRunnerState.isOpen}
         routine={routineRunnerState.routine}
+        variantId={routineRunnerState.variantId}
         onClose={() => setRoutineRunnerState({ isOpen: false })}
       />
 
@@ -523,9 +525,9 @@ const HabitTrackerContent: React.FC = () => {
         isOpen={routinePreviewState.isOpen}
         routine={routinePreviewState.routine}
         onClose={() => setRoutinePreviewState({ isOpen: false, routine: undefined })}
-        onStart={(routine) => {
+        onStart={(routine, variantId) => {
           setRoutinePreviewState({ isOpen: false, routine: undefined });
-          setRoutineRunnerState({ isOpen: true, routine });
+          setRoutineRunnerState({ isOpen: true, routine, variantId });
         }}
       />
     </div >
