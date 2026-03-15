@@ -1,12 +1,13 @@
 import { useMemo, useCallback, useState, useRef, useEffect } from 'react';
 import { format } from 'date-fns';
 import {
-    Play, CheckCircle2, Pin, ChevronRight, Palette,
+    Play, CheckCircle2, Pin, ChevronRight, Palette, Layers,
     Dumbbell, BookOpen, Music, Heart, Star, Zap, Sun, Moon,
     Coffee, Flame, Brain, TreePine, Waves, Target, Sparkles,
 } from 'lucide-react';
 import { useRoutineStore } from '../../store/RoutineContext';
 import type { Routine } from '../../models/persistenceTypes';
+import { isMultiVariant, resolveVariant } from '../../lib/routineVariantUtils';
 
 const STORAGE_KEY = 'hf_pinned_routines';
 
@@ -138,11 +139,13 @@ const CustomizePopover: React.FC<{
 
 interface PinnedRoutinesCardProps {
     onStartRoutine: (routine: Routine) => void;
+    onPreviewRoutine?: (routine: Routine) => void;
     onViewAllRoutines?: () => void;
 }
 
 export const PinnedRoutinesCard: React.FC<PinnedRoutinesCardProps> = ({
     onStartRoutine,
+    onPreviewRoutine,
     onViewAllRoutines,
 }) => {
     const { routines, routineLogs, updateRoutine } = useRoutineStore();
@@ -283,12 +286,24 @@ export const PinnedRoutinesCard: React.FC<PinnedRoutinesCardProps> = ({
                         const colorClass = routine.color
                             ? getColorTextClass(routine.color)
                             : (done ? 'text-emerald-400' : 'text-neutral-500');
-                        const resolvedSteps = routine.variants?.[0]?.steps || routine.steps || [];
+                        const hasMultiple = isMultiVariant(routine);
+                        const defaultVariant = resolveVariant(routine);
+                        const resolvedSteps = defaultVariant?.steps || routine.steps || [];
+
+                        const handleClick = () => {
+                            if (done) return;
+                            // Multi-variant routines open preview for variant selection
+                            if (hasMultiple && onPreviewRoutine) {
+                                onPreviewRoutine(routine);
+                            } else {
+                                onStartRoutine(routine);
+                            }
+                        };
 
                         return (
                             <button
                                 key={routine.id}
-                                onClick={() => !done && onStartRoutine(routine)}
+                                onClick={handleClick}
                                 className="flex items-center justify-between w-full px-3 py-2.5 rounded-lg hover:bg-neutral-800/50 transition-colors min-h-[44px]"
                             >
                                 <div className="flex items-center gap-3 min-w-0">
@@ -306,6 +321,12 @@ export const PinnedRoutinesCard: React.FC<PinnedRoutinesCardProps> = ({
                                     <span className="text-[11px] text-neutral-600 flex-shrink-0">
                                         {resolvedSteps.length} steps
                                     </span>
+                                    {hasMultiple && !done && (
+                                        <span className="flex items-center gap-1 text-[10px] text-purple-400/80 bg-purple-500/10 px-1.5 py-0.5 rounded-full flex-shrink-0">
+                                            <Layers size={10} />
+                                            {routine.variants!.length}
+                                        </span>
+                                    )}
                                 </div>
                                 {done ? (
                                     <span className="text-[11px] text-emerald-400 font-medium flex-shrink-0">Done</span>

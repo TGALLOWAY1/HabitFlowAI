@@ -451,6 +451,7 @@ const HabitTrackerContent: React.FC = () => {
             }}
             onNavigateWellbeingHistory={() => handleNavigate('wellbeing-history')}
             onStartRoutine={(routine) => setRoutineRunnerState({ isOpen: true, routine, variantId: routine.defaultVariantId })}
+            onPreviewRoutine={(routine) => setRoutinePreviewState({ isOpen: true, routine })}
             onNavigateToJournal={() => handleNavigate('journal')}
             onNavigateToRoutines={() => handleNavigate('routines')}
             onNavigateToTasks={() => handleNavigate('tasks')}
