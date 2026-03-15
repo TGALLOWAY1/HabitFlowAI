@@ -297,7 +297,7 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const addCategory = async (category: Omit<Category, 'id'>) => {
         try {
             const newCategory = await saveCategory(category);
-            setCategories([...categories, newCategory]);
+            setCategories(prev => [...prev, newCategory]);
             return newCategory;
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : 'Unknown error';

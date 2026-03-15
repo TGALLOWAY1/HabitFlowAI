@@ -1,12 +1,8 @@
 import React, { useState } from 'react';
-import { Sparkles, Loader2, X, ChevronDown, ChevronUp, Settings } from 'lucide-react';
+import { Sparkles, Loader2, X, ChevronDown, ChevronUp } from 'lucide-react';
 import { hasGeminiApiKey, fetchWeeklySummary } from '../../lib/geminiClient';
 
-interface WeeklySummaryCardProps {
-  onOpenSettings?: () => void;
-}
-
-export const WeeklySummaryCard: React.FC<WeeklySummaryCardProps> = ({ onOpenSettings }) => {
+export const WeeklySummaryCard: React.FC = () => {
   const [summary, setSummary] = useState<string | null>(null);
   const [period, setPeriod] = useState<{ start: string; end: string } | null>(null);
   const [loading, setLoading] = useState(false);
@@ -29,29 +25,9 @@ export const WeeklySummaryCard: React.FC<WeeklySummaryCardProps> = ({ onOpenSett
     }
   };
 
-  // No key configured — show setup prompt
+  // No key configured — hide the card entirely
   if (!hasKey) {
-    return (
-      <div className="bg-neutral-900/50 rounded-2xl border border-white/5 p-6 backdrop-blur-sm">
-        <div className="flex items-center gap-2 mb-3">
-          <Sparkles size={18} className="text-purple-400" />
-          <h3 className="text-lg font-semibold text-white">AI Weekly Summary</h3>
-        </div>
-        <p className="text-sm text-neutral-400 mb-4">
-          Get personalized weekly summaries of your habits and journal entries, powered by Google Gemini.
-          Add your API key in Settings to get started.
-        </p>
-        {onOpenSettings && (
-          <button
-            onClick={onOpenSettings}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-purple-600/20 text-purple-300 border border-purple-500/20 hover:bg-purple-600/30 text-sm transition-colors"
-          >
-            <Settings size={14} />
-            Add Gemini API Key
-          </button>
-        )}
-      </div>
-    );
+    return null;
   }
 
   return (

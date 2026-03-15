@@ -80,7 +80,7 @@ Rules:
 - Variants should meaningfully differ in scope, duration, or focus
 - Do NOT wrap in markdown code blocks. Return raw JSON only.`;
 
-        const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${encodeURIComponent(body.geminiApiKey.trim())}`;
+        const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(body.geminiApiKey.trim())}`;
 
         const geminiResponse = await fetch(geminiUrl, {
             method: 'POST',
@@ -90,6 +90,8 @@ Rules:
                 generationConfig: {
                     temperature: 0.8,
                     maxOutputTokens: 4096,
+                    // Disable thinking for structured JSON output
+                    thinkingConfig: { thinkingBudget: 0 },
                 },
             }),
         });
@@ -118,10 +120,13 @@ Rules:
         }
 
         const geminiData = await geminiResponse.json() as {
-            candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
+            candidates?: Array<{ content?: { parts?: Array<{ text?: string; thought?: boolean }> } }>;
         };
 
-        const rawText = geminiData?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+        // Extract the output text (skip any "thought" parts from thinking models)
+        const parts = geminiData?.candidates?.[0]?.content?.parts || [];
+        const outputPart = parts.find(p => !p.thought && p.text) || parts[0];
+        const rawText = outputPart?.text || '';
 
         // Parse the JSON from Gemini's response (strip markdown fences if present)
         let cleaned = rawText.trim();

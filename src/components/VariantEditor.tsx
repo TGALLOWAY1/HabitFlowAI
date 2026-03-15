@@ -5,7 +5,7 @@
  * Used within RoutineEditorModal for each variant tab.
  */
 import React, { useState } from 'react';
-import { Plus, Trash2, Link2, Clock, Image as ImageIcon, Loader2, ChevronDown, X } from 'lucide-react';
+import { Plus, Trash2, Link2, Clock, Image as ImageIcon, Loader2, ChevronDown, ChevronUp, X } from 'lucide-react';
 import type { RoutineVariant, RoutineStep } from '../models/persistenceTypes';
 import type { Habit } from '../types';
 
@@ -58,6 +58,14 @@ export const VariantEditor: React.FC<VariantEditorProps> = ({
         if (expandedStepId === id) setExpandedStepId(null);
     };
 
+    const moveStep = (index: number, direction: -1 | 1) => {
+        const target = index + direction;
+        if (target < 0 || target >= steps.length) return;
+        const reordered = [...steps];
+        [reordered[index], reordered[target]] = [reordered[target], reordered[index]];
+        updateVariantField({ steps: reordered });
+    };
+
     const handleStepImageUpload = async (file: File, stepId: string) => {
         setUploadingStepId(stepId);
         try {
@@ -103,12 +111,20 @@ export const VariantEditor: React.FC<VariantEditorProps> = ({
                         <input
                             type="number"
                             min="1"
-                            value={variant.estimatedDurationMinutes || ''}
+                            value={variant.estimatedDurationMinutes ?? ''}
                             onChange={e => {
-                                const val = parseInt(e.target.value);
-                                updateVariantField({
-                                    estimatedDurationMinutes: isNaN(val) ? 1 : Math.max(1, val)
-                                });
+                                const raw = e.target.value;
+                                if (raw === '') {
+                                    updateVariantField({ estimatedDurationMinutes: undefined as unknown as number });
+                                } else {
+                                    const val = parseInt(raw);
+                                    if (!isNaN(val)) updateVariantField({ estimatedDurationMinutes: Math.max(1, val) });
+                                }
+                            }}
+                            onBlur={() => {
+                                if (!variant.estimatedDurationMinutes || variant.estimatedDurationMinutes < 1) {
+                                    updateVariantField({ estimatedDurationMinutes: 1 });
+                                }
                             }}
                             className="w-full bg-neutral-900 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500 placeholder-neutral-600"
                             placeholder="15"
@@ -150,13 +166,29 @@ export const VariantEditor: React.FC<VariantEditorProps> = ({
                                     <div className="flex-1 font-medium text-white truncate">
                                         {step.title || <span className="text-neutral-500 italic">Untitled Step</span>}
                                     </div>
-                                    <div className="flex items-center gap-2">
+                                    <div className="flex items-center gap-1">
+                                        <button
+                                            onClick={(e) => { e.stopPropagation(); moveStep(index, -1); }}
+                                            className="p-1.5 text-neutral-600 hover:text-white transition-colors disabled:opacity-20 disabled:hover:text-neutral-600"
+                                            title="Move Up"
+                                            disabled={index === 0}
+                                        >
+                                            <ChevronUp size={14} />
+                                        </button>
+                                        <button
+                                            onClick={(e) => { e.stopPropagation(); moveStep(index, 1); }}
+                                            className="p-1.5 text-neutral-600 hover:text-white transition-colors disabled:opacity-20 disabled:hover:text-neutral-600"
+                                            title="Move Down"
+                                            disabled={index === steps.length - 1}
+                                        >
+                                            <ChevronDown size={14} />
+                                        </button>
                                         <button
                                             onClick={(e) => {
                                                 e.stopPropagation();
                                                 removeStep(step.id);
                                             }}
-                                            className="p-2 text-neutral-600 hover:text-red-400 transition-colors"
+                                            className="p-1.5 text-neutral-600 hover:text-red-400 transition-colors"
                                             title="Delete Step"
                                         >
                                             <Trash2 size={16} />

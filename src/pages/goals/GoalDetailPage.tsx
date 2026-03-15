@@ -11,7 +11,7 @@
 import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { useGoalDetail } from '../../lib/useGoalDetail';
 import { useHabitStore } from '../../store/HabitContext';
-import { Loader2, ArrowLeft, Check, Edit, Trash2 } from 'lucide-react';
+import { Loader2, ArrowLeft, Check, Edit, Trash2, Trophy } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { DeleteGoalConfirmModal } from '../../components/goals/DeleteGoalConfirmModal';
 import { EditGoalModal } from '../../components/goals/EditGoalModal';
@@ -41,6 +41,8 @@ export const GoalDetailPage: React.FC<GoalDetailPageProps> = ({ goalId, onBack, 
     const [activeTab, setActiveTab] = useState<Tab>('cumulative');
     const [showEditModal, setShowEditModal] = useState(false);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+    const [showCompleteConfirm, setShowCompleteConfirm] = useState(false);
+    const [isMarkingComplete, setIsMarkingComplete] = useState(false);
 
     // Habit Entries State
     const [linkedHabitEntries, setLinkedHabitEntries] = useState<HabitEntry[]>([]);
@@ -193,6 +195,20 @@ export const GoalDetailPage: React.FC<GoalDetailPageProps> = ({ goalId, onBack, 
         }
     };
 
+    const handleMarkComplete = async () => {
+        setIsMarkingComplete(true);
+        try {
+            await markGoalAsCompleted(goalId);
+            invalidateAllGoalCaches();
+            setShowCompleteConfirm(false);
+            if (onNavigateToCompleted) onNavigateToCompleted(goalId);
+            else refetch();
+        } catch (err) {
+            console.error('Error marking goal complete:', err);
+            setIsMarkingComplete(false);
+        }
+    };
+
     // Auto-completion Effect
     useEffect(() => {
         if (!data || loading || isCompletingRef.current) return;
@@ -326,6 +342,38 @@ export const GoalDetailPage: React.FC<GoalDetailPageProps> = ({ goalId, onBack, 
                     )}
                 </div>
             </div>
+
+            {/* Mark Complete Button (for active goals) */}
+            {!goal.completedAt && (
+                <div className="mb-8">
+                    {!showCompleteConfirm ? (
+                        <button
+                            onClick={() => setShowCompleteConfirm(true)}
+                            className="flex items-center gap-2 px-5 py-2.5 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 rounded-lg hover:bg-emerald-500/20 transition-colors font-medium text-sm"
+                        >
+                            <Trophy size={16} />
+                            Mark as Complete
+                        </button>
+                    ) : (
+                        <div className="flex items-center gap-3 p-4 bg-emerald-500/10 border border-emerald-500/30 rounded-lg">
+                            <span className="text-sm text-emerald-300">Mark this goal as achieved?</span>
+                            <button
+                                onClick={handleMarkComplete}
+                                disabled={isMarkingComplete}
+                                className="px-4 py-1.5 bg-emerald-500 text-neutral-900 font-medium text-sm rounded-lg hover:bg-emerald-400 transition-colors disabled:opacity-50"
+                            >
+                                {isMarkingComplete ? 'Completing...' : 'Yes, I did it!'}
+                            </button>
+                            <button
+                                onClick={() => setShowCompleteConfirm(false)}
+                                className="px-3 py-1.5 text-neutral-400 hover:text-white text-sm transition-colors"
+                            >
+                                Cancel
+                            </button>
+                        </div>
+                    )}
+                </div>
+            )}
 
             {/* Tabs */}
             <div className="flex border-b border-white/10 mb-8">

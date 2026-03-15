@@ -50,7 +50,6 @@ interface ProgressDashboardProps {
     onNavigateToJournal?: () => void;
     onNavigateToRoutines?: () => void;
     onNavigateToTasks?: () => void;
-    onOpenSettings?: () => void;
 }
 
 export const ProgressDashboard: React.FC<ProgressDashboardProps> = ({
@@ -61,7 +60,6 @@ export const ProgressDashboard: React.FC<ProgressDashboardProps> = ({
     onNavigateToJournal,
     onNavigateToRoutines,
     onNavigateToTasks,
-    onOpenSettings,
 }) => {
     const { habits, categories } = useHabitStore();
     const { data: progressData, loading: progressLoading } = useProgressOverview();
@@ -138,7 +136,7 @@ export const ProgressDashboard: React.FC<ProgressDashboardProps> = ({
             )}
 
             {/* AI Weekly Summary */}
-            <WeeklySummaryCard onOpenSettings={onOpenSettings} />
+            <WeeklySummaryCard />
 
             {/* Goals at a glance */}
             <div className="bg-neutral-900/50 rounded-2xl border border-white/5 p-6 backdrop-blur-sm">

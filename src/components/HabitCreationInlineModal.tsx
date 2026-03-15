@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { useHabitStore } from '../store/HabitContext';
 
@@ -6,20 +6,29 @@ interface HabitCreationInlineModalProps {
     isOpen: boolean;
     onClose: () => void;
     onHabitCreated: (habitId: string) => void;
+    defaultCategoryId?: string;
 }
 
 export const HabitCreationInlineModal: React.FC<HabitCreationInlineModalProps> = ({
     isOpen,
     onClose,
     onHabitCreated,
+    defaultCategoryId,
 }) => {
     const { addHabit, categories } = useHabitStore();
     const [name, setName] = useState('');
     const [type, setType] = useState<'binary' | 'quantified'>('binary');
     const [target, setTarget] = useState('');
     const [unit, setUnit] = useState('');
-    const [categoryId, setCategoryId] = useState('');
+    const [categoryId, setCategoryId] = useState(defaultCategoryId || '');
     const [imageUrl, setImageUrl] = useState('');
+
+    // Reset category to default when modal opens
+    useEffect(() => {
+        if (isOpen) {
+            setCategoryId(defaultCategoryId || '');
+        }
+    }, [isOpen, defaultCategoryId]);
 
     if (!isOpen) return null;
 

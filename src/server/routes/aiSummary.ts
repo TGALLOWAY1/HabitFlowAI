@@ -113,7 +113,7 @@ ${journalSummaryLines.length > 0 ? journalSummaryLines.join('\n') : '(No journal
 Please write a weekly summary now. Use markdown formatting for readability.`;
 
     // Call Gemini API
-    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${encodeURIComponent(geminiApiKey.trim())}`;
+    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(geminiApiKey.trim())}`;
 
     const geminiResponse = await fetch(geminiUrl, {
       method: 'POST',
@@ -123,6 +123,8 @@ Please write a weekly summary now. Use markdown formatting for readability.`;
         generationConfig: {
           temperature: 0.7,
           maxOutputTokens: 1024,
+          // Disable thinking for direct text output
+          thinkingConfig: { thinkingBudget: 0 },
         },
       }),
     });
@@ -151,10 +153,13 @@ Please write a weekly summary now. Use markdown formatting for readability.`;
     }
 
     const geminiData = await geminiResponse.json() as {
-      candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
+      candidates?: Array<{ content?: { parts?: Array<{ text?: string; thought?: boolean }> } }>;
     };
+    // Extract output text (skip any "thought" parts from thinking models)
+    const parts = geminiData?.candidates?.[0]?.content?.parts || [];
+    const outputPart = parts.find(p => !p.thought && p.text) || parts[0];
     const summaryText =
-      geminiData?.candidates?.[0]?.content?.parts?.[0]?.text ||
+      outputPart?.text ||
       'Unable to generate summary. Please try again.';
 
     res.status(200).json({

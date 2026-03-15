@@ -9,6 +9,7 @@ interface GoalDraft {
     targetValue: number;
     unit?: string;
     deadline?: string;
+    categoryId?: string;
 }
 
 interface CreateGoalLinkHabitsProps {
@@ -204,6 +205,7 @@ export const CreateGoalLinkHabits: React.FC<CreateGoalLinkHabitsProps> = ({
                 isOpen={isCreateModalOpen}
                 onClose={() => setIsCreateModalOpen(false)}
                 onHabitCreated={handleHabitCreated}
+                defaultCategoryId={goalDraft.categoryId}
             />
         </div>
     );
