@@ -47,6 +47,7 @@ interface ProgressDashboardProps {
     onSelectCategory?: (categoryId: string) => void;
     onNavigateWellbeingHistory?: () => void;
     onStartRoutine?: (routine: Routine) => void;
+    onPreviewRoutine?: (routine: Routine) => void;
     onNavigateToJournal?: () => void;
     onNavigateToRoutines?: () => void;
     onNavigateToTasks?: () => void;
@@ -57,6 +58,7 @@ export const ProgressDashboard: React.FC<ProgressDashboardProps> = ({
     onViewGoal,
     onSelectCategory,
     onStartRoutine,
+    onPreviewRoutine,
     onNavigateToJournal,
     onNavigateToRoutines,
     onNavigateToTasks,
@@ -131,6 +133,7 @@ export const ProgressDashboard: React.FC<ProgressDashboardProps> = ({
             {onStartRoutine && (
                 <PinnedRoutinesCard
                     onStartRoutine={onStartRoutine}
+                    onPreviewRoutine={onPreviewRoutine}
                     onViewAllRoutines={onNavigateToRoutines}
                 />
             )}
