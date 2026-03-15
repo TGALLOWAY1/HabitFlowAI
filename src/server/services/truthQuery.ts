@@ -26,6 +26,7 @@ export interface EntryView {
   source: 'manual' | 'routine' | 'quick' | 'import' | 'legacy' | 'test';
   provenance: {
     routineId?: string;
+    variantId?: string;
     routineExecutionId?: string;
   };
   deletedAt?: string | null;
@@ -136,6 +137,7 @@ function mapEntryToView(entry: HabitEntry, timeZone: string): EntryView {
 
   const provenance: EntryView['provenance'] = {};
   if (entry.routineId) provenance.routineId = entry.routineId;
+  if (entry.variantId) provenance.variantId = entry.variantId;
 
   return {
     habitId: entry.habitId,

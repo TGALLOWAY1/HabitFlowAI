@@ -123,8 +123,8 @@ export interface DayLog {
 }
 
 // Re-export Routine types
-import type { Routine, RoutineStep, HabitEntry, HabitPotentialEvidence } from '../models/persistenceTypes';
-export type { Routine, RoutineStep, HabitEntry, HabitPotentialEvidence };
+import type { Routine, RoutineStep, RoutineVariant, HabitEntry, HabitPotentialEvidence } from '../models/persistenceTypes';
+export type { Routine, RoutineStep, RoutineVariant, HabitEntry, HabitPotentialEvidence };
 
 export type Theme = 'dark' | 'light';
 

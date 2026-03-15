@@ -6,20 +6,23 @@ import { useHabitStore } from '../store/HabitContext';
 import { useRoutineStore } from '../store/RoutineContext';
 import { useToast } from './Toast';
 import { CompletedHabitsModal } from './CompletedHabitsModal';
+import { resolveSteps, resolveVariant } from '../lib/routineVariantUtils';
 
 interface RoutineRunnerModalProps {
     isOpen: boolean;
     routine?: Routine;
+    variantId?: string;
     onClose: () => void;
 }
 
 export const RoutineRunnerModal: React.FC<RoutineRunnerModalProps> = ({
     isOpen,
     routine,
+    variantId,
     onClose,
 }) => {
     const { refreshDayLogs, habits } = useHabitStore();
-    const { selectRoutine, startRoutine, exitRoutine, stepStates, setStepState } = useRoutineStore();
+    const { selectRoutine, startRoutine, exitRoutine, stepStates, setStepState, startedAt } = useRoutineStore();
     const { showToast } = useToast();
 
     const [currentStepIndex, setCurrentStepIndex] = useState(0);
@@ -35,17 +38,19 @@ export const RoutineRunnerModal: React.FC<RoutineRunnerModalProps> = ({
     const [isTimerRunning, setIsTimerRunning] = useState(false);
     const timerRef = useRef<NodeJS.Timeout | null>(null);
 
-    const steps = routine?.steps || [];
+    const steps = routine ? resolveSteps(routine, variantId) : [];
     const currentStep = steps[currentStepIndex];
     const isLastStep = currentStepIndex === steps.length - 1;
+    const activeVariant = routine ? resolveVariant(routine, variantId) : undefined;
+    const variantLinkedHabitIds = activeVariant?.linkedHabitIds || routine?.linkedHabitIds || [];
 
     // Sync execution state with context: init stepStates when runner opens
     useEffect(() => {
         if (isOpen && routine) {
             selectRoutine(routine.id);
-            startRoutine();
+            startRoutine(variantId);
         }
-    }, [isOpen, routine?.id]);
+    }, [isOpen, routine?.id, variantId]);
 
     const handleClose = () => {
         exitRoutine();
@@ -117,7 +122,10 @@ export const RoutineRunnerModal: React.FC<RoutineRunnerModalProps> = ({
             await submitRoutine(routine.id, {
                 submittedAt: new Date().toISOString(),
                 // Only include habitIdsToComplete if user explicitly chooses to log habits
-                habitIdsToComplete: logHabits ? routine.linkedHabitIds : undefined,
+                habitIdsToComplete: logHabits ? variantLinkedHabitIds : undefined,
+                variantId,
+                startedAt: startedAt || undefined,
+                stepResults: stepStates,
             });
             await refreshDayLogs();
             exitRoutine();
@@ -161,7 +169,14 @@ export const RoutineRunnerModal: React.FC<RoutineRunnerModalProps> = ({
                     )}
                     <div className="flex items-center justify-between p-4 bg-gradient-to-b from-black/50 to-transparent">
                         <h2 className="text-sm font-medium text-white/70 uppercase tracking-wider">
-                            {isCompletionView ? 'Routine Complete' : routine.title}
+                            {isCompletionView ? 'Routine Complete' : (
+                                <>
+                                    {routine.title}
+                                    {activeVariant && activeVariant.name !== 'Default' && (
+                                        <span className="text-purple-400/70 ml-1.5">· {activeVariant.name}</span>
+                                    )}
+                                </>
+                            )}
                         </h2>
                         <button onClick={handleClose} className="min-h-[44px] min-w-[44px] flex items-center justify-center text-white/50 hover:text-white transition-colors -mr-2" aria-label="Close">
                             <X size={24} />
@@ -336,7 +351,7 @@ export const RoutineRunnerModal: React.FC<RoutineRunnerModalProps> = ({
                                     >
                                         Complete Routine
                                     </button>
-                                    {routine.linkedHabitIds && routine.linkedHabitIds.length > 0 && (
+                                    {variantLinkedHabitIds.length > 0 && (
                                         <button
                                             onClick={() => handleFinish(true)}
                                             disabled={submitting}
@@ -355,6 +370,7 @@ export const RoutineRunnerModal: React.FC<RoutineRunnerModalProps> = ({
                 <CompletedHabitsModal
                     isOpen={showCompletedHabitsModal}
                     routine={routine ?? null}
+                    variantId={variantId}
                     stepStates={stepStates}
                     getHabitName={getHabitName}
                     onClose={() => setShowCompletedHabitsModal(false)}

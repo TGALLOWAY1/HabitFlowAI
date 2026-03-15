@@ -1,13 +1,15 @@
-import React from 'react';
-import { X, Play, Clock, ListChecks, Link as LinkIcon } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { X, Play, Clock, ListChecks, Link as LinkIcon, Layers } from 'lucide-react';
 import type { Routine } from '../models/persistenceTypes';
 import { useHabitStore } from '../store/HabitContext';
+import { resolveVariant, resolveSteps, isMultiVariant, getEstimatedDurationMinutes } from '../lib/routineVariantUtils';
+import { VariantCard } from './VariantCard';
 
 interface RoutinePreviewModalProps {
     isOpen: boolean;
     routine?: Routine;
     onClose: () => void;
-    onStart: (routine: Routine) => void;
+    onStart: (routine: Routine, variantId?: string) => void;
 }
 
 export const RoutinePreviewModal: React.FC<RoutinePreviewModalProps> = ({
@@ -17,14 +19,28 @@ export const RoutinePreviewModal: React.FC<RoutinePreviewModalProps> = ({
     onStart,
 }) => {
     const { habits } = useHabitStore();
+    const [selectedVariantId, setSelectedVariantId] = useState<string | undefined>(undefined);
+
+    // Reset selection when routine changes
+    useEffect(() => {
+        if (routine) {
+            const defaultVariant = resolveVariant(routine);
+            setSelectedVariantId(defaultVariant?.id);
+        }
+    }, [routine?.id]);
 
     if (!isOpen || !routine) return null;
 
-    const totalSteps = routine.steps.length;
-    const totalDuration = routine.steps.reduce((acc, step) => acc + (step.timerSeconds || 60), 0);
-    const durationMinutes = Math.max(1, Math.ceil(totalDuration / 60));
+    const hasMultipleVariants = isMultiVariant(routine);
+    const selectedVariant = resolveVariant(routine, selectedVariantId);
+    const steps = selectedVariant?.steps || resolveSteps(routine);
+    const totalSteps = steps.length;
+    const durationMinutes = selectedVariant
+        ? selectedVariant.estimatedDurationMinutes
+        : getEstimatedDurationMinutes(routine);
 
-    const linkedHabits = habits.filter(h => routine.linkedHabitIds?.includes(h.id));
+    const linkedHabitIds = selectedVariant?.linkedHabitIds || routine.linkedHabitIds || [];
+    const linkedHabits = habits.filter(h => linkedHabitIds.includes(h.id));
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
@@ -34,7 +50,6 @@ export const RoutinePreviewModal: React.FC<RoutinePreviewModalProps> = ({
                 <div className="flex items-center justify-between p-6 border-b border-white/5">
                     <div>
                         <h2 className="text-2xl font-bold text-white">{routine.title}</h2>
-                        {/* If we had description, showing it here would be good */}
                     </div>
                     <button
                         onClick={onClose}
@@ -44,19 +59,38 @@ export const RoutinePreviewModal: React.FC<RoutinePreviewModalProps> = ({
                     </button>
                 </div>
 
-                {/* Routine Image (if available) */}
+                {/* Routine Image */}
                 {routine.imageUrl && (
                     <div className="w-full aspect-video bg-neutral-800/50 border-b border-white/5 overflow-hidden">
-                        <img
-                            src={routine.imageUrl}
-                            alt={routine.title}
-                            className="w-full h-full object-cover"
-                        />
+                        <img src={routine.imageUrl} alt={routine.title} className="w-full h-full object-cover" />
                     </div>
                 )}
 
                 {/* Content */}
                 <div className="flex-1 overflow-y-auto p-6 space-y-8">
+
+                    {/* Variant Selector */}
+                    {hasMultipleVariants && routine.variants && (
+                        <div className="space-y-3">
+                            <h3 className="text-sm font-medium text-neutral-500 uppercase tracking-wider flex items-center gap-2">
+                                <Layers size={14} />
+                                Choose Variant
+                            </h3>
+                            <div className="grid gap-2" role="listbox">
+                                {routine.variants
+                                    .sort((a, b) => a.sortOrder - b.sortOrder)
+                                    .map(variant => (
+                                        <VariantCard
+                                            key={variant.id}
+                                            variant={variant}
+                                            isSelected={selectedVariantId === variant.id}
+                                            onClick={() => setSelectedVariantId(variant.id)}
+                                        />
+                                    ))
+                                }
+                            </div>
+                        </div>
+                    )}
 
                     {/* Stats */}
                     <div className="flex gap-4">
@@ -101,7 +135,7 @@ export const RoutinePreviewModal: React.FC<RoutinePreviewModalProps> = ({
                             Steps Sequence
                         </h3>
                         <div className="space-y-2 relative before:absolute before:left-4 before:top-4 before:bottom-4 before:w-0.5 before:bg-neutral-800">
-                            {routine.steps.map((step, index) => (
+                            {steps.map((step, index) => (
                                 <div key={step.id} className="relative flex items-start gap-4 p-2 rounded-lg hover:bg-neutral-800/50 transition-colors">
                                     <div className="flex-shrink-0 w-8 h-8 rounded-full bg-neutral-800 border border-neutral-700 flex items-center justify-center text-sm font-medium text-neutral-400 z-10">
                                         {index + 1}
@@ -115,7 +149,6 @@ export const RoutinePreviewModal: React.FC<RoutinePreviewModalProps> = ({
                                             </span>
                                         )}
                                     </div>
-
                                 </div>
                             ))}
                         </div>
@@ -132,13 +165,16 @@ export const RoutinePreviewModal: React.FC<RoutinePreviewModalProps> = ({
                     </button>
                     <button
                         onClick={() => {
-                            onStart(routine);
+                            onStart(routine, selectedVariantId);
                             onClose();
                         }}
                         className="flex items-center gap-2 px-6 py-2 bg-emerald-500 text-neutral-900 font-bold rounded-lg hover:bg-emerald-400 transition-colors shadow-lg shadow-emerald-500/20"
                     >
                         <Play size={18} />
-                        Start Routine
+                        {hasMultipleVariants && selectedVariant
+                            ? `Start ${selectedVariant.name}`
+                            : 'Start Routine'
+                        }
                     </button>
                 </div>
 

@@ -46,6 +46,9 @@ export interface HabitEntryRecord {
     /** Optional: linked routine ID */
     routineId?: string;
 
+    /** Optional: variant that generated this entry */
+    variantId?: string;
+
     /** DayKey (YYYY-MM-DD) - the aggregation boundary */
     date: string;
 
@@ -152,6 +155,7 @@ export interface HabitEntryPayload {
     value?: number | null;
     source?: EntrySource;
     routineId?: string;
+    variantId?: string;
     timestamp?: string; // ISO 8601, defaults to now
     timeZone?: string; // IANA timezone (required if deriving dayKey from timestamp)
     note?: string;

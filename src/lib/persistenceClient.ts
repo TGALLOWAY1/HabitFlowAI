@@ -758,6 +758,9 @@ export async function submitRoutine(
     habitIdsToComplete?: string[];
     submittedAt?: string;
     dateOverride?: string;
+    variantId?: string;
+    startedAt?: string;
+    stepResults?: Record<string, string>;
   }
 ): Promise<SubmitRoutineResponse> {
 
@@ -814,6 +817,25 @@ export async function batchCreateEntries(payload: {
 export async function fetchRoutineLogs(): Promise<Record<string, RoutineLog>> {
   const response = await apiRequest<{ routineLogs: Record<string, RoutineLog> }>('/routineLogs');
   return response.routineLogs;
+}
+
+/**
+ * Request AI-generated variant suggestions for a routine.
+ * POST /api/ai/suggest-variants
+ */
+export async function suggestVariants(params: {
+  routineId?: string;
+  routineTitle: string;
+  categoryId?: string;
+  existingSteps: Array<{ title: string; instruction?: string; timerSeconds?: number }>;
+  variantCount?: number;
+  geminiApiKey: string;
+}): Promise<{ suggestedVariants: import('../models/persistenceTypes').RoutineVariant[] }> {
+  const response = await apiRequest<{ suggestedVariants: import('../models/persistenceTypes').RoutineVariant[] }>('/ai/suggest-variants', {
+    method: 'POST',
+    body: JSON.stringify(params),
+  });
+  return response;
 }
 
 /**
@@ -1210,10 +1232,10 @@ export async function fetchPotentialEvidence(date: string): Promise<HabitPotenti
  * Record that a routine step was reached (creates potential evidence when step is linked to a habit).
  * POST /api/evidence/step-reached
  */
-export async function recordRoutineStepReached(routineId: string, stepId: string, date: string): Promise<void> {
+export async function recordRoutineStepReached(routineId: string, stepId: string, date: string, variantId?: string): Promise<void> {
   await apiRequest<{ data?: unknown }>('/evidence/step-reached', {
     method: 'POST',
-    body: JSON.stringify({ routineId, stepId, date }),
+    body: JSON.stringify({ routineId, stepId, date, ...(variantId ? { variantId } : {}) }),
   });
 }
 

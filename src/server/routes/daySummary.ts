@@ -16,6 +16,7 @@ type AggregatedDayEntry = {
   latestTimestamp: string;
   latestSource: HabitEntry['source'];
   latestRoutineId?: string;
+  latestVariantId?: string;
   latestBundleOptionId?: string;
   completedOptions: Record<string, number>;
 };
@@ -90,6 +91,7 @@ function aggregateEntries(
       existing.latestTimestamp = entry.timestamp;
       existing.latestSource = entry.source;
       existing.latestRoutineId = entry.routineId;
+      existing.latestVariantId = entry.variantId;
       existing.latestBundleOptionId = entry.bundleOptionId;
     }
 
@@ -168,6 +170,7 @@ export async function getDaySummary(req: Request, res: Response): Promise<void> 
         completed,
         source: aggregate.latestSource === 'routine' ? 'routine' : 'manual',
         routineId: aggregate.latestRoutineId,
+        variantId: aggregate.latestVariantId,
         bundleOptionId: aggregate.latestBundleOptionId,
         completedOptions,
         isFrozen,

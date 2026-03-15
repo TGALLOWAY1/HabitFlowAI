@@ -50,6 +50,7 @@ import {
 import { getDayView } from './routes/dayView';
 import habitPotentialEvidenceRoutes from './routes/habitPotentialEvidence';
 import { postWeeklySummary } from './routes/aiSummary';
+import { postSuggestVariants } from './routes/aiVariantSuggestion';
 
 export function createApp(): Express {
   const app = express();
@@ -175,6 +176,7 @@ export function createApp(): Express {
   app.get('/api/dayView', getDayView);
   app.use('/api/evidence', habitPotentialEvidenceRoutes);
   app.post('/api/ai/weekly-summary', postWeeklySummary);
+  app.post('/api/ai/suggest-variants', postSuggestVariants);
   app.get('/api/admin/integrity-report', getIntegrityReport);
   app.post('/api/admin/dedup-habits', requireAdmin, dedupHabits);
   app.post('/api/admin/recover-habits', requireAdmin, recoverHabits);

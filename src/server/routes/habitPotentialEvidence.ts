@@ -27,7 +27,7 @@ const router = Router();
 router.post('/step-reached', async (req, res) => {
     try {
         const { householdId, userId } = getRequestIdentity(req);
-        const { routineId, stepId, date } = req.body;
+        const { routineId, stepId, date, variantId } = req.body;
 
         if (!routineId || !stepId || !date) {
             return res.status(400).json({ error: 'Missing required fields: routineId, stepId, date' });
@@ -43,7 +43,27 @@ router.post('/step-reached', async (req, res) => {
             return res.status(404).json({ error: 'Routine not found' });
         }
 
-        const step = routine.steps.find((s) => s.id === stepId);
+        // Find step: check variant steps first, then fall back to root steps
+        let step = null;
+        if (variantId && routine.variants) {
+            const variant = routine.variants.find(v => v.id === variantId);
+            if (variant) {
+                step = variant.steps.find((s) => s.id === stepId);
+            }
+        }
+        if (!step) {
+            // Fallback: search all variants then root steps
+            if (routine.variants) {
+                for (const v of routine.variants) {
+                    step = v.steps.find((s) => s.id === stepId);
+                    if (step) break;
+                }
+            }
+            if (!step) {
+                step = routine.steps.find((s) => s.id === stepId);
+            }
+        }
+
         if (!step) {
             return res.status(404).json({ error: 'Step not found in routine' });
         }
@@ -58,7 +78,8 @@ router.post('/step-reached', async (req, res) => {
             stepId,
             date,
             timestamp: new Date().toISOString(),
-            source: 'routine-step'
+            source: 'routine-step',
+            ...(variantId ? { variantId } : {}),
         }, householdId, userId);
 
         res.status(201).json({ data: evidence });
