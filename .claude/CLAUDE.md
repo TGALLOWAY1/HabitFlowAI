@@ -50,3 +50,12 @@
 - **Simplicity First**: Make every change as simple as possible. Impact minimal code.
 - **No Laziness**: Find root causes. No temporary fixes. Senior developer standards.
 - **Minimal Impact**: Changes should only touch what's necessary. Avoid introducing bugs.
+
+## Data Integrity Invariant
+
+**Habit entries are the single source of truth.** If everything else got deleted, the system must be fully reproducible from habit entries alone. This means:
+- NEVER introduce caching that could cause displayed data to conflict with actual habit entries
+- NEVER store derived/computed data that could drift from the entries
+- All progress, streaks, goals, and completion states must be computable from entries on demand
+- When optimizing DB calls: reduce redundant *reads* of the same data within a request, but never skip reading entries when freshness matters for the UI
+- Frontend caches are acceptable only for reducing network calls, not as a substitute source of truth — always prefer a fresh read over a stale cache when data accuracy matters

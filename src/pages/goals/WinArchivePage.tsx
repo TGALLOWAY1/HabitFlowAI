@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { Trophy, Award, Calendar } from 'lucide-react';
 import { useCompletedGoals } from '../../lib/useCompletedGoals';
 import { format, parseISO } from 'date-fns';
@@ -10,19 +10,9 @@ interface WinArchivePageProps {
 }
 
 export const WinArchivePage: React.FC<WinArchivePageProps> = ({ onViewGoal }) => {
-    const { data, loading, error, refetch } = useCompletedGoals();
-    
-    // Refetch when component becomes visible to ensure deleted goals are removed
-    // This handles the case where a goal is deleted while viewing the archive
-    useEffect(() => {
-        // Refetch on mount to ensure we have the latest data
-        // (e.g., if user navigated here after deleting a goal)
-        const timer = setTimeout(() => {
-            refetch();
-        }, 100);
-        
-        return () => clearTimeout(timer);
-    }, [refetch]);
+    const { data, loading, error } = useCompletedGoals();
+    // useCompletedGoals now subscribes to cache invalidation events,
+    // so it automatically refetches when goals are completed/deleted.
 
     if (loading) {
         return (

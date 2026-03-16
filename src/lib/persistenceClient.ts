@@ -907,8 +907,8 @@ export async function updateGoal(
     body: JSON.stringify(patch),
   });
 
-  // Invalidate cache after successful update
-  invalidateGoalDataCache();
+  // Targeted invalidation: only this goal's detail + list caches
+  invalidateGoalCaches(id);
 
   return response.goal;
 }
@@ -938,6 +938,7 @@ export async function iterateGoal(id: string): Promise<{ goal: Goal; iteratedGoa
     method: 'PUT',
     body: JSON.stringify({ completedAt: now, iterate: true }),
   });
+  // Iterate creates a new goal too, so clear all caches
   invalidateGoalDataCache();
   return response;
 }
@@ -954,8 +955,8 @@ export async function deleteGoal(id: string): Promise<void> {
     method: 'DELETE',
   });
 
-  // Invalidate cache after successful deletion
-  invalidateGoalDataCache();
+  // Targeted invalidation: this goal's detail + list caches
+  invalidateGoalCaches(id);
 }
 
 /**

@@ -23,6 +23,7 @@ import type { Routine, RoutineStep, RoutineVariant, RoutineLog } from '../../mod
 import multer from 'multer';
 import {
   getRoutineImageByRoutineId,
+  getRoutineIdsWithImages,
   deleteRoutineImageByRoutineId,
   upsertRoutineImage,
 } from '../repositories/routineImageRepository';
@@ -196,16 +197,16 @@ export async function getRoutinesRoute(req: Request, res: Response): Promise<voi
 
     const routines = await getRoutines(householdId, userId);
 
-    // Add imageUrl to each routine
-    const routinesWithImages = await Promise.all(
-      routines.map(async (routine) => {
-        const imageUrl = await getRoutineImageUrl(routine.id);
-        return {
-          ...routine,
-          imageUrl,
-        };
-      })
-    );
+    // Batch-check which routines have images (single query instead of N+1)
+    const routineIds = routines.map((r) => r.id);
+    const idsWithImages = await getRoutineIdsWithImages(routineIds);
+
+    const routinesWithImages = routines.map((routine) => ({
+      ...routine,
+      imageUrl: idsWithImages.has(routine.id)
+        ? `/api/routines/${routine.id}/image`
+        : null,
+    }));
 
     // Return full list including steps
     res.status(200).json({
