@@ -70,6 +70,18 @@ export async function getEntryViewsForHabits(
   args: { startDayKey?: DayKey; endDayKey?: DayKey; timeZone: string }
 ): Promise<EntryView[]> {
   const allEntries = await getHabitEntriesByUser(householdId, userId);
+  return buildEntryViewsFromEntries(allEntries, habitIds, args);
+}
+
+/**
+ * Build entry views from pre-fetched entries, avoiding a redundant DB call.
+ * Use this when entries have already been fetched (e.g. in progress overview).
+ */
+export function buildEntryViewsFromEntries(
+  allEntries: HabitEntry[],
+  habitIds: string[],
+  args: { startDayKey?: DayKey; endDayKey?: DayKey; timeZone: string }
+): EntryView[] {
   const habitIdSet = new Set(habitIds);
   const relevantEntries = allEntries.filter(entry => habitIdSet.has(entry.habitId));
   const entryViews = relevantEntries.map(entry => mapEntryToView(entry, args.timeZone));

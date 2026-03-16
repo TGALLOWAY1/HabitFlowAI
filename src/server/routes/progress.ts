@@ -8,7 +8,8 @@ import type { Request, Response } from 'express';
 import { getHabitEntriesByUser } from '../repositories/habitEntryRepository';
 
 import { getHabitsByUser } from '../repositories/habitRepository';
-// Note: computeGoalsWithProgress is now imported dynamically in getProgressOverview
+import { getGoalsByUser } from '../repositories/goalRepository';
+import { computeGoalsWithProgressFromData } from '../utils/goalProgressUtilsV2';
 import { calculateGlobalMomentum, calculateCategoryMomentum, getMomentumCopy } from '../services/momentumService';
 import { calculateHabitStreakMetrics, type HabitDayState } from '../services/streakService';
 import { resolveTimeZone, getNowDayKey, getCanonicalDayKeyFromEntry } from '../utils/dayKey';
@@ -30,11 +31,14 @@ export async function getProgressOverview(req: Request, res: Response): Promise<
 
     const todayDate = getNowDayKey(requestedTimeZone);
 
-    const habits = await getHabitsByUser(householdId, userId);
+    // Fetch habits, entries, and goals in parallel (previously sequential + redundant)
+    const [habits, habitEntries, goals] = await Promise.all([
+      getHabitsByUser(householdId, userId),
+      getHabitEntriesByUser(householdId, userId),
+      getGoalsByUser(householdId, userId),
+    ]);
 
     const activeHabits = habits.filter(h => !h.archived);
-
-    const habitEntries = await getHabitEntriesByUser(householdId, userId);
 
     // Aggregate entries by habit + dayKey for canonical completion/value derivation (dayKey only in prod; legacy fallback in dev with log)
     const dayStatesByHabit = new Map<string, Map<string, HabitDayState>>();
@@ -127,9 +131,10 @@ export async function getProgressOverview(req: Request, res: Response): Promise<
       });
     }
 
-    // Fetch goals with progress (reuses efficient batch computation via truthQuery)
-    const { computeGoalsWithProgressV2 } = await import('../utils/goalProgressUtilsV2');
-    const goalsWithProgress = await computeGoalsWithProgressV2(householdId, userId, requestedTimeZone);
+    // Compute goals with progress using pre-fetched habits and entries (no redundant DB calls)
+    const goalsWithProgress = await computeGoalsWithProgressFromData(
+      goals, habits, householdId, userId, requestedTimeZone, habitEntries
+    );
 
     // Return combined response
     res.status(200).json({
