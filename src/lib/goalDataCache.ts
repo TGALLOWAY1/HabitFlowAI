@@ -139,8 +139,11 @@ export function invalidateGoalCaches(goalId: string): void {
     // Invalidate goals list cache (since it might include this goal)
     invalidateCache('goals-with-progress');
     invalidateCache('progress-overview');
-    // Note: completed goals cache might need invalidation if goal was completed
-    // This is handled by the completion flow
+    // Invalidate completed goals cache (goal may have been completed or deleted)
+    invalidateCache('completed-goals');
+    cacheVersion++;
+    // Notify all subscribed hooks
+    listeners.forEach(listener => listener());
 }
 
 /**
