@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { fetchCompletedGoals } from './persistenceClient';
 import type { CompletedGoal } from '../types';
-import { getCachedCompletedGoals, setCachedCompletedGoals } from './goalDataCache';
+import { getCachedCompletedGoals, setCachedCompletedGoals, subscribeToCacheInvalidation } from './goalDataCache';
 
 /**
  * Hook to fetch completed goals for the Win Archive.
@@ -63,6 +63,14 @@ export function useCompletedGoals(): {
             setLoading(false);
         }
     }, []);
+
+    // Subscribe to cache invalidation events so Win Archive updates
+    // when goals are completed/deleted elsewhere in the app
+    useEffect(() => {
+        return subscribeToCacheInvalidation(() => {
+            loadGoals();
+        });
+    }, [loadGoals]);
 
     useEffect(() => {
         let cancelled = false;
