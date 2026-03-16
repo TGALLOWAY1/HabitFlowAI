@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, Shield, CheckCircle2, Calculator, Layers, CheckSquare, ChevronDown, ChevronRight, Search, Trophy, Calendar, Plus, Check } from 'lucide-react';
 import { useHabitStore } from '../store/HabitContext';
 import { useRoutineStore } from '../store/RoutineContext';
-import { useProgressOverview } from '../lib/useProgressOverview';
+import { useGoalsWithProgress } from '../lib/useGoalsWithProgress';
 import type { Habit } from '../models/persistenceTypes';
 import { cn } from '../utils/cn';
 
@@ -74,8 +74,8 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
 
     // Goal Linking
     const [linkedGoalId, setLinkedGoalId] = useState<string | null>(null);
-    const { data: progressData } = useProgressOverview();
-    const availableGoals = progressData?.goalsWithProgress.map(g => g.goal) || [];
+    const { data: goalsData } = useGoalsWithProgress();
+    const availableGoals = goalsData?.map(g => g.goal) || [];
 
     // Routine Linking
     const [linkedRoutineIds, setLinkedRoutineIds] = useState<string[]>([]);
