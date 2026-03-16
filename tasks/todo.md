@@ -1,23 +1,27 @@
-# Dashboard & Goals UI Fixes
+# Fix Goals at a Glance Loading Performance
 
-## Tasks
+## Diagnosis
 
-- [ ] **1. Dashboard Ring**: Remove "Steady" momentum text, add "Daily Habits" label
-  - In `DailyOverviewCard.tsx`: Remove momentum badge (lines 72-82), add "Daily Habits" text below ring
+The `/progress/overview` endpoint has three major performance issues:
 
-- [ ] **2. Routine Icon/Color Customization**: Allow users to change icons/colors for pinned routines
-  - Add `icon` and `color` fields to Routine model (already has `icon?: string` on some related models)
-  - Add icon/color picker in manage mode of `PinnedRoutinesCard.tsx`
-  - Persist via `updateRoutine` API
+### Issue 1: Triple-fetch of `getHabitEntriesByUser` (biggest bottleneck)
+- `progress.ts:37` calls `getHabitEntriesByUser()` — fetches ALL entries from DB
+- `computeGoalsWithProgressV2` → `getEntryViewsForHabits` → `truthQuery.ts:72` calls `getHabitEntriesByUser()` AGAIN
+- That's **2 full table scans** of the same collection per request, completely redundant
 
-- [ ] **3. Goals at a Glance Management**: Allow users to manage which goals appear
-  - Add localStorage-based pinned goals feature (similar to pinned routines pattern)
-  - Add "Manage" button to goals section header in `ProgressDashboard.tsx`
-  - Show pin/unpin UI for goal selection
+### Issue 2: Double-fetch of `getHabitsByUser`
+- `progress.ts:33` fetches all habits
+- `goalProgressUtilsV2.ts:242` fetches all habits AGAIN inside `computeGoalsWithProgressV2`
 
-- [ ] **4. Goals Page Layout**: Make Overview button inline with trophy and add buttons
-  - In `GoalsPage.tsx`: Restructure header to put all three buttons in one flex row
+### Issue 3: Sequential DB queries that could be parallel
+- `getHabitsByUser` and `getHabitEntriesByUser` are awaited sequentially but are independent
 
-## Review
-- [ ] Verify all changes render correctly
-- [ ] Commit and push
+### Issue 4: Unnecessary dynamic import
+- `progress.ts:131` uses `await import(...)` instead of a static import
+
+## Fix Plan
+
+- [ ] 1. Parallelize the two independent DB queries with `Promise.all`
+- [ ] 2. Add a variant of `computeGoalsWithProgressV2` that accepts pre-fetched habits and entries to eliminate redundant DB calls
+- [ ] 3. Replace the dynamic import with a static import
+- [ ] 4. Verify the fix compiles and tests pass
