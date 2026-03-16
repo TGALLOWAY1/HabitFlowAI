@@ -41,7 +41,7 @@ The `/progress/overview` and `/goals-with-progress` endpoints had major performa
 
 ## Executive Summary
 
-Comprehensive audit identified **28 distinct issues** across the entire application. The most impactful patterns are:
+Comprehensive audit identified **34 distinct issues** across the entire application. The most impactful patterns are:
 
 1. **N+1 query patterns** in routine image loading and goal habit validation
 2. **Overlapping endpoints** fetching identical goal/habit data
@@ -187,6 +187,31 @@ Comprehensive audit identified **28 distinct issues** across the entire applicat
 - **Problem:** GET uses only `userId`, PUT uses both `householdId` and `userId`. Potential data isolation issue in multi-user households.
 - **Fix:** Align GET to use `householdId` like PUT does.
 
+### M14. Stale-While-Revalidate Always Refetches (No TTL Check)
+- **File:** `src/lib/useGoalsWithProgress.ts:36-42`, `src/lib/useGoalDetail.ts:50-75`
+- **Problem:** Background refetch fires even when cache is fresh (within 30s TTL). No freshness check before initiating background fetch, so navigating between goal views always triggers network calls.
+- **Fix:** Add `getCacheFreshness()` check — skip background fetch if TTL < 10s remaining.
+
+### M15. useCompletedGoals Missing Cache Invalidation Listener
+- **File:** `src/lib/useCompletedGoals.ts:39-65`
+- **Problem:** Unlike `useGoalsWithProgress` (which subscribes to cache invalidation events), `useCompletedGoals` has no subscription. When a goal is marked complete, Win Archive won't update until manual refresh.
+- **Fix:** Add `subscribeToCacheInvalidation()` listener like other goal hooks.
+
+### M16. WinArchivePage: Unconditional Force-Refetch on Mount
+- **File:** `src/pages/goals/WinArchivePage.tsx:15-25`
+- **Problem:** Uses `setTimeout(refetch, 100)` on every mount, ignoring cache freshness entirely.
+- **Fix:** Check cache TTL before forcing refetch.
+
+### M17. GoalCompletedPage: Oversized Data Fetch
+- **File:** `src/pages/goals/GoalCompletedPage.tsx:32`
+- **Problem:** Uses `useGoalDetail(goalId)` which fetches full 30-day history + computed progress, but only displays basic metadata (title, type, targetValue, dates).
+- **Fix:** Use lightweight `/goals/{id}` endpoint or extract from already-cached goal list.
+
+### M18. invalidateAllGoalCaches Too Aggressive
+- **File:** `src/lib/goalDataCache.ts:105-110`, `src/lib/persistenceClient.ts:888,911,958,1000`
+- **Problem:** Every goal mutation (create, update, delete, badge upload) calls `invalidateAllGoalCaches()` which clears the entire cache. Editing Goal #1 forces refetch of Goals #2, #3, etc.
+- **Fix:** Use targeted `invalidateGoalCaches(goalId)` (already exists at line 136) instead of the nuclear option.
+
 ---
 
 ## Impact Summary
@@ -211,12 +236,15 @@ Comprehensive audit identified **28 distinct issues** across the entire applicat
 - [ ] C2: Fix N+1 in goal habit validation
 - [ ] C4: Add session caching middleware
 - [ ] H7: Consolidate TrackerGrid refresh pattern
+- [ ] M18: Use targeted goal cache invalidation instead of clearing all
 
 ### Phase 2: High Impact (2-3 days)
 - [ ] C3: Migrate to single wellbeing collection
 - [ ] C5/M10: Unify goal data caching across hooks
 - [ ] H1: Reuse HabitContext data in GoalDetailPage
 - [ ] H5/H6: Add journal date filtering + optimistic updates
+- [ ] M14: Add TTL freshness check before background refetch
+- [ ] M15: Add cache invalidation listener to useCompletedGoals
 
 ### Phase 3: Medium Impact (3-5 days)
 - [ ] M1: Lazy-load context providers by route (or bootstrap endpoint)
@@ -224,3 +252,5 @@ Comprehensive audit identified **28 distinct issues** across the entire applicat
 - [ ] M5: Targeted routine state updates instead of full refresh
 - [ ] M8: Push date range filtering to MongoDB query level
 - [ ] M12: Batch routine step evidence submissions
+- [ ] M16: Check cache TTL before WinArchivePage force-refetch
+- [ ] M17: Use lightweight endpoint for GoalCompletedPage
