@@ -117,6 +117,31 @@ export async function getRoutineImageByRoutineId(
 }
 
 /**
+ * Check which routine IDs have images.
+ * Returns only the routineId field (not the binary data) for efficiency.
+ *
+ * @param routineIds - Array of routine IDs to check
+ * @returns Set of routine IDs that have images
+ */
+export async function getRoutineIdsWithImages(
+  routineIds: string[]
+): Promise<Set<string>> {
+  if (routineIds.length === 0) return new Set();
+  await ensureIndexes();
+  const db = await getDb();
+  const collection = db.collection(COLLECTION);
+
+  const docs = await collection
+    .find(
+      { routineId: { $in: routineIds } },
+      { projection: { routineId: 1 } }
+    )
+    .toArray();
+
+  return new Set(docs.map((d) => d.routineId as string));
+}
+
+/**
  * Delete a routine image by routine ID.
  * 
  * @param routineId - ID of the routine
