@@ -17,7 +17,7 @@ import {
   reorderGoals,
   validateHabitIds,
 } from '../repositories/goalRepository';
-import { getHabitById, getHabitsByUser } from '../repositories/habitRepository';
+import { getHabitsByUser } from '../repositories/habitRepository';
 import { getHabitEntriesByUser } from '../repositories/habitEntryRepository';
 import { computeGoalProgressV2, computeGoalsWithProgressFromData } from '../utils/goalProgressUtilsV2';
 import { saveUploadedFile } from '../utils/fileStorage';
@@ -52,16 +52,13 @@ async function validateHabitIdsExist(
   householdId: string,
   userId: string
 ): Promise<string[]> {
-  const invalidIds: string[] = [];
+  if (habitIds.length === 0) return [];
 
-  for (const habitId of habitIds) {
-    const habit = await getHabitById(habitId, householdId, userId);
-    if (!habit) {
-      invalidIds.push(habitId);
-    }
-  }
+  // Single batch fetch instead of N individual queries
+  const allHabits = await getHabitsByUser(householdId, userId);
+  const existingIds = new Set(allHabits.map((h) => h.id));
 
-  return invalidIds;
+  return habitIds.filter((id) => !existingIds.has(id));
 }
 
 /**
