@@ -9,9 +9,9 @@
 
 import { getGoalById } from '../repositories/goalRepository';
 import { getHabitsByUser } from '../repositories/habitRepository';
-import { getEntryViewsForHabits } from '../services/truthQuery';
+import { getEntryViewsForHabits, buildEntryViewsFromEntries } from '../services/truthQuery';
 import { getAggregationMode, getCountMode, unitsMatch } from './goalLinkSemantics';
-import type { Goal, GoalProgress, Habit, GoalProgressWarning } from '../../models/persistenceTypes';
+import type { Goal, GoalProgress, Habit, HabitEntry, GoalProgressWarning } from '../../models/persistenceTypes';
 import type { EntryView } from '../services/truthQuery';
 import type { DayKey } from '../../domain/time/dayKey';
 
@@ -222,9 +222,9 @@ export function computeFullGoalProgressV2(
 
 /**
  * Compute progress for multiple goals efficiently using truthQuery.
- * 
+ *
  * Fetches all goals and their EntryViews in batch to avoid N+1 queries.
- * 
+ *
  * @param userId - User ID to filter goals and entries
  * @param timeZone - User's timezone for DayKey operations (defaults to UTC)
  * @returns Array of goals with their computed progress
@@ -236,10 +236,36 @@ export async function computeGoalsWithProgressV2(
 ): Promise<Array<{ goal: Goal; progress: GoalProgress }>> {
   const { getGoalsByUser } = await import('../repositories/goalRepository');
 
-  const goals = await getGoalsByUser(householdId, userId);
+  const [goals, allHabits] = await Promise.all([
+    getGoalsByUser(householdId, userId),
+    getHabitsByUser(householdId, userId),
+  ]);
 
-  const { getHabitsByUser } = await import('../repositories/habitRepository');
-  const allHabits = await getHabitsByUser(householdId, userId);
+  return computeGoalsWithProgressFromData(goals, allHabits, householdId, userId, timeZone);
+}
+
+/**
+ * Compute progress for multiple goals from pre-fetched data.
+ *
+ * Accepts pre-fetched goals, habits, and optionally entries to avoid redundant DB calls.
+ * Use this when the caller has already fetched habits/entries (e.g. progress overview).
+ *
+ * @param goals - Pre-fetched goals
+ * @param allHabits - Pre-fetched habits
+ * @param householdId - Household ID
+ * @param userId - User ID
+ * @param timeZone - User's timezone for DayKey operations
+ * @param prefetchedEntries - Optional pre-fetched habit entries (avoids DB call if provided)
+ * @returns Array of goals with their computed progress
+ */
+export async function computeGoalsWithProgressFromData(
+  goals: Goal[],
+  allHabits: Habit[],
+  householdId: string,
+  userId: string,
+  timeZone: string = 'UTC',
+  prefetchedEntries?: HabitEntry[]
+): Promise<Array<{ goal: Goal; progress: GoalProgress }>> {
   const habitMap = new Map(allHabits.map(h => [h.id, h]));
 
   // Collect all unique habit IDs from all goals, resolving bundles
@@ -259,17 +285,20 @@ export async function computeGoalsWithProgressV2(
     return Array.from(resolved);
   };
 
+  // Cache resolved habits per goal to avoid computing twice
+  const resolvedHabitsCache = new Map<string, string[]>();
   for (const goal of goals) {
     const resolvedIds = getResolvedHabitsForGoal(goal);
+    resolvedHabitsCache.set(goal.id, resolvedIds);
     for (const id of resolvedIds) {
       allHabitIds.add(id);
     }
   }
 
-  // Fetch all EntryViews for all habits in one batch via truthQuery
-  const allEntryViews = await getEntryViewsForHabits(Array.from(allHabitIds), householdId, userId, {
-    timeZone,
-  });
+  // Use pre-fetched entries if available, otherwise fetch from DB
+  const allEntryViews = prefetchedEntries
+    ? buildEntryViewsFromEntries(prefetchedEntries, Array.from(allHabitIds), { timeZone })
+    : await getEntryViewsForHabits(Array.from(allHabitIds), householdId, userId, { timeZone });
 
   // Filter out deleted entries
   const activeEntryViews = allEntryViews.filter(entry => !entry.deletedAt);
@@ -287,7 +316,7 @@ export async function computeGoalsWithProgressV2(
 
   for (const goal of goals) {
     const goalEntryViews: EntryView[] = [];
-    const resolvedIds = getResolvedHabitsForGoal(goal);
+    const resolvedIds = resolvedHabitsCache.get(goal.id) || getResolvedHabitsForGoal(goal);
 
     for (const habitId of resolvedIds) {
       const habitEntries = entriesByHabitId.get(habitId) || [];

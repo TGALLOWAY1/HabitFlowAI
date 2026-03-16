@@ -11,13 +11,18 @@ vi.mock('../../repositories/habitEntryRepository', () => ({
   getHabitEntriesByUser: vi.fn(),
 }));
 
+vi.mock('../../repositories/goalRepository', () => ({
+  getGoalsByUser: vi.fn(),
+}));
+
 vi.mock('../../utils/goalProgressUtilsV2', () => ({
-  computeGoalsWithProgressV2: vi.fn(),
+  computeGoalsWithProgressFromData: vi.fn(),
 }));
 
 import { getHabitsByUser } from '../../repositories/habitRepository';
 import { getHabitEntriesByUser } from '../../repositories/habitEntryRepository';
-import { computeGoalsWithProgressV2 } from '../../utils/goalProgressUtilsV2';
+import { getGoalsByUser } from '../../repositories/goalRepository';
+import { computeGoalsWithProgressFromData } from '../../utils/goalProgressUtilsV2';
 
 function createRes() {
   const res = {
@@ -86,7 +91,8 @@ describe('getProgressOverview', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.useFakeTimers();
-    vi.mocked(computeGoalsWithProgressV2).mockResolvedValue([]);
+    vi.mocked(getGoalsByUser).mockResolvedValue([]);
+    vi.mocked(computeGoalsWithProgressFromData).mockResolvedValue([]);
   });
 
   afterEach(() => {
@@ -200,7 +206,7 @@ describe('getProgressOverview', () => {
       progress: { current: 0, target: 7, unit: 'days', percent: 0 },
     };
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    vi.mocked(computeGoalsWithProgressV2).mockResolvedValue([mockGoalWithProgress] as any);
+    vi.mocked(computeGoalsWithProgressFromData).mockResolvedValue([mockGoalWithProgress] as any);
 
     const req = createReq();
     const res = createRes();
@@ -211,6 +217,8 @@ describe('getProgressOverview', () => {
     const body = vi.mocked(res.json).mock.calls[0][0];
     expect(body.goalsWithProgress).toHaveLength(1);
     expect(body.goalsWithProgress[0].goal.id).toBe('goal-1');
-    expect(computeGoalsWithProgressV2).toHaveBeenCalledWith(TEST_HOUSEHOLD_ID, TEST_USER_ID, expect.any(String));
+    expect(computeGoalsWithProgressFromData).toHaveBeenCalledWith(
+      expect.any(Array), expect.any(Array), TEST_HOUSEHOLD_ID, TEST_USER_ID, expect.any(String), expect.any(Array)
+    );
   });
 });

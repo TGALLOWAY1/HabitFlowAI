@@ -1,23 +1,33 @@
-# Dashboard & Goals UI Fixes
+# Fix Goals at a Glance Loading Performance
 
-## Tasks
+## Diagnosis
 
-- [ ] **1. Dashboard Ring**: Remove "Steady" momentum text, add "Daily Habits" label
-  - In `DailyOverviewCard.tsx`: Remove momentum badge (lines 72-82), add "Daily Habits" text below ring
+The `/progress/overview` and `/goals-with-progress` endpoints had major performance issues:
 
-- [ ] **2. Routine Icon/Color Customization**: Allow users to change icons/colors for pinned routines
-  - Add `icon` and `color` fields to Routine model (already has `icon?: string` on some related models)
-  - Add icon/color picker in manage mode of `PinnedRoutinesCard.tsx`
-  - Persist via `updateRoutine` API
+### Issue 1: Duplicate `getHabitEntriesByUser` calls (biggest bottleneck)
+- `progress.ts` called `getHabitEntriesByUser()` — full table scan
+- `computeGoalsWithProgressV2` → `getEntryViewsForHabits` → `truthQuery.ts` called it AGAIN
+- **2 full collection scans** per request, completely redundant
 
-- [ ] **3. Goals at a Glance Management**: Allow users to manage which goals appear
-  - Add localStorage-based pinned goals feature (similar to pinned routines pattern)
-  - Add "Manage" button to goals section header in `ProgressDashboard.tsx`
-  - Show pin/unpin UI for goal selection
+### Issue 2: Duplicate `getHabitsByUser` calls
+- `progress.ts` and `goalProgressUtilsV2.ts` both fetched all habits independently
 
-- [ ] **4. Goals Page Layout**: Make Overview button inline with trophy and add buttons
-  - In `GoalsPage.tsx`: Restructure header to put all three buttons in one flex row
+### Issue 3: Sequential DB queries
+- Independent queries ran sequentially instead of in parallel
 
-## Review
-- [ ] Verify all changes render correctly
-- [ ] Commit and push
+### Issue 4: Unnecessary dynamic import
+- `await import(...)` on every request instead of static import
+
+## Fix Applied
+
+- [x] 1. Added `buildEntryViewsFromEntries` to `truthQuery.ts` — accepts pre-fetched entries
+- [x] 2. Added `computeGoalsWithProgressFromData` to `goalProgressUtilsV2.ts` — accepts pre-fetched habits + entries
+- [x] 3. `progress.ts`: Parallelized 3 DB queries with `Promise.all`, static imports, passes data through
+- [x] 4. `goals.ts`: Same optimization for `/goals-with-progress` endpoint
+- [x] 5. Updated tests to match new function signatures
+- [x] 6. Verified: TypeScript clean, zero new test failures
+
+## Impact
+- `/progress/overview`: **4 DB calls → 3** (habits, entries, goals in parallel), no redundant fetches
+- `/goals-with-progress`: **3 DB calls → 3** (parallelized), no redundant fetches
+- Both endpoints now pass pre-fetched data downstream instead of re-querying

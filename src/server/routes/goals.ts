@@ -17,8 +17,9 @@ import {
   reorderGoals,
   validateHabitIds,
 } from '../repositories/goalRepository';
-import { getHabitById } from '../repositories/habitRepository';
-import { computeGoalProgressV2 } from '../utils/goalProgressUtilsV2';
+import { getHabitById, getHabitsByUser } from '../repositories/habitRepository';
+import { getHabitEntriesByUser } from '../repositories/habitEntryRepository';
+import { computeGoalProgressV2, computeGoalsWithProgressFromData } from '../utils/goalProgressUtilsV2';
 import { saveUploadedFile } from '../utils/fileStorage';
 import type { Goal } from '../../models/persistenceTypes';
 import { getRequestIdentity } from '../middleware/identity';
@@ -299,8 +300,16 @@ export async function getGoalsWithProgress(req: Request, res: Response): Promise
 
     const userTimeZone = (timeZone && typeof timeZone === 'string') ? timeZone : 'UTC';
 
-    const { computeGoalsWithProgressV2 } = await import('../utils/goalProgressUtilsV2');
-    const goalsWithProgress = await computeGoalsWithProgressV2(householdId, userId, userTimeZone);
+    // Fetch goals, habits, and entries in parallel
+    const [goals, allHabits, habitEntries] = await Promise.all([
+      getGoalsByUser(householdId, userId),
+      getHabitsByUser(householdId, userId),
+      getHabitEntriesByUser(householdId, userId),
+    ]);
+
+    const goalsWithProgress = await computeGoalsWithProgressFromData(
+      goals, allHabits, householdId, userId, userTimeZone, habitEntries
+    );
 
     res.status(200).json({
       goals: goalsWithProgress,
