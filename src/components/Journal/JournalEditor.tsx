@@ -275,7 +275,7 @@ export function JournalEditor({ existingEntry, onSave, onCancel }: JournalEditor
                 <div className="flex justify-between items-start mb-8">
                     <div>
                         <h2 className="text-3xl font-bold text-white mb-2">Journaling</h2>
-                        <p className="text-white/40">Choose a loose category or start free-writing.</p>
+                        <p className="text-white/40">Choose a journal type or start writing.</p>
                     </div>
                     {onCancel && (
                         <button onClick={onCancel} className="p-2 hover:bg-white/10 rounded-lg text-white/50 transition-colors">

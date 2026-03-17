@@ -52,10 +52,21 @@ export function JournalDisplay({ onEdit }: JournalDisplayProps) {
 
     if (entries.length === 0) {
         return (
-            <div className="text-center p-12 bg-white/5 rounded-2xl border border-white/10">
-                <BookOpen className="w-12 h-12 text-white/20 mx-auto mb-4" />
-                <h3 className="text-xl font-medium text-white mb-2">No Entries Yet</h3>
-                <p className="text-white/60">Start your journaling habit today.</p>
+            <div className="flex flex-col items-center text-center p-8 sm:p-12 bg-white/5 rounded-2xl border border-white/10">
+                <div className="w-14 h-14 bg-neutral-800 rounded-full flex items-center justify-center mb-5">
+                    <BookOpen size={28} className="text-neutral-500" />
+                </div>
+                <h3 className="text-lg font-semibold text-white mb-2">No entries yet</h3>
+                <p className="text-sm text-neutral-400 mb-4 max-w-sm leading-relaxed">
+                    Use journaling to reflect, review, or just get thoughts out of your head.
+                </p>
+                <div className="flex flex-wrap justify-center gap-2">
+                    {['Quick Free Write', 'Morning Reflection', 'Evening Review'].map((ex) => (
+                        <span key={ex} className="px-3 py-1 text-xs text-neutral-400 bg-neutral-800/80 rounded-full border border-white/5">
+                            {ex}
+                        </span>
+                    ))}
+                </div>
             </div>
         );
     }

@@ -253,16 +253,29 @@ export const RoutineList: React.FC<RoutineListProps> = ({ onCreate, onEdit, onPr
 
     if (routines.length === 0) {
         return (
-            <div className="flex-1 flex flex-col items-center justify-center p-12 text-center bg-neutral-900/50 rounded-2xl border border-white/5">
-                <ClipboardList size={48} className="text-neutral-600 mb-4" />
-                <h3 className="text-lg font-medium text-neutral-300 mb-2">No routines yet</h3>
-                <p className="text-neutral-500 mb-6">Create routines to structure your habits.</p>
+            <div className="flex-1 flex flex-col items-center justify-center p-8 sm:p-12 text-center bg-neutral-900/50 rounded-2xl border border-white/5">
+                <div className="w-14 h-14 bg-neutral-800 rounded-full flex items-center justify-center mb-5">
+                    <ClipboardList size={28} className="text-neutral-500" />
+                </div>
+                <h3 className="text-lg font-semibold text-white mb-2">
+                    Routines group actions into repeatable flows that reduce friction.
+                </h3>
+                <p className="text-sm text-neutral-400 mb-4 max-w-sm leading-relaxed">
+                    Use routines for things like a morning reset, gym prep, or an evening shutdown.
+                </p>
+                <div className="flex flex-wrap justify-center gap-2 mb-6 max-w-sm">
+                    {['Morning reset', 'Workout prep', 'Evening shutdown'].map((ex) => (
+                        <span key={ex} className="px-3 py-1 text-xs text-neutral-400 bg-neutral-800/80 rounded-full border border-white/5">
+                            {ex}
+                        </span>
+                    ))}
+                </div>
                 <button
                     onClick={onCreate}
-                    className="flex items-center gap-2 px-4 py-2 bg-emerald-500 text-neutral-900 font-medium rounded-lg hover:bg-emerald-400 transition-colors"
+                    className="flex items-center gap-2 px-5 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-neutral-900 font-medium rounded-lg transition-colors text-sm"
                 >
                     <Plus size={18} />
-                    Create Routine
+                    Create Your First Routine
                 </button>
             </div>
         );

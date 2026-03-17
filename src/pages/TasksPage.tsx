@@ -40,10 +40,10 @@ export const TasksPage: React.FC = () => {
 
     return (
         <div className="flex flex-col h-full gap-6">
-            {/* Philosophy Header */}
+            {/* Concrete helper copy */}
             <div className="mb-2 px-1">
-                <p className="text-neutral-500 text-sm leading-relaxed italic">
-                    Tasks are transient obligations, not signals of growth. Capture them here to clear your mind — not to measure your worth.
+                <p className="text-neutral-400 text-sm leading-relaxed">
+                    Capture anything on your mind, then commit what matters for today.
                 </p>
             </div>
 
@@ -53,7 +53,9 @@ export const TasksPage: React.FC = () => {
                 <div className="flex-1 flex flex-col min-w-0 bg-neutral-900/30 rounded-xl border border-neutral-800/50 overflow-hidden">
                     <div className="p-4 border-b border-neutral-800/50 bg-neutral-900/50 flex items-baseline justify-between">
                         <h2 className="text-lg font-medium text-neutral-300">Inbox</h2>
-                        <span className="text-xs text-neutral-500 font-mono">{inboxTasks.filter(t => t.status !== 'completed').length} pending</span>
+                        {inboxTasks.filter(t => t.status !== 'completed').length > 0 && (
+                            <span className="text-xs text-neutral-600 font-mono">{inboxTasks.filter(t => t.status !== 'completed').length} pending</span>
+                        )}
                     </div>
 
                     <div className="p-4 bg-neutral-900/20 border-b border-neutral-800/30">
@@ -66,8 +68,15 @@ export const TasksPage: React.FC = () => {
                                 <TaskItem key={task.id} task={task} />
                             ))}
                             {sortedInbox.length === 0 && (
-                                <div className="py-12 text-center text-neutral-600 text-sm">
-                                    Inbox empty
+                                <div className="py-8 text-center">
+                                    <p className="text-neutral-500 text-sm mb-3">Capture what's on your mind.</p>
+                                    <div className="flex flex-wrap justify-center gap-1.5">
+                                        {['Call landlord', 'Buy groceries', 'Send invoice'].map((ex) => (
+                                            <span key={ex} className="px-2.5 py-1 text-[11px] text-neutral-600 bg-neutral-800/50 rounded-full border border-white/5">
+                                                {ex}
+                                            </span>
+                                        ))}
+                                    </div>
                                 </div>
                             )}
                         </div>
@@ -78,7 +87,9 @@ export const TasksPage: React.FC = () => {
                 <div className="flex-1 flex flex-col min-w-0 bg-neutral-900/30 rounded-xl border border-neutral-800/50 overflow-hidden">
                     <div className="p-4 border-b border-neutral-800/50 bg-neutral-900/50 flex items-baseline justify-between">
                         <h2 className="text-lg font-medium text-emerald-500/90">Today</h2>
-                        <span className="text-xs text-neutral-500 font-mono">{todayTasks.filter(t => t.status !== 'completed').length} active</span>
+                        {todayTasks.filter(t => t.status !== 'completed').length > 0 && (
+                            <span className="text-xs text-neutral-600 font-mono">{todayTasks.filter(t => t.status !== 'completed').length} active</span>
+                        )}
                     </div>
 
                     <div className="p-4 bg-neutral-900/20 border-b border-neutral-800/30">
@@ -91,8 +102,15 @@ export const TasksPage: React.FC = () => {
                                 <TaskItem key={task.id} task={task} />
                             ))}
                             {sortedToday.length === 0 && (
-                                <div className="py-12 text-center text-neutral-600 text-sm">
-                                    No tasks committed for today
+                                <div className="py-8 text-center">
+                                    <p className="text-neutral-500 text-sm mb-3">Commit what matters for today.</p>
+                                    <div className="flex flex-wrap justify-center gap-1.5">
+                                        {['Email recruiter', 'Refill prescription', 'Schedule workout'].map((ex) => (
+                                            <span key={ex} className="px-2.5 py-1 text-[11px] text-neutral-600 bg-neutral-800/50 rounded-full border border-white/5">
+                                                {ex}
+                                            </span>
+                                        ))}
+                                    </div>
                                 </div>
                             )}
                         </div>

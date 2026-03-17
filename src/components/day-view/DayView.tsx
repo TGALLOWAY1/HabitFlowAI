@@ -153,13 +153,26 @@ export const DayView = () => {
     // HabitContext usually returns them in DB order?
     // Let's rely on categories array order.
 
-    // Empty State?
+    // Empty State — show actionable guidance for new users
     if (todaysHabits.length === 0) {
         return (
-            <div className="flex flex-col items-center justify-center h-full text-neutral-500 p-8">
-                <Calendar size={48} className="mb-4 opacity-50" />
-                <p>No habits scheduled for today.</p>
-                <p className="text-sm mt-2">Enjoy your free time!</p>
+            <div className="flex flex-col items-center justify-center p-8 sm:p-12 text-center">
+                <div className="w-14 h-14 bg-neutral-800 rounded-full flex items-center justify-center mb-5">
+                    <Calendar size={28} className="text-neutral-500" />
+                </div>
+                <h3 className="text-lg font-semibold text-white mb-2">
+                    Habits are actions that, when done consistently, move you towards your goals.
+                </h3>
+                <p className="text-sm text-neutral-400 mb-4 max-w-sm leading-relaxed">
+                    Start with 1–3 habits you want to repeat most days.
+                </p>
+                <div className="flex flex-wrap justify-center gap-2 mb-6 max-w-sm">
+                    {['Drink water', '10-minute walk', 'Read 5 pages', 'Stretch', 'Vitamins'].map((ex) => (
+                        <span key={ex} className="px-3 py-1 text-xs text-neutral-400 bg-neutral-800/80 rounded-full border border-white/5">
+                            {ex}
+                        </span>
+                    ))}
+                </div>
             </div>
         );
     }
