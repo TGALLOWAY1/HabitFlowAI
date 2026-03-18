@@ -82,6 +82,7 @@ export function JournalPage() {
                         <JournalEditor
                             initialTemplateId="free-write"
                             onSave={handleSave}
+                            minimal
                         />
                     </div>
                 ) : activeTab === 'templates' ? (
