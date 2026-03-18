@@ -11,6 +11,7 @@ export interface SetupProgress {
   hasTasks: boolean;
   hasEntries: boolean;
   setupPhase: SetupPhase;
+  loading: boolean;
 }
 
 /**
@@ -18,11 +19,12 @@ export interface SetupProgress {
  * Used for dashboard progression and conditional UI.
  */
 export function useSetupProgress(goalsCount: number = 0): SetupProgress {
-  const { habits, logs } = useHabitStore();
-  const { routines } = useRoutineStore();
-  const { tasks } = useTasks();
+  const { habits, logs, loading: habitsLoading } = useHabitStore();
+  const { routines, loading: routinesLoading } = useRoutineStore();
+  const { tasks, loading: tasksLoading } = useTasks();
 
   return useMemo(() => {
+    const loading = habitsLoading || routinesLoading || tasksLoading;
     const hasHabits = habits.filter(h => !h.archived).length > 0;
     const hasRoutines = routines.length > 0;
     const hasTasks = tasks.filter(t => t.status !== 'deleted').length > 0;
@@ -42,6 +44,6 @@ export function useSetupProgress(goalsCount: number = 0): SetupProgress {
       setupPhase = 'early';
     }
 
-    return { hasHabits, hasRoutines, hasTasks, hasEntries, setupPhase };
-  }, [habits, routines, tasks, logs, goalsCount]);
+    return { hasHabits, hasRoutines, hasTasks, hasEntries, setupPhase, loading };
+  }, [habits, routines, tasks, logs, goalsCount, habitsLoading, routinesLoading, tasksLoading]);
 }

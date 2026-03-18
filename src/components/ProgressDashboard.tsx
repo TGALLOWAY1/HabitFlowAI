@@ -70,7 +70,7 @@ export const ProgressDashboard: React.FC<ProgressDashboardProps> = ({
     const { habits, categories } = useHabitStore();
     const { data: progressData, loading: progressLoading } = useProgressOverview();
     const goalsCount = progressData?.goalsWithProgress?.length ?? 0;
-    const { setupPhase, hasHabits, hasTasks } = useSetupProgress(goalsCount);
+    const { setupPhase, hasHabits, hasTasks, loading: setupLoading } = useSetupProgress(goalsCount);
     const hasJournalEntries = false; // Will be derived from journal data when available
     const [isCheckInOpen, setIsCheckInOpen] = useState(false);
     const { pinnedIds: pinnedGoalIds, togglePin: toggleGoalPin, isPinned: isGoalPinned } = usePinnedGoals();
@@ -118,8 +118,8 @@ export const ProgressDashboard: React.FC<ProgressDashboardProps> = ({
         updateUrlParams({ categoryRange: range }, 'replace');
     };
 
-    // Zero-state: show guided setup dashboard
-    if (setupPhase === 'zero' && onNavigate) {
+    // Zero-state: show guided setup dashboard (only after data has loaded)
+    if (setupPhase === 'zero' && onNavigate && !setupLoading && !progressLoading) {
         return (
             <SetupDashboard
                 hasHabits={hasHabits}

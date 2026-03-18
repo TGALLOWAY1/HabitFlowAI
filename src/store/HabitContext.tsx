@@ -54,6 +54,7 @@ interface HabitContextType {
     upsertHabitEntry: (habitId: string, dateKey: string, data?: any) => Promise<void>;
     deleteHabitEntryByKey: (habitId: string, dateKey: string) => Promise<void>;
     potentialEvidence: HabitPotentialEvidence[];
+    loading: boolean;
 }
 
 const HabitContext = createContext<HabitContextType | undefined>(undefined);
@@ -78,6 +79,7 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const [wellbeingLogs, setWellbeingLogs] = useState<Record<string, DailyWellbeing>>({});
     const [potentialEvidence, setPotentialEvidence] = useState<HabitPotentialEvidence[]>([]);
     const [lastPersistenceError, setLastPersistenceError] = useState<string | null>(null);
+    const [loading, setLoading] = useState(true);
 
     // Use refs to prevent double execution in React StrictMode
     const initializedRef = useRef(false);
@@ -211,8 +213,10 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 });
 
                 console.log('[HabitContext] Initialization complete');
+                setLoading(false);
             } catch (error) {
                 console.error('[HabitContext] Error in initialize():', error);
+                setLoading(false);
                 throw error;
             }
         };
@@ -776,6 +780,7 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             potentialEvidence,
             upsertHabitEntry: upsertHabitEntryContext,
             deleteHabitEntryByKey: deleteHabitEntryByKeyContext,
+            loading,
         }}>
             {children}
         </HabitContext.Provider>
