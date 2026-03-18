@@ -1297,3 +1297,13 @@ export async function clearHabitEntriesForDay(habitId: string, date: string): Pr
   });
   return response;
 }
+
+/**
+ * Permanently delete all user data (habits, entries, categories, goals, tasks, etc.).
+ * The user account itself is preserved.
+ */
+export async function deleteAllUserData(): Promise<{ deleted: Record<string, number> }> {
+  return apiRequest<{ deleted: Record<string, number> }>('/user/data', {
+    method: 'DELETE',
+  });
+}

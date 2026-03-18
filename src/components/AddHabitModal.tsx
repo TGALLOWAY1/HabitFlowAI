@@ -14,7 +14,7 @@ interface AddHabitModalProps {
 }
 
 export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, categoryId, initialData }) => {
-    const { addHabit, updateHabit, categories, habits } = useHabitStore();
+    const { addHabit, updateHabit, categories, habits, addCategory } = useHabitStore();
     const { routines, addRoutine, updateRoutine } = useRoutineStore();
 
     // Form State
@@ -89,6 +89,11 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
     const [selectedCategoryId, setSelectedCategoryId] = useState(categoryId || '');
     const [isSubmitting, setIsSubmitting] = useState(false);
 
+    // Inline Category Creation
+    const [isCreatingCategory, setIsCreatingCategory] = useState(false);
+    const [newCategoryName, setNewCategoryName] = useState('');
+    const [isSubmittingCategory, setIsSubmittingCategory] = useState(false);
+
     // Initialize/Reset
     useEffect(() => {
         if (isOpen) {
@@ -126,6 +131,8 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                 setName('');
                 setHabitType('regular');
                 setBundleMode(null);
+                setIsCreatingCategory(categories.length === 0);
+                setNewCategoryName('');
 
                 setSubHabitIds([]);
                 setPendingSubHabits([]);
@@ -581,15 +588,91 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                         {!categoryId && (
                             <div>
                                 <label className="block text-sm font-medium text-neutral-400 mb-1">Category</label>
-                                <select
-                                    value={selectedCategoryId}
-                                    onChange={(e) => setSelectedCategoryId(e.target.value)}
-                                    className="w-full bg-neutral-800 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-emerald-500 appearance-none"
-                                >
-                                    {categories.map(cat => (
-                                        <option key={cat.id} value={cat.id}>{cat.name}</option>
-                                    ))}
-                                </select>
+                                {categories.length > 0 && !isCreatingCategory && (
+                                    <select
+                                        value={selectedCategoryId}
+                                        onChange={(e) => setSelectedCategoryId(e.target.value)}
+                                        className="w-full bg-neutral-800 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-emerald-500 appearance-none mb-2"
+                                    >
+                                        {categories.map(cat => (
+                                            <option key={cat.id} value={cat.id}>{cat.name}</option>
+                                        ))}
+                                    </select>
+                                )}
+                                {isCreatingCategory ? (
+                                    <div className="flex gap-2">
+                                        <input
+                                            type="text"
+                                            value={newCategoryName}
+                                            onChange={(e) => setNewCategoryName(e.target.value)}
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Enter') {
+                                                    e.preventDefault();
+                                                    if (newCategoryName.trim()) {
+                                                        (async () => {
+                                                            setIsSubmittingCategory(true);
+                                                            try {
+                                                                const newCat = await addCategory({ name: newCategoryName.trim(), color: 'bg-emerald-500' });
+                                                                setSelectedCategoryId(newCat.id);
+                                                                setIsCreatingCategory(false);
+                                                                setNewCategoryName('');
+                                                            } catch (err) {
+                                                                console.error('Failed to create category:', err);
+                                                            } finally {
+                                                                setIsSubmittingCategory(false);
+                                                            }
+                                                        })();
+                                                    }
+                                                }
+                                            }}
+                                            className="flex-1 bg-neutral-800 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-emerald-500"
+                                            placeholder="Category name"
+                                            autoFocus
+                                            disabled={isSubmittingCategory}
+                                        />
+                                        <button
+                                            type="button"
+                                            disabled={!newCategoryName.trim() || isSubmittingCategory}
+                                            onClick={async () => {
+                                                if (!newCategoryName.trim()) return;
+                                                setIsSubmittingCategory(true);
+                                                try {
+                                                    const newCat = await addCategory({ name: newCategoryName.trim(), color: 'bg-emerald-500' });
+                                                    setSelectedCategoryId(newCat.id);
+                                                    setIsCreatingCategory(false);
+                                                    setNewCategoryName('');
+                                                } catch (err) {
+                                                    console.error('Failed to create category:', err);
+                                                } finally {
+                                                    setIsSubmittingCategory(false);
+                                                }
+                                            }}
+                                            className="px-3 py-2 bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 text-white text-sm font-medium rounded-lg transition-colors"
+                                        >
+                                            {isSubmittingCategory ? '...' : 'Save'}
+                                        </button>
+                                        {categories.length > 0 && (
+                                            <button
+                                                type="button"
+                                                onClick={() => { setIsCreatingCategory(false); setNewCategoryName(''); }}
+                                                className="px-3 py-2 bg-neutral-700 hover:bg-neutral-600 text-white text-sm rounded-lg transition-colors"
+                                            >
+                                                Cancel
+                                            </button>
+                                        )}
+                                    </div>
+                                ) : categories.length === 0 ? (
+                                    <p className="text-sm text-neutral-500 mb-2">No categories yet. Create one to get started.</p>
+                                ) : null}
+                                {!isCreatingCategory && (
+                                    <button
+                                        type="button"
+                                        onClick={() => setIsCreatingCategory(true)}
+                                        className="text-sm text-emerald-400 hover:text-emerald-300 transition-colors mt-1"
+                                    >
+                                        + New Category
+                                    </button>
+                                )}
                             </div>
                         )}
                     </div>

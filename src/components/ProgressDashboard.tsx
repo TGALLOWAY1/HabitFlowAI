@@ -12,6 +12,8 @@ import { JournalCard } from './dashboard/JournalCard';
 import { TasksCard } from './dashboard/TasksCard';
 import { PinnedRoutinesCard } from './dashboard/PinnedRoutinesCard';
 import { WeeklySummaryCard } from './dashboard/WeeklySummaryCard';
+import { SetupDashboard } from './dashboard/SetupDashboard';
+import { useSetupProgress } from '../hooks/useSetupProgress';
 import type { Routine } from '../models/persistenceTypes';
 
 const PINNED_GOALS_KEY = 'hf_pinned_dashboard_goals';
@@ -51,6 +53,7 @@ interface ProgressDashboardProps {
     onNavigateToJournal?: () => void;
     onNavigateToRoutines?: () => void;
     onNavigateToTasks?: () => void;
+    onNavigate?: (route: string, params?: Record<string, string>) => void;
 }
 
 export const ProgressDashboard: React.FC<ProgressDashboardProps> = ({
@@ -62,9 +65,13 @@ export const ProgressDashboard: React.FC<ProgressDashboardProps> = ({
     onNavigateToJournal,
     onNavigateToRoutines,
     onNavigateToTasks,
+    onNavigate,
 }) => {
     const { habits, categories } = useHabitStore();
     const { data: progressData, loading: progressLoading } = useProgressOverview();
+    const goalsCount = progressData?.goalsWithProgress?.length ?? 0;
+    const { setupPhase, hasHabits, hasTasks } = useSetupProgress(goalsCount);
+    const hasJournalEntries = false; // Will be derived from journal data when available
     const [isCheckInOpen, setIsCheckInOpen] = useState(false);
     const { pinnedIds: pinnedGoalIds, togglePin: toggleGoalPin, isPinned: isGoalPinned } = usePinnedGoals();
     const [showGoalManage, setShowGoalManage] = useState(false);
@@ -110,6 +117,19 @@ export const ProgressDashboard: React.FC<ProgressDashboardProps> = ({
         setCategoryRange(range);
         updateUrlParams({ categoryRange: range }, 'replace');
     };
+
+    // Zero-state: show guided setup dashboard
+    if (setupPhase === 'zero' && onNavigate) {
+        return (
+            <SetupDashboard
+                hasHabits={hasHabits}
+                hasTasks={hasTasks}
+                hasJournalEntries={hasJournalEntries}
+                goalsCount={goalsCount}
+                onNavigate={onNavigate}
+            />
+        );
+    }
 
     return (
         <div className="space-y-4 overflow-y-auto pb-20">

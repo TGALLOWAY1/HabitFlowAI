@@ -17,7 +17,7 @@ import { RoutineEditorModal } from './components/RoutineEditorModal';
 import { RoutineRunnerModal } from './components/RoutineRunnerModal';
 import { RoutinePreviewModal } from './components/RoutinePreviewModal';
 import { HabitHistoryModal } from './components/HabitHistoryModal';
-import { BarChart3, Calendar, ClipboardList, Target, BookOpenText, CheckSquare } from 'lucide-react';
+import { BottomTabBar } from './components/BottomTabBar';
 
 import type { Routine, Habit } from './types';
 import { GoalsPage } from './pages/goals/GoalsPage';
@@ -126,8 +126,10 @@ const HabitTrackerContent: React.FC = () => {
     return params.get("goalId");
   });
 
-  // Track View Mode: 'grid' or 'day'
-  const [trackerViewMode, setTrackerViewMode] = useState<'grid' | 'day'>('grid');
+  // Track View Mode: 'grid' or 'day' — default to 'day' for new users
+  const [trackerViewMode, setTrackerViewMode] = useState<'grid' | 'day'>(() =>
+    habits.length === 0 ? 'day' : 'grid'
+  );
 
 
   const [showCreateGoal, setShowCreateGoal] = useState(false);
@@ -213,7 +215,7 @@ const HabitTrackerContent: React.FC = () => {
 
           {/* Tracker View Toggles (Only visible on Habits page) */}
           {view === 'tracker' && (
-            <div className="flex bg-neutral-800 p-0.5 rounded-lg mr-4">
+            <div className="flex bg-neutral-800 p-0.5 rounded-lg">
               <button
                 onClick={() => setTrackerViewMode('grid')}
                 className={`px-3 py-1 text-sm font-medium rounded-md transition-all ${trackerViewMode === 'grid' ? 'bg-neutral-600 text-white shadow-sm' : 'text-neutral-400 hover:text-white'}`}
@@ -228,87 +230,10 @@ const HabitTrackerContent: React.FC = () => {
               </button>
             </div>
           )}
-
-          <div className="flex items-center gap-2 bg-neutral-800 rounded-lg p-1 overflow-x-auto no-scrollbar max-w-[calc(100vw-120px)] sm:max-w-none">
-            {/* Removed standalone Sun button to fix layout issues */}
-
-
-            <button
-              onClick={() => handleNavigate('dashboard')}
-              className={`p-2 rounded-md transition-colors ${view === 'dashboard' ? 'bg-neutral-700 text-white' : 'text-neutral-400 hover:text-white'}`}
-              title="Dashboard"
-            >
-              <BarChart3 size={20} />
-            </button>
-            <button
-              onClick={() => handleNavigate('tracker')}
-              className={`p-2 rounded-md transition-colors ${view === 'tracker' ? 'bg-neutral-700 text-white' : 'text-neutral-400 hover:text-white'}`}
-              title="Habits Tracker"
-            >
-              <Calendar size={20} />
-            </button>
-            <button
-              onClick={() => handleNavigate('journal')}
-              className={`p-2 rounded-md transition-colors ${view === 'journal' ? 'bg-neutral-700 text-white' : 'text-neutral-400 hover:text-white'}`}
-              title="Journal"
-            >
-              <BookOpenText size={20} />
-            </button>
-            <button
-              onClick={() => handleNavigate('goals')}
-              className={`p-2 rounded-md transition-colors ${view === 'goals' ? 'bg-neutral-700 text-white' : 'text-neutral-400 hover:text-white'}`}
-              title="Goals"
-            >
-              <Target size={20} />
-            </button>
-            <button
-              onClick={() => handleNavigate('routines')}
-              className={`p-2 rounded-md transition-colors ${view === 'routines' ? 'bg-neutral-700 text-white' : 'text-neutral-400 hover:text-white'}`}
-              title="Routines"
-            >
-              <ClipboardList size={20} />
-            </button>
-            <button
-              onClick={() => handleNavigate('tasks')}
-              className={`p-2 rounded-md transition-colors ${view === 'tasks' ? 'bg-neutral-700 text-white' : 'text-neutral-400 hover:text-white'}`}
-              title="Tasks (Minimal)"
-            >
-              <CheckSquare size={20} />
-            </button>
-          </div>
         </div>
       </div>
 
 
-      {
-        view === 'tracker' && (
-          <div className="px-1 mb-2">
-            <p className="text-neutral-500 text-sm leading-relaxed italic">
-              Habits are signals of the person you are becoming. They measure consistency over time — not perfection in the moment.
-            </p>
-          </div>
-        )
-      }
-
-      {
-        view === 'goals' && (
-          <div className="px-1">
-            <p className="text-neutral-500 text-sm leading-relaxed italic">
-              Goals provide direction, not judgment. They exist to orient your effort — not to rush or constrain it.
-            </p>
-          </div>
-        )
-      }
-
-      {
-        view === 'routines' && (
-          <div className="px-1">
-            <p className="text-neutral-500 text-sm leading-relaxed italic">
-              Routines are supportive structures, not tests of discipline. They exist to reduce friction — not demand completion.
-            </p>
-          </div>
-        )
-      }
 
 
       {
@@ -437,7 +362,7 @@ const HabitTrackerContent: React.FC = () => {
               potentialEvidence={potentialEvidence}
             />
           ) : (
-            <DayView />
+            <DayView onAddHabit={() => setIsModalOpen(true)} />
           )
         ) : view === 'dashboard' ? (
           <ProgressDashboard
@@ -455,6 +380,7 @@ const HabitTrackerContent: React.FC = () => {
             onNavigateToJournal={() => handleNavigate('journal')}
             onNavigateToRoutines={() => handleNavigate('routines')}
             onNavigateToTasks={() => handleNavigate('tasks')}
+            onNavigate={(route) => handleNavigate(route as AppRoute)}
           />
         ) : view === 'wellbeing-history' ? (
           <WellbeingHistoryPage onBack={() => handleNavigate('dashboard')} />
@@ -530,6 +456,8 @@ const HabitTrackerContent: React.FC = () => {
           setRoutineRunnerState({ isOpen: true, routine, variantId });
         }}
       />
+
+      <BottomTabBar activeView={view} onNavigate={handleNavigate} />
     </div >
   );
 };

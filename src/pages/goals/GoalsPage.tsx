@@ -186,7 +186,7 @@ export const GoalsPage: React.FC<GoalsPageProps> = ({
                     Overview
                 </span>
 
-                {onViewWinArchive && (
+                {onViewWinArchive && goalStacks.length > 0 && (
                     <button
                         onClick={onViewWinArchive}
                         className="flex items-center gap-2 px-4 py-2 bg-neutral-700 hover:bg-neutral-600 text-white font-medium rounded-lg transition-colors text-sm whitespace-nowrap"
@@ -208,21 +208,28 @@ export const GoalsPage: React.FC<GoalsPageProps> = ({
 
             {/* Content Area */}
             {goalStacks.length === 0 ? (
-                    <div className="text-center py-16 sm:py-20">
+                    <div className="text-center py-12 sm:py-16">
                         <div className="max-w-md mx-auto">
-                            <div className="mb-6">
-                                <div className="w-16 h-16 mx-auto bg-neutral-800 rounded-full flex items-center justify-center mb-4">
-                                    <Plus className="text-emerald-400" size={32} />
-                                </div>
+                            <div className="w-14 h-14 mx-auto bg-neutral-800 rounded-full flex items-center justify-center mb-5">
+                                <Target className="text-neutral-500" size={28} />
                             </div>
-                            <h2 className="text-xl font-semibold text-white mb-2">Start Your Journey</h2>
-                            <p className="text-neutral-400 mb-6 text-sm sm:text-base">
-                                Create your first goal to turn your daily habits into meaningful achievements.
+                            <h2 className="text-lg font-semibold text-white mb-2">
+                                Goals are outcomes, milestones or states that are the result of your habits.
+                            </h2>
+                            <p className="text-sm text-neutral-400 mb-5 leading-relaxed">
+                                Use goals to track progress over time and give your habits direction.
                             </p>
+                            <div className="flex flex-wrap justify-center gap-2 mb-6">
+                                {['Build consistency', 'Reach a milestone', 'Complete a project'].map((ex) => (
+                                    <span key={ex} className="px-3 py-1.5 text-xs text-neutral-400 bg-neutral-800/80 rounded-full border border-white/5">
+                                        {ex}
+                                    </span>
+                                ))}
+                            </div>
                             {onCreateGoal && (
                                 <button
                                     onClick={onCreateGoal}
-                                    className="flex items-center gap-2 px-6 py-3 bg-emerald-500 hover:bg-emerald-400 text-neutral-900 font-medium rounded-lg transition-colors mx-auto text-sm sm:text-base"
+                                    className="flex items-center gap-2 px-6 py-3 bg-emerald-500 hover:bg-emerald-400 text-neutral-900 font-medium rounded-lg transition-colors mx-auto text-sm"
                                 >
                                     <Plus size={18} />
                                     Create Your First Goal

@@ -49,6 +49,7 @@ import {
 } from './routes/habitEntries';
 import { getDayView } from './routes/dayView';
 import habitPotentialEvidenceRoutes from './routes/habitPotentialEvidence';
+import { deleteUserData } from './routes/userData';
 import { postWeeklySummary } from './routes/aiSummary';
 import { postSuggestVariants } from './routes/aiVariantSuggestion';
 
@@ -103,6 +104,7 @@ export function createApp(): Express {
   app.use(noPersonaInHabitEntryRequests);
 
   app.get('/api/auth/me', getAuthMe);
+  app.delete('/api/user/data', deleteUserData);
   app.use('/api/household', householdUsersRouter);
   app.get('/api/categories', getCategories);
   app.post('/api/categories', createCategoryRoute);

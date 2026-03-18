@@ -1176,7 +1176,7 @@ export const TrackerGrid = ({
                                 </button>
                                 <button
                                     onClick={onAddHabit}
-                                    className="p-1.5 rounded-lg hover:bg-neutral-800 text-neutral-500 hover:text-emerald-400 transition-colors"
+                                    className="p-1.5 rounded-lg hover:bg-neutral-800 text-emerald-400 hover:text-emerald-300 transition-colors"
                                     title="Add New Habit"
                                 >
                                     <Plus size={18} />
@@ -1245,8 +1245,26 @@ export const TrackerGrid = ({
                                 ))}
                             </SortableContext>
                         ) : (
-                            <div className="p-8 text-center text-neutral-500 text-sm italic">
-                                No daily habits yet. Click the + button to add one.
+                            <div className="flex flex-col items-center justify-center p-8 text-center">
+                                <h3 className="text-base font-medium text-white mb-2">
+                                    Habits are actions that, when done consistently, move you towards your goals.
+                                </h3>
+                                <p className="text-sm text-neutral-400 mb-4">
+                                    Start with 1–3 habits you want to repeat most days.
+                                </p>
+                                <div className="flex flex-wrap justify-center gap-2 mb-4">
+                                    {['Drink water', '10-minute walk', 'Read 5 pages', 'Stretch', 'Vitamins'].map((ex) => (
+                                        <span key={ex} className="px-3 py-1 text-xs text-neutral-400 bg-neutral-800/80 rounded-full border border-white/5">
+                                            {ex}
+                                        </span>
+                                    ))}
+                                </div>
+                                <button
+                                    onClick={onAddHabit}
+                                    className="flex items-center gap-2 px-5 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-neutral-900 font-medium rounded-lg transition-colors text-sm"
+                                >
+                                    Add Your First Habit
+                                </button>
                             </div>
                         )}
                     </div>
