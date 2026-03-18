@@ -362,7 +362,7 @@ const HabitTrackerContent: React.FC = () => {
               potentialEvidence={potentialEvidence}
             />
           ) : (
-            <DayView />
+            <DayView onAddHabit={() => setIsModalOpen(true)} />
           )
         ) : view === 'dashboard' ? (
           <ProgressDashboard

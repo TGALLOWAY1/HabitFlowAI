@@ -2,18 +2,20 @@ import { useState } from 'react';
 import { JournalDisplay } from '../components/Journal/JournalDisplay';
 import { JournalEditor } from '../components/Journal/JournalEditor';
 import type { JournalEntry } from '../models/persistenceTypes';
-import { LayoutTemplate, History } from 'lucide-react';
+import { PenLine, LayoutTemplate, History } from 'lucide-react';
 
-type JournalTab = 'templates' | 'history';
+type JournalTab = 'free' | 'templates' | 'history';
 
 export function JournalPage() {
-    const [activeTab, setActiveTab] = useState<JournalTab>('templates');
+    const [activeTab, setActiveTab] = useState<JournalTab>('free');
     const [editingEntry, setEditingEntry] = useState<JournalEntry | undefined>(undefined);
     // If true, we are in a special "Edit Mode" that overrides the tabs
     const [isEditingExisting, setIsEditingExisting] = useState(false);
 
     // Key to force refresh of list after save
     const [refreshKey, setRefreshKey] = useState(0);
+    // Key to force remount of free-write editor after save
+    const [freeWriteKey, setFreeWriteKey] = useState(0);
 
     const handleEdit = (entry: JournalEntry) => {
         setEditingEntry(entry);
@@ -24,6 +26,7 @@ export function JournalPage() {
         setEditingEntry(undefined);
         setIsEditingExisting(false);
         setRefreshKey(prev => prev + 1);
+        setFreeWriteKey(prev => prev + 1);
         // Switch to history to see new/updated entry
         setActiveTab('history');
     };
@@ -31,44 +34,34 @@ export function JournalPage() {
     const handleCancel = () => {
         setEditingEntry(undefined);
         setIsEditingExisting(false);
-        // If we were editing, go back to history. If we were creating (templates), we stay in templates (handled by editor logic mostly, but if top level cancel:
-        if (activeTab === 'templates') {
-            // No-op or reset default state if needed
-        }
     };
 
-    return (
-        <div className="container mx-auto px-4 py-8 max-w-4xl">
-            {/* Header Removed (Handled by App.tsx) */}
-            {/* <div className="flex justify-between items-end mb-6">...</div> */}
+    const tabs: { id: JournalTab; label: string; icon: typeof PenLine }[] = [
+        { id: 'free', label: 'Free', icon: PenLine },
+        { id: 'templates', label: 'Templates', icon: LayoutTemplate },
+        { id: 'history', label: 'History', icon: History },
+    ];
 
+    return (
+        <div className="px-3 sm:px-4 pb-4 max-w-4xl mx-auto overflow-hidden">
             {/* Tab Navigation (Hidden when editing an existing entry to focus) */}
             {!isEditingExisting && (
-                <div className="flex gap-4 border-b border-white/5 mb-6">
-                    <button
-                        onClick={() => setActiveTab('templates')}
-                        className={`pb-3 px-4 text-sm font-medium transition-colors relative ${activeTab === 'templates' ? 'text-emerald-400' : 'text-white/40 hover:text-white/60'}`}
-                    >
-                        <div className="flex items-center gap-2">
-                            <LayoutTemplate size={16} />
-                            Templates
-                        </div>
-                        {activeTab === 'templates' && (
-                            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-emerald-400 rounded-t-full" />
-                        )}
-                    </button>
-                    <button
-                        onClick={() => setActiveTab('history')}
-                        className={`pb-3 px-4 text-sm font-medium transition-colors relative ${activeTab === 'history' ? 'text-emerald-400' : 'text-white/40 hover:text-white/60'}`}
-                    >
-                        <div className="flex items-center gap-2">
-                            <History size={16} />
-                            History
-                        </div>
-                        {activeTab === 'history' && (
-                            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-emerald-400 rounded-t-full" />
-                        )}
-                    </button>
+                <div className="flex gap-4 border-b border-white/5 mb-4">
+                    {tabs.map(({ id, label, icon: Icon }) => (
+                        <button
+                            key={id}
+                            onClick={() => setActiveTab(id)}
+                            className={`pb-3 px-3 text-sm font-medium transition-colors relative ${activeTab === id ? 'text-emerald-400' : 'text-white/40 hover:text-white/60'}`}
+                        >
+                            <div className="flex items-center gap-2">
+                                <Icon size={16} />
+                                {label}
+                            </div>
+                            {activeTab === id && (
+                                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-emerald-400 rounded-t-full" />
+                            )}
+                        </button>
+                    ))}
                 </div>
             )}
 
@@ -83,15 +76,19 @@ export function JournalPage() {
                             onCancel={handleCancel}
                         />
                     </div>
+                ) : activeTab === 'free' ? (
+                    // Free Write Tab — skip straight to writing
+                    <div className="animate-in fade-in duration-300" key={freeWriteKey}>
+                        <JournalEditor
+                            initialTemplateId="free-write"
+                            onSave={handleSave}
+                        />
+                    </div>
                 ) : activeTab === 'templates' ? (
                     // Templates Tab (New Entry Mode)
                     <div className="animate-in fade-in duration-300">
                         <JournalEditor
                             onSave={handleSave}
-                            onCancel={() => {
-                                // If cancelling a new entry from templates, we just stay here
-                                // The editor handles internal reset
-                            }}
                         />
                     </div>
                 ) : (

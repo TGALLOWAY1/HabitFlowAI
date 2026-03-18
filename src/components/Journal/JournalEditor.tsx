@@ -12,6 +12,7 @@ interface JournalEditorProps {
     existingEntry?: JournalEntry;
     onSave: () => void;
     onCancel?: () => void;
+    initialTemplateId?: string;
 }
 
 // Map template/category IDs to Icons
@@ -40,7 +41,7 @@ const ICONS: Record<string, LucideIcon> = {
  * JournalEditor with Query Parameter Navigation support.
  * Uses 'jView', 'jCat', 'jTmp' query params to persist state.
  */
-export function JournalEditor({ existingEntry, onSave, onCancel }: JournalEditorProps) {
+export function JournalEditor({ existingEntry, onSave, onCancel, initialTemplateId }: JournalEditorProps) {
     // --- State Initialization ---
     // We read from URL params on mount/render to determine state, but also keep local state for instant UI updates.
 
@@ -48,6 +49,7 @@ export function JournalEditor({ existingEntry, onSave, onCancel }: JournalEditor
 
     const [step, setStep] = useState<'selection' | 'writing'>(() => {
         if (existingEntry) return 'writing';
+        if (initialTemplateId) return 'writing';
         const params = getParams();
         return params.get('jStep') === 'writing' ? 'writing' : 'selection';
     });
@@ -64,11 +66,11 @@ export function JournalEditor({ existingEntry, onSave, onCancel }: JournalEditor
 
     // Editor State
     const [selectedTemplateId, setSelectedTemplateId] = useState<string>(() => {
-        return existingEntry?.templateId || getParams().get('jTmp') || '';
+        return existingEntry?.templateId || initialTemplateId || getParams().get('jTmp') || '';
     });
 
     // Mode, Content, Date are local ephemeral state (lost on refresh unless saved, or we could persist content to localStorage)
-    const [mode, setMode] = useState<'standard' | 'deep' | 'free'>(existingEntry?.mode || 'standard');
+    const [mode, setMode] = useState<'standard' | 'deep' | 'free'>(existingEntry?.mode || (initialTemplateId === 'free-write' ? 'free' : 'standard'));
     const [content, setContent] = useState<Record<string, string>>(existingEntry?.content || {});
     const [date, setDate] = useState<string>(existingEntry?.date || new Date().toISOString().split('T')[0]);
 

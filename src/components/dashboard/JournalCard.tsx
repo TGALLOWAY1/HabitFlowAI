@@ -13,22 +13,22 @@ export const JournalCard: React.FC<JournalCardProps> = ({ onNavigateToJournal })
                     onClick={onNavigateToJournal}
                     className="flex flex-col items-center gap-1.5 p-2 rounded-xl hover:bg-neutral-800/50 transition-colors min-w-[48px]"
                 >
-                    <Clock size={18} className="text-amber-400" />
-                    <span className="text-[10px] text-neutral-500">History</span>
-                </button>
-                <button
-                    onClick={onNavigateToJournal}
-                    className="flex flex-col items-center gap-1.5 p-2 rounded-xl hover:bg-neutral-800/50 transition-colors min-w-[48px]"
-                >
-                    <PenLine size={18} className="text-amber-400" />
+                    <PenLine size={18} className="text-emerald-400" />
                     <span className="text-[10px] text-neutral-500">Free</span>
                 </button>
                 <button
                     onClick={onNavigateToJournal}
                     className="flex flex-col items-center gap-1.5 p-2 rounded-xl hover:bg-neutral-800/50 transition-colors min-w-[48px]"
                 >
-                    <LayoutTemplate size={18} className="text-amber-400" />
+                    <LayoutTemplate size={18} className="text-emerald-400" />
                     <span className="text-[10px] text-neutral-500">Template</span>
+                </button>
+                <button
+                    onClick={onNavigateToJournal}
+                    className="flex flex-col items-center gap-1.5 p-2 rounded-xl hover:bg-neutral-800/50 transition-colors min-w-[48px]"
+                >
+                    <Clock size={18} className="text-emerald-400" />
+                    <span className="text-[10px] text-neutral-500">History</span>
                 </button>
             </div>
         </div>

@@ -1176,7 +1176,7 @@ export const TrackerGrid = ({
                                 </button>
                                 <button
                                     onClick={onAddHabit}
-                                    className="p-1.5 rounded-lg hover:bg-neutral-800 text-neutral-500 hover:text-emerald-400 transition-colors"
+                                    className="p-1.5 rounded-lg hover:bg-neutral-800 text-emerald-400 hover:text-emerald-300 transition-colors"
                                     title="Add New Habit"
                                 >
                                     <Plus size={18} />

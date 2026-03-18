@@ -5,7 +5,7 @@ import { PinnedHabitsStrip } from './PinnedHabitsStrip';
 import { DayCategorySection } from './DayCategorySection';
 import { CategoryPickerModal } from '../CategoryPickerModal';
 import { format } from 'date-fns';
-import { Calendar } from 'lucide-react';
+import { Calendar, Plus, ListTodo, Layers } from 'lucide-react';
 import { fetchDayView, getLocalTimeZone } from '../../lib/persistenceClient';
 
 import type { Habit } from '../../types';
@@ -26,7 +26,11 @@ interface DayViewData {
     habits: DayViewHabitStatus[];
 }
 
-export const DayView = () => {
+interface DayViewProps {
+    onAddHabit?: () => void;
+}
+
+export const DayView = ({ onAddHabit }: DayViewProps = {}) => {
     const {
         habits,
         categories,
@@ -156,23 +160,59 @@ export const DayView = () => {
     // Empty State — show actionable guidance for new users
     if (todaysHabits.length === 0) {
         return (
-            <div className="flex flex-col items-center justify-center p-8 sm:p-12 text-center">
+            <div className="flex flex-col items-center justify-center p-6 sm:p-10 text-center">
                 <div className="w-14 h-14 bg-neutral-800 rounded-full flex items-center justify-center mb-5">
                     <Calendar size={28} className="text-neutral-500" />
                 </div>
                 <h3 className="text-lg font-semibold text-white mb-2">
                     Habits are actions that, when done consistently, move you towards your goals.
                 </h3>
-                <p className="text-sm text-neutral-400 mb-4 max-w-sm leading-relaxed">
+                <p className="text-sm text-neutral-400 mb-5 max-w-sm leading-relaxed">
                     Start with 1–3 habits you want to repeat most days.
                 </p>
-                <div className="flex flex-wrap justify-center gap-2 mb-6 max-w-sm">
-                    {['Drink water', '10-minute walk', 'Read 5 pages', 'Stretch', 'Vitamins'].map((ex) => (
-                        <span key={ex} className="px-3 py-1 text-xs text-neutral-400 bg-neutral-800/80 rounded-full border border-white/5">
-                            {ex}
-                        </span>
-                    ))}
+
+                {/* Example habits by category */}
+                <div className="w-full max-w-sm space-y-3 mb-5 text-left">
+                    <div>
+                        <p className="text-xs font-semibold text-emerald-400 mb-1.5 uppercase tracking-wider">Physical Health</p>
+                        <div className="flex flex-wrap gap-2">
+                            {['Morning Walk', 'Drink Water', 'Stretching'].map((ex) => (
+                                <span key={ex} className="px-3 py-1 text-xs text-neutral-400 bg-neutral-800/80 rounded-full border border-white/5">{ex}</span>
+                            ))}
+                        </div>
+                    </div>
+                    <div>
+                        <p className="text-xs font-semibold text-emerald-400 mb-1.5 uppercase tracking-wider">Mental Health</p>
+                        <div className="flex flex-wrap gap-2">
+                            {['Meditation', 'Gratitude Journal', 'Reading'].map((ex) => (
+                                <span key={ex} className="px-3 py-1 text-xs text-neutral-400 bg-neutral-800/80 rounded-full border border-white/5">{ex}</span>
+                            ))}
+                        </div>
+                    </div>
                 </div>
+
+                {/* Bundle examples */}
+                <div className="w-full max-w-sm space-y-2 mb-6 text-left">
+                    <p className="text-xs font-semibold text-neutral-500 mb-1.5 uppercase tracking-wider">Habit Bundles</p>
+                    <div className="flex items-center gap-2 px-3 py-2 bg-neutral-800/60 rounded-lg border border-white/5">
+                        <ListTodo size={14} className="text-indigo-400 flex-shrink-0" />
+                        <span className="text-xs text-neutral-400"><span className="text-neutral-300">Collection:</span> Morning Routine — Make Bed + Brush Teeth + Vitamins</span>
+                    </div>
+                    <div className="flex items-center gap-2 px-3 py-2 bg-neutral-800/60 rounded-lg border border-white/5">
+                        <Layers size={14} className="text-amber-400 flex-shrink-0" />
+                        <span className="text-xs text-neutral-400"><span className="text-neutral-300">Choice:</span> Cardio — Run OR Bike OR Swim</span>
+                    </div>
+                </div>
+
+                {onAddHabit && (
+                    <button
+                        onClick={onAddHabit}
+                        className="flex items-center gap-2 px-5 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-white font-medium rounded-lg transition-colors"
+                    >
+                        <Plus size={18} />
+                        Create Your First Habit
+                    </button>
+                )}
             </div>
         );
     }
