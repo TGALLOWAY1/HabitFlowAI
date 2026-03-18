@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useAuth } from '../store/AuthContext';
 import { getGeminiApiKey, setGeminiApiKey } from '../lib/geminiClient';
+import { deleteAllUserData } from '../lib/persistenceClient';
 import { Eye, EyeOff, ChevronRight, ArrowLeft } from 'lucide-react';
 
 interface SettingsModalProps {
@@ -13,6 +14,7 @@ export function SettingsModal({ isOpen, onClose, onRefresh }: SettingsModalProps
   const { user } = useAuth();
   const [showRefreshConfirm, setShowRefreshConfirm] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [geminiKey, setGeminiKey] = useState(() => getGeminiApiKey());
   const [showGeminiKey, setShowGeminiKey] = useState(false);
   const [geminiKeySaved, setGeminiKeySaved] = useState(false);
@@ -269,14 +271,24 @@ export function SettingsModal({ isOpen, onClose, onRefresh }: SettingsModalProps
                       </button>
                       <button
                         type="button"
-                        onClick={() => {
-                          // TODO: wire up data deletion API
-                          setShowDeleteConfirm(false);
-                          onClose();
+                        disabled={isDeleting}
+                        onClick={async () => {
+                          setIsDeleting(true);
+                          try {
+                            await deleteAllUserData();
+                            setShowDeleteConfirm(false);
+                            onClose();
+                            window.location.reload();
+                          } catch (err) {
+                            console.error('Failed to delete user data:', err);
+                            alert('Failed to delete data. Please try again.');
+                          } finally {
+                            setIsDeleting(false);
+                          }
                         }}
-                        className="px-3 py-1.5 rounded-lg bg-red-600 text-white hover:bg-red-500 text-sm"
+                        className="px-3 py-1.5 rounded-lg bg-red-600 text-white hover:bg-red-500 disabled:opacity-50 text-sm"
                       >
-                        Yes, delete everything
+                        {isDeleting ? 'Deleting...' : 'Yes, delete everything'}
                       </button>
                     </div>
                   </div>
