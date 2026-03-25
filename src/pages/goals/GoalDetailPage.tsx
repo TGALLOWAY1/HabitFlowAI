@@ -15,7 +15,7 @@ import { Loader2, ArrowLeft, Check, Edit, Trash2, Trophy, TrendingUp } from 'luc
 import { format, parseISO } from 'date-fns';
 import { DeleteGoalConfirmModal } from '../../components/goals/DeleteGoalConfirmModal';
 import { EditGoalModal } from '../../components/goals/EditGoalModal';
-import { deleteGoal, markGoalAsCompleted, fetchHabitEntries, getLocalTimeZone } from '../../lib/persistenceClient';
+import { deleteGoal, markGoalAsCompleted, fetchHabitEntries, getLocalTimeZone, createGoal } from '../../lib/persistenceClient';
 import { invalidateAllGoalCaches } from '../../lib/goalDataCache';
 import { GoalStatusChip } from '../../components/goals/GoalSharedComponents';
 import { GoalTrendChart } from '../../components/goals/GoalTrendChart';
@@ -31,11 +31,12 @@ interface GoalDetailPageProps {
     onNavigateToCompleted?: (goalId: string) => void;
     onViewWinArchive?: () => void;
     onViewHabit?: (habitId: string) => void;
+    onViewGoal?: (goalId: string) => void;
 }
 
 type Tab = 'cumulative' | 'dayByDay' | 'trend';
 
-export const GoalDetailPage: React.FC<GoalDetailPageProps> = ({ goalId, onBack, onNavigateToCompleted, onViewHabit }) => {
+export const GoalDetailPage: React.FC<GoalDetailPageProps> = ({ goalId, onBack, onNavigateToCompleted, onViewHabit, onViewGoal }) => {
     const { data, loading, error, refetch } = useGoalDetail(goalId);
     const { habits } = useHabitStore();
     const [activeTab, setActiveTab] = useState<Tab>('cumulative');
@@ -43,6 +44,10 @@ export const GoalDetailPage: React.FC<GoalDetailPageProps> = ({ goalId, onBack, 
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const [showCompleteConfirm, setShowCompleteConfirm] = useState(false);
     const [isMarkingComplete, setIsMarkingComplete] = useState(false);
+    const [showExtendForm, setShowExtendForm] = useState(false);
+    const [extendTarget, setExtendTarget] = useState('');
+    const [isExtending, setIsExtending] = useState(false);
+    const [extendError, setExtendError] = useState<string | null>(null);
 
     // Habit Entries State
     const [linkedHabitEntries, setLinkedHabitEntries] = useState<HabitEntry[]>([]);
@@ -206,6 +211,49 @@ export const GoalDetailPage: React.FC<GoalDetailPageProps> = ({ goalId, onBack, 
         } catch (err) {
             console.error('Error marking goal complete:', err);
             setIsMarkingComplete(false);
+        }
+    };
+
+    const handleExtendGoal = async () => {
+        if (!data) return;
+        const numTarget = parseFloat(extendTarget);
+        if (isNaN(numTarget) || numTarget <= 0) {
+            setExtendError('Target must be a positive number');
+            return;
+        }
+        if (numTarget <= (data.goal.targetValue ?? 0)) {
+            setExtendError(`New target must be higher than the original (${data.goal.targetValue})`);
+            return;
+        }
+
+        setIsExtending(true);
+        setExtendError(null);
+
+        try {
+            const { goal } = data;
+            const newGoal = await createGoal({
+                title: goal.title,
+                type: goal.type,
+                targetValue: numTarget,
+                unit: goal.unit,
+                linkedHabitIds: goal.linkedHabitIds,
+                deadline: goal.deadline,
+                categoryId: goal.categoryId,
+                notes: goal.notes,
+            });
+
+            invalidateAllGoalCaches();
+
+            // Navigate to the new active goal
+            if (onViewGoal) {
+                onViewGoal(newGoal.id);
+            } else if (onBack) {
+                onBack();
+            }
+        } catch (err) {
+            console.error('Error extending goal:', err);
+            setExtendError(err instanceof Error ? err.message : 'Failed to extend goal');
+            setIsExtending(false);
         }
     };
 
@@ -375,19 +423,65 @@ export const GoalDetailPage: React.FC<GoalDetailPageProps> = ({ goalId, onBack, 
                 </div>
             )}
 
-            {/* Extend Goal Button (for completed goals) */}
+            {/* Extend Goal (for completed goals) */}
             {goal.completedAt && goal.type !== 'onetime' && (
                 <div className="mb-8">
-                    <button
-                        onClick={() => setShowEditModal(true)}
-                        className="flex items-center gap-2 px-5 py-2.5 bg-blue-500/10 border border-blue-500/30 text-blue-400 rounded-lg hover:bg-blue-500/20 transition-colors font-medium text-sm"
-                    >
-                        <TrendingUp size={16} />
-                        Extend Goal
-                    </button>
-                    <p className="text-neutral-500 text-xs mt-2">
-                        Raise your target to keep pushing. Your existing progress carries over.
-                    </p>
+                    {!showExtendForm ? (
+                        <div>
+                            <button
+                                onClick={() => {
+                                    setExtendTarget(((goal.targetValue ?? 0) * 2).toString());
+                                    setExtendError(null);
+                                    setShowExtendForm(true);
+                                }}
+                                className="flex items-center gap-2 px-5 py-2.5 bg-blue-500/10 border border-blue-500/30 text-blue-400 rounded-lg hover:bg-blue-500/20 transition-colors font-medium text-sm"
+                            >
+                                <TrendingUp size={16} />
+                                Extend Goal
+                            </button>
+                            <p className="text-neutral-500 text-xs mt-2">
+                                Create a new goal with a higher target. This goal stays in your Win Archive.
+                            </p>
+                        </div>
+                    ) : (
+                        <div className="p-4 bg-blue-500/5 border border-blue-500/20 rounded-lg space-y-3">
+                            <div className="text-sm text-blue-300 font-medium">Set your new target</div>
+                            <div className="text-xs text-neutral-500">
+                                Original target: {goal.targetValue} {goal.unit} (completed). Your progress carries over to the new goal.
+                            </div>
+                            <div className="flex items-center gap-3">
+                                <input
+                                    type="number"
+                                    value={extendTarget}
+                                    onChange={(e) => setExtendTarget(e.target.value)}
+                                    min={(goal.targetValue ?? 0) + 1}
+                                    className="w-32 bg-neutral-800 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500"
+                                    placeholder="New target"
+                                    autoFocus
+                                />
+                                {goal.unit && <span className="text-neutral-400 text-sm">{goal.unit}</span>}
+                            </div>
+                            {extendError && (
+                                <div className="text-red-400 text-xs">{extendError}</div>
+                            )}
+                            <div className="flex items-center gap-3">
+                                <button
+                                    onClick={handleExtendGoal}
+                                    disabled={isExtending}
+                                    className="px-4 py-1.5 bg-blue-500 text-white font-medium text-sm rounded-lg hover:bg-blue-400 transition-colors disabled:opacity-50"
+                                >
+                                    {isExtending ? 'Creating...' : 'Create Extended Goal'}
+                                </button>
+                                <button
+                                    onClick={() => setShowExtendForm(false)}
+                                    disabled={isExtending}
+                                    className="px-3 py-1.5 text-neutral-400 hover:text-white text-sm transition-colors"
+                                >
+                                    Cancel
+                                </button>
+                            </div>
+                        </div>
+                    )}
                 </div>
             )}
 

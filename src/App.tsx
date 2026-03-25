@@ -341,6 +341,9 @@ const HabitTrackerContent: React.FC = () => {
                 setHistoryHabit(habit);
               }
             }}
+            onViewGoal={(goalId) => {
+              handleNavigate('goals', { goalId });
+            }}
           />
         ) : view === 'tracker' ? (
           trackerViewMode === 'grid' ? (
