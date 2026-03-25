@@ -18,7 +18,7 @@ import {
   validateHabitIds,
 } from '../repositories/goalRepository';
 import { getHabitsByUser } from '../repositories/habitRepository';
-import { getHabitEntriesByUser } from '../repositories/habitEntryRepository';
+// getHabitEntriesByUser removed — entries are now fetched filtered by habit ID in computeGoalsWithProgressFromData
 import { computeGoalProgressV2, computeGoalsWithProgressFromData } from '../utils/goalProgressUtilsV2';
 import { saveUploadedFile } from '../utils/fileStorage';
 import type { Goal } from '../../models/persistenceTypes';
@@ -297,15 +297,15 @@ export async function getGoalsWithProgress(req: Request, res: Response): Promise
 
     const userTimeZone = (timeZone && typeof timeZone === 'string') ? timeZone : 'UTC';
 
-    // Fetch goals, habits, and entries in parallel
-    const [goals, allHabits, habitEntries] = await Promise.all([
+    // Fetch goals and habits in parallel; entries are fetched filtered by
+    // linked habit IDs inside computeGoalsWithProgressFromData (via truthQuery)
+    const [goals, allHabits] = await Promise.all([
       getGoalsByUser(householdId, userId),
       getHabitsByUser(householdId, userId),
-      getHabitEntriesByUser(householdId, userId),
     ]);
 
     const goalsWithProgress = await computeGoalsWithProgressFromData(
-      goals, allHabits, householdId, userId, userTimeZone, habitEntries
+      goals, allHabits, householdId, userId, userTimeZone
     );
 
     res.status(200).json({

@@ -7,10 +7,10 @@ import type { HabitEntry } from '../../models/persistenceTypes';
 
 vi.mock('../repositories/habitEntryRepository', () => ({
   getHabitEntriesByHabit: vi.fn(),
-  getHabitEntriesByUser: vi.fn(),
+  getHabitEntriesByHabitIds: vi.fn(),
 }));
 
-import { getHabitEntriesByHabit, getHabitEntriesByUser } from '../repositories/habitEntryRepository';
+import { getHabitEntriesByHabit, getHabitEntriesByHabitIds } from '../repositories/habitEntryRepository';
 
 describe('truthQuery', () => {
   const householdId = 'household-1';
@@ -200,7 +200,7 @@ describe('truthQuery', () => {
         },
       ];
 
-      vi.mocked(getHabitEntriesByUser).mockResolvedValue(entries);
+      vi.mocked(getHabitEntriesByHabitIds).mockResolvedValue(entries);
 
       const views = await getEntryViewsForHabits([habitId, habitId2], householdId, userId, {
         timeZone,

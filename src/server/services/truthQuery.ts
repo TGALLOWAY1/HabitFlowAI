@@ -8,7 +8,7 @@
  * using the user's timezone before being returned.
  */
 
-import { getHabitEntriesByHabit, getHabitEntriesByUser } from '../repositories/habitEntryRepository';
+import { getHabitEntriesByHabit, getHabitEntriesByHabitIds } from '../repositories/habitEntryRepository';
 import { allowDayKeyLegacyFallback } from '../utils/dayKey';
 import type { HabitEntry } from '../../models/persistenceTypes';
 import type { DayKey } from '../../domain/time/dayKey';
@@ -62,6 +62,7 @@ export async function getEntryViewsForHabit(
 
 /**
  * Get entry views for multiple habits (HabitEntries only).
+ * Fetches only entries for the specified habits at the DB level.
  */
 export async function getEntryViewsForHabits(
   habitIds: string[],
@@ -69,8 +70,8 @@ export async function getEntryViewsForHabits(
   userId: string,
   args: { startDayKey?: DayKey; endDayKey?: DayKey; timeZone: string }
 ): Promise<EntryView[]> {
-  const allEntries = await getHabitEntriesByUser(householdId, userId);
-  return buildEntryViewsFromEntries(allEntries, habitIds, args);
+  const entries = await getHabitEntriesByHabitIds(habitIds, householdId, userId);
+  return buildEntryViewsFromEntries(entries, habitIds, args);
 }
 
 /**
