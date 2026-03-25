@@ -357,7 +357,7 @@ export async function deleteHabitEntryByKey(
 /**
  * Get all habit entries for a user.
  * Essential for progress aggregation.
- * 
+ *
  * @param userId - User ID
  * @returns Array of HabitEntry
  */
@@ -370,6 +370,35 @@ export async function getHabitEntriesByUser(
 
     const documents = await collection
         .find(scopeFilter(householdId, userId, { deletedAt: { $exists: false } }))
+        .toArray();
+
+    return documents.map(doc => mapDocToEntry(doc));
+}
+
+/**
+ * Get habit entries for a specific set of habit IDs (scoped to household + user).
+ * Uses MongoDB $in to filter at the DB level, avoiding loading all user entries.
+ *
+ * @param habitIds - Array of habit IDs to fetch entries for
+ * @param householdId - Household ID
+ * @param userId - User ID
+ * @returns Array of HabitEntry for the specified habits
+ */
+export async function getHabitEntriesByHabitIds(
+    habitIds: string[],
+    householdId: string,
+    userId: string
+): Promise<HabitEntry[]> {
+    if (habitIds.length === 0) return [];
+
+    const db = await getDb();
+    const collection = db.collection(COLLECTION_NAME);
+
+    const documents = await collection
+        .find(scopeFilter(householdId, userId, {
+            habitId: { $in: habitIds },
+            deletedAt: { $exists: false },
+        }))
         .toArray();
 
     return documents.map(doc => mapDocToEntry(doc));

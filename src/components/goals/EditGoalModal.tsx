@@ -139,6 +139,10 @@ export const EditGoalModal: React.FC<EditGoalModalProps> = ({
         setIsSubmitting(true);
 
         try {
+            // If extending a completed goal (target increased), clear completedAt to reopen it
+            const isExtending = goal.completedAt && goal.type !== 'onetime' &&
+                numTarget > (goal.targetValue ?? 0);
+
             await updateGoal(goal.id, {
                 title,
                 notes: description,
@@ -147,6 +151,7 @@ export const EditGoalModal: React.FC<EditGoalModalProps> = ({
                 linkedHabitIds: validSelectedIds, // Use sanitized IDs
                 deadline: deadline || undefined,
                 categoryId: categoryId || undefined,
+                ...(isExtending ? { completedAt: null } : {}),
             });
 
             // Invalidate cache

@@ -41,6 +41,19 @@ export const GoalCompletedPage: React.FC<GoalCompletedPageProps> = ({
         return () => clearTimeout(timer);
     }, []);
 
+    // Calculate time span (must be before early returns to satisfy Rules of Hooks)
+    const timeSpan = useMemo(() => {
+        if (!data?.goal.createdAt || !data?.goal.completedAt) return null;
+        try {
+            const startDate = parseISO(data.goal.createdAt);
+            const endDate = parseISO(data.goal.completedAt);
+            const days = differenceInDays(endDate, startDate);
+            return days;
+        } catch {
+            return null;
+        }
+    }, [data?.goal.createdAt, data?.goal.completedAt]);
+
     if (loading) {
         return (
             <div className="w-full max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
@@ -63,19 +76,6 @@ export const GoalCompletedPage: React.FC<GoalCompletedPageProps> = ({
     }
 
     const { goal } = data;
-
-    // Calculate time span
-    const timeSpan = useMemo(() => {
-        if (!goal.createdAt || !goal.completedAt) return null;
-        try {
-            const startDate = parseISO(goal.createdAt);
-            const endDate = parseISO(goal.completedAt);
-            const days = differenceInDays(endDate, startDate);
-            return days;
-        } catch {
-            return null;
-        }
-    }, [goal.createdAt, goal.completedAt]);
 
     // Format dates for display
     const createdDateFormatted = goal.createdAt
