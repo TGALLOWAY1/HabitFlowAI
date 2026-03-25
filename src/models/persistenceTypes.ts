@@ -964,8 +964,8 @@ export interface Goal {
     /** ISO 8601 timestamp of when the goal was created */
     createdAt: string;
 
-    /** Optional ISO 8601 timestamp of when the goal was completed */
-    completedAt?: string;
+    /** Optional ISO 8601 timestamp of when the goal was completed. Set to null to reopen. */
+    completedAt?: string | null;
 
     /** Optional free-text notes about the goal */
     notes?: string;

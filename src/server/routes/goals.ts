@@ -620,7 +620,8 @@ export async function updateGoalRoute(req: Request, res: Response): Promise<void
         });
         return;
       }
-      patch.completedAt = req.body.completedAt || undefined;
+      // Preserve null to allow clearing completion (reopening a goal)
+      patch.completedAt = req.body.completedAt === null ? null : req.body.completedAt;
     }
 
     if (req.body.notes !== undefined) {
