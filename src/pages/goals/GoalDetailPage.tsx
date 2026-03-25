@@ -231,13 +231,21 @@ export const GoalDetailPage: React.FC<GoalDetailPageProps> = ({ goalId, onBack, 
 
         try {
             const { goal } = data;
+            // Clear past deadlines to avoid invalid date intervals in GoalTrendChart
+            const deadline = goal.deadline && goal.deadline >= new Date().toISOString().slice(0, 10)
+                ? goal.deadline
+                : undefined;
+
             const newGoal = await createGoal({
                 title: goal.title,
                 type: goal.type,
                 targetValue: numTarget,
                 unit: goal.unit,
                 linkedHabitIds: goal.linkedHabitIds,
-                deadline: goal.deadline,
+                linkedTargets: goal.linkedTargets,
+                aggregationMode: goal.aggregationMode,
+                countMode: goal.countMode,
+                deadline,
                 categoryId: goal.categoryId,
                 notes: goal.notes,
             });
