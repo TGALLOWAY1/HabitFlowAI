@@ -14,6 +14,7 @@ export interface WellbeingSession {
     calm?: number; // 0-4
     stress?: number; // 0-4
     focus?: number; // 0-4
+    satisfaction?: number; // 0-4
     notes?: string;
 }
 
@@ -31,6 +32,7 @@ export interface DailyWellbeing {
     calm?: number;
     stress?: number;
     focus?: number;
+    satisfaction?: number;
     notes?: string;
 }
 
