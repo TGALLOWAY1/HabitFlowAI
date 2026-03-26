@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Save, Sun, Moon, Battery, Activity, Brain, Wind, Target, Focus as FocusIcon, Heart } from 'lucide-react';
+import { X, Save, Sun, Moon, Battery, Activity, Brain, Wind, Target, Focus as FocusIcon, Heart, SmilePlus } from 'lucide-react';
 import { useHabitStore } from '../store/HabitContext';
 import { format } from 'date-fns';
 import type { WellbeingSession } from '../types';
@@ -24,6 +24,7 @@ const INITIAL_SESSION: WellbeingSession = {
     calm: 2,
     stress: 2,
     focus: 2,
+    satisfaction: 2,
     sleepQuality: 2,
     notes: ''
 };
@@ -52,6 +53,7 @@ const METRIC_UI: Record<WellbeingMetricKey, MetricUiConfig> = {
     calm: { key: 'calm', label: 'Calm', icon: <Wind size={16} className="text-emerald-400" />, colorClass: 'text-emerald-400', min: 0, max: 4, step: 1, kind: 'number' },
     stress: { key: 'stress', label: 'Stress', icon: <Target size={16} className="text-orange-400" />, colorClass: 'text-orange-400', min: 0, max: 4, step: 1, kind: 'number' },
     focus: { key: 'focus', label: 'Focus', icon: <FocusIcon size={16} className="text-amber-300" />, colorClass: 'text-amber-300', min: 0, max: 4, step: 1, kind: 'number' },
+    satisfaction: { key: 'satisfaction', label: 'Satisfaction', icon: <SmilePlus size={16} className="text-lime-400" />, colorClass: 'text-lime-400', min: 0, max: 4, step: 1, kind: 'number' },
     notes: { key: 'notes', label: 'Notes (Optional)', icon: null, colorClass: 'text-neutral-300', min: 0, max: 0, step: 1, kind: 'text' },
     readiness: { key: 'readiness', label: 'Readiness', icon: null, colorClass: 'text-neutral-400', min: 0, max: 4, step: 1, kind: 'number' },
     soreness: { key: 'soreness', label: 'Soreness', icon: null, colorClass: 'text-neutral-400', min: 0, max: 4, step: 1, kind: 'number' },

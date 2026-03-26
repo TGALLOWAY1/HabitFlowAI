@@ -702,6 +702,9 @@ export interface WellbeingSession {
     /** Subjective focus on a scale of 0-4 */
     focus?: number;
 
+    /** Subjective satisfaction on a scale of 0-4 */
+    satisfaction?: number;
+
     /** Optional free-text notes for this session */
     notes?: string;
 }
@@ -751,6 +754,7 @@ export interface DailyWellbeing {
     calm?: number;
     stress?: number;
     focus?: number;
+    satisfaction?: number;
     notes?: string;
 }
 
@@ -772,6 +776,7 @@ export const WELLBEING_METRIC_KEYS = [
     'calm',
     'stress',
     'focus',
+    'satisfaction',
     'notes',
     // Fitness Persona readiness metrics
     'readiness',
