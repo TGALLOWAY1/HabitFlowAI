@@ -213,7 +213,7 @@ export const ProgressDashboard: React.FC<ProgressDashboardProps> = ({
                         {progressData && progressData.goalsWithProgress.length > 0 && (
                             <button
                                 onClick={() => setShowGoalManage(s => !s)}
-                                className={`text-[11px] transition-colors ${showGoalManage ? 'text-emerald-400' : 'text-neutral-500 hover:text-white'}`}
+                                className={`text-[11px] transition-colors ${showGoalManage ? 'text-white' : 'text-emerald-400 hover:text-emerald-300'}`}
                             >
                                 {showGoalManage ? 'Done' : 'Manage'}
                             </button>

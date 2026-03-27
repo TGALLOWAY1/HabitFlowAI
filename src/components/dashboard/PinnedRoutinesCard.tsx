@@ -215,7 +215,7 @@ export const PinnedRoutinesCard: React.FC<PinnedRoutinesCardProps> = ({
                     <h3 className="text-sm font-semibold text-white">Pinned Routines</h3>
                     <button
                         onClick={() => setShowManage(true)}
-                        className="text-[11px] text-neutral-500 hover:text-white transition-colors"
+                        className="text-[11px] text-emerald-400 hover:text-emerald-300 transition-colors"
                     >
                         Manage
                     </button>
@@ -248,7 +248,7 @@ export const PinnedRoutinesCard: React.FC<PinnedRoutinesCardProps> = ({
                             setShowManage(s => !s);
                             setCustomizingId(null);
                         }}
-                        className={`text-[11px] transition-colors ${showManage ? 'text-emerald-400' : 'text-neutral-500 hover:text-white'}`}
+                        className={`text-[11px] transition-colors ${showManage ? 'text-white' : 'text-emerald-400 hover:text-emerald-300'}`}
                     >
                         {showManage ? 'Done' : 'Manage'}
                     </button>
