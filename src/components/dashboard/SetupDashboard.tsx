@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Sparkles, Calendar, CheckSquare, BookOpenText, Target, Check } from 'lucide-react';
 
 interface SetupStep {
@@ -16,6 +16,7 @@ interface SetupDashboardProps {
   hasJournalEntries: boolean;
   goalsCount: number;
   onNavigate: (route: string) => void;
+  onDismiss: () => void;
 }
 
 export const SetupDashboard: React.FC<SetupDashboardProps> = ({
@@ -24,6 +25,7 @@ export const SetupDashboard: React.FC<SetupDashboardProps> = ({
   hasJournalEntries,
   goalsCount,
   onNavigate,
+  onDismiss,
 }) => {
   const steps: SetupStep[] = [
     {
@@ -63,6 +65,13 @@ export const SetupDashboard: React.FC<SetupDashboardProps> = ({
   const completedCount = steps.filter(s => s.completed).length;
   const firstIncomplete = steps.find(s => !s.completed);
 
+  useEffect(() => {
+    if (completedCount === steps.length) {
+      const timer = setTimeout(onDismiss, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [completedCount, steps.length, onDismiss]);
+
   return (
     <div className="flex flex-col gap-6 pb-8">
       {/* Welcome Header */}
@@ -89,6 +98,16 @@ export const SetupDashboard: React.FC<SetupDashboardProps> = ({
           ))}
         </div>
         <span className="text-xs text-neutral-500 ml-2">{completedCount}/{steps.length}</span>
+      </div>
+
+      {/* Skip guide */}
+      <div className="flex justify-center">
+        <button
+          onClick={onDismiss}
+          className="text-xs text-neutral-600 hover:text-neutral-400 transition-colors"
+        >
+          Skip guide
+        </button>
       </div>
 
       {/* Primary CTA */}
@@ -159,6 +178,7 @@ export const SetupDashboard: React.FC<SetupDashboardProps> = ({
         <div className="text-center py-4">
           <p className="text-emerald-400 text-sm font-medium mb-1">You're all set!</p>
           <p className="text-neutral-500 text-xs">Your dashboard will fill in as you use HabitFlow.</p>
+          <p className="text-neutral-600 text-xs mt-1">You can reopen this guide anytime from Settings.</p>
         </div>
       )}
     </div>
