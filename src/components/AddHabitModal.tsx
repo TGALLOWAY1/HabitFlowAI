@@ -11,9 +11,10 @@ interface AddHabitModalProps {
     onClose: () => void;
     categoryId?: string;
     initialData?: Habit | null;
+    onNavigate?: (route: string) => void;
 }
 
-export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, categoryId, initialData }) => {
+export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, categoryId, initialData, onNavigate }) => {
     const { addHabit, updateHabit, categories, habits, addCategory } = useHabitStore();
     const { routines, addRoutine, updateRoutine } = useRoutineStore();
 
@@ -846,21 +847,47 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
 
                     {/* Goal Linker */}
                     <div className="space-y-1">
-                        <label className="block text-sm font-medium text-neutral-400">Link to Goal (Optional)</label>
-                        <div className="relative">
-                            <Trophy size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500" />
-                            <select
-                                value={linkedGoalId || ''}
-                                onChange={(e) => setLinkedGoalId(e.target.value || null)}
-                                className="w-full bg-neutral-800 border border-white/10 rounded-lg pl-10 pr-4 py-2 text-white focus:outline-none focus:border-emerald-500 appearance-none"
-                            >
-                                <option value="">No goal linked</option>
-                                {availableGoals.map(g => (
-                                    <option key={g.id} value={g.id}>{g.title}</option>
-                                ))}
-                            </select>
-                            <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-500 pointer-events-none" />
-                        </div>
+                        <label className="block text-sm font-medium text-neutral-400">Connect to a Goal (Optional)</label>
+                        {availableGoals.length > 0 ? (
+                            <>
+                                <div className="relative">
+                                    <Trophy size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500" />
+                                    <select
+                                        value={linkedGoalId || ''}
+                                        onChange={(e) => setLinkedGoalId(e.target.value || null)}
+                                        className="w-full bg-neutral-800 border border-white/10 rounded-lg pl-10 pr-4 py-2 text-white focus:outline-none focus:border-emerald-500 appearance-none"
+                                    >
+                                        <option value="">No goal linked</option>
+                                        {availableGoals.map(g => (
+                                            <option key={g.id} value={g.id}>{g.title}</option>
+                                        ))}
+                                    </select>
+                                    <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-500 pointer-events-none" />
+                                </div>
+                                {onNavigate && (
+                                    <button
+                                        type="button"
+                                        onClick={() => { onClose(); onNavigate('goals'); }}
+                                        className="flex items-center gap-1 text-xs text-emerald-400 hover:text-emerald-300 transition-colors mt-1"
+                                    >
+                                        <Plus size={12} /> New goal
+                                    </button>
+                                )}
+                            </>
+                        ) : (
+                            <p className="text-sm text-neutral-500">
+                                You can connect habits to goals later.
+                                {onNavigate && (
+                                    <button
+                                        type="button"
+                                        onClick={() => { onClose(); onNavigate('goals'); }}
+                                        className="text-emerald-400 hover:text-emerald-300 underline ml-1 transition-colors"
+                                    >
+                                        Create a goal
+                                    </button>
+                                )}
+                            </p>
+                        )}
                     </div>
 
                     {/* Routine Linker */}
