@@ -876,15 +876,18 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                             </>
                         ) : (
                             <p className="text-sm text-neutral-500">
-                                You can connect habits to goals later.
+                                No goals yet — you can always connect one later.
                                 {onNavigate && (
-                                    <button
-                                        type="button"
-                                        onClick={() => { onClose(); onNavigate('goals'); }}
-                                        className="text-emerald-400 hover:text-emerald-300 underline ml-1 transition-colors"
-                                    >
-                                        Create a goal
-                                    </button>
+                                    <>
+                                        {' '}
+                                        <button
+                                            type="button"
+                                            onClick={() => { onClose(); onNavigate('goals'); }}
+                                            className="text-emerald-400 hover:text-emerald-300 underline transition-colors"
+                                        >
+                                            Want to start with a goal first?
+                                        </button>
+                                    </>
                                 )}
                             </p>
                         )}
