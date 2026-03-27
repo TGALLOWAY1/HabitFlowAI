@@ -403,3 +403,75 @@ export async function getHabitEntriesByHabitIds(
 
     return documents.map(doc => mapDocToEntry(doc));
 }
+
+/**
+ * Get habit entries for specific habits since a given dayKey.
+ * Only returns entries with dayKey >= sinceDayKey (lexicographic comparison).
+ * Used for recent-window queries (e.g. last 30 days for goal heatmaps).
+ */
+export async function getHabitEntriesByHabitIdsSince(
+    habitIds: string[],
+    householdId: string,
+    userId: string,
+    sinceDayKey: string
+): Promise<HabitEntry[]> {
+    if (habitIds.length === 0) return [];
+
+    const db = await getDb();
+    const collection = db.collection(COLLECTION_NAME);
+
+    const documents = await collection
+        .find(scopeFilter(householdId, userId, {
+            habitId: { $in: habitIds },
+            deletedAt: { $exists: false },
+            dayKey: { $gte: sinceDayKey },
+        }))
+        .toArray();
+
+    return documents.map(doc => mapDocToEntry(doc));
+}
+
+/**
+ * Aggregate entry totals per habit using MongoDB aggregation pipeline.
+ * Returns sum of values and entry count per habitId without transferring documents.
+ * Used for efficient cumulative goal progress computation.
+ */
+export async function aggregateHabitEntryTotals(
+    habitIds: string[],
+    householdId: string,
+    userId: string
+): Promise<Array<{ habitId: string; totalValue: number; entryCount: number; distinctDays: number }>> {
+    if (habitIds.length === 0) return [];
+
+    const db = await getDb();
+    const collection = db.collection(COLLECTION_NAME);
+
+    const pipeline = [
+        {
+            $match: scopeFilter(householdId, userId, {
+                habitId: { $in: habitIds },
+                deletedAt: { $exists: false },
+            }),
+        },
+        {
+            $group: {
+                _id: '$habitId',
+                totalValue: { $sum: { $ifNull: ['$value', 0] } },
+                entryCount: { $sum: 1 },
+                distinctDays: { $addToSet: '$dayKey' },
+            },
+        },
+        {
+            $project: {
+                _id: 0,
+                habitId: '$_id',
+                totalValue: 1,
+                entryCount: 1,
+                distinctDays: { $size: '$distinctDays' },
+            },
+        },
+    ];
+
+    const results = await collection.aggregate(pipeline).toArray();
+    return results as Array<{ habitId: string; totalValue: number; entryCount: number; distinctDays: number }>;
+}
