@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Check, Target, Clock, Pin, PinOff, ListTodo, Layers, FolderInput } from 'lucide-react';
+import { Check, Target, Clock, Pin, PinOff, ListTodo, Layers, FolderInput, Trophy } from 'lucide-react';
 import type { Habit, DayLog } from '../../types';
 import { cn } from '../../utils/cn';
 
@@ -189,6 +189,11 @@ export const HabitGridCell = ({
                 )}>
                     {habit.name}
                 </span>
+
+                {/* Goal Indicator */}
+                {habit.linkedGoalId && (
+                    <Trophy size={12} className="flex-shrink-0 text-amber-500" />
+                )}
 
                 {/* Status Badge - Right */}
                 <div className="flex-shrink-0 flex items-center justify-center">
