@@ -988,7 +988,6 @@ export const TrackerGrid = ({
         return dates.slice(dateOffset, dateOffset + visibleCount);
     }, [dates, dateOffset, visibleCount]);
 
-    const canGoOlder = dateOffset + visibleCount < dates.length;
     const canGoNewer = dateOffset > 0;
     const showArrows = visibleCount < dates.length;
 
