@@ -425,6 +425,7 @@ const HabitTrackerContent: React.FC = () => {
         }}
         categoryId={activeCategoryId}
         initialData={editingHabit}
+        onNavigate={(route) => handleNavigate(route as AppRoute)}
       />
 
       {
