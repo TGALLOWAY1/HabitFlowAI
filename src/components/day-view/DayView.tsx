@@ -239,13 +239,8 @@ export const DayView = ({ onAddHabit }: DayViewProps = {}) => {
     return (
         <div className="flex flex-col w-full max-w-6xl mx-auto pb-24 px-4 sm:px-6">
             {/* Header */}
-            <div className="py-8 flex items-start justify-between">
-                <div>
-                    <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-neutral-400">
-                        Today
-                    </h1>
-                    <p className="text-neutral-500 font-medium mt-1">{displayDate}</p>
-                </div>
+            <div className="py-3 flex items-center justify-between">
+                <p className="text-neutral-400 font-medium">{displayDate}</p>
                 {onAddHabit && (
                     <button
                         onClick={onAddHabit}
