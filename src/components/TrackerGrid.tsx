@@ -2,7 +2,7 @@ import React, { useMemo, useState, useEffect } from 'react';
 import { format, eachDayOfInterval, subDays, isToday } from 'date-fns';
 import { type Habit, type DayLog, type Routine, type HabitPotentialEvidence } from '../types';
 import { cn } from '../utils/cn';
-import { Check, Plus, Trash2, GripVertical, Pencil, Play, Flame, History, Zap, Link2, FolderInput, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Check, Plus, Trash2, GripVertical, Pencil, Play, Flame, History, Zap, Link2, FolderInput, ChevronRight } from 'lucide-react';
 import { CategoryPickerModal } from './CategoryPickerModal';
 
 import { NumericInputPopover } from './NumericInputPopover';
@@ -988,7 +988,6 @@ export const TrackerGrid = ({
         return dates.slice(dateOffset, dateOffset + visibleCount);
     }, [dates, dateOffset, visibleCount]);
 
-    const canGoOlder = dateOffset + visibleCount < dates.length;
     const canGoNewer = dateOffset > 0;
     const showArrows = visibleCount < dates.length;
 
@@ -1217,16 +1216,6 @@ export const TrackerGrid = ({
                                 </button>
                             </div>
                         </div>
-                        {showArrows && (
-                            <button
-                                onClick={() => setDateOffset(prev => Math.min(prev + 1, dates.length - visibleCount))}
-                                disabled={!canGoOlder}
-                                className="w-8 flex-shrink-0 flex items-center justify-center text-neutral-500 hover:text-white disabled:opacity-20 disabled:cursor-default bg-neutral-900 border-r border-white/5 transition-colors"
-                                title="Show older dates"
-                            >
-                                <ChevronLeft size={16} />
-                            </button>
-                        )}
                         <div className="flex flex-1 bg-neutral-900">
                             {visibleDates.map((date) => (
                                 <div

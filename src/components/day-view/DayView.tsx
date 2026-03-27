@@ -137,16 +137,19 @@ export const DayView = ({ onAddHabit }: DayViewProps = {}) => {
     }, [todaysHabits]);
 
     // 3. Group by Category
+    const UNCATEGORIZED_ID = '__uncategorized__';
     const groupedHabits = useMemo(() => {
         const groups = new Map<string, Habit[]>();
-        categories.forEach(c => groups.set(c.id, [])); // Init groups
+        categories.forEach(c => groups.set(c.id, []));
 
         todaysHabits.forEach(h => {
             const list = groups.get(h.categoryId);
             if (list) list.push(h);
             else {
-                // Fallback if category missing?
-                // Ignore or add to 'Uncategorized'? safe to ignore for now
+                // Habit's category doesn't exist — group as uncategorized
+                const uncategorized = groups.get(UNCATEGORIZED_ID) || [];
+                uncategorized.push(h);
+                groups.set(UNCATEGORIZED_ID, uncategorized);
             }
         });
         return groups;
@@ -236,13 +239,8 @@ export const DayView = ({ onAddHabit }: DayViewProps = {}) => {
     return (
         <div className="flex flex-col w-full max-w-6xl mx-auto pb-24 px-4 sm:px-6">
             {/* Header */}
-            <div className="py-8 flex items-start justify-between">
-                <div>
-                    <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-neutral-400">
-                        Today
-                    </h1>
-                    <p className="text-neutral-500 font-medium mt-1">{displayDate}</p>
-                </div>
+            <div className="py-3 flex items-center justify-between">
+                <p className="text-neutral-400 font-medium">{displayDate}</p>
                 {onAddHabit && (
                     <button
                         onClick={onAddHabit}
@@ -305,6 +303,22 @@ export const DayView = ({ onAddHabit }: DayViewProps = {}) => {
                             />
                         );
                     })}
+                    {(groupedHabits.get(UNCATEGORIZED_ID) || []).length > 0 && (
+                        <DayCategorySection
+                            key={UNCATEGORIZED_ID}
+                            category={{ id: UNCATEGORIZED_ID, name: 'Uncategorized', color: 'bg-amber-600' }}
+                            habits={groupedHabits.get(UNCATEGORIZED_ID)!}
+                            habitStatusMap={resolvedHabitStatusMap}
+                            dateStr={dateStr}
+                            onToggle={handleToggle}
+                            onPin={handlePin}
+                            onUpdateEstimate={handleUpdateEstimate}
+                            onMoveToCategory={(h) => setCategoryPickerHabit(h)}
+                            allHabitsLookup={allHabitsLookup}
+                            onUpdateHabitEntry={upsertHabitEntry}
+                            deleteHabitEntryByKey={deleteHabitEntryByKey}
+                        />
+                    )}
                 </div>
             )}
 

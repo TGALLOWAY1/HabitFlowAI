@@ -24,6 +24,7 @@ interface CategoryTabsProps {
     categories: Category[];
     activeCategoryId: string;
     onSelectCategory: (id: string) => void;
+    uncategorized?: Category | null;
 }
 
 interface SortableCategoryPillProps {
@@ -192,6 +193,7 @@ export const CategoryTabs: React.FC<CategoryTabsProps> = ({
     categories,
     activeCategoryId,
     onSelectCategory,
+    uncategorized,
 }) => {
     const { addCategory, deleteCategory, reorderCategories, updateCategory } = useHabitStore();
     const [isAdding, setIsAdding] = React.useState(false);
@@ -306,6 +308,19 @@ export const CategoryTabs: React.FC<CategoryTabsProps> = ({
                     ))}
                 </SortableContext>
             </DndContext>
+
+            {uncategorized && (
+                <button
+                    onClick={() => onSelectCategory(uncategorized.id)}
+                    className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap flex-shrink-0 transition-all ${
+                        activeCategoryId === uncategorized.id
+                            ? 'bg-amber-500 text-neutral-900 shadow-lg shadow-amber-500/20'
+                            : 'bg-neutral-800 text-amber-400 hover:bg-neutral-700 border border-amber-500/30'
+                    }`}
+                >
+                    Uncategorized
+                </button>
+            )}
 
             {reorderMode ? (
                 <button

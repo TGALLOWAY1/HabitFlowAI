@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { AuthProvider } from './store/AuthContext';
 import { HabitProvider, useHabitStore } from './store/HabitContext';
 import { RoutineProvider } from './store/RoutineContext';
@@ -188,7 +188,24 @@ const HabitTrackerContent: React.FC = () => {
     window.history.pushState({ view: route, ...params }, "", url);
   };
 
-  const filteredHabits = habits.filter(h => h.categoryId === activeCategoryId && !h.archived);
+  // Detect habits whose categoryId doesn't match any existing category
+  const categoryIds = useMemo(() => new Set(categories.map(c => c.id)), [categories]);
+  const hasUncategorized = useMemo(
+    () => habits.some(h => !h.archived && !categoryIds.has(h.categoryId)),
+    [habits, categoryIds]
+  );
+
+  const UNCATEGORIZED_ID = '__uncategorized__';
+  const uncategorizedCategory = useMemo(
+    () => hasUncategorized ? { id: UNCATEGORIZED_ID, name: 'Uncategorized', color: 'bg-amber-600' } : null,
+    [hasUncategorized]
+  );
+
+  const filteredHabits = habits.filter(h => {
+    if (h.archived) return false;
+    if (activeCategoryId === UNCATEGORIZED_ID) return !categoryIds.has(h.categoryId);
+    return h.categoryId === activeCategoryId;
+  });
 
   return (
     <div className="flex flex-col h-full gap-6">
@@ -242,6 +259,7 @@ const HabitTrackerContent: React.FC = () => {
             categories={categories}
             activeCategoryId={activeCategoryId}
             onSelectCategory={setActiveCategoryId}
+            uncategorized={uncategorizedCategory}
           />
         )
       }
