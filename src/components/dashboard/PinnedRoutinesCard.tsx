@@ -8,6 +8,7 @@ import {
 import { useRoutineStore } from '../../store/RoutineContext';
 import type { Routine } from '../../models/persistenceTypes';
 import { isMultiVariant, resolveVariant } from '../../lib/routineVariantUtils';
+import { fetchDashboardPrefs, updateDashboardPrefs } from '../../lib/persistenceClient';
 
 const STORAGE_KEY = 'hf_pinned_routines';
 
@@ -61,12 +62,31 @@ function usePinnedRoutines() {
         }
     });
 
+    // Hydrate from backend on mount — backend is source of truth
+    useEffect(() => {
+        let cancelled = false;
+        fetchDashboardPrefs()
+            .then(prefs => {
+                if (cancelled) return;
+                const backendIds = prefs.pinnedRoutineIds ?? [];
+                setPinnedIds(backendIds);
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(backendIds));
+            })
+            .catch(() => {
+                // Keep localStorage fallback on network failure
+            });
+        return () => { cancelled = true; };
+    }, []);
+
     const togglePin = useCallback((id: string) => {
         setPinnedIds(prev => {
             const next = prev.includes(id)
                 ? prev.filter(x => x !== id)
                 : [...prev, id];
+            // Update both caches immediately for responsiveness
             localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+            // Persist to backend (fire-and-forget; localStorage is fallback)
+            updateDashboardPrefs({ pinnedRoutineIds: next }).catch(() => {});
             return next;
         });
     }, []);
