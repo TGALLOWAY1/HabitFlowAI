@@ -83,10 +83,17 @@ export const DayView = ({ onAddHabit }: DayViewProps = {}) => {
         return getHabitsForDate(habits, today);
     }, [habits, today]);
 
+    // Lookup Map for Bundle Resolution
+    const allHabitsLookup = useMemo(() => {
+        return new Map(habits.map(h => [h.id, h]));
+    }, [habits]);
+
     // Merge with context logs so toggles from Today view update UI immediately
     const resolvedHabitStatusMap = useMemo(() => {
         const map = new Map(habitStatusMap);
-        todaysHabits.forEach(habit => {
+
+        // Helper to merge a single habit's log into the map
+        const mergeHabitLog = (habit: Habit) => {
             const key = `${habit.id}-${dateStr}`;
             const log = logs[key];
             if (log !== undefined) {
@@ -95,7 +102,7 @@ export const DayView = ({ onAddHabit }: DayViewProps = {}) => {
                     : !!log.completed;
                 const existing = map.get(habit.id);
                 if (existing) {
-                    map.set(habit.id, { ...existing, isComplete });
+                    map.set(habit.id, { ...existing, isComplete, currentValue: log.value ?? 0 });
                 } else {
                     map.set(habit.id, {
                         habit,
@@ -106,9 +113,23 @@ export const DayView = ({ onAddHabit }: DayViewProps = {}) => {
                     });
                 }
             }
+        };
+
+        // Merge root habits
+        todaysHabits.forEach(mergeHabitLog);
+
+        // Merge sub-habits of bundles so DayCategorySection can look up their status
+        todaysHabits.forEach(habit => {
+            if (habit.type === 'bundle' && habit.subHabitIds) {
+                habit.subHabitIds.forEach(subId => {
+                    const subHabit = allHabitsLookup.get(subId);
+                    if (subHabit) mergeHabitLog(subHabit);
+                });
+            }
         });
+
         return map;
-    }, [habitStatusMap, logs, todaysHabits, dateStr]);
+    }, [habitStatusMap, logs, todaysHabits, dateStr, allHabitsLookup]);
 
     // 2. Identify Pinned Habits
     const pinnedHabits = useMemo(() => {
@@ -130,11 +151,6 @@ export const DayView = ({ onAddHabit }: DayViewProps = {}) => {
         });
         return groups;
     }, [todaysHabits, categories]);
-
-    // Lookup Map for Bundle Resolution
-    const allHabitsLookup = useMemo(() => {
-        return new Map(habits.map(h => [h.id, h]));
-    }, [habits]);
 
     // Handlers
     const handleToggle = (habitId: string) => {

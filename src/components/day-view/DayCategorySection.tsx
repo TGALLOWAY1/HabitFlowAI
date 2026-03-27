@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { ChevronDown, ChevronRight, CheckCircle2 } from 'lucide-react';
 import type { Category, Habit } from '../../types';
 import { HabitGridCell } from './HabitGridCell';
+import { NumericInputPopover } from '../NumericInputPopover';
 import { cn } from '../../utils/cn';
 
 interface DayViewHabitStatus {
@@ -64,19 +65,37 @@ export const DayCategorySection = ({
     const [expandedHabitId, setExpandedHabitId] = useState<string | null>(null);
     const [isCollapsed, setIsCollapsed] = useState(false);
 
+    // NumericInputPopover state
+    const [popover, setPopover] = useState<{
+        isOpen: boolean;
+        habitId: string;
+        initialValue: number;
+        unit?: string;
+        position: { top: number; left: number };
+    }>({ isOpen: false, habitId: '', initialValue: 0, position: { top: 0, left: 0 } });
+
     // Initial Collapse Logic: If all done (and not empty), collapse.
-    // We use a ref to only trigger this on mount or significant data changes? 
-    // Actually, sticky user preference is better, but PRD says "Default expansion: Expanded if category has ≥1 incomplete".
-    // So distinct state that syncs with "allDone" changes? 
     useEffect(() => {
         if (allDone && habits.length > 0) {
             setIsCollapsed(true);
         } else {
             setIsCollapsed(false);
         }
-    }, [allDone, habits.length]); // Dependency on allDone means it auto-collapses when finished.
+    }, [allDone, habits.length]);
 
     if (habits.length === 0) return null;
+
+    const handleNumericClick = (e: React.MouseEvent, habit: Habit) => {
+        const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+        const status = habitStatusMap.get(habit.id);
+        setPopover({
+            isOpen: true,
+            habitId: habit.id,
+            initialValue: status?.currentValue ?? 0,
+            unit: habit.goal?.unit,
+            position: { top: rect.bottom + 4, left: rect.left }
+        });
+    };
 
     return (
         <div className="mb-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
@@ -129,19 +148,33 @@ export const DayCategorySection = ({
                         const status = habitStatusMap.get(habit.id);
                         const isCompleted = status?.isComplete ?? false;
 
-                        // If bundle, resolve children
+                        // If bundle, resolve children and their statuses
                         let subHabits: Habit[] | undefined;
+                        let subHabitStatuses: Map<string, boolean> | undefined;
                         if (habit.type === 'bundle' && habit.subHabitIds) {
                             subHabits = habit.subHabitIds
                                 .map(id => allHabitsLookup.get(id))
                                 .filter((h): h is Habit => !!h);
+                            subHabitStatuses = new Map();
+                            subHabits.forEach(sub => {
+                                const subStatus = habitStatusMap.get(sub.id);
+                                subHabitStatuses!.set(sub.id, subStatus?.isComplete ?? false);
+                            });
                         }
 
-                        // Choice Bundle Selection - TODO: This may need to come from EntryView in the future
-                        // For now, we'll need to fetch entries separately or include in dayView response
-                        const selectedChoice = undefined; // TODO: Get from EntryView if needed
+                        // Choice Bundle Selection from sub-habit completion
+                        let selectedChoice: string | undefined;
+                        if (habit.type === 'bundle' && habit.bundleType === 'choice' && subHabits) {
+                            const completedChild = subHabits.find(sub => {
+                                const subStatus = habitStatusMap.get(sub.id);
+                                return subStatus?.isComplete;
+                            });
+                            if (completedChild) {
+                                selectedChoice = completedChild.id;
+                            }
+                        }
 
-                            return (
+                        return (
                             <HabitGridCell
                                 key={habit.id}
                                 habit={habit}
@@ -154,20 +187,24 @@ export const DayCategorySection = ({
                                 onUpdateEstimate={onUpdateEstimate}
                                 onMoveToCategory={onMoveToCategory}
                                 subHabits={subHabits}
+                                subHabitStatuses={subHabitStatuses}
+                                habitStatus={status}
+                                onSubHabitToggle={(subHabitId) => onToggle(subHabitId)}
+                                onNumericClick={(e) => handleNumericClick(e, habit)}
 
                                 // Helper for choice select
                                 selectedChoice={selectedChoice}
                                 onChoiceSelect={(optionKey) => {
                                     if (selectedChoice === optionKey) {
                                         // Deselect
-                                        deleteHabitEntryByKey(habit.id, dateStr);
+                                        deleteHabitEntryByKey(optionKey, dateStr);
                                     } else {
-                                        // Select (Upsert)
-                                        onUpdateHabitEntry(habit.id, dateStr, {
-                                            bundleOptionId: optionKey,
-                                            value: 1, // Considered "done"
-                                            source: 'manual'
-                                        });
+                                        // Toggle off previous selection
+                                        if (selectedChoice) {
+                                            deleteHabitEntryByKey(selectedChoice, dateStr);
+                                        }
+                                        // Select new choice (toggle the sub-habit)
+                                        onToggle(optionKey);
                                     }
                                 }}
                             />
@@ -175,6 +212,21 @@ export const DayCategorySection = ({
                     })}
                 </div>
             )}
+
+            {/* Numeric Input Popover */}
+            <NumericInputPopover
+                isOpen={popover.isOpen}
+                onClose={() => setPopover(prev => ({ ...prev, isOpen: false }))}
+                onSubmit={(value) => {
+                    onUpdateHabitEntry(popover.habitId, dateStr, { value, source: 'manual' });
+                }}
+                onClear={() => {
+                    deleteHabitEntryByKey(popover.habitId, dateStr);
+                }}
+                initialValue={popover.initialValue}
+                unit={popover.unit}
+                position={popover.position}
+            />
         </div>
     );
 };
