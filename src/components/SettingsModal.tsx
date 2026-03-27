@@ -19,14 +19,9 @@ export function SettingsModal({ isOpen, onClose, onRefresh }: SettingsModalProps
   const [showGeminiKey, setShowGeminiKey] = useState(false);
   const [geminiKeySaved, setGeminiKeySaved] = useState(false);
   const [showLearnMore, setShowLearnMore] = useState(false);
-  const [guideIsDismissed, setGuideIsDismissed] = useState(() => {
-    try { return localStorage.getItem('hf_setup_guide_dismissed') === 'true'; } catch { return false; }
-  });
-
   const handleReopenGuide = useCallback(() => {
     try { localStorage.removeItem('hf_setup_guide_dismissed'); } catch { /* noop */ }
     window.dispatchEvent(new Event('habitflow:reopen-setup-guide'));
-    setGuideIsDismissed(false);
     onClose();
   }, [onClose]);
 
@@ -211,18 +206,16 @@ export function SettingsModal({ isOpen, onClose, onRefresh }: SettingsModalProps
             </section>
 
             {/* Setup Guide */}
-            {guideIsDismissed && (
-              <section>
-                <button
-                  type="button"
-                  onClick={handleReopenGuide}
-                  className="w-full px-4 py-2.5 rounded-lg bg-neutral-800 text-neutral-200 border border-white/10 hover:bg-neutral-700 text-sm text-left flex items-center gap-2"
-                >
-                  <Sparkles size={16} className="text-emerald-400 flex-shrink-0" />
-                  Reopen setup guide
-                </button>
-              </section>
-            )}
+            <section>
+              <button
+                type="button"
+                onClick={handleReopenGuide}
+                className="w-full px-4 py-2.5 rounded-lg bg-neutral-800 text-neutral-200 border border-white/10 hover:bg-neutral-700 text-sm text-left flex items-center gap-2"
+              >
+                <Sparkles size={16} className="text-emerald-400 flex-shrink-0" />
+                Reopen setup guide
+              </button>
+            </section>
 
             {/* Data */}
             <section>

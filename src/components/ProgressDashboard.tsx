@@ -84,13 +84,17 @@ export const ProgressDashboard: React.FC<ProgressDashboardProps> = ({
 
     const dismissGuide = useCallback(() => {
         setGuideDismissed(true);
+        setGuideForceOpen(false);
         try { localStorage.setItem(SETUP_GUIDE_DISMISSED_KEY, 'true'); } catch { /* noop */ }
     }, []);
+
+    const [guideForceOpen, setGuideForceOpen] = useState(false);
 
     // Listen for settings "reopen guide" event
     useEffect(() => {
         const handleReopen = () => {
             setGuideDismissed(false);
+            setGuideForceOpen(true);
             try { localStorage.removeItem(SETUP_GUIDE_DISMISSED_KEY); } catch { /* noop */ }
         };
         window.addEventListener('habitflow:reopen-setup-guide', handleReopen);
@@ -143,7 +147,7 @@ export const ProgressDashboard: React.FC<ProgressDashboardProps> = ({
         updateUrlParams({ categoryRange: range }, 'replace');
     };
 
-    const showGuide = !guideDismissed && setupPhase !== 'mature' && onNavigate && !setupLoading && !progressLoading;
+    const showGuide = !guideDismissed && (setupPhase !== 'mature' || guideForceOpen) && onNavigate && !setupLoading && !progressLoading;
 
     // Zero-state: show ONLY the setup guide (no dashboard content yet)
     if (setupPhase === 'zero' && showGuide) {
@@ -161,8 +165,8 @@ export const ProgressDashboard: React.FC<ProgressDashboardProps> = ({
 
     return (
         <div className="space-y-4 overflow-y-auto pb-20">
-            {/* Setup guide — shown during early phase until dismissed or all steps complete */}
-            {showGuide && setupPhase === 'early' && onNavigate && (
+            {/* Setup guide — shown during early phase or when force-reopened from settings */}
+            {showGuide && (setupPhase === 'early' || guideForceOpen) && onNavigate && (
                 <SetupDashboard
                     hasHabits={hasHabits}
                     hasTasks={hasTasks}
