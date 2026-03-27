@@ -137,16 +137,19 @@ export const DayView = ({ onAddHabit }: DayViewProps = {}) => {
     }, [todaysHabits]);
 
     // 3. Group by Category
+    const UNCATEGORIZED_ID = '__uncategorized__';
     const groupedHabits = useMemo(() => {
         const groups = new Map<string, Habit[]>();
-        categories.forEach(c => groups.set(c.id, [])); // Init groups
+        categories.forEach(c => groups.set(c.id, []));
 
         todaysHabits.forEach(h => {
             const list = groups.get(h.categoryId);
             if (list) list.push(h);
             else {
-                // Fallback if category missing?
-                // Ignore or add to 'Uncategorized'? safe to ignore for now
+                // Habit's category doesn't exist — group as uncategorized
+                const uncategorized = groups.get(UNCATEGORIZED_ID) || [];
+                uncategorized.push(h);
+                groups.set(UNCATEGORIZED_ID, uncategorized);
             }
         });
         return groups;
@@ -305,6 +308,22 @@ export const DayView = ({ onAddHabit }: DayViewProps = {}) => {
                             />
                         );
                     })}
+                    {(groupedHabits.get(UNCATEGORIZED_ID) || []).length > 0 && (
+                        <DayCategorySection
+                            key={UNCATEGORIZED_ID}
+                            category={{ id: UNCATEGORIZED_ID, name: 'Uncategorized', color: 'bg-amber-600' }}
+                            habits={groupedHabits.get(UNCATEGORIZED_ID)!}
+                            habitStatusMap={resolvedHabitStatusMap}
+                            dateStr={dateStr}
+                            onToggle={handleToggle}
+                            onPin={handlePin}
+                            onUpdateEstimate={handleUpdateEstimate}
+                            onMoveToCategory={(h) => setCategoryPickerHabit(h)}
+                            allHabitsLookup={allHabitsLookup}
+                            onUpdateHabitEntry={upsertHabitEntry}
+                            deleteHabitEntryByKey={deleteHabitEntryByKey}
+                        />
+                    )}
                 </div>
             )}
 
