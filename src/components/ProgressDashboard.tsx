@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { useHabitStore } from '../store/HabitContext';
 import { useProgressOverview } from '../lib/useProgressOverview';
 import { Heatmap } from './Heatmap';
@@ -17,6 +17,7 @@ import { useSetupProgress } from '../hooks/useSetupProgress';
 import type { Routine } from '../models/persistenceTypes';
 
 const PINNED_GOALS_KEY = 'hf_pinned_dashboard_goals';
+const SETUP_GUIDE_DISMISSED_KEY = 'hf_setup_guide_dismissed';
 
 function usePinnedGoals() {
     const [pinnedIds, setPinnedIds] = useState<string[]>(() => {
@@ -72,6 +73,30 @@ export const ProgressDashboard: React.FC<ProgressDashboardProps> = ({
     const goalsCount = progressData?.goalsWithProgress?.length ?? 0;
     const { setupPhase, hasHabits, hasTasks, loading: setupLoading } = useSetupProgress(goalsCount);
     const hasJournalEntries = false; // Will be derived from journal data when available
+
+    const [guideDismissed, setGuideDismissed] = useState<boolean>(() => {
+        try {
+            return localStorage.getItem(SETUP_GUIDE_DISMISSED_KEY) === 'true';
+        } catch {
+            return false;
+        }
+    });
+
+    const dismissGuide = useCallback(() => {
+        setGuideDismissed(true);
+        try { localStorage.setItem(SETUP_GUIDE_DISMISSED_KEY, 'true'); } catch { /* noop */ }
+    }, []);
+
+    // Listen for settings "reopen guide" event
+    useEffect(() => {
+        const handleReopen = () => {
+            setGuideDismissed(false);
+            try { localStorage.removeItem(SETUP_GUIDE_DISMISSED_KEY); } catch { /* noop */ }
+        };
+        window.addEventListener('habitflow:reopen-setup-guide', handleReopen);
+        return () => window.removeEventListener('habitflow:reopen-setup-guide', handleReopen);
+    }, []);
+
     const [isCheckInOpen, setIsCheckInOpen] = useState(false);
     const { pinnedIds: pinnedGoalIds, togglePin: toggleGoalPin, isPinned: isGoalPinned } = usePinnedGoals();
     const [showGoalManage, setShowGoalManage] = useState(false);
@@ -118,8 +143,10 @@ export const ProgressDashboard: React.FC<ProgressDashboardProps> = ({
         updateUrlParams({ categoryRange: range }, 'replace');
     };
 
-    // Zero-state: show guided setup dashboard (only after data has loaded)
-    if (setupPhase === 'zero' && onNavigate && !setupLoading && !progressLoading) {
+    const showGuide = !guideDismissed && setupPhase !== 'mature' && onNavigate && !setupLoading && !progressLoading;
+
+    // Zero-state: show ONLY the setup guide (no dashboard content yet)
+    if (setupPhase === 'zero' && showGuide) {
         return (
             <SetupDashboard
                 hasHabits={hasHabits}
@@ -127,12 +154,25 @@ export const ProgressDashboard: React.FC<ProgressDashboardProps> = ({
                 hasJournalEntries={hasJournalEntries}
                 goalsCount={goalsCount}
                 onNavigate={onNavigate}
+                onDismiss={dismissGuide}
             />
         );
     }
 
     return (
         <div className="space-y-4 overflow-y-auto pb-20">
+            {/* Setup guide — shown during early phase until dismissed or all steps complete */}
+            {showGuide && setupPhase === 'early' && onNavigate && (
+                <SetupDashboard
+                    hasHabits={hasHabits}
+                    hasTasks={hasTasks}
+                    hasJournalEntries={hasJournalEntries}
+                    goalsCount={goalsCount}
+                    onNavigate={onNavigate}
+                    onDismiss={dismissGuide}
+                />
+            )}
+
             {/* Daily Overview + Check-In — always side by side */}
             <div className="grid grid-cols-2 gap-4">
                 <DailyOverviewCard />
