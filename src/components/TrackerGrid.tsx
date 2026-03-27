@@ -186,6 +186,7 @@ interface HabitRowContentProps {
     onCellPointerDown?: (habitId: string, dateStr: string, e: React.PointerEvent) => void;
     onCellPointerUp?: () => void;
     onCellPointerMove?: () => void;
+    showArrows?: boolean;
 }
 
 const HabitRowContent = ({
@@ -218,6 +219,7 @@ const HabitRowContent = ({
     onCellPointerDown,
     onCellPointerUp,
     onCellPointerMove,
+    showArrows,
 }: HabitRowContentProps) => {
 
     // Non-Negotiable Logic
@@ -335,6 +337,7 @@ const HabitRowContent = ({
             </div>
 
             <div className="flex">
+                {showArrows && <div className="w-8 flex-shrink-0" />}
                 {dates.map((date) => {
                     const dateStr = format(date, 'yyyy-MM-dd');
 
@@ -467,6 +470,7 @@ const HabitRowContent = ({
                         </div>
                     );
                 })}
+                {showArrows && <div className="w-8 flex-shrink-0" />}
             </div>
         </div>
     );
@@ -495,6 +499,7 @@ const SortableHabitRow = ({
     onCellPointerDown,
     onCellPointerUp,
     onCellPointerMove,
+    showArrows,
 }: {
     habit: Habit;
     allHabits: Habit[];
@@ -519,6 +524,7 @@ const SortableHabitRow = ({
     onCellPointerDown?: (habitId: string, dateStr: string, e: React.PointerEvent) => void;
     onCellPointerUp?: () => void;
     onCellPointerMove?: () => void;
+    showArrows?: boolean;
 }) => {
     const {
         attributes,
@@ -614,6 +620,7 @@ const SortableHabitRow = ({
                 onCellPointerDown={onCellPointerDown}
                 onCellPointerUp={onCellPointerUp}
                 onCellPointerMove={onCellPointerMove}
+                showArrows={showArrows}
             />
 
             {/* Child Rows - Rendered when expanded */}
@@ -642,6 +649,7 @@ const SortableHabitRow = ({
                     onCellPointerDown={onCellPointerDown}
                     onCellPointerUp={onCellPointerUp}
                     onCellPointerMove={onCellPointerMove}
+                    showArrows={showArrows}
                 />
             ))}
         </div>
@@ -1287,6 +1295,7 @@ export const TrackerGrid = ({
                                         onCellPointerDown={onCellPointerDown}
                                         onCellPointerUp={onCellPointerUp}
                                         onCellPointerMove={onCellPointerMove}
+                                        showArrows={showArrows}
                                     />
                                 ))}
                             </SortableContext>
