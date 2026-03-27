@@ -321,7 +321,18 @@ export const EditGoalModal: React.FC<EditGoalModalProps> = ({
                                         <input
                                             type="number"
                                             value={targetValue}
-                                            onChange={(e) => setTargetValue(e.target.value)}
+                                            onChange={(e) => {
+                                                const newVal = e.target.value;
+                                                const oldVal = targetValue;
+                                                // Auto-update title if it contains the old target number
+                                                if (oldVal && newVal && oldVal !== newVal) {
+                                                    const regex = new RegExp(`\\b${oldVal}\\b`);
+                                                    if (regex.test(title)) {
+                                                        setTitle(title.replace(regex, newVal));
+                                                    }
+                                                }
+                                                setTargetValue(newVal);
+                                            }}
                                             className="w-full bg-neutral-800 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-emerald-500"
                                             min="1"
                                             step="any"

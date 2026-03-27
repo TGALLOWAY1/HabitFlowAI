@@ -8,7 +8,7 @@
  * using the user's timezone before being returned.
  */
 
-import { getHabitEntriesByHabit, getHabitEntriesByHabitIds } from '../repositories/habitEntryRepository';
+import { getHabitEntriesByHabit, getHabitEntriesByHabitIds, getHabitEntriesByHabitIdsSince } from '../repositories/habitEntryRepository';
 import { allowDayKeyLegacyFallback } from '../utils/dayKey';
 import type { HabitEntry } from '../../models/persistenceTypes';
 import type { DayKey } from '../../domain/time/dayKey';
@@ -99,6 +99,21 @@ export function buildEntryViewsFromEntries(
   });
 
   return filteredViews;
+}
+
+/**
+ * Get entry views for multiple habits since a given dayKey.
+ * Only fetches entries from the DB with dayKey >= sinceDayKey.
+ * Used for efficient recent-window queries (e.g. last 30 days for goal heatmaps).
+ */
+export async function getRecentEntryViewsForHabits(
+  habitIds: string[],
+  householdId: string,
+  userId: string,
+  args: { sinceDayKey: DayKey; timeZone: string }
+): Promise<EntryView[]> {
+  const entries = await getHabitEntriesByHabitIdsSince(habitIds, householdId, userId, args.sinceDayKey);
+  return buildEntryViewsFromEntries(entries, habitIds, { timeZone: args.timeZone });
 }
 
 function mapEntryToView(entry: HabitEntry, timeZone: string): EntryView {

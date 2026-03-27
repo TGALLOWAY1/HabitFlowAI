@@ -19,7 +19,7 @@ import {
 } from '../repositories/goalRepository';
 import { getHabitsByUser } from '../repositories/habitRepository';
 // getHabitEntriesByUser removed — entries are now fetched filtered by habit ID in computeGoalsWithProgressFromData
-import { computeGoalProgressV2, computeGoalsWithProgressFromData } from '../utils/goalProgressUtilsV2';
+import { computeGoalProgressV2, computeGoalListProgress } from '../utils/goalProgressUtilsV2';
 import { saveUploadedFile } from '../utils/fileStorage';
 import type { Goal } from '../../models/persistenceTypes';
 import { getRequestIdentity } from '../middleware/identity';
@@ -304,7 +304,7 @@ export async function getGoalsWithProgress(req: Request, res: Response): Promise
       getHabitsByUser(householdId, userId),
     ]);
 
-    const goalsWithProgress = await computeGoalsWithProgressFromData(
+    const goalsWithProgress = await computeGoalListProgress(
       goals, allHabits, householdId, userId, userTimeZone
     );
 

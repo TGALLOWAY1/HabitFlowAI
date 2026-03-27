@@ -20,6 +20,10 @@ export const GoalGridCard: React.FC<GoalGridCardProps> = ({
     // Safely fallback if lastThirtyDays is missing (during migration/dev)
     const historyData = progress.lastThirtyDays || progress.lastSevenDays || [];
 
+    // For low-target goals (<=10), show a tick-mark progress bar instead of the 28-box heatmap
+    const isLowTarget = goal.type !== 'onetime' && !!goal.targetValue && goal.targetValue <= 10;
+    const target = goal.targetValue || 0;
+
     // Determine border color based on status
     const getBorderClass = () => {
         if (goal.completedAt) return "border-emerald-500/30 shadow-[0_0_15px_rgba(16,185,129,0.1)]";
@@ -78,24 +82,49 @@ export const GoalGridCard: React.FC<GoalGridCardProps> = ({
             {/* Visuals Body */}
             <div className="px-4 py-2 flex-1 flex flex-col gap-1">
 
-                {/* 1. Heatmap (Full Width) - Hide for OneTime */}
-                {goal.type !== 'onetime' && (
+                {/* 1. Visualization - Hide for OneTime */}
+                {isLowTarget && (
+                    <div className="w-full py-2">
+                        <div className="relative h-3 w-full bg-neutral-800 rounded-full overflow-hidden">
+                            <div
+                                className={`h-full rounded-full transition-all duration-500 ease-out ${progress.percent >= 100
+                                    ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.3)]'
+                                    : 'bg-emerald-500'
+                                    }`}
+                                style={{ width: `${Math.min(100, progress.percent)}%` }}
+                            />
+                            {/* Tick marks */}
+                            {Array.from({ length: target - 1 }, (_, i) => (
+                                <div
+                                    key={i}
+                                    className="absolute top-0 h-full w-px bg-neutral-700"
+                                    style={{ left: `${((i + 1) / target) * 100}%` }}
+                                />
+                            ))}
+                        </div>
+                        <div className="mt-1.5 text-xs text-neutral-400 font-medium text-center">
+                            {progress.currentValue} / {target} {goal.unit || ''}
+                        </div>
+                    </div>
+                )}
+
+                {/* Heatmap for high-target goals */}
+                {goal.type !== 'onetime' && !isLowTarget && (
                     <div className="w-full">
                         <MiniHeatmap
                             data={historyData}
                             goalType={goal.type}
-                            targetValue={goal.targetValue || 0}
+                            targetValue={target}
                         />
                     </div>
                 )}
 
-                {/* 2. Progress Bar (Compact, with tooltip) - Hide for OneTime */}
-                {goal.type !== 'onetime' && (
+                {/* Progress Bar (Compact) - only for high-target goals (low-target already has one above) */}
+                {goal.type !== 'onetime' && !isLowTarget && (
                     <div
                         className="w-full mt-2 mb-1 group/progress relative"
                         title={`Progress: ${progress.percent}%`}
                     >
-                        {/* Bar Container */}
                         <div className="h-1.5 w-full bg-neutral-800 rounded-full overflow-hidden">
                             <div
                                 className={`h-full rounded-full transition-all duration-500 ease-out ${progress.percent >= 100
