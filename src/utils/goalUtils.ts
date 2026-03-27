@@ -116,12 +116,8 @@ export function buildGoalStacks({
             // Goal has no categoryId - add to uncategorized
             uncategorizedGoals.push(goal);
         } else {
-            // Goal has categoryId but category doesn't exist - log warning and exclude
-            if (process.env.NODE_ENV === 'development') {
-                console.warn(
-                    `[buildGoalStacks] Goal "${goal.title}" (${goal.id}) references non-existent category "${goal.categoryId}". Excluding from stacks.`
-                );
-            }
+            // Goal references non-existent category (deleted?) — treat as uncategorized
+            uncategorizedGoals.push(goal);
         }
     }
 
