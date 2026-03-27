@@ -1,8 +1,8 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { format, eachDayOfInterval, subDays, isToday } from 'date-fns';
 import { type Habit, type DayLog, type Routine, type HabitPotentialEvidence } from '../types';
 import { cn } from '../utils/cn';
-import { Check, Plus, Trash2, GripVertical, Pencil, Play, Flame, History, Zap, Link2, FolderInput, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Check, Plus, Trash2, GripVertical, Pencil, Play, Flame, History, Zap, Link2, FolderInput } from 'lucide-react';
 import { CategoryPickerModal } from './CategoryPickerModal';
 
 import { NumericInputPopover } from './NumericInputPopover';
@@ -186,7 +186,6 @@ interface HabitRowContentProps {
     onCellPointerDown?: (habitId: string, dateStr: string, e: React.PointerEvent) => void;
     onCellPointerUp?: () => void;
     onCellPointerMove?: () => void;
-    showArrows?: boolean;
 }
 
 const HabitRowContent = ({
@@ -219,7 +218,6 @@ const HabitRowContent = ({
     onCellPointerDown,
     onCellPointerUp,
     onCellPointerMove,
-    showArrows,
 }: HabitRowContentProps) => {
 
     // Non-Negotiable Logic
@@ -247,7 +245,7 @@ const HabitRowContent = ({
             ref={setNodeRef}
             style={style}
             className={cn(
-                "flex border-b border-white/5 transition-colors group",
+                "flex border-b border-white/5 transition-colors group w-fit min-w-full",
                 habit.isVirtual ? "bg-neutral-800/30" : "bg-neutral-900/50", // Difference for virtual
                 isDragging && "shadow-xl ring-1 ring-emerald-500/50 z-50 bg-neutral-900",
                 priorityRingClass
@@ -337,7 +335,6 @@ const HabitRowContent = ({
             </div>
 
             <div className="flex">
-                {showArrows && <div className="w-8 flex-shrink-0" />}
                 {dates.map((date) => {
                     const dateStr = format(date, 'yyyy-MM-dd');
 
@@ -470,7 +467,6 @@ const HabitRowContent = ({
                         </div>
                     );
                 })}
-                {showArrows && <div className="w-8 flex-shrink-0" />}
             </div>
         </div>
     );
@@ -499,7 +495,6 @@ const SortableHabitRow = ({
     onCellPointerDown,
     onCellPointerUp,
     onCellPointerMove,
-    showArrows,
 }: {
     habit: Habit;
     allHabits: Habit[];
@@ -524,7 +519,6 @@ const SortableHabitRow = ({
     onCellPointerDown?: (habitId: string, dateStr: string, e: React.PointerEvent) => void;
     onCellPointerUp?: () => void;
     onCellPointerMove?: () => void;
-    showArrows?: boolean;
 }) => {
     const {
         attributes,
@@ -620,7 +614,7 @@ const SortableHabitRow = ({
                 onCellPointerDown={onCellPointerDown}
                 onCellPointerUp={onCellPointerUp}
                 onCellPointerMove={onCellPointerMove}
-                showArrows={showArrows}
+
             />
 
             {/* Child Rows - Rendered when expanded */}
@@ -649,7 +643,7 @@ const SortableHabitRow = ({
                     onCellPointerDown={onCellPointerDown}
                     onCellPointerUp={onCellPointerUp}
                     onCellPointerMove={onCellPointerMove}
-                    showArrows={showArrows}
+    
                 />
             ))}
         </div>
@@ -966,31 +960,8 @@ export const TrackerGrid = ({
         return interval.reverse();
     }, []);
 
-    // Date window: show a visible slice of dates with arrow navigation
-    const [dateOffset, setDateOffset] = useState(0);
-    const [visibleCount, setVisibleCount] = useState(dates.length);
-
-    useEffect(() => {
-        const update = () => {
-            // w-64 = 256px name col, 32px per arrow button × 2 = 64px
-            const available = window.innerWidth - 256 - 64;
-            const count = Math.max(3, Math.min(dates.length, Math.floor(available / 64)));
-            setVisibleCount(count);
-            // Reset offset if it would overflow
-            setDateOffset(prev => Math.min(prev, Math.max(0, dates.length - count)));
-        };
-        update();
-        window.addEventListener('resize', update);
-        return () => window.removeEventListener('resize', update);
-    }, [dates.length]);
-
-    const visibleDates = useMemo(() => {
-        return dates.slice(dateOffset, dateOffset + visibleCount);
-    }, [dates, dateOffset, visibleCount]);
-
-    const canGoOlder = dateOffset + visibleCount < dates.length;
-    const canGoNewer = dateOffset > 0;
-    const showArrows = visibleCount < dates.length;
+    // Scroll ref for syncing header and row horizontal scroll
+    const scrollContainerRef = useRef<HTMLDivElement>(null);
 
     // Optimistic Progress Map
     const habitProgressMap = useMemo(() => {
@@ -1190,9 +1161,9 @@ export const TrackerGrid = ({
                 collisionDetection={closestCenter}
                 onDragEnd={handleDragEnd}
             >
-                <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-neutral-700 scrollbar-track-transparent">
+                <div ref={scrollContainerRef} className="flex-1 overflow-x-auto overflow-y-auto scrollbar-thin scrollbar-thumb-neutral-700 scrollbar-track-transparent scroll-smooth snap-x snap-mandatory">
                     {/* Header */}
-                    <div className="sticky top-0 z-20 flex border-b border-white/5 bg-neutral-900 shadow-md">
+                    <div className="sticky top-0 z-20 flex border-b border-white/5 bg-neutral-900 shadow-md w-fit min-w-full">
                         <div className="w-64 flex-shrink-0 p-4 font-medium text-emerald-400 border-r border-white/5 flex items-center justify-between bg-neutral-900 sticky left-0 z-30 group">
                             <span>Daily Habits</span>
                             <div className="flex items-center gap-1">
@@ -1217,22 +1188,12 @@ export const TrackerGrid = ({
                                 </button>
                             </div>
                         </div>
-                        {showArrows && (
-                            <button
-                                onClick={() => setDateOffset(prev => Math.min(prev + 1, dates.length - visibleCount))}
-                                disabled={!canGoOlder}
-                                className="w-8 flex-shrink-0 flex items-center justify-center text-neutral-500 hover:text-white disabled:opacity-20 disabled:cursor-default bg-neutral-900 border-r border-white/5 transition-colors"
-                                title="Show older dates"
-                            >
-                                <ChevronLeft size={16} />
-                            </button>
-                        )}
-                        <div className="flex flex-1 bg-neutral-900">
-                            {visibleDates.map((date) => (
+                        <div className="flex bg-neutral-900">
+                            {dates.map((date) => (
                                 <div
                                     key={date.toISOString()}
                                     className={cn(
-                                        "w-16 flex-shrink-0 flex flex-col items-center justify-center p-2 border-r border-white/5 transition-colors",
+                                        "w-16 flex-shrink-0 flex flex-col items-center justify-center p-2 border-r border-white/5 transition-colors snap-start",
                                         isToday(date) ? "bg-emerald-500/10 text-emerald-400" : "text-neutral-500"
                                     )}
                                 >
@@ -1246,16 +1207,6 @@ export const TrackerGrid = ({
                                 </div>
                             ))}
                         </div>
-                        {showArrows && (
-                            <button
-                                onClick={() => setDateOffset(prev => Math.max(prev - 1, 0))}
-                                disabled={!canGoNewer}
-                                className="w-8 flex-shrink-0 flex items-center justify-center text-neutral-500 hover:text-white disabled:opacity-20 disabled:cursor-default bg-neutral-900 border-l border-white/5 transition-colors"
-                                title="Show newer dates"
-                            >
-                                <ChevronRight size={16} />
-                            </button>
-                        )}
                     </div>
 
                     {/* Daily Rows */}
@@ -1278,7 +1229,7 @@ export const TrackerGrid = ({
                                         expandedIds={expandedIds}
                                         onToggleExpand={toggleExpand}
                                         logs={logs}
-                                        dates={visibleDates}
+                                        dates={dates}
                                         handleCellClick={handleCellClickDirect}
                                         deleteHabit={deleteHabit}
                                         deleteConfirmId={deleteConfirmId}
@@ -1295,7 +1246,7 @@ export const TrackerGrid = ({
                                         onCellPointerDown={onCellPointerDown}
                                         onCellPointerUp={onCellPointerUp}
                                         onCellPointerMove={onCellPointerMove}
-                                        showArrows={showArrows}
+                        
                                     />
                                 ))}
                             </SortableContext>
