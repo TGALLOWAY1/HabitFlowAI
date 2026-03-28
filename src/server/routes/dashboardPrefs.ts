@@ -11,8 +11,8 @@ import { getRequestIdentity } from '../middleware/identity';
 
 export async function getDashboardPrefsRoute(req: Request, res: Response): Promise<void> {
   try {
-    const { userId } = getRequestIdentity(req);
-    const prefs = await getDashboardPrefs(userId);
+    const { householdId, userId } = getRequestIdentity(req);
+    const prefs = await getDashboardPrefs(householdId, userId);
     res.status(200).json({ dashboardPrefs: prefs });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
@@ -44,5 +44,4 @@ export async function updateDashboardPrefsRoute(req: Request, res: Response): Pr
     });
   }
 }
-
 

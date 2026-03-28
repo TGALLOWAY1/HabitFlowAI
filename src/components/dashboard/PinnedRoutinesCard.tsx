@@ -10,7 +10,7 @@ import type { Routine } from '../../models/persistenceTypes';
 import { isMultiVariant, resolveVariant } from '../../lib/routineVariantUtils';
 import { fetchDashboardPrefs, updateDashboardPrefs } from '../../lib/persistenceClient';
 
-const STORAGE_KEY = 'hf_pinned_routines';
+export const PINNED_ROUTINES_STORAGE_KEY = 'hf_pinned_routines';
 
 // Module-level cache so pinned IDs survive component unmounts
 let _cachedPinnedIds: string[] | null = null;
@@ -57,14 +57,18 @@ function getColorTextClass(key?: string) {
 
 function readLocalStorageIds(): string[] {
     try {
-        const stored = localStorage.getItem(STORAGE_KEY);
+        const stored = localStorage.getItem(PINNED_ROUTINES_STORAGE_KEY);
         return stored ? JSON.parse(stored) : [];
     } catch {
         return [];
     }
 }
 
-function usePinnedRoutines() {
+export function __resetPinnedRoutinesCacheForTests() {
+    _cachedPinnedIds = null;
+}
+
+export function usePinnedRoutines() {
     const [pinnedIds, setPinnedIds] = useState<string[]>(() => {
         // Use module-level cache first (survives unmount), then localStorage
         if (_cachedPinnedIds !== null) return _cachedPinnedIds;
@@ -90,7 +94,7 @@ function usePinnedRoutines() {
                 if (backendIds.length > 0 || _cachedPinnedIds === null || _cachedPinnedIds.length === 0) {
                     setPinnedIds(backendIds);
                     _cachedPinnedIds = backendIds;
-                    localStorage.setItem(STORAGE_KEY, JSON.stringify(backendIds));
+                    localStorage.setItem(PINNED_ROUTINES_STORAGE_KEY, JSON.stringify(backendIds));
                 }
             })
             .catch(() => {
@@ -106,7 +110,7 @@ function usePinnedRoutines() {
                 : [...prev, id];
             // Update all caches immediately for responsiveness
             _cachedPinnedIds = next;
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+            localStorage.setItem(PINNED_ROUTINES_STORAGE_KEY, JSON.stringify(next));
             // Persist to backend (fire-and-forget; localStorage is fallback)
             updateDashboardPrefs({ pinnedRoutineIds: next }).catch(() => {});
             return next;
