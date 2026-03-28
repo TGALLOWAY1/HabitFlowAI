@@ -405,7 +405,7 @@ export function JournalEditor({ existingEntry, onSave, onCancel, initialTemplate
     // Minimal mode: render just the editor content without container/header/footer chrome
     if (minimal) {
         return (
-            <div className="flex flex-col h-[calc(100vh-16rem)]">
+            <div className="flex flex-col h-[calc(100vh-21rem)]">
                 <div className="flex-1 overflow-y-auto custom-scrollbar">
                     {selectedTemplateId === 'free-write' ? (
                         <div className="relative h-full">
@@ -434,7 +434,7 @@ export function JournalEditor({ existingEntry, onSave, onCancel, initialTemplate
                         </div>
                     )}
                 </div>
-                <div className="flex justify-between items-center pt-3 pb-1 flex-shrink-0">
+                <div className="flex justify-between items-center pt-3 pb-3 flex-shrink-0">
                     <button
                         onClick={handleDiscard}
                         className="text-white/40 hover:text-red-400 text-sm font-medium transition-colors px-2 py-1"
@@ -455,7 +455,7 @@ export function JournalEditor({ existingEntry, onSave, onCancel, initialTemplate
     }
 
     return (
-        <div className="bg-zinc-900 border border-white/10 rounded-2xl p-0 shadow-2xl relative max-w-4xl mx-auto h-[85vh] flex flex-col overflow-hidden">
+        <div className="bg-zinc-900 border border-white/10 rounded-2xl p-0 shadow-2xl relative max-w-4xl mx-auto h-[calc(100vh-14rem)] flex flex-col overflow-hidden">
             <div className="flex justify-between items-center px-6 py-4 border-b border-white/5 bg-zinc-900/95 backdrop-blur z-10">
                 <div className="flex items-center gap-4">
                     {!existingEntry && (

@@ -43,7 +43,7 @@ export function JournalPage() {
     ];
 
     return (
-        <div className="px-1 sm:px-2 pb-4 max-w-4xl mx-auto overflow-hidden">
+        <div className="px-3 sm:px-4 pb-0 max-w-4xl mx-auto overflow-hidden">
             {/* Tab Navigation (Hidden when editing an existing entry to focus) */}
             {!isEditingExisting && (
                 <div className="flex gap-4 border-b border-white/5 mb-4">
