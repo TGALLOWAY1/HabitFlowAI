@@ -1,12 +1,21 @@
 import { useMemo } from 'react';
 import { format } from 'date-fns';
-import { Sun, Moon, CheckCircle2, ChevronRight } from 'lucide-react';
+import { Sun, Moon, CheckCircle2, ChevronRight, Battery, Droplets, Brain, Frown } from 'lucide-react';
 import { useHabitStore } from '../../store/HabitContext';
 import type { WellbeingSession } from '../../models/persistenceTypes';
 
 interface DailyCheckInCardProps {
     onOpenCheckIn: () => void;
 }
+
+const METRIC_ICONS: Record<string, { icon: React.FC<{ size?: number; className?: string }>; color: string }> = {
+    energy: { icon: Battery, color: 'text-emerald-400' },
+    calm: { icon: Droplets, color: 'text-sky-400' },
+    stress: { icon: Droplets, color: 'text-rose-400' },
+    focus: { icon: Brain, color: 'text-violet-400' },
+    lowMood: { icon: Frown, color: 'text-amber-400' },
+    sleepScore: { icon: Moon, color: 'text-indigo-400' },
+};
 
 const SUMMARY_KEYS: Array<{ key: keyof WellbeingSession; label: string; max: number }> = [
     { key: 'energy', label: 'Energy', max: 5 },
@@ -63,19 +72,24 @@ export const DailyCheckInCard: React.FC<DailyCheckInCardProps> = ({ onOpenCheckI
             >
                 <div className="flex items-center gap-2 mb-2">
                     <CheckCircle2 size={16} className="text-emerald-400" />
-                    <span className="text-xs font-medium text-emerald-400">{sessionLabel} check-in done</span>
+                    <span className="text-xs font-medium text-emerald-400">{sessionLabel} check-in</span>
                 </div>
                 {summaryMetrics.length > 0 && (
                     <div className="flex flex-wrap gap-2">
-                        {summaryMetrics.map(({ label, value, max }) => (
-                            <span
-                                key={label}
-                                className="px-2 py-0.5 bg-neutral-800 rounded-md text-[11px] text-neutral-300"
-                            >
-                                {label} <span className="text-white font-medium">{value}</span>
-                                <span className="text-neutral-600">/{max}</span>
-                            </span>
-                        ))}
+                        {summaryMetrics.map(({ label, value, max }) => {
+                            const meta = METRIC_ICONS[SUMMARY_KEYS.find(k => k.label === label)?.key ?? ''];
+                            const IconComp = meta?.icon;
+                            return (
+                                <span
+                                    key={label}
+                                    className="flex items-center gap-1 px-2 py-0.5 bg-neutral-800 rounded-md text-[11px] text-neutral-300"
+                                >
+                                    {IconComp && <IconComp size={11} className={meta.color} />}
+                                    <span className="text-white font-medium">{value}</span>
+                                    <span className="text-neutral-600">/{max}</span>
+                                </span>
+                            );
+                        })}
                     </div>
                 )}
             </button>
