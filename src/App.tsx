@@ -227,20 +227,36 @@ const HabitTrackerContent: React.FC = () => {
       <div className="flex flex-col gap-4">
         {/* Title Section */}
         <div className={`flex items-center justify-between ${view === 'journal' ? 'hidden' : ''}`}>
-          <div className="flex items-center gap-3">
-            <h2 className="text-2xl font-bold text-white">
-              {view === 'tracker' ? 'Habits' : view === 'dashboard' ? 'Dashboard' : view === 'routines' ? 'Routines' : view === 'tasks' ? 'Tasks' : 'Goals'}
-            </h2>
+          <h2 className="text-2xl font-bold text-white">
+            {view === 'tracker' ? 'Habits' : view === 'dashboard' ? 'Dashboard' : view === 'routines' ? 'Routines' : view === 'tasks' ? 'Tasks' : 'Goals'}
+          </h2>
 
-            {/* Action buttons inline with title */}
+          <div className="flex items-center gap-3">
+            {/* Action buttons */}
             {view === 'tracker' && (
-              <button
-                onClick={() => { setEditingHabit(null); setIsModalOpen(true); }}
-                className="p-2 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-neutral-900 transition-colors"
-                title="Add Habit"
-              >
-                <Plus size={20} />
-              </button>
+              <>
+                <button
+                  onClick={() => { setEditingHabit(null); setIsModalOpen(true); }}
+                  className="p-2 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-neutral-900 transition-colors"
+                  title="Add Habit"
+                >
+                  <Plus size={20} />
+                </button>
+                <div className="flex bg-neutral-800 p-0.5 rounded-lg">
+                  <button
+                    onClick={() => setTrackerViewMode('grid')}
+                    className={`px-3 py-1 text-sm font-medium rounded-md transition-all ${trackerViewMode === 'grid' ? 'bg-neutral-600 text-white shadow-sm' : 'text-neutral-400 hover:text-white'}`}
+                  >
+                    Grid
+                  </button>
+                  <button
+                    onClick={() => setTrackerViewMode('day')}
+                    className={`px-3 py-1 text-sm font-medium rounded-md transition-all ${trackerViewMode === 'day' ? 'bg-neutral-600 text-white shadow-sm' : 'text-neutral-400 hover:text-white'}`}
+                  >
+                    Today
+                  </button>
+                </div>
+              </>
             )}
             {view === 'goals' && (
               <>
@@ -270,24 +286,6 @@ const HabitTrackerContent: React.FC = () => {
               </button>
             )}
           </div>
-
-          {/* Tracker View Toggles (Only visible on Habits page) */}
-          {view === 'tracker' && (
-            <div className="flex bg-neutral-800 p-0.5 rounded-lg">
-              <button
-                onClick={() => setTrackerViewMode('grid')}
-                className={`px-3 py-1 text-sm font-medium rounded-md transition-all ${trackerViewMode === 'grid' ? 'bg-neutral-600 text-white shadow-sm' : 'text-neutral-400 hover:text-white'}`}
-              >
-                Grid
-              </button>
-              <button
-                onClick={() => setTrackerViewMode('day')}
-                className={`px-3 py-1 text-sm font-medium rounded-md transition-all ${trackerViewMode === 'day' ? 'bg-neutral-600 text-white shadow-sm' : 'text-neutral-400 hover:text-white'}`}
-              >
-                Today
-              </button>
-            </div>
-          )}
         </div>
       </div>
 
