@@ -91,7 +91,7 @@ export const HabitCreationInlineModal: React.FC<HabitCreationInlineModalProps> =
                        (type === 'binary' || (type === 'quantified' && target !== '' && !isNaN(parseFloat(target)) && parseFloat(target) > 0));
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+        <div className="modal-overlay fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
             <div className="w-full max-w-md bg-neutral-900 border border-white/10 rounded-2xl p-6 shadow-2xl">
                 <div className="flex items-center justify-between mb-6">
                     <h3 className="text-xl font-bold text-white">Create New Habit</h3>

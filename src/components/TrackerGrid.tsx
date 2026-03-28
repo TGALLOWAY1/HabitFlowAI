@@ -1349,7 +1349,7 @@ export const TrackerGrid = ({
 
             {/* Delete Confirmation Modal */}
             {deleteConfirmId && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+                <div className="modal-overlay fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
                     <div className="bg-neutral-900 border border-white/10 rounded-xl p-6 w-full max-w-sm shadow-xl">
                         <h3 className="text-lg font-bold text-white mb-2">Delete Habit?</h3>
                         <p className="text-neutral-400 mb-6 text-sm">

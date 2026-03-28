@@ -19,7 +19,7 @@ const tabs: { route: TabRoute; label: string; icon: React.FC<{ size?: number; cl
 
 export const BottomTabBar: React.FC<BottomTabBarProps> = ({ activeView, onNavigate }) => {
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-neutral-900 border-t border-white/10 pb-[env(safe-area-inset-bottom,0px)]">
+    <nav className="fixed bottom-0 left-0 right-0 z-40 bg-neutral-900 border-t border-white/10 pb-[env(safe-area-inset-bottom,0px)]">
       <div className="flex items-center justify-around max-w-lg mx-auto h-14">
         {tabs.map(({ route, label, icon: Icon }) => {
           const isActive = activeView === route;
