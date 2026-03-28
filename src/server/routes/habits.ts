@@ -14,15 +14,19 @@ import {
   updateHabit,
   deleteHabit,
   reorderHabits,
+  recoverCategoryDeletedHabits,
 } from '../repositories/habitRepository';
 import { getCategoryById } from '../repositories/categoryRepository';
 import { deleteHabitEntriesByHabit } from '../repositories/habitEntryRepository';
 import type { Habit } from '../../models/persistenceTypes';
 import { getRequestIdentity } from '../middleware/identity';
 
+// One-time recovery: track which users have been recovered to avoid repeated DB calls
+const recoveredUsers = new Set<string>();
+
 /**
  * Get all habits for the current user.
- * 
+ *
  * GET /api/habits
  * GET /api/habits?categoryId=xxx (optional filter)
  */
@@ -31,6 +35,16 @@ export async function getHabits(req: Request, res: Response): Promise<void> {
 
     const { householdId, userId } = getRequestIdentity(req);
     const categoryId = req.query.categoryId as string | undefined;
+
+    // One-time recovery: unarchive habits that were archived due to category deletion
+    const recoveryKey = `${householdId}:${userId}`;
+    if (!recoveredUsers.has(recoveryKey)) {
+      recoveredUsers.add(recoveryKey);
+      const recovered = await recoverCategoryDeletedHabits(householdId, userId);
+      if (recovered > 0) {
+        console.log(`[Recovery] Unarchived ${recovered} habits for user ${userId} (previously archived by category deletion)`);
+      }
+    }
 
     let habits: Habit[];
     if (categoryId) {

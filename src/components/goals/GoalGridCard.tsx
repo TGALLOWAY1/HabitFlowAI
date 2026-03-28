@@ -134,6 +134,9 @@ export const GoalGridCard: React.FC<GoalGridCardProps> = ({
                                 style={{ width: `${Math.min(100, progress.percent)}%` }}
                             />
                         </div>
+                        <div className="mt-1.5 text-xs text-neutral-400 font-medium text-center">
+                            {progress.currentValue} / {target} {goal.unit || ''}{goal.type === 'frequency' ? ' days' : ''}
+                        </div>
                     </div>
                 )}
 

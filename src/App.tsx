@@ -19,6 +19,7 @@ import { RoutinePreviewModal } from './components/RoutinePreviewModal';
 import { HabitHistoryModal } from './components/HabitHistoryModal';
 import { BottomTabBar } from './components/BottomTabBar';
 
+import { Plus, Trophy } from 'lucide-react';
 import type { Routine, Habit } from './types';
 import { GoalsPage } from './pages/goals/GoalsPage';
 import { CreateGoalFlow } from './pages/goals/CreateGoalFlow';
@@ -226,9 +227,49 @@ const HabitTrackerContent: React.FC = () => {
       <div className="flex flex-col gap-4">
         {/* Title Section */}
         <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-bold text-white">
-            {view === 'tracker' ? 'Habits' : view === 'dashboard' ? 'Dashboard' : view === 'routines' ? 'Routines' : view === 'journal' ? 'Journal' : view === 'tasks' ? 'Tasks' : 'Goals'}
-          </h2>
+          <div className="flex items-center gap-3">
+            <h2 className="text-2xl font-bold text-white">
+              {view === 'tracker' ? 'Habits' : view === 'dashboard' ? 'Dashboard' : view === 'routines' ? 'Routines' : view === 'journal' ? 'Journal' : view === 'tasks' ? 'Tasks' : 'Goals'}
+            </h2>
+
+            {/* Action buttons inline with title */}
+            {view === 'tracker' && (
+              <button
+                onClick={() => { setEditingHabit(null); setIsModalOpen(true); }}
+                className="p-2 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-neutral-900 transition-colors"
+                title="Add Habit"
+              >
+                <Plus size={20} />
+              </button>
+            )}
+            {view === 'goals' && (
+              <>
+                <button
+                  onClick={() => handleNavigate('wins')}
+                  className="p-2 rounded-lg hover:bg-neutral-800 text-neutral-400 hover:text-white transition-colors"
+                  title="Win Archive"
+                >
+                  <Trophy size={20} />
+                </button>
+                <button
+                  onClick={() => setShowCreateGoal(true)}
+                  className="p-2 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-neutral-900 transition-colors"
+                  title="Create Goal"
+                >
+                  <Plus size={20} />
+                </button>
+              </>
+            )}
+            {view === 'routines' && (
+              <button
+                onClick={() => setRoutineEditorState({ isOpen: true, mode: 'create', routine: undefined })}
+                className="p-2 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-neutral-900 transition-colors"
+                title="New Routine"
+              >
+                <Plus size={20} />
+              </button>
+            )}
+          </div>
 
           {/* Tracker View Toggles (Only visible on Habits page) */}
           {view === 'tracker' && (

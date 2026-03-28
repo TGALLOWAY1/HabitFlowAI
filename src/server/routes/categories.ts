@@ -14,7 +14,7 @@ import {
   deleteCategory,
   reorderCategories,
 } from '../repositories/categoryRepository';
-import { archiveHabitsByCategory } from '../repositories/habitRepository';
+import { uncategorizeHabitsByCategory } from '../repositories/habitRepository';
 import type { Category } from '../../models/persistenceTypes';
 import { getRequestIdentity } from '../middleware/identity';
 
@@ -286,10 +286,9 @@ export async function deleteCategoryRoute(req: Request, res: Response): Promise<
 
     const { householdId, userId } = getRequestIdentity(req);
 
-    // Archive all habits in this category before deleting the category.
-    // This prevents orphaned habits (referencing a non-existent categoryId).
-    // Archived habits are preserved for history but hidden from active tracking.
-    const archivedCount = await archiveHabitsByCategory(id, householdId, userId);
+    // Make all habits in this category "uncategorized" by clearing their categoryId.
+    // This keeps them visible and accessible so users can reassign or delete them.
+    const uncategorizedCount = await uncategorizeHabitsByCategory(id, householdId, userId);
 
     const deleted = await deleteCategory(id, householdId, userId);
 
@@ -305,7 +304,7 @@ export async function deleteCategoryRoute(req: Request, res: Response): Promise<
 
     res.status(200).json({
       message: 'Category deleted successfully',
-      archivedHabits: archivedCount,
+      uncategorizedHabits: uncategorizedCount,
     });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';

@@ -133,7 +133,7 @@ export const DayCategorySection = ({
                         All Done
                     </span>
                 )}
-                {!allDone && completedCount > 0 && (
+                {!allDone && (
                     <span className="ml-auto text-xs text-neutral-600">
                         {completedCount}/{habits.length}
                     </span>

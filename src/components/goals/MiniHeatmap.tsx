@@ -11,24 +11,18 @@ interface MiniHeatmapProps {
 }
 
 export const MiniHeatmap: React.FC<MiniHeatmapProps> = ({ data }) => {
-    // We want to display exactly 4 rows (weeks) x 7 columns (days)
-    // using the last 28 days of data.
-    // Data comes in "most recent first" order from the backend usually, but let's sort to be safe if needed,
-    // or assume chronological if we reversed it elsewhere. 
-    // Wait, the data usually comes most recent first in 'lastThirtyDays', so index 0 is today.
+    // Data comes most recent first. Reverse to chronological order.
+    const allData = data.slice(0, 28).reverse();
 
-    // Let's grab the last 28 days (0 to 27) and REVERSE them so index 0 is 28 days ago (top left)
-    // and index 27 is today (bottom right).
+    // Count how many days have progress
+    const daysWithProgress = allData.filter(d => d.hasProgress).length;
 
-    const relevantData = data.slice(0, 28).reverse();
-
-    // Map data to a grid of 4 weeks
-    // If we have less than 28 days of data (e.g. new goal), we pad with empty days at the start?
-    // Or just show what we have. 
-    // Ideally we want a fixed 28-cell grid.
+    // Show 7 boxes (1 week) when little/no progress, expand to full 28 when active
+    const cellCount = daysWithProgress >= 3 ? 28 : 7;
+    const relevantData = cellCount === 7 ? allData.slice(-7) : allData;
 
     const paddedData = [...relevantData];
-    while (paddedData.length < 28) {
+    while (paddedData.length < cellCount) {
         paddedData.unshift({ date: `empty-${paddedData.length}`, value: 0, hasProgress: false });
     }
 
