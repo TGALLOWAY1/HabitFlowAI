@@ -37,13 +37,6 @@ export const TasksCard: React.FC<TasksCardProps> = ({ onNavigateToTasks }) => {
                                 ? 'Tasks'
                                 : `${completedCount}/${totalCount} tasks`}
                         </p>
-                        <p className="text-xs text-neutral-500">
-                            {totalCount === 0
-                                ? 'Nothing for today'
-                                : totalCount === completedCount
-                                    ? 'All done!'
-                                    : `${totalCount - completedCount} remaining`}
-                        </p>
                     </div>
                 </div>
                 <ChevronRight size={16} className="text-neutral-600 group-hover:text-neutral-400 transition-colors" />
