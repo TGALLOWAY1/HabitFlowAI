@@ -7,8 +7,26 @@ import { CategoryPickerModal } from '../CategoryPickerModal';
 import { format } from 'date-fns';
 import { Calendar, Plus, ListTodo, Layers } from 'lucide-react';
 import { fetchDayView, getLocalTimeZone } from '../../lib/persistenceClient';
+import {
+    DndContext,
+    closestCenter,
+    KeyboardSensor,
+    PointerSensor,
+    TouchSensor,
+    useSensor,
+    useSensors,
+    type DragEndEvent,
+} from '@dnd-kit/core';
+import {
+    arrayMove,
+    SortableContext,
+    sortableKeyboardCoordinates,
+    verticalListSortingStrategy,
+    useSortable,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
-import type { Habit } from '../../types';
+import type { Habit, Category } from '../../types';
 
 interface DayViewHabitStatus {
     habit: Habit;
@@ -26,6 +44,36 @@ interface DayViewData {
     habits: DayViewHabitStatus[];
 }
 
+interface SortableCategoryWrapperProps {
+    id: string;
+    children: (dragHandleProps: Record<string, unknown>) => React.ReactNode;
+}
+
+const SortableCategoryWrapper: React.FC<SortableCategoryWrapperProps> = ({ id, children }) => {
+    const {
+        attributes,
+        listeners,
+        setNodeRef,
+        transform,
+        transition,
+        isDragging,
+    } = useSortable({ id });
+
+    const style = {
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.5 : 1,
+        position: 'relative' as const,
+        zIndex: isDragging ? 10 : undefined,
+    };
+
+    return (
+        <div ref={setNodeRef} style={style}>
+            {children({ ...attributes, ...listeners })}
+        </div>
+    );
+};
+
 interface DayViewProps {
     onAddHabit?: () => void;
 }
@@ -38,8 +86,29 @@ export const DayView = ({ onAddHabit }: DayViewProps = {}) => {
         toggleHabit,
         updateHabit,
         upsertHabitEntry,
-        deleteHabitEntryByKey
+        deleteHabitEntryByKey,
+        reorderCategories
     } = useHabitStore();
+
+    // Drag-and-drop sensors for category reordering
+    const sensors = useSensors(
+        useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+        useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } }),
+        useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+    );
+
+    const handleCategoryDragEnd = async (event: DragEndEvent) => {
+        const { active, over } = event;
+        if (over && active.id !== over.id) {
+            const oldIndex = categories.findIndex((c) => c.id === active.id);
+            const newIndex = categories.findIndex((c) => c.id === over.id);
+            try {
+                await reorderCategories(arrayMove(categories, oldIndex, newIndex));
+            } catch (error) {
+                console.error('Failed to reorder categories:', error);
+            }
+        }
+    };
 
     // Use Today — stable reference to avoid re-computation on every render
     const today = useMemo(() => new Date(), []);
@@ -272,45 +341,60 @@ export const DayView = ({ onAddHabit }: DayViewProps = {}) => {
 
             {/* Categories */}
             {!dayViewLoading && !dayViewError && (
-                <div className="flex flex-col gap-2">
-                    {categories.map(cat => {
-                        const catHabits = groupedHabits.get(cat.id) || [];
-                        if (catHabits.length === 0) return null;
+                <DndContext
+                    sensors={sensors}
+                    collisionDetection={closestCenter}
+                    onDragEnd={handleCategoryDragEnd}
+                >
+                    <SortableContext
+                        items={categories.map(c => c.id)}
+                        strategy={verticalListSortingStrategy}
+                    >
+                        <div className="flex flex-col gap-2">
+                            {categories.map(cat => {
+                                const catHabits = groupedHabits.get(cat.id) || [];
+                                if (catHabits.length === 0) return null;
 
-                        return (
-                            <DayCategorySection
-                                key={cat.id}
-                                category={cat}
-                                habits={catHabits}
-                                habitStatusMap={resolvedHabitStatusMap}
-                                dateStr={dateStr}
-                                onToggle={handleToggle}
-                                onPin={handlePin}
-                                onUpdateEstimate={handleUpdateEstimate}
-                                onMoveToCategory={(h) => setCategoryPickerHabit(h)}
-                                allHabitsLookup={allHabitsLookup}
-                                onUpdateHabitEntry={upsertHabitEntry}
-                                deleteHabitEntryByKey={deleteHabitEntryByKey}
-                            />
-                        );
-                    })}
-                    {(groupedHabits.get(UNCATEGORIZED_ID) || []).length > 0 && (
-                        <DayCategorySection
-                            key={UNCATEGORIZED_ID}
-                            category={{ id: UNCATEGORIZED_ID, name: 'Uncategorized', color: 'bg-amber-600' }}
-                            habits={groupedHabits.get(UNCATEGORIZED_ID)!}
-                            habitStatusMap={resolvedHabitStatusMap}
-                            dateStr={dateStr}
-                            onToggle={handleToggle}
-                            onPin={handlePin}
-                            onUpdateEstimate={handleUpdateEstimate}
-                            onMoveToCategory={(h) => setCategoryPickerHabit(h)}
-                            allHabitsLookup={allHabitsLookup}
-                            onUpdateHabitEntry={upsertHabitEntry}
-                            deleteHabitEntryByKey={deleteHabitEntryByKey}
-                        />
-                    )}
-                </div>
+                                return (
+                                    <SortableCategoryWrapper key={cat.id} id={cat.id}>
+                                        {(dragHandleProps) => (
+                                            <DayCategorySection
+                                                category={cat}
+                                                habits={catHabits}
+                                                habitStatusMap={resolvedHabitStatusMap}
+                                                dateStr={dateStr}
+                                                onToggle={handleToggle}
+                                                onPin={handlePin}
+                                                onUpdateEstimate={handleUpdateEstimate}
+                                                onMoveToCategory={(h) => setCategoryPickerHabit(h)}
+                                                allHabitsLookup={allHabitsLookup}
+                                                onUpdateHabitEntry={upsertHabitEntry}
+                                                deleteHabitEntryByKey={deleteHabitEntryByKey}
+                                                dragHandleProps={dragHandleProps}
+                                            />
+                                        )}
+                                    </SortableCategoryWrapper>
+                                );
+                            })}
+                            {(groupedHabits.get(UNCATEGORIZED_ID) || []).length > 0 && (
+                                <DayCategorySection
+                                    key={UNCATEGORIZED_ID}
+                                    category={{ id: UNCATEGORIZED_ID, name: 'Uncategorized', color: 'bg-amber-600' }}
+                                    habits={groupedHabits.get(UNCATEGORIZED_ID)!}
+                                    habitStatusMap={resolvedHabitStatusMap}
+                                    dateStr={dateStr}
+                                    onToggle={handleToggle}
+                                    onPin={handlePin}
+                                    onUpdateEstimate={handleUpdateEstimate}
+                                    onMoveToCategory={(h) => setCategoryPickerHabit(h)}
+                                    allHabitsLookup={allHabitsLookup}
+                                    onUpdateHabitEntry={upsertHabitEntry}
+                                    deleteHabitEntryByKey={deleteHabitEntryByKey}
+                                />
+                            )}
+                        </div>
+                    </SortableContext>
+                </DndContext>
             )}
 
             {/* Footer / Empty Space for scrolling */}
