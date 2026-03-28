@@ -244,9 +244,9 @@ const HabitRowContent = ({
             ref={setNodeRef}
             style={style}
             className={cn(
-                "flex border-b border-white/5 transition-colors group relative",
+                "flex border-b border-white/5 transition-colors group",
                 habit.isVirtual ? "bg-neutral-800/30" : "bg-neutral-900/50", // Difference for virtual
-                isDragging && "shadow-xl ring-1 ring-emerald-500/50 z-50 bg-neutral-900",
+                isDragging && "relative shadow-xl ring-1 ring-emerald-500/50 z-50 bg-neutral-900",
                 priorityRingClass
             )}
             onContextMenu={(e) => onContextMenu(e, habit)}
@@ -333,7 +333,7 @@ const HabitRowContent = ({
                 )}
             </div>
 
-            <div className="flex">
+            <div className="flex relative z-0">
                 {dates.map((date) => {
                     const dateStr = format(date, 'yyyy-MM-dd');
 
@@ -390,7 +390,7 @@ const HabitRowContent = ({
                     return (
                         <div
                             key={dateStr}
-                            className="w-16 flex-shrink-0 border-r border-white/5 flex items-center justify-center p-2 relative"
+                            className="w-16 flex-shrink-0 border-r border-white/5 flex items-center justify-center p-2"
                         >
                             <button
                                 onClick={habit.type === 'bundle' && habit.bundleType !== 'choice' ? handleBundleClick : (isInteractive ? (e) => handleCellClick(e, habit, dateStr, log) : undefined)}
@@ -946,11 +946,11 @@ export const TrackerGrid = ({
     // Initial Split based on Roots
     const dailyHabits = useMemo(() => rootHabits.filter(h => !h.goal?.frequency || h.goal.frequency === 'daily'), [rootHabits]);
 
-    // Generate dates: Today + Last 13 days
+    // Generate dates: Today + Last 6 days (1 week)
     const dates = useMemo(() => {
         const today = new Date();
         const interval = eachDayOfInterval({
-            start: subDays(today, 13),
+            start: subDays(today, 6),
             end: today,
         });
         return interval.reverse();
@@ -1155,7 +1155,7 @@ export const TrackerGrid = ({
                 onDragEnd={handleDragEnd}
             >
                 <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-neutral-700 scrollbar-track-transparent">
-                    <div className="overflow-x-auto overscroll-x-contain [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden touch-pan-x">
+                    <div className="overflow-x-auto overscroll-x-contain [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
                         <div className="w-max min-w-full">
                             {/* Header */}
                             <div className="sticky top-0 z-30 flex border-b border-white/5 bg-neutral-900 shadow-md">
