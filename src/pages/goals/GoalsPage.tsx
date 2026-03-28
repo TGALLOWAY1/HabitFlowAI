@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Plus, Trophy, Target, ChevronDown, ChevronRight } from 'lucide-react';
+import { Plus, Target, ChevronDown, ChevronRight } from 'lucide-react';
 import { useGoalsWithProgress } from '../../lib/useGoalsWithProgress';
 import { GoalGridCard } from '../../components/goals/GoalGridCard';
 import { Loader2, AlertCircle } from 'lucide-react';
@@ -35,36 +35,39 @@ const Stack: React.FC<StackProps> = ({
     onEdit,
     onNavigateToCompleted,
 }) => {
+    // Determine color application strategy (match Today view style)
+    const isTailwindClass = stack.category.color?.startsWith('bg-');
+    const textColorClass = isTailwindClass ? stack.category.color.replace('bg-', 'text-') : undefined;
+    const styleColor = !isTailwindClass && stack.category.color ? { color: stack.category.color } : undefined;
+
     return (
-        <div className="border border-white/5 rounded-xl bg-neutral-900/30 overflow-hidden w-full">
+        <div className="overflow-hidden w-full">
             {/* Stack Header */}
             <button
                 onClick={onToggle}
-                className="w-full px-4 sm:px-6 py-4 flex items-center justify-between hover:bg-neutral-800/50 active:bg-neutral-800/70 transition-colors text-left touch-manipulation"
+                className="flex items-center gap-2 mb-3 px-1 w-full text-left group transition-opacity hover:opacity-80"
             >
-                <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
-                    <div
-                        className={`w-3 h-3 rounded-full flex-shrink-0 ${stack.category.color || 'bg-neutral-600'}`}
-                    />
-                    <h2 className="text-base sm:text-lg lg:text-xl font-semibold text-white truncate">
-                        {stack.category.name}
-                    </h2>
-                    <span className="text-xs sm:text-sm text-neutral-400 font-medium flex-shrink-0">
-                        ({goalCount} {goalCount === 1 ? 'goal' : 'goals'})
-                    </span>
-                </div>
-                <div className="flex-shrink-0 text-neutral-400 ml-2">
+                <div className={`flex-shrink-0 ${textColorClass || ''}`} style={styleColor}>
                     {isExpanded ? (
                         <ChevronDown size={20} />
                     ) : (
                         <ChevronRight size={20} />
                     )}
                 </div>
+                <h2
+                    className={`text-lg font-bold transition-colors truncate ${textColorClass || ''}`}
+                    style={styleColor}
+                >
+                    {stack.category.name}
+                </h2>
+                <span className="text-xs text-neutral-500 font-medium flex-shrink-0">
+                    ({goalCount} {goalCount === 1 ? 'goal' : 'goals'})
+                </span>
             </button>
 
             {/* Stack Body - Goal Cards */}
             {isExpanded && (
-                <div className="px-3 sm:px-4 lg:px-6 py-4 border-t border-white/5 overflow-x-hidden">
+                <div className="px-1 py-2 overflow-x-hidden">
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
                         {(stack.goals as Array<{ id: string }>).map((goal) => {
                             const goalWithProgress = getGoalWithProgress(goal.id);
@@ -95,7 +98,7 @@ export const GoalsPage: React.FC<GoalsPageProps> = ({
     onCreateGoal,
     onViewGoal,
     onNavigateToCompleted,
-    onViewWinArchive
+    onViewWinArchive: _onViewWinArchive
 }) => {
     const { data, loading, error, refetch } = useGoalsWithProgress();
     const { categories } = useHabitStore();
@@ -180,32 +183,6 @@ export const GoalsPage: React.FC<GoalsPageProps> = ({
 
     return (
         <div className="w-full max-w-4xl mx-auto py-6 sm:py-8 overflow-x-hidden px-4 sm:px-6 lg:px-8">
-            <div className="mb-6 sm:mb-8 flex items-center gap-3 flex-wrap">
-                <span className="flex items-center gap-2 px-4 py-2 rounded-lg bg-neutral-700 text-white font-medium text-sm">
-                    <Target size={16} />
-                    Overview
-                </span>
-
-                {onViewWinArchive && goalStacks.length > 0 && (
-                    <button
-                        onClick={onViewWinArchive}
-                        className="flex items-center gap-2 px-4 py-2 bg-neutral-700 hover:bg-neutral-600 text-white font-medium rounded-lg transition-colors text-sm whitespace-nowrap"
-                    >
-                        <Trophy size={18} />
-                        <span className="hidden sm:inline">Win Archive</span>
-                    </button>
-                )}
-                {onCreateGoal && (
-                    <button
-                        onClick={onCreateGoal}
-                        className="flex items-center gap-2 px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-neutral-900 font-medium rounded-lg transition-colors text-sm whitespace-nowrap"
-                    >
-                        <Plus size={18} />
-                        <span className="hidden sm:inline">Create Goal</span>
-                    </button>
-                )}
-            </div>
-
             {/* Content Area */}
             {goalStacks.length === 0 ? (
                     <div className="text-center py-12 sm:py-16">

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useRoutineStore } from '../store/RoutineContext';
 import { useHabitStore } from '../store/HabitContext';
 import type { Routine, Category } from '../models/persistenceTypes';
-import { Plus, MoreVertical, ChevronRight, ClipboardList, Edit, Trash2, Layers } from 'lucide-react';
+import { Plus, MoreVertical, ChevronRight, ChevronDown, ClipboardList, Edit, Trash2, Layers } from 'lucide-react';
 import { cn } from '../utils/cn';
 import { resolveSteps, getEstimatedDurationMinutes, isMultiVariant } from '../lib/routineVariantUtils';
 
@@ -136,22 +136,31 @@ const CategorySection: React.FC<{
     onEdit: (routine: Routine) => void;
     onDelete: (routine: Routine) => void;
 }> = ({ category, routines, isExpanded, onToggle, onPreview, onEdit, onDelete }) => {
+    // Determine color application strategy (match Today view style)
+    const isTailwindClass = category.color?.startsWith('bg-');
+    const textColorClass = isTailwindClass ? category.color.replace('bg-', 'text-') : undefined;
+    const styleColor = !isTailwindClass && category.color ? { color: category.color } : undefined;
+
     return (
         <div className="space-y-3">
             {/* Header */}
-            <div
+            <button
                 onClick={onToggle}
-                className="flex items-center gap-2 cursor-pointer py-1 hover:opacity-80 transition-opacity select-none group"
+                className="flex items-center gap-2 px-1 w-full text-left group transition-opacity hover:opacity-80"
             >
-                <div className="text-neutral-500 transition-transform duration-200" style={{ transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)' }}>
-                    <ChevronRight size={16} />
+                <div className={`flex-shrink-0 ${textColorClass || 'text-neutral-500'}`} style={styleColor}>
+                    {isExpanded ? <ChevronDown size={20} /> : <ChevronRight size={20} />}
                 </div>
-                <div className={`w-2 h-2 rounded-full ${(category as any).isUncategorized ? 'bg-neutral-600' : category.color}`} />
-                <h3 className="text-sm font-semibold text-neutral-300 group-hover:text-white transition-colors">{category.name}</h3>
-                <span className="text-xs text-neutral-600 font-medium ml-1">
+                <h3
+                    className={`text-lg font-bold transition-colors ${textColorClass || 'text-neutral-300'}`}
+                    style={styleColor}
+                >
+                    {category.name}
+                </h3>
+                <span className="text-xs text-neutral-500 font-medium ml-1">
                     {routines.length}
                 </span>
-            </div>
+            </button>
 
             {/* Body (Grid) */}
             {isExpanded && (
@@ -283,17 +292,6 @@ export const RoutineList: React.FC<RoutineListProps> = ({ onCreate, onEdit, onPr
 
     return (
         <div className="flex-1 flex flex-col h-full bg-neutral-900/50 rounded-2xl border border-white/5 backdrop-blur-sm shadow-xl overflow-hidden">
-            {/* Header */}
-            <div className="flex items-center justify-between p-6 border-b border-white/5">
-                <h2 className="text-lg font-bold text-white">Routines</h2>
-                <button
-                    onClick={onCreate}
-                    className="flex items-center gap-2 px-3 py-1.5 bg-emerald-500/10 text-emerald-400 text-sm font-medium rounded-lg hover:bg-emerald-500/20 transition-colors border border-emerald-500/20"
-                >
-                    <Plus size={16} />
-                    New Routine
-                </button>
-            </div>
 
             <div className="flex-1 overflow-y-auto p-6 space-y-8 scrollbar-thin scrollbar-thumb-neutral-700 scrollbar-track-transparent">
                 {categories.map(category => {
