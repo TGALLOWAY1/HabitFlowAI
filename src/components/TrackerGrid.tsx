@@ -337,7 +337,6 @@ const HabitRowContent = ({
             </div>
 
             <div className="flex">
-                {showArrows && <div className="w-8 flex-shrink-0" />}
                 {dates.map((date) => {
                     const dateStr = format(date, 'yyyy-MM-dd');
 
