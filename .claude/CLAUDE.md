@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-HabitFlowAI is a full-stack habit-tracking web app — TypeScript monorepo with React 19 + Vite frontend and Express 5 backend, backed by MongoDB. Tracks habits, routines, goals, journal entries, wellbeing, and tasks.
+HabitFlowAI is a full-stack habit-tracking web app — TypeScript monorepo (ESM, `"type": "module"`) with React 19 + Vite frontend and Express 5 backend, backed by MongoDB. Tracks habits, routines, goals, journal entries, wellbeing, and tasks.
 
 ## Commands
 
@@ -18,6 +18,7 @@ npm run lint:beta      # ESLint server/shared/domain only (CI scope)
 npm run test           # Vitest in watch mode
 npm run test:run       # Vitest single run (all tests)
 npm run test:beta      # CI beta test suite (critical subset)
+npm run verify         # Full validation script
 ```
 
 ### Running a single test
@@ -64,6 +65,12 @@ src/server/
 - **State:** React Context — `HabitContext`, `AuthContext`, `RoutineContext`, `TaskContext`
 - **API Client:** `src/lib/persistenceClient.ts`
 - **Styling:** Tailwind CSS 3 with dynamic color safe-list
+- **Dev proxy:** Vite forwards `/api` requests to `http://localhost:3001`
+
+### Shared & Domain Layers
+
+- **`src/shared/`** — Code used by both frontend and backend: persona definitions, persona invariants, demo config
+- **`src/domain/`** — Domain primitives (e.g., `domain/time/` for timezone/DayKey utilities)
 
 ### Identity Model
 
@@ -104,8 +111,8 @@ Deployment: Render (backend via `render.yaml`) + Vercel (frontend via `vercel.js
 
 ## Code Style
 
-- TypeScript strict mode, ESLint 9 flat config
-- **Beta gate** (CI-enforced on `src/server/`, `src/shared/`, `src/domain/`): `no-unused-vars` is error (except `_`-prefixed), `no-explicit-any` is warning
+- TypeScript strict mode (`noUnusedLocals`, `noUnusedParameters` enabled), ESLint 9 flat config
+- **Beta gate** (CI-enforced on `src/server/`, `src/shared/`, `src/domain/`, excludes `__tests__/`): `no-unused-vars` is error (except `_`-prefixed), `no-explicit-any` is warning
 - Unused variables/parameters: prefix with `_`
 - Soft deletes via `deletedAt` field — never hard delete truth records
 
