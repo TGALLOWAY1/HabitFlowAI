@@ -70,7 +70,7 @@ export const WeeklyHabitEditModal: React.FC<WeeklyHabitEditModalProps> = ({ habi
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+        <div className="modal-overlay fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
             <div className="bg-neutral-900 border border-white/10 rounded-2xl w-full max-w-sm shadow-xl flex flex-col overflow-hidden animate-in fade-in zoom-in duration-200">
 
                 {/* Header */}

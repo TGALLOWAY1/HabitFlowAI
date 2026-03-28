@@ -402,7 +402,7 @@ export async function createRoutineRoute(req: Request, res: Response): Promise<v
 export async function updateRoutineRoute(req: Request, res: Response): Promise<void> {
   try {
     const { id } = req.params;
-    const { title, categoryId, steps, linkedHabitIds, variants, defaultVariantId } = req.body;
+    const { title, categoryId, steps, linkedHabitIds, variants, defaultVariantId, icon, color } = req.body;
 
     if (!id) {
       res.status(400).json({
@@ -495,6 +495,32 @@ export async function updateRoutineRoute(req: Request, res: Response): Promise<v
         return;
       }
       patch.linkedHabitIds = linkedHabitIds;
+    }
+
+    if (icon !== undefined) {
+      if (typeof icon !== 'string' || icon.trim().length === 0) {
+        res.status(400).json({
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: 'Icon must be a non-empty string',
+          },
+        });
+        return;
+      }
+      patch.icon = icon.trim();
+    }
+
+    if (color !== undefined) {
+      if (typeof color !== 'string' || color.trim().length === 0) {
+        res.status(400).json({
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: 'Color must be a non-empty string',
+          },
+        });
+        return;
+      }
+      patch.color = color.trim();
     }
 
     if (Object.keys(patch).length === 0) {

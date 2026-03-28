@@ -35,6 +35,9 @@ body {
   .modal-overlay {
     overflow: hidden;
   }
+  .modal-overlay > div {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
 
   .no-scrollbar::-webkit-scrollbar {
     display: none;

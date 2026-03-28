@@ -86,9 +86,6 @@ export const DailyCheckInCard: React.FC<DailyCheckInCardProps> = ({ onOpenCheckI
     const ctaLabel = nextSessionAvailable
         ? 'Evening Check-in'
         : `${sessionLabel} Check-in`;
-    const ctaSubtext = nextSessionAvailable
-        ? 'Reflect on your day'
-        : isEvening ? 'How was your day?' : 'How are you feeling?';
 
     return (
         <button
@@ -102,7 +99,6 @@ export const DailyCheckInCard: React.FC<DailyCheckInCardProps> = ({ onOpenCheckI
                     </div>
                     <div>
                         <p className="text-sm font-medium text-white">{ctaLabel}</p>
-                        <p className="text-xs text-neutral-500">{ctaSubtext}</p>
                     </div>
                 </div>
                 <ChevronRight size={16} className="text-neutral-600 group-hover:text-neutral-400 transition-colors" />
