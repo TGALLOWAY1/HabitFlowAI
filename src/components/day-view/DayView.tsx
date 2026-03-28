@@ -26,7 +26,7 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
-import type { Habit, Category } from '../../types';
+import type { Habit } from '../../types';
 
 interface DayViewHabitStatus {
     habit: Habit;
