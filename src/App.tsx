@@ -29,6 +29,7 @@ import { WinArchivePage } from './pages/goals/WinArchivePage';
 import { iterateGoal, createGoal, fetchGoal } from './lib/persistenceClient';
 import { invalidateAllGoalCaches } from './lib/goalDataCache';
 import { DayView } from './components/day-view/DayView';
+import { WeeklyView } from './components/day-view/WeeklyView';
 
 import { JournalPage } from './pages/JournalPage';
 import { TasksPage } from './pages/TasksPage';
@@ -127,8 +128,8 @@ const HabitTrackerContent: React.FC = () => {
     return params.get("goalId");
   });
 
-  // Track View Mode: 'grid' or 'day' — default to 'day' for new users
-  const [trackerViewMode, setTrackerViewMode] = useState<'grid' | 'day'>(() =>
+  // Track View Mode: 'grid', 'day', or 'weekly' — default to 'day' for new users
+  const [trackerViewMode, setTrackerViewMode] = useState<'grid' | 'day' | 'weekly'>(() =>
     habits.length === 0 ? 'day' : 'grid'
   );
 
@@ -226,15 +227,14 @@ const HabitTrackerContent: React.FC = () => {
 
       <div className="flex flex-col gap-4">
         {/* Title Section */}
-        <div className={`flex items-center justify-between ${view === 'journal' ? 'hidden' : ''}`}>
-          <h2 className="text-2xl font-bold text-white">
-            {view === 'tracker' ? 'Habits' : view === 'dashboard' ? 'Dashboard' : view === 'routines' ? 'Routines' : view === 'tasks' ? 'Tasks' : 'Goals'}
-          </h2>
+        <div className={`flex flex-col gap-2 ${view === 'journal' ? 'hidden' : ''}`}>
+          <div className="flex items-center justify-between">
+            <h2 className="text-2xl font-bold text-white">
+              {view === 'tracker' ? 'Habits' : view === 'dashboard' ? 'Dashboard' : view === 'routines' ? 'Routines' : view === 'tasks' ? 'Tasks' : 'Goals'}
+            </h2>
 
-          <div className="flex items-center gap-3">
-            {/* Action buttons */}
-            {view === 'tracker' && (
-              <>
+            <div className="flex items-center gap-3">
+              {view === 'tracker' && (
                 <button
                   onClick={() => { setEditingHabit(null); setIsModalOpen(true); }}
                   className="p-2 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-neutral-900 transition-colors"
@@ -242,50 +242,62 @@ const HabitTrackerContent: React.FC = () => {
                 >
                   <Plus size={20} />
                 </button>
-                <div className="flex bg-neutral-800 p-0.5 rounded-lg">
+              )}
+              {view === 'goals' && (
+                <>
                   <button
-                    onClick={() => setTrackerViewMode('grid')}
-                    className={`px-3 py-1 text-sm font-medium rounded-md transition-all ${trackerViewMode === 'grid' ? 'bg-neutral-600 text-white shadow-sm' : 'text-neutral-400 hover:text-white'}`}
+                    onClick={() => handleNavigate('wins')}
+                    className="p-2 rounded-lg hover:bg-neutral-800 text-neutral-400 hover:text-white transition-colors"
+                    title="Win Archive"
                   >
-                    Grid
+                    <Trophy size={20} />
                   </button>
                   <button
-                    onClick={() => setTrackerViewMode('day')}
-                    className={`px-3 py-1 text-sm font-medium rounded-md transition-all ${trackerViewMode === 'day' ? 'bg-neutral-600 text-white shadow-sm' : 'text-neutral-400 hover:text-white'}`}
+                    onClick={() => setShowCreateGoal(true)}
+                    className="p-2 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-neutral-900 transition-colors"
+                    title="Create Goal"
                   >
-                    Today
+                    <Plus size={20} />
                   </button>
-                </div>
-              </>
-            )}
-            {view === 'goals' && (
-              <>
+                </>
+              )}
+              {view === 'routines' && (
                 <button
-                  onClick={() => handleNavigate('wins')}
-                  className="p-2 rounded-lg hover:bg-neutral-800 text-neutral-400 hover:text-white transition-colors"
-                  title="Win Archive"
-                >
-                  <Trophy size={20} />
-                </button>
-                <button
-                  onClick={() => setShowCreateGoal(true)}
+                  onClick={() => setRoutineEditorState({ isOpen: true, mode: 'create', routine: undefined })}
                   className="p-2 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-neutral-900 transition-colors"
-                  title="Create Goal"
+                  title="New Routine"
                 >
                   <Plus size={20} />
                 </button>
-              </>
-            )}
-            {view === 'routines' && (
-              <button
-                onClick={() => setRoutineEditorState({ isOpen: true, mode: 'create', routine: undefined })}
-                className="p-2 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-neutral-900 transition-colors"
-                title="New Routine"
-              >
-                <Plus size={20} />
-              </button>
-            )}
+              )}
+            </div>
           </div>
+
+          {/* Tracker View Toggle — centered below title */}
+          {view === 'tracker' && (
+            <div className="flex justify-center">
+              <div className="flex bg-neutral-800 p-0.5 rounded-lg">
+                <button
+                  onClick={() => setTrackerViewMode('grid')}
+                  className={`px-3 py-1 text-sm font-medium rounded-md transition-all ${trackerViewMode === 'grid' ? 'bg-neutral-600 text-white shadow-sm' : 'text-neutral-400 hover:text-white'}`}
+                >
+                  Grid
+                </button>
+                <button
+                  onClick={() => setTrackerViewMode('day')}
+                  className={`px-3 py-1 text-sm font-medium rounded-md transition-all ${trackerViewMode === 'day' ? 'bg-neutral-600 text-white shadow-sm' : 'text-neutral-400 hover:text-white'}`}
+                >
+                  Today
+                </button>
+                <button
+                  onClick={() => setTrackerViewMode('weekly')}
+                  className={`px-3 py-1 text-sm font-medium rounded-md transition-all ${trackerViewMode === 'weekly' ? 'bg-neutral-600 text-white shadow-sm' : 'text-neutral-400 hover:text-white'}`}
+                >
+                  Weekly
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -421,6 +433,8 @@ const HabitTrackerContent: React.FC = () => {
               onViewHistory={(habit) => setHistoryHabit(habit)}
               potentialEvidence={potentialEvidence}
             />
+          ) : trackerViewMode === 'weekly' ? (
+            <WeeklyView />
           ) : (
             <DayView onAddHabit={() => setIsModalOpen(true)} />
           )
