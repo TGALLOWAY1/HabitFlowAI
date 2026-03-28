@@ -525,11 +525,11 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const deleteCategory = async (id: string) => {
         try {
             await deleteCategoryApi(id);
+            // Keep local state aligned with backend behavior:
+            // deleted-category habits are moved to "no category" (empty categoryId), not archived.
             setCategories(categories.filter(c => c.id !== id));
-            // Archive habits belonging to the deleted category in local state
-            // (backend already archived them in MongoDB during the delete)
             setHabits(prev => prev.map(h =>
-                h.categoryId === id ? { ...h, archived: true } : h
+                h.categoryId === id ? { ...h, categoryId: '', archived: false } : h
             ));
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : 'Unknown error';
