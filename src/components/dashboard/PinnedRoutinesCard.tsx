@@ -1,7 +1,7 @@
 import { useMemo, useCallback, useState, useRef, useEffect } from 'react';
 import { format } from 'date-fns';
 import {
-    Play, CheckCircle2, Pin, ChevronRight, Palette, Layers,
+    Play, CheckCircle2, Pin, ChevronRight, Palette, Layers, Check,
     Dumbbell, BookOpen, Music, Heart, Star, Zap, Sun, Moon,
     Coffee, Flame, Brain, TreePine, Waves, Target, Sparkles,
 } from 'lucide-react';
@@ -11,6 +11,9 @@ import { isMultiVariant, resolveVariant } from '../../lib/routineVariantUtils';
 import { fetchDashboardPrefs, updateDashboardPrefs } from '../../lib/persistenceClient';
 
 const STORAGE_KEY = 'hf_pinned_routines';
+
+// Module-level cache so pinned IDs survive component unmounts
+let _cachedPinnedIds: string[] | null = null;
 
 const ICON_OPTIONS = [
     { key: 'play', icon: Play, label: 'Play' },
@@ -52,38 +55,57 @@ function getColorTextClass(key?: string) {
     return match?.text ?? 'text-neutral-500';
 }
 
+function readLocalStorageIds(): string[] {
+    try {
+        const stored = localStorage.getItem(STORAGE_KEY);
+        return stored ? JSON.parse(stored) : [];
+    } catch {
+        return [];
+    }
+}
+
 function usePinnedRoutines() {
     const [pinnedIds, setPinnedIds] = useState<string[]>(() => {
-        try {
-            const stored = localStorage.getItem(STORAGE_KEY);
-            return stored ? JSON.parse(stored) : [];
-        } catch {
-            return [];
-        }
+        // Use module-level cache first (survives unmount), then localStorage
+        if (_cachedPinnedIds !== null) return _cachedPinnedIds;
+        const fromStorage = readLocalStorageIds();
+        _cachedPinnedIds = fromStorage;
+        return fromStorage;
     });
 
-    // Hydrate from backend on mount — backend is source of truth
+    // Keep module cache in sync with state
+    useEffect(() => {
+        _cachedPinnedIds = pinnedIds;
+    }, [pinnedIds]);
+
+    // Hydrate from backend on mount — but don't clobber local data with empty backend
     useEffect(() => {
         let cancelled = false;
         fetchDashboardPrefs()
             .then(prefs => {
                 if (cancelled) return;
                 const backendIds = prefs.pinnedRoutineIds ?? [];
-                setPinnedIds(backendIds);
-                localStorage.setItem(STORAGE_KEY, JSON.stringify(backendIds));
+                // Only overwrite local state if backend actually has data,
+                // or if local cache is empty (first load)
+                if (backendIds.length > 0 || _cachedPinnedIds === null || _cachedPinnedIds.length === 0) {
+                    setPinnedIds(backendIds);
+                    _cachedPinnedIds = backendIds;
+                    localStorage.setItem(STORAGE_KEY, JSON.stringify(backendIds));
+                }
             })
             .catch(() => {
-                // Keep localStorage fallback on network failure
+                // Keep localStorage/cache fallback on network failure
             });
         return () => { cancelled = true; };
-    }, []);
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
     const togglePin = useCallback((id: string) => {
         setPinnedIds(prev => {
             const next = prev.includes(id)
                 ? prev.filter(x => x !== id)
                 : [...prev, id];
-            // Update both caches immediately for responsiveness
+            // Update all caches immediately for responsiveness
+            _cachedPinnedIds = next;
             localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
             // Persist to backend (fire-and-forget; localStorage is fallback)
             updateDashboardPrefs({ pinnedRoutineIds: next }).catch(() => {});
@@ -99,10 +121,15 @@ function usePinnedRoutines() {
 /* ─── Icon/Color Picker Popover ─── */
 const CustomizePopover: React.FC<{
     routine: Routine;
-    onUpdate: (id: string, patch: { icon?: string; color?: string }) => void;
+    onUpdate: (id: string, patch: { icon?: string; color?: string }) => Promise<void> | void;
     onClose: () => void;
 }> = ({ routine, onUpdate, onClose }) => {
     const ref = useRef<HTMLDivElement>(null);
+    const [selectedColor, setSelectedColor] = useState<string | undefined>(routine.color);
+    const [selectedIcon, setSelectedIcon] = useState<string | undefined>(routine.icon);
+    const [saving, setSaving] = useState(false);
+
+    const hasChanges = selectedColor !== routine.color || selectedIcon !== routine.icon;
 
     useEffect(() => {
         const handleClick = (e: MouseEvent) => {
@@ -111,6 +138,17 @@ const CustomizePopover: React.FC<{
         document.addEventListener('mousedown', handleClick);
         return () => document.removeEventListener('mousedown', handleClick);
     }, [onClose]);
+
+    const handleApply = async () => {
+        const patch: { icon?: string; color?: string } = {};
+        if (selectedColor !== routine.color) patch.color = selectedColor;
+        if (selectedIcon !== routine.icon) patch.icon = selectedIcon;
+        if (Object.keys(patch).length === 0) { onClose(); return; }
+        setSaving(true);
+        await onUpdate(routine.id, patch);
+        setSaving(false);
+        onClose();
+    };
 
     return (
         <div
@@ -124,9 +162,9 @@ const CustomizePopover: React.FC<{
                     {COLOR_OPTIONS.map(c => (
                         <button
                             key={c.key}
-                            onClick={() => onUpdate(routine.id, { color: c.key })}
+                            onClick={() => setSelectedColor(c.key)}
                             className={`w-6 h-6 rounded-full ${c.class} transition-all ${
-                                routine.color === c.key ? 'ring-2 ring-white ring-offset-2 ring-offset-neutral-800' : 'hover:scale-110'
+                                selectedColor === c.key ? 'ring-2 ring-white ring-offset-2 ring-offset-neutral-800' : 'hover:scale-110'
                             }`}
                         />
                     ))}
@@ -134,15 +172,15 @@ const CustomizePopover: React.FC<{
             </div>
 
             {/* Icons */}
-            <div>
+            <div className="mb-3">
                 <span className="text-[10px] uppercase tracking-wider text-neutral-500 font-medium">Icon</span>
                 <div className="grid grid-cols-8 gap-1.5 mt-1.5">
                     {ICON_OPTIONS.map(({ key, icon: Icon }) => (
                         <button
                             key={key}
-                            onClick={() => onUpdate(routine.id, { icon: key })}
+                            onClick={() => setSelectedIcon(key)}
                             className={`w-7 h-7 flex items-center justify-center rounded-md transition-all ${
-                                routine.icon === key
+                                selectedIcon === key
                                     ? 'bg-neutral-600 text-white'
                                     : 'text-neutral-400 hover:bg-neutral-700 hover:text-white'
                             }`}
@@ -153,6 +191,20 @@ const CustomizePopover: React.FC<{
                     ))}
                 </div>
             </div>
+
+            {/* Apply button */}
+            <button
+                onClick={handleApply}
+                disabled={!hasChanges || saving}
+                className={`w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                    hasChanges && !saving
+                        ? 'bg-emerald-500 text-white hover:bg-emerald-400'
+                        : 'bg-neutral-700 text-neutral-500 cursor-not-allowed'
+                }`}
+            >
+                <Check size={12} />
+                {saving ? 'Saving…' : 'Apply'}
+            </button>
         </div>
     );
 };
