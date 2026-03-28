@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { useHabitStore } from '../store/HabitContext';
 import { getHeatmapColor } from '../utils/analytics';
+import { getBundleChildIds, isHabitComplete } from '../utils/habitUtils';
 import { eachDayOfInterval, subDays, format, getDay, startOfWeek, endOfWeek, isSameMonth } from 'date-fns';
 import { Tooltip } from 'react-tooltip';
 import { HeatmapLegend } from './HeatmapLegend';
@@ -20,12 +21,7 @@ export const YearHeatmapGrid: React.FC<YearHeatmapGridProps> = React.memo(({ hab
         const days = eachDayOfInterval({ start: startDate, end: endDate });
 
         // Exclude bundle sub-habits from counting
-        const childIds = new Set<string>();
-        habits.forEach(h => {
-            if (h.type === 'bundle' && h.subHabitIds) {
-                h.subHabitIds.forEach((id: string) => childIds.add(id));
-            }
-        });
+        const childIds = getBundleChildIds(habits);
 
         // First pass: Calculate activity counts and find max
         let maxCount = 0;
@@ -38,8 +34,7 @@ export const YearHeatmapGrid: React.FC<YearHeatmapGridProps> = React.memo(({ hab
 
             if (activeHabits.length > 0) {
                 activeHabits.forEach(habit => {
-                    const log = logs[`${habit.id}-${dateStr}`];
-                    if (log?.completed) {
+                    if (isHabitComplete(habit, logs, dateStr)) {
                         completionCount++;
                         categoryIds.add(habit.categoryId);
                     }

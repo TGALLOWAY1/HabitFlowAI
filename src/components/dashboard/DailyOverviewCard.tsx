@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { format } from 'date-fns';
 import { useHabitStore } from '../../store/HabitContext';
+import { getDailyHabitRingProgress } from '../../utils/habitUtils';
 
 const CompletionRing: React.FC<{ completed: number; total: number; size?: number }> = ({ completed, total, size = 80 }) => {
     const percent = total > 0 ? (completed / total) * 100 : 0;
@@ -35,21 +36,10 @@ export const DailyOverviewCard: React.FC = () => {
 
     const today = useMemo(() => format(new Date(), 'yyyy-MM-dd'), []);
 
-    const rootHabits = useMemo(() => {
-        const childIds = new Set<string>();
-        habits.forEach(h => {
-            if (h.type === 'bundle' && h.subHabitIds) {
-                h.subHabitIds.forEach(id => childIds.add(id));
-            }
-        });
-        return habits.filter(h => !h.archived && !childIds.has(h.id));
-    }, [habits]);
-
-    const completedCount = useMemo(() =>
-        rootHabits.filter(h => logs[`${h.id}-${today}`]?.completed).length,
-        [rootHabits, logs, today]
+    const { completed: completedCount, total: totalCount } = useMemo(() =>
+        getDailyHabitRingProgress(habits, logs, today),
+        [habits, logs, today]
     );
-    const totalCount = rootHabits.length;
 
     return (
         <div className="bg-neutral-900/50 rounded-2xl border border-white/5 p-4 backdrop-blur-sm flex flex-col items-center justify-center">
