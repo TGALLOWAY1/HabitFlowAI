@@ -16,7 +16,7 @@ import {
   reorderHabits,
   recoverCategoryDeletedHabits,
 } from '../repositories/habitRepository';
-import { getCategoryById } from '../repositories/categoryRepository';
+import { createCategory, getCategoriesByUser, getCategoryById } from '../repositories/categoryRepository';
 import { deleteHabitEntriesByHabit } from '../repositories/habitEntryRepository';
 import type { Habit } from '../../models/persistenceTypes';
 import { getRequestIdentity } from '../middleware/identity';
@@ -51,6 +51,43 @@ export async function getHabits(req: Request, res: Response): Promise<void> {
       habits = await getHabitsByCategory(categoryId, householdId, userId);
     } else {
       habits = await getHabitsByUser(householdId, userId);
+
+      // Self-heal legacy/orphaned habits:
+      // Any habit with missing/invalid categoryId (or archived due old category-delete behavior)
+      // is reassigned to a real "No Category" bucket so it is visible and manageable in UI.
+      const categories = await getCategoriesByUser(householdId, userId);
+      const categoryIds = new Set(categories.map(c => c.id));
+      const noCategoryName = 'No Category';
+      let noCategory = categories.find(c => c.name.trim().toLowerCase() === noCategoryName.toLowerCase());
+
+      const habitsNeedingRecovery = habits.filter(h => {
+        const missingCategoryId = typeof h.categoryId !== 'string' || h.categoryId.trim().length === 0;
+        const invalidCategoryId = !!h.categoryId && !categoryIds.has(h.categoryId);
+        const archivedAndOrphaned = h.archived === true && (missingCategoryId || invalidCategoryId);
+        return missingCategoryId || invalidCategoryId || archivedAndOrphaned;
+      });
+
+      if (habitsNeedingRecovery.length > 0) {
+        if (!noCategory) {
+          noCategory = await createCategory(
+            { name: noCategoryName, color: 'bg-neutral-600' },
+            householdId,
+            userId
+          );
+        }
+
+        const updatedHabits = await Promise.all(
+          habitsNeedingRecovery.map(h =>
+            updateHabit(h.id, householdId, userId, {
+              categoryId: noCategory!.id,
+              archived: false,
+            })
+          )
+        );
+
+        const updatedMap = new Map(updatedHabits.filter(Boolean).map(h => [h!.id, h!]));
+        habits = habits.map(h => updatedMap.get(h.id) ?? h);
+      }
     }
 
     res.status(200).json({
@@ -411,5 +448,3 @@ export async function reorderHabitsRoute(req: Request, res: Response): Promise<v
     });
   }
 }
-
-
