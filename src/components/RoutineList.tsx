@@ -45,7 +45,7 @@ const RoutineCard: React.FC<{
     return (
         <div
             onClick={() => onPreview(routine)}
-            className="group relative bg-neutral-800/40 border border-white/5 rounded-xl p-4 hover:bg-neutral-800/80 hover:border-white/10 transition-all cursor-pointer flex flex-col h-32 justify-between overflow-hidden"
+            className="group relative bg-neutral-800/40 border border-white/5 rounded-xl px-4 py-3 hover:bg-neutral-800/80 hover:border-white/10 transition-all cursor-pointer flex flex-col gap-1.5 justify-between overflow-hidden"
         >
             {/* Routine Image (if available) */}
             {routine.imageUrl && (
@@ -291,9 +291,8 @@ export const RoutineList: React.FC<RoutineListProps> = ({ onCreate, onEdit, onPr
     }
 
     return (
-        <div className="flex-1 flex flex-col h-full bg-neutral-900/50 rounded-2xl border border-white/5 backdrop-blur-sm shadow-xl overflow-hidden">
-
-            <div className="flex-1 overflow-y-auto p-6 space-y-8 scrollbar-thin scrollbar-thumb-neutral-700 scrollbar-track-transparent">
+        <div className="flex-1 flex flex-col h-full overflow-hidden">
+            <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 space-y-6 scrollbar-thin scrollbar-thumb-neutral-700 scrollbar-track-transparent">
                 {categories.map(category => {
                     const categoryRoutines = groupedRoutines[category.id];
                     if (categoryRoutines.length === 0) return null;

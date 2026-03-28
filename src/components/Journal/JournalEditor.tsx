@@ -414,7 +414,6 @@ export function JournalEditor({ existingEntry, onSave, onCancel, initialTemplate
                                 placeholder="Start writing..."
                                 value={content['free-write'] || ''}
                                 onChange={(e) => handleAnswerChange('free-write', e.target.value)}
-                                autoFocus
                             />
                         </div>
                     ) : (
