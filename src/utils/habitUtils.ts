@@ -234,17 +234,64 @@ export function getBundleStats(
  *   - 'weekly': Included if 'assignedDays' contains date's day-of-week
  *   - 'total': Always included
  */
-export function getHabitsForDate(
-    habits: Habit[],
-    _date: Date
-): Habit[] {
-    // Identify child IDs to exclude them from root list
+/**
+ * Returns the set of child habit IDs across all bundles.
+ */
+export function getBundleChildIds(habits: Habit[]): Set<string> {
     const childIds = new Set<string>();
     habits.forEach(h => {
         if (h.type === 'bundle' && h.subHabitIds) {
             h.subHabitIds.forEach(id => childIds.add(id));
         }
     });
+    return childIds;
+}
+
+/**
+ * Filters habits to only root-level (non-archived, non-child) habits.
+ * Each standalone habit counts as 1, each bundle parent counts as 1,
+ * and bundle children are excluded.
+ */
+export function getRootHabits(habits: Habit[]): Habit[] {
+    const childIds = getBundleChildIds(habits);
+    return habits.filter(h => !h.archived && !childIds.has(h.id));
+}
+
+/**
+ * Determines whether a single habit unit is complete for a given date.
+ * - Standalone habits: checks the habit's own log entry
+ * - Bundle parents: derives completion from children via computeBundleStatus()
+ */
+export function isHabitComplete(
+    habit: Habit,
+    logs: Record<string, DayLog>,
+    date: string
+): boolean {
+    if (habit.type === 'bundle' && habit.subHabitIds && habit.subHabitIds.length > 0) {
+        return computeBundleStatus(habit, logs, date).completed;
+    }
+    return !!logs[`${habit.id}-${date}`]?.completed;
+}
+
+/**
+ * Computes daily habit ring progress: { completed, total } for top-level habit units.
+ */
+export function getDailyHabitRingProgress(
+    habits: Habit[],
+    logs: Record<string, DayLog>,
+    date: string
+): { completed: number; total: number } {
+    const root = getRootHabits(habits);
+    const completed = root.filter(h => isHabitComplete(h, logs, date)).length;
+    return { completed, total: root.length };
+}
+
+export function getHabitsForDate(
+    habits: Habit[],
+    _date: Date
+): Habit[] {
+    // Identify child IDs to exclude them from root list
+    const childIds = getBundleChildIds(habits);
 
     return habits.filter(h => {
         // 1. Must not be archived

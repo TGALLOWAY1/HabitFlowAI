@@ -3,6 +3,7 @@ import { PieChart, Pie, Cell, ResponsiveContainer, LineChart, Line, XAxis, YAxis
 import { useHabitStore } from '../store/HabitContext';
 import { format, subDays } from 'date-fns';
 import { Brain, Activity, Battery, Moon } from 'lucide-react';
+import { getDailyHabitRingProgress } from '../utils/habitUtils';
 
 // Custom Tooltip for dual-line charts
 const DualTooltip = ({ active, payload, label }: any) => {
@@ -50,22 +51,13 @@ export const ProgressRings: React.FC = React.memo(() => {
     const { habits, logs, wellbeingLogs } = useHabitStore();
     const today = format(new Date(), 'yyyy-MM-dd');
 
-    // Calculate Habit Completion (exclude bundle sub-habits)
-    const rootHabits = useMemo(() => {
-        const childIds = new Set<string>();
-        habits.forEach(h => {
-            if (h.type === 'bundle' && h.subHabitIds) {
-                h.subHabitIds.forEach((id: string) => childIds.add(id));
-            }
-        });
-        return habits.filter(h => !h.archived && !childIds.has(h.id));
-    }, [habits]);
-    const completedCount = rootHabits.filter(h => {
-        const log = logs[`${h.id}-${today}`];
-        return log?.completed;
-    }).length;
-    const completionRate = rootHabits.length > 0
-        ? Math.round((completedCount / rootHabits.length) * 100)
+    // Calculate Habit Completion (exclude bundle sub-habits, derive bundle completion from children)
+    const { completed: completedCount, total: totalHabits } = useMemo(() =>
+        getDailyHabitRingProgress(habits, logs, today),
+        [habits, logs, today]
+    );
+    const completionRate = totalHabits > 0
+        ? Math.round((completedCount / totalHabits) * 100)
         : 0;
 
     const habitData = [

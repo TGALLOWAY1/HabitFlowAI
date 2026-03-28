@@ -1,6 +1,7 @@
 import React, { useMemo, useRef } from 'react';
 import { useHabitStore } from '../store/HabitContext';
 import { getHeatmapColor } from '../utils/analytics';
+import { getBundleChildIds, isHabitComplete } from '../utils/habitUtils';
 import { eachDayOfInterval, subDays, format, startOfDay } from 'date-fns';
 import { Tooltip } from 'react-tooltip';
 import { HeatmapLegend } from './HeatmapLegend';
@@ -29,12 +30,7 @@ export const RecentHeatmapGrid: React.FC<RecentHeatmapGridProps> = React.memo(({
         const dateInterval = eachDayOfInterval({ start: startDate, end: today });
 
         // Exclude bundle sub-habits from counting
-        const childIds = new Set<string>();
-        habits.forEach(h => {
-            if (h.type === 'bundle' && h.subHabitIds) {
-                h.subHabitIds.forEach((id: string) => childIds.add(id));
-            }
-        });
+        const childIds = getBundleChildIds(habits);
 
         // Calculate max daily count for normalization
         let maxDailyCount = 0;
@@ -48,8 +44,7 @@ export const RecentHeatmapGrid: React.FC<RecentHeatmapGridProps> = React.memo(({
 
             if (activeHabits.length > 0) {
                 activeHabits.forEach(habit => {
-                    const log = logs[`${habit.id}-${dateStr}`];
-                    if (log?.completed) {
+                    if (isHabitComplete(habit, logs, dateStr)) {
                         completionCount++;
                         categoryIds.add(habit.categoryId);
                     }
