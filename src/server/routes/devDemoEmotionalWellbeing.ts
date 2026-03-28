@@ -35,7 +35,7 @@ function logDemoGuardFailure(req: Request, failedGuard: string, message: string)
   });
 }
 
-function assertDemoRequest(req: Request): string {
+function assertDemoRequest(req: Request): { householdId: string; userId: string } {
   // Guard 1: never in production
   if (process.env.NODE_ENV === 'production') {
     const msg = 'Demo seed/reset endpoints are disabled in production';
@@ -51,17 +51,17 @@ function assertDemoRequest(req: Request): string {
   }
 
   // Guard 3: user must be DEMO_USER_ID
-  const { userId } = getRequestIdentity(req);
+  const { householdId, userId } = getRequestIdentity(req);
   if (userId !== DEMO_USER_ID) {
     const msg = 'Forbidden: demo seed/reset may only run for DEMO_USER_ID';
     logDemoGuardFailure(req, 'req.userId!==DEMO_USER_ID', msg);
     throw new Error(msg);
   }
 
-  return userId;
+  return { householdId, userId };
 }
 
-async function resetDemoData(userId: string): Promise<{ deleted: Record<string, number> }> {
+async function resetDemoData(householdId: string, userId: string): Promise<{ deleted: Record<string, number> }> {
   if (userId !== DEMO_USER_ID) {
     throw new Error('Hard guardrail: resetDemoData may only run for DEMO_USER_ID');
   }
@@ -82,11 +82,11 @@ async function resetDemoData(userId: string): Promise<{ deleted: Record<string, 
 
   const dashboardPrefsResult = await db
     .collection(MONGO_COLLECTIONS.DASHBOARD_PREFS)
-    .deleteMany({ userId });
+    .deleteMany({ householdId, userId });
 
   const routinesResult = await db
     .collection(MONGO_COLLECTIONS.ROUTINES)
-    .deleteMany({ userId });
+    .deleteMany({ householdId, userId });
 
   return {
     deleted: {
@@ -115,8 +115,8 @@ function seededRng(dayOffset: number): number {
 
 export async function resetDemoEmotionalWellbeingRoute(req: Request, res: Response): Promise<void> {
   try {
-    const userId = assertDemoRequest(req);
-    const result = await resetDemoData(userId);
+    const { householdId, userId } = assertDemoRequest(req);
+    const result = await resetDemoData(householdId, userId);
     res.status(200).json({ ok: true, userId, ...result });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
@@ -126,10 +126,10 @@ export async function resetDemoEmotionalWellbeingRoute(req: Request, res: Respon
 
 export async function seedDemoEmotionalWellbeingRoute(req: Request, res: Response): Promise<void> {
   try {
-    const userId = assertDemoRequest(req);
+    const { householdId, userId } = assertDemoRequest(req);
 
     // Idempotency: reset first, then insert
-    const reset = await resetDemoData(userId);
+    const reset = await resetDemoData(householdId, userId);
 
     // Seed 3 demo routines + pin them (Action Cards)
     const db = await getDb();
@@ -186,11 +186,11 @@ export async function seedDemoEmotionalWellbeingRoute(req: Request, res: Respons
       // Avoid passing createdAt in $set to prevent operator path conflicts.
       const { createdAt: _createdAt, ...rWithoutCreatedAt } = r;
       await routinesCol.updateOne(
-        { id: r.id, userId },
+        { id: r.id, householdId, userId },
         {
           // IMPORTANT: avoid updating the same field in multiple operators.
           // createdAt must be insert-only.
-          $set: rWithoutCreatedAt,
+          $set: { ...rWithoutCreatedAt, householdId },
           $setOnInsert: { createdAt: now },
         },
         { upsert: true }
@@ -198,8 +198,8 @@ export async function seedDemoEmotionalWellbeingRoute(req: Request, res: Respons
     }
 
     await db.collection(MONGO_COLLECTIONS.DASHBOARD_PREFS).updateOne(
-      { userId },
-      { $set: { userId, pinnedRoutineIds: demoRoutineIds, updatedAt: now } },
+      { householdId, userId },
+      { $set: { householdId, userId, pinnedRoutineIds: demoRoutineIds, updatedAt: now } },
       { upsert: true }
     );
 
@@ -384,5 +384,3 @@ export async function seedDemoEmotionalWellbeingRoute(req: Request, res: Respons
     res.status(403).json({ ok: false, error: message });
   }
 }
-
-

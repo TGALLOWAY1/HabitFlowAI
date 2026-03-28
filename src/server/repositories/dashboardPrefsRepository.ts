@@ -8,6 +8,7 @@
 import { getDb } from '../lib/mongoClient';
 import { MONGO_COLLECTIONS, WELLBEING_METRIC_KEYS, isWellbeingMetricKey, type DashboardPrefs } from '../../models/persistenceTypes';
 import { getRoutines } from './routineRepository';
+import { requireScope, scopeFilter } from '../lib/scoping';
 
 const COLLECTION = MONGO_COLLECTIONS.DASHBOARD_PREFS;
 
@@ -17,21 +18,22 @@ async function ensureIndexes(): Promise<void> {
   if (indexesEnsured) return;
   const db = await getDb();
   const col = db.collection(COLLECTION);
-  await col.createIndex({ userId: 1 }, { name: 'by_userId', unique: true });
+  await col.createIndex({ householdId: 1, userId: 1 }, { name: 'by_household_user', unique: true });
   indexesEnsured = true;
 }
 
-export async function getDashboardPrefs(userId: string): Promise<DashboardPrefs> {
+export async function getDashboardPrefs(householdId: string, userId: string): Promise<DashboardPrefs> {
+  const scope = requireScope(householdId, userId);
   await ensureIndexes();
   const db = await getDb();
   const col = db.collection(COLLECTION);
 
-  const doc = await col.findOne({ userId });
+  const doc = await col.findOne(scopeFilter(scope.householdId, scope.userId));
   if (!doc) {
-    return { userId, pinnedRoutineIds: [], checkinExtraMetricKeys: [], updatedAt: new Date().toISOString() };
+    return { userId: scope.userId, pinnedRoutineIds: [], checkinExtraMetricKeys: [], updatedAt: new Date().toISOString() };
   }
 
-  const { _id, ...prefs } = doc as any;
+  const { _id, householdId: _householdId, ...prefs } = doc as any;
   return prefs as DashboardPrefs;
 }
 
@@ -40,6 +42,7 @@ export async function updateDashboardPrefs(
   userId: string,
   patch: { pinnedRoutineIds?: string[]; checkinExtraMetricKeys?: string[] }
 ): Promise<DashboardPrefs> {
+  const scope = requireScope(householdId, userId);
   await ensureIndexes();
   const db = await getDb();
   const col = db.collection(COLLECTION);
@@ -57,7 +60,7 @@ export async function updateDashboardPrefs(
       .map((x) => x.trim())
       .filter((x) => x.length > 0);
 
-    const routines = await getRoutines(householdId, userId);
+    const routines = await getRoutines(scope.householdId, scope.userId);
     const validIdSet = new Set(routines.map((r) => r.id));
     const filtered = ids.filter((id) => validIdSet.has(id));
 
@@ -85,16 +88,16 @@ export async function updateDashboardPrefs(
 
   // Fix: Use full document replace approach to avoid MongoDB update conflicts
   // Get existing prefs first, then merge and replace
-  const existing = await col.findOne({ userId });
+  const existing = await col.findOne(scopeFilter(scope.householdId, scope.userId));
   const existingPrefs = existing
-    ? ({ ...existing, _id: undefined } as any as DashboardPrefs)
-    : { userId, pinnedRoutineIds: [], checkinExtraMetricKeys: [], updatedAt: now };
+    ? ({ ...existing, _id: undefined, householdId: undefined } as any as DashboardPrefs)
+    : { userId: scope.userId, pinnedRoutineIds: [], checkinExtraMetricKeys: [], updatedAt: now };
 
   // Merge patch into existing prefs
   const merged: DashboardPrefs = {
     ...existingPrefs,
     ...update,
-    userId, // Always set userId
+    userId: scope.userId, // Always set userId
     updatedAt: now,
   };
 
@@ -103,13 +106,12 @@ export async function updateDashboardPrefs(
   if (!merged.checkinExtraMetricKeys) merged.checkinExtraMetricKeys = [];
 
   const result = await col.findOneAndUpdate(
-    { userId },
-    { $set: merged },
+    scopeFilter(scope.householdId, scope.userId),
+    { $set: { ...merged, householdId: scope.householdId } as any },
     { upsert: true, returnDocument: 'after' }
   );
 
-  const { _id, ...prefs } = result as any;
+  const { _id, householdId: _householdId, ...prefs } = result as any;
   return prefs as DashboardPrefs;
 }
-
 

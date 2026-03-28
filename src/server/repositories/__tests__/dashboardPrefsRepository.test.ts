@@ -10,6 +10,7 @@ import { setupTestMongo, teardownTestMongo, getTestDb } from '../../../test/mong
 import { getDashboardPrefs, updateDashboardPrefs } from '../dashboardPrefsRepository';
 
 const TEST_HOUSEHOLD_ID = 'test-household-dashboard';
+const TEST_HOUSEHOLD_ID_2 = 'test-household-dashboard-2';
 const TEST_USER_ID = 'test-user-dashboard-prefs';
 
 describe('DashboardPrefsRepository', () => {
@@ -28,7 +29,7 @@ describe('DashboardPrefsRepository', () => {
   });
 
   it('should return defaults when none exist', async () => {
-    const prefs = await getDashboardPrefs(TEST_USER_ID);
+    const prefs = await getDashboardPrefs(TEST_HOUSEHOLD_ID, TEST_USER_ID);
     expect(prefs.userId).toBe(TEST_USER_ID);
     expect(prefs.pinnedRoutineIds).toEqual([]);
   });
@@ -36,14 +37,14 @@ describe('DashboardPrefsRepository', () => {
   it('should save and retrieve pinnedRoutineIds (and validate against existing routines)', async () => {
     const db = await getTestDb();
     await db.collection('routines').insertMany([
-      { id: 'r1', userId: TEST_USER_ID, title: 'R1', linkedHabitIds: [], steps: [], createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
-      { id: 'r2', userId: TEST_USER_ID, title: 'R2', linkedHabitIds: [], steps: [], createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+      { id: 'r1', householdId: TEST_HOUSEHOLD_ID, userId: TEST_USER_ID, title: 'R1', linkedHabitIds: [], steps: [], createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+      { id: 'r2', householdId: TEST_HOUSEHOLD_ID, userId: TEST_USER_ID, title: 'R2', linkedHabitIds: [], steps: [], createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
     ]);
 
     const saved = await updateDashboardPrefs(TEST_HOUSEHOLD_ID, TEST_USER_ID, { pinnedRoutineIds: ['r1', 'r2', 'missing'] });
     expect(saved.pinnedRoutineIds).toEqual(['r1', 'r2']); // missing filtered
 
-    const roundTrip = await getDashboardPrefs(TEST_USER_ID);
+    const roundTrip = await getDashboardPrefs(TEST_HOUSEHOLD_ID, TEST_USER_ID);
     expect(roundTrip.pinnedRoutineIds).toEqual(['r1', 'r2']);
   });
 
@@ -53,9 +54,25 @@ describe('DashboardPrefsRepository', () => {
     });
     expect(saved.checkinExtraMetricKeys).toEqual(['lowMood', 'calm', 'stress']);
 
-    const roundTrip = await getDashboardPrefs(TEST_USER_ID);
+    const roundTrip = await getDashboardPrefs(TEST_HOUSEHOLD_ID, TEST_USER_ID);
     expect(roundTrip.checkinExtraMetricKeys).toEqual(['lowMood', 'calm', 'stress']);
   });
-});
 
+  it('scopes dashboard prefs by household so one household cannot overwrite another', async () => {
+    const db = await getTestDb();
+    await db.collection('routines').insertMany([
+      { id: 'h1-r1', householdId: TEST_HOUSEHOLD_ID, userId: TEST_USER_ID, title: 'H1 R1', linkedHabitIds: [], steps: [], createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+      { id: 'h2-r1', householdId: TEST_HOUSEHOLD_ID_2, userId: TEST_USER_ID, title: 'H2 R1', linkedHabitIds: [], steps: [], createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+    ]);
+
+    await updateDashboardPrefs(TEST_HOUSEHOLD_ID, TEST_USER_ID, { pinnedRoutineIds: ['h1-r1'] });
+    await updateDashboardPrefs(TEST_HOUSEHOLD_ID_2, TEST_USER_ID, { pinnedRoutineIds: ['h2-r1'] });
+
+    const householdOnePrefs = await getDashboardPrefs(TEST_HOUSEHOLD_ID, TEST_USER_ID);
+    const householdTwoPrefs = await getDashboardPrefs(TEST_HOUSEHOLD_ID_2, TEST_USER_ID);
+
+    expect(householdOnePrefs.pinnedRoutineIds).toEqual(['h1-r1']);
+    expect(householdTwoPrefs.pinnedRoutineIds).toEqual(['h2-r1']);
+  });
+});
 
