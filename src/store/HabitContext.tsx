@@ -153,12 +153,13 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }, []);
 
     // Refresh habits and categories helper (used by initial load and manual refresh)
+    // Habits are fetched first because the backend may auto-create a "No Category"
+    // for orphaned habits during GET /api/habits. Fetching categories afterward
+    // ensures the new category is included.
     const refreshHabitsAndCategories = useCallback(async () => {
         try {
-            const [apiCategories, apiHabits] = await Promise.all([
-                fetchCategories(),
-                fetchHabits(),
-            ]);
+            const apiHabits = await fetchHabits();
+            const apiCategories = await fetchCategories();
             setCategories(apiCategories);
             setHabits(apiHabits);
         } catch (error) {
