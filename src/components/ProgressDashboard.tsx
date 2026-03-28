@@ -159,6 +159,7 @@ export const ProgressDashboard: React.FC<ProgressDashboardProps> = ({
                 goalsCount={goalsCount}
                 onNavigate={onNavigate}
                 onDismiss={dismissGuide}
+                forceOpen={guideForceOpen}
             />
         );
     }
@@ -174,6 +175,7 @@ export const ProgressDashboard: React.FC<ProgressDashboardProps> = ({
                     goalsCount={goalsCount}
                     onNavigate={onNavigate}
                     onDismiss={dismissGuide}
+                    forceOpen={guideForceOpen}
                 />
             )}
 

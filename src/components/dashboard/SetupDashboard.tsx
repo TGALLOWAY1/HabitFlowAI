@@ -17,6 +17,7 @@ interface SetupDashboardProps {
   goalsCount: number;
   onNavigate: (route: string) => void;
   onDismiss: () => void;
+  forceOpen?: boolean;
 }
 
 export const SetupDashboard: React.FC<SetupDashboardProps> = ({
@@ -26,6 +27,7 @@ export const SetupDashboard: React.FC<SetupDashboardProps> = ({
   goalsCount,
   onNavigate,
   onDismiss,
+  forceOpen,
 }) => {
   const steps: SetupStep[] = [
     {
@@ -66,11 +68,11 @@ export const SetupDashboard: React.FC<SetupDashboardProps> = ({
   const firstIncomplete = steps.find(s => !s.completed);
 
   useEffect(() => {
-    if (completedCount === steps.length) {
+    if (completedCount === steps.length && !forceOpen) {
       const timer = setTimeout(onDismiss, 2000);
       return () => clearTimeout(timer);
     }
-  }, [completedCount, steps.length, onDismiss]);
+  }, [completedCount, steps.length, onDismiss, forceOpen]);
 
   return (
     <div className="flex flex-col gap-6 pb-8">
