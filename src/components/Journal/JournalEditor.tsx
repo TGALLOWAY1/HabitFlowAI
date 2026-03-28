@@ -405,12 +405,12 @@ export function JournalEditor({ existingEntry, onSave, onCancel, initialTemplate
     // Minimal mode: render just the editor content without container/header/footer chrome
     if (minimal) {
         return (
-            <div className="flex flex-col h-[calc(100vh-12rem)]">
+            <div className="flex flex-col h-[calc(100vh-16rem)]">
                 <div className="flex-1 overflow-y-auto custom-scrollbar">
                     {selectedTemplateId === 'free-write' ? (
                         <div className="relative h-full">
                             <textarea
-                                className="w-full h-full min-h-[400px] bg-white/[0.02] border border-white/5 rounded-xl p-6 text-white/90 text-lg leading-relaxed focus:bg-white/[0.04] focus:border-white/10 focus:ring-0 focus:outline-none resize-none font-sans placeholder:text-white/20"
+                                className="w-full h-full min-h-[300px] bg-white/[0.02] border border-white/5 rounded-xl p-4 sm:p-6 text-white/90 text-lg leading-relaxed focus:bg-white/[0.04] focus:border-white/10 focus:ring-0 focus:outline-none resize-none font-sans placeholder:text-white/20"
                                 placeholder="Start writing..."
                                 value={content['free-write'] || ''}
                                 onChange={(e) => handleAnswerChange('free-write', e.target.value)}
@@ -434,7 +434,7 @@ export function JournalEditor({ existingEntry, onSave, onCancel, initialTemplate
                         </div>
                     )}
                 </div>
-                <div className="flex justify-between items-center pt-4">
+                <div className="flex justify-between items-center pt-3 pb-1 flex-shrink-0">
                     <button
                         onClick={handleDiscard}
                         className="text-white/40 hover:text-red-400 text-sm font-medium transition-colors px-2 py-1"

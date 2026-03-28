@@ -241,15 +241,6 @@ export const DayView = ({ onAddHabit }: DayViewProps = {}) => {
             {/* Header */}
             <div className="py-3 flex items-center justify-between">
                 <p className="text-neutral-400 font-medium">{displayDate}</p>
-                {onAddHabit && (
-                    <button
-                        onClick={onAddHabit}
-                        className="p-2 rounded-lg hover:bg-neutral-800 text-emerald-400 hover:text-emerald-300 transition-colors"
-                        title="Add New Habit"
-                    >
-                        <Plus size={22} />
-                    </button>
-                )}
             </div>
 
             {/* Loading State */}

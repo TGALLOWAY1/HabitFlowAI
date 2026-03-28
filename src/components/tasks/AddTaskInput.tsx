@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plus } from 'lucide-react';
+import { Plus, Check } from 'lucide-react';
 import { useTasks } from '../../context/TaskContext';
 
 interface AddTaskInputProps {
@@ -44,14 +44,23 @@ export const AddTaskInput: React.FC<AddTaskInputProps> = ({
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder={placeholder}
                 disabled={isSubmitting}
+                enterKeyHint="done"
                 className="
-          w-full bg-neutral-900 border border-neutral-800 rounded-lg py-2.5 pl-9 pr-4
-          text-sm text-neutral-200 placeholder-neutral-500
+          w-full bg-neutral-900 border border-neutral-800 rounded-lg py-2.5 pl-9 pr-10
+          text-base sm:text-sm text-neutral-200 placeholder-neutral-500
           focus:outline-none focus:border-neutral-600 focus:bg-neutral-800
           transition-all duration-200
         "
-                autoFocus={defaultPlacement === 'inbox'}
             />
+            {title.trim() && (
+                <button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded-md text-emerald-400 hover:bg-emerald-500/20 transition-colors disabled:opacity-50"
+                >
+                    <Check size={16} />
+                </button>
+            )}
         </form>
     );
 };
