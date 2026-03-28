@@ -295,7 +295,7 @@ export const PinnedRoutinesCard: React.FC<PinnedRoutinesCardProps> = ({
     }
 
     return (
-        <div className="bg-neutral-900/50 rounded-2xl border border-white/5 p-4 backdrop-blur-sm">
+        <div className={`bg-neutral-900/50 rounded-2xl border border-white/5 p-4 backdrop-blur-sm${customizingId ? ' relative z-10' : ''}`}>
             <div className="flex items-center justify-between mb-3">
                 <h3 className="text-sm font-semibold text-white">Pinned Routines</h3>
                 <div className="flex items-center gap-2">
