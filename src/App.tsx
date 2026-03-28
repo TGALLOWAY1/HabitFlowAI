@@ -102,21 +102,47 @@ function buildUrlForRoute(route: AppRoute, params: Record<string, string> = {}):
 const HabitTrackerContent: React.FC = () => {
   const { categories, habits, logs, toggleHabit, updateLog, lastPersistenceError, clearPersistenceError, potentialEvidence } = useHabitStore();
   const [activeCategoryId, setActiveCategoryId] = useState<string>('');
+  const UNCATEGORIZED_ID = '__uncategorized__';
+
+  const noCategoryCategoryIds = useMemo(
+    () => new Set(categories
+      .filter(cat => cat.name.trim().toLowerCase() === 'no category')
+      .map(cat => cat.id)),
+    [categories]
+  );
+
+  const visibleCategories = useMemo(
+    () => categories.filter(cat => !noCategoryCategoryIds.has(cat.id)),
+    [categories, noCategoryCategoryIds]
+  );
+
+  const isUncategorizedHabit = React.useCallback((habit: Habit) => {
+    return noCategoryCategoryIds.has(habit.categoryId) || !categories.some(c => c.id === habit.categoryId);
+  }, [categories, noCategoryCategoryIds]);
 
   // Set default category to "Physical Health" when categories are loaded
   useEffect(() => {
-    if (categories.length > 0 && !activeCategoryId) {
-      const physicalHealthCategory = categories.find(cat =>
+    const activeExistsInVisible = visibleCategories.some(cat => cat.id === activeCategoryId);
+    const activeIsUncategorized = activeCategoryId === UNCATEGORIZED_ID;
+
+    if (activeCategoryId && (activeExistsInVisible || activeIsUncategorized)) {
+      return;
+    }
+
+    if (visibleCategories.length > 0) {
+      const physicalHealthCategory = visibleCategories.find(cat =>
         cat.name.toLowerCase() === 'physical health'
       );
       if (physicalHealthCategory) {
         setActiveCategoryId(physicalHealthCategory.id);
       } else {
         // Fallback to first category if "Physical Health" doesn't exist
-        setActiveCategoryId(categories[0].id);
+        setActiveCategoryId(visibleCategories[0].id);
       }
+    } else if (habits.some(h => !h.archived && isUncategorizedHabit(h))) {
+      setActiveCategoryId(UNCATEGORIZED_ID);
     }
-  }, [categories, activeCategoryId]);
+  }, [activeCategoryId, habits, isUncategorizedHabit, visibleCategories]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingHabit, setEditingHabit] = useState<Habit | null>(null);
   const [historyHabit, setHistoryHabit] = useState<Habit | null>(null);
@@ -190,14 +216,14 @@ const HabitTrackerContent: React.FC = () => {
     window.history.pushState({ view: route, ...params }, "", url);
   };
 
-  // Detect habits whose categoryId doesn't match any existing category
+  // Detect habits that are uncategorized either by missing category linkage
+  // or by the backend-managed "No Category" bucket.
   const categoryIds = useMemo(() => new Set(categories.map(c => c.id)), [categories]);
   const hasUncategorized = useMemo(
-    () => habits.some(h => !h.archived && !categoryIds.has(h.categoryId)),
-    [habits, categoryIds]
+    () => habits.some(h => !h.archived && (noCategoryCategoryIds.has(h.categoryId) || !categoryIds.has(h.categoryId))),
+    [habits, categoryIds, noCategoryCategoryIds]
   );
 
-  const UNCATEGORIZED_ID = '__uncategorized__';
   const uncategorizedCategory = useMemo(
     () => hasUncategorized ? { id: UNCATEGORIZED_ID, name: 'Uncategorized', color: 'bg-amber-600' } : null,
     [hasUncategorized]
@@ -205,7 +231,9 @@ const HabitTrackerContent: React.FC = () => {
 
   const filteredHabits = habits.filter(h => {
     if (h.archived) return false;
-    if (activeCategoryId === UNCATEGORIZED_ID) return !categoryIds.has(h.categoryId);
+    if (activeCategoryId === UNCATEGORIZED_ID) {
+      return noCategoryCategoryIds.has(h.categoryId) || !categoryIds.has(h.categoryId);
+    }
     return h.categoryId === activeCategoryId;
   });
 
@@ -307,7 +335,7 @@ const HabitTrackerContent: React.FC = () => {
       {
         view === 'tracker' && trackerViewMode === 'grid' && (
           <CategoryTabs
-            categories={categories}
+            categories={visibleCategories}
             activeCategoryId={activeCategoryId}
             onSelectCategory={setActiveCategoryId}
             uncategorized={uncategorizedCategory}
