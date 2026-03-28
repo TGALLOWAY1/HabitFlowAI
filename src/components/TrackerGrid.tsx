@@ -252,7 +252,7 @@ const HabitRowContent = ({
             onContextMenu={(e) => onContextMenu(e, habit)}
         >
             <div
-                className="w-64 flex-shrink-0 p-4 border-r border-white/5 flex flex-col gap-1.5 group-hover:bg-white/[0.02] transition-colors relative sticky left-0 z-20 bg-neutral-900 after:pointer-events-none after:absolute after:right-[-1px] after:top-0 after:h-full after:w-px after:bg-white/10"
+                className="w-64 flex-shrink-0 p-4 border-r border-white/5 flex flex-col gap-1.5 transition-colors relative sticky left-0 z-20 bg-neutral-900 group-hover:bg-[#1a1a1a] after:pointer-events-none after:absolute after:right-[-1px] after:top-0 after:h-full after:w-px after:bg-white/10"
                 style={{ paddingLeft: `${16 + (depth * 24)}px` }} // Dynamic Indentation
             >
                 {/* Top row: drag handle + full habit name (no icons) */}
