@@ -16,7 +16,6 @@ import { useProgressOverview } from '../lib/useProgressOverview';
 
 
 import { computeBundleStatus, getBundleStats } from '../utils/habitUtils';
-import { WeeklyHabitCard } from './WeeklyHabitCard';
 import {
     DndContext,
     closestCenter,
@@ -953,7 +952,6 @@ export const TrackerGrid = ({
 
     // Initial Split based on Roots
     const dailyHabits = useMemo(() => rootHabits.filter(h => !h.goal?.frequency || h.goal.frequency === 'daily'), [rootHabits]);
-    const weeklyHabits = useMemo(() => rootHabits.filter(h => h.goal.frequency === 'weekly'), [rootHabits]);
 
     // Generate dates: Today + Last 13 days
     const dates = useMemo(() => {
@@ -1305,38 +1303,6 @@ export const TrackerGrid = ({
                         )}
                     </div>
 
-                    {/* Weekly Habits Section - Redesigned as Cards */}
-
-                    {weeklyHabits.length > 0 && (
-                        <div className="flex flex-col border-t border-white/5 mt-8 pt-8">
-                            <div className="px-6 mb-6">
-                                <h3 className="text-lg font-medium text-emerald-400 flex items-center gap-2">
-                                    <span>Weekly Progress</span>
-                                    <span className="text-xs text-neutral-500 font-normal px-2 py-0.5 rounded-full bg-neutral-800 border border-white/5">Resets Monday</span>
-                                </h3>
-                            </div>
-
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 px-6">
-                                {weeklyHabits.map(habit => (
-                                    <WeeklyHabitCard
-                                        key={habit.id}
-                                        habit={habit}
-                                        logs={logs}
-                                        goals={progressData?.goalsWithProgress.map(g => g.goal)}
-                                        potentialEvidence={potentialEvidence?.some(e => e.habitId === habit.id)}
-                                        onToggle={(h) => handleToggle(h.id, format(new Date(), 'yyyy-MM-dd'))}
-                                        onLogValue={(e, h, val) => {
-                                            // Open popover for quantity inputs
-                                            handleOpenPopover(e, h, format(new Date(), 'yyyy-MM-dd'), val);
-                                        }}
-                                        onEdit={(h) => onEditHabit(h)}
-                                        onViewHistory={(h) => setHistoryModalHabitId(h.id)}
-                                        onDelete={(h) => setDeleteConfirmId(h.id)}
-                                    />
-                                ))}
-                            </div>
-                        </div>
-                    )}
                 </div>
             </DndContext>
 
