@@ -163,7 +163,7 @@ export async function reorderHabits(
  * Archived habits are preserved in the database but hidden from active tracking.
  * Returns the number of habits archived.
  */
-export async function archiveHabitsByCategory(
+export async function uncategorizeHabitsByCategory(
   categoryId: string,
   householdId: string,
   userId: string
@@ -171,9 +171,30 @@ export async function archiveHabitsByCategory(
   const db = await getDb();
   const collection = db.collection(COLLECTION_NAME);
 
+  // Clear categoryId so habits become "uncategorized" instead of being archived.
+  // Also unarchive any habits that were previously archived due to category deletion.
   const result = await collection.updateMany(
-    scopeFilter(householdId, userId, { categoryId, archived: { $ne: true } }),
-    { $set: { archived: true, archivedAt: new Date().toISOString(), archivedReason: 'category_deleted' } }
+    scopeFilter(householdId, userId, { categoryId }),
+    { $set: { categoryId: '' }, $unset: { archivedReason: '' } }
+  );
+
+  return result.modifiedCount;
+}
+
+/**
+ * Recover habits that were previously archived due to category deletion.
+ * Clears their categoryId and unarchives them so they appear as "uncategorized".
+ */
+export async function recoverCategoryDeletedHabits(
+  householdId: string,
+  userId: string
+): Promise<number> {
+  const db = await getDb();
+  const collection = db.collection(COLLECTION_NAME);
+
+  const result = await collection.updateMany(
+    scopeFilter(householdId, userId, { archived: true, archivedReason: 'category_deleted' }),
+    { $set: { archived: false, categoryId: '' }, $unset: { archivedAt: '', archivedReason: '' } }
   );
 
   return result.modifiedCount;
