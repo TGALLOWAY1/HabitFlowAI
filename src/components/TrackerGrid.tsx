@@ -2,7 +2,7 @@ import React, { useMemo, useState, useEffect } from 'react';
 import { format, eachDayOfInterval, subDays, isToday } from 'date-fns';
 import { type Habit, type DayLog, type Routine, type HabitPotentialEvidence } from '../types';
 import { cn } from '../utils/cn';
-import { Check, Plus, Trash2, GripVertical, Pencil, Play, Flame, History, Zap, Link2, FolderInput, ChevronRight } from 'lucide-react';
+import { Check, Trash2, GripVertical, Pencil, Play, Flame, History, Zap, Link2, FolderInput, ChevronRight } from 'lucide-react';
 import { CategoryPickerModal } from './CategoryPickerModal';
 
 import { NumericInputPopover } from './NumericInputPopover';
@@ -1205,13 +1205,6 @@ export const TrackerGrid = ({
                                     title={deleteMode ? 'Exit Delete Mode' : 'Enter Delete Mode (mobile-friendly)'}
                                 >
                                     <Trash2 size={16} />
-                                </button>
-                                <button
-                                    onClick={onAddHabit}
-                                    className="p-1.5 rounded-lg hover:bg-neutral-800 text-emerald-400 hover:text-emerald-300 transition-colors"
-                                    title="Add New Habit"
-                                >
-                                    <Plus size={18} />
                                 </button>
                             </div>
                         </div>

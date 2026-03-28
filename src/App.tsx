@@ -226,10 +226,10 @@ const HabitTrackerContent: React.FC = () => {
 
       <div className="flex flex-col gap-4">
         {/* Title Section */}
-        <div className="flex items-center justify-between">
+        <div className={`flex items-center justify-between ${view === 'journal' ? 'hidden' : ''}`}>
           <div className="flex items-center gap-3">
             <h2 className="text-2xl font-bold text-white">
-              {view === 'tracker' ? 'Habits' : view === 'dashboard' ? 'Dashboard' : view === 'routines' ? 'Routines' : view === 'journal' ? 'Journal' : view === 'tasks' ? 'Tasks' : 'Goals'}
+              {view === 'tracker' ? 'Habits' : view === 'dashboard' ? 'Dashboard' : view === 'routines' ? 'Routines' : view === 'tasks' ? 'Tasks' : 'Goals'}
             </h2>
 
             {/* Action buttons inline with title */}

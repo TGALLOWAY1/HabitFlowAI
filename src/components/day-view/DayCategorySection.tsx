@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { ChevronDown, ChevronRight, CheckCircle2 } from 'lucide-react';
+import { ChevronDown, ChevronRight, CheckCircle2, GripVertical } from 'lucide-react';
 import type { Category, Habit } from '../../types';
 import { HabitGridCell } from './HabitGridCell';
 import { NumericInputPopover } from '../NumericInputPopover';
@@ -28,6 +28,7 @@ interface DayCategorySectionProps {
     allHabitsLookup: Map<string, Habit>;
     onUpdateHabitEntry: (habitId: string, dateKey: string, data: any) => Promise<void>;
     deleteHabitEntryByKey: (habitId: string, dateKey: string) => Promise<void>;
+    dragHandleProps?: Record<string, unknown>;
 }
 
 export const DayCategorySection = ({
@@ -41,7 +42,8 @@ export const DayCategorySection = ({
     onMoveToCategory,
     allHabitsLookup,
     onUpdateHabitEntry,
-    deleteHabitEntryByKey
+    deleteHabitEntryByKey,
+    dragHandleProps
 }: DayCategorySectionProps) => {
     // Sort habits by order
     const sortedHabits = useMemo(() => {
@@ -100,10 +102,19 @@ export const DayCategorySection = ({
     return (
         <div className="mb-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
             {/* Header */}
-            <button
-                onClick={() => setIsCollapsed(!isCollapsed)}
-                className="flex items-center gap-2 mb-3 px-1 w-full text-left group transition-opacity hover:opacity-80"
-            >
+            <div className="flex items-center gap-0 mb-3">
+                {dragHandleProps && (
+                    <div
+                        {...dragHandleProps}
+                        className="p-1 cursor-grab active:cursor-grabbing text-neutral-600 hover:text-neutral-400 transition-colors touch-none"
+                    >
+                        <GripVertical size={18} />
+                    </div>
+                )}
+                <button
+                    onClick={() => setIsCollapsed(!isCollapsed)}
+                    className="flex items-center gap-2 px-1 flex-1 text-left group transition-opacity hover:opacity-80"
+                >
                 {(() => {
                     // Determine color application strategy
                     const isTailwindClass = category.color.startsWith('bg-');
@@ -138,7 +149,8 @@ export const DayCategorySection = ({
                         {completedCount}/{habits.length}
                     </span>
                 )}
-            </button>
+                </button>
+            </div>
 
             {/* Content - GRID LAYOUT */}
             {!isCollapsed && (
