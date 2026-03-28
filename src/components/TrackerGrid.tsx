@@ -1,8 +1,8 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { format, eachDayOfInterval, subDays, isToday } from 'date-fns';
 import { type Habit, type DayLog, type Routine, type HabitPotentialEvidence } from '../types';
 import { cn } from '../utils/cn';
-import { Check, Trash2, GripVertical, Pencil, Play, Flame, History, Zap, Link2, FolderInput, ChevronRight } from 'lucide-react';
+import { Check, Trash2, GripVertical, Pencil, Play, Flame, History, Zap, Link2, FolderInput } from 'lucide-react';
 import { CategoryPickerModal } from './CategoryPickerModal';
 
 import { NumericInputPopover } from './NumericInputPopover';
@@ -185,7 +185,6 @@ interface HabitRowContentProps {
     onCellPointerDown?: (habitId: string, dateStr: string, e: React.PointerEvent) => void;
     onCellPointerUp?: () => void;
     onCellPointerMove?: () => void;
-    showArrows?: boolean;
 }
 
 const HabitRowContent = ({
@@ -218,7 +217,6 @@ const HabitRowContent = ({
     onCellPointerDown,
     onCellPointerUp,
     onCellPointerMove,
-    showArrows,
 }: HabitRowContentProps) => {
 
     // Non-Negotiable Logic
@@ -246,7 +244,7 @@ const HabitRowContent = ({
             ref={setNodeRef}
             style={style}
             className={cn(
-                "flex border-b border-white/5 transition-colors group",
+                "flex border-b border-white/5 transition-colors group relative",
                 habit.isVirtual ? "bg-neutral-800/30" : "bg-neutral-900/50", // Difference for virtual
                 isDragging && "shadow-xl ring-1 ring-emerald-500/50 z-50 bg-neutral-900",
                 priorityRingClass
@@ -254,7 +252,7 @@ const HabitRowContent = ({
             onContextMenu={(e) => onContextMenu(e, habit)}
         >
             <div
-                className="w-64 flex-shrink-0 p-4 border-r border-white/5 flex flex-col gap-1.5 group-hover:bg-white/[0.02] transition-colors relative sticky left-0 z-10 bg-neutral-900"
+                className="w-64 flex-shrink-0 p-4 border-r border-white/5 flex flex-col gap-1.5 group-hover:bg-white/[0.02] transition-colors relative sticky left-0 z-20 bg-neutral-900 after:pointer-events-none after:absolute after:right-[-1px] after:top-0 after:h-full after:w-px after:bg-white/10"
                 style={{ paddingLeft: `${16 + (depth * 24)}px` }} // Dynamic Indentation
             >
                 {/* Top row: drag handle + full habit name (no icons) */}
@@ -403,7 +401,7 @@ const HabitRowContent = ({
                                 onPointerMove={onCellPointerMove}
                                 disabled={!isInteractive}
                                 className={cn(
-                                    "w-10 h-10 rounded-lg flex items-center justify-center transition-all duration-200 relative overflow-hidden touch-manipulation",
+                                    "w-10 h-10 rounded-lg flex items-center justify-center transition-all duration-200 relative touch-manipulation",
                                     habit.type === 'bundle'
                                         ? "bg-neutral-800 border border-white/5 hover:bg-neutral-700 text-neutral-200"
                                         : isFrozen
@@ -468,7 +466,6 @@ const HabitRowContent = ({
                         </div>
                     );
                 })}
-                {showArrows && <div className="w-8 flex-shrink-0" />}
             </div>
         </div>
     );
@@ -497,7 +494,6 @@ const SortableHabitRow = ({
     onCellPointerDown,
     onCellPointerUp,
     onCellPointerMove,
-    showArrows,
 }: {
     habit: Habit;
     allHabits: Habit[];
@@ -522,7 +518,6 @@ const SortableHabitRow = ({
     onCellPointerDown?: (habitId: string, dateStr: string, e: React.PointerEvent) => void;
     onCellPointerUp?: () => void;
     onCellPointerMove?: () => void;
-    showArrows?: boolean;
 }) => {
     const {
         attributes,
@@ -618,7 +613,6 @@ const SortableHabitRow = ({
                 onCellPointerDown={onCellPointerDown}
                 onCellPointerUp={onCellPointerUp}
                 onCellPointerMove={onCellPointerMove}
-                showArrows={showArrows}
             />
 
             {/* Child Rows - Rendered when expanded */}
@@ -647,7 +641,6 @@ const SortableHabitRow = ({
                     onCellPointerDown={onCellPointerDown}
                     onCellPointerUp={onCellPointerUp}
                     onCellPointerMove={onCellPointerMove}
-                    showArrows={showArrows}
                 />
             ))}
         </div>
@@ -963,31 +956,6 @@ export const TrackerGrid = ({
         return interval.reverse();
     }, []);
 
-    // Date window: show a visible slice of dates with arrow navigation
-    const [dateOffset, setDateOffset] = useState(0);
-    const [visibleCount, setVisibleCount] = useState(dates.length);
-
-    useEffect(() => {
-        const update = () => {
-            // w-64 = 256px name col, 32px per arrow button × 2 = 64px
-            const available = window.innerWidth - 256 - 64;
-            const count = Math.max(3, Math.min(dates.length, Math.floor(available / 64)));
-            setVisibleCount(count);
-            // Reset offset if it would overflow
-            setDateOffset(prev => Math.min(prev, Math.max(0, dates.length - count)));
-        };
-        update();
-        window.addEventListener('resize', update);
-        return () => window.removeEventListener('resize', update);
-    }, [dates.length]);
-
-    const visibleDates = useMemo(() => {
-        return dates.slice(dateOffset, dateOffset + visibleCount);
-    }, [dates, dateOffset, visibleCount]);
-
-    const canGoNewer = dateOffset > 0;
-    const showArrows = visibleCount < dates.length;
-
     // Optimistic Progress Map
     const habitProgressMap = useMemo(() => {
         const map = new Map<string, { streak: number; freezeStatus?: string }>();
@@ -1180,127 +1148,120 @@ export const TrackerGrid = ({
 
 
     return (
-        <div className="w-full overflow-hidden pb-20">
+        <div className="w-full pb-20">
             <DndContext
                 sensors={sensors}
                 collisionDetection={closestCenter}
                 onDragEnd={handleDragEnd}
             >
                 <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-neutral-700 scrollbar-track-transparent">
-                    {/* Header */}
-                    <div className="sticky top-0 z-20 flex border-b border-white/5 bg-neutral-900 shadow-md">
-                        <div className="w-64 flex-shrink-0 p-4 font-medium text-emerald-400 border-r border-white/5 flex items-center justify-between bg-neutral-900 sticky left-0 z-30 group">
-                            <span>Daily Habits</span>
-                            <div className="flex items-center gap-1">
-                                <button
-                                    onClick={() => setDeleteMode(prev => !prev)}
-                                    className={cn(
-                                        "p-1.5 rounded-lg transition-colors",
-                                        deleteMode
-                                            ? "bg-red-500/20 text-red-400"
-                                            : "hover:bg-neutral-800 text-neutral-500 hover:text-red-400"
-                                    )}
-                                    title={deleteMode ? 'Exit Delete Mode' : 'Enter Delete Mode (mobile-friendly)'}
-                                >
-                                    <Trash2 size={16} />
-                                </button>
-                            </div>
-                        </div>
-                        <div className="flex flex-1 bg-neutral-900">
-                            {visibleDates.map((date) => (
-                                <div
-                                    key={date.toISOString()}
-                                    className={cn(
-                                        "w-16 flex-shrink-0 flex flex-col items-center justify-center p-2 border-r border-white/5 transition-colors",
-                                        isToday(date) ? "bg-emerald-500/10 text-emerald-400" : "text-neutral-500"
-                                    )}
-                                >
-                                    <span className="text-xs font-medium uppercase">{format(date, 'EEE')}</span>
-                                    <span className={cn(
-                                        "text-lg font-bold w-8 h-8 flex items-center justify-center rounded-full mt-1",
-                                        isToday(date) && "bg-emerald-500 text-neutral-900"
-                                    )}>
-                                        {format(date, 'd')}
-                                    </span>
+                    <div className="overflow-x-auto overscroll-x-contain [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden touch-pan-x">
+                        <div className="w-max min-w-full">
+                            {/* Header */}
+                            <div className="sticky top-0 z-30 flex border-b border-white/5 bg-neutral-900 shadow-md">
+                                <div className="w-64 flex-shrink-0 p-4 font-medium text-emerald-400 border-r border-white/5 flex items-center justify-between bg-neutral-900 sticky left-0 z-40 group after:pointer-events-none after:absolute after:right-[-1px] after:top-0 after:h-full after:w-px after:bg-white/10">
+                                    <span>Daily Habits</span>
+                                    <div className="flex items-center gap-1">
+                                        <button
+                                            onClick={() => setDeleteMode(prev => !prev)}
+                                            className={cn(
+                                                "p-1.5 rounded-lg transition-colors",
+                                                deleteMode
+                                                    ? "bg-red-500/20 text-red-400"
+                                                    : "hover:bg-neutral-800 text-neutral-500 hover:text-red-400"
+                                            )}
+                                            title={deleteMode ? 'Exit Delete Mode' : 'Enter Delete Mode (mobile-friendly)'}
+                                        >
+                                            <Trash2 size={16} />
+                                        </button>
+                                    </div>
                                 </div>
-                            ))}
-                        </div>
-                        {showArrows && (
-                            <button
-                                onClick={() => setDateOffset(prev => Math.max(prev - 1, 0))}
-                                disabled={!canGoNewer}
-                                className="w-8 flex-shrink-0 flex items-center justify-center text-neutral-500 hover:text-white disabled:opacity-20 disabled:cursor-default bg-neutral-900 border-l border-white/5 transition-colors"
-                                title="Show newer dates"
-                            >
-                                <ChevronRight size={16} />
-                            </button>
-                        )}
-                    </div>
-
-                    {/* Daily Rows */}
-                    {deleteMode && (
-                        <div className="px-4 py-2 text-xs text-red-300 bg-red-500/10 border-b border-red-500/20">
-                            Delete mode active: tap any filled cell to remove that day&apos;s entry.
-                        </div>
-                    )}
-                    <div className="flex-col">
-                        {dailyHabits.length > 0 ? (
-                            <SortableContext
-                                items={dailyHabits.map(h => h.id)}
-                                strategy={verticalListSortingStrategy}
-                            >
-                                {dailyHabits.map((habit) => (
-                                    <SortableHabitRow
-                                        key={habit.id}
-                                        habit={habit}
-                                        allHabits={habits}
-                                        expandedIds={expandedIds}
-                                        onToggleExpand={toggleExpand}
-                                        logs={logs}
-                                        dates={visibleDates}
-                                        handleCellClick={handleCellClickDirect}
-                                        deleteHabit={deleteHabit}
-                                        deleteConfirmId={deleteConfirmId}
-                                        setDeleteConfirmId={setDeleteConfirmId}
-                                        onEditHabit={onEditHabit}
-                                        onToggle={handleToggle}
-                                        onRunRoutine={onRunRoutine}
-                                        streak={habitProgressMap.get(habit.id)?.streak}
-                                        onViewHistory={(h) => setHistoryModalHabitId(h.id)}
-                                        potentialEvidence={potentialEvidence}
-                                        onContextMenu={handleContextMenu}
-                                        isDeleteMode={deleteMode}
-                                        onMoveToCategory={(h) => setCategoryPickerHabit(h)}
-                                        onCellPointerDown={onCellPointerDown}
-                                        onCellPointerUp={onCellPointerUp}
-                                        onCellPointerMove={onCellPointerMove}
-                                        showArrows={showArrows}
-                                    />
-                                ))}
-                            </SortableContext>
-                        ) : (
-                            <div className="flex flex-col items-center justify-center p-8 text-center">
-                                <h3 className="text-base font-medium text-white mb-2">
-                                    Habits are actions that, when done consistently, move you towards your goals.
-                                </h3>
-                                <p className="text-sm text-neutral-400 mb-4">
-                                    Start with 1–3 habits you want to repeat most days.
-                                </p>
-                                <div className="flex flex-wrap justify-center gap-2 mb-4">
-                                    {['Drink water', '10-minute walk', 'Read 5 pages', 'Stretch', 'Vitamins'].map((ex) => (
-                                        <span key={ex} className="px-3 py-1 text-xs text-neutral-400 bg-neutral-800/80 rounded-full border border-white/5">
-                                            {ex}
-                                        </span>
+                                <div className="flex bg-neutral-900">
+                                    {dates.map((date) => (
+                                        <div
+                                            key={date.toISOString()}
+                                            className={cn(
+                                                "w-16 flex-shrink-0 flex flex-col items-center justify-center p-2 border-r border-white/5 transition-colors",
+                                                isToday(date) ? "bg-emerald-500/10 text-emerald-400" : "text-neutral-500"
+                                            )}
+                                        >
+                                            <span className="text-xs font-medium uppercase">{format(date, 'EEE')}</span>
+                                            <span className={cn(
+                                                "text-lg font-bold w-8 h-8 flex items-center justify-center rounded-full mt-1",
+                                                isToday(date) && "bg-emerald-500 text-neutral-900"
+                                            )}>
+                                                {format(date, 'd')}
+                                            </span>
+                                        </div>
                                     ))}
                                 </div>
-                                <button
-                                    onClick={onAddHabit}
-                                    className="flex items-center gap-2 px-5 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-neutral-900 font-medium rounded-lg transition-colors text-sm"
-                                >
-                                    Add Your First Habit
-                                </button>
                             </div>
-                        )}
+
+                            {/* Daily Rows */}
+                            {deleteMode && (
+                                <div className="px-4 py-2 text-xs text-red-300 bg-red-500/10 border-b border-red-500/20">
+                                    Delete mode active: tap any filled cell to remove that day&apos;s entry.
+                                </div>
+                            )}
+                            <div className="flex-col">
+                                {dailyHabits.length > 0 ? (
+                                    <SortableContext
+                                        items={dailyHabits.map(h => h.id)}
+                                        strategy={verticalListSortingStrategy}
+                                    >
+                                        {dailyHabits.map((habit) => (
+                                            <SortableHabitRow
+                                                key={habit.id}
+                                                habit={habit}
+                                                allHabits={habits}
+                                                expandedIds={expandedIds}
+                                                onToggleExpand={toggleExpand}
+                                                logs={logs}
+                                                dates={dates}
+                                                handleCellClick={handleCellClickDirect}
+                                                deleteHabit={deleteHabit}
+                                                deleteConfirmId={deleteConfirmId}
+                                                setDeleteConfirmId={setDeleteConfirmId}
+                                                onEditHabit={onEditHabit}
+                                                onToggle={handleToggle}
+                                                onRunRoutine={onRunRoutine}
+                                                streak={habitProgressMap.get(habit.id)?.streak}
+                                                onViewHistory={(h) => setHistoryModalHabitId(h.id)}
+                                                potentialEvidence={potentialEvidence}
+                                                onContextMenu={handleContextMenu}
+                                                isDeleteMode={deleteMode}
+                                                onMoveToCategory={(h) => setCategoryPickerHabit(h)}
+                                                onCellPointerDown={onCellPointerDown}
+                                                onCellPointerUp={onCellPointerUp}
+                                                onCellPointerMove={onCellPointerMove}
+                                            />
+                                        ))}
+                                    </SortableContext>
+                                ) : (
+                                    <div className="flex flex-col items-center justify-center p-8 text-center">
+                                        <h3 className="text-base font-medium text-white mb-2">
+                                            Habits are actions that, when done consistently, move you towards your goals.
+                                        </h3>
+                                        <p className="text-sm text-neutral-400 mb-4">
+                                            Start with 1–3 habits you want to repeat most days.
+                                        </p>
+                                        <div className="flex flex-wrap justify-center gap-2 mb-4">
+                                            {['Drink water', '10-minute walk', 'Read 5 pages', 'Stretch', 'Vitamins'].map((ex) => (
+                                                <span key={ex} className="px-3 py-1 text-xs text-neutral-400 bg-neutral-800/80 rounded-full border border-white/5">
+                                                    {ex}
+                                                </span>
+                                            ))}
+                                        </div>
+                                        <button
+                                            onClick={onAddHabit}
+                                            className="flex items-center gap-2 px-5 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-neutral-900 font-medium rounded-lg transition-colors text-sm"
+                                        >
+                                            Add Your First Habit
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
                     </div>
 
                 </div>
