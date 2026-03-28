@@ -526,10 +526,13 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         try {
             await deleteCategoryApi(id);
             // Keep local state aligned with backend behavior:
-            // deleted-category habits are moved to "no category" (empty categoryId), not archived.
-            setCategories(categories.filter(c => c.id !== id));
+            // deleted-category habits are moved to "no category" (empty categoryId),
+            // or to an existing persisted "No Category" bucket when present.
+            const nextCategories = categories.filter(c => c.id !== id);
+            const noCategory = nextCategories.find(c => c.name.trim().toLowerCase() === 'no category');
+            setCategories(nextCategories);
             setHabits(prev => prev.map(h =>
-                h.categoryId === id ? { ...h, categoryId: '', archived: false } : h
+                h.categoryId === id ? { ...h, categoryId: noCategory?.id ?? '' } : h
             ));
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : 'Unknown error';
