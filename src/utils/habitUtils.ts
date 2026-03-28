@@ -236,12 +236,16 @@ export function getBundleStats(
  */
 /**
  * Returns the set of child habit IDs across all bundles.
+ * Uses both parent's subHabitIds and child's bundleParentId for robustness.
  */
 export function getBundleChildIds(habits: Habit[]): Set<string> {
     const childIds = new Set<string>();
     habits.forEach(h => {
         if (h.type === 'bundle' && h.subHabitIds) {
             h.subHabitIds.forEach(id => childIds.add(id));
+        }
+        if (h.bundleParentId) {
+            childIds.add(h.id);
         }
     });
     return childIds;
@@ -274,16 +278,18 @@ export function isHabitComplete(
 }
 
 /**
- * Computes daily habit ring progress: { completed, total } for top-level habit units.
+ * Computes daily habit ring progress: { completed, total } for top-level daily habit units.
+ * Uses the same filtering as the Today view (getHabitsForDate): only daily-frequency,
+ * non-archived, root-level habits count toward the ring.
  */
 export function getDailyHabitRingProgress(
     habits: Habit[],
     logs: Record<string, DayLog>,
     date: string
 ): { completed: number; total: number } {
-    const root = getRootHabits(habits);
-    const completed = root.filter(h => isHabitComplete(h, logs, date)).length;
-    return { completed, total: root.length };
+    const dailyRootHabits = getHabitsForDate(habits, new Date(date));
+    const completed = dailyRootHabits.filter(h => isHabitComplete(h, logs, date)).length;
+    return { completed, total: dailyRootHabits.length };
 }
 
 export function getHabitsForDate(
