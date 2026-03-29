@@ -175,15 +175,9 @@ export interface BundleMembershipRecord {
 }
 
 /**
- * ChecklistSuccessRule - Configurable success criteria for checklist bundles.
+ * ChecklistSuccessRule - Re-exported from shared module (single source of truth).
  */
-export interface ChecklistSuccessRule {
-    type: 'any' | 'threshold' | 'percent' | 'full';
-    /** Minimum number of items required (for 'threshold' type) */
-    threshold?: number;
-    /** Minimum percentage required (for 'percent' type, 0-100) */
-    percent?: number;
-}
+export type { ChecklistSuccessRule } from '../../shared/checklistSuccessRule';
 
 /**
  * Validation helper types

@@ -49,17 +49,12 @@ async function resolveBundleIds(habitIds: string[], householdId: string, userId:
   for (const id of habitIds) {
     const habit = habitMap.get(id);
     if (habit?.type === 'bundle') {
-      // For choice bundles: include all children from temporal memberships (past + present)
-      if (habit.bundleType === 'choice') {
-        const memberships = await getMembershipsByParent(id, householdId, userId);
-        if (memberships.length > 0) {
-          memberships.forEach(m => resolvedIds.add(m.childHabitId));
-        } else if (habit.subHabitIds) {
-          // Fallback to static subHabitIds (pre-migration)
-          habit.subHabitIds.forEach(subId => resolvedIds.add(subId));
-        }
+      // For both choice and checklist bundles: use temporal memberships (past + present)
+      const memberships = await getMembershipsByParent(id, householdId, userId);
+      if (memberships.length > 0) {
+        memberships.forEach(m => resolvedIds.add(m.childHabitId));
       } else if (habit.subHabitIds) {
-        // Checklist bundles: use static subHabitIds
+        // Fallback to static subHabitIds (pre-migration)
         habit.subHabitIds.forEach(subId => resolvedIds.add(subId));
       }
     } else {
@@ -68,6 +63,32 @@ async function resolveBundleIds(habitIds: string[], householdId: string, userId:
   }
 
   return Array.from(resolvedIds);
+}
+
+/**
+ * Synchronous bundle resolution from pre-fetched membership data.
+ * Used by functions that already have habits and memberships in memory.
+ */
+function resolveBundleIdsSync(
+  habitIds: string[],
+  habitMap: Map<string, Habit>,
+  membershipsByParent: Map<string, Array<{ childHabitId: string }>>
+): string[] {
+  const resolved = new Set<string>();
+  for (const habitId of habitIds) {
+    const habit = habitMap.get(habitId);
+    if (habit?.type === 'bundle') {
+      const memberships = membershipsByParent.get(habitId);
+      if (memberships && memberships.length > 0) {
+        memberships.forEach(m => resolved.add(m.childHabitId));
+      } else if (habit.subHabitIds) {
+        habit.subHabitIds.forEach(subId => resolved.add(subId));
+      }
+    } else {
+      resolved.add(habitId);
+    }
+  }
+  return Array.from(resolved);
 }
 
 /**
@@ -282,27 +303,30 @@ export async function computeGoalsWithProgressFromData(
 ): Promise<Array<{ goal: Goal; progress: GoalProgress }>> {
   const habitMap = new Map(allHabits.map(h => [h.id, h]));
 
-  // Collect all unique habit IDs from all goals, resolving bundles
-  const allHabitIds = new Set<string>();
-
-  // Helper to resolve a single goal's habits synchronously using the pre-fetched map
-  const getResolvedHabitsForGoal = (goal: Goal): string[] => {
-    const resolved = new Set<string>();
+  // Pre-fetch memberships for all bundle parents referenced by goals
+  const bundleParentIds = new Set<string>();
+  for (const goal of goals) {
     for (const habitId of goal.linkedHabitIds) {
       const habit = habitMap.get(habitId);
-      if (habit?.type === 'bundle' && habit.subHabitIds) {
-        habit.subHabitIds.forEach(subId => resolved.add(subId));
-      } else {
-        resolved.add(habitId);
-      }
+      if (habit?.type === 'bundle') bundleParentIds.add(habitId);
     }
-    return Array.from(resolved);
-  };
+  }
+
+  const membershipsByParent = new Map<string, Array<{ childHabitId: string }>>();
+  await Promise.all(
+    Array.from(bundleParentIds).map(async (parentId) => {
+      const memberships = await getMembershipsByParent(parentId, householdId, userId);
+      membershipsByParent.set(parentId, memberships);
+    })
+  );
+
+  // Collect all unique habit IDs from all goals, resolving bundles
+  const allHabitIds = new Set<string>();
 
   // Cache resolved habits per goal to avoid computing twice
   const resolvedHabitsCache = new Map<string, string[]>();
   for (const goal of goals) {
-    const resolvedIds = getResolvedHabitsForGoal(goal);
+    const resolvedIds = resolveBundleIdsSync(goal.linkedHabitIds, habitMap, membershipsByParent);
     resolvedHabitsCache.set(goal.id, resolvedIds);
     for (const id of resolvedIds) {
       allHabitIds.add(id);
@@ -330,7 +354,7 @@ export async function computeGoalsWithProgressFromData(
 
   for (const goal of goals) {
     const goalEntryViews: EntryView[] = [];
-    const resolvedIds = resolvedHabitsCache.get(goal.id) || getResolvedHabitsForGoal(goal);
+    const resolvedIds = resolvedHabitsCache.get(goal.id) || resolveBundleIdsSync(goal.linkedHabitIds, habitMap, membershipsByParent);
 
     for (const habitId of resolvedIds) {
       const habitEntries = entriesByHabitId.get(habitId) || [];
@@ -369,21 +393,29 @@ export async function computeGoalListProgress(
 ): Promise<Array<{ goal: Goal; progress: GoalProgress }>> {
   const habitMap = new Map(allHabits.map(h => [h.id, h]));
 
+  // Pre-fetch memberships for all bundle parents referenced by goals
+  const bundleParentIds = new Set<string>();
+  for (const goal of goals) {
+    for (const habitId of goal.linkedHabitIds) {
+      const habit = habitMap.get(habitId);
+      if (habit?.type === 'bundle') bundleParentIds.add(habitId);
+    }
+  }
+
+  const membershipsByParent = new Map<string, Array<{ childHabitId: string }>>();
+  await Promise.all(
+    Array.from(bundleParentIds).map(async (parentId) => {
+      const memberships = await getMembershipsByParent(parentId, householdId, userId);
+      membershipsByParent.set(parentId, memberships);
+    })
+  );
+
   // Resolve bundle habits for each goal
   const resolvedHabitsCache = new Map<string, string[]>();
   const allHabitIds = new Set<string>();
 
   for (const goal of goals) {
-    const resolved = new Set<string>();
-    for (const habitId of goal.linkedHabitIds) {
-      const habit = habitMap.get(habitId);
-      if (habit?.type === 'bundle' && habit.subHabitIds) {
-        habit.subHabitIds.forEach(subId => resolved.add(subId));
-      } else {
-        resolved.add(habitId);
-      }
-    }
-    const resolvedIds = Array.from(resolved);
+    const resolvedIds = resolveBundleIdsSync(goal.linkedHabitIds, habitMap, membershipsByParent);
     resolvedHabitsCache.set(goal.id, resolvedIds);
     for (const id of resolvedIds) {
       allHabitIds.add(id);

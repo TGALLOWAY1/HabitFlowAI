@@ -1,4 +1,5 @@
 import type { Habit, HabitEntry } from '../models/persistenceTypes';
+import { evaluateChecklistSuccess } from '../shared/checklistSuccessRule';
 
 export interface HabitStatus {
     isComplete: boolean;
@@ -84,27 +85,11 @@ export function computeHabitStatus(
         });
 
         const totalCount = habit.subHabitIds.length;
-        const isFullyComplete = totalCount > 0 && completedCount === totalCount;
-
-        // Evaluate success rule (default: full/all)
-        const rule = habit.checklistSuccessRule;
-        const ruleType = rule?.type ?? 'full';
-        let meetsSuccessRule: boolean;
-        switch (ruleType) {
-            case 'any':
-                meetsSuccessRule = completedCount >= 1;
-                break;
-            case 'threshold':
-                meetsSuccessRule = completedCount >= (rule?.threshold ?? totalCount);
-                break;
-            case 'percent':
-                meetsSuccessRule = totalCount > 0 && (completedCount / totalCount) * 100 >= (rule?.percent ?? 100);
-                break;
-            case 'full':
-            default:
-                meetsSuccessRule = isFullyComplete;
-                break;
-        }
+        const { meetsSuccessRule, isFullyComplete } = evaluateChecklistSuccess(
+            completedCount,
+            totalCount,
+            habit.checklistSuccessRule
+        );
 
         return {
             isComplete: meetsSuccessRule,
