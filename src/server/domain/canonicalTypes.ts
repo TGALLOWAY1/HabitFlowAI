@@ -136,6 +136,38 @@ export type GoalAggregationMode = 'count' | 'sum';
 export type GoalCountMode = 'distinctDays' | 'entries';
 
 /**
+ * BundleMembershipRecord - Temporal parent-child relationship for choice bundles
+ *
+ * Represents a time range during which a child habit belongs to a parent bundle.
+ * Used to derive bundle parent completion with historical accuracy.
+ */
+export interface BundleMembershipRecord {
+    /** Unique identifier */
+    id: string;
+
+    /** Parent bundle habit ID */
+    parentHabitId: string;
+
+    /** Child habit ID */
+    childHabitId: string;
+
+    /** DayKey when membership starts (inclusive) */
+    activeFromDayKey: string;
+
+    /** DayKey when membership ends (inclusive). Null = currently active. */
+    activeToDayKey?: string | null;
+
+    /** UX hint: hide from active lists. Does not affect temporal logic. */
+    archivedAt?: string | null;
+
+    /** Creation timestamp */
+    createdAt: string;
+
+    /** Update timestamp */
+    updatedAt: string;
+}
+
+/**
  * Validation helper types
  */
 export interface ValidationResult {

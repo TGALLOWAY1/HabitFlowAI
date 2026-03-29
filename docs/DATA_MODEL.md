@@ -25,6 +25,7 @@ Defined in `src/models/persistenceTypes.ts` (`MONGO_COLLECTIONS`). **Current** c
 - `tasks`
 - **`habitEntries`** (canonical behavioral truth)
 - `habitPotentialEvidence`
+- **`bundleMemberships`** (temporal bundle child-parent relationships)
 
 **Removed / no longer used:** `dayLogs`, `goalManualLogs`. Do not reference these in new code or docs.
 
@@ -44,6 +45,19 @@ Enforced guardrails:
 - No stored completion/progress fields in writes (`src/server/repositories/habitEntryRepository.ts`)
 - DayKey validation/normalization at API boundary (`src/server/utils/dayKeyNormalization.ts`)
 - Route-level canonical validators (`src/server/domain/canonicalValidators.ts`)
+
+## Bundle Membership
+
+The `bundleMemberships` collection stores temporal parent-child relationships for choice bundles.
+
+Each record represents a time range during which a child habit belongs to a parent bundle:
+- `activeFromDayKey`: When the membership starts (YYYY-MM-DD)
+- `activeToDayKey`: When the membership ends (null = currently active)
+- `archivedAt`: UX hint to hide from active lists (does not affect temporal logic)
+
+Bundle parent completion is derived from children whose membership is active on the queried day. For pre-migration bundles without membership records, the system falls back to `subHabitIds`.
+
+See: `src/server/repositories/bundleMembershipRepository.ts`
 
 ## DayKey Boundary
 

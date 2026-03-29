@@ -48,6 +48,13 @@ import {
   batchCreateEntriesRoute,
 } from './routes/habitEntries';
 import { getDayView } from './routes/dayView';
+import {
+  getBundleMembershipsRoute,
+  createBundleMembershipRoute,
+  endBundleMembershipRoute,
+  archiveBundleMembershipRoute,
+  deleteBundleMembershipRoute,
+} from './routes/bundleMemberships';
 import habitPotentialEvidenceRoutes from './routes/habitPotentialEvidence';
 import { deleteUserData } from './routes/userData';
 import { postWeeklySummary } from './routes/aiSummary';
@@ -175,6 +182,11 @@ export function createApp(): Express {
   app.delete('/api/entries', entriesWriteRateLimiter, deleteHabitEntriesForDayRoute);
   app.delete('/api/entries/:id', entriesWriteRateLimiter, deleteHabitEntryRoute);
   app.patch('/api/entries/:id', entriesWriteRateLimiter, updateHabitEntryRoute);
+  app.get('/api/bundle-memberships', getBundleMembershipsRoute);
+  app.post('/api/bundle-memberships', createBundleMembershipRoute);
+  app.patch('/api/bundle-memberships/:id/end', endBundleMembershipRoute);
+  app.patch('/api/bundle-memberships/:id/archive', archiveBundleMembershipRoute);
+  app.delete('/api/bundle-memberships/:id', deleteBundleMembershipRoute);
   app.get('/api/dayView', getDayView);
   app.use('/api/evidence', habitPotentialEvidenceRoutes);
   app.post('/api/ai/weekly-summary', postWeeklySummary);
