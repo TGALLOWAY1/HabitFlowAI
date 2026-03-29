@@ -2,16 +2,17 @@
  * VariantCard — Reusable card for displaying a variant's summary in selection contexts.
  */
 import React from 'react';
-import { Clock, ListChecks, Sparkles } from 'lucide-react';
+import { Clock, ListChecks, Pencil, Sparkles } from 'lucide-react';
 import type { RoutineVariant } from '../models/persistenceTypes';
 
 interface VariantCardProps {
     variant: RoutineVariant;
     isSelected: boolean;
     onClick: () => void;
+    onEdit?: () => void;
 }
 
-export const VariantCard: React.FC<VariantCardProps> = ({ variant, isSelected, onClick }) => {
+export const VariantCard: React.FC<VariantCardProps> = ({ variant, isSelected, onClick, onEdit }) => {
     return (
         <button
             onClick={onClick}
@@ -37,14 +38,26 @@ export const VariantCard: React.FC<VariantCardProps> = ({ variant, isSelected, o
                         <p className="text-xs text-neutral-500 mt-1 line-clamp-2">{variant.description}</p>
                     )}
                 </div>
-                <div className={`w-4 h-4 rounded-full border-2 flex-shrink-0 mt-0.5 ${
-                    isSelected ? 'border-emerald-500 bg-emerald-500' : 'border-neutral-600'
-                }`}>
-                    {isSelected && (
-                        <div className="w-full h-full flex items-center justify-center">
-                            <div className="w-1.5 h-1.5 rounded-full bg-white" />
-                        </div>
+                <div className="flex items-center gap-2 flex-shrink-0 mt-0.5">
+                    {onEdit && (
+                        <button
+                            onClick={(e) => { e.stopPropagation(); onEdit(); }}
+                            className="p-1 rounded text-neutral-500 hover:text-white hover:bg-neutral-700 transition-colors"
+                            aria-label={`Edit ${variant.name}`}
+                            title="Edit variant"
+                        >
+                            <Pencil size={14} />
+                        </button>
                     )}
+                    <div className={`w-4 h-4 rounded-full border-2 ${
+                        isSelected ? 'border-emerald-500 bg-emerald-500' : 'border-neutral-600'
+                    }`}>
+                        {isSelected && (
+                            <div className="w-full h-full flex items-center justify-center">
+                                <div className="w-1.5 h-1.5 rounded-full bg-white" />
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
             <div className="flex items-center gap-3 mt-3 text-xs text-neutral-500">

@@ -168,6 +168,7 @@ const HabitTrackerContent: React.FC = () => {
     isOpen: boolean;
     mode: 'create' | 'edit';
     routine?: Routine;
+    initialVariantId?: string;
   }>({ isOpen: false, mode: 'create' });
 
   const [routineRunnerState, setRoutineRunnerState] = useState<{
@@ -540,6 +541,7 @@ const HabitTrackerContent: React.FC = () => {
         isOpen={routineEditorState.isOpen}
         mode={routineEditorState.mode}
         initialRoutine={routineEditorState.routine}
+        initialVariantId={routineEditorState.initialVariantId}
         onClose={() => setRoutineEditorState({ ...routineEditorState, isOpen: false })}
       />
 
@@ -557,6 +559,10 @@ const HabitTrackerContent: React.FC = () => {
         onStart={(routine, variantId) => {
           setRoutinePreviewState({ isOpen: false, routine: undefined });
           setRoutineRunnerState({ isOpen: true, routine, variantId });
+        }}
+        onEdit={(routine, variantId) => {
+          setRoutinePreviewState({ isOpen: false, routine: undefined });
+          setRoutineEditorState({ isOpen: true, mode: 'edit', routine, initialVariantId: variantId });
         }}
       />
 

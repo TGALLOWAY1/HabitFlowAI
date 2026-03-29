@@ -12,6 +12,7 @@ interface RoutineEditorModalProps {
     isOpen: boolean;
     mode: 'create' | 'edit';
     initialRoutine?: Routine;
+    initialVariantId?: string;
     onClose: () => void;
 }
 
@@ -59,6 +60,7 @@ export const RoutineEditorModal: React.FC<RoutineEditorModalProps> = ({
     isOpen,
     mode,
     initialRoutine,
+    initialVariantId,
     onClose,
 }) => {
     const { addRoutine, updateRoutine, refreshRoutines } = useRoutineStore();
@@ -115,8 +117,12 @@ export const RoutineEditorModal: React.FC<RoutineEditorModalProps> = ({
         if (mode === 'edit' && initialRoutine) {
             setTitle(initialRoutine.title);
             setCategoryId(initialRoutine.categoryId);
-            setVariants(routineToVariants(initialRoutine));
-            setActiveVariantIndex(0);
+            const converted = routineToVariants(initialRoutine);
+            setVariants(converted);
+            const targetIndex = initialVariantId
+                ? converted.findIndex(v => v.id === initialVariantId)
+                : -1;
+            setActiveVariantIndex(targetIndex >= 0 ? targetIndex : 0);
             setCurrentRoutineImageUrl(initialRoutine.imageUrl);
         } else {
             setTitle('');

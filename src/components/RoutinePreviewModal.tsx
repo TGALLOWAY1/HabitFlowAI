@@ -10,6 +10,7 @@ interface RoutinePreviewModalProps {
     routine?: Routine;
     onClose: () => void;
     onStart: (routine: Routine, variantId?: string) => void;
+    onEdit?: (routine: Routine, variantId: string) => void;
 }
 
 export const RoutinePreviewModal: React.FC<RoutinePreviewModalProps> = ({
@@ -17,6 +18,7 @@ export const RoutinePreviewModal: React.FC<RoutinePreviewModalProps> = ({
     routine,
     onClose,
     onStart,
+    onEdit,
 }) => {
     const { habits } = useHabitStore();
     const [selectedVariantId, setSelectedVariantId] = useState<string | undefined>(undefined);
@@ -85,6 +87,7 @@ export const RoutinePreviewModal: React.FC<RoutinePreviewModalProps> = ({
                                             variant={variant}
                                             isSelected={selectedVariantId === variant.id}
                                             onClick={() => setSelectedVariantId(variant.id)}
+                                            onEdit={onEdit ? () => onEdit(routine, variant.id) : undefined}
                                         />
                                     ))
                                 }
