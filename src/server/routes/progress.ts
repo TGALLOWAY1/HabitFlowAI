@@ -9,12 +9,14 @@ import { getHabitEntriesByUser } from '../repositories/habitEntryRepository';
 
 import { getHabitsByUser } from '../repositories/habitRepository';
 import { getGoalsByUser } from '../repositories/goalRepository';
+import { getMembershipsByParent } from '../repositories/bundleMembershipRepository';
 import { computeGoalsWithProgressFromData } from '../utils/goalProgressUtilsV2';
 import { calculateGlobalMomentum, calculateCategoryMomentum, getMomentumCopy } from '../services/momentumService';
 import { calculateHabitStreakMetrics, type HabitDayState } from '../services/streakService';
 import { resolveTimeZone, getNowDayKey, getCanonicalDayKeyFromEntry } from '../utils/dayKey';
 import type { MomentumState } from '../../types';
 import type { DayLog } from '../../models/persistenceTypes';
+import type { BundleMembershipRecord } from '../domain/canonicalTypes';
 import { getRequestIdentity } from '../middleware/identity';
 
 function parseFreezeType(note?: string): 'manual' | 'auto' | 'soft' | undefined {
@@ -69,6 +71,28 @@ export async function getProgressOverview(req: Request, res: Response): Promise<
       habitDayMap.set(dayKey, existing);
       dayStatesByHabit.set(entry.habitId, habitDayMap);
     });
+
+    // Derive bundle parent dayStates from children using temporal membership
+    const choiceBundleParents = activeHabits.filter(
+      h => h.type === 'bundle' && h.bundleType === 'choice'
+    );
+
+    for (const parent of choiceBundleParents) {
+      const memberships = await getMembershipsByParent(parent.id, householdId, userId);
+      const parentDayMap = new Map<string, HabitDayState>();
+
+      if (memberships.length > 0) {
+        // Temporal path: use memberships to determine which children contribute on each day
+        deriveBundleParentDayStates(memberships, dayStatesByHabit, parentDayMap);
+      } else if (parent.subHabitIds && parent.subHabitIds.length > 0) {
+        // Fallback: use static subHabitIds (pre-migration)
+        deriveBundleParentDayStatesFallback(parent.subHabitIds, dayStatesByHabit, parentDayMap);
+      }
+
+      if (parentDayMap.size > 0) {
+        dayStatesByHabit.set(parent.id, parentDayMap);
+      }
+    }
 
     // Build a completion-only log array for momentum calculations
     const completionLogs: DayLog[] = Array.from(dayStatesByHabit.entries()).flatMap(([habitId, dayMap]) =>
@@ -159,5 +183,71 @@ export async function getProgressOverview(req: Request, res: Response): Promise<
         details: process.env.NODE_ENV === 'development' ? errorMessage : undefined,
       },
     });
+  }
+}
+
+/**
+ * Derive bundle parent dayStates from children using temporal memberships.
+ * A parent is "completed" on a dayKey if any child with an active membership
+ * on that day has a completed dayState.
+ */
+function deriveBundleParentDayStates(
+  memberships: BundleMembershipRecord[],
+  dayStatesByHabit: Map<string, Map<string, HabitDayState>>,
+  parentDayMap: Map<string, HabitDayState>
+): void {
+  for (const membership of memberships) {
+    const childDayMap = dayStatesByHabit.get(membership.childHabitId);
+    if (!childDayMap) continue;
+
+    for (const [dayKey, childState] of childDayMap) {
+      // Check if this dayKey falls within the membership period
+      if (dayKey < membership.activeFromDayKey) continue;
+      if (membership.activeToDayKey && dayKey > membership.activeToDayKey) continue;
+
+      if (childState.completed || childState.isFrozen) {
+        const existing = parentDayMap.get(dayKey);
+        if (!existing) {
+          parentDayMap.set(dayKey, {
+            dayKey,
+            value: 1,
+            completed: childState.completed,
+            isFrozen: childState.isFrozen && !childState.completed ? true : undefined,
+          });
+        } else if (!existing.completed && childState.completed) {
+          existing.completed = true;
+        }
+      }
+    }
+  }
+}
+
+/**
+ * Fallback: derive bundle parent dayStates from static subHabitIds (pre-migration).
+ */
+function deriveBundleParentDayStatesFallback(
+  subHabitIds: string[],
+  dayStatesByHabit: Map<string, Map<string, HabitDayState>>,
+  parentDayMap: Map<string, HabitDayState>
+): void {
+  for (const childId of subHabitIds) {
+    const childDayMap = dayStatesByHabit.get(childId);
+    if (!childDayMap) continue;
+
+    for (const [dayKey, childState] of childDayMap) {
+      if (childState.completed || childState.isFrozen) {
+        const existing = parentDayMap.get(dayKey);
+        if (!existing) {
+          parentDayMap.set(dayKey, {
+            dayKey,
+            value: 1,
+            completed: childState.completed,
+            isFrozen: childState.isFrozen && !childState.completed ? true : undefined,
+          });
+        } else if (!existing.completed && childState.completed) {
+          existing.completed = true;
+        }
+      }
+    }
   }
 }

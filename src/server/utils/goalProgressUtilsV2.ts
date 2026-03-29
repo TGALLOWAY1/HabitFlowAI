@@ -9,6 +9,7 @@
 
 import { getGoalById } from '../repositories/goalRepository';
 import { getHabitsByUser } from '../repositories/habitRepository';
+import { getMembershipsByParent } from '../repositories/bundleMembershipRepository';
 import { aggregateHabitEntryTotals } from '../repositories/habitEntryRepository';
 import { getEntryViewsForHabits, getRecentEntryViewsForHabits, buildEntryViewsFromEntries } from '../services/truthQuery';
 import { getAggregationMode, getCountMode, unitsMatch } from './goalLinkSemantics';
@@ -47,8 +48,20 @@ async function resolveBundleIds(habitIds: string[], householdId: string, userId:
 
   for (const id of habitIds) {
     const habit = habitMap.get(id);
-    if (habit?.type === 'bundle' && habit.subHabitIds) {
-      habit.subHabitIds.forEach(subId => resolvedIds.add(subId));
+    if (habit?.type === 'bundle') {
+      // For choice bundles: include all children from temporal memberships (past + present)
+      if (habit.bundleType === 'choice') {
+        const memberships = await getMembershipsByParent(id, householdId, userId);
+        if (memberships.length > 0) {
+          memberships.forEach(m => resolvedIds.add(m.childHabitId));
+        } else if (habit.subHabitIds) {
+          // Fallback to static subHabitIds (pre-migration)
+          habit.subHabitIds.forEach(subId => resolvedIds.add(subId));
+        }
+      } else if (habit.subHabitIds) {
+        // Checklist bundles: use static subHabitIds
+        habit.subHabitIds.forEach(subId => resolvedIds.add(subId));
+      }
     } else {
       resolvedIds.add(id);
     }

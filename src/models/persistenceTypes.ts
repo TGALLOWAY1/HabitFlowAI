@@ -1238,6 +1238,7 @@ export const MONGO_COLLECTIONS = {
     TASKS: 'tasks',
     HABIT_ENTRIES: 'habitEntries',
     HABIT_POTENTIAL_EVIDENCE: 'habitPotentialEvidence',
+    BUNDLE_MEMBERSHIPS: 'bundleMemberships',
     HOUSEHOLD_USERS: 'householdUsers',
     USERS: 'users',
     INVITES: 'invites',
