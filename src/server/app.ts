@@ -53,6 +53,7 @@ import {
   createBundleMembershipRoute,
   endBundleMembershipRoute,
   archiveBundleMembershipRoute,
+  graduateBundleMembershipRoute,
   deleteBundleMembershipRoute,
 } from './routes/bundleMemberships';
 import habitPotentialEvidenceRoutes from './routes/habitPotentialEvidence';
@@ -186,6 +187,7 @@ export function createApp(): Express {
   app.post('/api/bundle-memberships', createBundleMembershipRoute);
   app.patch('/api/bundle-memberships/:id/end', endBundleMembershipRoute);
   app.patch('/api/bundle-memberships/:id/archive', archiveBundleMembershipRoute);
+  app.patch('/api/bundle-memberships/:id/graduate', graduateBundleMembershipRoute);
   app.delete('/api/bundle-memberships/:id', deleteBundleMembershipRoute);
   app.get('/api/dayView', getDayView);
   app.use('/api/evidence', habitPotentialEvidenceRoutes);

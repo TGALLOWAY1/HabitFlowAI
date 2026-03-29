@@ -18,6 +18,8 @@ import type { MomentumState } from '../../types';
 import type { DayLog } from '../../models/persistenceTypes';
 import type { BundleMembershipRecord } from '../domain/canonicalTypes';
 import { getRequestIdentity } from '../middleware/identity';
+import { evaluateChecklistSuccess } from '../services/checklistSuccessService';
+import type { Habit } from '../../models/persistenceTypes';
 
 function parseFreezeType(note?: string): 'manual' | 'auto' | 'soft' | undefined {
   if (!note || !note.startsWith('freeze:')) return undefined;
@@ -73,20 +75,29 @@ export async function getProgressOverview(req: Request, res: Response): Promise<
     });
 
     // Derive bundle parent dayStates from children using temporal membership
-    const choiceBundleParents = activeHabits.filter(
-      h => h.type === 'bundle' && h.bundleType === 'choice'
+    const bundleParents = activeHabits.filter(
+      h => h.type === 'bundle' && (h.bundleType === 'choice' || h.bundleType === 'checklist')
     );
 
-    for (const parent of choiceBundleParents) {
+    for (const parent of bundleParents) {
       const memberships = await getMembershipsByParent(parent.id, householdId, userId);
       const parentDayMap = new Map<string, HabitDayState>();
 
       if (memberships.length > 0) {
-        // Temporal path: use memberships to determine which children contribute on each day
-        deriveBundleParentDayStates(memberships, dayStatesByHabit, parentDayMap);
+        if (parent.bundleType === 'checklist') {
+          // Checklist bundles: evaluate success rule per day
+          deriveChecklistBundleParentDayStates(parent, memberships, dayStatesByHabit, parentDayMap);
+        } else {
+          // Choice bundles: any child complete = parent complete
+          deriveBundleParentDayStates(memberships, dayStatesByHabit, parentDayMap);
+        }
       } else if (parent.subHabitIds && parent.subHabitIds.length > 0) {
         // Fallback: use static subHabitIds (pre-migration)
-        deriveBundleParentDayStatesFallback(parent.subHabitIds, dayStatesByHabit, parentDayMap);
+        if (parent.bundleType === 'checklist') {
+          deriveChecklistBundleParentDayStatesFallback(parent, parent.subHabitIds, dayStatesByHabit, parentDayMap);
+        } else {
+          deriveBundleParentDayStatesFallback(parent.subHabitIds, dayStatesByHabit, parentDayMap);
+        }
       }
 
       if (parentDayMap.size > 0) {
@@ -249,5 +260,120 @@ function deriveBundleParentDayStatesFallback(
         }
       }
     }
+  }
+}
+
+/**
+ * Derive checklist bundle parent dayStates using temporal memberships.
+ *
+ * For each day where any child has data, determines which children were
+ * active+scheduled on that day and evaluates the success rule.
+ */
+function deriveChecklistBundleParentDayStates(
+  parent: Habit,
+  memberships: BundleMembershipRecord[],
+  dayStatesByHabit: Map<string, Map<string, HabitDayState>>,
+  parentDayMap: Map<string, HabitDayState>
+): void {
+  // Collect all dayKeys across all children
+  const allDayKeys = new Set<string>();
+  for (const membership of memberships) {
+    const childDayMap = dayStatesByHabit.get(membership.childHabitId);
+    if (childDayMap) {
+      for (const dayKey of childDayMap.keys()) {
+        if (dayKey >= membership.activeFromDayKey &&
+            (!membership.activeToDayKey || dayKey <= membership.activeToDayKey)) {
+          allDayKeys.add(dayKey);
+        }
+      }
+    }
+  }
+
+  for (const dayKey of allDayKeys) {
+    const dayOfWeek = new Date(dayKey + 'T12:00:00Z').getUTCDay();
+
+    // Find memberships active and scheduled on this day
+    const activeMemberships = memberships.filter(m => {
+      if (dayKey < m.activeFromDayKey) return false;
+      if (m.activeToDayKey && dayKey > m.activeToDayKey) return false;
+      if (m.daysOfWeek && m.daysOfWeek.length > 0 && !m.daysOfWeek.includes(dayOfWeek)) return false;
+      return true;
+    });
+
+    if (activeMemberships.length === 0) continue;
+
+    let completedCount = 0;
+    let hasFrozen = false;
+
+    for (const m of activeMemberships) {
+      const childState = dayStatesByHabit.get(m.childHabitId)?.get(dayKey);
+      if (childState?.completed) {
+        completedCount++;
+      } else if (childState?.isFrozen) {
+        hasFrozen = true;
+      }
+    }
+
+    const { meetsSuccessRule } = evaluateChecklistSuccess(
+      completedCount,
+      activeMemberships.length,
+      parent.checklistSuccessRule
+    );
+
+    parentDayMap.set(dayKey, {
+      dayKey,
+      value: completedCount,
+      completed: meetsSuccessRule,
+      isFrozen: hasFrozen && !meetsSuccessRule ? true : undefined,
+    });
+  }
+}
+
+/**
+ * Fallback: derive checklist bundle parent dayStates from static subHabitIds.
+ * Evaluates success rule against all children (no temporal/scheduling awareness).
+ */
+function deriveChecklistBundleParentDayStatesFallback(
+  parent: Habit,
+  subHabitIds: string[],
+  dayStatesByHabit: Map<string, Map<string, HabitDayState>>,
+  parentDayMap: Map<string, HabitDayState>
+): void {
+  // Collect all dayKeys across all children
+  const allDayKeys = new Set<string>();
+  for (const childId of subHabitIds) {
+    const childDayMap = dayStatesByHabit.get(childId);
+    if (childDayMap) {
+      for (const dayKey of childDayMap.keys()) {
+        allDayKeys.add(dayKey);
+      }
+    }
+  }
+
+  for (const dayKey of allDayKeys) {
+    let completedCount = 0;
+    let hasFrozen = false;
+
+    for (const childId of subHabitIds) {
+      const childState = dayStatesByHabit.get(childId)?.get(dayKey);
+      if (childState?.completed) {
+        completedCount++;
+      } else if (childState?.isFrozen) {
+        hasFrozen = true;
+      }
+    }
+
+    const { meetsSuccessRule } = evaluateChecklistSuccess(
+      completedCount,
+      subHabitIds.length,
+      parent.checklistSuccessRule
+    );
+
+    parentDayMap.set(dayKey, {
+      dayKey,
+      value: completedCount,
+      completed: meetsSuccessRule,
+      isFrozen: hasFrozen && !meetsSuccessRule ? true : undefined,
+    });
   }
 }

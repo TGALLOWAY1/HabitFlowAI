@@ -14,6 +14,7 @@ import {
   createMembership,
   endMembership,
   archiveMembership,
+  graduateMembership,
   getMembershipById,
   getMembershipsByParent,
   getMembershipsForDay,
@@ -65,7 +66,7 @@ export async function getBundleMembershipsRoute(req: Request, res: Response): Pr
 export async function createBundleMembershipRoute(req: Request, res: Response): Promise<void> {
   try {
     const { householdId, userId } = getRequestIdentity(req);
-    const { parentHabitId, childHabitId, activeFromDayKey, activeToDayKey } = req.body;
+    const { parentHabitId, childHabitId, activeFromDayKey, activeToDayKey, daysOfWeek } = req.body;
 
     if (!parentHabitId || typeof parentHabitId !== 'string') {
       res.status(400).json({ error: 'parentHabitId is required' });
@@ -102,14 +103,22 @@ export async function createBundleMembershipRoute(req: Request, res: Response): 
       }
     }
 
-    // Validate parent is a choice bundle
+    // Validate daysOfWeek if provided
+    if (daysOfWeek != null) {
+      if (!Array.isArray(daysOfWeek) || !daysOfWeek.every((d: unknown) => typeof d === 'number' && d >= 0 && d <= 6)) {
+        res.status(400).json({ error: 'daysOfWeek must be an array of numbers 0-6 (Sun-Sat)' });
+        return;
+      }
+    }
+
+    // Validate parent is a bundle (choice or checklist)
     const parentHabit = await getHabitById(parentHabitId, householdId, userId);
     if (!parentHabit) {
       res.status(404).json({ error: 'Parent habit not found' });
       return;
     }
-    if (parentHabit.type !== 'bundle' || parentHabit.bundleType !== 'choice') {
-      res.status(400).json({ error: 'Parent habit must be a choice bundle' });
+    if (parentHabit.type !== 'bundle' || !parentHabit.bundleType) {
+      res.status(400).json({ error: 'Parent habit must be a bundle (choice or checklist)' });
       return;
     }
 
@@ -135,7 +144,8 @@ export async function createBundleMembershipRoute(req: Request, res: Response): 
       activeFromDayKey,
       householdId,
       userId,
-      activeToDayKey
+      activeToDayKey,
+      daysOfWeek
     );
 
     res.status(201).json(membership);
@@ -224,6 +234,65 @@ export async function archiveBundleMembershipRoute(req: Request, res: Response):
     const updated = await archiveMembership(id, householdId, userId);
     if (!updated) {
       res.status(500).json({ error: 'Failed to archive membership' });
+      return;
+    }
+
+    const result = await getMembershipById(id, householdId, userId);
+    res.json(result);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    res.status(500).json({ error: message });
+  }
+}
+
+/**
+ * PATCH /api/bundle-memberships/:id/graduate
+ *
+ * Graduate a membership: the habit behavior has become automatic.
+ * Sets graduatedAt and activeToDayKey atomically.
+ * Body: { endDayKey }
+ */
+export async function graduateBundleMembershipRoute(req: Request, res: Response): Promise<void> {
+  try {
+    const { householdId, userId } = getRequestIdentity(req);
+    const { id } = req.params;
+    const { endDayKey } = req.body;
+
+    if (!endDayKey || typeof endDayKey !== 'string') {
+      res.status(400).json({ error: 'endDayKey is required' });
+      return;
+    }
+
+    const validation = validateDayKey(endDayKey);
+    if (!validation.valid) {
+      res.status(400).json({ error: validation.error });
+      return;
+    }
+
+    const membership = await getMembershipById(id, householdId, userId);
+    if (!membership) {
+      res.status(404).json({ error: 'Membership not found' });
+      return;
+    }
+
+    if (membership.activeToDayKey) {
+      res.status(400).json({ error: 'Membership is already ended' });
+      return;
+    }
+
+    if (membership.graduatedAt) {
+      res.status(400).json({ error: 'Membership is already graduated' });
+      return;
+    }
+
+    if (endDayKey < membership.activeFromDayKey) {
+      res.status(400).json({ error: 'endDayKey must be >= activeFromDayKey' });
+      return;
+    }
+
+    const updated = await graduateMembership(id, endDayKey, householdId, userId);
+    if (!updated) {
+      res.status(500).json({ error: 'Failed to graduate membership' });
       return;
     }
 

@@ -13,6 +13,7 @@ import { getMembershipsForDay } from '../repositories/bundleMembershipRepository
 import type { Habit } from '../../models/persistenceTypes';
 import type { EntryView } from './truthQuery';
 import type { DayKey } from '../../domain/time/dayKey';
+import { evaluateChecklistSuccess } from './checklistSuccessService';
 import { startOfWeek, endOfWeek, parseISO, format } from 'date-fns';
 
 /**
@@ -168,8 +169,9 @@ function deriveWeeklyProgress(
 /**
  * Resolve child habit IDs for a bundle on a specific day.
  *
- * For choice bundles: uses BundleMembership records if available,
+ * For choice and checklist bundles: uses BundleMembership records if available,
  * falls back to subHabitIds for pre-migration bundles.
+ * Memberships are filtered by temporal range and day-of-week schedule.
  *
  * @param bundleHabit - Bundle parent habit
  * @param dayKey - DayKey to resolve children for
@@ -183,13 +185,13 @@ async function resolveChildIdsForDay(
   householdId: string,
   userId: string
 ): Promise<string[]> {
-  if (bundleHabit.bundleType === 'choice') {
+  if (bundleHabit.bundleType === 'choice' || bundleHabit.bundleType === 'checklist') {
     const memberships = await getMembershipsForDay(bundleHabit.id, dayKey, householdId, userId);
     if (memberships.length > 0) {
       return memberships.map(m => m.childHabitId);
     }
   }
-  // Fallback to static subHabitIds (pre-migration or checklist bundles)
+  // Fallback to static subHabitIds (pre-migration bundles)
   return bundleHabit.subHabitIds ?? [];
 }
 
@@ -197,8 +199,12 @@ async function resolveChildIdsForDay(
  * Derive bundle parent completion from child habits.
  *
  * Bundle parents never have entries. Completion is derived from children.
- * For choice bundles, uses temporal BundleMembership to determine which
- * children were active on the queried day.
+ * Uses temporal BundleMembership to determine which children were active
+ * on the queried day (for both choice and checklist bundles).
+ *
+ * Completion rules:
+ * - Choice bundles: ANY child complete = bundle complete
+ * - Checklist bundles: Evaluated against checklistSuccessRule (default: ALL)
  *
  * @param bundleHabit - Bundle parent habit
  * @param dayKey - DayKey to check (for daily bundles)
@@ -210,7 +216,7 @@ async function resolveChildIdsForDay(
  * @returns Object with isComplete and optional child counts
  */
 function deriveBundleCompletion(
-  _bundleHabit: Habit,
+  bundleHabit: Habit,
   dayKey: DayKey,
   weekStartDayKey: DayKey | null,
   weekEndDayKey: DayKey | null,
@@ -259,9 +265,23 @@ function deriveBundleCompletion(
     }
   }
 
-  // Bundle is complete if ANY child is complete
+  // Determine completion based on bundle type
+  let isComplete: boolean;
+  if (bundleHabit.bundleType === 'checklist') {
+    // Checklist: evaluate against success rule (default: full/all)
+    const { meetsSuccessRule } = evaluateChecklistSuccess(
+      completedCount,
+      childHabits.length,
+      bundleHabit.checklistSuccessRule
+    );
+    isComplete = meetsSuccessRule;
+  } else {
+    // Choice bundles: ANY child complete = bundle complete
+    isComplete = completedCount > 0;
+  }
+
   return {
-    isComplete: completedCount > 0,
+    isComplete,
     completedChildrenCount: completedCount,
     totalChildrenCount: childHabits.length,
   };
@@ -295,7 +315,7 @@ export async function computeDayView(
       habit.subHabitIds.forEach(id => allHabitIds.add(id));
     }
     // Also include children from temporal memberships active on this day
-    if (habit.type === 'bundle' && habit.bundleType === 'choice') {
+    if (habit.type === 'bundle' && (habit.bundleType === 'choice' || habit.bundleType === 'checklist')) {
       const memberships = await getMembershipsForDay(habit.id, dayKey, householdId, userId);
       memberships.forEach(m => allHabitIds.add(m.childHabitId));
     }
