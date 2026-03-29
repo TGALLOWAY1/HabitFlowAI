@@ -80,6 +80,31 @@ function validateRoutineStep(step: any, index: number): string | null {
     return `Step ${index}: durationSeconds must be a non-negative number if provided`;
   }
 
+  if (step.timerMode !== undefined && step.timerMode !== 'countdown' && step.timerMode !== 'stopwatch') {
+    return `Step ${index}: timerMode must be 'countdown' or 'stopwatch' if provided`;
+  }
+
+  if (step.trackingFields !== undefined) {
+    if (!Array.isArray(step.trackingFields)) {
+      return `Step ${index}: trackingFields must be an array if provided`;
+    }
+    for (let i = 0; i < step.trackingFields.length; i++) {
+      const field = step.trackingFields[i];
+      if (!field || typeof field !== 'object') {
+        return `Step ${index}: trackingFields[${i}] must be an object`;
+      }
+      if (!field.id || typeof field.id !== 'string') {
+        return `Step ${index}: trackingFields[${i}].id is required`;
+      }
+      if (!field.label || typeof field.label !== 'string') {
+        return `Step ${index}: trackingFields[${i}].label is required`;
+      }
+      if (field.type !== 'number' && field.type !== 'text') {
+        return `Step ${index}: trackingFields[${i}].type must be 'number' or 'text'`;
+      }
+    }
+  }
+
   return null;
 }
 
@@ -843,7 +868,7 @@ export async function uploadRoutineImageRoute(req: Request, res: Response): Prom
 export async function submitRoutineRoute(req: Request, res: Response): Promise<void> {
   try {
     const { id } = req.params;
-    const { habitIdsToComplete, submittedAt, dateOverride, timeZone, variantId, startedAt, stepResults } = req.body;
+    const { habitIdsToComplete, submittedAt, dateOverride, timeZone, variantId, startedAt, stepResults, stepTrackingData, stepTimingData } = req.body;
 
     // Validate routine ID
     if (!id) {
@@ -887,6 +912,26 @@ export async function submitRoutineRoute(req: Request, res: Response): Promise<v
           },
         });
         return;
+      }
+    }
+
+    // Validate stepTrackingData if provided
+    if (stepTrackingData !== undefined && (typeof stepTrackingData !== 'object' || stepTrackingData === null || Array.isArray(stepTrackingData))) {
+      res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'stepTrackingData must be an object' } });
+      return;
+    }
+
+    // Validate stepTimingData if provided
+    if (stepTimingData !== undefined) {
+      if (typeof stepTimingData !== 'object' || stepTimingData === null || Array.isArray(stepTimingData)) {
+        res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'stepTimingData must be an object' } });
+        return;
+      }
+      for (const [key, val] of Object.entries(stepTimingData)) {
+        if (typeof val !== 'number' || val < 0) {
+          res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: `stepTimingData["${key}"] must be a non-negative number` } });
+          return;
+        }
       }
     }
 
@@ -963,6 +1008,8 @@ export async function submitRoutineRoute(req: Request, res: Response): Promise<v
       ...(startedAt ? { startedAt: new Date(startedAt).toISOString() } : {}),
       ...(stepResults ? { stepResults } : {}),
       ...(actualDurationSeconds !== undefined ? { actualDurationSeconds } : {}),
+      ...(stepTrackingData && typeof stepTrackingData === 'object' ? { stepTrackingData } : {}),
+      ...(stepTimingData && typeof stepTimingData === 'object' ? { stepTimingData } : {}),
     };
     await saveRoutineLog(routineLog, userId);
 

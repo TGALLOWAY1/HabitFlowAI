@@ -5,8 +5,8 @@
  * Used within RoutineEditorModal for each variant tab.
  */
 import React, { useState } from 'react';
-import { Plus, Trash2, Link2, Clock, Image as ImageIcon, Loader2, ChevronDown, ChevronUp, X } from 'lucide-react';
-import type { RoutineVariant, RoutineStep } from '../models/persistenceTypes';
+import { Plus, Trash2, Link2, Clock, Image as ImageIcon, Loader2, ChevronDown, ChevronUp, X, Timer, BarChart3 } from 'lucide-react';
+import type { RoutineVariant, RoutineStep, TrackingFieldDef } from '../models/persistenceTypes';
 import type { Habit } from '../types';
 
 interface VariantEditorProps {
@@ -226,21 +226,58 @@ export const VariantEditor: React.FC<VariantEditorProps> = ({
                                         </div>
 
                                         <div className="flex items-center gap-4 pt-2">
-                                            <div className="flex items-center gap-2 bg-neutral-900 border border-white/10 rounded-lg px-3 py-2">
-                                                <Clock size={16} className="text-neutral-500" />
-                                                <input
-                                                    type="number"
-                                                    min="0"
-                                                    step="0.1"
-                                                    value={step.timerSeconds ? step.timerSeconds / 60 : ''}
-                                                    onChange={e => {
-                                                        const val = parseFloat(e.target.value);
-                                                        updateStep(step.id, { timerSeconds: isNaN(val) ? undefined : Math.max(0, Math.round(val * 60)) });
-                                                    }}
-                                                    placeholder="Min"
-                                                    className="bg-transparent w-20 text-sm focus:outline-none text-white placeholder-neutral-600"
-                                                />
+                                            {/* Timer Mode Selector */}
+                                            <div className="flex items-center gap-1 bg-neutral-900 border border-white/10 rounded-lg p-1">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => updateStep(step.id, { timerMode: undefined, timerSeconds: undefined })}
+                                                    className={`px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                                                        !step.timerMode && !step.timerSeconds ? 'bg-white/10 text-white' : 'text-neutral-500 hover:text-neutral-300'
+                                                    }`}
+                                                    title="No timer"
+                                                >
+                                                    Off
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => updateStep(step.id, { timerMode: 'countdown', timerSeconds: step.timerSeconds || 60 })}
+                                                    className={`px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors flex items-center gap-1 ${
+                                                        (step.timerMode === 'countdown' || (!step.timerMode && step.timerSeconds)) ? 'bg-emerald-500/20 text-emerald-400' : 'text-neutral-500 hover:text-neutral-300'
+                                                    }`}
+                                                    title="Countdown timer"
+                                                >
+                                                    <Clock size={12} /> Countdown
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => updateStep(step.id, { timerMode: 'stopwatch', timerSeconds: undefined })}
+                                                    className={`px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors flex items-center gap-1 ${
+                                                        step.timerMode === 'stopwatch' ? 'bg-blue-500/20 text-blue-400' : 'text-neutral-500 hover:text-neutral-300'
+                                                    }`}
+                                                    title="Stopwatch (counts up)"
+                                                >
+                                                    <Timer size={12} /> Stopwatch
+                                                </button>
                                             </div>
+
+                                            {/* Duration input (only for countdown) */}
+                                            {(step.timerMode === 'countdown' || (!step.timerMode && step.timerSeconds)) && (
+                                                <div className="flex items-center gap-2 bg-neutral-900 border border-white/10 rounded-lg px-3 py-2">
+                                                    <Clock size={16} className="text-neutral-500" />
+                                                    <input
+                                                        type="number"
+                                                        min="0"
+                                                        step="0.1"
+                                                        value={step.timerSeconds ? step.timerSeconds / 60 : ''}
+                                                        onChange={e => {
+                                                            const val = parseFloat(e.target.value);
+                                                            updateStep(step.id, { timerSeconds: isNaN(val) ? undefined : Math.max(0, Math.round(val * 60)) });
+                                                        }}
+                                                        placeholder="Min"
+                                                        className="bg-transparent w-20 text-sm focus:outline-none text-white placeholder-neutral-600"
+                                                    />
+                                                </div>
+                                            )}
 
                                             <div className="flex-1 flex items-center gap-2 bg-neutral-900 border border-white/10 rounded-lg px-3 py-2">
                                                 <button
@@ -312,6 +349,85 @@ export const VariantEditor: React.FC<VariantEditorProps> = ({
                                             </select>
                                             <p className="text-[10px] text-neutral-600 mt-1">
                                                 Reaching this step will generate potential evidence for the selected habit.
+                                            </p>
+                                        </div>
+
+                                        {/* Tracking Fields */}
+                                        <div className="pt-2">
+                                            <label className="block text-xs font-medium text-neutral-500 mb-2 flex items-center gap-1">
+                                                <BarChart3 size={12} /> Tracking Fields (Optional)
+                                            </label>
+                                            <div className="space-y-2">
+                                                {(step.trackingFields || []).map((field: TrackingFieldDef) => (
+                                                    <div key={field.id} className="flex items-center gap-2 bg-neutral-900 border border-white/10 rounded-lg p-2">
+                                                        <input
+                                                            type="text"
+                                                            value={field.label}
+                                                            onChange={e => {
+                                                                const updated = (step.trackingFields || []).map(f =>
+                                                                    f.id === field.id ? { ...f, label: e.target.value } : f
+                                                                );
+                                                                updateStep(step.id, { trackingFields: updated });
+                                                            }}
+                                                            placeholder="Label (e.g., Weight)"
+                                                            className="flex-1 bg-transparent text-sm text-white focus:outline-none placeholder-neutral-600"
+                                                        />
+                                                        <select
+                                                            value={field.type}
+                                                            onChange={e => {
+                                                                const updated = (step.trackingFields || []).map(f =>
+                                                                    f.id === field.id ? { ...f, type: e.target.value as 'number' | 'text' } : f
+                                                                );
+                                                                updateStep(step.id, { trackingFields: updated });
+                                                            }}
+                                                            className="bg-neutral-800 border border-white/10 rounded px-2 py-1 text-xs text-neutral-300 focus:outline-none"
+                                                        >
+                                                            <option value="number">Number</option>
+                                                            <option value="text">Text</option>
+                                                        </select>
+                                                        <input
+                                                            type="text"
+                                                            value={field.unit || ''}
+                                                            onChange={e => {
+                                                                const updated = (step.trackingFields || []).map(f =>
+                                                                    f.id === field.id ? { ...f, unit: e.target.value || undefined } : f
+                                                                );
+                                                                updateStep(step.id, { trackingFields: updated });
+                                                            }}
+                                                            placeholder="Unit"
+                                                            className="w-16 bg-transparent text-sm text-neutral-400 focus:outline-none placeholder-neutral-600"
+                                                        />
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => {
+                                                                const updated = (step.trackingFields || []).filter(f => f.id !== field.id);
+                                                                updateStep(step.id, { trackingFields: updated.length > 0 ? updated : undefined });
+                                                            }}
+                                                            className="p-1 text-neutral-600 hover:text-red-400 transition-colors"
+                                                        >
+                                                            <X size={14} />
+                                                        </button>
+                                                    </div>
+                                                ))}
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        const newField: TrackingFieldDef = {
+                                                            id: crypto.randomUUID(),
+                                                            label: '',
+                                                            type: 'number',
+                                                        };
+                                                        updateStep(step.id, {
+                                                            trackingFields: [...(step.trackingFields || []), newField],
+                                                        });
+                                                    }}
+                                                    className="flex items-center gap-1 text-xs text-neutral-500 hover:text-neutral-300 transition-colors"
+                                                >
+                                                    <Plus size={12} /> Add tracking field
+                                                </button>
+                                            </div>
+                                            <p className="text-[10px] text-neutral-600 mt-1">
+                                                Define fields to track during execution (e.g., weight, reps, BPM).
                                             </p>
                                         </div>
                                     </div>

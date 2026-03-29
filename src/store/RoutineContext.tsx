@@ -34,6 +34,12 @@ interface RoutineContextType {
     stepStates: StepStates;
     startedAt: string | null;
 
+    // Step Tracking Data
+    stepTrackingData: Record<string, Record<string, string | number>>;
+    stepTimingData: Record<string, number>;
+    setStepTrackingValue: (stepId: string, fieldId: string, value: string | number) => void;
+    recordStepTime: (stepId: string, seconds: number) => void;
+
     // Execution Actions
     selectRoutine: (routineId: string) => void;
     selectVariant: (variantId: string) => void;
@@ -68,6 +74,8 @@ export const RoutineProvider: React.FC<{ children: React.ReactNode }> = ({ child
     const [currentStepIndex, setCurrentStepIndex] = useState<number>(0);
     const [stepStates, setStepStates] = useState<StepStates>({});
     const [startedAt, setStartedAt] = useState<string | null>(null);
+    const [stepTrackingData, setStepTrackingData] = useState<Record<string, Record<string, string | number>>>({});
+    const [stepTimingData, setStepTimingData] = useState<Record<string, number>>({});
 
     // Load routines from MongoDB on mount
     useEffect(() => {
@@ -187,10 +195,25 @@ export const RoutineProvider: React.FC<{ children: React.ReactNode }> = ({ child
             // Initialize step states from the resolved variant's steps
             const steps = resolveSteps(activeRoutine, effectiveVariantId || undefined);
             const initial: StepStates = {};
+            const initialTracking: Record<string, Record<string, string | number>> = {};
             for (const step of steps) {
                 initial[step.id] = 'neutral';
+                // Pre-populate tracking fields with defaults
+                if (step.trackingFields?.length) {
+                    const fieldValues: Record<string, string | number> = {};
+                    for (const field of step.trackingFields) {
+                        if (field.defaultValue !== undefined) {
+                            fieldValues[field.id] = field.defaultValue;
+                        }
+                    }
+                    if (Object.keys(fieldValues).length > 0) {
+                        initialTracking[step.id] = fieldValues;
+                    }
+                }
             }
             setStepStates(initial);
+            setStepTrackingData(initialTracking);
+            setStepTimingData({});
         }
     };
 
@@ -201,10 +224,27 @@ export const RoutineProvider: React.FC<{ children: React.ReactNode }> = ({ child
         setCurrentStepIndex(0);
         setStepStates({});
         setStartedAt(null);
+        setStepTrackingData({});
+        setStepTimingData({});
     };
 
     const setStepState = (stepId: string, status: StepStatus) => {
         setStepStates(prev => ({ ...prev, [stepId]: status }));
+    };
+
+    const setStepTrackingValue = (stepId: string, fieldId: string, value: string | number) => {
+        setStepTrackingData(prev => ({
+            ...prev,
+            [stepId]: { ...(prev[stepId] || {}), [fieldId]: value },
+        }));
+    };
+
+    const recordStepTime = (stepId: string, seconds: number) => {
+        if (seconds <= 0) return;
+        setStepTimingData(prev => ({
+            ...prev,
+            [stepId]: (prev[stepId] || 0) + seconds,
+        }));
     };
 
     const nextStep = () => {
@@ -263,6 +303,10 @@ export const RoutineProvider: React.FC<{ children: React.ReactNode }> = ({ child
                 currentStepIndex,
                 stepStates,
                 startedAt,
+                stepTrackingData,
+                stepTimingData,
+                setStepTrackingValue,
+                recordStepTime,
                 selectRoutine,
                 selectVariant,
                 startRoutine,

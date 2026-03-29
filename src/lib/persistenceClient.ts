@@ -761,6 +761,8 @@ export async function submitRoutine(
     variantId?: string;
     startedAt?: string;
     stepResults?: Record<string, string>;
+    stepTrackingData?: Record<string, Record<string, string | number>>;
+    stepTimingData?: Record<string, number>;
   }
 ): Promise<SubmitRoutineResponse> {
 

@@ -337,6 +337,27 @@ export interface DayLog {
  * Embedded within Routine entity.
  * Represents a single step in a routine workflow.
  * 
+ * User-defined tracking field for a routine step.
+ * Configured during routine editing, rendered during execution.
+ */
+export interface TrackingFieldDef {
+    /** Unique identifier within the step (crypto.randomUUID()) */
+    id: string;
+
+    /** Display label (e.g., "Weight", "Reps", "BPM") */
+    label: string;
+
+    /** Field type: number for numeric input, text for free-form */
+    type: 'number' | 'text';
+
+    /** Optional unit label for display (e.g., "kg", "lbs", "bpm") */
+    unit?: string;
+
+    /** Optional default value pre-filled during execution */
+    defaultValue?: string | number;
+}
+
+/**
  * Steps are now purely instructional/guiding content.
  * They do NOT directly link to habits for tracking (habit completion is handled at the Routine level).
  */
@@ -356,17 +377,32 @@ export interface RoutineStep {
     /** Optional image URL for visual guidance */
     imageUrl?: string;
 
-    /** 
+    /**
      * Optional duration in seconds for timer-based steps
      * Renamed from durationSeconds to timerSeconds for consistency with usage
      */
     timerSeconds?: number;
 
-    /** 
+    /**
+     * Timer mode for this step.
+     * - 'countdown': counts down from timerSeconds to 0 (default when timerSeconds is set)
+     * - 'stopwatch': counts up from 0, user stops when done
+     * Absence means no timer (unless timerSeconds is set, which implies countdown).
+     */
+    timerMode?: 'countdown' | 'stopwatch';
+
+    /**
      * Optional: ID of the habit linked to this step.
      * Reaching this step generates potential evidence for the habit.
      */
     linkedHabitId?: string;
+
+    /**
+     * Optional user-defined tracking fields for this step.
+     * Allows capturing structured metrics during routine execution
+     * (e.g., weight, reps, BPM, notes).
+     */
+    trackingFields?: TrackingFieldDef[];
 }
 
 /**
@@ -519,6 +555,12 @@ export interface RoutineLog {
 
     /** Actual execution duration in seconds (completedAt - startedAt) */
     actualDurationSeconds?: number;
+
+    /** Per-step user-defined tracking data (stepId → { fieldId → value }) */
+    stepTrackingData?: Record<string, Record<string, string | number>>;
+
+    /** Per-step actual time spent in seconds (stepId → seconds). Only for steps with a timer. */
+    stepTimingData?: Record<string, number>;
 }
 
 /**

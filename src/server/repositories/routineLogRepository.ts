@@ -54,6 +54,8 @@ export async function saveRoutineLog(
     if (log.startedAt) document.startedAt = log.startedAt;
     if (log.stepResults) document.stepResults = log.stepResults;
     if (log.actualDurationSeconds !== undefined) document.actualDurationSeconds = log.actualDurationSeconds;
+    if (log.stepTrackingData) document.stepTrackingData = log.stepTrackingData;
+    if (log.stepTimingData) document.stepTimingData = log.stepTimingData;
 
     // Upsert (insert or update)
     const result = await collection.findOneAndUpdate(

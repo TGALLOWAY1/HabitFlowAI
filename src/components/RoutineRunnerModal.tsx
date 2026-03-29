@@ -7,6 +7,8 @@ import { useRoutineStore } from '../store/RoutineContext';
 import { useToast } from './Toast';
 import { CompletedHabitsModal } from './CompletedHabitsModal';
 import { resolveSteps, resolveVariant } from '../lib/routineVariantUtils';
+import { useStepTimer } from '../hooks/useStepTimer';
+import { TrackingFieldInput } from './TrackingFieldInput';
 
 interface RoutineRunnerModalProps {
     isOpen: boolean;
@@ -22,7 +24,12 @@ export const RoutineRunnerModal: React.FC<RoutineRunnerModalProps> = ({
     onClose,
 }) => {
     const { refreshDayLogs, habits } = useHabitStore();
-    const { selectRoutine, startRoutine, exitRoutine, stepStates, setStepState, startedAt } = useRoutineStore();
+    const {
+        selectRoutine, startRoutine, exitRoutine,
+        stepStates, setStepState, startedAt,
+        stepTrackingData, stepTimingData,
+        setStepTrackingValue, recordStepTime,
+    } = useRoutineStore();
     const { showToast } = useToast();
 
     const [currentStepIndex, setCurrentStepIndex] = useState(0);
@@ -33,16 +40,17 @@ export const RoutineRunnerModal: React.FC<RoutineRunnerModalProps> = ({
 
     const getHabitName = (habitId: string) => habits.find((h) => h.id === habitId)?.name ?? 'Habit';
 
-    // Timer State
-    const [timeLeft, setTimeLeft] = useState<number | null>(null);
-    const [isTimerRunning, setIsTimerRunning] = useState(false);
-    const timerRef = useRef<NodeJS.Timeout | null>(null);
-
     const steps = routine ? resolveSteps(routine, variantId) : [];
     const currentStep = steps[currentStepIndex];
     const isLastStep = currentStepIndex === steps.length - 1;
     const activeVariant = routine ? resolveVariant(routine, variantId) : undefined;
     const variantLinkedHabitIds = activeVariant?.linkedHabitIds || routine?.linkedHabitIds || [];
+
+    // Timer hook (handles both countdown and stopwatch)
+    const timer = useStepTimer(currentStep, currentStepIndex);
+
+    // Track previous step index to record timing on step change
+    const prevStepIndexRef = useRef(currentStepIndex);
 
     // Sync execution state with context: init stepStates when runner opens
     useEffect(() => {
@@ -65,53 +73,33 @@ export const RoutineRunnerModal: React.FC<RoutineRunnerModalProps> = ({
         }
     }, [isOpen, routine]);
 
-    // Initialize Timer when step changes
-    useEffect(() => {
-        if (currentStep?.timerSeconds) {
-            setTimeLeft(currentStep.timerSeconds);
-            setIsTimerRunning(false); // Wait for user to start
-        } else {
-            setTimeLeft(null);
-            setIsTimerRunning(false);
+    // Record step timing when navigating away from a step (only for steps with timers)
+    const captureStepTime = () => {
+        const prevStep = steps[prevStepIndexRef.current];
+        if (prevStep && timer.mode !== 'none' && timer.elapsedSeconds > 0) {
+            recordStepTime(prevStep.id, timer.elapsedSeconds);
         }
-    }, [currentStepIndex, currentStep]);
-
-    // Timer Logic
-    useEffect(() => {
-        if (isTimerRunning && timeLeft !== null && timeLeft > 0) {
-            timerRef.current = setInterval(() => {
-                setTimeLeft((prev) => {
-                    if (prev === null || prev <= 0) {
-                        setIsTimerRunning(false);
-                        return 0;
-                    }
-                    return prev - 1;
-                });
-            }, 1000);
-        } else {
-            if (timerRef.current) {
-                clearInterval(timerRef.current);
-            }
-        }
-        return () => {
-            if (timerRef.current) clearInterval(timerRef.current);
-        };
-    }, [isTimerRunning, timeLeft]);
-
+    };
 
     const handleNext = () => {
+        captureStepTime();
         if (isLastStep) {
             setIsCompletionView(true);
         } else {
-            setCurrentStepIndex(prev => prev + 1);
+            const nextIndex = currentStepIndex + 1;
+            prevStepIndexRef.current = nextIndex;
+            setCurrentStepIndex(nextIndex);
         }
     };
 
     const handlePrevious = () => {
+        captureStepTime();
         if (isCompletionView) {
             setIsCompletionView(false);
         } else if (currentStepIndex > 0) {
-            setCurrentStepIndex(prev => prev - 1);
+            const prevIndex = currentStepIndex - 1;
+            prevStepIndexRef.current = prevIndex;
+            setCurrentStepIndex(prevIndex);
         }
     };
 
@@ -119,13 +107,27 @@ export const RoutineRunnerModal: React.FC<RoutineRunnerModalProps> = ({
         if (!routine) return;
         setSubmitting(true);
         try {
+            // Filter out empty tracking data
+            const filteredTrackingData = Object.keys(stepTrackingData).length > 0
+                ? Object.fromEntries(
+                    Object.entries(stepTrackingData).filter(([, fields]) =>
+                        Object.values(fields).some(v => v !== '' && v !== undefined)
+                    )
+                )
+                : undefined;
+
+            const filteredTimingData = Object.keys(stepTimingData).length > 0
+                ? stepTimingData
+                : undefined;
+
             await submitRoutine(routine.id, {
                 submittedAt: new Date().toISOString(),
-                // Only include habitIdsToComplete if user explicitly chooses to log habits
                 habitIdsToComplete: logHabits ? variantLinkedHabitIds : undefined,
                 variantId,
                 startedAt: startedAt || undefined,
                 stepResults: stepStates,
+                stepTrackingData: filteredTrackingData,
+                stepTimingData: filteredTimingData,
             });
             await refreshDayLogs();
             exitRoutine();
@@ -135,20 +137,6 @@ export const RoutineRunnerModal: React.FC<RoutineRunnerModalProps> = ({
         } finally {
             setSubmitting(false);
         }
-    };
-
-    const toggleTimer = () => setIsTimerRunning(!isTimerRunning);
-    const resetTimer = () => {
-        if (currentStep?.timerSeconds) {
-            setTimeLeft(currentStep.timerSeconds);
-            setIsTimerRunning(false);
-        }
-    };
-
-    const formatTime = (seconds: number) => {
-        const mins = Math.floor(seconds / 60);
-        const secs = seconds % 60;
-        return `${mins}:${secs.toString().padStart(2, '0')}`;
     };
 
     if (!isOpen || !routine) return null;
@@ -201,24 +189,29 @@ export const RoutineRunnerModal: React.FC<RoutineRunnerModalProps> = ({
 
                             {/* TOP: Timer & Title */}
                             <div className="text-center space-y-4 w-full">
-                                {timeLeft !== null && (
+                                {timer.displayTime !== null && (
                                     <div className="flex flex-col items-center gap-2">
-                                        <div className="text-6xl font-mono font-bold text-emerald-400 tabular-nums tracking-tight">
-                                            {formatTime(timeLeft)}
+                                        <div className={`text-6xl font-mono font-bold tabular-nums tracking-tight ${
+                                            timer.mode === 'stopwatch' ? 'text-blue-400' : 'text-emerald-400'
+                                        }`}>
+                                            {timer.formatTime(timer.displayTime)}
                                         </div>
-                                        <div className="flex gap-2">
+                                        <div className="flex items-center gap-2">
+                                            {timer.mode === 'stopwatch' && (
+                                                <span className="text-xs text-blue-400/60 uppercase tracking-wider font-medium mr-1">Stopwatch</span>
+                                            )}
                                             <button
-                                                onClick={toggleTimer}
+                                                onClick={timer.toggle}
                                                 className="px-6 py-2 bg-neutral-800 rounded-full text-white hover:bg-neutral-700 transition-colors flex items-center gap-2 font-medium"
                                             >
-                                                {isTimerRunning ? (
+                                                {timer.isRunning ? (
                                                     <><Pause size={18} fill="currentColor" /> Pause</>
                                                 ) : (
                                                     <><Play size={18} fill="currentColor" /> Start</>
                                                 )}
                                             </button>
                                             <button
-                                                onClick={resetTimer}
+                                                onClick={timer.reset}
                                                 className="min-h-[44px] min-w-[44px] flex items-center justify-center bg-neutral-800 rounded-full text-neutral-400 hover:text-white hover:bg-neutral-700 transition-colors"
                                                 title="Reset Timer"
                                             >
@@ -253,6 +246,21 @@ export const RoutineRunnerModal: React.FC<RoutineRunnerModalProps> = ({
                                     <p className="text-neutral-200 text-lg whitespace-pre-wrap leading-relaxed">
                                         {currentStep.instruction}
                                     </p>
+                                </div>
+                            )}
+
+                            {/* Tracking Fields */}
+                            {currentStep?.trackingFields && currentStep.trackingFields.length > 0 && (
+                                <div className="w-full bg-neutral-800/50 rounded-xl p-5 border border-white/5 space-y-3">
+                                    <h4 className="text-xs font-medium text-neutral-500 uppercase tracking-wider">Track</h4>
+                                    {currentStep.trackingFields.map(field => (
+                                        <TrackingFieldInput
+                                            key={field.id}
+                                            field={field}
+                                            value={stepTrackingData[currentStep.id]?.[field.id]}
+                                            onChange={(val) => setStepTrackingValue(currentStep.id, field.id, val)}
+                                        />
+                                    ))}
                                 </div>
                             )}
 
