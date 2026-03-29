@@ -32,7 +32,7 @@ interface HabitGridCellProps {
 
     // For Choice Bundles
     onChoiceSelect?: (optionKey: string) => void;
-    selectedChoice?: string;
+    selectedChoices?: Set<string>;
 
     // Status & Quantity
     habitStatus?: DayViewHabitStatus;
@@ -52,7 +52,7 @@ export const HabitGridCell = ({
     subHabitStatuses,
     onSubHabitToggle,
     onChoiceSelect,
-    selectedChoice,
+    selectedChoices,
     habitStatus,
     onNumericClick
 }: HabitGridCellProps) => {
@@ -93,11 +93,20 @@ export const HabitGridCell = ({
             );
         }
         if (isChoiceBundle) {
-            const selectedSub = selectedChoice && subHabits?.find(s => s.id === selectedChoice);
+            const selectedCount = selectedChoices?.size ?? 0;
+            const selectedNames = subHabits
+                ?.filter(s => selectedChoices?.has(s.id))
+                .map(s => s.name);
             return (
                 <span className="flex items-center gap-1 text-[10px] font-medium text-amber-400">
                     <Layers size={12} />
-                    <span>{selectedSub ? selectedSub.name : 'Pick one'}</span>
+                    <span>
+                        {selectedCount === 0
+                            ? 'Pick one'
+                            : selectedCount === 1
+                                ? selectedNames![0]
+                                : `${selectedCount} selected`}
+                    </span>
                 </span>
             );
         }
@@ -248,7 +257,7 @@ export const HabitGridCell = ({
                             }}
                             className={cn(
                                 "px-2 py-1 rounded text-[10px] font-medium border transition-all",
-                                selectedChoice === option.id
+                                selectedChoices?.has(option.id)
                                     ? "bg-amber-500/20 text-amber-300 border-amber-500/50"
                                     : "bg-neutral-800 text-neutral-400 border-white/5 hover:border-white/20 hover:text-white"
                             )}

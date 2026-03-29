@@ -174,15 +174,14 @@ export const DayCategorySection = ({
                             });
                         }
 
-                        // Choice Bundle Selection from sub-habit completion
-                        let selectedChoice: string | undefined;
+                        // Choice Bundle: track ALL completed children (multi-select)
+                        let selectedChoices: Set<string> | undefined;
                         if (habit.type === 'bundle' && habit.bundleType === 'choice' && subHabits) {
-                            const completedChild = subHabits.find(sub => {
-                                const subStatus = habitStatusMap.get(sub.id);
-                                return subStatus?.isComplete;
-                            });
-                            if (completedChild) {
-                                selectedChoice = completedChild.id;
+                            const completed = subHabits
+                                .filter(sub => habitStatusMap.get(sub.id)?.isComplete)
+                                .map(sub => sub.id);
+                            if (completed.length > 0) {
+                                selectedChoices = new Set(completed);
                             }
                         }
 
@@ -204,18 +203,14 @@ export const DayCategorySection = ({
                                 onSubHabitToggle={(subHabitId) => onToggle(subHabitId)}
                                 onNumericClick={(e) => handleNumericClick(e, habit)}
 
-                                // Helper for choice select
-                                selectedChoice={selectedChoice}
+                                // Choice bundle: toggle individual children (multi-select)
+                                selectedChoices={selectedChoices}
                                 onChoiceSelect={(optionKey) => {
-                                    if (selectedChoice === optionKey) {
-                                        // Deselect
+                                    if (selectedChoices?.has(optionKey)) {
+                                        // Deselect this child only
                                         deleteHabitEntryByKey(optionKey, dateStr);
                                     } else {
-                                        // Toggle off previous selection
-                                        if (selectedChoice) {
-                                            deleteHabitEntryByKey(selectedChoice, dateStr);
-                                        }
-                                        // Select new choice (toggle the sub-habit)
+                                        // Select this child without deselecting others
                                         onToggle(optionKey);
                                     }
                                 }}
