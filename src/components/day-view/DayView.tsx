@@ -197,6 +197,32 @@ export const DayView = ({ onAddHabit }: DayViewProps = {}) => {
             }
         });
 
+        // Recompute bundle parent completion from children's merged statuses
+        // Choice bundles use OR logic (any child complete → parent complete)
+        // Checklist bundles use AND logic (all children complete → parent complete)
+        todaysHabits.forEach(habit => {
+            if (habit.type === 'bundle' && habit.subHabitIds && habit.subHabitIds.length > 0) {
+                let completedChildren = 0;
+                habit.subHabitIds.forEach(subId => {
+                    if (map.get(subId)?.isComplete) completedChildren++;
+                });
+
+                const parentComplete = habit.bundleType === 'choice'
+                    ? completedChildren > 0
+                    : completedChildren === habit.subHabitIds.length;
+
+                const existing = map.get(habit.id);
+                if (existing) {
+                    map.set(habit.id, {
+                        ...existing,
+                        isComplete: parentComplete,
+                        completedChildrenCount: completedChildren,
+                        totalChildrenCount: habit.subHabitIds.length,
+                    });
+                }
+            }
+        });
+
         return map;
     }, [habitStatusMap, logs, todaysHabits, dateStr, allHabitsLookup]);
 
