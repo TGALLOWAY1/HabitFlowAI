@@ -1,9 +1,10 @@
 import React, { useMemo, useState, useRef, useEffect } from 'react';
-import { LayoutGrid, Settings, User, LogOut } from 'lucide-react';
+import { LayoutGrid, Settings, User, LogOut, Info } from 'lucide-react';
 import { useHabitStore } from '../store/HabitContext';
 import { useAuth } from '../store/AuthContext';
 import { getActiveUserMode, seedDemoEmotionalWellbeing, resetDemoEmotionalWellbeing } from '../lib/persistenceClient';
 import { SettingsModal } from './SettingsModal';
+import { InfoModal } from './InfoModal';
 
 interface LayoutProps {
     children: React.ReactNode;
@@ -17,6 +18,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
     const [devNotice, setDevNotice] = useState<string | null>(null);
     const [userMenuOpen, setUserMenuOpen] = useState(false);
     const [settingsOpen, setSettingsOpen] = useState(false);
+    const [infoOpen, setInfoOpen] = useState(false);
     const userMenuRef = useRef<HTMLDivElement>(null);
 
     const demoBadge = useMemo(() => {
@@ -118,6 +120,13 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
                                 </div>
                     )}
                     <button
+                        onClick={() => setInfoOpen(true)}
+                        className="min-h-[44px] min-w-[44px] flex items-center justify-center hover:bg-white/5 rounded-full transition-colors text-neutral-400 hover:text-white"
+                        title="How HabitFlow Works"
+                    >
+                        <Info size={20} />
+                    </button>
+                    <button
                         onClick={() => setSettingsOpen(true)}
                         className="min-h-[44px] min-w-[44px] flex items-center justify-center hover:bg-white/5 rounded-full transition-colors text-neutral-400 hover:text-white"
                         title="Settings"
@@ -171,6 +180,10 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
                 isOpen={settingsOpen}
                 onClose={() => setSettingsOpen(false)}
                 onRefresh={handleRefresh}
+            />
+            <InfoModal
+                isOpen={infoOpen}
+                onClose={() => setInfoOpen(false)}
             />
         </div>
     );
