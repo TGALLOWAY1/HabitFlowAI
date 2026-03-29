@@ -30,3 +30,7 @@ See `docs/ARCHITECTURE.md` and `docs/DOMAIN_CANON.md` for details.
 - To use a real MongoDB for integration tests you must set `ALLOW_LIVE_DB_TESTS=true` and use a DB name that contains `_test` (e.g. `MONGODB_DB_NAME=habitflowai_test`). The helper refuses to run against a non-test DB name in that mode.
 
 Historical root-level implementation notes are in `docs/archive/root/`.
+## Action items
+
+- [ ] Implement the Analytics primary navigation migration (`Tasks` -> `Analytics`) using the plan in `docs/audits/analytics_page_implementation_audit_2026-03-29.md`, while preserving Tasks access from Dashboard and canonical HabitEntry/DayKey invariants.
+
