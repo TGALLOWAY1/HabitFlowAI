@@ -231,6 +231,23 @@ export interface Habit {
         key?: string;
     }>;
 
+    /**
+     * Checklist Bundle: Configurable success rule.
+     * Determines what counts as "success" on a given day.
+     * Default (if absent): 'full' (all scheduled items must complete).
+     */
+    checklistSuccessRule?: {
+        type: 'any' | 'threshold' | 'percent' | 'full';
+        threshold?: number;
+        percent?: number;
+    };
+
+    /**
+     * Streak type for checklist bundles.
+     * Per-bundle override; falls back to user preference, then 'success'.
+     */
+    streakType?: 'success' | 'full' | 'any';
+
     // Day View Fields
     pinned?: boolean; // For "Today's Focus"
     timeEstimate?: number; // In minutes

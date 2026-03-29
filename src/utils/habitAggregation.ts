@@ -12,6 +12,10 @@ export interface HabitStatus {
     // For Checklist Bundles
     completedChildrenCount?: number;
     totalChildrenCount?: number;
+    /** Whether the checklist success rule is met (may differ from isComplete for display) */
+    meetsSuccessRule?: boolean;
+    /** Whether all scheduled items are complete (N/N) */
+    isFullyComplete?: boolean;
 }
 
 /**
@@ -75,18 +79,41 @@ export function computeHabitStatus(
 
         let completedCount = 0;
         habit.subHabitIds.forEach(childId => {
-            // Recursive check? Or assume flat entries lookup?
-            // To be efficient, we look for entries for childId on dateKey
             const childHasEntry = allEntries.some(e => e.habitId === childId && e.dateKey === dateKey);
             if (childHasEntry) completedCount++;
         });
 
+        const totalCount = habit.subHabitIds.length;
+        const isFullyComplete = totalCount > 0 && completedCount === totalCount;
+
+        // Evaluate success rule (default: full/all)
+        const rule = habit.checklistSuccessRule;
+        const ruleType = rule?.type ?? 'full';
+        let meetsSuccessRule: boolean;
+        switch (ruleType) {
+            case 'any':
+                meetsSuccessRule = completedCount >= 1;
+                break;
+            case 'threshold':
+                meetsSuccessRule = completedCount >= (rule?.threshold ?? totalCount);
+                break;
+            case 'percent':
+                meetsSuccessRule = totalCount > 0 && (completedCount / totalCount) * 100 >= (rule?.percent ?? 100);
+                break;
+            case 'full':
+            default:
+                meetsSuccessRule = isFullyComplete;
+                break;
+        }
+
         return {
-            isComplete: completedCount === habit.subHabitIds.length,
+            isComplete: meetsSuccessRule,
             currentValue: completedCount,
-            targetValue: habit.subHabitIds.length,
+            targetValue: totalCount,
             completedChildrenCount: completedCount,
-            totalChildrenCount: habit.subHabitIds.length
+            totalChildrenCount: totalCount,
+            meetsSuccessRule,
+            isFullyComplete,
         };
     }
 

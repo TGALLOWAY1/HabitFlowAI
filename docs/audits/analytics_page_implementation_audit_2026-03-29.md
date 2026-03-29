@@ -513,3 +513,43 @@
 8. Add household scoping to routine logs repository + route usage.
 9. Add invariant/unit tests for DayKey, weekly habits, bundles, delete/backfill recomputation.
 10. Add cross-view parity tests against dashboard/progress outputs.
+
+---
+
+## TODO: Checklist Bundle Analytics
+
+The following analytics are required for checklist bundles with temporal membership, scheduling, and graduation support. These should be implemented as part of the analytics page work.
+
+### Daily Metrics (per checklist bundle per day)
+- [ ] Completed items count
+- [ ] Scheduled items count (denominator — only items active and scheduled on that day)
+- [ ] Completion ratio (completed / scheduled)
+- [ ] Success (whether the configurable success rule was met)
+- [ ] Fully complete (whether all scheduled items were completed, N/N)
+
+### Bundle Metrics (aggregate over date range)
+- [ ] Success rate (% of days the success rule was met)
+- [ ] Full completion rate (% of days fully complete)
+- [ ] Average completion ratio (avg completed/scheduled across days)
+- [ ] Longest success streak (consecutive days meeting success rule)
+- [ ] Longest full completion streak (consecutive perfect days)
+
+### Per-Item Metrics
+- [ ] Completion rate per item (% completed when scheduled)
+- [ ] Most skipped item (lowest completion rate)
+- [ ] Most consistent item (highest completion rate)
+
+### Evolution Metrics
+- [ ] Checklist size over time (active child count by period)
+- [ ] Success rate by checklist version (grouped by membership changes)
+- [ ] Graduation count (total graduated habits)
+- [ ] Graduation timeline (when each habit was graduated)
+- [ ] Average time to graduation (days from membership start to graduatedAt)
+
+### Implementation Notes
+- All metrics are derived from `habitEntries` + `bundleMemberships` — never stored
+- Day-of-week filtering must be applied when computing denominators
+- Historical accuracy: use membership temporal ranges, not current child list
+- Graduation analytics should be celebrated in the UI (success framing)
+- Source: `src/server/services/checklistSuccessService.ts` for success rule evaluation
+- Source: `src/server/repositories/bundleMembershipRepository.ts` for membership queries

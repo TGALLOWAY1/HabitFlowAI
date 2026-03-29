@@ -26,7 +26,8 @@ export async function createMembership(
   activeFromDayKey: string,
   householdId: string,
   userId: string,
-  activeToDayKey?: string | null
+  activeToDayKey?: string | null,
+  daysOfWeek?: number[] | null
 ): Promise<BundleMembershipRecord> {
   requireScope(householdId, userId);
   const db = await getDb();
@@ -37,6 +38,8 @@ export async function createMembership(
     childHabitId,
     activeFromDayKey,
     activeToDayKey: activeToDayKey ?? null,
+    daysOfWeek: daysOfWeek ?? null,
+    graduatedAt: null,
     archivedAt: null,
     createdAt: now,
     updatedAt: now,
@@ -71,6 +74,53 @@ export async function endMembership(
     { $set: { activeToDayKey: endDayKey, updatedAt: new Date().toISOString() } }
   );
   return result.modifiedCount > 0;
+}
+
+/**
+ * Graduate a membership: sets graduatedAt and activeToDayKey atomically.
+ * Graduation means the habit behavior became automatic — a success outcome.
+ */
+export async function graduateMembership(
+  membershipId: string,
+  endDayKey: string,
+  householdId: string,
+  userId: string
+): Promise<boolean> {
+  const db = await getDb();
+  const now = new Date().toISOString();
+  const result = await db.collection(COLLECTION_NAME).updateOne(
+    scopeFilter(householdId, userId, {
+      id: membershipId,
+      activeToDayKey: null, // must be currently active
+    }),
+    {
+      $set: {
+        graduatedAt: now,
+        activeToDayKey: endDayKey,
+        updatedAt: now,
+      },
+    }
+  );
+  return result.modifiedCount > 0;
+}
+
+/**
+ * Get all graduated memberships for a parent bundle.
+ */
+export async function getGraduatedMemberships(
+  parentHabitId: string,
+  householdId: string,
+  userId: string
+): Promise<BundleMembershipRecord[]> {
+  const db = await getDb();
+  const docs = await db.collection(COLLECTION_NAME)
+    .find(scopeFilter(householdId, userId, {
+      parentHabitId,
+      graduatedAt: { $ne: null },
+    }))
+    .sort({ graduatedAt: -1 })
+    .toArray();
+  return docs.map(mapDoc);
 }
 
 /**
@@ -124,12 +174,15 @@ export async function getActiveMemberships(
  * Get memberships active on a specific dayKey.
  * A membership is active on dayKey if:
  *   activeFromDayKey <= dayKey AND (activeToDayKey IS NULL OR activeToDayKey >= dayKey)
+ *
+ * If filterByDayOfWeek is true (default), also filters by daysOfWeek schedule.
  */
 export async function getMembershipsForDay(
   parentHabitId: string,
   dayKey: string,
   householdId: string,
-  userId: string
+  userId: string,
+  filterByDayOfWeek = true
 ): Promise<BundleMembershipRecord[]> {
   const db = await getDb();
   const docs = await db.collection(COLLECTION_NAME)
@@ -143,7 +196,16 @@ export async function getMembershipsForDay(
     }))
     .sort({ activeFromDayKey: 1 })
     .toArray();
-  return docs.map(mapDoc);
+
+  const memberships = docs.map(mapDoc);
+
+  if (!filterByDayOfWeek) return memberships;
+
+  // Post-filter by day-of-week schedule
+  const dayOfWeek = new Date(dayKey + 'T12:00:00Z').getUTCDay();
+  return memberships.filter(m =>
+    !m.daysOfWeek || m.daysOfWeek.length === 0 || m.daysOfWeek.includes(dayOfWeek)
+  );
 }
 
 /**

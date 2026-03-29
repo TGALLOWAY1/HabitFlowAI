@@ -136,10 +136,11 @@ export type GoalAggregationMode = 'count' | 'sum';
 export type GoalCountMode = 'distinctDays' | 'entries';
 
 /**
- * BundleMembershipRecord - Temporal parent-child relationship for choice bundles
+ * BundleMembershipRecord - Temporal parent-child relationship for bundles
  *
  * Represents a time range during which a child habit belongs to a parent bundle.
  * Used to derive bundle parent completion with historical accuracy.
+ * Applies to both choice and checklist bundles.
  */
 export interface BundleMembershipRecord {
     /** Unique identifier */
@@ -157,6 +158,12 @@ export interface BundleMembershipRecord {
     /** DayKey when membership ends (inclusive). Null = currently active. */
     activeToDayKey?: string | null;
 
+    /** Days of week this child is scheduled. 0=Sun...6=Sat. Null/undefined = every day. */
+    daysOfWeek?: number[] | null;
+
+    /** ISO timestamp when the habit was graduated (behavior became automatic). */
+    graduatedAt?: string | null;
+
     /** UX hint: hide from active lists. Does not affect temporal logic. */
     archivedAt?: string | null;
 
@@ -165,6 +172,17 @@ export interface BundleMembershipRecord {
 
     /** Update timestamp */
     updatedAt: string;
+}
+
+/**
+ * ChecklistSuccessRule - Configurable success criteria for checklist bundles.
+ */
+export interface ChecklistSuccessRule {
+    type: 'any' | 'threshold' | 'percent' | 'full';
+    /** Minimum number of items required (for 'threshold' type) */
+    threshold?: number;
+    /** Minimum percentage required (for 'percent' type, 0-100) */
+    percent?: number;
 }
 
 /**
