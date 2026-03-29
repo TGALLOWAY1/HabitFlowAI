@@ -29,7 +29,7 @@ export async function createMembership(
   activeToDayKey?: string | null
 ): Promise<BundleMembershipRecord> {
   requireScope(householdId, userId);
-  const db = getDb();
+  const db = await getDb();
   const now = new Date().toISOString();
   const record: BundleMembershipRecord = {
     id: randomUUID(),
@@ -61,7 +61,7 @@ export async function endMembership(
   householdId: string,
   userId: string
 ): Promise<boolean> {
-  const db = getDb();
+  const db = await getDb();
   const result = await db.collection(COLLECTION_NAME).updateOne(
     scopeFilter(householdId, userId, {
       parentHabitId,
@@ -81,7 +81,7 @@ export async function archiveMembership(
   householdId: string,
   userId: string
 ): Promise<boolean> {
-  const db = getDb();
+  const db = await getDb();
   const result = await db.collection(COLLECTION_NAME).updateOne(
     scopeFilter(householdId, userId, { id: membershipId }),
     { $set: { archivedAt: new Date().toISOString(), updatedAt: new Date().toISOString() } }
@@ -97,7 +97,7 @@ export async function getMembershipById(
   householdId: string,
   userId: string
 ): Promise<BundleMembershipRecord | null> {
-  const db = getDb();
+  const db = await getDb();
   const doc = await db.collection(COLLECTION_NAME).findOne(
     scopeFilter(householdId, userId, { id: membershipId })
   );
@@ -112,7 +112,7 @@ export async function getActiveMemberships(
   householdId: string,
   userId: string
 ): Promise<BundleMembershipRecord[]> {
-  const db = getDb();
+  const db = await getDb();
   const docs = await db.collection(COLLECTION_NAME)
     .find(scopeFilter(householdId, userId, { parentHabitId, activeToDayKey: null }))
     .sort({ activeFromDayKey: 1 })
@@ -131,7 +131,7 @@ export async function getMembershipsForDay(
   householdId: string,
   userId: string
 ): Promise<BundleMembershipRecord[]> {
-  const db = getDb();
+  const db = await getDb();
   const docs = await db.collection(COLLECTION_NAME)
     .find(scopeFilter(householdId, userId, {
       parentHabitId,
@@ -154,7 +154,7 @@ export async function getMembershipsByParent(
   householdId: string,
   userId: string
 ): Promise<BundleMembershipRecord[]> {
-  const db = getDb();
+  const db = await getDb();
   const docs = await db.collection(COLLECTION_NAME)
     .find(scopeFilter(householdId, userId, { parentHabitId }))
     .sort({ activeFromDayKey: 1 })
@@ -170,7 +170,7 @@ export async function getMembershipsByChild(
   householdId: string,
   userId: string
 ): Promise<BundleMembershipRecord[]> {
-  const db = getDb();
+  const db = await getDb();
   const docs = await db.collection(COLLECTION_NAME)
     .find(scopeFilter(householdId, userId, { childHabitId }))
     .sort({ activeFromDayKey: 1 })
@@ -186,7 +186,7 @@ export async function deleteMembership(
   householdId: string,
   userId: string
 ): Promise<boolean> {
-  const db = getDb();
+  const db = await getDb();
   const result = await db.collection(COLLECTION_NAME).deleteOne(
     scopeFilter(householdId, userId, { id: membershipId })
   );
@@ -202,7 +202,7 @@ export async function hasActiveMembership(
   householdId: string,
   userId: string
 ): Promise<boolean> {
-  const db = getDb();
+  const db = await getDb();
   const doc = await db.collection(COLLECTION_NAME).findOne(
     scopeFilter(householdId, userId, {
       parentHabitId,
@@ -218,7 +218,7 @@ export async function hasActiveMembership(
  * Call during app startup.
  */
 export async function ensureBundleMembershipIndexes(): Promise<void> {
-  const db = getDb();
+  const db = await getDb();
   const collection = db.collection(COLLECTION_NAME);
   await Promise.all([
     collection.createIndex({ householdId: 1, userId: 1, parentHabitId: 1, activeFromDayKey: 1 }),

@@ -210,7 +210,7 @@ async function resolveChildIdsForDay(
  * @returns Object with isComplete and optional child counts
  */
 function deriveBundleCompletion(
-  bundleHabit: Habit,
+  _bundleHabit: Habit,
   dayKey: DayKey,
   weekStartDayKey: DayKey | null,
   weekEndDayKey: DayKey | null,
