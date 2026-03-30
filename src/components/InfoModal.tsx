@@ -5,31 +5,52 @@ interface InfoModalProps {
   onClose: () => void;
 }
 
-const definitions = [
+const primaryItems = [
   {
     term: 'Habit',
-    definition: 'A repeated action you do regularly to build consistency. Habits are ongoing — they never get "done."',
-    examples: ['Drink water daily', 'Stretch for 5 minutes', 'Practice Portuguese'],
-  },
-  {
-    term: 'Goal',
-    definition: 'An outcome or milestone you\'re working toward. Goals give your habits direction and purpose.',
-    examples: ['Run a 10K', 'Improve sleep quality', 'Become conversational in Portuguese'],
+    definition: 'A habit is a repeated behavior performed over time. Habits are ongoing and never "finished" — each day or week, a habit is simply performed or not.',
+    examples: [
+      '"Practice Portuguese for 30 minutes"',
+      '"Run for 20 minutes"',
+      '"Read for 15 minutes before bed"',
+    ],
   },
   {
     term: 'Routine',
-    definition: 'A sequence of actions grouped into a single repeatable flow. Routines reduce friction by chaining steps together.',
-    examples: ['Morning reset', 'Gym prep', 'Evening shutdown'],
+    definition: 'A routine is a group of habits or actions performed together in a sequence. Completing a routine helps you perform multiple habits in one flow.',
+    examples: [
+      '"Portuguese Study" — 1. Review flashcards 2. Make new flashcards 3. Say a new sentence',
+      '"Morning Reset" — 1. Stretch 2. Meditate 3. Review goals',
+    ],
   },
   {
+    term: 'Goal',
+    definition: 'A goal is an outcome you are working toward over time. Goals are achieved by consistently performing the habits that support them.',
+    examples: [
+      '"Become conversational in Portuguese" — supported by: Practice Portuguese habit',
+      '"Run a 10K" — supported by: Running habit',
+    ],
+  },
+];
+
+const secondaryItems = [
+  {
     term: 'Task',
-    definition: 'A specific one-time action with a clear finish. Unlike habits, once it\'s done, it\'s done.',
-    examples: ['Buy birthday cake for Saturday', 'Submit tax form', 'Schedule dentist appointment'],
+    badge: 'Dashboard only',
+    definition: 'A task is a one-time action with a clear finish. Once completed, it\'s done.',
+    examples: [
+      '"Register for Portuguese exam"',
+      '"Sign up for 10K race"',
+    ],
   },
   {
     term: 'Journal',
-    definition: 'A space for reflection and self-observation — not tracking. Write freely about how things are going.',
-    examples: ['Evening check-in', 'Free write', 'Weekly reflection'],
+    badge: 'Dashboard only',
+    definition: 'The journal is for reflection and notes — not tracking.',
+    examples: [
+      '"I learned how to talk about food in Portuguese"',
+      '"Ran 5K without stopping for the first time"',
+    ],
   },
 ];
 
@@ -66,14 +87,54 @@ export function InfoModal({ isOpen, onClose }: InfoModalProps) {
             </button>
           </div>
 
-          <div className="p-4 space-y-4">
-            <p className="text-xs text-neutral-500 uppercase tracking-wide font-medium">Definitions</p>
-            {definitions.map((item) => (
-              <div key={item.term} className="pl-3 border-l-2 border-emerald-500/40">
-                <p className="text-sm text-neutral-200">
-                  <span className="font-bold text-emerald-400">{item.term}:</span>{' '}
-                  {item.definition}
+          <div className="p-4 space-y-5">
+            {/* The Rules */}
+            <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-lg px-3 py-2.5">
+              <p className="text-xs text-emerald-400 uppercase tracking-wide font-semibold mb-1.5">The Rules</p>
+              <ul className="space-y-0.5 text-sm text-neutral-300">
+                <li>Habits are <span className="text-emerald-400 font-medium">performed</span></li>
+                <li>Routines are <span className="text-emerald-400 font-medium">completed</span></li>
+                <li>Goals are <span className="text-emerald-400 font-medium">achieved</span></li>
+              </ul>
+            </div>
+
+            {/* Primary: Habits, Routines, Goals */}
+            {primaryItems.map((item, i) => (
+              <div key={item.term}>
+                <div className="pl-3 border-l-2 border-emerald-500/40">
+                  <p className="text-sm text-neutral-200">
+                    <span className="font-bold text-emerald-400">{item.term}</span>
+                  </p>
+                  <p className="text-sm text-neutral-300 mt-1">{item.definition}</p>
+                  <ul className="mt-2 space-y-1">
+                    {item.examples.map((ex) => (
+                      <li key={ex} className="text-xs text-neutral-400 italic pl-2">
+                        — {ex}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                {i < primaryItems.length - 1 && (
+                  <div className="border-b border-white/5 mt-5" />
+                )}
+              </div>
+            ))}
+
+            {/* Secondary divider */}
+            <div className="pt-1">
+              <p className="text-xs text-neutral-600 uppercase tracking-wide font-medium">Secondary</p>
+            </div>
+
+            {/* Secondary: Tasks, Journal */}
+            {secondaryItems.map((item) => (
+              <div key={item.term} className="pl-3 border-l-2 border-neutral-700/60 opacity-80">
+                <p className="text-sm text-neutral-300">
+                  <span className="font-semibold text-neutral-400">{item.term}</span>
+                  <span className="ml-2 text-[10px] uppercase tracking-wide bg-neutral-800 text-neutral-500 px-1.5 py-0.5 rounded">
+                    {item.badge}
+                  </span>
                 </p>
+                <p className="text-sm text-neutral-400 mt-1">{item.definition}</p>
                 <ul className="mt-1.5 space-y-0.5">
                   {item.examples.map((ex) => (
                     <li key={ex} className="text-xs text-neutral-500 italic pl-2">
