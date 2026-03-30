@@ -1196,6 +1196,14 @@ export async function deleteHabitEntryByKey(habitId: string, dateKey: string): P
     }
     return response;
   } catch (error) {
+    // 404 means no active entry exists — treat as successful deletion
+    // (entry was already deleted or never created, e.g. race condition / double-click)
+    if (error instanceof Error && (error.message.includes('No active entry found') || error.message === 'Resource not found')) {
+      if (DEBUG_ENTRY_DELETE) {
+        console.log('[DEBUG_ENTRY_DELETE] deleteHabitEntryByKey: no active entry (already deleted), treating as success');
+      }
+      return { dayLog: null };
+    }
     if (DEBUG_ENTRY_DELETE) {
       console.error('[DEBUG_ENTRY_DELETE] deleteHabitEntryByKey API call failed:', error);
     }
