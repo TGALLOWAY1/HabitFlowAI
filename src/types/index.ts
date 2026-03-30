@@ -59,7 +59,7 @@ export interface Habit {
     // Bundle fields
     type?: 'boolean' | 'number' | 'time' | 'bundle'; // Optional for backward compatibility
     subHabitIds?: string[]; // IDs of habits in this bundle
-    bundleParentId?: string; // ID of the parent bundle (if any)
+    bundleParentId?: string | null; // ID of the parent bundle (if any)
     order?: number; // Display order
 
     pace?: string | null; // Estimated completion date
@@ -95,6 +95,23 @@ export interface Habit {
         };
         key?: string; // Legacy
     }>;
+
+    /**
+     * Checklist Bundle: Configurable success rule.
+     * Determines what counts as "success" on a given day.
+     * Default (if absent): 'full' (all scheduled items must complete).
+     */
+    checklistSuccessRule?: {
+        type: 'any' | 'threshold' | 'percent' | 'full';
+        threshold?: number;
+        percent?: number;
+    };
+
+    /**
+     * Streak type for checklist bundles.
+     * Per-bundle override; falls back to user preference, then 'success'.
+     */
+    streakType?: 'success' | 'full' | 'any';
 
     // Day View Fields
     pinned?: boolean; // For "Today's Focus"

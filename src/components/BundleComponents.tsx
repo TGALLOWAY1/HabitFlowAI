@@ -89,17 +89,25 @@ export const DailyBundleRow: React.FC<BundleRowProps> = ({
                             );
                         }
 
-                        // Checklist Bundle Logic (Existing)
+                        // Checklist Bundle Logic
                         const totalChildren = subHabits.length;
                         const completedChildren = subHabits.filter((c: Habit) => logs[`${c.id}-${dateStr}`]?.completed).length;
+                        const isFullyComplete = totalChildren > 0 && completedChildren === totalChildren;
+
+                        // Evaluate success rule
+                        const rule = habit.checklistSuccessRule;
+                        const ruleType = rule?.type ?? 'full';
+                        let meetsSuccess = isFullyComplete;
+                        if (ruleType === 'any') meetsSuccess = completedChildren >= 1;
+                        else if (ruleType === 'threshold') meetsSuccess = completedChildren >= (rule?.threshold ?? totalChildren);
+                        else if (ruleType === 'percent') meetsSuccess = totalChildren > 0 && (completedChildren / totalChildren) * 100 >= (rule?.percent ?? 100);
 
                         return (
                             <div key={dateStr} className="w-16 flex-shrink-0 border-r border-white/5 flex items-center justify-center p-2">
                                 <div
                                     className="relative w-full h-full flex flex-col items-center justify-center cursor-pointer hover:bg-white/5 transition-colors p-1"
                                     onClick={() => {
-                                        const isAllComplete = totalChildren > 0 && completedChildren === totalChildren;
-                                        const targetState = !isAllComplete;
+                                        const targetState = !isFullyComplete;
                                         subHabits.forEach(sub => {
                                             const isSubComplete = !!logs[`${sub.id}-${dateStr}`]?.completed;
                                             if (isSubComplete !== targetState) {
@@ -108,14 +116,18 @@ export const DailyBundleRow: React.FC<BundleRowProps> = ({
                                         });
                                     }}
                                 >
-                                    <div className="text-[10px] font-medium text-neutral-400 mb-1">
+                                    <div className={cn(
+                                        "text-[10px] font-medium mb-1",
+                                        isFullyComplete ? "text-emerald-400" : meetsSuccess ? "text-indigo-400" : "text-neutral-400"
+                                    )}>
                                         {completedChildren}/{totalChildren}
+                                        {meetsSuccess && !isFullyComplete && <span className="ml-0.5 text-[8px]">&#10003;</span>}
                                     </div>
                                     <div className="w-full h-1 bg-neutral-800 rounded-full overflow-hidden">
                                         <div
                                             className={cn(
                                                 "h-full transition-all duration-300",
-                                                completedChildren === totalChildren ? "bg-emerald-500" : "bg-indigo-500"
+                                                isFullyComplete ? "bg-emerald-500" : meetsSuccess ? "bg-indigo-500" : "bg-indigo-500/50"
                                             )}
                                             style={{ width: `${totalChildren > 0 ? (completedChildren / totalChildren) * 100 : 0}%` }}
                                         />

@@ -22,6 +22,7 @@ Derived metrics may read from:
 - **HabitEntry** (primary)
 - **DayKey** (aggregation boundary)
 - **GoalLink** (contribution semantics)
+- **BundleMembership** (temporal bundle child resolution)
 - **HabitPotentialEvidence** (UI hints only; never truth)
 
 Nothing else.
@@ -85,12 +86,17 @@ Weekly state is always derived — never stored.
 
 Bundle parents never have entries.
 
-Completion is derived from child habits:
+Completion is derived from child habits whose **BundleMembership** is active on the queried day:
 
 ```ts
 isBundleComplete(bundleHabitId, dayKey) =
-  any childHabitId has isCompleteDaily(childHabitId, dayKey)
+  any childHabitId
+    WHERE BundleMembership.activeFromDayKey <= dayKey
+      AND (BundleMembership.activeToDayKey IS NULL OR BundleMembership.activeToDayKey >= dayKey)
+    has isCompleteDaily(childHabitId, dayKey)
 ```
+
+For bundles without BundleMembership records (pre-migration), falls back to `subHabitIds`.
 
 ---
 

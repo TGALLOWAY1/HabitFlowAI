@@ -507,9 +507,37 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     const deleteHabit = async (id: string) => {
         try {
+            // Find habit before deletion to check if it's a bundle child
+            const habitToDelete = habits.find(h => h.id === id);
+            const parentId = habitToDelete?.bundleParentId;
+
             await deleteHabitApi(id);
+
+            // If this habit was a bundle child, remove it from the parent's subHabitIds
+            if (parentId) {
+                const parent = habits.find(h => h.id === parentId);
+                if (parent?.subHabitIds?.includes(id)) {
+                    const updatedSubHabitIds = parent.subHabitIds.filter(sid => sid !== id);
+                    try {
+                        await updateHabitApi(parentId, { subHabitIds: updatedSubHabitIds });
+                    } catch (err) {
+                        console.error('Failed to update parent bundle after child deletion:', err);
+                    }
+                }
+            }
+
             // Update state
             const updatedHabits = habits.filter(h => h.id !== id);
+            // Also update parent's subHabitIds in local state
+            if (parentId) {
+                const parentIdx = updatedHabits.findIndex(h => h.id === parentId);
+                if (parentIdx !== -1 && updatedHabits[parentIdx].subHabitIds) {
+                    updatedHabits[parentIdx] = {
+                        ...updatedHabits[parentIdx],
+                        subHabitIds: updatedHabits[parentIdx].subHabitIds!.filter(sid => sid !== id)
+                    };
+                }
+            }
             setHabits(updatedHabits);
             // Also remove related logs from state
             const updatedLogs = Object.fromEntries(

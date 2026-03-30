@@ -275,8 +275,10 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                 const newlyLinkedExistingIds = subHabitIds.filter(id => !previousSubIds.includes(id));
 
                 // Unlink removed children
+                // Use null (not undefined) so JSON.stringify includes the field
+                // and the server clears bundleParentId in the database.
                 for (const childId of removedIds) {
-                    await updateHabit(childId, { bundleParentId: undefined });
+                    await updateHabit(childId, { bundleParentId: null });
                 }
 
                 // Link new existing children
