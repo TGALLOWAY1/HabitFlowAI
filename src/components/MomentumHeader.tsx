@@ -1,6 +1,7 @@
 import React from 'react';
 import { Sparkles, Flame, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import type { MomentumState } from '../types';
+import { useDashboardPrefs } from '../store/DashboardPrefsContext';
 
 interface MomentumHeaderProps {
     globalMomentum: {
@@ -13,12 +14,17 @@ interface MomentumHeaderProps {
 
 export const MomentumHeader: React.FC<MomentumHeaderProps> = ({ globalMomentum }) => {
     const { state, copy, activeDays, trend } = globalMomentum;
+    const { hideStreaks } = useDashboardPrefs();
+
+    const strongIcon = hideStreaks
+        ? <Sparkles className="text-emerald-400 animate-pulse" size={24} />
+        : <Flame className="text-emerald-400 animate-pulse" size={24} />;
 
     // Visual configurations for each state
     const stateConfig: Record<string, { color: string; icon: React.ReactNode; bgGradient: string }> = {
         'Strong': {
             color: 'text-emerald-400',
-            icon: <Flame className="text-emerald-400 animate-pulse" size={24} />,
+            icon: strongIcon,
             bgGradient: 'from-emerald-500/20 to-transparent'
         },
         'Steady': {

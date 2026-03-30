@@ -12,6 +12,7 @@ import { useToast } from './Toast';
 import { useHabitStore } from '../store/HabitContext';
 import { useRoutineStore } from '../store/RoutineContext';
 import { useProgressOverview } from '../lib/useProgressOverview';
+import { useDashboardPrefs } from '../store/DashboardPrefsContext';
 
 
 
@@ -219,6 +220,8 @@ const HabitRowContent = ({
     onCellPointerMove,
 }: HabitRowContentProps) => {
 
+    const { hideStreaks } = useDashboardPrefs();
+
     // Non-Negotiable Logic
     const today = new Date();
     const todayStr = format(today, 'yyyy-MM-dd');
@@ -286,7 +289,7 @@ const HabitRowContent = ({
                                 Target: {habit.goal.target} {habit.goal.unit}
                             </span>
                         )}
-                        {streak !== undefined && streak > 0 && (
+                        {!hideStreaks && streak !== undefined && streak > 0 && (
                             <div className="flex items-center gap-1 text-[10px] text-orange-400 bg-orange-400/10 px-1.5 py-0.5 rounded-full border border-orange-400/20 flex-shrink-0">
                                 <Flame size={10} className="fill-orange-400" />
                                 <span className="font-bold">{streak}</span>

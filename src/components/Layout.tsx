@@ -1,7 +1,8 @@
 import React, { useMemo, useState, useRef, useEffect } from 'react';
-import { LayoutGrid, Settings, User, LogOut, Info } from 'lucide-react';
+import { LayoutGrid, Settings, User, LogOut, Info, Eye, EyeOff } from 'lucide-react';
 import { useHabitStore } from '../store/HabitContext';
 import { useAuth } from '../store/AuthContext';
+import { useDashboardPrefs } from '../store/DashboardPrefsContext';
 import { getActiveUserMode, seedDemoEmotionalWellbeing, resetDemoEmotionalWellbeing } from '../lib/persistenceClient';
 import { SettingsModal } from './SettingsModal';
 import { InfoModal } from './InfoModal';
@@ -13,6 +14,7 @@ interface LayoutProps {
 export const Layout: React.FC<LayoutProps> = ({ children }) => {
     const { refreshHabitsAndCategories } = useHabitStore();
     const { user, logout } = useAuth();
+    const { hideStreaks, setHideStreaks } = useDashboardPrefs();
     const isDev = import.meta.env.DEV;
     const isDemo = getActiveUserMode() === 'demo';
     const [devNotice, setDevNotice] = useState<string | null>(null);
@@ -151,6 +153,13 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
                                             {user.email}
                                         </div>
                                     )}
+                                    <button
+                                        onClick={() => setHideStreaks(!hideStreaks)}
+                                        className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-neutral-400 hover:text-white hover:bg-white/5 transition-colors"
+                                    >
+                                        {hideStreaks ? <Eye size={14} /> : <EyeOff size={14} />}
+                                        {hideStreaks ? 'Show streaks' : 'Hide streaks'}
+                                    </button>
                                     <button
                                         onClick={async () => {
                                             setUserMenuOpen(false);

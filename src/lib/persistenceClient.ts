@@ -308,7 +308,7 @@ export async function fetchDashboardPrefs(): Promise<DashboardPrefs> {
   return response.dashboardPrefs;
 }
 
-export async function updateDashboardPrefs(patch: Partial<Pick<DashboardPrefs, 'pinnedRoutineIds' | 'checkinExtraMetricKeys'>>): Promise<DashboardPrefs> {
+export async function updateDashboardPrefs(patch: Partial<Pick<DashboardPrefs, 'pinnedRoutineIds' | 'checkinExtraMetricKeys' | 'hideStreaks'>>): Promise<DashboardPrefs> {
   const response = await apiRequest<{ dashboardPrefs: DashboardPrefs }>('/dashboardPrefs', {
     method: 'PUT',
     body: JSON.stringify(patch),
