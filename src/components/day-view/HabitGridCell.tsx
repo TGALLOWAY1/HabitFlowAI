@@ -1,5 +1,4 @@
-import { useState } from 'react';
-import { Check, Target, Clock, Pin, PinOff, ListTodo, Layers, FolderInput, Trophy } from 'lucide-react';
+import { Check, Target, Pin, PinOff, ListTodo, Layers, FolderInput, Trophy } from 'lucide-react';
 import type { Habit, DayLog } from '../../types';
 import { cn } from '../../utils/cn';
 
@@ -22,7 +21,6 @@ interface HabitGridCellProps {
     onToggle: () => void | Promise<void>;
     onExpand: () => void;
     onPin: (id: string) => void;
-    onUpdateEstimate: (id: string, minutes: number) => void;
     onMoveToCategory?: (habit: Habit) => void;
 
     // Bundle Props
@@ -46,7 +44,6 @@ export const HabitGridCell = ({
     onToggle,
     onExpand,
     onPin,
-    onUpdateEstimate,
     onMoveToCategory,
     subHabits,
     subHabitStatuses,
@@ -56,12 +53,8 @@ export const HabitGridCell = ({
     habitStatus,
     onNumericClick
 }: HabitGridCellProps) => {
-    const [timeInput, setTimeInput] = useState(habit.timeEstimate?.toString() || '');
-    const [isEditingTime, setIsEditingTime] = useState(false);
-
     const isChecklistBundle = habit.type === 'bundle' && habit.bundleType === 'checklist';
     const isChoiceBundle = habit.type === 'bundle' && habit.bundleType === 'choice';
-    const isBundle = isChecklistBundle || isChoiceBundle;
     const isQuantity = habit.goal?.type === 'number';
     const hasSubHabits = subHabits && subHabits.length > 0;
 
@@ -72,15 +65,6 @@ export const HabitGridCell = ({
     const checklistTotal = isChecklistBundle && subHabits
         ? subHabits.length
         : (habitStatus?.totalChildrenCount ?? 0);
-
-    // Handle Time Estimate Submit
-    const handleTimeSubmit = () => {
-        const val = parseInt(timeInput);
-        if (!isNaN(val) && val >= 0) {
-            onUpdateEstimate(habit.id, val);
-        }
-        setIsEditingTime(false);
-    };
 
     // Render the right-side status badge
     const renderStatusBadge = () => {
@@ -273,40 +257,8 @@ export const HabitGridCell = ({
                 <div className="px-3 pb-3 pt-0 flex flex-col gap-3 animate-in fade-in slide-in-from-top-1 duration-200 cursor-default" onClick={e => e.stopPropagation()}>
                     <div className="h-px w-full bg-white/5 mb-1" />
 
-                    {/* 1. Time Estimate Input */}
-                    <div className="flex items-center gap-2 text-xs text-neutral-400">
-                        <Clock size={12} />
-                        <span className="mr-auto">Time Estimate:</span>
-                        {isEditingTime ? (
-                            <input
-                                autoFocus
-                                type="number"
-                                className="w-12 bg-neutral-950 text-white rounded px-1 py-0.5 text-xs border border-white/10 focus:outline-none focus:border-emerald-500"
-                                value={timeInput}
-                                onChange={(e) => setTimeInput(e.target.value)}
-                                onBlur={handleTimeSubmit}
-                                onKeyDown={(e) => e.key === 'Enter' && handleTimeSubmit()}
-                            />
-                        ) : (
-                            <span
-                                className="hover:text-white cursor-pointer border-b border-transparent hover:border-white/20"
-                                onClick={() => setIsEditingTime(true)}
-                            >
-                                {habit.timeEstimate ? `${habit.timeEstimate} min` : 'Set time'}
-                            </span>
-                        )}
-                    </div>
-
-                    {/* 2. Goal Context */}
-                    {habit.goal && !isBundle && (
-                        <div className="flex items-center gap-2 text-xs text-neutral-500">
-                            <Target size={12} />
-                            <span>Linked to {habit.goal.type === 'number' ? `target: ${habit.goal.target} ${habit.goal.unit}` : 'daily goal'}</span>
-                        </div>
-                    )}
-
-                    {/* 3. Actions (Pin, Move) */}
-                    <div className="flex items-center justify-end gap-1 mt-1 pt-2 border-t border-white/5">
+                    {/* Actions (Pin, Move) */}
+                    <div className="flex items-center justify-end gap-1">
                         {onMoveToCategory && (
                             <button
                                 onClick={() => onMoveToCategory(habit)}

@@ -23,7 +23,6 @@ interface DayCategorySectionProps {
     dateStr: string;
     onToggle: (habitId: string) => Promise<void>;
     onPin: (habitId: string) => void;
-    onUpdateEstimate: (habitId: string, minutes: number) => void;
     onMoveToCategory?: (habit: Habit) => void;
     allHabitsLookup: Map<string, Habit>;
     onUpdateHabitEntry: (habitId: string, dateKey: string, data: any) => Promise<void>;
@@ -38,7 +37,6 @@ export const DayCategorySection = ({
     dateStr,
     onToggle,
     onPin,
-    onUpdateEstimate,
     onMoveToCategory,
     allHabitsLookup,
     onUpdateHabitEntry,
@@ -196,7 +194,6 @@ export const DayCategorySection = ({
                                 onToggle={() => onToggle(habit.id)}
                                 onExpand={() => setExpandedHabitId(prev => prev === habit.id ? null : habit.id)}
                                 onPin={onPin}
-                                onUpdateEstimate={onUpdateEstimate}
                                 onMoveToCategory={onMoveToCategory}
                                 subHabits={subHabits}
                                 subHabitStatuses={subHabitStatuses}
