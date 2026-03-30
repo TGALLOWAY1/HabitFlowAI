@@ -979,32 +979,6 @@ export async function reorderGoals(goalIds: string[]): Promise<void> {
 }
 
 /**
- * Upload badge image for a completed goal.
- * POST /api/goals/:id/badge (multipart/form-data, field: image)
- */
-export async function uploadGoalBadge(goalId: string, file: File): Promise<{ badgeImageUrl: string }> {
-  const url = `${API_BASE_URL}/goals/${goalId}/badge`;
-  const formData = new FormData();
-  formData.append('image', file);
-
-  const response = await fetch(url, {
-    method: 'POST',
-    credentials: 'include',
-    headers: { ...getIdentityHeaders() },
-    body: formData,
-  });
-
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    const msg = errorData?.error?.message || `Upload failed: ${response.status} ${response.statusText}`;
-    throw new Error(msg);
-  }
-  const data = await response.json();
-  invalidateGoalCaches(goalId);
-  return { badgeImageUrl: data.badgeImageUrl };
-}
-
-/**
  * Fetch all goals with progress information for the current user.
  * 
  * Efficiently fetches all goals with their progress data in a single request,
