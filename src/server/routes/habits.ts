@@ -64,12 +64,17 @@ export async function getHabits(req: Request, res: Response): Promise<void> {
       const habitsNeedingRecovery = habits.filter(h => {
         const missingCategoryId = typeof h.categoryId !== 'string' || h.categoryId.trim().length === 0;
         const invalidCategoryId = !!h.categoryId && !categoryIds.has(h.categoryId);
-        const archivedAndOrphaned = h.archived === true && (missingCategoryId || invalidCategoryId);
-        return missingCategoryId || invalidCategoryId || archivedAndOrphaned;
+        // Also recover habits that are archived but have NO archivedReason —
+        // these were stranded by a bug where uncategorizeHabitsByCategory cleared
+        // archivedReason without setting archived: false.
+        const archivedWithoutReason = h.archived === true && !(h as any).archivedReason;
+        return missingCategoryId || invalidCategoryId || archivedWithoutReason;
       });
 
       if (habitsNeedingRecovery.length > 0) {
-        if (!noCategory) {
+        // Only create "No Category" if any habit actually needs reassignment
+        const needsReassignment = habitsNeedingRecovery.some(h => !h.categoryId || !categoryIds.has(h.categoryId));
+        if (needsReassignment && !noCategory) {
           noCategory = await createCategory(
             { name: noCategoryName, color: 'bg-neutral-600' },
             householdId,
@@ -78,12 +83,15 @@ export async function getHabits(req: Request, res: Response): Promise<void> {
         }
 
         const updatedHabits = await Promise.all(
-          habitsNeedingRecovery.map(h =>
-            updateHabit(h.id, householdId, userId, {
-              categoryId: noCategory!.id,
+          habitsNeedingRecovery.map(h => {
+            // If the habit has a valid categoryId, keep it — just unarchive.
+            // Only reassign to "No Category" if categoryId is missing/invalid.
+            const hasValidCategory = !!h.categoryId && categoryIds.has(h.categoryId);
+            return updateHabit(h.id, householdId, userId, {
+              categoryId: hasValidCategory ? h.categoryId : noCategory!.id,
               archived: false,
-            })
-          )
+            });
+          })
         );
 
         const updatedMap = new Map(updatedHabits.filter(Boolean).map(h => [h!.id, h!]));

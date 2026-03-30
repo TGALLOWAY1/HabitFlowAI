@@ -17,7 +17,7 @@ import {
   reorderGoals,
   validateHabitIds,
 } from '../repositories/goalRepository';
-import { getHabitsByUser } from '../repositories/habitRepository';
+import { getHabitsByUser, unlinkHabitsFromGoal } from '../repositories/habitRepository';
 // getHabitEntriesByUser removed — entries are now fetched filtered by habit ID in computeGoalsWithProgressFromData
 import { computeGoalProgressV2, computeGoalListProgress } from '../utils/goalProgressUtilsV2';
 import { saveUploadedFile } from '../utils/fileStorage';
@@ -1035,6 +1035,12 @@ export async function deleteGoalRoute(req: Request, res: Response): Promise<void
         },
       });
       return;
+    }
+
+    // Clean up orphaned linkedGoalId references on habits
+    const unlinkedCount = await unlinkHabitsFromGoal(id, householdId, userId);
+    if (unlinkedCount > 0) {
+      console.log(`[Goal Delete] Cleared linkedGoalId from ${unlinkedCount} habit(s) for deleted goal ${id}`);
     }
 
     res.status(200).json({
