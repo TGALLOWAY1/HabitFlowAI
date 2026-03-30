@@ -716,8 +716,26 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
     const upsertHabitEntryContext = async (habitId: string, dateKey: string, data: any = {}) => {
+        // Snapshot previous state for rollback
+        const previousLogs = logs;
+
+        // Optimistic update: apply value immediately so UI doesn't lag
+        if (data.value !== undefined) {
+            const habit = habits.find(h => h.id === habitId);
+            const value = data.value;
+            const completed = habit?.goal?.target ? value >= habit.goal.target : value > 0;
+            setLogs(prev => ({
+                ...prev,
+                [`${habitId}-${dateKey}`]: {
+                    habitId,
+                    date: dateKey,
+                    value,
+                    completed,
+                },
+            }));
+        }
+
         try {
-            // Optimistic update logic could go here, but for now we rely on the server response
             const { dayLog } = await upsertHabitEntry(habitId, dateKey, data);
 
             // Update local state with the recomputed DayLog (legacy cache)
@@ -731,6 +749,8 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             scheduleBackgroundSync();
         } catch (error) {
             console.error('Failed to upsert habit entry:', error);
+            // Rollback to previous state
+            setLogs(previousLogs);
             setLastPersistenceError("Failed to save habit entry.");
         }
     };
