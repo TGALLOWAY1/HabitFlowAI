@@ -198,7 +198,7 @@ describe('getProgressOverview', () => {
         completedAt: undefined,
         householdId: TEST_HOUSEHOLD_ID,
         userId: TEST_USER_ID,
-        type: 'frequency' as const,
+        type: 'onetime' as const,
         linkedHabitIds: [habit.id],
         createdAt: '2026-01-01T00:00:00.000Z',
         updatedAt: '2026-01-01T00:00:00.000Z',

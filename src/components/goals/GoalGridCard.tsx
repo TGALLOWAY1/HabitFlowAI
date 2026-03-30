@@ -31,10 +31,6 @@ const CompactGoalCard: React.FC<GoalGridCardProps> = ({
         ? new Date(goal.deadline + 'T00:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
         : null;
 
-    // Frequency progress text
-    const frequencyLabel = goal.type === 'frequency' && goal.targetValue
-        ? `${progress.currentValue}/${goal.targetValue}`
-        : null;
 
     return (
         <div
@@ -82,13 +78,6 @@ const CompactGoalCard: React.FC<GoalGridCardProps> = ({
 
             {/* Metadata chips */}
             <div className="flex items-center gap-2 flex-shrink-0">
-                {/* Frequency progress */}
-                {frequencyLabel && (
-                    <span className="text-xs text-neutral-400 font-medium tabular-nums">
-                        {frequencyLabel}
-                    </span>
-                )}
-
                 {/* Deadline */}
                 {deadlineLabel && !isCompleted && (
                     <span className="flex items-center gap-1 text-xs text-neutral-500">
@@ -214,7 +203,7 @@ const CumulativeGoalCard: React.FC<GoalGridCardProps> = ({
                     <>
                         <MiniHeatmap
                             data={historyData}
-                            goalType={goal.type as 'cumulative' | 'frequency'}
+                            goalType={'cumulative'}
                             targetValue={target}
                         />
                         <div className="mt-1.5">

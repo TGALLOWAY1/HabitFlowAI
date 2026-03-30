@@ -134,7 +134,7 @@ const Stack: React.FC<StackProps> = ({
                         onDragEnd={(event) => onDragEnd(event, stack.category.id)}
                     >
                         <SortableContext items={goalIds} strategy={verticalListSortingStrategy}>
-                            {/* Compact goals (onetime/frequency) in a vertical list */}
+                            {/* Compact goals (onetime) in a vertical list */}
                             {/* Cumulative goals in a responsive grid */}
                             {hasCumulativeGoals ? (
                                 <div className="space-y-2">

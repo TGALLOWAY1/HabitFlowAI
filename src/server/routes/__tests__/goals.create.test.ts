@@ -129,7 +129,7 @@ describe('Goal Create Routes', () => {
                 .expect(400);
 
             expect(response.body.error.code).toBe('VALIDATION_ERROR');
-            // This confirms that "type must be cumulative, frequency, or onetime"
+            // This confirms that "type must be cumulative or onetime"
         });
     });
 });

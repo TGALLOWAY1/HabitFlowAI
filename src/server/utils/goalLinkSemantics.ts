@@ -24,7 +24,7 @@ export function getAggregationMode(goal: Goal): GoalAggregationMode {
     if (goal.type === 'cumulative') {
         return 'sum';
     }
-    // frequency or onetime
+    // onetime (or legacy frequency)
     return 'count';
 }
 
