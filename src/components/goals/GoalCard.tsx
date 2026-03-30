@@ -9,7 +9,7 @@
  * 
  * Manual Progress Policy:
  * - Manual progress UI is not shown in GoalCard (only in GoalDetailPage)
- * - Manual progress is only available for cumulative goals, not frequency goals
+ * - Manual progress is only available for cumulative goals
  */
 import React, { useMemo, useState, useRef, useEffect } from 'react';
 import { ChevronDown, ChevronRight, Check, ExternalLink, Edit } from 'lucide-react';
@@ -90,7 +90,7 @@ export const GoalCard: React.FC<GoalCardProps> = ({
         setShowCoachingPopup(true);
     };
 
-    // Calculate milestone values (only for cumulative/frequency)
+    // Calculate milestone values (only for cumulative)
     const milestones = useMemo(() => {
         if (goal.type === 'onetime' || !goal.targetValue) return [];
 
@@ -179,8 +179,6 @@ export const GoalCard: React.FC<GoalCardProps> = ({
     let progressText = '';
     if (goal.type === 'cumulative') {
         progressText = `${progress.currentValue} / ${goal.targetValue} ${goal.unit || ''}`;
-    } else if (goal.type === 'frequency') {
-        progressText = `${progress.currentValue} / ${goal.targetValue} days`;
     } else { // onetime
         progressText = goal.completedAt ? 'Completed' : 'In Progress';
     }
@@ -307,9 +305,7 @@ export const GoalCard: React.FC<GoalCardProps> = ({
                                 <div className={`${goalSubtitleClasses} font-medium mb-2`}>Milestones</div>
                                 <div className="space-y-2">
                                     {milestones.map((milestone) => {
-                                        const milestoneValue = goal.type === 'cumulative'
-                                            ? `${milestone.value.toFixed(1)} ${goal.unit || ''} of ${goal.targetValue} ${goal.unit || ''}`
-                                            : `${milestone.value.toFixed(0)} days of ${goal.targetValue} days`;
+                                        const milestoneValue = `${milestone.value.toFixed(1)} ${goal.unit || ''} of ${goal.targetValue} ${goal.unit || ''}`;
 
                                         return (
                                             <div

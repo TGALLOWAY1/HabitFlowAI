@@ -14,13 +14,14 @@ describe('goalProgressUtilsV2', () => {
   describe('computeFullGoalProgressV2', () => {
     const timeZone = 'UTC';
 
-    it('should count EntryViews for count mode (frequency goal)', () => {
+    it('should count EntryViews for count mode (cumulative goal with count aggregation)', () => {
       const goal: Goal = {
         id: 'goal-1',
         title: 'Test Goal',
-        type: 'frequency',
+        type: 'cumulative',
         targetValue: 5,
         linkedHabitIds: ['habit-1'],
+        aggregationMode: 'count',
         createdAt: '2025-01-01T00:00:00.000Z',
       };
 
@@ -59,7 +60,7 @@ describe('goalProgressUtilsV2', () => {
 
       const progress = computeFullGoalProgressV2(goal, entryViews, undefined, timeZone);
 
-      // Frequency goal counts distinct dayKeys
+      // Count mode counts distinct dayKeys
       expect(progress.currentValue).toBe(3);
       expect(progress.percent).toBe(60); // 3/5 * 100
     });
@@ -189,9 +190,10 @@ describe('goalProgressUtilsV2', () => {
       const goal: Goal = {
         id: 'goal-1',
         title: 'Test Goal',
-        type: 'frequency',
+        type: 'cumulative',
         targetValue: 5,
         linkedHabitIds: ['habit-1'],
+        aggregationMode: 'count',
         createdAt: '2025-01-01T00:00:00.000Z',
       };
 
@@ -471,7 +473,7 @@ describe('goalProgressUtilsV2', () => {
       const goal: Goal = {
         id: 'goal-1',
         title: 'Test Goal',
-        type: 'frequency',
+        type: 'cumulative',
         targetValue: 5,
         linkedHabitIds: ['habit-1'],
         aggregationMode: 'count',
@@ -522,7 +524,7 @@ describe('goalProgressUtilsV2', () => {
       const goal: Goal = {
         id: 'goal-1',
         title: 'Test Goal',
-        type: 'frequency',
+        type: 'cumulative',
         targetValue: 5,
         linkedHabitIds: ['habit-1'],
         aggregationMode: 'count',
@@ -573,9 +575,10 @@ describe('goalProgressUtilsV2', () => {
       const goal: Goal = {
         id: 'goal-1',
         title: 'Test Goal',
-        type: 'frequency',
+        type: 'cumulative',
         targetValue: 5,
         linkedHabitIds: ['habit-1'],
+        aggregationMode: 'count',
         // No countMode specified - should default to distinctDays
         createdAt: '2025-01-01T00:00:00.000Z',
       };

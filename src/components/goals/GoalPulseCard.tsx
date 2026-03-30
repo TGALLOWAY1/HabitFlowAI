@@ -9,7 +9,7 @@ interface GoalPulseCardProps {
 
 export const GoalPulseCard: React.FC<GoalPulseCardProps> = ({ goalWithProgress, onClick }) => {
     const { goal, progress } = goalWithProgress;
-    const isCumulative = goal.type === 'cumulative' || goal.type === 'frequency';
+    const isCumulative = goal.type === 'cumulative';
 
     // Helper to format deadline for one-time goals
     const deadlineLabel = useMemo(() => {

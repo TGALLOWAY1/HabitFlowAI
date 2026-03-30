@@ -14,7 +14,7 @@ type Step = 'details' | 'habits';
 
 interface GoalDraft {
     title: string;
-    type: 'cumulative' | 'frequency' | 'onetime';
+    type: 'cumulative' | 'onetime';
     targetValue: number;
     unit?: string;
     deadline?: string;

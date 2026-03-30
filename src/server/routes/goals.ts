@@ -54,14 +54,14 @@ function validateGoalData(data: any): string | null {
     return 'title is required and must be a non-empty string';
   }
 
-  if (!data.type || (data.type !== 'cumulative' && data.type !== 'frequency' && data.type !== 'onetime')) {
-    return 'type is required and must be either "cumulative", "frequency", or "onetime"';
+  if (!data.type || (data.type !== 'cumulative' && data.type !== 'onetime')) {
+    return 'type is required and must be either "cumulative" or "onetime"';
   }
 
-  // targetValue required only for cumulative/frequency
+  // targetValue required only for cumulative
   if (data.type !== 'onetime') {
     if (typeof data.targetValue !== 'number' || data.targetValue <= 0) {
-      return 'targetValue is required and must be a positive number for cumulative/frequency goals';
+      return 'targetValue is required and must be a positive number for cumulative goals';
     }
   }
 
@@ -492,11 +492,11 @@ export async function updateGoalRoute(req: Request, res: Response): Promise<void
     }
 
     if (req.body.type !== undefined) {
-      if (req.body.type !== 'cumulative' && req.body.type !== 'frequency' && req.body.type !== 'onetime') {
+      if (req.body.type !== 'cumulative' && req.body.type !== 'onetime') {
         res.status(400).json({
           error: {
             code: 'VALIDATION_ERROR',
-            message: 'type must be either "cumulative", "frequency", or "onetime"',
+            message: 'type must be either "cumulative" or "onetime"',
           },
         });
         return;

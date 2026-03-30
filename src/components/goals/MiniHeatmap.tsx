@@ -6,7 +6,7 @@ interface MiniHeatmapProps {
         value: number;
         hasProgress: boolean;
     }>;
-    goalType: 'cumulative' | 'frequency';
+    goalType: 'cumulative';
     targetValue: number;
 }
 

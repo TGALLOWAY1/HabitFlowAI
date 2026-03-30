@@ -95,7 +95,7 @@ function resolveBundleIdsSync(
  * Compute goal progress using truthQuery (EntryViews).
  * 
  * For cumulative goals: sums entry values from linked habits.
- * For frequency goals: counts distinct dayKeys where entries exist.
+ * For count-mode goals: counts distinct dayKeys where entries exist.
  * 
  * @param goalId - Goal ID
  * @param userId - User ID to verify ownership
