@@ -5,22 +5,29 @@ interface InfoModalProps {
   onClose: () => void;
 }
 
-const primaryItems = [
+type Example = string | { title: string; steps: string[] };
+
+const primaryItems: { term: string; definition: string; examples: Example[] }[] = [
   {
     term: 'Habit',
     definition: 'A habit is a repeated behavior performed over time. Habits are ongoing and never "finished" — each day or week, a habit is simply performed or not.',
     examples: [
       '"Practice Portuguese for 30 minutes"',
       '"Run for 20 minutes"',
-      '"Read for 15 minutes before bed"',
     ],
   },
   {
     term: 'Routine',
     definition: 'A routine is a group of habits or actions performed together in a sequence. Completing a routine helps you perform multiple habits in one flow.',
     examples: [
-      '"Portuguese Study" — 1. Review flashcards 2. Make new flashcards 3. Say a new sentence',
-      '"Morning Reset" — 1. Stretch 2. Meditate 3. Review goals',
+      {
+        title: '"Portuguese Study"',
+        steps: ['Review flashcards', 'Make new flashcards', 'Say a new sentence'],
+      },
+      {
+        title: '"Run Day"',
+        steps: ['Warm-up stretch', 'Run for 20 minutes', 'Cool-down walk'],
+      },
     ],
   },
   {
@@ -106,12 +113,25 @@ export function InfoModal({ isOpen, onClose }: InfoModalProps) {
                     <span className="font-bold text-emerald-400">{item.term}</span>
                   </p>
                   <p className="text-sm text-neutral-300 mt-1">{item.definition}</p>
-                  <ul className="mt-2 space-y-1">
-                    {item.examples.map((ex) => (
-                      <li key={ex} className="text-xs text-neutral-400 italic pl-2">
-                        — {ex}
-                      </li>
-                    ))}
+                  <ul className="mt-2 space-y-1.5">
+                    {item.examples.map((ex) =>
+                      typeof ex === 'string' ? (
+                        <li key={ex} className="text-xs text-neutral-400 italic pl-2">
+                          — {ex}
+                        </li>
+                      ) : (
+                        <li key={ex.title} className="pl-2">
+                          <p className="text-xs text-neutral-400 italic">— {ex.title}</p>
+                          <ol className="mt-1 space-y-0.5 pl-4">
+                            {ex.steps.map((step, idx) => (
+                              <li key={step} className="text-xs text-neutral-500">
+                                {idx + 1}. {step}
+                              </li>
+                            ))}
+                          </ol>
+                        </li>
+                      )
+                    )}
                   </ul>
                 </div>
                 {i < primaryItems.length - 1 && (
