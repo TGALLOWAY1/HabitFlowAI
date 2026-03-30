@@ -7,12 +7,10 @@ import { Eye, EyeOff, Sparkles } from 'lucide-react';
 interface SettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onRefresh?: () => void;
 }
 
-export function SettingsModal({ isOpen, onClose, onRefresh }: SettingsModalProps) {
+export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   const { user } = useAuth();
-  const [showRefreshConfirm, setShowRefreshConfirm] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [geminiKey, setGeminiKey] = useState(() => getGeminiApiKey());
@@ -150,47 +148,6 @@ export function SettingsModal({ isOpen, onClose, onRefresh }: SettingsModalProps
                 Data
               </h3>
               <div className="space-y-3">
-                {/* Refresh */}
-                {onRefresh && (
-                  <>
-                    {!showRefreshConfirm ? (
-                      <button
-                        type="button"
-                        onClick={() => setShowRefreshConfirm(true)}
-                        className="w-full px-4 py-2.5 rounded-lg bg-neutral-800 text-neutral-200 border border-white/10 hover:bg-neutral-700 text-sm text-left"
-                      >
-                        Refresh data
-                      </button>
-                    ) : (
-                      <div className="rounded-lg bg-neutral-800/50 border border-amber-500/30 p-3 space-y-3">
-                        <p className="text-sm text-neutral-300">
-                          Re-sync all habits and categories from the server?
-                        </p>
-                        <div className="flex gap-2">
-                          <button
-                            type="button"
-                            onClick={() => setShowRefreshConfirm(false)}
-                            className="px-3 py-1.5 rounded-lg bg-neutral-700 text-neutral-200 border border-white/10 hover:bg-neutral-600 text-sm"
-                          >
-                            Cancel
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              onRefresh();
-                              setShowRefreshConfirm(false);
-                              onClose();
-                            }}
-                            className="px-3 py-1.5 rounded-lg bg-amber-600/80 text-white hover:bg-amber-600 text-sm"
-                          >
-                            Yes, refresh
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                  </>
-                )}
-
                 {/* Delete data */}
                 {!showDeleteConfirm ? (
                   <button

@@ -30,10 +30,6 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
         );
     }, [isDemo]);
 
-    const handleRefresh = async () => {
-        await refreshHabitsAndCategories();
-    };
-
     const handleSeedDemo = async () => {
         await seedDemoEmotionalWellbeing();
         await refreshHabitsAndCategories();
@@ -179,7 +175,6 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
             <SettingsModal
                 isOpen={settingsOpen}
                 onClose={() => setSettingsOpen(false)}
-                onRefresh={handleRefresh}
             />
             <InfoModal
                 isOpen={infoOpen}
