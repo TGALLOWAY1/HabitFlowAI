@@ -1258,22 +1258,10 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                             </div>
                         </div>
 
-                        {/* Description - Hidden for Bundles */}
-                        {habitType !== 'bundle' && (
-                            <div>
-                                <label className="block text-sm font-medium text-neutral-400 mb-1">Description (Optional)</label>
-                                <textarea
-                                    value={description}
-                                    onChange={(e) => setDescription(e.target.value)}
-                                    className="w-full bg-neutral-800 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-emerald-500 h-20 resize-none"
-                                    placeholder="Add notes about your habit..."
-                                />
-                            </div>
-                        )}
                     </div>
 
                     {/* Actions */}
-                    <div className="pt-2 flex justify-end gap-3">
+                    <div className="sticky bottom-0 pt-2 pb-1 bg-neutral-900 flex justify-end gap-3">
                         <button
                             type="button"
                             onClick={onClose}
