@@ -1235,20 +1235,46 @@ export const TrackerGrid = ({
                                         ))}
                                     </SortableContext>
                                 ) : (
-                                    <div className="flex flex-col items-center justify-center p-8 text-center">
-                                        <h3 className="text-base font-medium text-white mb-2">
-                                            Habits are actions that, when done consistently, move you towards your goals.
-                                        </h3>
-                                        <p className="text-sm text-neutral-400 mb-4">
-                                            Start with 1–3 habits you want to repeat most days.
-                                        </p>
-                                        <div className="flex flex-wrap justify-center gap-2 mb-4">
-                                            {['Drink water', '10-minute walk', 'Read 5 pages', 'Stretch', 'Vitamins'].map((ex) => (
-                                                <span key={ex} className="px-3 py-1 text-xs text-neutral-400 bg-neutral-800/80 rounded-full border border-white/5">
-                                                    {ex}
-                                                </span>
-                                            ))}
+                                    <div className="flex flex-col items-center justify-center p-6 sm:p-8 text-center max-w-sm mx-auto">
+                                        {/* The Rules — matching InfoModal style */}
+                                        <div className="w-full bg-emerald-500/5 border border-emerald-500/20 rounded-lg px-3 py-2.5 mb-5">
+                                            <p className="text-xs text-emerald-400 uppercase tracking-wide font-semibold mb-1.5">The Rules</p>
+                                            <ul className="space-y-0.5 text-sm text-neutral-300">
+                                                <li>Habits are <span className="text-emerald-400 font-medium">performed</span></li>
+                                                <li>Routines are <span className="text-emerald-400 font-medium">completed</span></li>
+                                                <li>Goals are <span className="text-emerald-400 font-medium">achieved</span></li>
+                                            </ul>
                                         </div>
+
+                                        {/* Definitions — matching InfoModal structure */}
+                                        <div className="w-full space-y-4 mb-6 text-left">
+                                            <div className="pl-3 border-l-2 border-emerald-500/40">
+                                                <p className="text-sm text-neutral-200">
+                                                    <span className="font-bold text-emerald-400">Habit</span>
+                                                </p>
+                                                <p className="text-sm text-neutral-400 mt-1">A repeated behavior performed over time. Each day, a habit is simply performed or not.</p>
+                                                <div className="flex flex-wrap gap-1.5 mt-2">
+                                                    {['Drink water', '10-minute walk', 'Read 5 pages'].map((ex) => (
+                                                        <span key={ex} className="px-2.5 py-0.5 text-xs text-neutral-400 bg-neutral-800/80 rounded-full border border-white/5">{ex}</span>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                            <div className="pl-3 border-l-2 border-emerald-500/40">
+                                                <p className="text-sm text-neutral-200">
+                                                    <span className="font-bold text-emerald-400">Routine</span>
+                                                </p>
+                                                <p className="text-sm text-neutral-400 mt-1">A group of habits performed together in a sequence.</p>
+                                                <p className="text-xs text-neutral-500 italic mt-1.5 pl-2">— "Morning Reset" — Stretch + Meditate + Review goals</p>
+                                            </div>
+                                            <div className="pl-3 border-l-2 border-emerald-500/40">
+                                                <p className="text-sm text-neutral-200">
+                                                    <span className="font-bold text-emerald-400">Goal</span>
+                                                </p>
+                                                <p className="text-sm text-neutral-400 mt-1">An outcome achieved by consistently performing the habits that support it.</p>
+                                                <p className="text-xs text-neutral-500 italic mt-1.5 pl-2">— "Run a 10K" — supported by: Running habit</p>
+                                            </div>
+                                        </div>
+
                                         <button
                                             onClick={onAddHabit}
                                             className="flex items-center gap-2 px-5 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-neutral-900 font-medium rounded-lg transition-colors text-sm"
