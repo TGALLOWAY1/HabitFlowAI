@@ -40,48 +40,12 @@ export const TasksPage: React.FC = () => {
 
     return (
         <div className="flex flex-col h-full gap-6">
-            {/* Description */}
-            <div className="mb-2 px-1">
-                <p className="text-neutral-400 text-sm leading-relaxed">
-                    A task is a one-time action with a clear finish. Once completed, it's done.
-                </p>
-            </div>
+            {/* Description - sits like a definition under the Tasks header */}
+            <p className="text-neutral-500 text-sm -mt-3">
+                A one-time action with a clear finish. Once completed, it's done.
+            </p>
 
             <div className="flex flex-col md:flex-row h-full gap-6">
-
-                {/* INBOX COLUMN */}
-                <div className="flex-1 flex flex-col min-w-0 bg-neutral-900/30 rounded-xl border border-neutral-800/50 overflow-hidden">
-                    <div className="p-4 border-b border-neutral-800/50 bg-neutral-900/50 flex items-baseline justify-between">
-                        <h2 className="text-lg font-medium text-neutral-300">Inbox</h2>
-                        {inboxTasks.filter(t => t.status !== 'completed').length > 0 && (
-                            <span className="text-xs text-neutral-600 font-mono">{inboxTasks.filter(t => t.status !== 'completed').length} pending</span>
-                        )}
-                    </div>
-
-                    <div className="p-4 bg-neutral-900/20 border-b border-neutral-800/30">
-                        <AddTaskInput defaultPlacement="inbox" placeholder="Capture to inbox..." />
-                    </div>
-
-                    <div className="flex-1 overflow-y-auto p-2 scrollbar-thin scrollbar-thumb-neutral-700 scrollbar-track-transparent">
-                        <div className="space-y-1">
-                            {sortedInbox.map(task => (
-                                <TaskItem key={task.id} task={task} />
-                            ))}
-                            {sortedInbox.length === 0 && (
-                                <div className="py-8 text-center">
-                                    <p className="text-neutral-500 text-sm mb-3">Capture what's on your mind.</p>
-                                    <div className="flex flex-wrap justify-center gap-1.5">
-                                        {['Call landlord', 'Buy groceries', 'Send invoice'].map((ex) => (
-                                            <span key={ex} className="px-2.5 py-1 text-[11px] text-neutral-600 bg-neutral-800/50 rounded-full border border-white/5">
-                                                {ex}
-                                            </span>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                </div>
 
                 {/* TODAY COLUMN */}
                 <div className="flex-1 flex flex-col min-w-0 bg-neutral-900/30 rounded-xl border border-neutral-800/50 overflow-hidden">
@@ -106,6 +70,40 @@ export const TasksPage: React.FC = () => {
                                     <p className="text-neutral-500 text-sm mb-3">Commit what matters for today.</p>
                                     <div className="flex flex-wrap justify-center gap-1.5">
                                         {['Email recruiter', 'Refill prescription', 'Schedule workout'].map((ex) => (
+                                            <span key={ex} className="px-2.5 py-1 text-[11px] text-neutral-600 bg-neutral-800/50 rounded-full border border-white/5">
+                                                {ex}
+                                            </span>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+
+                {/* INBOX COLUMN */}
+                <div className="flex-1 flex flex-col min-w-0 bg-neutral-900/30 rounded-xl border border-neutral-800/50 overflow-hidden">
+                    <div className="p-4 border-b border-neutral-800/50 bg-neutral-900/50 flex items-baseline justify-between">
+                        <h2 className="text-lg font-medium text-neutral-300">Inbox</h2>
+                        {inboxTasks.filter(t => t.status !== 'completed').length > 0 && (
+                            <span className="text-xs text-neutral-600 font-mono">{inboxTasks.filter(t => t.status !== 'completed').length} pending</span>
+                        )}
+                    </div>
+
+                    <div className="p-4 bg-neutral-900/20 border-b border-neutral-800/30">
+                        <AddTaskInput defaultPlacement="inbox" placeholder="Capture to inbox..." />
+                    </div>
+
+                    <div className="flex-1 overflow-y-auto p-2 scrollbar-thin scrollbar-thumb-neutral-700 scrollbar-track-transparent">
+                        <div className="space-y-1">
+                            {sortedInbox.map(task => (
+                                <TaskItem key={task.id} task={task} />
+                            ))}
+                            {sortedInbox.length === 0 && (
+                                <div className="py-8 text-center">
+                                    <p className="text-neutral-500 text-sm mb-3">Capture what's on your mind.</p>
+                                    <div className="flex flex-wrap justify-center gap-1.5">
+                                        {['Call landlord', 'Buy groceries', 'Send invoice'].map((ex) => (
                                             <span key={ex} className="px-2.5 py-1 text-[11px] text-neutral-600 bg-neutral-800/50 rounded-full border border-white/5">
                                                 {ex}
                                             </span>

@@ -35,7 +35,7 @@ export const AddTaskInput: React.FC<AddTaskInputProps> = ({
 
     return (
         <form onSubmit={handleSubmit} className="relative group">
-            <div className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500">
+            <div className="absolute left-3 top-1/2 -translate-y-1/2 text-emerald-500">
                 <Plus size={16} />
             </div>
             <input
