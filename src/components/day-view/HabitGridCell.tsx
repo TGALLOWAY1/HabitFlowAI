@@ -19,7 +19,7 @@ interface HabitGridCellProps {
     log?: DayLog;
     isCompleted: boolean;
     isExpanded: boolean;
-    onToggle: () => void;
+    onToggle: () => void | Promise<void>;
     onExpand: () => void;
     onPin: (id: string) => void;
     onUpdateEstimate: (id: string, minutes: number) => void;
@@ -28,10 +28,10 @@ interface HabitGridCellProps {
     // Bundle Props
     subHabits?: Habit[];
     subHabitStatuses?: Map<string, boolean>;
-    onSubHabitToggle?: (subHabitId: string) => void;
+    onSubHabitToggle?: (subHabitId: string) => void | Promise<void>;
 
     // For Choice Bundles
-    onChoiceSelect?: (optionKey: string) => void;
+    onChoiceSelect?: (optionKey: string) => void | Promise<void>;
     selectedChoices?: Set<string>;
 
     // Status & Quantity

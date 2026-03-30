@@ -7,7 +7,7 @@ interface DayHabitRowProps {
     habit: Habit;
     log?: DayLog;
     isCompleted: boolean;
-    onToggle: () => void;
+    onToggle: () => void | Promise<void>;
     onPin: (id: string) => void;
     onUpdateEstimate: (id: string, minutes: number) => void;
 
@@ -17,7 +17,7 @@ interface DayHabitRowProps {
     // We'll require parent component to pass resolved sub-habits.
 
     // For Choice Bundles
-    onChoiceSelect?: (optionKey: string) => void;
+    onChoiceSelect?: (optionKey: string) => void | Promise<void>;
     selectedChoice?: string;
 }
 

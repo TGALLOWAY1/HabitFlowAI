@@ -147,8 +147,8 @@ export const WeeklyView = () => {
         return groups;
     }, [weeklyHabits, categories]);
 
-    const handleToggle = (habitId: string) => {
-        toggleHabit(habitId, dateStr);
+    const handleToggle = async (habitId: string) => {
+        await toggleHabit(habitId, dateStr);
     };
 
     const handlePin = async (habitId: string) => {

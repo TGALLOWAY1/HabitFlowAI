@@ -1010,8 +1010,7 @@ export const TrackerGrid = ({
         refreshProgress();
     };
 
-    // Choice Log Handlers
-
+    // Choice Log Handlers (Legacy — used by HabitLogModal for pre-migration bundleOptions)
 
     const handleChoiceSave = async (payload: {
         habitId: string;
@@ -1049,23 +1048,19 @@ export const TrackerGrid = ({
         lastHandledCellRef.current = { habitId: habit.id, dateStr, t: now };
 
         // Handle Unified Choice Children (Real Habits)
+        // Write entries on the CHILD habit, not the parent. Parent completion is derived.
         if (habit.bundleParentId && !habit.isVirtual) {
             const parent = habits.find(h => h.id === habit.bundleParentId);
             if (parent && parent.bundleType === 'choice') {
-                const parentLog = logs[`${parent.id}-${dateStr}`];
-                const isCompleted = parentLog?.completedOptions?.[habit.id] !== undefined;
+                const childLog = logs[`${habit.id}-${dateStr}`];
+                const isCompleted = !!childLog?.completed;
 
                 if (isCompleted) {
-                    // CHECK GOAL TYPE
                     if (habit.goal.type === 'number') {
-                        // Open Popover for numeric habits
-                        handleOpenPopover(e, habit, dateStr, parentLog?.completedOptions?.[habit.id] || 0);
+                        handleOpenPopover(e, habit, dateStr, childLog?.value || 0);
                     } else {
-                        // Direct upsert for boolean habits
-                        await upsertHabitEntry(parent.id, dateStr, {
-                            choiceChildHabitId: habit.id,
-                            value: 1
-                        });
+                        // Toggle off: delete child entry
+                        await deleteHabitEntryByKey(habit.id, dateStr);
                         refreshProgress();
                     }
                     return;
@@ -1073,7 +1068,9 @@ export const TrackerGrid = ({
             }
         }
 
-        // Handle Virtual Choice Options (Legacy)
+        // Handle Virtual Choice Options (Legacy — pre-migration bundles only)
+        // These don't have real child habits, so parent-entry writes are the only option.
+        // After migration to real child habits, this path becomes dead code.
         if (habit.isVirtual && habit.associatedOptionId && habit.bundleParentId) {
             e.stopPropagation();
 

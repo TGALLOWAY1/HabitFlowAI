@@ -5,6 +5,8 @@ import { useRoutineStore } from '../store/RoutineContext';
 import { useGoalsWithProgress } from '../lib/useGoalsWithProgress';
 import type { Habit } from '../models/persistenceTypes';
 import { cn } from '../utils/cn';
+import { format } from 'date-fns';
+import { getBundleMemberships, createBundleMembership, endBundleMembership } from '../lib/persistenceClient';
 
 interface AddHabitModalProps {
     isOpen: boolean;
@@ -240,6 +242,7 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
             }
 
             // Create Pending Sub-Habits
+            const todayDayKey = format(new Date(), 'yyyy-MM-dd');
             const newSubHabitIds: string[] = [];
             for (const pending of pendingSubHabits) {
                 const newHabitData = {
@@ -256,6 +259,14 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                 };
                 const created = await addHabit(newHabitData);
                 newSubHabitIds.push(created.id);
+                // Create membership for the newly created child
+                try {
+                    await createBundleMembership({
+                        parentHabitId: savedHabit.id,
+                        childHabitId: created.id,
+                        activeFromDayKey: todayDayKey,
+                    });
+                } catch (_e) { /* best-effort */ }
             }
 
             // If Bundle, update children to point to this parent
@@ -274,16 +285,31 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                 // Determine new existing children (not pending ones, those are handled above)
                 const newlyLinkedExistingIds = subHabitIds.filter(id => !previousSubIds.includes(id));
 
-                // Unlink removed children
+                // Unlink removed children — update bundleParentId and end membership
                 // Use null (not undefined) so JSON.stringify includes the field
                 // and the server clears bundleParentId in the database.
                 for (const childId of removedIds) {
                     await updateHabit(childId, { bundleParentId: null });
+                    // End active membership for this child
+                    try {
+                        const memberships = await getBundleMemberships(savedHabit.id);
+                        const active = memberships.find(m => m.childHabitId === childId && !m.activeToDayKey);
+                        if (active) {
+                            await endBundleMembership(active.id, todayDayKey);
+                        }
+                    } catch (_e) { /* membership may not exist for pre-migration bundles */ }
                 }
 
-                // Link new existing children
+                // Link new existing children — update bundleParentId and create membership
                 for (const childId of newlyLinkedExistingIds) {
                     await updateHabit(childId, { bundleParentId: savedHabit.id });
+                    try {
+                        await createBundleMembership({
+                            parentHabitId: savedHabit.id,
+                            childHabitId: childId,
+                            activeFromDayKey: todayDayKey,
+                        });
+                    } catch (_e) { /* best-effort — membership creation may fail for edge cases */ }
                 }
 
                 // Apply modifications to linked habits

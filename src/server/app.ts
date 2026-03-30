@@ -8,7 +8,7 @@ import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
 import type { Express, Request, Response } from 'express';
 import { getCategories, createCategoryRoute, getCategory, updateCategoryRoute, deleteCategoryRoute, reorderCategoriesRoute } from './routes/categories';
-import { getHabits, createHabitRoute, getHabit, updateHabitRoute, deleteHabitRoute, reorderHabitsRoute } from './routes/habits';
+import { getHabits, createHabitRoute, getHabit, updateHabitRoute, deleteHabitRoute, reorderHabitsRoute, unlinkBundleChildRoute } from './routes/habits';
 import { getDaySummary } from './routes/daySummary';
 import { getWellbeingLogs, upsertWellbeingLogRoute, getWellbeingLogRoute, deleteWellbeingLogRoute } from './routes/wellbeingLogs';
 import { getWellbeingEntriesRoute, upsertWellbeingEntriesRoute, deleteWellbeingEntryRoute } from './routes/wellbeingEntries';
@@ -126,6 +126,7 @@ export function createApp(): Express {
   app.get('/api/habits/:id', getHabit);
   app.patch('/api/habits/:id', updateHabitRoute);
   app.delete('/api/habits/:id', deleteHabitRoute);
+  app.post('/api/habits/:id/unlink-child', unlinkBundleChildRoute);
   app.get('/api/daySummary', getDaySummary);
   app.get('/api/wellbeingLogs', getWellbeingLogs);
   app.post('/api/wellbeingLogs', upsertWellbeingLogRoute);
