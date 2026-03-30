@@ -1238,7 +1238,8 @@ export const TrackerGrid = ({
                                         ))}
                                     </SortableContext>
                                 ) : (
-                                    <div className="flex flex-col items-center justify-center p-6 sm:p-8 text-center max-w-sm mx-auto">
+                                    <div className="sticky left-0 w-screen max-w-full flex flex-col items-center justify-center p-6 sm:p-8 text-center">
+                                        <div className="max-w-sm mx-auto flex flex-col items-center">
                                         {/* The Rules — matching InfoModal style */}
                                         <div className="w-full bg-emerald-500/5 border border-emerald-500/20 rounded-lg px-3 py-2.5 mb-5">
                                             <p className="text-xs text-emerald-400 uppercase tracking-wide font-semibold mb-1.5">The Rules</p>
@@ -1284,6 +1285,7 @@ export const TrackerGrid = ({
                                         >
                                             Add Your First Habit
                                         </button>
+                                        </div>
                                     </div>
                                 )}
                             </div>
