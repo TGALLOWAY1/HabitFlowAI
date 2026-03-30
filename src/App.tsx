@@ -373,8 +373,7 @@ const HabitTrackerContent: React.FC = () => {
               setCompletedGoalId(null);
               handleNavigate('goals');
             }}
-            onAddBadge={() => {
-              // Redirect to Win Archive after badge upload
+            onViewWinArchive={() => {
               setCompletedGoalId(null);
               handleNavigate('wins');
             }}
@@ -398,7 +397,7 @@ const HabitTrackerContent: React.FC = () => {
             onRepeat={async (goalId) => {
               try {
                 const original = await fetchGoal(goalId);
-                const { id, createdAt, completedAt, badgeImageUrl, sortOrder, ...goalData } = original;
+                const { id, createdAt, completedAt, sortOrder, ...goalData } = original;
                 await createGoal(goalData);
                 invalidateAllGoalCaches();
                 setCompletedGoalId(null);

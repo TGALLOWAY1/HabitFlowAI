@@ -1,18 +1,16 @@
-import React, { useState } from 'react';
-import { Trophy, Award, Calendar, Camera } from 'lucide-react';
+import React from 'react';
+import { Trophy, Calendar } from 'lucide-react';
 import { useCompletedGoals } from '../../lib/useCompletedGoals';
 import { format, parseISO } from 'date-fns';
 import { Loader2, AlertCircle } from 'lucide-react';
-import { BadgeUploadModal } from '../../components/goals/BadgeUploadModal';
+import { CelebratoryBadgeIcon } from '../../components/goals/CelebratoryBadgeIcon';
 
 interface WinArchivePageProps {
     onViewGoal?: (goalId: string) => void;
 }
 
 export const WinArchivePage: React.FC<WinArchivePageProps> = ({ onViewGoal }) => {
-    const { data, loading, error, refetch } = useCompletedGoals();
-    const [uploadGoalId, setUploadGoalId] = useState<string | null>(null);
-    const [uploadGoalTitle, setUploadGoalTitle] = useState<string>('');
+    const { data, loading, error } = useCompletedGoals();
 
     if (loading) {
         return (
@@ -51,16 +49,6 @@ export const WinArchivePage: React.FC<WinArchivePageProps> = ({ onViewGoal }) =>
         } catch {
             return completedAt;
         }
-    };
-
-    const openUpload = (e: React.MouseEvent, goalId: string, title: string) => {
-        e.stopPropagation();
-        setUploadGoalId(goalId);
-        setUploadGoalTitle(title);
-    };
-
-    const handleUploadSuccess = () => {
-        refetch();
     };
 
     return (
@@ -102,31 +90,13 @@ export const WinArchivePage: React.FC<WinArchivePageProps> = ({ onViewGoal }) =>
                                 animationFillMode: 'both',
                             }}
                         >
-                            {/* Image area — square aspect */}
-                            <div className="relative aspect-square w-full bg-neutral-900/60 overflow-hidden">
-                                {goal.badgeImageUrl ? (
-                                    <img
-                                        src={goal.badgeImageUrl}
-                                        alt={goal.title}
-                                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                                        loading="lazy"
-                                    />
-                                ) : (
-                                    <div className="w-full h-full flex items-center justify-center">
-                                        <Award className="text-neutral-700 group-hover:text-emerald-600 transition-colors duration-200" size={40} />
-                                    </div>
-                                )}
-
-                                {/* Upload overlay — appears on hover */}
-                                <div
-                                    onClick={(e) => openUpload(e, goal.id, goal.title)}
-                                    className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors duration-200 flex items-center justify-center opacity-0 group-hover:opacity-100 cursor-pointer"
-                                    title="Upload badge image"
-                                >
-                                    <div className="p-2 rounded-full bg-white/20 backdrop-blur-sm">
-                                        <Camera size={18} className="text-white" />
-                                    </div>
-                                </div>
+                            {/* Badge icon area — square aspect */}
+                            <div className="relative aspect-square w-full bg-neutral-900/60 overflow-hidden p-4">
+                                <CelebratoryBadgeIcon
+                                    goalId={goal.id}
+                                    size={44}
+                                    className="group-hover:scale-105 transition-transform duration-300"
+                                />
                             </div>
 
                             {/* Info — compact */}
@@ -144,17 +114,6 @@ export const WinArchivePage: React.FC<WinArchivePageProps> = ({ onViewGoal }) =>
                         </button>
                     ))}
                 </div>
-            )}
-
-            {/* Badge Upload Modal */}
-            {uploadGoalId && (
-                <BadgeUploadModal
-                    isOpen={!!uploadGoalId}
-                    onClose={() => setUploadGoalId(null)}
-                    goalId={uploadGoalId}
-                    goalTitle={uploadGoalTitle}
-                    onSuccess={handleUploadSuccess}
-                />
             )}
 
             <style>{`
