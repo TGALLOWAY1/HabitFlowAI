@@ -200,6 +200,14 @@ export interface Habit {
     weeklyTarget?: number;
 
     /**
+     * Number of days per week the habit must be completed to maintain a streak.
+     * Must be <= assignedDays.length (if assignedDays is set).
+     * 7 = strict / non-negotiable (equivalent to old nonNegotiable with all days).
+     * Default (if absent): treat as all-days-required.
+     */
+    requiredDaysPerWeek?: number;
+
+    /**
      * Bundle Configuration (Daily Only)
      * - 'checklist': Parent completes when ALL children complete.
      * - 'choice': Parent completes when ONE option is selected (stored in parent entry).
