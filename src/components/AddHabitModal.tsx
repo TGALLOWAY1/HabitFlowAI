@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Shield, CheckCircle2, Calculator, Layers, CheckSquare, ChevronDown, ChevronRight, Search, Trophy, Calendar, Plus, Check } from 'lucide-react';
+import { X, Shield, CheckCircle2, Calculator, Layers, CheckSquare, ChevronDown, ChevronRight, Search, Trophy, Calendar } from 'lucide-react';
 import { DayChipSelector } from './DayChipSelector';
 import { NumberChipSelector } from './NumberChipSelector';
 import { useHabitStore } from '../store/HabitContext';
@@ -18,9 +18,9 @@ interface AddHabitModalProps {
     onNavigate?: (route: string) => void;
 }
 
-export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, categoryId, initialData, onNavigate }) => {
+export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, categoryId, initialData }) => {
     const { addHabit, updateHabit, categories, habits, addCategory } = useHabitStore();
-    const { routines, addRoutine, updateRoutine } = useRoutineStore();
+    const { routines, updateRoutine } = useRoutineStore();
 
     // Form State
     const [name, setName] = useState('');
@@ -85,7 +85,6 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
 
     // Routine Linking
     const [linkedRoutineIds, setLinkedRoutineIds] = useState<string[]>([]);
-    const [showRoutineSelect, setShowRoutineSelect] = useState(false);
 
     // Weekly Intent Type Helper
     const [weeklyIntent, setWeeklyIntent] = useState<'binary' | 'frequency' | 'quantity'>('binary');
@@ -378,27 +377,6 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
         }
     };
 
-    const toggleRoutine = (id: string) => {
-        setLinkedRoutineIds(prev =>
-            prev.includes(id) ? prev.filter(r => r !== id) : [...prev, id]
-        );
-    };
-
-    const handleCreateRoutine = async () => {
-        // Create a new routine with the habit name + "Routine"
-        try {
-            const newRoutine = await addRoutine({
-                title: `${name || 'New Routine'} Routine`,
-                categoryId: selectedCategoryId || undefined,
-                steps: [],
-                linkedHabitIds: [] // Will link on save
-            });
-            setLinkedRoutineIds(prev => [...prev, newRoutine.id]);
-            setShowRoutineSelect(false);
-        } catch (e) {
-            console.error("Failed to create routine", e);
-        }
-    };
 
     const toggleSubHabit = (id: string) => {
         setSubHabitIds(prev =>
@@ -629,9 +607,7 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                             />
                         </div>
 
-                        {/* Only show category selector if not pre-selected via context */}
-                        {!categoryId && (
-                            <div>
+                        <div>
                                 <label className="block text-sm font-medium text-neutral-400 mb-1">Category</label>
                                 {categories.length > 0 && !isCreatingCategory && (
                                     <select
@@ -719,7 +695,6 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                                     </button>
                                 )}
                             </div>
-                        )}
                     </div>
 
                     {/* 2. Frequency & Type (Only for Regular) */}
@@ -892,132 +867,22 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                     {/* Goal Linker */}
                     <div className="space-y-1">
                         <label className="block text-sm font-medium text-neutral-400">Connect to a Goal (Optional)</label>
-                        {availableGoals.length > 0 ? (
-                            <>
-                                <div className="relative">
-                                    <Trophy size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500" />
-                                    <select
-                                        value={linkedGoalId || ''}
-                                        onChange={(e) => setLinkedGoalId(e.target.value || null)}
-                                        className="w-full bg-neutral-800 border border-white/10 rounded-lg pl-10 pr-4 py-2 text-white focus:outline-none focus:border-emerald-500 appearance-none"
-                                    >
-                                        <option value="">No goal linked</option>
-                                        {availableGoals.map(g => (
-                                            <option key={g.id} value={g.id}>{g.title}</option>
-                                        ))}
-                                    </select>
-                                    <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-500 pointer-events-none" />
-                                </div>
-                                {onNavigate && (
-                                    <button
-                                        type="button"
-                                        onClick={() => { onClose(); onNavigate('goals'); }}
-                                        className="flex items-center gap-1 text-xs text-emerald-400 hover:text-emerald-300 transition-colors mt-1"
-                                    >
-                                        <Plus size={12} /> New goal
-                                    </button>
-                                )}
-                            </>
-                        ) : (
-                            <p className="text-sm text-neutral-500">
-                                No goals yet — you can always connect one later.
-                                {onNavigate && (
-                                    <>
-                                        {' '}
-                                        <button
-                                            type="button"
-                                            onClick={() => { onClose(); onNavigate('goals'); }}
-                                            className="text-emerald-400 hover:text-emerald-300 underline transition-colors"
-                                        >
-                                            Want to start with a goal first?
-                                        </button>
-                                    </>
-                                )}
-                            </p>
-                        )}
-                    </div>
-
-                    {/* Routine Linker */}
-                    <div className="space-y-1">
-                        <label className="block text-sm font-medium text-neutral-400">Related Routines (Optional)</label>
-
-                        {/* List of Linked Routines */}
-                        {linkedRoutineIds.length > 0 && (
-                            <div className="flex flex-wrap gap-2 mb-2">
-                                {linkedRoutineIds.map(rId => {
-                                    const routine = routines.find(r => r.id === rId);
-                                    if (!routine) return null;
-                                    return (
-                                        <div key={rId} className="flex items-center gap-1 bg-indigo-500/20 text-indigo-300 px-2 py-1 rounded text-xs border border-indigo-500/30">
-                                            <span>{routine.title}</span>
-                                            <button
-                                                type="button"
-                                                onClick={() => toggleRoutine(rId)}
-                                                className="hover:text-white"
-                                            >
-                                                <X size={12} />
-                                            </button>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        )}
-
                         <div className="relative">
-                            <button
-                                type="button"
-                                onClick={() => setShowRoutineSelect(!showRoutineSelect)}
-                                className="w-full bg-neutral-800 border border-white/10 rounded-lg px-4 py-2 text-left text-neutral-400 hover:text-white hover:bg-neutral-800/80 transition-colors flex justify-between items-center"
+                            <Trophy size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500" />
+                            <select
+                                value={linkedGoalId || ''}
+                                onChange={(e) => setLinkedGoalId(e.target.value || null)}
+                                className="w-full bg-neutral-800 border border-white/10 rounded-lg pl-10 pr-4 py-2 text-white focus:outline-none focus:border-emerald-500 appearance-none"
                             >
-                                <span className={linkedRoutineIds.length > 0 ? "text-white" : ""}>
-                                    {linkedRoutineIds.length > 0 ? "Add another routine..." : "Link or create a routine..."}
-                                </span>
-                                <ChevronDown size={16} />
-                            </button>
-
-                            {showRoutineSelect && (
-                                <div className="absolute z-10 w-full mt-1 bg-neutral-900 border border-white/10 rounded-lg shadow-xl overflow-hidden animate-in fade-in zoom-in-95">
-                                    <div className="p-2 border-b border-white/5">
-                                        <button
-                                            type="button"
-                                            onClick={handleCreateRoutine}
-                                            className="w-full flex items-center gap-2 p-2 rounded hover:bg-emerald-500/10 text-emerald-400 hover:text-emerald-300 transition-colors text-sm font-medium"
-                                        >
-                                            <Plus size={14} /> Create New Routine "{name || 'Check'}"
-                                        </button>
-                                    </div>
-                                    <div className="max-h-40 overflow-y-auto">
-                                        {routines.map(routine => (
-                                            <button
-                                                key={routine.id}
-                                                type="button"
-                                                onClick={() => {
-                                                    toggleRoutine(routine.id);
-                                                    setShowRoutineSelect(false);
-                                                }}
-                                                disabled={linkedRoutineIds.includes(routine.id)}
-                                                className={`w-full text-left px-4 py-2 text-sm transition-colors flex items-center justify-between ${linkedRoutineIds.includes(routine.id)
-                                                    ? 'bg-indigo-500/20 text-indigo-300 opacity-50 cursor-default'
-                                                    : 'text-neutral-300 hover:bg-neutral-800 hover:text-white'
-                                                    }`}
-                                            >
-                                                {routine.title}
-                                                {linkedRoutineIds.includes(routine.id) && <Check size={14} />}
-                                            </button>
-                                        ))}
-                                        {routines.length === 0 && (
-                                            <div className="p-4 text-center text-xs text-neutral-500">
-                                                No existing routines found.
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-                            )}
+                                <option value="">No goal linked</option>
+                                {availableGoals.map(g => (
+                                    <option key={g.id} value={g.id}>{g.title}</option>
+                                ))}
+                            </select>
+                            <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-500 pointer-events-none" />
                         </div>
-                        <p className="text-[10px] text-neutral-500">
-                            Checking off a linked routine will also offer to complete this habit.
-                        </p>
                     </div>
+
 
                     {/* Bundle Configuration - UNIFIED (Checklist + Choice) */}
                     {habitType === 'bundle' && (bundleMode === 'checklist' || bundleMode === 'choice') && (
@@ -1289,7 +1154,6 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                             <label className="text-xs font-medium text-neutral-400 uppercase flex items-center gap-1">
                                 <Calendar size={12} /> Scheduled Days
                             </label>
-                            <p className="text-xs text-neutral-500">Choose when this habit is expected.</p>
                             <DayChipSelector
                                 selectedDays={scheduledDays}
                                 onChange={setScheduledDays}
@@ -1301,7 +1165,6 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                             <label className="text-xs font-medium text-neutral-400 uppercase flex items-center gap-1">
                                 <Shield size={12} /> Days Per Week Required
                             </label>
-                            <p className="text-xs text-neutral-500">This determines how strict your streak is.</p>
                             <NumberChipSelector
                                 value={requiredDaysPerWeek}
                                 onChange={setRequiredDaysPerWeek}
