@@ -167,19 +167,24 @@ export const DayView = ({ onAddHabit }: DayViewProps = {}) => {
             const key = `${habit.id}-${dateStr}`;
             const log = logs[key];
             if (log !== undefined) {
+                const currentValue = log.value ?? 0;
+                const targetValue = habit.goal?.target ?? (habit.goal?.type === 'number' ? 1 : 1);
                 const isComplete = habit.goal?.type === 'number'
-                    ? (habit.goal.target ? ((log.value ?? 0) >= habit.goal.target) : (log.value ?? 0) > 0)
+                    ? (habit.goal.target ? (currentValue >= habit.goal.target) : currentValue > 0)
                     : !!log.completed;
+                const progressPercent = habit.goal?.target
+                    ? Math.min(100, Math.round((currentValue / habit.goal.target) * 100))
+                    : (isComplete ? 100 : 0);
                 const existing = map.get(habit.id);
                 if (existing) {
-                    map.set(habit.id, { ...existing, isComplete, currentValue: log.value ?? 0 });
+                    map.set(habit.id, { ...existing, isComplete, currentValue, targetValue, progressPercent });
                 } else {
                     map.set(habit.id, {
                         habit,
                         isComplete,
-                        currentValue: log.value ?? 0,
-                        targetValue: habit.goal?.target ?? 0,
-                        progressPercent: habit.goal?.target ? Math.min(100, ((log.value ?? 0) / habit.goal.target) * 100) : 0
+                        currentValue,
+                        targetValue,
+                        progressPercent,
                     });
                 }
             }
