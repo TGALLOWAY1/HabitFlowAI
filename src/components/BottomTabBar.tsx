@@ -1,5 +1,5 @@
 import React from 'react';
-import { BarChart3, Calendar, BookOpenText, Target, ClipboardList, CheckSquare } from 'lucide-react';
+import { BarChart3, Calendar, Target, ClipboardList } from 'lucide-react';
 
 type TabRoute = 'dashboard' | 'tracker' | 'journal' | 'goals' | 'routines' | 'tasks';
 
@@ -11,10 +11,8 @@ interface BottomTabBarProps {
 const tabs: { route: TabRoute; label: string; icon: React.FC<{ size?: number; className?: string }> }[] = [
   { route: 'dashboard', label: 'Dashboard', icon: BarChart3 },
   { route: 'tracker', label: 'Habits', icon: Calendar },
-  { route: 'journal', label: 'Journal', icon: BookOpenText },
   { route: 'goals', label: 'Goals', icon: Target },
   { route: 'routines', label: 'Routines', icon: ClipboardList },
-  { route: 'tasks', label: 'Tasks', icon: CheckSquare },
 ];
 
 export const BottomTabBar: React.FC<BottomTabBarProps> = ({ activeView, onNavigate }) => {

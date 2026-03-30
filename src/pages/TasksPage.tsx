@@ -40,10 +40,10 @@ export const TasksPage: React.FC = () => {
 
     return (
         <div className="flex flex-col h-full gap-6">
-            {/* Concrete helper copy */}
+            {/* Description */}
             <div className="mb-2 px-1">
                 <p className="text-neutral-400 text-sm leading-relaxed">
-                    Capture anything on your mind, then commit what matters for today.
+                    A task is a one-time action with a clear finish. Once completed, it's done.
                 </p>
             </div>
 
