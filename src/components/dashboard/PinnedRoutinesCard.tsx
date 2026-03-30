@@ -382,12 +382,19 @@ export const PinnedRoutinesCard: React.FC<PinnedRoutinesCardProps> = ({
                                 onClick={handleClick}
                                 className="flex items-center justify-between w-full px-3 py-2.5 rounded-lg hover:bg-neutral-800/50 transition-colors min-h-[44px]"
                             >
-                                <span className={`text-sm truncate min-w-0 ${done ? 'text-neutral-500' : 'text-white'}`}>
-                                    {routine.title}
-                                    {done && completionInfo.variantName && (
-                                        <span className="text-emerald-500/60 ml-1">({completionInfo.variantName})</span>
+                                <div className="flex items-center gap-3 min-w-0">
+                                    {done ? (
+                                        <CheckCircle2 size={16} className="text-emerald-400 flex-shrink-0" />
+                                    ) : (
+                                        <IconComp size={14} className={`${colorClass} flex-shrink-0`} />
                                     )}
-                                </span>
+                                    <span className={`text-sm truncate ${done ? 'text-neutral-500' : 'text-white'}`}>
+                                        {routine.title}
+                                        {done && completionInfo.variantName && (
+                                            <span className="text-emerald-500/60 ml-1">({completionInfo.variantName})</span>
+                                        )}
+                                    </span>
+                                </div>
                                 <div className="flex items-center gap-2 flex-shrink-0 ml-3">
                                     <span className="text-[11px] text-neutral-600">
                                         {resolvedSteps.length} steps
@@ -397,11 +404,6 @@ export const PinnedRoutinesCard: React.FC<PinnedRoutinesCardProps> = ({
                                             <Layers size={10} />
                                             {routine.variants!.length}
                                         </span>
-                                    )}
-                                    {done ? (
-                                        <CheckCircle2 size={16} className="text-emerald-400" />
-                                    ) : (
-                                        <IconComp size={14} className={colorClass} />
                                     )}
                                     {done ? (
                                         <span className="text-[11px] text-emerald-400 font-medium">Done</span>
