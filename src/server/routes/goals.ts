@@ -912,8 +912,8 @@ export async function uploadGoalBadgeRoute(req: Request, res: Response): Promise
       return;
     }
 
-    // Save file and get URL
-    const badgeImageUrl = saveUploadedFile(file, 'badges');
+    // Save file and get URL (Sharp processes + converts to WebP)
+    const badgeImageUrl = await saveUploadedFile(file, 'badges');
 
     const updatedGoal = await updateGoal(id, householdId, userId, {
       badgeImageUrl,

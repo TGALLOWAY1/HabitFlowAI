@@ -1,18 +1,18 @@
-import React from 'react';
-import { Trophy, Award, Calendar } from 'lucide-react';
+import React, { useState } from 'react';
+import { Trophy, Award, Calendar, Camera } from 'lucide-react';
 import { useCompletedGoals } from '../../lib/useCompletedGoals';
 import { format, parseISO } from 'date-fns';
 import { Loader2, AlertCircle } from 'lucide-react';
-import { goalCardBaseClasses } from '../../components/goals/GoalSharedComponents';
+import { BadgeUploadModal } from '../../components/goals/BadgeUploadModal';
 
 interface WinArchivePageProps {
     onViewGoal?: (goalId: string) => void;
 }
 
 export const WinArchivePage: React.FC<WinArchivePageProps> = ({ onViewGoal }) => {
-    const { data, loading, error } = useCompletedGoals();
-    // useCompletedGoals now subscribes to cache invalidation events,
-    // so it automatically refetches when goals are completed/deleted.
+    const { data, loading, error, refetch } = useCompletedGoals();
+    const [uploadGoalId, setUploadGoalId] = useState<string | null>(null);
+    const [uploadGoalTitle, setUploadGoalTitle] = useState<string>('');
 
     if (loading) {
         return (
@@ -29,9 +29,9 @@ export const WinArchivePage: React.FC<WinArchivePageProps> = ({ onViewGoal }) =>
         return (
             <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
                 <div className="mb-6 sm:mb-8">
-                    <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2">Your Win Archive</h1>
+                    <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2">Win Archive</h1>
                     <p className="text-neutral-400 text-sm sm:text-base">
-                        Every goal you've ever completed becomes a badge of who you are becoming.
+                        Every goal you've completed becomes a badge of who you are becoming.
                     </p>
                 </div>
                 <div className="p-4 bg-red-500/10 border border-red-500/50 rounded-lg flex items-start gap-3">
@@ -47,20 +47,29 @@ export const WinArchivePage: React.FC<WinArchivePageProps> = ({ onViewGoal }) =>
 
     const formatCompletedDate = (completedAt: string): string => {
         try {
-            const date = parseISO(completedAt);
-            return format(date, 'MMM d, yyyy');
+            return format(parseISO(completedAt), 'MMM yyyy');
         } catch {
             return completedAt;
         }
     };
 
+    const openUpload = (e: React.MouseEvent, goalId: string, title: string) => {
+        e.stopPropagation();
+        setUploadGoalId(goalId);
+        setUploadGoalTitle(title);
+    };
+
+    const handleUploadSuccess = () => {
+        refetch();
+    };
+
     return (
         <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
             {/* Header */}
-            <div className="mb-8 sm:mb-12">
-                <h1 className="text-3xl sm:text-4xl font-bold text-white mb-3">Your Win Archive</h1>
-                <p className="text-lg sm:text-xl text-neutral-400 max-w-2xl">
-                    Every goal you've ever completed becomes a badge of who you are becoming.
+            <div className="mb-6 sm:mb-8">
+                <h1 className="text-2xl sm:text-3xl font-bold text-white mb-1">Win Archive</h1>
+                <p className="text-sm sm:text-base text-neutral-400">
+                    Every completed goal becomes a badge of who you are becoming.
                 </p>
             </div>
 
@@ -68,99 +77,99 @@ export const WinArchivePage: React.FC<WinArchivePageProps> = ({ onViewGoal }) =>
             {!data || data.length === 0 ? (
                 <div className="text-center py-16 sm:py-20">
                     <div className="max-w-md mx-auto">
-                        <div className="mb-6">
-                            <div className="w-20 h-20 mx-auto bg-neutral-800 rounded-full flex items-center justify-center mb-4">
-                                <Trophy className="text-amber-400/50" size={40} />
-                            </div>
+                        <div className="w-16 h-16 mx-auto bg-neutral-800 rounded-full flex items-center justify-center mb-4">
+                            <Trophy className="text-amber-400/50" size={32} />
                         </div>
-                        <h2 className="text-xl font-semibold text-white mb-2">Your Win Archive Awaits</h2>
-                        <p className="text-neutral-400 text-sm sm:text-base mb-2">
+                        <h2 className="text-lg font-semibold text-white mb-2">Your Win Archive Awaits</h2>
+                        <p className="text-neutral-400 text-sm mb-1">
                             Every completed goal becomes a badge of achievement here.
                         </p>
-                        <p className="text-neutral-500 text-sm">
+                        <p className="text-neutral-500 text-xs">
                             Complete your first goal to see it celebrated in your archive!
                         </p>
                     </div>
                 </div>
             ) : (
-                /* Badge Grid */
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
+                /* Gallery Grid — compact cards */
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4">
                     {data.map((goal, index) => (
                         <button
                             key={goal.id}
-                            onClick={() => {
-                                if (onViewGoal) {
-                                    onViewGoal(goal.id);
-                                }
-                            }}
-                            className={`group relative ${goalCardBaseClasses} rounded-xl p-4 sm:p-6 hover:border-emerald-500/50 hover:bg-neutral-800 transition-all duration-200 text-left animate-fade-in-up`}
+                            onClick={() => onViewGoal?.(goal.id)}
+                            className="group relative bg-neutral-800/40 border border-white/[0.06] rounded-xl overflow-hidden hover:border-emerald-500/40 hover:bg-neutral-800/70 transition-all duration-200 text-left win-card-animate focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50"
                             style={{
-                                animationDelay: `${index * 50}ms`,
+                                animationDelay: `${index * 40}ms`,
                                 animationFillMode: 'both',
                             }}
                         >
-                            {/* Badge Image or Fallback */}
-                            <div className="mb-4 aspect-square w-full rounded-lg overflow-hidden bg-neutral-900/50 flex items-center justify-center animate-scale-in">
+                            {/* Image area — square aspect */}
+                            <div className="relative aspect-square w-full bg-neutral-900/60 overflow-hidden">
                                 {goal.badgeImageUrl ? (
                                     <img
                                         src={goal.badgeImageUrl}
-                                        alt={`Badge for ${goal.title}`}
-                                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+                                        alt={goal.title}
+                                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                                        loading="lazy"
                                     />
                                 ) : (
                                     <div className="w-full h-full flex items-center justify-center">
-                                        <Award className="text-neutral-600 group-hover:text-emerald-500 transition-colors" size={64} />
+                                        <Award className="text-neutral-700 group-hover:text-emerald-600 transition-colors duration-200" size={40} />
+                                    </div>
+                                )}
+
+                                {/* Upload overlay — appears on hover */}
+                                <div
+                                    onClick={(e) => openUpload(e, goal.id, goal.title)}
+                                    className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors duration-200 flex items-center justify-center opacity-0 group-hover:opacity-100 cursor-pointer"
+                                    title="Upload badge image"
+                                >
+                                    <div className="p-2 rounded-full bg-white/20 backdrop-blur-sm">
+                                        <Camera size={18} className="text-white" />
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Info — compact */}
+                            <div className="px-2.5 py-2">
+                                <h3 className="text-xs sm:text-sm font-medium text-neutral-200 line-clamp-2 leading-tight group-hover:text-emerald-400 transition-colors duration-200">
+                                    {goal.title}
+                                </h3>
+                                {goal.completedAt && (
+                                    <div className="flex items-center gap-1 mt-1 text-neutral-500 text-[10px] sm:text-xs">
+                                        <Calendar size={10} />
+                                        <span>{formatCompletedDate(goal.completedAt)}</span>
                                     </div>
                                 )}
                             </div>
-
-                            {/* Goal Title */}
-                            <h3 className="text-base sm:text-lg font-semibold text-white mb-2 line-clamp-2 group-hover:text-emerald-400 transition-colors">
-                                {goal.title}
-                            </h3>
-
-                            {/* Completed Date */}
-                            {goal.completedAt && (
-                                <div className="flex items-center gap-2 text-neutral-400 text-sm">
-                                    <Calendar size={14} />
-                                    <span>{formatCompletedDate(goal.completedAt)}</span>
-                                </div>
-                            )}
                         </button>
                     ))}
                 </div>
             )}
 
-            {/* Animations CSS */}
+            {/* Badge Upload Modal */}
+            {uploadGoalId && (
+                <BadgeUploadModal
+                    isOpen={!!uploadGoalId}
+                    onClose={() => setUploadGoalId(null)}
+                    goalId={uploadGoalId}
+                    goalTitle={uploadGoalTitle}
+                    onSuccess={handleUploadSuccess}
+                />
+            )}
+
             <style>{`
-                @keyframes fade-in-up {
+                @keyframes win-card-enter {
                     from {
                         opacity: 0;
-                        transform: translateY(20px);
+                        transform: translateY(12px) scale(0.97);
                     }
                     to {
                         opacity: 1;
-                        transform: translateY(0);
+                        transform: translateY(0) scale(1);
                     }
                 }
-
-                .animate-fade-in-up {
-                    animation: fade-in-up 0.5s ease-out;
-                }
-
-                @keyframes scale-in {
-                    from {
-                        opacity: 0;
-                        transform: scale(0.9);
-                    }
-                    to {
-                        opacity: 1;
-                        transform: scale(1);
-                    }
-                }
-
-                .animate-scale-in {
-                    animation: scale-in 0.4s ease-out;
+                .win-card-animate {
+                    animation: win-card-enter 0.35s ease-out;
                 }
             `}</style>
         </div>
