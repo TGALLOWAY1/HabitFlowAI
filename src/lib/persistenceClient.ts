@@ -1317,3 +1317,41 @@ export async function deleteAllUserData(): Promise<{ deleted: Record<string, num
     method: 'DELETE',
   });
 }
+
+// ─── Bundle Membership API ──────────────────────────────────────────────
+
+export interface BundleMembershipResponse {
+  id: string;
+  parentHabitId: string;
+  childHabitId: string;
+  activeFromDayKey: string;
+  activeToDayKey?: string | null;
+  daysOfWeek?: number[] | null;
+  graduatedAt?: string | null;
+  archivedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export async function getBundleMemberships(parentHabitId: string): Promise<BundleMembershipResponse[]> {
+  return apiRequest<BundleMembershipResponse[]>(`/bundle-memberships?parentHabitId=${parentHabitId}`);
+}
+
+export async function createBundleMembership(data: {
+  parentHabitId: string;
+  childHabitId: string;
+  activeFromDayKey: string;
+  daysOfWeek?: number[] | null;
+}): Promise<BundleMembershipResponse> {
+  return apiRequest<BundleMembershipResponse>('/bundle-memberships', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function endBundleMembership(membershipId: string, activeToDayKey: string): Promise<BundleMembershipResponse> {
+  return apiRequest<BundleMembershipResponse>(`/bundle-memberships/${membershipId}/end`, {
+    method: 'PATCH',
+    body: JSON.stringify({ activeToDayKey }),
+  });
+}

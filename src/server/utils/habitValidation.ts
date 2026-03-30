@@ -71,5 +71,11 @@ export function validateHabitEntryPayload(habit: Habit, entryPayload: Partial<Ha
 
     }
 
+    // 3. Checklist bundles: parent entries are never valid.
+    // Parent completion is derived from children's entries at read time.
+    if (habit.type === 'bundle' && habit.bundleType === 'checklist') {
+        return { valid: false, error: 'Checklist bundle completion is derived from children. Write entries on child habits instead.' };
+    }
+
     return { valid: true };
 }

@@ -1,6 +1,7 @@
 import { useMemo, useState, useEffect } from 'react';
 import { useHabitStore } from '../../store/HabitContext';
 import { getHabitsForDate } from '../../utils/habitUtils';
+import { evaluateChecklistSuccess } from '../../shared/checklistSuccessRule';
 import { PinnedHabitsStrip } from './PinnedHabitsStrip';
 import { DayCategorySection } from './DayCategorySection';
 import { CategoryPickerModal } from '../CategoryPickerModal';
@@ -197,9 +198,9 @@ export const DayView = ({ onAddHabit }: DayViewProps = {}) => {
             }
         });
 
-        // Recompute bundle parent completion from children's merged statuses
-        // Choice bundles use OR logic (any child complete → parent complete)
-        // Checklist bundles use AND logic (all children complete → parent complete)
+        // Recompute bundle parent completion from children's merged statuses.
+        // Uses evaluateChecklistSuccess for checklist bundles (respects configurable success rule)
+        // and OR logic for choice bundles (any child complete → parent complete).
         todaysHabits.forEach(habit => {
             if (habit.type === 'bundle' && habit.subHabitIds && habit.subHabitIds.length > 0) {
                 let completedChildren = 0;
@@ -207,9 +208,10 @@ export const DayView = ({ onAddHabit }: DayViewProps = {}) => {
                     if (map.get(subId)?.isComplete) completedChildren++;
                 });
 
+                const totalChildren = habit.subHabitIds.length;
                 const parentComplete = habit.bundleType === 'choice'
                     ? completedChildren > 0
-                    : completedChildren === habit.subHabitIds.length;
+                    : evaluateChecklistSuccess(completedChildren, totalChildren, habit.checklistSuccessRule).meetsSuccessRule;
 
                 const existing = map.get(habit.id);
                 if (existing) {
@@ -217,7 +219,7 @@ export const DayView = ({ onAddHabit }: DayViewProps = {}) => {
                         ...existing,
                         isComplete: parentComplete,
                         completedChildrenCount: completedChildren,
-                        totalChildrenCount: habit.subHabitIds.length,
+                        totalChildrenCount: totalChildren,
                     });
                 }
             }
@@ -251,8 +253,8 @@ export const DayView = ({ onAddHabit }: DayViewProps = {}) => {
     }, [todaysHabits, categories]);
 
     // Handlers
-    const handleToggle = (habitId: string) => {
-        toggleHabit(habitId, dateStr);
+    const handleToggle = async (habitId: string) => {
+        await toggleHabit(habitId, dateStr);
     };
 
     const handlePin = async (habitId: string) => {

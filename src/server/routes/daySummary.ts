@@ -1,8 +1,10 @@
 import type { Request, Response } from 'express';
-import type { DayLog, HabitEntry } from '../../models/persistenceTypes';
+import type { DayLog, HabitEntry, Habit } from '../../models/persistenceTypes';
 import { validateDayKey } from '../domain/canonicalValidators';
 import { getHabitsByUser } from '../repositories/habitRepository';
 import { getHabitEntriesByUser } from '../repositories/habitEntryRepository';
+import { getMembershipsByParent } from '../repositories/bundleMembershipRepository';
+import { evaluateChecklistSuccess } from '../services/checklistSuccessService';
 import { resolveTimeZone, getNowDayKey, getDayKeyForDate, getCanonicalDayKeyFromEntry } from '../utils/dayKey';
 import { getRequestIdentity } from '../middleware/identity';
 
@@ -176,6 +178,77 @@ export async function getDaySummary(req: Request, res: Response): Promise<void> 
         isFrozen,
         freezeType: isFrozen ? aggregate.freezeType : undefined,
       };
+    }
+
+    // Derive bundle parent completion from children's logs.
+    // Bundle parents have no entries of their own — completion is derived.
+    const bundleParents = activeHabits.filter(
+      (h: Habit) => h.type === 'bundle' && (h.bundleType === 'checklist' || h.bundleType === 'choice')
+    );
+
+    for (const parent of bundleParents) {
+      // Resolve children: memberships (temporal) or fallback to static subHabitIds
+      const childIds: string[] = parent.subHabitIds ?? [];
+      const memberships = await getMembershipsByParent(parent.id, householdId, userId);
+
+      // Collect all dayKeys where at least one child has a log
+      const dayKeysWithChildLogs = new Set<string>();
+      const allChildIds = memberships.length > 0
+        ? [...new Set(memberships.map(m => m.childHabitId))]
+        : childIds;
+      for (const cid of allChildIds) {
+        // Scan logs for this child across all days
+        for (const key of Object.keys(logs)) {
+          if (key.startsWith(`${cid}-`)) {
+            const dayKey = key.slice(cid.length + 1);
+            dayKeysWithChildLogs.add(dayKey);
+          }
+        }
+      }
+
+      for (const dayKey of dayKeysWithChildLogs) {
+        // Resolve active children for this specific day
+        let activeChildIds: string[];
+        if (memberships.length > 0) {
+          activeChildIds = memberships
+            .filter(m => {
+              if (m.activeFromDayKey > dayKey) return false;
+              if (m.activeToDayKey && m.activeToDayKey < dayKey) return false;
+              if (m.daysOfWeek && m.daysOfWeek.length > 0) {
+                const dayOfWeek = new Date(dayKey + 'T12:00:00').getDay();
+                if (!m.daysOfWeek.includes(dayOfWeek)) return false;
+              }
+              return true;
+            })
+            .map(m => m.childHabitId);
+        } else {
+          activeChildIds = childIds;
+        }
+
+        if (activeChildIds.length === 0) continue;
+
+        let completedCount = 0;
+        for (const cid of activeChildIds) {
+          const childLog = logs[`${cid}-${dayKey}`];
+          if (childLog?.completed) completedCount++;
+        }
+
+        const parentComplete = parent.bundleType === 'choice'
+          ? completedCount > 0
+          : evaluateChecklistSuccess(completedCount, activeChildIds.length, parent.checklistSuccessRule).meetsSuccessRule;
+
+        const parentLogKey = `${parent.id}-${dayKey}`;
+        // Only add/override if there isn't already a log (shouldn't be, since parents don't have entries)
+        if (!logs[parentLogKey]) {
+          logs[parentLogKey] = {
+            habitId: parent.id,
+            date: dayKey,
+            value: completedCount,
+            completed: parentComplete,
+            source: 'manual',
+          };
+        }
+      }
     }
 
     res.status(200).json({

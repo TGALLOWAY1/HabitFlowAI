@@ -18,6 +18,7 @@ import {
 } from '../repositories/habitRepository';
 import { createCategory, getCategoriesByUser, getCategoryById } from '../repositories/categoryRepository';
 import { deleteHabitEntriesByHabit } from '../repositories/habitEntryRepository';
+import { endMembership } from '../repositories/bundleMembershipRepository';
 import type { Habit } from '../../models/persistenceTypes';
 import { getRequestIdentity } from '../middleware/identity';
 
@@ -445,6 +446,62 @@ export async function reorderHabitsRoute(req: Request, res: Response): Promise<v
         message: 'Failed to reorder habits',
         details: process.env.NODE_ENV === 'development' ? errorMessage : undefined,
       },
+    });
+  }
+}
+
+/**
+ * POST /api/habits/:id/unlink-child
+ *
+ * Atomically unlinks a child from a bundle parent:
+ * 1. Removes childId from parent's subHabitIds
+ * 2. Clears child's bundleParentId
+ * 3. Ends the active BundleMembership
+ *
+ * Body: { childId: string, activeToDayKey: string }
+ */
+export async function unlinkBundleChildRoute(req: Request, res: Response): Promise<void> {
+  try {
+    const { id: parentId } = req.params;
+    const { childId, activeToDayKey } = req.body;
+
+    if (!parentId || !childId || !activeToDayKey) {
+      res.status(400).json({
+        error: { code: 'VALIDATION_ERROR', message: 'parentId, childId, and activeToDayKey are required' },
+      });
+      return;
+    }
+
+    const { householdId, userId } = getRequestIdentity(req);
+
+    const parent = await getHabitById(parentId, householdId, userId);
+    if (!parent || parent.type !== 'bundle') {
+      res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Bundle parent not found' } });
+      return;
+    }
+
+    const child = await getHabitById(childId, householdId, userId);
+    if (!child) {
+      res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Child habit not found' } });
+      return;
+    }
+
+    // 1. Remove child from parent's subHabitIds
+    const updatedSubIds = (parent.subHabitIds ?? []).filter(id => id !== childId);
+    await updateHabit(parentId, householdId, userId, { subHabitIds: updatedSubIds });
+
+    // 2. Clear child's bundleParentId
+    await updateHabit(childId, householdId, userId, { bundleParentId: null });
+
+    // 3. End active membership
+    await endMembership(parentId, childId, activeToDayKey, householdId, userId);
+
+    res.status(200).json({ success: true });
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : 'Unknown error';
+    console.error('Error unlinking bundle child:', msg);
+    res.status(500).json({
+      error: { code: 'INTERNAL_SERVER_ERROR', message: 'Failed to unlink bundle child' },
     });
   }
 }
