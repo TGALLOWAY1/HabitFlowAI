@@ -663,6 +663,9 @@ export interface DashboardPrefs {
      */
     checkinExtraMetricKeys?: WellbeingMetricKey[];
 
+    /** When true, streak/flame indicators are hidden across the UI */
+    hideStreaks?: boolean;
+
     /** ISO 8601 timestamp */
     updatedAt: string;
 }

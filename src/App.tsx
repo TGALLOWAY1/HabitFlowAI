@@ -36,6 +36,7 @@ import { TasksPage } from './pages/TasksPage';
 import { DebugEntriesPage } from './pages/DebugEntriesPage';
 import { DevIdentityPanel } from './components/DevIdentityPanel';
 import { WellbeingHistoryPage } from './pages/WellbeingHistoryPage';
+import { DashboardPrefsProvider } from './store/DashboardPrefsContext';
 
 // Simple router state
 type AppRoute = 'tracker' | 'dashboard' | 'routines' | 'goals' | 'wins' | 'journal' | 'tasks' | 'day' | 'debug-entries' | 'wellbeing-history';
@@ -579,10 +580,12 @@ function App() {
             <HabitProvider>
               <RoutineProvider>
                 <TaskProvider>
-                  <Layout>
-                    <HabitTrackerContent />
-                  </Layout>
-                  {import.meta.env.DEV && <DevIdentityPanel />}
+                  <DashboardPrefsProvider>
+                    <Layout>
+                      <HabitTrackerContent />
+                    </Layout>
+                    {import.meta.env.DEV && <DevIdentityPanel />}
+                  </DashboardPrefsProvider>
                 </TaskProvider>
               </RoutineProvider>
             </HabitProvider>

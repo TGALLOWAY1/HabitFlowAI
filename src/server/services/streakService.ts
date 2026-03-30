@@ -104,10 +104,11 @@ type WeeklyProgress = {
 
 function buildWeeklyProgressMap(
   dayStates: HabitDayState[],
-  habit: Habit
+  habit: Habit,
+  targetOverride?: number
 ): Map<string, WeeklyProgress> {
   const isQuantity = habit.goal.type === 'number';
-  const target = habit.goal.target ?? 1;
+  const target = targetOverride ?? habit.goal.target ?? 1;
 
   const rawWeekMap = new Map<string, { total: number; distinctDays: Set<string> }>();
 
@@ -191,6 +192,66 @@ function calculateWeeklyMetrics(
 }
 
 /**
+ * Calculates streak metrics for daily habits with assignedDays + requiredDaysPerWeek.
+ *
+ * Uses weekly windows: a week is "satisfied" if total completions (on ANY day,
+ * not just assigned days) >= requiredDaysPerWeek. This gives users flexibility —
+ * e.g. a Sunday habit done on Monday still counts toward the week.
+ */
+function calculateScheduledDailyMetrics(
+  dayStates: HabitDayState[],
+  habit: Habit,
+  referenceDate: Date,
+  referenceDayKey?: string
+): HabitStreakMetrics {
+  const target = habit.requiredDaysPerWeek ?? habit.assignedDays!.length;
+  const referenceDay = referenceDayKey ? parseISO(referenceDayKey) : referenceDate;
+  const weeklyProgressMap = buildWeeklyProgressMap(dayStates, habit, target);
+  const currentWeekKey = weekStartDayKey(referenceDay);
+  const currentWeek = weeklyProgressMap.get(currentWeekKey) ?? { progress: 0, satisfied: false };
+
+  let currentStreak = 0;
+  let cursorWeekKey = currentWeek.satisfied ? currentWeekKey : previousWeekStartDayKey(currentWeekKey);
+
+  while (weeklyProgressMap.get(cursorWeekKey)?.satisfied) {
+    currentStreak += 1;
+    cursorWeekKey = previousWeekStartDayKey(cursorWeekKey);
+    if (currentStreak > 10000) break;
+  }
+
+  const satisfiedWeekKeys = [...weeklyProgressMap.entries()]
+    .filter(([, value]) => value.satisfied)
+    .map(([weekKey]) => weekKey);
+
+  const bestStreak = calculateBestConsecutiveSpan(satisfiedWeekKeys, 7);
+
+  const completedDayKeys = dayStates
+    .filter(state => state.completed || state.isFrozen)
+    .map(state => state.dayKey)
+    .sort();
+  const lastCompletedDayKey = completedDayKeys.length > 0
+    ? completedDayKeys[completedDayKeys.length - 1]
+    : null;
+
+  const daysLeftInWeek = differenceInCalendarDays(
+    endOfWeek(referenceDay, { weekStartsOn: 1 }),
+    referenceDay
+  );
+  const atRisk = currentStreak > 0 && !currentWeek.satisfied && daysLeftInWeek <= 2;
+
+  return {
+    currentStreak,
+    bestStreak,
+    lastCompletedDayKey,
+    completedToday: dayStates.some(state => state.dayKey === (referenceDayKey ?? toDayKey(referenceDay)) && (state.completed || state.isFrozen)),
+    atRisk,
+    weekSatisfied: currentWeek.satisfied,
+    weekProgress: currentWeek.progress,
+    weekTarget: target,
+  };
+}
+
+/**
  * Calculates canonical streak metrics from day-level completion derived from HabitEntries.
  * DayLogs are intentionally not required here.
  */
@@ -202,6 +263,10 @@ export function calculateHabitStreakMetrics(
 ): HabitStreakMetrics {
   if (habit.goal.frequency === 'weekly') {
     return calculateWeeklyMetrics(dayStates, habit, referenceDate, referenceDayKey);
+  }
+
+  if (habit.assignedDays?.length && habit.requiredDaysPerWeek) {
+    return calculateScheduledDailyMetrics(dayStates, habit, referenceDate, referenceDayKey);
   }
 
   return calculateDailyMetrics(dayStates, referenceDate, referenceDayKey);

@@ -40,7 +40,7 @@ export async function getDashboardPrefs(householdId: string, userId: string): Pr
 export async function updateDashboardPrefs(
   householdId: string,
   userId: string,
-  patch: { pinnedRoutineIds?: string[]; checkinExtraMetricKeys?: string[] }
+  patch: { pinnedRoutineIds?: string[]; checkinExtraMetricKeys?: string[]; hideStreaks?: boolean }
 ): Promise<DashboardPrefs> {
   const scope = requireScope(householdId, userId);
   await ensureIndexes();
@@ -84,6 +84,10 @@ export async function updateDashboardPrefs(
     // Ensure stored keys remain within canonical set (defense in depth)
     const allowed = new Set(WELLBEING_METRIC_KEYS);
     update.checkinExtraMetricKeys = uniq.filter((k) => allowed.has(k as any)) as any;
+  }
+
+  if (patch.hideStreaks !== undefined) {
+    update.hideStreaks = !!patch.hideStreaks;
   }
 
   // Fix: Use full document replace approach to avoid MongoDB update conflicts
