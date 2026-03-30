@@ -300,11 +300,18 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     };
 
     const addCategory = async (category: Omit<Category, 'id'>) => {
+        // Optimistic update: show the category immediately with a temp ID
+        const tempId = `temp-${Date.now()}`;
+        const optimisticCategory: Category = { ...category, id: tempId } as Category;
+        setCategories(prev => [...prev, optimisticCategory]);
         try {
             const newCategory = await saveCategory(category);
-            setCategories(prev => [...prev, newCategory]);
+            // Replace temp category with server-confirmed one
+            setCategories(prev => prev.map(c => c.id === tempId ? newCategory : c));
             return newCategory;
         } catch (error) {
+            // Rollback optimistic update
+            setCategories(prev => prev.filter(c => c.id !== tempId));
             const errorMessage = error instanceof Error ? error.message : 'Unknown error';
             console.error('Failed to save category to API:', errorMessage);
             throw error;
