@@ -4,7 +4,7 @@ import { useHabitStore } from '../store/HabitContext';
 import type { Routine, Category } from '../models/persistenceTypes';
 import { Plus, MoreVertical, ChevronRight, ChevronDown, ClipboardList, Edit, Trash2, Layers } from 'lucide-react';
 import { cn } from '../utils/cn';
-import { resolveSteps, getEstimatedDurationMinutes, isMultiVariant } from '../lib/routineVariantUtils';
+import { resolveSteps, isMultiVariant } from '../lib/routineVariantUtils';
 
 interface RoutineListProps {
     onCreate: () => void;
@@ -38,14 +38,13 @@ const RoutineCard: React.FC<{
 
     const steps = resolveSteps(routine);
     const totalSteps = steps.length;
-    const estimatedMinutes = getEstimatedDurationMinutes(routine);
     const hasMultipleVariants = isMultiVariant(routine);
     const variantCount = routine.variants?.length || 0;
 
     return (
         <div
             onClick={() => onPreview(routine)}
-            className="group relative bg-neutral-800/40 border border-white/5 rounded-xl px-4 py-3 hover:bg-neutral-800/80 hover:border-white/10 transition-all cursor-pointer flex flex-col gap-1.5 justify-between"
+            className="group relative bg-neutral-800/40 border border-white/5 rounded-xl px-4 py-3 hover:bg-neutral-800/80 hover:border-white/10 transition-all cursor-pointer flex items-center justify-between gap-2"
         >
             {/* Routine Image (if available) */}
             {routine.imageUrl && (
@@ -58,14 +57,14 @@ const RoutineCard: React.FC<{
                 </div>
             )}
 
-            {/* Top Row: Title & Menu */}
-            <div className="flex justify-between items-start gap-2 relative z-10">
-                <h3 className="text-white font-medium text-sm line-clamp-2 leading-relaxed">
+            {/* Left: Title & Menu */}
+            <div className="flex items-center gap-2 min-w-0 relative z-10">
+                <h3 className="text-white font-medium text-sm truncate leading-relaxed">
                     {routine.title}
                 </h3>
 
                 {/* Menu Action (Kebab) */}
-                <div className="relative -mr-2 -mt-2" ref={menuRef}>
+                <div className="relative flex-shrink-0" ref={menuRef}>
                     <button
                         onClick={(e) => {
                             e.stopPropagation();
@@ -107,20 +106,18 @@ const RoutineCard: React.FC<{
                 </div>
             </div>
 
-            {/* Bottom Row: Metadata */}
-            <div className="flex items-center text-xs text-neutral-500 font-medium relative z-10">
-                <span>{totalSteps} steps</span>
-                <span className="mx-1.5 opacity-50">·</span>
-                <span>~{estimatedMinutes} min</span>
+            {/* Right: Metadata */}
+            <div className="flex items-center gap-2 flex-shrink-0 relative z-10">
+                <span className="text-[11px] text-neutral-600">
+                    {totalSteps} steps
+                </span>
                 {hasMultipleVariants && (
-                    <>
-                        <span className="mx-1.5 opacity-50">·</span>
-                        <span className="flex items-center gap-1 text-purple-400/80">
-                            <Layers size={10} />
-                            {variantCount} variants
-                        </span>
-                    </>
+                    <span className="flex items-center gap-1 text-[10px] text-purple-400/80 bg-purple-500/10 px-1.5 py-0.5 rounded-full">
+                        <Layers size={10} />
+                        {variantCount}
+                    </span>
                 )}
+                <ChevronRight size={14} className="text-neutral-600" />
             </div>
         </div>
     );
@@ -165,8 +162,7 @@ const CategorySection: React.FC<{
             {/* Body (Grid) */}
             {isExpanded && (
                 <div
-                    className="grid gap-3 pl-6 animate-in slide-in-from-top-1 duration-200"
-                    style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))' }}
+                    className="flex flex-col gap-1.5 animate-in slide-in-from-top-1 duration-200"
                 >
                     {routines.map(routine => (
                         <RoutineCard
