@@ -158,10 +158,6 @@ export const WeeklyView = () => {
         }
     };
 
-    const handleUpdateEstimate = async (habitId: string, minutes: number) => {
-        await updateHabit(habitId, { timeEstimate: minutes });
-    };
-
     // Empty state
     if (!dayViewLoading && weeklyHabits.length === 0) {
         return (
@@ -213,7 +209,6 @@ export const WeeklyView = () => {
                                 dateStr={dateStr}
                                 onToggle={handleToggle}
                                 onPin={handlePin}
-                                onUpdateEstimate={handleUpdateEstimate}
                                 onMoveToCategory={(h) => setCategoryPickerHabit(h)}
                                 allHabitsLookup={allHabitsLookup}
                                 onUpdateHabitEntry={upsertHabitEntry}
@@ -230,7 +225,6 @@ export const WeeklyView = () => {
                             dateStr={dateStr}
                             onToggle={handleToggle}
                             onPin={handlePin}
-                            onUpdateEstimate={handleUpdateEstimate}
                             onMoveToCategory={(h) => setCategoryPickerHabit(h)}
                             allHabitsLookup={allHabitsLookup}
                             onUpdateHabitEntry={upsertHabitEntry}

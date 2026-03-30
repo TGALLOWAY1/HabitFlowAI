@@ -269,10 +269,6 @@ export const DayView = ({ onAddHabit }: DayViewProps = {}) => {
         }
     };
 
-    const handleUpdateEstimate = async (habitId: string, minutes: number) => {
-        await updateHabit(habitId, { timeEstimate: minutes });
-    };
-
     // Sort categories (optional, if categories have order)
     // Assuming categories array is sorted or we verify sort?
     // HabitContext usually returns them in DB order?
@@ -394,7 +390,6 @@ export const DayView = ({ onAddHabit }: DayViewProps = {}) => {
                                                 dateStr={dateStr}
                                                 onToggle={handleToggle}
                                                 onPin={handlePin}
-                                                onUpdateEstimate={handleUpdateEstimate}
                                                 onMoveToCategory={(h) => setCategoryPickerHabit(h)}
                                                 allHabitsLookup={allHabitsLookup}
                                                 onUpdateHabitEntry={upsertHabitEntry}
@@ -414,7 +409,6 @@ export const DayView = ({ onAddHabit }: DayViewProps = {}) => {
                                     dateStr={dateStr}
                                     onToggle={handleToggle}
                                     onPin={handlePin}
-                                    onUpdateEstimate={handleUpdateEstimate}
                                     onMoveToCategory={(h) => setCategoryPickerHabit(h)}
                                     allHabitsLookup={allHabitsLookup}
                                     onUpdateHabitEntry={upsertHabitEntry}
