@@ -82,6 +82,7 @@ export interface Habit {
      */
     frequency?: 'daily' | 'weekly';
     weeklyTarget?: number;
+    requiredDaysPerWeek?: number; // 1-7; must be <= assignedDays.length; 7 = strict (non-negotiable)
 
     bundleType?: 'checklist' | 'choice';
     bundleOptions?: Array<{

@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Shield, CheckCircle2, Calculator, Layers, CheckSquare, ChevronDown, ChevronRight, Search, Trophy, Calendar, Plus, Check } from 'lucide-react';
+import { DayChipSelector } from './DayChipSelector';
+import { NumberChipSelector } from './NumberChipSelector';
 import { useHabitStore } from '../store/HabitContext';
 import { useRoutineStore } from '../store/RoutineContext';
 import { useGoalsWithProgress } from '../lib/useGoalsWithProgress';
@@ -73,7 +75,8 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
     // Scheduling
     const [scheduledTime, setScheduledTime] = useState('');
     const [durationMinutes, setDurationMinutes] = useState('30');
-    const [nonNegotiable, setNonNegotiable] = useState(false);
+    const [scheduledDays, setScheduledDays] = useState<number[]>([0, 1, 2, 3, 4, 5, 6]);
+    const [requiredDaysPerWeek, setRequiredDaysPerWeek] = useState<number>(7);
 
     // Goal Linking
     const [linkedGoalId, setLinkedGoalId] = useState<string | null>(null);
@@ -126,7 +129,11 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                     else setWeeklyIntent('binary');
                 }
                 setDurationMinutes(initialData.durationMinutes?.toString() || '30');
-                setNonNegotiable(initialData.nonNegotiable || false);
+                const days = initialData.assignedDays ?? [0, 1, 2, 3, 4, 5, 6];
+                setScheduledDays(days);
+                setRequiredDaysPerWeek(
+                    initialData.requiredDaysPerWeek ?? days.length
+                );
                 setDescription(initialData.description || '');
                 setSelectedCategoryId(initialData.categoryId);
             } else {
@@ -149,7 +156,8 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                 setLinkedRoutineIds([]);
                 setWeeklyIntent('binary');
                 setDurationMinutes('30');
-                setNonNegotiable(false);
+                setScheduledDays([0, 1, 2, 3, 4, 5, 6]);
+                setRequiredDaysPerWeek(7);
                 setDescription('');
 
                 // Robust Category Selection Default
@@ -183,6 +191,13 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
             window.removeEventListener('keydown', handleKeyDown);
         };
     }, [isOpen, onClose]);
+
+    // Auto-clamp requiredDaysPerWeek when scheduledDays shrinks
+    useEffect(() => {
+        if (requiredDaysPerWeek > scheduledDays.length) {
+            setRequiredDaysPerWeek(scheduledDays.length);
+        }
+    }, [scheduledDays.length, requiredDaysPerWeek]);
 
     // Auto-sync target for Boolean Weekly habits
     // Auto-sync target for Boolean Weekly habits - DEPRECATED
@@ -221,12 +236,13 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                 name,
                 categoryId: selectedCategoryId,
                 goal: goalConfig,
-                assignedDays: undefined, // Only save days for Daily (if we add 'custom daily' later) or Legacy
+                assignedDays: scheduledDays,
                 scheduledTime: scheduledTime || undefined,
                 durationMinutes: durationMinutes ? Number(durationMinutes) : undefined,
                 linkedGoalId: linkedGoalId || undefined,
                 linkedRoutineIds: linkedRoutineIds.length > 0 ? linkedRoutineIds : undefined,
-                nonNegotiable,
+                nonNegotiable: scheduledDays.length === 7 && requiredDaysPerWeek === 7,
+                requiredDaysPerWeek,
                 description: description || undefined,
                 type: habitType === 'bundle' ? 'bundle' as const : undefined,
                 subHabitIds: habitType === 'bundle' ? subHabitIds : undefined,
@@ -1267,25 +1283,42 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                         )
                     }
 
-                    {/* 5. Extras */}
+                    {/* 5. Schedule & Streak */}
                     <div className="space-y-4 pt-2 border-t border-white/5">
-                        {/* Non-Negotiable Toggle */}
-                        <div className="bg-neutral-800/50 border border-white/5 rounded-lg p-3 flex items-center justify-between group cursor-pointer hover:bg-neutral-800 transition-colors"
-                            onClick={() => setNonNegotiable(!nonNegotiable)}>
-                            <div className="flex items-center gap-3">
-                                <div className={`p - 2 rounded - lg transition - colors ${nonNegotiable ? 'bg-yellow-500/20 text-yellow-400' : 'bg-neutral-700/50 text-neutral-500'} `}>
-                                    <Shield size={20} />
-                                </div>
-                                <div>
-                                    <h4 className={`font - medium transition - colors ${nonNegotiable ? 'text-yellow-400' : 'text-neutral-300'} `}>Non-Negotiable</h4>
-                                    <p className="text-xs text-neutral-500">Essential habit. Highlighted with a Priority Ring.</p>
-                                </div>
-                            </div>
-                            <div className={`w - 12 h - 6 rounded - full p - 1 transition - colors ${nonNegotiable ? 'bg-yellow-500' : 'bg-neutral-700'} `}>
-                                <div className={`w - 4 h - 4 rounded - full bg - white shadow - sm transition - transform ${nonNegotiable ? 'translate-x-6' : 'translate-x-0'} `} />
-                            </div>
+                        <div className="space-y-2">
+                            <label className="text-xs font-medium text-neutral-400 uppercase flex items-center gap-1">
+                                <Calendar size={12} /> Scheduled Days
+                            </label>
+                            <p className="text-xs text-neutral-500">Choose when this habit is expected.</p>
+                            <DayChipSelector
+                                selectedDays={scheduledDays}
+                                onChange={setScheduledDays}
+                                minSelected={1}
+                            />
                         </div>
 
+                        <div className="space-y-2">
+                            <label className="text-xs font-medium text-neutral-400 uppercase flex items-center gap-1">
+                                <Shield size={12} /> Days Per Week Required
+                            </label>
+                            <p className="text-xs text-neutral-500">This determines how strict your streak is.</p>
+                            <NumberChipSelector
+                                value={requiredDaysPerWeek}
+                                onChange={setRequiredDaysPerWeek}
+                                min={1}
+                                max={scheduledDays.length}
+                            />
+                            {scheduledDays.length === 7 && requiredDaysPerWeek === 7 && (
+                                <p className="text-xs text-yellow-400 flex items-center gap-1 mt-1">
+                                    <Shield size={10} /> Non-Negotiable — all days required
+                                </p>
+                            )}
+                            {requiredDaysPerWeek < scheduledDays.length && (
+                                <p className="text-xs text-emerald-400 mt-1">
+                                    {scheduledDays.length - requiredDaysPerWeek} grace day{scheduledDays.length - requiredDaysPerWeek !== 1 ? 's' : ''} per week
+                                </p>
+                            )}
+                        </div>
                     </div>
 
                     {/* Actions */}

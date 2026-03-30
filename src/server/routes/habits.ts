@@ -130,7 +130,8 @@ export async function createHabitRoute(req: Request, res: Response): Promise<voi
       nonNegotiable, nonNegotiableDays, deadline, type, subHabitIds, bundleParentId, order,
       bundleType, bundleOptions,
       pinned, timeEstimate,
-      linkedGoalId, linkedRoutineIds
+      linkedGoalId, linkedRoutineIds,
+      requiredDaysPerWeek
     } = req.body;
 
     if (!name || typeof name !== 'string' || name.trim().length === 0) {
@@ -187,6 +188,7 @@ export async function createHabitRoute(req: Request, res: Response): Promise<voi
         timeEstimate,
         linkedGoalId,
         linkedRoutineIds,
+        requiredDaysPerWeek,
       },
       householdId,
       userId
@@ -271,7 +273,8 @@ export async function updateHabitRoute(req: Request, res: Response): Promise<voi
       nonNegotiable, nonNegotiableDays, deadline, type, subHabitIds, bundleParentId, order,
       bundleType, bundleOptions,
       pinned, timeEstimate,
-      linkedGoalId, linkedRoutineIds
+      linkedGoalId, linkedRoutineIds,
+      requiredDaysPerWeek
     } = req.body;
 
     if (!id) {
@@ -302,6 +305,7 @@ export async function updateHabitRoute(req: Request, res: Response): Promise<voi
     if (timeEstimate !== undefined) patch.timeEstimate = timeEstimate;
     if (linkedGoalId !== undefined) patch.linkedGoalId = linkedGoalId;
     if (linkedRoutineIds !== undefined) patch.linkedRoutineIds = linkedRoutineIds;
+    if (requiredDaysPerWeek !== undefined) patch.requiredDaysPerWeek = requiredDaysPerWeek;
 
     if (Object.keys(patch).length === 0) {
       res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'At least one field must be provided for update' } });
