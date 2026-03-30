@@ -11,8 +11,8 @@ interface BottomTabBarProps {
 const tabs: { route: TabRoute; label: string; icon: React.FC<{ size?: number; className?: string }> }[] = [
   { route: 'dashboard', label: 'Dashboard', icon: BarChart3 },
   { route: 'tracker', label: 'Habits', icon: Calendar },
-  { route: 'goals', label: 'Goals', icon: Target },
   { route: 'routines', label: 'Routines', icon: ClipboardList },
+  { route: 'goals', label: 'Goals', icon: Target },
 ];
 
 export const BottomTabBar: React.FC<BottomTabBarProps> = ({ activeView, onNavigate }) => {
