@@ -135,7 +135,7 @@ describe('Entries-only invariants across derived reads', () => {
     const goal = await createGoal(
       {
         title: 'Invariant Goal',
-        type: 'onetime',
+        type: 'cumulative',
         targetValue: 1,
         linkedHabitIds: [habit.id],
         aggregationMode: 'count',
