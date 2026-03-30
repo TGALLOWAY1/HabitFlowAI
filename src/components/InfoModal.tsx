@@ -5,36 +5,31 @@ interface InfoModalProps {
   onClose: () => void;
 }
 
-const concepts = [
+const definitions = [
   {
-    title: 'Habits',
-    meaning: 'Small repeated actions that build consistency over time.',
-    differs: 'Unlike tasks, habits are ongoing — they don\'t get "done."',
-    example: 'Drink water, stretch for 5 minutes, practice Portuguese.',
+    term: 'Habit',
+    definition: 'A repeated action you do regularly to build consistency. Habits are ongoing — they never get "done."',
+    examples: ['Drink water daily', 'Stretch for 5 minutes', 'Practice Portuguese'],
   },
   {
-    title: 'Goals',
-    meaning: 'Outcomes or milestones your habits help create.',
-    differs: 'Goals give your habits direction and purpose.',
-    example: 'Run a 10K, improve sleep, become conversational in Portuguese.',
+    term: 'Goal',
+    definition: 'An outcome or milestone you\'re working toward. Goals give your habits direction and purpose.',
+    examples: ['Run a 10K', 'Improve sleep quality', 'Become conversational in Portuguese'],
   },
   {
-    title: 'Routines',
-    meaning: 'Repeatable sequences that reduce friction.',
-    differs: 'Routines group multiple actions into a single flow.',
-    example: 'Morning reset, gym prep, evening shutdown.',
+    term: 'Routine',
+    definition: 'A sequence of actions grouped into a single repeatable flow. Routines reduce friction by chaining steps together.',
+    examples: ['Morning reset', 'Gym prep', 'Evening shutdown'],
   },
   {
-    title: 'Tasks',
-    meaning: 'One-off or short-term obligations.',
-    differs: 'Unlike habits, tasks are transient — do them and move on.',
-    example: 'Call landlord, submit form, buy groceries.',
+    term: 'Task',
+    definition: 'A specific one-time action with a clear finish. Unlike habits, once it\'s done, it\'s done.',
+    examples: ['Buy birthday cake for Saturday', 'Submit tax form', 'Schedule dentist appointment'],
   },
   {
-    title: 'Journal',
-    meaning: 'Reflection, review, and self-observation.',
-    differs: 'Journal is your space for introspection, not tracking.',
-    example: 'Evening check-in, free write, weekly reflection.',
+    term: 'Journal',
+    definition: 'A space for reflection and self-observation — not tracking. Write freely about how things are going.',
+    examples: ['Evening check-in', 'Free write', 'Weekly reflection'],
   },
 ];
 
@@ -71,13 +66,21 @@ export function InfoModal({ isOpen, onClose }: InfoModalProps) {
             </button>
           </div>
 
-          <div className="p-4 space-y-5">
-            {concepts.map((item) => (
-              <div key={item.title} className="rounded-lg bg-neutral-800/50 border border-white/5 p-4">
-                <h4 className="text-sm font-semibold text-white mb-1.5">{item.title}</h4>
-                <p className="text-sm text-neutral-300 mb-1">{item.meaning}</p>
-                <p className="text-xs text-neutral-500 mb-2">{item.differs}</p>
-                <p className="text-xs text-neutral-500 italic">e.g. {item.example}</p>
+          <div className="p-4 space-y-4">
+            <p className="text-xs text-neutral-500 uppercase tracking-wide font-medium">Definitions</p>
+            {definitions.map((item) => (
+              <div key={item.term} className="pl-3 border-l-2 border-emerald-500/40">
+                <p className="text-sm text-neutral-200">
+                  <span className="font-bold text-emerald-400">{item.term}:</span>{' '}
+                  {item.definition}
+                </p>
+                <ul className="mt-1.5 space-y-0.5">
+                  {item.examples.map((ex) => (
+                    <li key={ex} className="text-xs text-neutral-500 italic pl-2">
+                      — {ex}
+                    </li>
+                  ))}
+                </ul>
               </div>
             ))}
           </div>
