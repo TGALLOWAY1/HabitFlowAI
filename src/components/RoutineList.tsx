@@ -45,11 +45,11 @@ const RoutineCard: React.FC<{
     return (
         <div
             onClick={() => onPreview(routine)}
-            className="group relative bg-neutral-800/40 border border-white/5 rounded-xl px-4 py-3 hover:bg-neutral-800/80 hover:border-white/10 transition-all cursor-pointer flex flex-col gap-1.5 justify-between overflow-hidden"
+            className="group relative bg-neutral-800/40 border border-white/5 rounded-xl px-4 py-3 hover:bg-neutral-800/80 hover:border-white/10 transition-all cursor-pointer flex flex-col gap-1.5 justify-between"
         >
             {/* Routine Image (if available) */}
             {routine.imageUrl && (
-                <div className="absolute inset-0 opacity-20 group-hover:opacity-30 transition-opacity">
+                <div className="absolute inset-0 opacity-20 group-hover:opacity-30 transition-opacity rounded-xl overflow-hidden">
                     <img
                         src={routine.imageUrl}
                         alt={routine.title}
