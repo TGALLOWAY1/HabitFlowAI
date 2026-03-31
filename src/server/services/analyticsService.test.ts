@@ -52,7 +52,7 @@ describe('computeHabitAnalyticsSummary', () => {
       createEntry('habit-1', '2026-03-31'),
     ];
 
-    const result = computeHabitAnalyticsSummary(habits, entries, [], '2026-03-31', 7);
+    const result = computeHabitAnalyticsSummary(habits, entries, [], [], '2026-03-31', 7);
 
     expect(result.totalCompletions).toBe(3);
     expect(result.consistencyScore).toBeGreaterThan(0);
@@ -77,7 +77,7 @@ describe('computeHabitAnalyticsSummary', () => {
       },
     ];
 
-    const result = computeHabitAnalyticsSummary(habits, [], memberships, '2026-03-31', 7);
+    const result = computeHabitAnalyticsSummary(habits, [], memberships, [], '2026-03-31', 7);
     expect(result.graduatedHabits).toBe(1);
   });
 
@@ -87,7 +87,7 @@ describe('computeHabitAnalyticsSummary', () => {
     // 2026-03-30 is Monday, 2026-03-31 is Tuesday
     const entries = [createEntry('habit-1', '2026-03-30')]; // Monday: completed
 
-    const result = computeHabitAnalyticsSummary(habits, entries, [], '2026-03-31', 7);
+    const result = computeHabitAnalyticsSummary(habits, entries, [], [], '2026-03-31', 7);
     // Over 7 days (Mar 25-31), Mon/Wed/Fri scheduled = 3 days, completed 1
     expect(result.completionRate).toBeCloseTo(1 / 3, 2);
   });
@@ -102,7 +102,7 @@ describe('computeHabitAnalyticsSummary', () => {
       createEntry('h2', '2026-03-31'),
     ];
 
-    const result = computeHabitAnalyticsSummary(habits, entries, [], '2026-03-31', 7);
+    const result = computeHabitAnalyticsSummary(habits, entries, [], [], '2026-03-31', 7);
     // Only h1 is trackable, so completion rate should reflect only h1
     expect(result.completionRate).toBeGreaterThan(0);
   });
@@ -114,7 +114,7 @@ describe('computeHabitAnalyticsSummary', () => {
     ];
     const entries = [createEntry('h1', '2026-03-31')];
 
-    const result = computeHabitAnalyticsSummary(habits, entries, [], '2026-03-31', 7);
+    const result = computeHabitAnalyticsSummary(habits, entries, [], [], '2026-03-31', 7);
     // Only h1 counts, not bundle
     expect(result.totalCompletions).toBe(1);
   });
@@ -126,12 +126,12 @@ describe('computeHabitAnalyticsSummary', () => {
       createEntry('habit-1', '2026-03-31', { note: 'freeze:manual' }),
     ];
 
-    const result = computeHabitAnalyticsSummary(habits, entries, [], '2026-03-31', 7);
+    const result = computeHabitAnalyticsSummary(habits, entries, [], [], '2026-03-31', 7);
     expect(result.totalCompletions).toBe(1);
   });
 
   it('returns zeros for empty data', () => {
-    const result = computeHabitAnalyticsSummary([], [], [], '2026-03-31', 7);
+    const result = computeHabitAnalyticsSummary([], [], [], [], '2026-03-31', 7);
     expect(result.consistencyScore).toBe(0);
     expect(result.completionRate).toBe(0);
     expect(result.currentStreak).toBe(0);
@@ -149,9 +149,11 @@ describe('computeHeatmapData', () => {
     const entries = [createEntry('habit-1', '2026-03-31')];
 
     const result = computeHeatmapData(habits, entries, '2026-03-31', 7);
-    expect(result).toHaveLength(7);
-    expect(result[result.length - 1].dayKey).toBe('2026-03-31');
-    expect(result[result.length - 1].completionPercent).toBe(1);
+    expect(result.dataPoints).toHaveLength(7);
+    expect(result.dataPoints[result.dataPoints.length - 1].dayKey).toBe('2026-03-31');
+    expect(result.dataPoints[result.dataPoints.length - 1].completionPercent).toBe(1);
+    expect(result.insights).toBeDefined();
+    expect(result.insights.mostActiveDay).toBeDefined();
   });
 
   it('computes correct completion percent', () => {
@@ -162,9 +164,9 @@ describe('computeHeatmapData', () => {
     const entries = [createEntry('h1', '2026-03-31')]; // 1 of 2 completed
 
     const result = computeHeatmapData(habits, entries, '2026-03-31', 1);
-    expect(result[0].completionPercent).toBe(0.5);
-    expect(result[0].completedCount).toBe(1);
-    expect(result[0].scheduledCount).toBe(2);
+    expect(result.dataPoints[0].completionPercent).toBe(0.5);
+    expect(result.dataPoints[0].completedCount).toBe(1);
+    expect(result.dataPoints[0].scheduledCount).toBe(2);
   });
 });
 
@@ -322,7 +324,7 @@ describe('computeRoutineAnalytics', () => {
       'r2-2026-03-31': { routineId: 'r2', date: '2026-03-31', startedAt: '2026-03-31T20:00:00Z', completedAt: '2026-03-31T20:10:00Z', actualDurationSeconds: 600 },
     };
 
-    const result = computeRoutineAnalytics(routines, routineLogs, '2026-03-31', 7);
+    const result = computeRoutineAnalytics(routines, routineLogs, [], [], '2026-03-31', 7);
     expect(result.totalCompleted).toBe(3);
     expect(result.totalStarted).toBe(3);
     expect(result.reliabilityRate).toBe(1);
@@ -332,7 +334,7 @@ describe('computeRoutineAnalytics', () => {
   });
 
   it('handles empty logs', () => {
-    const result = computeRoutineAnalytics([], {}, '2026-03-31', 7);
+    const result = computeRoutineAnalytics([], {}, [], [], '2026-03-31', 7);
     expect(result.totalCompleted).toBe(0);
     expect(result.reliabilityRate).toBe(0);
   });
