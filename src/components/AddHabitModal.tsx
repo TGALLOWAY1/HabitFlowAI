@@ -63,7 +63,7 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
     const [unit, setUnit] = useState('');
 
     // Frequency (Default to Daily for Bundles)
-    const [frequency, setFrequency] = useState<'daily' | 'weekly' | 'total'>('daily');
+    const [frequency, setFrequency] = useState<'daily' | 'weekly'>('daily');
 
     // Scheduling
     const [scheduledTime, setScheduledTime] = useState('');
@@ -113,7 +113,9 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                 setGoalType(initialData.goal.type || 'boolean');
                 setTarget(initialData.goal.target ? String(initialData.goal.target) : '');
                 setUnit(initialData.goal.unit || '');
-                setFrequency(initialData.goal.frequency);
+                // Normalize legacy 'total' frequency to 'daily' — cumulative tracking
+                // is now expressed via numeric goal type, not a separate frequency.
+                setFrequency(initialData.goal.frequency === 'total' ? 'daily' : initialData.goal.frequency);
                 setScheduledTime(initialData.scheduledTime || '');
                 setLinkedGoalId(initialData.linkedGoalId || null);
                 setLinkedRoutineIds(initialData.linkedRoutineIds || []);
@@ -728,17 +730,13 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                             <label className="block text-sm font-medium text-neutral-400">Tracking Style</label>
 
                             {/* Frequency Selector */}
-                            <div className="grid grid-cols-3 gap-2">
-                                {(['daily', 'weekly', 'total'] as const).map((freq) => (
+                            <div className="grid grid-cols-2 gap-2">
+                                {(['daily', 'weekly'] as const).map((freq) => (
                                     <button
                                         key={freq}
                                         type="button"
                                         onClick={() => {
                                             setFrequency(freq);
-                                            // Total frequency implies a numeric target, so auto-switch
-                                            if (freq === 'total') {
-                                                setGoalType('number');
-                                            }
                                         }}
                                         className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors border ${frequency === freq
                                             ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/50'
@@ -755,12 +753,9 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                                 <button
                                     type="button"
                                     onClick={() => setGoalType('boolean')}
-                                    disabled={frequency === 'total'}
                                     className={`flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors border ${goalType === 'boolean'
                                         ? 'bg-blue-500/20 text-blue-400 border-blue-500/50'
-                                        : frequency === 'total'
-                                            ? 'bg-neutral-800/50 text-neutral-600 border-white/5 cursor-not-allowed'
-                                            : 'bg-neutral-800 text-neutral-400 border-white/5 hover:bg-neutral-700'
+                                        : 'bg-neutral-800 text-neutral-400 border-white/5 hover:bg-neutral-700'
                                         }`}
                                 >
                                     <CheckCircle2 size={16} />
@@ -1140,7 +1135,7 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                         )
                     */}
 
-                    {/* 4. Configuration for Daily/Total (Legacy support mostly) */}
+                    {/* 4. Numeric Target Configuration */}
                     {
                         habitType === 'regular' && frequency !== 'weekly' && goalType === 'number' && (
                             <div className="grid grid-cols-2 gap-4 pt-2 border-t border-white/5">
