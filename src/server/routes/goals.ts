@@ -21,6 +21,7 @@ import { getHabitsByUser, unlinkHabitsFromGoal } from '../repositories/habitRepo
 import { computeGoalProgressV2, computeGoalListProgress } from '../utils/goalProgressUtilsV2';
 import type { Goal } from '../../models/persistenceTypes';
 import { getRequestIdentity } from '../middleware/identity';
+import { generateBadgeForGoal } from '../services/badgeGenerationService';
 
 /**
  * Validate that all habit IDs in linkedHabitIds exist in the database.
@@ -439,6 +440,9 @@ export async function createGoalRoute(req: Request, res: Response): Promise<void
       householdId,
       userId
     );
+
+    // Fire-and-forget badge generation — never blocks the response
+    generateBadgeForGoal(goal.id, goal.title, householdId, userId);
 
     res.status(201).json({
       goal,

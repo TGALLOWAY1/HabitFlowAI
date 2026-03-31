@@ -118,7 +118,7 @@ export const GoalCompletedPage: React.FC<GoalCompletedPageProps> = ({
                 <div className="mb-8 flex justify-center">
                     <div className="relative">
                         <div className="w-32 h-32 animate-bounce" style={{ filter: 'drop-shadow(0 0 20px rgba(16, 185, 129, 0.4))' }}>
-                            <CelebratoryBadgeIcon goalId={goalId} size={64} />
+                            <CelebratoryBadgeIcon goalId={goalId} badgeImageUrl={goal.badgeImageUrl} size={64} />
                         </div>
                         <Sparkles
                             className="absolute -top-4 -right-4 text-emerald-400 animate-pulse"
