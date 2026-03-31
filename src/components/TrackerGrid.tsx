@@ -2,8 +2,9 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { format, eachDayOfInterval, subDays, isToday } from 'date-fns';
 import { type Habit, type DayLog, type Routine, type HabitPotentialEvidence } from '../types';
 import { cn } from '../utils/cn';
-import { Check, Trash2, GripVertical, Pencil, Play, Flame, History, Zap, Link2, FolderInput } from 'lucide-react';
+import { Check, Trash2, GripVertical, Pencil, Play, Flame, History, Zap, Link2, FolderInput, Layers } from 'lucide-react';
 import { CategoryPickerModal } from './CategoryPickerModal';
+import { BundlePickerModal } from './BundlePickerModal';
 
 import { NumericInputPopover } from './NumericInputPopover';
 import { HabitHistoryModal } from './HabitHistoryModal';
@@ -50,6 +51,7 @@ interface TrackerGridProps {
     }) => Promise<void>;
     onAddHabit: () => void;
     onEditHabit: (habit: Habit) => void;
+    onConvertToBundle?: (habit: Habit) => void;
     onRunRoutine?: (routine: Routine) => void;
     onViewHistory: (habit: Habit) => void;
     potentialEvidence?: HabitPotentialEvidence[];
@@ -74,7 +76,8 @@ const HabitActionButtons = ({
     deleteConfirmId: string | null,
     setDeleteConfirmId: (id: string | null) => void,
     onRunRoutine?: (routine: Routine) => void,
-    onMoveToCategory?: () => void
+    onMoveToCategory?: () => void,
+    onAddToBundle?: () => void
 }) => {
     const { routines } = useRoutineStore();
     const linkedRoutines = routines.filter(r => r.linkedHabitIds?.includes(habit.id));
@@ -103,6 +106,18 @@ const HabitActionButtons = ({
                     title="Move to Category"
                 >
                     <FolderInput size={14} />
+                </button>
+            )}
+            {onAddToBundle && (
+                <button
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        onAddToBundle();
+                    }}
+                    className="p-1.5 rounded-lg hover:bg-neutral-800 text-neutral-500 hover:text-indigo-400 transition-colors"
+                    title="Add to Bundle"
+                >
+                    <Layers size={14} />
                 </button>
             )}
             <button
@@ -182,6 +197,7 @@ interface HabitRowContentProps {
     onContextMenu: (e: React.MouseEvent, habit: Habit) => void;
     isDeleteMode: boolean;
     onMoveToCategory?: (habit: Habit) => void;
+    onAddToBundle?: (habit: Habit) => void;
 
     onCellPointerDown?: (habitId: string, dateStr: string, e: React.PointerEvent) => void;
     onCellPointerUp?: () => void;
@@ -215,6 +231,7 @@ const HabitRowContent = ({
     onContextMenu,
     isDeleteMode,
     onMoveToCategory,
+    onAddToBundle,
     onCellPointerDown,
     onCellPointerUp,
     onCellPointerMove,
@@ -311,6 +328,7 @@ const HabitRowContent = ({
                         onRunRoutine={onRunRoutine}
                         onViewHistory={() => onViewHistory(habit)}
                         onMoveToCategory={onMoveToCategory ? () => onMoveToCategory(habit) : undefined}
+                        onAddToBundle={onAddToBundle && habit.type !== 'bundle' && !habit.bundleParentId ? () => onAddToBundle(habit) : undefined}
                     />
                 </div>
 
@@ -494,6 +512,7 @@ const SortableHabitRow = ({
     onContextMenu,
     isDeleteMode,
     onMoveToCategory,
+    onAddToBundle,
     onCellPointerDown,
     onCellPointerUp,
     onCellPointerMove,
@@ -517,6 +536,7 @@ const SortableHabitRow = ({
     onContextMenu: (e: React.MouseEvent, habit: Habit) => void;
     isDeleteMode: boolean;
     onMoveToCategory?: (habit: Habit) => void;
+    onAddToBundle?: (habit: Habit) => void;
 
     onCellPointerDown?: (habitId: string, dateStr: string, e: React.PointerEvent) => void;
     onCellPointerUp?: () => void;
@@ -613,6 +633,7 @@ const SortableHabitRow = ({
                 onContextMenu={onContextMenu}
                 isDeleteMode={isDeleteMode}
                 onMoveToCategory={onMoveToCategory}
+                onAddToBundle={onAddToBundle}
                 onCellPointerDown={onCellPointerDown}
                 onCellPointerUp={onCellPointerUp}
                 onCellPointerMove={onCellPointerMove}
@@ -774,6 +795,7 @@ export const TrackerGrid = ({
     logs,
     onAddHabit,
     onEditHabit,
+    onConvertToBundle,
     onRunRoutine,
     potentialEvidence,
     onViewHistory
@@ -844,6 +866,7 @@ export const TrackerGrid = ({
     const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
     const [choiceLogState, setChoiceLogState] = useState<{ habit: Habit; date: string } | null>(null);
     const [categoryPickerHabit, setCategoryPickerHabit] = useState<Habit | null>(null);
+    const [bundlePickerHabit, setBundlePickerHabit] = useState<Habit | null>(null);
 
     // Suppress duplicate tap when both pointer and synthetic click fire (e.g. touch devices)
     const lastHandledCellRef = React.useRef<{ habitId: string; dateStr: string; t: number } | null>(null);
@@ -1231,6 +1254,7 @@ export const TrackerGrid = ({
                                                 onContextMenu={handleContextMenu}
                                                 isDeleteMode={deleteMode}
                                                 onMoveToCategory={(h) => setCategoryPickerHabit(h)}
+                                                onAddToBundle={(h) => setBundlePickerHabit(h)}
                                                 onCellPointerDown={onCellPointerDown}
                                                 onCellPointerUp={onCellPointerUp}
                                                 onCellPointerMove={onCellPointerMove}
@@ -1423,6 +1447,30 @@ export const TrackerGrid = ({
                                     <FolderInput size={14} /> Move to Category…
                                 </button>
 
+                                {habit.type !== 'bundle' && !habit.bundleParentId && (
+                                    <button
+                                        onClick={() => {
+                                            setBundlePickerHabit(habit);
+                                            setContextMenu(null);
+                                        }}
+                                        className="flex items-center gap-2 px-2 py-1.5 text-sm text-neutral-300 hover:bg-neutral-700/50 rounded transition-colors text-left w-full"
+                                    >
+                                        <Layers size={14} /> Add to Bundle…
+                                    </button>
+                                )}
+
+                                {habit.type !== 'bundle' && !habit.archived && onConvertToBundle && (
+                                    <button
+                                        onClick={() => {
+                                            onConvertToBundle(habit);
+                                            setContextMenu(null);
+                                        }}
+                                        className="flex items-center gap-2 px-2 py-1.5 text-sm text-neutral-300 hover:bg-neutral-700/50 rounded transition-colors text-left w-full"
+                                    >
+                                        <Layers size={14} /> Convert to Bundle…
+                                    </button>
+                                )}
+
                                 <button
                                     onClick={() => {
                                         onViewHistory(habit);
@@ -1469,6 +1517,14 @@ export const TrackerGrid = ({
                 onClose={() => setCategoryPickerHabit(null)}
                 habitId={categoryPickerHabit?.id ?? ''}
                 currentCategoryId={categoryPickerHabit?.categoryId ?? ''}
+            />
+
+            {/* Bundle Picker Modal */}
+            <BundlePickerModal
+                isOpen={!!bundlePickerHabit}
+                onClose={() => setBundlePickerHabit(null)}
+                habitId={bundlePickerHabit?.id ?? ''}
+                habitName={bundlePickerHabit?.name ?? ''}
             />
         </div>
     );

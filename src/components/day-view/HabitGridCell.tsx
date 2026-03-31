@@ -22,6 +22,7 @@ interface HabitGridCellProps {
     onExpand: () => void;
     onPin: (id: string) => void;
     onMoveToCategory?: (habit: Habit) => void;
+    onAddToBundle?: (habit: Habit) => void;
 
     // Bundle Props
     subHabits?: Habit[];
@@ -45,6 +46,7 @@ export const HabitGridCell = ({
     onExpand,
     onPin,
     onMoveToCategory,
+    onAddToBundle,
     subHabits,
     subHabitStatuses,
     onSubHabitToggle,
@@ -257,8 +259,17 @@ export const HabitGridCell = ({
                 <div className="px-3 pb-3 pt-0 flex flex-col gap-3 animate-in fade-in slide-in-from-top-1 duration-200 cursor-default" onClick={e => e.stopPropagation()}>
                     <div className="h-px w-full bg-white/5 mb-1" />
 
-                    {/* Actions (Pin, Move) */}
+                    {/* Actions (Pin, Move, Add to Bundle) */}
                     <div className="flex items-center justify-end gap-1">
+                        {onAddToBundle && habit.type !== 'bundle' && !habit.bundleParentId && (
+                            <button
+                                onClick={() => onAddToBundle(habit)}
+                                className="flex items-center gap-1.5 px-2 py-1 rounded-md transition-colors text-xs text-neutral-500 hover:text-neutral-300 hover:bg-white/5"
+                            >
+                                <Layers size={12} />
+                                <span>Bundle</span>
+                            </button>
+                        )}
                         {onMoveToCategory && (
                             <button
                                 onClick={() => onMoveToCategory(habit)}

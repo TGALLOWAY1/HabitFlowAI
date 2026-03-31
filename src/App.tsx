@@ -146,6 +146,7 @@ const HabitTrackerContent: React.FC = () => {
   }, [activeCategoryId, habits, isUncategorizedHabit, visibleCategories]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingHabit, setEditingHabit] = useState<Habit | null>(null);
+  const [isBundleConvert, setIsBundleConvert] = useState(false);
   const [historyHabit, setHistoryHabit] = useState<Habit | null>(null);
 
   // Initial State from URL
@@ -456,6 +457,12 @@ const HabitTrackerContent: React.FC = () => {
               }}
               onEditHabit={(habit) => {
                 setEditingHabit(habit);
+                setIsBundleConvert(false);
+                setIsModalOpen(true);
+              }}
+              onConvertToBundle={(habit) => {
+                setEditingHabit(habit);
+                setIsBundleConvert(true);
                 setIsModalOpen(true);
               }}
               onRunRoutine={(routine) => setRoutineRunnerState({ isOpen: true, routine })}
@@ -522,9 +529,11 @@ const HabitTrackerContent: React.FC = () => {
         onClose={() => {
           setIsModalOpen(false);
           setEditingHabit(null);
+          setIsBundleConvert(false);
         }}
         categoryId={activeCategoryId}
         initialData={editingHabit}
+        initialBundleConvert={isBundleConvert}
         onNavigate={(route) => handleNavigate(route as AppRoute)}
       />
 

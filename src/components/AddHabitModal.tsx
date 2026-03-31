@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { X, Shield, CheckCircle2, Calculator, Layers, CheckSquare, ChevronDown, ChevronRight, Search, Trophy, Calendar } from 'lucide-react';
 import { DayChipSelector } from './DayChipSelector';
 import { NumberChipSelector } from './NumberChipSelector';
@@ -9,6 +9,8 @@ import type { Habit } from '../models/persistenceTypes';
 import { cn } from '../utils/cn';
 import { format } from 'date-fns';
 import { getBundleMemberships, createBundleMembership, endBundleMembership } from '../lib/persistenceClient';
+import { BundlePickerModal } from './BundlePickerModal';
+import { ConvertBundleConfirmModal } from './ConvertBundleConfirmModal';
 
 interface AddHabitModalProps {
     isOpen: boolean;
@@ -16,9 +18,10 @@ interface AddHabitModalProps {
     categoryId?: string;
     initialData?: Habit | null;
     onNavigate?: (route: string) => void;
+    initialBundleConvert?: boolean;
 }
 
-export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, categoryId, initialData }) => {
+export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, categoryId, initialData, initialBundleConvert }) => {
     const { addHabit, updateHabit, categories, habits, addCategory } = useHabitStore();
     const { routines, updateRoutine } = useRoutineStore();
 
@@ -89,6 +92,11 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
     const [newCategoryName, setNewCategoryName] = useState('');
     const [isSubmittingCategory, setIsSubmittingCategory] = useState(false);
 
+    // Bundle UX: Add to Bundle picker + Convert confirmation
+    const [showBundlePicker, setShowBundlePicker] = useState(false);
+    const [showConvertConfirm, setShowConvertConfirm] = useState(false);
+    const pendingSubmitRef = useRef<(() => Promise<void>) | null>(null);
+
     // Initialize/Reset
     useEffect(() => {
         if (isOpen) {
@@ -100,6 +108,7 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
 
                 setSubHabitIds(initialData.subHabitIds || []);
                 setPendingSubHabits([]); // Clear pending on open
+                setShowSubHabitSelect(initialData.type === 'bundle'); // Auto-expand children when editing bundle
 
                 setGoalType(initialData.goal.type || 'boolean');
                 setTarget(initialData.goal.target ? String(initialData.goal.target) : '');
@@ -123,6 +132,12 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                 );
                 setDescription(initialData.description || '');
                 setSelectedCategoryId(initialData.categoryId);
+
+                // If opened via "Convert to Bundle" action, auto-switch to bundle mode
+                if (initialBundleConvert && initialData.type !== 'bundle') {
+                    setHabitType('bundle');
+                    setFrequency('daily');
+                }
             } else {
                 // Add Mode
                 setName('');
@@ -196,6 +211,18 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
         e.preventDefault();
         if (!name.trim()) return;
 
+        // Show confirmation when converting an existing regular habit to a bundle
+        const isConversion = initialData && initialData.type !== 'bundle' && habitType === 'bundle';
+        if (isConversion && !showConvertConfirm) {
+            pendingSubmitRef.current = () => doSubmit();
+            setShowConvertConfirm(true);
+            return;
+        }
+
+        await doSubmit();
+    };
+
+    const doSubmit = async () => {
         setIsSubmitting(true);
         try {
             // Ensure target is set correctly based on type
@@ -482,7 +509,11 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
             <div className="w-full max-w-md bg-neutral-900 border border-white/10 rounded-2xl p-6 shadow-2xl max-h-[90dvh] overflow-y-auto modal-scroll">
                 <div className="flex items-center justify-between mb-6">
                     <h3 className="text-xl font-bold text-white">
-                        {isEditMode ? 'Edit Habit' : 'Add New Habit'}
+                        {isEditMode
+                            ? (initialData?.type !== 'bundle' && habitType === 'bundle')
+                                ? 'Convert to Bundle'
+                                : 'Edit Habit'
+                            : 'Add New Habit'}
                     </h3>
                     <button onClick={onClose} className="min-h-[44px] min-w-[44px] flex items-center justify-center text-neutral-400 hover:text-white -mr-2" aria-label="Close">
                         <X size={20} />
@@ -1171,6 +1202,20 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                         </div>
                     </div>
 
+                    {/* Add to Bundle action — for regular habits not already in a bundle */}
+                    {isEditMode && initialData && habitType === 'regular' && !initialData.bundleParentId && initialData.type !== 'bundle' && (
+                        <div className="border-t border-white/5 pt-3">
+                            <button
+                                type="button"
+                                onClick={() => setShowBundlePicker(true)}
+                                className="flex items-center gap-2 w-full px-3 py-2.5 rounded-lg text-left transition-colors hover:bg-white/5 active:bg-white/10 text-neutral-400 hover:text-neutral-200"
+                            >
+                                <Layers size={16} className="text-indigo-400" />
+                                <span className="text-sm font-medium">Add to Bundle...</span>
+                            </button>
+                        </div>
+                    )}
+
                     {/* Actions */}
                     <div className="sticky bottom-0 pt-2 pb-1 bg-neutral-900 flex justify-end gap-3">
                         <button
@@ -1195,6 +1240,38 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                     </div>
                 </form >
             </div >
+
+            {/* Bundle Picker Modal */}
+            {initialData && (
+                <BundlePickerModal
+                    isOpen={showBundlePicker}
+                    onClose={() => {
+                        setShowBundlePicker(false);
+                        onClose();
+                    }}
+                    habitId={initialData.id}
+                    habitName={initialData.name}
+                />
+            )}
+
+            {/* Convert Confirmation Modal */}
+            <ConvertBundleConfirmModal
+                isOpen={showConvertConfirm}
+                onClose={() => {
+                    setShowConvertConfirm(false);
+                    pendingSubmitRef.current = null;
+                }}
+                onConfirm={async () => {
+                    setShowConvertConfirm(false);
+                    if (pendingSubmitRef.current) {
+                        await pendingSubmitRef.current();
+                        pendingSubmitRef.current = null;
+                    }
+                }}
+                habitName={name}
+                bundleType={bundleMode || 'checklist'}
+                childCount={subHabitIds.length + pendingSubHabits.length}
+            />
         </div >
     );
 };
