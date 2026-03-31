@@ -5,7 +5,7 @@ Usage:
     export HF_TOKEN="hf_..."
     python3 scripts/generate-goal-badges.py
 
-Generates icon-style images for sample goals via the wavespeed provider
+Generates icon-style images for sample goals via the fal-ai provider
 and saves them to scripts/generated-badges/.
 """
 
@@ -67,11 +67,11 @@ GOALS = [
     },
 ]
 
-MODEL = "Tongyi-MAI/Z-Image-Turbo"
+MODEL = "black-forest-labs/FLUX.1-schnell"
 
 
 def main():
-    client = InferenceClient(provider="wavespeed", api_key=HF_TOKEN)
+    client = InferenceClient(provider="fal-ai", api_key=HF_TOKEN)
 
     for goal in GOALS:
         filename = f"{goal['name']}.png"
