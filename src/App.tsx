@@ -22,7 +22,7 @@ import { BottomTabBar } from './components/BottomTabBar';
 import { Plus, Trophy } from 'lucide-react';
 import type { Routine, Habit } from './types';
 import { GoalsPage } from './pages/goals/GoalsPage';
-import { CreateGoalFlow } from './pages/goals/CreateGoalFlow';
+import { CreateGoalModal } from './components/CreateGoalModal';
 import { GoalDetailPage } from './pages/goals/GoalDetailPage';
 import { GoalCompletedPage } from './pages/goals/GoalCompletedPage';
 import { WinArchivePage } from './pages/goals/WinArchivePage';
@@ -192,6 +192,7 @@ const HabitTrackerContent: React.FC = () => {
       const params = new URLSearchParams(window.location.search);
       setView(route);
       setSelectedGoalId(params.get("goalId"));
+      setShowCreateGoal(false);
     };
 
     window.addEventListener("popstate", handlePopState);
@@ -202,6 +203,7 @@ const HabitTrackerContent: React.FC = () => {
 
   // Navigation handler that updates state and browser history
   const handleNavigate = (route: AppRoute, params: Record<string, string> = {}) => {
+    setShowCreateGoal(false);
     setView(route);
 
     // Update ephemeral state based on route
@@ -357,18 +359,7 @@ const HabitTrackerContent: React.FC = () => {
       }
 
       {
-        showCreateGoal ? (
-          <CreateGoalFlow
-            onComplete={() => {
-              setShowCreateGoal(false);
-              handleNavigate('goals');
-            }}
-            onCancel={() => {
-              setShowCreateGoal(false);
-              handleNavigate('goals');
-            }}
-          />
-        ) : completedGoalId ? (
+        completedGoalId ? (
           <GoalCompletedPage
             goalId={completedGoalId}
             onBack={() => {
@@ -574,6 +565,11 @@ const HabitTrackerContent: React.FC = () => {
           setRoutinePreviewState({ isOpen: false, routine: undefined });
           setRoutineEditorState({ isOpen: true, mode: 'edit', routine, initialVariantId: variantId });
         }}
+      />
+
+      <CreateGoalModal
+        isOpen={showCreateGoal}
+        onClose={() => setShowCreateGoal(false)}
       />
 
       <BottomTabBar activeView={view} onNavigate={handleNavigate} />
