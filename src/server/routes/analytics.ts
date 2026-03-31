@@ -156,7 +156,6 @@ export async function getGoalAnalyticsSummary(req: Request, res: Response): Prom
   try {
     const { householdId, userId } = getRequestIdentity(req);
     const timeZone = resolveTimeZone(typeof req.query.timeZone === 'string' ? req.query.timeZone : undefined);
-    const days = parseDays(req.query.days, 90);
     const referenceDayKey = getNowDayKey(timeZone);
 
     const [goals, habits, entries] = await Promise.all([

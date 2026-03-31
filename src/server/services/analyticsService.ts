@@ -605,7 +605,7 @@ export interface GoalAnalyticsSummary {
 
 export function computeGoalAnalytics(
   goals: Goal[],
-  habits: Habit[],
+  _habits: Habit[],
   entries: HabitEntry[],
   referenceDayKey: string,
   timeZone?: string

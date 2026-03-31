@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { parseISO, format, subDays, startOfWeek } from 'date-fns';
+import { parseISO, format, startOfWeek } from 'date-fns';
 import type { HeatmapDataPoint } from '../../lib/analyticsClient';
 
 interface AnalyticsHeatmapProps {
