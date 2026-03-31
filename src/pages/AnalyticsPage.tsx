@@ -8,7 +8,7 @@ import {
   fetchRoutineSummary,
   fetchGoalSummary,
   type HabitAnalyticsSummary,
-  type HeatmapDataPoint,
+  type HeatmapResponse,
   type TrendDataPoint,
   type CategoryBreakdownItem,
   type Insight,
@@ -16,9 +16,12 @@ import {
   type GoalAnalyticsSummary,
 } from '../lib/analyticsClient';
 import { SummaryCards } from '../components/analytics/SummaryCards';
+import { StreaksSection } from '../components/analytics/StreaksSection';
 import { AnalyticsHeatmap } from '../components/analytics/AnalyticsHeatmap';
 import { TrendChart } from '../components/analytics/TrendChart';
 import { CategoryBreakdown } from '../components/analytics/CategoryBreakdown';
+import { BehaviorPatterns } from '../components/analytics/BehaviorPatterns';
+import { AchievementsSection } from '../components/analytics/AchievementsSection';
 import { InsightsPanel } from '../components/analytics/InsightsPanel';
 import { RoutineAnalytics } from '../components/analytics/RoutineAnalytics';
 import { GoalAnalytics } from '../components/analytics/GoalAnalytics';
@@ -33,7 +36,7 @@ export const AnalyticsPage: React.FC = () => {
 
   // Habits state
   const [summary, setSummary] = useState<HabitAnalyticsSummary | null>(null);
-  const [heatmap, setHeatmap] = useState<HeatmapDataPoint[] | null>(null);
+  const [heatmap, setHeatmap] = useState<HeatmapResponse | null>(null);
   const [trends, setTrends] = useState<TrendDataPoint[] | null>(null);
   const [categories, setCategories] = useState<CategoryBreakdownItem[] | null>(null);
   const [insights, setInsights] = useState<Insight[] | null>(null);
@@ -151,9 +154,12 @@ export const AnalyticsPage: React.FC = () => {
       {activeTab === 'habits' && (
         <>
           <SummaryCards data={summary} loading={loading} />
+          <StreaksSection data={summary} loading={loading} />
           <AnalyticsHeatmap data={heatmap} loading={loading} />
           <TrendChart data={trends} loading={loading} />
           <CategoryBreakdown data={categories} loading={loading} />
+          <BehaviorPatterns data={summary?.behaviorPatterns ?? null} loading={loading} />
+          <AchievementsSection data={summary?.achievements ?? null} loading={loading} />
           <InsightsPanel data={insights} loading={loading} />
         </>
       )}
