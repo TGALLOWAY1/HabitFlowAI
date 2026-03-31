@@ -37,13 +37,14 @@ export async function getHabitAnalyticsSummary(req: Request, res: Response): Pro
     const days = parseDays(req.query.days, 90);
     const referenceDayKey = getNowDayKey(timeZone);
 
-    const [habits, entries, memberships] = await Promise.all([
+    const [habits, entries, memberships, categories] = await Promise.all([
       getHabitsByUser(householdId, userId),
       getHabitEntriesByUser(householdId, userId),
       getAllMembershipsByUser(householdId, userId),
+      getCategoriesByUser(householdId, userId),
     ]);
 
-    const summary = computeHabitAnalyticsSummary(habits, entries, memberships, referenceDayKey, days, timeZone);
+    const summary = computeHabitAnalyticsSummary(habits, entries, memberships, categories, referenceDayKey, days, timeZone);
     res.json(summary);
   } catch (error) {
     console.error('[analytics] summary error:', error);
@@ -139,12 +140,14 @@ export async function getRoutineAnalyticsSummary(req: Request, res: Response): P
     const days = parseDays(req.query.days, 90);
     const referenceDayKey = getNowDayKey(timeZone);
 
-    const [routines, routineLogs] = await Promise.all([
+    const [routines, routineLogs, habits, entries] = await Promise.all([
       getRoutines(householdId, userId),
       getRoutineLogsByUser(userId),
+      getHabitsByUser(householdId, userId),
+      getHabitEntriesByUser(householdId, userId),
     ]);
 
-    const analytics = computeRoutineAnalytics(routines, routineLogs, referenceDayKey, days);
+    const analytics = computeRoutineAnalytics(routines, routineLogs, habits, entries, referenceDayKey, days, timeZone);
     res.json(analytics);
   } catch (error) {
     console.error('[analytics] routine summary error:', error);
