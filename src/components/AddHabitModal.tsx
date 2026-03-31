@@ -733,7 +733,7 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                                         }`}
                                 >
                                     <CheckCircle2 size={16} />
-                                    Done
+                                    Done (Y/N)
                                 </button>
                                 <button
                                     type="button"
