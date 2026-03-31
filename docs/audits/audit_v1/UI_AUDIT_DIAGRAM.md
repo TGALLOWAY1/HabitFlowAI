@@ -6,98 +6,120 @@ Generated from the V1 audit findings. These Mermaid diagrams capture information
 
 ## 1. Information Architecture & Navigation Map
 
+### 1a. App Shell & Primary Navigation
+
 ```mermaid
-graph TB
+graph TD
     classDef primary fill:#4F46E5,stroke:#3730A3,color:#fff
     classDef secondary fill:#0891B2,stroke:#0E7490,color:#fff
     classDef modal fill:#D97706,stroke:#B45309,color:#fff
-    classDef issue fill:#DC2626,stroke:#B91C1C,color:#fff
     classDef legacy fill:#6B7280,stroke:#4B5563,color:#fff
 
-    APP["HabitFlow App"]
+    APP["HabitFlow App"] --> HEADER["Header Bar"]
+    APP --> TAB_BAR["Bottom Tab Bar"]
 
-    subgraph GLOBAL["Global Chrome"]
-        HEADER["Header Bar"]
-        HEADER --> SETTINGS_M["Settings Modal"]:::modal
-        HEADER --> INFO_M["Info / Tutorial Modal"]:::modal
-        HEADER --> USER_MENU["User Menu Dropdown"]
-    end
+    HEADER --> SETTINGS_M["Settings Modal"]:::modal
+    HEADER --> INFO_M["Info / Tutorial Modal"]:::modal
+    HEADER --> USER_MENU["User Menu Dropdown"]
 
-    subgraph TAB_BAR["Bottom Tab Bar (Primary Nav)"]
-        TAB_DASH["Dashboard"]:::primary
-        TAB_HABITS["Habits"]:::primary
-        TAB_ROUTINES["Routines"]:::primary
-        TAB_GOALS["Goals"]:::primary
-    end
+    TAB_BAR --> TAB_DASH["Dashboard"]:::primary
+    TAB_BAR --> TAB_HABITS["Habits"]:::primary
+    TAB_BAR --> TAB_ROUTINES["Routines"]:::primary
+    TAB_BAR --> TAB_GOALS["Goals"]:::primary
 
-    subgraph DASH_DOMAIN["Dashboard Domain"]
-        DASH["Progress Dashboard"]
-        DASH --> SETUP_GUIDE["Setup Guide (Onboarding)"]
-        DASH --> CHECKIN_M["Daily Check-in Modal"]:::modal
-        DASH --> PINNED_GOALS["Pinned Goals"]
-        DASH --> CAT_COMPLETION["Category Completion"]
-        DASH --> PINNED_ROUTINES["Pinned Routines"]
-        DASH --> TASKS_CARD["Tasks Card"]
-        DASH --> JOURNAL_CARD["Journal Card"]
-        DASH --> WEEKLY_SUMMARY["Weekly Summary"]
-        DASH --> HEATMAP["Activity Heatmap (30d/90d/yr)"]
-    end
+    TAB_DASH --> JOURNAL["Journal Page"]:::secondary
+    TAB_DASH --> TASKS["Tasks Page"]:::secondary
+    TAB_DASH --> WELLBEING["Wellbeing History"]:::secondary
+    TAB_DASH --> DEBUG["Debug Entries (dev)"]:::legacy
+```
 
-    subgraph HABIT_DOMAIN["Habits / Tracker Domain"]
-        TRACKER["Tracker Page"]
-        TRACKER --> GRID["Grid View (default)"]
-        TRACKER --> TODAY_VIEW["Today View"]
-        TRACKER --> WEEKLY_VIEW["Weekly View"]
-        TRACKER --> ADD_HABIT_M["Add/Edit Habit Modal"]:::modal
-        TRACKER --> HABIT_HIST_M["Habit History Modal"]:::modal
-        TRACKER --> HABIT_LOG_M["Habit Log Modal"]:::modal
-        TRACKER --> CAT_PICKER_M["Category Picker Modal"]:::modal
-        TRACKER --> BUNDLE_PICKER_M["Bundle Picker Modal"]:::modal
-        TRACKER --> CONVERT_BUNDLE_M["Convert to Bundle Modal"]:::modal
-    end
+### 1b. Dashboard Domain
 
-    subgraph ROUTINE_DOMAIN["Routines Domain"]
-        ROUTINE_LIST["Routine Cards List"]
-        ROUTINE_LIST --> ROUTINE_EDITOR_M["Routine Editor Modal"]:::modal
-        ROUTINE_LIST --> ROUTINE_PREVIEW_M["Routine Preview Modal"]:::modal
-        ROUTINE_LIST --> ROUTINE_RUNNER_M["Routine Runner Modal"]:::modal
-        ROUTINE_RUNNER_M --> COMPLETED_M["Completed Habits Modal"]:::modal
-    end
+```mermaid
+graph TD
+    classDef modal fill:#D97706,stroke:#B45309,color:#fff
+    classDef link fill:#2563EB,stroke:#1D4ED8,color:#fff
 
-    subgraph GOAL_DOMAIN["Goals Domain"]
-        GOALS_LIST["Goals List (Category Stacks)"]
-        GOALS_LIST --> CREATE_GOAL_1["Create Goal Step 1"]
-        CREATE_GOAL_1 --> CREATE_GOAL_2["Create Goal Step 2 (Link Habits)"]
-        GOALS_LIST --> GOAL_DETAIL["Goal Detail Page"]
-        GOALS_LIST --> EDIT_GOAL_M["Edit Goal Modal"]:::modal
-        GOALS_LIST --> DELETE_GOAL_M["Delete Goal Confirm"]:::modal
-        GOAL_DETAIL --> EDIT_GOAL_M
-        GOAL_DETAIL --> GOAL_COMPLETED["Goal Completed Page"]
-        GOAL_COMPLETED --> WIN_ARCHIVE["Win Archive Gallery"]
-        WIN_ARCHIVE --> GOAL_DETAIL
-    end
+    DASH["Progress Dashboard"]
 
-    subgraph SECONDARY["Secondary Domains (No Tab Bar Entry)"]
-        JOURNAL["Journal Page (Free/Template/History)"]:::secondary
-        TASKS["Tasks Page (Today/Inbox)"]:::secondary
-        WELLBEING["Wellbeing History Page"]:::secondary
-        DEBUG["Debug Entries (dev only)"]:::legacy
-    end
+    DASH --> SETUP["Setup Guide\n(Onboarding)"]
+    DASH --> CHECKIN["Daily Check-in"]:::modal
+    DASH --> PINNED_G["Pinned Goals"]
+    DASH --> CAT_COMP["Category Completion"]
+    DASH --> PINNED_R["Pinned Routines"]
+    DASH --> WEEKLY["Weekly Summary"]
+    DASH --> HEATMAP["Activity Heatmap\n(30d / 90d / year)"]
 
-    APP --> GLOBAL
-    APP --> TAB_BAR
-    TAB_DASH --> DASH
-    TAB_HABITS --> TRACKER
-    TAB_ROUTINES --> ROUTINE_LIST
-    TAB_GOALS --> GOALS_LIST
+    PINNED_G -->|"click"| GOAL_DETAIL["Goal Detail Page"]:::link
+    PINNED_R -->|"play"| ROUTINE_RUNNER["Routine Runner"]:::modal
+    CAT_COMP -->|"click"| TRACKER["Tracker (filtered)"]:::link
+    DASH --> TASKS_CARD["Tasks Card"]
+    DASH --> JOURNAL_CARD["Journal Card"]
+    TASKS_CARD -->|"click"| TASKS["Tasks Page"]:::link
+    JOURNAL_CARD -->|"click"| JOURNAL["Journal Page"]:::link
+    DASH -->|"link"| WELLBEING["Wellbeing History"]:::link
+    DASH -->|"+ Goal"| CREATE_GOAL["Create Goal Flow"]:::link
+```
 
-    PINNED_GOALS --> GOAL_DETAIL
-    PINNED_ROUTINES --> ROUTINE_RUNNER_M
-    TASKS_CARD --> TASKS
-    JOURNAL_CARD --> JOURNAL
-    DASH --> WELLBEING
-    DASH --> CREATE_GOAL_1
-    CAT_COMPLETION --> TRACKER
+### 1c. Habits / Tracker Domain
+
+```mermaid
+graph TD
+    classDef modal fill:#D97706,stroke:#B45309,color:#fff
+    classDef view fill:#6EE7B7,stroke:#059669,color:#065F46
+
+    TRACKER["Tracker Page"]
+
+    TRACKER --> GRID["Grid View (default)"]:::view
+    TRACKER --> TODAY["Today View"]:::view
+    TRACKER --> WEEKLY["Weekly View"]:::view
+
+    TRACKER -->|"+ Habit"| ADD_HABIT["Add/Edit Habit Modal"]:::modal
+    TRACKER -->|"context menu"| CTX["Habit Context Menu"]
+
+    CTX --> HIST["Habit History Modal"]:::modal
+    CTX --> LOG["Habit Log Modal"]:::modal
+    CTX --> CAT_PICK["Category Picker Modal"]:::modal
+    CTX --> BUNDLE_PICK["Bundle Picker Modal"]:::modal
+    CTX --> CONVERT["Convert to Bundle Modal"]:::modal
+```
+
+### 1d. Routines Domain
+
+```mermaid
+graph TD
+    classDef modal fill:#D97706,stroke:#B45309,color:#fff
+
+    LIST["Routine Cards List"]
+
+    LIST -->|"+ Routine"| EDITOR["Routine Editor Modal"]:::modal
+    LIST -->|"preview"| PREVIEW["Routine Preview Modal"]:::modal
+    LIST -->|"play"| RUNNER["Routine Runner Modal"]:::modal
+
+    RUNNER --> COMPLETED["Completed Habits Modal"]:::modal
+```
+
+### 1e. Goals Domain
+
+```mermaid
+graph TD
+    classDef modal fill:#D97706,stroke:#B45309,color:#fff
+    classDef page fill:#4F46E5,stroke:#3730A3,color:#fff
+
+    GOALS["Goals List\n(Collapsible Category Stacks)"]
+
+    GOALS -->|"+ Goal"| STEP1["Create Goal Step 1"]:::page
+    STEP1 --> STEP2["Step 2: Link Habits"]:::page
+
+    GOALS -->|"click goal"| DETAIL["Goal Detail Page"]:::page
+    GOALS -->|"trophy icon"| WINS["Win Archive Gallery"]:::page
+
+    DETAIL --> EDIT["Edit Goal Modal"]:::modal
+    GOALS --> DELETE["Delete Goal Confirm"]:::modal
+
+    DETAIL --> COMPLETED["Goal Completed Page"]:::page
+    COMPLETED --> WINS
+    WINS -->|"click goal"| DETAIL
 ```
 
 ---
@@ -346,28 +368,28 @@ gantt
     dateFormat YYYY-MM-DD
     axisFormat %b %d
 
-    section Critical (Data Integrity)
+    section Critical - Data Integrity
     Disable legacy fallback in truthQuery        :crit, t1, 2026-04-01, 3d
     Remove DayLog/manual-log from goal detail    :crit, t2, after t1, 3d
     Enforce unique (userId,habitId,dayKey) index :crit, t3, 2026-04-01, 2d
 
-    section High (Semantic/Security)
-    Fix DayKey/timezone in aggregators           :high, t4, after t1, 2d
-    Decouple routine submit from entry creation  :high, t5, after t2, 3d
-    Fix identity bypass in TaskContext           :high, t6, 2026-04-01, 1d
-    Clean up evidence subsystem                  :high, t7, after t5, 2d
+    section High - Semantic and Security
+    Fix DayKey/timezone in aggregators           :t4, after t1, 2d
+    Decouple routine submit from entry creation  :t5, after t2, 3d
+    Fix identity bypass in TaskContext           :t6, 2026-04-01, 1d
+    Clean up evidence subsystem                  :t7, after t5, 2d
 
-    section Medium (UX Quick Wins)
-    Remove forbidden completed field from upsert :med, t8, 2026-04-01, 1d
-    Fix evidence API response contract           :med, t9, 2026-04-01, 1d
-    Add modal accessibility baseline             :med, t10, 2026-04-03, 2d
-    Replace vite.svg PWA icons                   :med, t11, 2026-04-01, 1d
+    section Medium - UX Quick Wins
+    Remove forbidden completed field from upsert :t8, 2026-04-01, 1d
+    Fix evidence API response contract           :t9, 2026-04-01, 1d
+    Add modal accessibility baseline             :t10, 2026-04-03, 2d
+    Replace vite.svg PWA icons                   :t11, 2026-04-01, 1d
 
-    section Medium (UX Lifts)
-    Replace dblclick with one-tap logging        :med2, t12, after t8, 3d
-    Move tracker to entries-first state          :med2, t13, after t1, 5d
-    Remove 100ms polling loops                   :med2, t14, after t13, 2d
-    Streamline goal detail loading               :med2, t15, after t2, 3d
+    section Medium - UX Lifts
+    Replace dblclick with one-tap logging        :t12, after t8, 3d
+    Move tracker to entries-first state          :t13, after t1, 5d
+    Remove 100ms polling loops                   :t14, after t13, 2d
+    Streamline goal detail loading               :t15, after t2, 3d
 ```
 
 ---
