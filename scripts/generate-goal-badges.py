@@ -71,7 +71,7 @@ MODEL = "black-forest-labs/FLUX.1-schnell"
 
 
 def main():
-    client = InferenceClient(provider="fal-ai", api_key=HF_TOKEN)
+    client = InferenceClient(provider="hf-inference", api_key=HF_TOKEN)
 
     for goal in GOALS:
         filename = f"{goal['name']}.png"
