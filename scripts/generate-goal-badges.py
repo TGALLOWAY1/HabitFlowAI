@@ -15,6 +15,17 @@ from pathlib import Path
 
 from huggingface_hub import InferenceClient
 
+# Load .env file from project root if present
+env_path = Path(__file__).resolve().parent.parent / ".env"
+if env_path.exists():
+    with open(env_path) as f:
+        for line in f:
+            line = line.strip()
+            if line and not line.startswith("#") and "=" in line:
+                key, _, value = line.partition("=")
+                value = value.strip().strip('"').strip("'")
+                os.environ.setdefault(key.strip(), value)
+
 HF_TOKEN = os.environ.get("HF_TOKEN")
 if not HF_TOKEN:
     print("Error: HF_TOKEN environment variable is not set.")
