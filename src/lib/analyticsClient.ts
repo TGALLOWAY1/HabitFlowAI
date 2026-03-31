@@ -1,0 +1,100 @@
+/**
+ * Analytics API Client
+ *
+ * Frontend client for the analytics endpoints.
+ */
+
+import { API_BASE_URL } from './persistenceConfig';
+import { getLocalTimeZone } from './persistenceClient';
+
+// Re-export getLocalTimeZone-dependent identity headers
+function getIdentityHeaders(): Record<string, string> {
+  // Import is circular-safe because we only use the function, not the module state
+  const userId = localStorage.getItem('habitflow_user_id') ?? '';
+  const householdId = localStorage.getItem('habitflow_household_id') ?? 'default-household';
+  return {
+    'X-User-Id': userId,
+    'X-Household-Id': householdId,
+  };
+}
+
+async function analyticsRequest<T>(endpoint: string): Promise<T> {
+  const url = `${API_BASE_URL}${endpoint}`;
+  const response = await fetch(url, {
+    credentials: 'include',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getIdentityHeaders(),
+    },
+  });
+  if (!response.ok) {
+    throw new Error(`Analytics API error: ${response.status}`);
+  }
+  return response.json();
+}
+
+// ─── Types ───────────────────────────────────────────────────────────────────
+
+export interface HabitAnalyticsSummary {
+  consistencyScore: number;
+  completionRate: number;
+  currentStreak: number;
+  longestStreak: number;
+  totalCompletions: number;
+  graduatedHabits: number;
+}
+
+export interface HeatmapDataPoint {
+  dayKey: string;
+  completionPercent: number;
+  completedCount: number;
+  scheduledCount: number;
+}
+
+export interface TrendDataPoint {
+  week: string;
+  completionRate: number;
+  totalCompleted: number;
+  totalScheduled: number;
+}
+
+export interface CategoryBreakdownItem {
+  categoryId: string;
+  categoryName: string;
+  color: string;
+  completionRate: number;
+  totalCompleted: number;
+  totalScheduled: number;
+}
+
+export interface Insight {
+  type: 'info' | 'success' | 'warning';
+  message: string;
+}
+
+// ─── API Functions ───────────────────────────────────────────────────────────
+
+function buildParams(days: number): string {
+  const timeZone = getLocalTimeZone();
+  return `?days=${days}&timeZone=${encodeURIComponent(timeZone)}`;
+}
+
+export async function fetchHabitSummary(days = 90): Promise<HabitAnalyticsSummary> {
+  return analyticsRequest(`/analytics/habits/summary${buildParams(days)}`);
+}
+
+export async function fetchHabitHeatmap(days = 365): Promise<HeatmapDataPoint[]> {
+  return analyticsRequest(`/analytics/habits/heatmap${buildParams(days)}`);
+}
+
+export async function fetchHabitTrends(days = 90): Promise<TrendDataPoint[]> {
+  return analyticsRequest(`/analytics/habits/trends${buildParams(days)}`);
+}
+
+export async function fetchHabitCategoryBreakdown(days = 90): Promise<CategoryBreakdownItem[]> {
+  return analyticsRequest(`/analytics/habits/category-breakdown${buildParams(days)}`);
+}
+
+export async function fetchHabitInsights(days = 90): Promise<Insight[]> {
+  return analyticsRequest(`/analytics/habits/insights${buildParams(days)}`);
+}
