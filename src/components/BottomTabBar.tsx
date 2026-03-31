@@ -1,7 +1,7 @@
 import React from 'react';
-import { BarChart3, Calendar, Target, ClipboardList } from 'lucide-react';
+import { BarChart3, Calendar, Target, ClipboardList, TrendingUp } from 'lucide-react';
 
-type TabRoute = 'dashboard' | 'tracker' | 'journal' | 'goals' | 'routines' | 'tasks';
+type TabRoute = 'dashboard' | 'tracker' | 'journal' | 'goals' | 'routines' | 'tasks' | 'analytics';
 
 interface BottomTabBarProps {
   activeView: string;
@@ -13,6 +13,7 @@ const tabs: { route: TabRoute; label: string; icon: React.FC<{ size?: number; cl
   { route: 'tracker', label: 'Habits', icon: Calendar },
   { route: 'routines', label: 'Routines', icon: ClipboardList },
   { route: 'goals', label: 'Goals', icon: Target },
+  { route: 'analytics', label: 'Analytics', icon: TrendingUp },
 ];
 
 export const BottomTabBar: React.FC<BottomTabBarProps> = ({ activeView, onNavigate }) => {
