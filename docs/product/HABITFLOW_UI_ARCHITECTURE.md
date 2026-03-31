@@ -106,8 +106,8 @@ HabitFlow App
 | Goal Detail | Page | Click goal card / pinned goal | Charts, entries, linked habits for one goal | Goals, Habits, Entries | Edit Goal Modal, Goal Completed |
 | Goal Completed | Page | Auto-shown on 100% or manual | Celebratory screen with next actions | Goals | Win Archive, Goal Detail, Level Up |
 | Win Archive | Page | Trophy icon on Goals page / Goal Completed | Gallery of completed goals | Goals | Goal Detail |
-| Create Goal (Step 1) | Page | "+ Goal" button on Goals page | Enter goal details (title, type, target, deadline) | Goals | Create Goal Step 2 |
-| Create Goal (Step 2) | Page | Next from Step 1 | Link habits to goal | Goals, Habits | Goals List (on submit) |
+| Create Goal (Step 1) | Modal | "+ Goal" button on Goals page | Enter goal details (title, type, target, deadline, category) | Goals, Categories | Create Goal Step 2 |
+| Create Goal (Step 2) | Modal | Next from Step 1 | Link habits to goal (filtered by category if selected) | Goals, Habits | Goals List (on submit) |
 | Journal | Page | Dashboard card / `?view=journal` | Free-write, templates, history tabs | Journal Entries | — |
 | Tasks | Page | Dashboard card / `?view=tasks` | Today + Inbox columns | Tasks | — |
 | Wellbeing History | Page | Dashboard link | Historical wellbeing charts and trends | Wellbeing Entries | — |
