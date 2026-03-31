@@ -5,6 +5,7 @@ import { evaluateChecklistSuccess } from '../../shared/checklistSuccessRule';
 import { PinnedHabitsStrip } from './PinnedHabitsStrip';
 import { DayCategorySection } from './DayCategorySection';
 import { CategoryPickerModal } from '../CategoryPickerModal';
+import { BundlePickerModal } from '../BundlePickerModal';
 import { format } from 'date-fns';
 import { Plus } from 'lucide-react';
 import { fetchDayView, getLocalTimeZone } from '../../lib/persistenceClient';
@@ -122,6 +123,7 @@ export const DayView = ({ onAddHabit }: DayViewProps = {}) => {
     const [dayViewLoading, setDayViewLoading] = useState(true);
     const [dayViewError, setDayViewError] = useState<string | null>(null);
     const [categoryPickerHabit, setCategoryPickerHabit] = useState<Habit | null>(null);
+    const [bundlePickerHabit, setBundlePickerHabit] = useState<Habit | null>(null);
 
     // Fetch day view from truthQuery endpoint
     useEffect(() => {
@@ -399,6 +401,7 @@ export const DayView = ({ onAddHabit }: DayViewProps = {}) => {
                                                 onToggle={handleToggle}
                                                 onPin={handlePin}
                                                 onMoveToCategory={(h) => setCategoryPickerHabit(h)}
+                                                onAddToBundle={(h) => setBundlePickerHabit(h)}
                                                 allHabitsLookup={allHabitsLookup}
                                                 onUpdateHabitEntry={upsertHabitEntry}
                                                 deleteHabitEntryByKey={deleteHabitEntryByKey}
@@ -418,6 +421,7 @@ export const DayView = ({ onAddHabit }: DayViewProps = {}) => {
                                     onToggle={handleToggle}
                                     onPin={handlePin}
                                     onMoveToCategory={(h) => setCategoryPickerHabit(h)}
+                                    onAddToBundle={(h) => setBundlePickerHabit(h)}
                                     allHabitsLookup={allHabitsLookup}
                                     onUpdateHabitEntry={upsertHabitEntry}
                                     deleteHabitEntryByKey={deleteHabitEntryByKey}
@@ -437,6 +441,14 @@ export const DayView = ({ onAddHabit }: DayViewProps = {}) => {
                 onClose={() => setCategoryPickerHabit(null)}
                 habitId={categoryPickerHabit?.id ?? ''}
                 currentCategoryId={categoryPickerHabit?.categoryId ?? ''}
+            />
+
+            {/* Bundle Picker Modal */}
+            <BundlePickerModal
+                isOpen={!!bundlePickerHabit}
+                onClose={() => setBundlePickerHabit(null)}
+                habitId={bundlePickerHabit?.id ?? ''}
+                habitName={bundlePickerHabit?.name ?? ''}
             />
         </div>
     );
