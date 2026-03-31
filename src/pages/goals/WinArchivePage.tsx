@@ -94,6 +94,7 @@ export const WinArchivePage: React.FC<WinArchivePageProps> = ({ onViewGoal }) =>
                             <div className="relative aspect-square w-full bg-neutral-900/60 overflow-hidden p-4">
                                 <CelebratoryBadgeIcon
                                     goalId={goal.id}
+                                    badgeImageUrl={goal.badgeImageUrl}
                                     size={44}
                                     className="group-hover:scale-105 transition-transform duration-300"
                                 />

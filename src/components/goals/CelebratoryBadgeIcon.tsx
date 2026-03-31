@@ -54,22 +54,42 @@ function hashId(id: string): number {
 
 interface CelebratoryBadgeIconProps {
   goalId: string;
+  /** Optional generated badge image URL (base64 data URL or remote URL). */
+  badgeImageUrl?: string;
   /** Icon size in pixels (default 40) */
   size?: number;
   className?: string;
 }
 
 /**
- * Renders a deterministic celebratory badge icon for a completed goal.
- * The icon and color are derived from the goal ID so they stay consistent.
+ * Renders a celebratory badge icon for a completed goal.
+ *
+ * If `badgeImageUrl` is provided, shows the generated image.
+ * Otherwise falls back to a deterministic Lucide icon derived from the goal ID.
  */
 export const CelebratoryBadgeIcon: React.FC<CelebratoryBadgeIconProps> = ({
   goalId,
+  badgeImageUrl,
   size = 40,
   className = '',
 }) => {
   const variant = BADGE_VARIANTS[hashId(goalId) % BADGE_VARIANTS.length];
   const Icon = variant.icon;
+
+  if (badgeImageUrl) {
+    return (
+      <div
+        className={`w-full h-full flex items-center justify-center rounded-xl ${variant.bg} shadow-lg ${variant.glow} ${className}`}
+      >
+        <img
+          src={badgeImageUrl}
+          alt="Goal badge"
+          className="rounded-lg object-cover"
+          style={{ width: size * 1.6, height: size * 1.6 }}
+        />
+      </div>
+    );
+  }
 
   return (
     <div
