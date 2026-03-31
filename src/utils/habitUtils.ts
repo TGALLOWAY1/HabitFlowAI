@@ -310,11 +310,12 @@ export function getHabitsForDate(
         // 2. Must be a root habit (not a child)
         if (childIds.has(h.id)) return false;
 
-        // 3. Frequency Logic - STRICTLY DAILY for now per user feedback
+        // 3. Frequency Logic
         // Check both root frequency and goal.frequency (legacy/imported data might only have it in goal)
+        // 'total' (cumulative) habits also appear daily — they track daily contributions toward a cumulative goal.
         const frequency = h.frequency || h.goal.frequency;
 
-        if (frequency !== 'daily') return false;
+        if (frequency !== 'daily' && frequency !== 'total') return false;
 
         return true;
     });
