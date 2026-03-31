@@ -1329,3 +1329,25 @@ export async function endBundleMembership(membershipId: string, activeToDayKey: 
     body: JSON.stringify({ activeToDayKey }),
   });
 }
+
+/**
+ * Convert a regular habit into a bundle (choice or checklist).
+ * Preserves historical entries via a hidden legacy child.
+ */
+export async function convertHabitToBundle(
+  habitId: string,
+  payload: {
+    bundleType: 'choice' | 'checklist';
+    children: Array<{ name: string; goal?: Habit['goal'] }>;
+    checklistSuccessRule?: { type: 'any' | 'threshold' | 'percent' | 'full'; threshold?: number; percent?: number } | null;
+    timeZone?: string;
+  }
+): Promise<{ parent: Habit; children: Habit[]; legacyChild: Habit | null }> {
+  return apiRequest<{ parent: Habit; children: Habit[]; legacyChild: Habit | null }>(
+    `/habits/${habitId}/convert-to-bundle`,
+    {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }
+  );
+}

@@ -432,6 +432,45 @@ export async function getHabitEntriesByHabitIdsSince(
 }
 
 /**
+ * Reassign all non-deleted entries from one habit to another.
+ * Used during habit-to-bundle conversion to move historical entries
+ * to a legacy child habit, preserving streak continuity.
+ *
+ * @returns Object with count of modified entries and the earliest dayKey found
+ */
+export async function reassignEntries(
+    fromHabitId: string,
+    toHabitId: string,
+    householdId: string,
+    userId: string
+): Promise<{ modifiedCount: number; earliestDayKey: string | null }> {
+    const db = await getDb();
+    const collection = db.collection(COLLECTION_NAME);
+
+    const filter = scopeFilter(householdId, userId, {
+        habitId: fromHabitId,
+        deletedAt: { $exists: false },
+    });
+
+    // Find the earliest dayKey before reassigning
+    const earliest = await collection
+        .find(filter)
+        .sort({ dayKey: 1 })
+        .limit(1)
+        .toArray();
+    const earliestDayKey = earliest.length > 0 ? (earliest[0].dayKey as string || earliest[0].date as string || null) : null;
+
+    const result = await collection.updateMany(filter, {
+        $set: {
+            habitId: toHabitId,
+            updatedAt: new Date().toISOString(),
+        },
+    });
+
+    return { modifiedCount: result.modifiedCount, earliestDayKey };
+}
+
+/**
  * Aggregate entry totals per habit using MongoDB aggregation pipeline.
  * Returns sum of values and entry count per habitId without transferring documents.
  * Used for efficient cumulative goal progress computation.

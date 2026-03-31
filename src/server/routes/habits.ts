@@ -19,6 +19,7 @@ import {
 import { createCategory, getCategoriesByUser, getCategoryById } from '../repositories/categoryRepository';
 import { deleteHabitEntriesByHabit } from '../repositories/habitEntryRepository';
 import { endMembership } from '../repositories/bundleMembershipRepository';
+import { convertHabitToBundle, ConversionError } from '../services/habitConversionService';
 import type { Habit } from '../../models/persistenceTypes';
 import { getRequestIdentity } from '../middleware/identity';
 
@@ -514,6 +515,66 @@ export async function unlinkBundleChildRoute(req: Request, res: Response): Promi
     console.error('Error unlinking bundle child:', msg);
     res.status(500).json({
       error: { code: 'INTERNAL_SERVER_ERROR', message: 'Failed to unlink bundle child' },
+    });
+  }
+}
+
+/**
+ * POST /api/habits/:id/convert-to-bundle
+ *
+ * Converts a regular habit into a bundle (choice or checklist).
+ * Creates child habits from the provided list, preserves historical
+ * entries via a hidden legacy child habit.
+ *
+ * Body: { bundleType, children: [{name, goal?}], checklistSuccessRule?, timeZone? }
+ */
+export async function convertToBundleRoute(req: Request, res: Response): Promise<void> {
+  try {
+    const { id } = req.params;
+    const { bundleType, children, checklistSuccessRule, timeZone } = req.body;
+
+    if (!id) {
+      res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Habit ID is required' } });
+      return;
+    }
+
+    if (bundleType !== 'choice' && bundleType !== 'checklist') {
+      res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'bundleType must be "choice" or "checklist"' } });
+      return;
+    }
+
+    if (!Array.isArray(children) || children.length === 0) {
+      res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'At least one child is required' } });
+      return;
+    }
+
+    for (const child of children) {
+      if (!child.name || typeof child.name !== 'string' || child.name.trim().length === 0) {
+        res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Each child must have a non-empty name' } });
+        return;
+      }
+    }
+
+    const { householdId, userId } = getRequestIdentity(req);
+
+    const result = await convertHabitToBundle(id, householdId, userId, {
+      bundleType,
+      children,
+      checklistSuccessRule,
+      timeZone,
+    });
+
+    res.status(200).json(result);
+  } catch (error) {
+    if (error instanceof ConversionError) {
+      const statusCode = error.code === 'HABIT_NOT_FOUND' ? 404 : 400;
+      res.status(statusCode).json({ error: { code: error.code, message: error.message } });
+      return;
+    }
+    const msg = error instanceof Error ? error.message : 'Unknown error';
+    console.error('Error converting habit to bundle:', msg);
+    res.status(500).json({
+      error: { code: 'INTERNAL_SERVER_ERROR', message: 'Failed to convert habit to bundle' },
     });
   }
 }
