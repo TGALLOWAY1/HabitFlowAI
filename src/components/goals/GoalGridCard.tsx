@@ -1,5 +1,5 @@
 import React from 'react';
-import { Edit, ArrowUpRight, Check } from 'lucide-react';
+import { Edit, Check, GripVertical, Clock, CalendarCheck } from 'lucide-react';
 import type { GoalWithProgress } from '../../types';
 import { MiniHeatmap } from './MiniHeatmap';
 
@@ -8,92 +8,185 @@ interface GoalGridCardProps {
     onViewDetails: (goalId: string) => void;
     onEdit: (goalId: string) => void;
     onNavigateToCompleted?: (goalId: string) => void;
+    dragHandleProps?: Record<string, unknown>;
+    isDragging?: boolean;
 }
 
-export const GoalGridCard: React.FC<GoalGridCardProps> = ({
+/**
+ * Compact card for onetime goals — single row, minimal height.
+ */
+const CompactGoalCard: React.FC<GoalGridCardProps> = ({
     goalWithProgress,
     onViewDetails,
     onEdit,
+    dragHandleProps,
+    isDragging,
 }) => {
     const { goal, progress } = goalWithProgress;
 
-    // Safely fallback if lastThirtyDays is missing (during migration/dev)
-    const historyData = progress.lastThirtyDays || progress.lastSevenDays || [];
+    const isCompleted = !!goal.completedAt;
 
-    // For low-target goals (<=10), show a tick-mark progress bar instead of the 28-box heatmap
-    const isLowTarget = goal.type !== 'onetime' && !!goal.targetValue && goal.targetValue <= 10;
-    const target = goal.targetValue || 0;
+    // Format deadline
+    const deadlineLabel = goal.deadline
+        ? new Date(goal.deadline + 'T00:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+        : null;
 
-    // Determine border color based on status
-    const getBorderClass = () => {
-        if (goal.completedAt) return "border-emerald-500/30 shadow-[0_0_15px_rgba(16,185,129,0.1)]";
-        if (progress.inactivityWarning) return "border-amber-500/50 shadow-[0_0_15px_rgba(245,158,11,0.1)]";
-        return "border-white/5 hover:border-emerald-500/30";
-    };
 
     return (
         <div
-            className={`group relative flex flex-col bg-neutral-900/50 hover:bg-neutral-800/80 border rounded-2xl transition-all duration-300 overflow-hidden cursor-pointer ${getBorderClass()}`}
+            className={`group flex items-center gap-2 bg-neutral-900/50 hover:bg-neutral-800/80 border rounded-xl px-3 py-2.5 transition-all cursor-pointer ${
+                isCompleted
+                    ? 'border-emerald-500/30'
+                    : progress.inactivityWarning
+                        ? 'border-amber-500/40'
+                        : 'border-white/5 hover:border-white/10'
+            } ${isDragging ? 'opacity-50 shadow-2xl' : ''}`}
+            onClick={() => onViewDetails(goal.id)}
+        >
+            {/* Drag handle */}
+            <div
+                {...dragHandleProps}
+                className="flex-shrink-0 text-neutral-600 hover:text-neutral-400 cursor-grab active:cursor-grabbing touch-none"
+                onClick={(e) => e.stopPropagation()}
+            >
+                <GripVertical size={16} />
+            </div>
+
+            {/* Status icon */}
+            <div className="flex-shrink-0">
+                {isCompleted ? (
+                    <div className="w-5 h-5 rounded-full bg-emerald-500/20 flex items-center justify-center">
+                        <Check size={12} className="text-emerald-400" />
+                    </div>
+                ) : goal.type === 'onetime' ? (
+                    <div className="w-5 h-5 rounded-full border border-neutral-600 flex items-center justify-center">
+                        <div className="w-2 h-2 rounded-full bg-neutral-600" />
+                    </div>
+                ) : (
+                    <div className="w-5 h-5 rounded-full border border-emerald-500/40 flex items-center justify-center">
+                        <div className="w-2 h-2 rounded-full bg-emerald-500/60" />
+                    </div>
+                )}
+            </div>
+
+            {/* Title */}
+            <span className={`flex-1 text-sm font-medium truncate ${
+                isCompleted ? 'text-neutral-500 line-through' : 'text-neutral-100'
+            }`}>
+                {goal.title}
+            </span>
+
+            {/* Metadata chips */}
+            <div className="flex items-center gap-2 flex-shrink-0">
+                {/* Deadline */}
+                {deadlineLabel && !isCompleted && (
+                    <span className="flex items-center gap-1 text-xs text-neutral-500">
+                        <Clock size={11} />
+                        {deadlineLabel}
+                    </span>
+                )}
+
+                {/* Completed date */}
+                {isCompleted && goal.completedAt && (
+                    <span className="flex items-center gap-1 text-xs text-emerald-500/70">
+                        <CalendarCheck size={11} />
+                        Done
+                    </span>
+                )}
+
+                {/* Edit button - hover only */}
+                <button
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        onEdit(goal.id);
+                    }}
+                    className="p-1 text-neutral-600 hover:text-white hover:bg-white/10 rounded-md transition-colors opacity-0 group-hover:opacity-100"
+                    title="Edit Goal"
+                >
+                    <Edit size={14} />
+                </button>
+            </div>
+        </div>
+    );
+};
+
+/**
+ * Full card for cumulative goals — shows progress visualization.
+ */
+const CumulativeGoalCard: React.FC<GoalGridCardProps> = ({
+    goalWithProgress,
+    onViewDetails,
+    onEdit,
+    dragHandleProps,
+    isDragging,
+}) => {
+    const { goal, progress } = goalWithProgress;
+
+    const historyData = progress.lastThirtyDays || progress.lastSevenDays || [];
+    const isLowTarget = !!goal.targetValue && goal.targetValue <= 10;
+    const target = goal.targetValue || 0;
+    const isCompleted = !!goal.completedAt;
+
+    return (
+        <div
+            className={`group relative flex flex-col bg-neutral-900/50 hover:bg-neutral-800/80 border rounded-xl transition-all overflow-hidden cursor-pointer ${
+                isCompleted
+                    ? 'border-emerald-500/30'
+                    : progress.inactivityWarning
+                        ? 'border-amber-500/40'
+                        : 'border-white/5 hover:border-white/10'
+            } ${isDragging ? 'opacity-50 shadow-2xl' : ''}`}
             onClick={() => onViewDetails(goal.id)}
         >
             {/* Header */}
-            <div className="p-4 pb-0 relative">
-                <div className="flex justify-between items-start">
-                    <div className="min-w-0 pr-8">
-                        {/* Title */}
-                        <h3 className="font-bold text-neutral-100 truncate text-lg leading-tight mb-1">
-                            {goal.title}
-                        </h3>
-                        {/* Description / Metadata - Left aligned below title */}
-                        <div className="text-xs text-neutral-400 flex items-center gap-1.5 font-medium">
-                            <span className="capitalize">{goal.type === 'onetime' ? 'One-Time Event' : goal.type}</span>
-                            {goal.type === 'cumulative' && <span>• {goal.targetValue} {goal.unit} total</span>}
-                            {goal.type === 'frequency' && <span>• {goal.targetValue}x {goal.unit}/week</span>}
-                            {goal.type === 'onetime' && (
-                                <span>
-                                    • {goal.deadline
-                                        ? new Date(goal.deadline).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
-                                        : 'No Date'}
-                                </span>
-                            )}
-                        </div>
+            <div className="px-3 pt-3 pb-1 flex items-start gap-2">
+                {/* Drag handle */}
+                <div
+                    {...dragHandleProps}
+                    className="flex-shrink-0 mt-0.5 text-neutral-600 hover:text-neutral-400 cursor-grab active:cursor-grabbing touch-none"
+                    onClick={(e) => e.stopPropagation()}
+                >
+                    <GripVertical size={16} />
+                </div>
+
+                <div className="flex-1 min-w-0">
+                    <h3 className="font-semibold text-neutral-100 truncate text-sm leading-tight">
+                        {goal.title}
+                    </h3>
+                    <div className="text-xs text-neutral-500 mt-0.5">
+                        {goal.targetValue} {goal.unit} total
+                        {goal.deadline && (
+                            <span> · by {new Date(goal.deadline + 'T00:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
+                        )}
                     </div>
                 </div>
 
-                {/* Status Icons Absolute Top Right */}
-                <div className="absolute top-4 right-4 flex items-center gap-1">
-
-                    {/* Actions - Hover only */}
-                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-neutral-900/80 backdrop-blur-sm rounded-lg ml-1">
-                        <button
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                onEdit(goal.id);
-                            }}
-                            className="p-1.5 text-neutral-400 hover:text-white hover:bg-white/10 rounded-md transition-colors"
-                            title="Edit Goal"
-                        >
-                            <Edit size={16} />
-                        </button>
-                    </div>
-                </div>
+                {/* Edit button */}
+                <button
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        onEdit(goal.id);
+                    }}
+                    className="flex-shrink-0 p-1 text-neutral-600 hover:text-white hover:bg-white/10 rounded-md transition-colors opacity-0 group-hover:opacity-100"
+                    title="Edit Goal"
+                >
+                    <Edit size={14} />
+                </button>
             </div>
 
-            {/* Visuals Body */}
-            <div className="px-4 py-2 flex-1 flex flex-col gap-1">
-
-                {/* 1. Visualization - Hide for OneTime */}
-                {isLowTarget && (
-                    <div className="w-full py-2">
-                        <div className="relative h-3 w-full bg-neutral-800 rounded-full overflow-hidden">
+            {/* Progress visualization */}
+            <div className="px-3 pb-3">
+                {isLowTarget ? (
+                    <div className="w-full py-1">
+                        <div className="relative h-2.5 w-full bg-neutral-800 rounded-full overflow-hidden">
                             <div
-                                className={`h-full rounded-full transition-all duration-500 ease-out ${progress.percent >= 100
-                                    ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.3)]'
-                                    : 'bg-emerald-500'
-                                    }`}
+                                className={`h-full rounded-full transition-all duration-500 ease-out ${
+                                    progress.percent >= 100
+                                        ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.3)]'
+                                        : 'bg-emerald-500'
+                                }`}
                                 style={{ width: `${Math.min(100, progress.percent)}%` }}
                             />
-                            {/* Tick marks */}
                             {Array.from({ length: target - 1 }, (_, i) => (
                                 <div
                                     key={i}
@@ -102,77 +195,48 @@ export const GoalGridCard: React.FC<GoalGridCardProps> = ({
                                 />
                             ))}
                         </div>
-                        <div className="mt-1.5 text-xs text-neutral-400 font-medium text-center">
+                        <div className="mt-1 text-xs text-neutral-400 font-medium text-center tabular-nums">
                             {progress.currentValue} / {target} {goal.unit || ''}
                         </div>
                     </div>
-                )}
-
-                {/* Heatmap for high-target goals */}
-                {goal.type !== 'onetime' && !isLowTarget && (
-                    <div className="w-full">
+                ) : (
+                    <>
                         <MiniHeatmap
                             data={historyData}
-                            goalType={goal.type}
+                            goalType={'cumulative'}
                             targetValue={target}
                         />
-                    </div>
-                )}
-
-                {/* Progress Bar (Compact) - only for high-target goals (low-target already has one above) */}
-                {goal.type !== 'onetime' && !isLowTarget && (
-                    <div
-                        className="w-full mt-2 mb-1 group/progress relative"
-                        title={`Progress: ${progress.percent}%`}
-                    >
-                        <div className="h-1.5 w-full bg-neutral-800 rounded-full overflow-hidden">
-                            <div
-                                className={`h-full rounded-full transition-all duration-500 ease-out ${progress.percent >= 100
-                                    ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.3)]'
-                                    : 'bg-emerald-500'
+                        <div className="mt-1.5">
+                            <div className="h-1.5 w-full bg-neutral-800 rounded-full overflow-hidden">
+                                <div
+                                    className={`h-full rounded-full transition-all duration-500 ease-out ${
+                                        progress.percent >= 100
+                                            ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.3)]'
+                                            : 'bg-emerald-500'
                                     }`}
-                                style={{ width: `${Math.min(100, progress.percent)}%` }}
-                            />
+                                    style={{ width: `${Math.min(100, progress.percent)}%` }}
+                                />
+                            </div>
+                            <div className="mt-1 text-xs text-neutral-400 font-medium text-center tabular-nums">
+                                {progress.currentValue} / {target} {goal.unit || ''}
+                            </div>
                         </div>
-                        <div className="mt-1.5 text-xs text-neutral-400 font-medium text-center">
-                            {progress.currentValue} / {target} {goal.unit || ''}{goal.type === 'frequency' ? ' days' : ''}
-                        </div>
-                    </div>
-                )}
-
-                {/* OneTime Goal Status Placeholder */}
-                {goal.type === 'onetime' && (
-                    <div className="flex-1 flex items-center justify-center py-4">
-                        <div className={`px-3 py-1 rounded-full text-xs font-medium border ${goal.completedAt
-                            ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
-                            : 'bg-neutral-800 text-neutral-400 border-white/5'
-                            }`}>
-                            {goal.completedAt ? 'Completed' : 'Goal in Progress'}
-                        </div>
-                    </div>
+                    </>
                 )}
             </div>
-
-            {/* Footer / Status */}
-            {(goal.completedAt || !progress.inactivityWarning) && (
-                <div className="px-4 py-3 border-t border-white/5 bg-black/20 flex items-center justify-between text-xs">
-                    <div className="flex items-center gap-2">
-                        {!progress.inactivityWarning && (
-                            <div className="flex items-center gap-1.5 text-emerald-400">
-                                <ArrowUpRight size={12} />
-                                <span>On track</span>
-                            </div>
-                        )}
-                    </div>
-
-                    {goal.completedAt && (
-                        <div className="flex items-center gap-1 text-emerald-500 font-medium">
-                            <Check size={12} />
-                            <span>Done</span>
-                        </div>
-                    )}
-                </div>
-            )}
         </div>
     );
+};
+
+/**
+ * GoalGridCard — renders compact row for onetime, full card for cumulative.
+ */
+export const GoalGridCard: React.FC<GoalGridCardProps> = (props) => {
+    const { goal } = props.goalWithProgress;
+
+    if (goal.type === 'cumulative') {
+        return <CumulativeGoalCard {...props} />;
+    }
+
+    return <CompactGoalCard {...props} />;
 };

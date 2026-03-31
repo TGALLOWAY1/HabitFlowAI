@@ -18,6 +18,7 @@ import {
 } from '../repositories/habitRepository';
 import { createCategory, getCategoriesByUser, getCategoryById } from '../repositories/categoryRepository';
 import { deleteHabitEntriesByHabit } from '../repositories/habitEntryRepository';
+import { endMembership } from '../repositories/bundleMembershipRepository';
 import type { Habit } from '../../models/persistenceTypes';
 import { getRequestIdentity } from '../middleware/identity';
 
@@ -63,12 +64,17 @@ export async function getHabits(req: Request, res: Response): Promise<void> {
       const habitsNeedingRecovery = habits.filter(h => {
         const missingCategoryId = typeof h.categoryId !== 'string' || h.categoryId.trim().length === 0;
         const invalidCategoryId = !!h.categoryId && !categoryIds.has(h.categoryId);
-        const archivedAndOrphaned = h.archived === true && (missingCategoryId || invalidCategoryId);
-        return missingCategoryId || invalidCategoryId || archivedAndOrphaned;
+        // Also recover habits that are archived but have NO archivedReason —
+        // these were stranded by a bug where uncategorizeHabitsByCategory cleared
+        // archivedReason without setting archived: false.
+        const archivedWithoutReason = h.archived === true && !(h as any).archivedReason;
+        return missingCategoryId || invalidCategoryId || archivedWithoutReason;
       });
 
       if (habitsNeedingRecovery.length > 0) {
-        if (!noCategory) {
+        // Only create "No Category" if any habit actually needs reassignment
+        const needsReassignment = habitsNeedingRecovery.some(h => !h.categoryId || !categoryIds.has(h.categoryId));
+        if (needsReassignment && !noCategory) {
           noCategory = await createCategory(
             { name: noCategoryName, color: 'bg-neutral-600' },
             householdId,
@@ -77,12 +83,15 @@ export async function getHabits(req: Request, res: Response): Promise<void> {
         }
 
         const updatedHabits = await Promise.all(
-          habitsNeedingRecovery.map(h =>
-            updateHabit(h.id, householdId, userId, {
-              categoryId: noCategory!.id,
+          habitsNeedingRecovery.map(h => {
+            // If the habit has a valid categoryId, keep it — just unarchive.
+            // Only reassign to "No Category" if categoryId is missing/invalid.
+            const hasValidCategory = !!h.categoryId && categoryIds.has(h.categoryId);
+            return updateHabit(h.id, householdId, userId, {
+              categoryId: hasValidCategory ? h.categoryId : noCategory!.id,
               archived: false,
-            })
-          )
+            });
+          })
         );
 
         const updatedMap = new Map(updatedHabits.filter(Boolean).map(h => [h!.id, h!]));
@@ -121,7 +130,8 @@ export async function createHabitRoute(req: Request, res: Response): Promise<voi
       nonNegotiable, nonNegotiableDays, deadline, type, subHabitIds, bundleParentId, order,
       bundleType, bundleOptions,
       pinned, timeEstimate,
-      linkedGoalId, linkedRoutineIds
+      linkedGoalId, linkedRoutineIds,
+      requiredDaysPerWeek
     } = req.body;
 
     if (!name || typeof name !== 'string' || name.trim().length === 0) {
@@ -178,6 +188,7 @@ export async function createHabitRoute(req: Request, res: Response): Promise<voi
         timeEstimate,
         linkedGoalId,
         linkedRoutineIds,
+        requiredDaysPerWeek,
       },
       householdId,
       userId
@@ -262,7 +273,8 @@ export async function updateHabitRoute(req: Request, res: Response): Promise<voi
       nonNegotiable, nonNegotiableDays, deadline, type, subHabitIds, bundleParentId, order,
       bundleType, bundleOptions,
       pinned, timeEstimate,
-      linkedGoalId, linkedRoutineIds
+      linkedGoalId, linkedRoutineIds,
+      requiredDaysPerWeek
     } = req.body;
 
     if (!id) {
@@ -293,6 +305,7 @@ export async function updateHabitRoute(req: Request, res: Response): Promise<voi
     if (timeEstimate !== undefined) patch.timeEstimate = timeEstimate;
     if (linkedGoalId !== undefined) patch.linkedGoalId = linkedGoalId;
     if (linkedRoutineIds !== undefined) patch.linkedRoutineIds = linkedRoutineIds;
+    if (requiredDaysPerWeek !== undefined) patch.requiredDaysPerWeek = requiredDaysPerWeek;
 
     if (Object.keys(patch).length === 0) {
       res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'At least one field must be provided for update' } });
@@ -445,6 +458,62 @@ export async function reorderHabitsRoute(req: Request, res: Response): Promise<v
         message: 'Failed to reorder habits',
         details: process.env.NODE_ENV === 'development' ? errorMessage : undefined,
       },
+    });
+  }
+}
+
+/**
+ * POST /api/habits/:id/unlink-child
+ *
+ * Atomically unlinks a child from a bundle parent:
+ * 1. Removes childId from parent's subHabitIds
+ * 2. Clears child's bundleParentId
+ * 3. Ends the active BundleMembership
+ *
+ * Body: { childId: string, activeToDayKey: string }
+ */
+export async function unlinkBundleChildRoute(req: Request, res: Response): Promise<void> {
+  try {
+    const { id: parentId } = req.params;
+    const { childId, activeToDayKey } = req.body;
+
+    if (!parentId || !childId || !activeToDayKey) {
+      res.status(400).json({
+        error: { code: 'VALIDATION_ERROR', message: 'parentId, childId, and activeToDayKey are required' },
+      });
+      return;
+    }
+
+    const { householdId, userId } = getRequestIdentity(req);
+
+    const parent = await getHabitById(parentId, householdId, userId);
+    if (!parent || parent.type !== 'bundle') {
+      res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Bundle parent not found' } });
+      return;
+    }
+
+    const child = await getHabitById(childId, householdId, userId);
+    if (!child) {
+      res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Child habit not found' } });
+      return;
+    }
+
+    // 1. Remove child from parent's subHabitIds
+    const updatedSubIds = (parent.subHabitIds ?? []).filter(id => id !== childId);
+    await updateHabit(parentId, householdId, userId, { subHabitIds: updatedSubIds });
+
+    // 2. Clear child's bundleParentId
+    await updateHabit(childId, householdId, userId, { bundleParentId: null });
+
+    // 3. End active membership
+    await endMembership(parentId, childId, activeToDayKey, householdId, userId);
+
+    res.status(200).json({ success: true });
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : 'Unknown error';
+    console.error('Error unlinking bundle child:', msg);
+    res.status(500).json({
+      error: { code: 'INTERNAL_SERVER_ERROR', message: 'Failed to unlink bundle child' },
     });
   }
 }

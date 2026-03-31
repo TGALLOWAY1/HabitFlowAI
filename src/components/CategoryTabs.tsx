@@ -241,9 +241,10 @@ export const CategoryTabs: React.FC<CategoryTabsProps> = ({
             return;
         }
         try {
-            await addCategory({ name: trimmed, color: 'bg-neutral-600' });
+            // Close form immediately — optimistic UI shows the tab right away
             setNewCategoryName('');
             setIsAdding(false);
+            await addCategory({ name: trimmed, color: 'bg-neutral-600' });
         } catch (error) {
             const msg = error instanceof Error ? error.message : 'Failed to add category';
             setAddCategoryError(msg.includes('already exists') ? 'Category already exists. Choose a different name.' : msg);

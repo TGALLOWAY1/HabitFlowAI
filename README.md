@@ -32,5 +32,6 @@ See `docs/ARCHITECTURE.md` and `docs/DOMAIN_CANON.md` for details.
 Historical root-level implementation notes are in `docs/archive/root/`.
 ## Action items
 
+- **Critical task:** Complete the historical linkage/archive correctness remediation described in `docs/audits/historical-linkage-archive-audit-2026-03-30.md` to prevent deletion/unlink flows from erasing historical meaning in archives and analytics.
 - [ ] Implement the Analytics primary navigation migration (`Tasks` -> `Analytics`) using the plan in `docs/audits/analytics_page_implementation_audit_2026-03-29.md`, while preserving Tasks access from Dashboard and canonical HabitEntry/DayKey invariants.
 

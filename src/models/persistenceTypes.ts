@@ -144,7 +144,7 @@ export interface Habit {
     // Bundle fields
     type?: 'boolean' | 'number' | 'time' | 'bundle'; // Optional for backward compatibility
     subHabitIds?: string[]; // IDs of habits in this bundle
-    bundleParentId?: string; // ID of the parent bundle (if any)
+    bundleParentId?: string | null; // ID of the parent bundle (if any)
 
 
     /**
@@ -198,6 +198,14 @@ export interface Habit {
      */
     frequency?: 'daily' | 'weekly';
     weeklyTarget?: number;
+
+    /**
+     * Number of days per week the habit must be completed to maintain a streak.
+     * Must be <= assignedDays.length (if assignedDays is set).
+     * 7 = strict / non-negotiable (equivalent to old nonNegotiable with all days).
+     * Default (if absent): treat as all-days-required.
+     */
+    requiredDaysPerWeek?: number;
 
     /**
      * Bundle Configuration (Daily Only)
@@ -655,6 +663,9 @@ export interface DashboardPrefs {
      */
     checkinExtraMetricKeys?: WellbeingMetricKey[];
 
+    /** When true, streak/flame indicators are hidden across the UI */
+    hideStreaks?: boolean;
+
     /** ISO 8601 timestamp */
     updatedAt: string;
 }
@@ -967,13 +978,12 @@ export interface Goal {
     /** Display title/name of the goal */
     title: string;
 
-    /** 
-     * Type of goal: 'cumulative', 'frequency', or 'onetime'
+    /**
+     * Type of goal: 'cumulative' or 'onetime'
      * - 'cumulative': Track total progress toward a target (e.g., "Run 100 miles total")
-     * - 'frequency': Track how often a goal is met (e.g., "Exercise 3 times per week")
      * - 'onetime': A specific event or binary outcome (e.g., "Pass AWS Exam")
      */
-    type: 'cumulative' | 'frequency' | 'onetime';
+    type: 'cumulative' | 'onetime';
 
     /** 
      * Target value to achieve (e.g., 100 for "100 miles", 3 for "3 times per week")
@@ -995,13 +1005,13 @@ export interface Goal {
      * - 'count': Count entries or distinct days (see countMode)
      * - 'sum': Sum entry values
      * 
-     * Default: inferred from goal.type ('cumulative' → 'sum', 'frequency' → 'count')
+     * Default: inferred from goal.type ('cumulative' → 'sum', 'onetime' → 'count')
      */
     aggregationMode?: 'count' | 'sum';
 
     /**
      * Count mode for count aggregation (only applies when aggregationMode === 'count').
-     * - 'distinctDays': Count distinct dayKeys (default for frequency goals)
+     * - 'distinctDays': Count distinct dayKeys (default for count goals)
      * - 'entries': Count total number of entries
      * 
      * Default: 'distinctDays' for count goals

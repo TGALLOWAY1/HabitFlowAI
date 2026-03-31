@@ -2,23 +2,20 @@ import { useState, useCallback } from 'react';
 import { useAuth } from '../store/AuthContext';
 import { getGeminiApiKey, setGeminiApiKey } from '../lib/geminiClient';
 import { deleteAllUserData } from '../lib/persistenceClient';
-import { Eye, EyeOff, ChevronRight, ArrowLeft, Sparkles } from 'lucide-react';
+import { Eye, EyeOff, Sparkles } from 'lucide-react';
 
 interface SettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onRefresh?: () => void;
 }
 
-export function SettingsModal({ isOpen, onClose, onRefresh }: SettingsModalProps) {
+export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   const { user } = useAuth();
-  const [showRefreshConfirm, setShowRefreshConfirm] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [geminiKey, setGeminiKey] = useState(() => getGeminiApiKey());
   const [showGeminiKey, setShowGeminiKey] = useState(false);
   const [geminiKeySaved, setGeminiKeySaved] = useState(false);
-  const [showLearnMore, setShowLearnMore] = useState(false);
   const handleReopenGuide = useCallback(() => {
     try { localStorage.removeItem('hf_setup_guide_dismissed'); } catch { /* noop */ }
     window.dispatchEvent(new Event('habitflow:reopen-setup-guide'));
@@ -50,25 +47,9 @@ export function SettingsModal({ isOpen, onClose, onRefresh }: SettingsModalProps
           onClick={(e) => e.stopPropagation()}
         >
           <div className="p-4 border-b border-white/5 flex items-center justify-between">
-            {showLearnMore ? (
-              <>
-                <button
-                  type="button"
-                  onClick={() => setShowLearnMore(false)}
-                  className="flex items-center gap-2 text-neutral-400 hover:text-white transition-colors"
-                >
-                  <ArrowLeft size={16} />
-                  <span className="text-sm">Settings</span>
-                </button>
-                <h2 id="settings-title" className="text-lg font-semibold text-white">
-                  How HabitFlow Works
-                </h2>
-              </>
-            ) : (
-              <h2 id="settings-title" className="text-lg font-semibold text-white">
-                Settings
-              </h2>
-            )}
+            <h2 id="settings-title" className="text-lg font-semibold text-white">
+              Settings
+            </h2>
             <button
               type="button"
               onClick={onClose}
@@ -78,50 +59,6 @@ export function SettingsModal({ isOpen, onClose, onRefresh }: SettingsModalProps
               ✕
             </button>
           </div>
-
-          {showLearnMore ? (
-            <div className="p-4 space-y-5">
-              {[
-                {
-                  title: 'Habits',
-                  meaning: 'Small repeated actions that build consistency over time.',
-                  differs: 'Unlike tasks, habits are ongoing — they don\'t get "done."',
-                  example: 'Drink water, stretch for 5 minutes, practice Portuguese.',
-                },
-                {
-                  title: 'Goals',
-                  meaning: 'Outcomes or milestones your habits help create.',
-                  differs: 'Goals give your habits direction and purpose.',
-                  example: 'Run a 10K, improve sleep, become conversational in Portuguese.',
-                },
-                {
-                  title: 'Routines',
-                  meaning: 'Repeatable sequences that reduce friction.',
-                  differs: 'Routines group multiple actions into a single flow.',
-                  example: 'Morning reset, gym prep, evening shutdown.',
-                },
-                {
-                  title: 'Tasks',
-                  meaning: 'One-off or short-term obligations.',
-                  differs: 'Unlike habits, tasks are transient — do them and move on.',
-                  example: 'Call landlord, submit form, buy groceries.',
-                },
-                {
-                  title: 'Journal',
-                  meaning: 'Reflection, review, and self-observation.',
-                  differs: 'Journal is your space for introspection, not tracking.',
-                  example: 'Evening check-in, free write, weekly reflection.',
-                },
-              ].map((item) => (
-                <div key={item.title} className="rounded-lg bg-neutral-800/50 border border-white/5 p-4">
-                  <h4 className="text-sm font-semibold text-white mb-1.5">{item.title}</h4>
-                  <p className="text-sm text-neutral-300 mb-1">{item.meaning}</p>
-                  <p className="text-xs text-neutral-500 mb-2">{item.differs}</p>
-                  <p className="text-xs text-neutral-500 italic">e.g. {item.example}</p>
-                </div>
-              ))}
-            </div>
-          ) : (
 
           <div className="p-4 space-y-5">
             {/* Account */}
@@ -193,18 +130,6 @@ export function SettingsModal({ isOpen, onClose, onRefresh }: SettingsModalProps
               </div>
             </section>
 
-            {/* Learn More */}
-            <section>
-              <button
-                type="button"
-                onClick={() => setShowLearnMore(true)}
-                className="w-full px-4 py-2.5 rounded-lg bg-neutral-800 text-neutral-200 border border-white/10 hover:bg-neutral-700 text-sm text-left flex items-center justify-between"
-              >
-                How HabitFlow Works
-                <ChevronRight size={16} className="text-neutral-500" />
-              </button>
-            </section>
-
             {/* Setup Guide */}
             <section>
               <button
@@ -223,47 +148,6 @@ export function SettingsModal({ isOpen, onClose, onRefresh }: SettingsModalProps
                 Data
               </h3>
               <div className="space-y-3">
-                {/* Refresh */}
-                {onRefresh && (
-                  <>
-                    {!showRefreshConfirm ? (
-                      <button
-                        type="button"
-                        onClick={() => setShowRefreshConfirm(true)}
-                        className="w-full px-4 py-2.5 rounded-lg bg-neutral-800 text-neutral-200 border border-white/10 hover:bg-neutral-700 text-sm text-left"
-                      >
-                        Refresh data
-                      </button>
-                    ) : (
-                      <div className="rounded-lg bg-neutral-800/50 border border-amber-500/30 p-3 space-y-3">
-                        <p className="text-sm text-neutral-300">
-                          Re-sync all habits and categories from the server?
-                        </p>
-                        <div className="flex gap-2">
-                          <button
-                            type="button"
-                            onClick={() => setShowRefreshConfirm(false)}
-                            className="px-3 py-1.5 rounded-lg bg-neutral-700 text-neutral-200 border border-white/10 hover:bg-neutral-600 text-sm"
-                          >
-                            Cancel
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              onRefresh();
-                              setShowRefreshConfirm(false);
-                              onClose();
-                            }}
-                            className="px-3 py-1.5 rounded-lg bg-amber-600/80 text-white hover:bg-amber-600 text-sm"
-                          >
-                            Yes, refresh
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                  </>
-                )}
-
                 {/* Delete data */}
                 {!showDeleteConfirm ? (
                   <button
@@ -313,7 +197,6 @@ export function SettingsModal({ isOpen, onClose, onRefresh }: SettingsModalProps
               </div>
             </section>
           </div>
-          )}
         </div>
       </div>
     </div>

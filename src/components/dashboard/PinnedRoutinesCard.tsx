@@ -394,21 +394,23 @@ export const PinnedRoutinesCard: React.FC<PinnedRoutinesCardProps> = ({
                                             <span className="text-emerald-500/60 ml-1">({completionInfo.variantName})</span>
                                         )}
                                     </span>
-                                    <span className="text-[11px] text-neutral-600 flex-shrink-0">
+                                </div>
+                                <div className="flex items-center gap-2 flex-shrink-0 ml-3">
+                                    <span className="text-[11px] text-neutral-600">
                                         {resolvedSteps.length} steps
                                     </span>
                                     {hasMultiple && !done && (
-                                        <span className="flex items-center gap-1 text-[10px] text-purple-400/80 bg-purple-500/10 px-1.5 py-0.5 rounded-full flex-shrink-0">
+                                        <span className="flex items-center gap-1 text-[10px] text-purple-400/80 bg-purple-500/10 px-1.5 py-0.5 rounded-full">
                                             <Layers size={10} />
                                             {routine.variants!.length}
                                         </span>
                                     )}
+                                    {done ? (
+                                        <span className="text-[11px] text-emerald-400 font-medium">Done</span>
+                                    ) : (
+                                        <ChevronRight size={14} className="text-neutral-600" />
+                                    )}
                                 </div>
-                                {done ? (
-                                    <span className="text-[11px] text-emerald-400 font-medium flex-shrink-0">Done</span>
-                                ) : (
-                                    <ChevronRight size={14} className="text-neutral-600 flex-shrink-0" />
-                                )}
                             </button>
                         );
                     })}

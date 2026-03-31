@@ -21,9 +21,8 @@ interface DayCategorySectionProps {
     habits: Habit[];
     habitStatusMap: Map<string, DayViewHabitStatus>;
     dateStr: string;
-    onToggle: (habitId: string) => void;
+    onToggle: (habitId: string) => Promise<void>;
     onPin: (habitId: string) => void;
-    onUpdateEstimate: (habitId: string, minutes: number) => void;
     onMoveToCategory?: (habit: Habit) => void;
     allHabitsLookup: Map<string, Habit>;
     onUpdateHabitEntry: (habitId: string, dateKey: string, data: any) => Promise<void>;
@@ -38,7 +37,6 @@ export const DayCategorySection = ({
     dateStr,
     onToggle,
     onPin,
-    onUpdateEstimate,
     onMoveToCategory,
     allHabitsLookup,
     onUpdateHabitEntry,
@@ -66,6 +64,7 @@ export const DayCategorySection = ({
     // State for Accordion Logic (Single Expanded Item)
     const [expandedHabitId, setExpandedHabitId] = useState<string | null>(null);
     const [isCollapsed, setIsCollapsed] = useState(false);
+    const [pendingMutation, setPendingMutation] = useState(false);
 
     // NumericInputPopover state
     const [popover, setPopover] = useState<{
@@ -195,24 +194,29 @@ export const DayCategorySection = ({
                                 onToggle={() => onToggle(habit.id)}
                                 onExpand={() => setExpandedHabitId(prev => prev === habit.id ? null : habit.id)}
                                 onPin={onPin}
-                                onUpdateEstimate={onUpdateEstimate}
                                 onMoveToCategory={onMoveToCategory}
                                 subHabits={subHabits}
                                 subHabitStatuses={subHabitStatuses}
                                 habitStatus={status}
-                                onSubHabitToggle={(subHabitId) => onToggle(subHabitId)}
+                                onSubHabitToggle={async (subHabitId) => {
+                                    if (pendingMutation) return;
+                                    setPendingMutation(true);
+                                    try { await onToggle(subHabitId); } finally { setPendingMutation(false); }
+                                }}
                                 onNumericClick={(e) => handleNumericClick(e, habit)}
 
                                 // Choice bundle: toggle individual children (multi-select)
                                 selectedChoices={selectedChoices}
-                                onChoiceSelect={(optionKey) => {
-                                    if (selectedChoices?.has(optionKey)) {
-                                        // Deselect this child only
-                                        deleteHabitEntryByKey(optionKey, dateStr);
-                                    } else {
-                                        // Select this child without deselecting others
-                                        onToggle(optionKey);
-                                    }
+                                onChoiceSelect={async (optionKey) => {
+                                    if (pendingMutation) return;
+                                    setPendingMutation(true);
+                                    try {
+                                        if (selectedChoices?.has(optionKey)) {
+                                            await deleteHabitEntryByKey(optionKey, dateStr);
+                                        } else {
+                                            await onToggle(optionKey);
+                                        }
+                                    } finally { setPendingMutation(false); }
                                 }}
                             />
                         );
@@ -224,11 +228,11 @@ export const DayCategorySection = ({
             <NumericInputPopover
                 isOpen={popover.isOpen}
                 onClose={() => setPopover(prev => ({ ...prev, isOpen: false }))}
-                onSubmit={(value) => {
-                    onUpdateHabitEntry(popover.habitId, dateStr, { value, source: 'manual' });
+                onSubmit={async (value) => {
+                    await onUpdateHabitEntry(popover.habitId, dateStr, { value, source: 'manual' });
                 }}
-                onClear={() => {
-                    deleteHabitEntryByKey(popover.habitId, dateStr);
+                onClear={async () => {
+                    await deleteHabitEntryByKey(popover.habitId, dateStr);
                 }}
                 initialValue={popover.initialValue}
                 unit={popover.unit}

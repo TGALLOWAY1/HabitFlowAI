@@ -33,7 +33,6 @@ export const PinnedHabitsStrip = ({ habits, onUnpin, onToggle, checkStatus }: Pi
                         onToggle={() => onToggle(habit.id)}
                         onExpand={() => setExpandedId(prev => prev === habit.id ? null : habit.id)}
                         onPin={onUnpin}
-                        onUpdateEstimate={() => { }} // TODO: Pass this prop from parent if needed
                         subHabits={[]} // Bundles in pinned view - simplified for now
                     />
                 ))}

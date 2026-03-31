@@ -8,14 +8,14 @@ import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
 import type { Express, Request, Response } from 'express';
 import { getCategories, createCategoryRoute, getCategory, updateCategoryRoute, deleteCategoryRoute, reorderCategoriesRoute } from './routes/categories';
-import { getHabits, createHabitRoute, getHabit, updateHabitRoute, deleteHabitRoute, reorderHabitsRoute } from './routes/habits';
+import { getHabits, createHabitRoute, getHabit, updateHabitRoute, deleteHabitRoute, reorderHabitsRoute, unlinkBundleChildRoute } from './routes/habits';
 import { getDaySummary } from './routes/daySummary';
 import { getWellbeingLogs, upsertWellbeingLogRoute, getWellbeingLogRoute, deleteWellbeingLogRoute } from './routes/wellbeingLogs';
 import { getWellbeingEntriesRoute, upsertWellbeingEntriesRoute, deleteWellbeingEntryRoute } from './routes/wellbeingEntries';
 import { seedDemoEmotionalWellbeingRoute, resetDemoEmotionalWellbeingRoute } from './routes/devDemoEmotionalWellbeing';
 import { getRoutinesRoute, getRoutineRoute, createRoutineRoute, updateRoutineRoute, deleteRoutineRoute, submitRoutineRoute, uploadRoutineImageRoute, uploadRoutineImageMiddleware, getRoutineImageRoute, deleteRoutineImageRoute } from './routes/routines';
 import { getRoutineLogs } from './routes/routineLogs';
-import { getGoals, getGoal, getGoalProgress, getGoalsWithProgress, getCompletedGoals, createGoalRoute, updateGoalRoute, deleteGoalRoute, reorderGoalsRoute, getGoalDetailRoute, uploadGoalBadgeRoute, uploadBadgeMiddleware } from './routes/goals';
+import { getGoals, getGoal, getGoalProgress, getGoalsWithProgress, getCompletedGoals, createGoalRoute, updateGoalRoute, deleteGoalRoute, reorderGoalsRoute, getGoalDetailRoute } from './routes/goals';
 import { getProgressOverview } from './routes/progress';
 import { getIntegrityReport, dedupHabits, recoverHabits, remapOrphanedCategories } from './routes/admin';
 import { getEntriesRoute, createEntryRoute, upsertEntryByKeyRoute, getEntryRoute, updateEntryRoute, deleteEntryRoute } from './routes/journal';
@@ -60,6 +60,15 @@ import habitPotentialEvidenceRoutes from './routes/habitPotentialEvidence';
 import { deleteUserData } from './routes/userData';
 import { postWeeklySummary } from './routes/aiSummary';
 import { postSuggestVariants } from './routes/aiVariantSuggestion';
+import {
+  getHabitAnalyticsSummary,
+  getHabitAnalyticsHeatmap,
+  getHabitAnalyticsTrends,
+  getHabitAnalyticsCategoryBreakdown,
+  getHabitAnalyticsInsights,
+  getRoutineAnalyticsSummary,
+  getGoalAnalyticsSummary,
+} from './routes/analytics';
 
 export function createApp(): Express {
   const app = express();
@@ -126,6 +135,7 @@ export function createApp(): Express {
   app.get('/api/habits/:id', getHabit);
   app.patch('/api/habits/:id', updateHabitRoute);
   app.delete('/api/habits/:id', deleteHabitRoute);
+  app.post('/api/habits/:id/unlink-child', unlinkBundleChildRoute);
   app.get('/api/daySummary', getDaySummary);
   app.get('/api/wellbeingLogs', getWellbeingLogs);
   app.post('/api/wellbeingLogs', upsertWellbeingLogRoute);
@@ -167,7 +177,6 @@ export function createApp(): Express {
   app.patch('/api/goals/reorder', reorderGoalsRoute);
   app.get('/api/goals/:id/progress', getGoalProgress);
   app.get('/api/goals/:id/detail', getGoalDetailRoute);
-  app.post('/api/goals/:id/badge', uploadBadgeMiddleware, uploadGoalBadgeRoute);
   app.get('/api/goals/:id', getGoal);
   app.put('/api/goals/:id', updateGoalRoute);
   app.delete('/api/goals/:id', deleteGoalRoute);
@@ -191,6 +200,13 @@ export function createApp(): Express {
   app.delete('/api/bundle-memberships/:id', deleteBundleMembershipRoute);
   app.get('/api/dayView', getDayView);
   app.use('/api/evidence', habitPotentialEvidenceRoutes);
+  app.get('/api/analytics/habits/summary', getHabitAnalyticsSummary);
+  app.get('/api/analytics/habits/heatmap', getHabitAnalyticsHeatmap);
+  app.get('/api/analytics/habits/trends', getHabitAnalyticsTrends);
+  app.get('/api/analytics/habits/category-breakdown', getHabitAnalyticsCategoryBreakdown);
+  app.get('/api/analytics/habits/insights', getHabitAnalyticsInsights);
+  app.get('/api/analytics/routines/summary', getRoutineAnalyticsSummary);
+  app.get('/api/analytics/goals/summary', getGoalAnalyticsSummary);
   app.post('/api/ai/weekly-summary', postWeeklySummary);
   app.post('/api/ai/suggest-variants', postSuggestVariants);
   app.get('/api/admin/integrity-report', getIntegrityReport);

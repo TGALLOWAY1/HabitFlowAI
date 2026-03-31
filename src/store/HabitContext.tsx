@@ -300,11 +300,18 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     };
 
     const addCategory = async (category: Omit<Category, 'id'>) => {
+        // Optimistic update: show the category immediately with a temp ID
+        const tempId = `temp-${Date.now()}`;
+        const optimisticCategory: Category = { ...category, id: tempId } as Category;
+        setCategories(prev => [...prev, optimisticCategory]);
         try {
             const newCategory = await saveCategory(category);
-            setCategories(prev => [...prev, newCategory]);
+            // Replace temp category with server-confirmed one
+            setCategories(prev => prev.map(c => c.id === tempId ? newCategory : c));
             return newCategory;
         } catch (error) {
+            // Rollback optimistic update
+            setCategories(prev => prev.filter(c => c.id !== tempId));
             const errorMessage = error instanceof Error ? error.message : 'Unknown error';
             console.error('Failed to save category to API:', errorMessage);
             throw error;
@@ -507,9 +514,37 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     const deleteHabit = async (id: string) => {
         try {
+            // Find habit before deletion to check if it's a bundle child
+            const habitToDelete = habits.find(h => h.id === id);
+            const parentId = habitToDelete?.bundleParentId;
+
             await deleteHabitApi(id);
+
+            // If this habit was a bundle child, remove it from the parent's subHabitIds
+            if (parentId) {
+                const parent = habits.find(h => h.id === parentId);
+                if (parent?.subHabitIds?.includes(id)) {
+                    const updatedSubHabitIds = parent.subHabitIds.filter(sid => sid !== id);
+                    try {
+                        await updateHabitApi(parentId, { subHabitIds: updatedSubHabitIds });
+                    } catch (err) {
+                        console.error('Failed to update parent bundle after child deletion:', err);
+                    }
+                }
+            }
+
             // Update state
             const updatedHabits = habits.filter(h => h.id !== id);
+            // Also update parent's subHabitIds in local state
+            if (parentId) {
+                const parentIdx = updatedHabits.findIndex(h => h.id === parentId);
+                if (parentIdx !== -1 && updatedHabits[parentIdx].subHabitIds) {
+                    updatedHabits[parentIdx] = {
+                        ...updatedHabits[parentIdx],
+                        subHabitIds: updatedHabits[parentIdx].subHabitIds!.filter(sid => sid !== id)
+                    };
+                }
+            }
             setHabits(updatedHabits);
             // Also remove related logs from state
             const updatedLogs = Object.fromEntries(
@@ -688,8 +723,26 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
     const upsertHabitEntryContext = async (habitId: string, dateKey: string, data: any = {}) => {
+        // Snapshot previous state for rollback
+        const previousLogs = logs;
+
+        // Optimistic update: apply value immediately so UI doesn't lag
+        if (data.value !== undefined) {
+            const habit = habits.find(h => h.id === habitId);
+            const value = data.value;
+            const completed = habit?.goal?.target ? value >= habit.goal.target : value > 0;
+            setLogs(prev => ({
+                ...prev,
+                [`${habitId}-${dateKey}`]: {
+                    habitId,
+                    date: dateKey,
+                    value,
+                    completed,
+                },
+            }));
+        }
+
         try {
-            // Optimistic update logic could go here, but for now we rely on the server response
             const { dayLog } = await upsertHabitEntry(habitId, dateKey, data);
 
             // Update local state with the recomputed DayLog (legacy cache)
@@ -703,6 +756,8 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             scheduleBackgroundSync();
         } catch (error) {
             console.error('Failed to upsert habit entry:', error);
+            // Rollback to previous state
+            setLogs(previousLogs);
             setLastPersistenceError("Failed to save habit entry.");
         }
     };

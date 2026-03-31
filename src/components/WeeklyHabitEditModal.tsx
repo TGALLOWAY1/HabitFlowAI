@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { X, Clock, Calendar, Check, Shield } from 'lucide-react';
 import type { Habit } from '../models/persistenceTypes';
+import { DayChipSelector } from './DayChipSelector';
+import { NumberChipSelector } from './NumberChipSelector';
 
 interface WeeklyHabitEditModalProps {
     habit: Habit | null;
@@ -13,17 +15,25 @@ export const WeeklyHabitEditModal: React.FC<WeeklyHabitEditModalProps> = ({ habi
     const [assignedDays, setAssignedDays] = useState<number[]>([]);
     const [time, setTime] = useState('');
     const [duration, setDuration] = useState(30);
-    const [nonNegotiable, setNonNegotiable] = useState(false);
+    const [requiredDaysPerWeek, setRequiredDaysPerWeek] = useState<number>(7);
     const [isSaving, setIsSaving] = useState(false);
 
     useEffect(() => {
         if (habit) {
-            setAssignedDays(habit.assignedDays || []);
+            const days = habit.assignedDays || [0, 1, 2, 3, 4, 5, 6];
+            setAssignedDays(days);
             setTime(habit.scheduledTime || '');
             setDuration(habit.durationMinutes || 30);
-            setNonNegotiable(habit.nonNegotiable || false);
+            setRequiredDaysPerWeek(habit.requiredDaysPerWeek ?? days.length);
         }
     }, [habit]);
+
+    // Auto-clamp requiredDaysPerWeek when assignedDays shrinks
+    useEffect(() => {
+        if (requiredDaysPerWeek > assignedDays.length) {
+            setRequiredDaysPerWeek(assignedDays.length);
+        }
+    }, [assignedDays.length, requiredDaysPerWeek]);
 
     // Handle Escape key to close
     useEffect(() => {
@@ -44,8 +54,6 @@ export const WeeklyHabitEditModal: React.FC<WeeklyHabitEditModalProps> = ({ habi
 
     if (!isOpen || !habit) return null;
 
-    const days = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
-
     const handleSave = async () => {
         setIsSaving(true);
         try {
@@ -53,7 +61,8 @@ export const WeeklyHabitEditModal: React.FC<WeeklyHabitEditModalProps> = ({ habi
                 assignedDays,
                 scheduledTime: time,
                 durationMinutes: duration,
-                nonNegotiable
+                nonNegotiable: assignedDays.length === 7 && requiredDaysPerWeek === 7,
+                requiredDaysPerWeek,
             });
             onClose();
         } catch (error) {
@@ -61,12 +70,6 @@ export const WeeklyHabitEditModal: React.FC<WeeklyHabitEditModalProps> = ({ habi
         } finally {
             setIsSaving(false);
         }
-    };
-
-    const toggleDay = (index: number) => {
-        setAssignedDays(prev =>
-            prev.includes(index) ? prev.filter(d => d !== index) : [...prev, index]
-        );
     };
 
     return (
@@ -115,44 +118,39 @@ export const WeeklyHabitEditModal: React.FC<WeeklyHabitEditModalProps> = ({ habi
                         </div>
                     </div>
 
-                    {/* Days */}
+                    {/* Scheduled Days */}
                     <div className="space-y-2">
                         <label className="text-xs font-medium text-neutral-400 uppercase flex items-center gap-1">
-                            <Calendar size={12} /> Assigned Days
+                            <Calendar size={12} /> Scheduled Days
                         </label>
-                        <div className="flex justify-between gap-1">
-                            {days.map((d, i) => (
-                                <button
-                                    key={i}
-                                    onClick={() => toggleDay(i)}
-                                    className={`
-                                        w-9 h-9 rounded-lg text-xs font-bold transition-all
-                                        ${assignedDays.includes(i)
-                                            ? 'bg-emerald-500 text-neutral-900 shadow-[0_0_10px_rgba(16,185,129,0.3)]'
-                                            : 'bg-neutral-800 text-neutral-400 hover:bg-neutral-700 hover:text-white'}
-                                    `}
-                                >
-                                    {d}
-                                </button>
-                            ))}
-                        </div>
+                        <DayChipSelector
+                            selectedDays={assignedDays}
+                            onChange={setAssignedDays}
+                            minSelected={1}
+                        />
                     </div>
 
-                    {/* Non-Negotiable Toggle */}
-                    <div className="bg-neutral-800/50 border border-white/5 rounded-lg p-3 flex items-center justify-between group cursor-pointer hover:bg-neutral-800 transition-colors"
-                        onClick={() => setNonNegotiable(!nonNegotiable)}>
-                        <div className="flex items-center gap-3">
-                            <div className={`p-2 rounded-lg transition-colors ${nonNegotiable ? 'bg-yellow-500/20 text-yellow-400' : 'bg-neutral-700/50 text-neutral-500'}`}>
-                                <Shield size={20} />
-                            </div>
-                            <div>
-                                <h4 className={`font-medium transition-colors ${nonNegotiable ? 'text-yellow-400' : 'text-neutral-300'}`}>Non-Negotiable</h4>
-                                <p className="text-xs text-neutral-500">Essential habit.</p>
-                            </div>
-                        </div>
-                        <div className={`w-12 h-6 rounded-full p-1 transition-colors ${nonNegotiable ? 'bg-yellow-500' : 'bg-neutral-700'}`}>
-                            <div className={`w-4 h-4 rounded-full bg-white shadow-sm transition-transform ${nonNegotiable ? 'translate-x-6' : 'translate-x-0'}`} />
-                        </div>
+                    {/* Days Per Week Required */}
+                    <div className="space-y-2">
+                        <label className="text-xs font-medium text-neutral-400 uppercase flex items-center gap-1">
+                            <Shield size={12} /> Days Per Week Required
+                        </label>
+                        <NumberChipSelector
+                            value={requiredDaysPerWeek}
+                            onChange={setRequiredDaysPerWeek}
+                            min={1}
+                            max={assignedDays.length}
+                        />
+                        {assignedDays.length === 7 && requiredDaysPerWeek === 7 && (
+                            <p className="text-xs text-yellow-400 flex items-center gap-1 mt-1">
+                                <Shield size={10} /> Non-Negotiable — all days required
+                            </p>
+                        )}
+                        {requiredDaysPerWeek < assignedDays.length && (
+                            <p className="text-xs text-emerald-400 mt-1">
+                                {assignedDays.length - requiredDaysPerWeek} grace day{assignedDays.length - requiredDaysPerWeek !== 1 ? 's' : ''} per week
+                            </p>
+                        )}
                     </div>
 
                 </div>

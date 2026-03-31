@@ -1,4 +1,5 @@
 import type { Habit, DayLog } from '../types';
+import { evaluateChecklistSuccess } from '../shared/checklistSuccessRule';
 
 
 export interface FlattenedHabitItem {
@@ -173,8 +174,7 @@ export function computeBundleStatus(
         return { completed: isCompleted, value: totalValue };
     }
 
-    // Checklist Bundle: AND Logic (All children completed)
-    // Or Percentage? Usually "Done" means 100% for checklist logic in boolean context
+    // Checklist Bundle: evaluate using configurable success rule
     const total = habit.subHabitIds.length;
     let completedCount = 0;
     let totalValue = 0;
@@ -186,7 +186,7 @@ export function computeBundleStatus(
     });
 
     return {
-        completed: total > 0 && completedCount === total,
+        completed: evaluateChecklistSuccess(completedCount, total, habit.checklistSuccessRule).meetsSuccessRule,
         value: totalValue
     };
 }
@@ -213,13 +213,17 @@ export function getBundleStats(
         }
     }
 
+    const isAllDone = habit.bundleType === 'choice'
+        ? completed > 0
+        : evaluateChecklistSuccess(completed, total, habit.checklistSuccessRule).meetsSuccessRule;
+
     return {
         total,
         completed,
         percent: habit.bundleType === 'choice'
             ? (completed > 0 ? 100 : 0)
             : (completed / total) * 100,
-        isAllDone: habit.bundleType === 'choice' ? completed > 0 : completed === total
+        isAllDone
     };
 }
 

@@ -1,11 +1,13 @@
 import React, { useMemo } from 'react';
 import { useHabitStore } from '../store/HabitContext';
+import { useDashboardPrefs } from '../store/DashboardPrefsContext';
 import { calculateHabitStats } from '../utils/analytics';
 import { format, parseISO } from 'date-fns';
 import { Medal, Calendar } from 'lucide-react';
 
 export const AccomplishmentsLog: React.FC = () => {
     const { habits, logs } = useHabitStore();
+    const { hideStreaks } = useDashboardPrefs();
 
     const accomplishments = useMemo(() => {
         const list: { date: string; title: string; type: 'streak' | 'milestone' }[] = [];
@@ -45,7 +47,11 @@ export const AccomplishmentsLog: React.FC = () => {
         return list.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     }, [habits, logs]);
 
-    if (accomplishments.length === 0) {
+    const visibleAccomplishments = hideStreaks
+        ? accomplishments.filter(item => item.type !== 'streak')
+        : accomplishments;
+
+    if (visibleAccomplishments.length === 0) {
         return (
             <div className="bg-neutral-900/50 rounded-2xl border border-white/5 p-6 backdrop-blur-sm text-center">
                 <h3 className="text-xl font-bold text-white mb-2">Accomplishments</h3>
@@ -58,7 +64,7 @@ export const AccomplishmentsLog: React.FC = () => {
         <div className="bg-neutral-900/50 rounded-2xl border border-white/5 p-6 backdrop-blur-sm">
             <h3 className="text-xl font-bold text-white mb-6">Recent Accomplishments</h3>
             <div className="space-y-4">
-                {accomplishments.map((item, idx) => (
+                {visibleAccomplishments.map((item, idx) => (
                     <div key={idx} className="flex items-center gap-4 p-3 bg-neutral-800/30 rounded-lg border border-white/5">
                         <div className={`p-2 rounded-full ${item.type === 'streak' ? 'bg-orange-500/20 text-orange-500' : 'bg-emerald-500/20 text-emerald-500'}`}>
                             {item.type === 'streak' ? <FlameIcon /> : <Medal size={20} />}

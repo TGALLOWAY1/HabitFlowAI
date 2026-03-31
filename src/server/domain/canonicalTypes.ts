@@ -90,13 +90,13 @@ export interface GoalLinkRecord {
      * - 'count': Count entries or distinct days (see countMode)
      * - 'sum': Sum entry values
      * 
-     * Default: inferred from goal.type ('cumulative' → 'sum', 'frequency' → 'count')
+     * Default: inferred from goal.type ('cumulative' → 'sum', 'onetime' → 'count')
      */
     aggregationMode?: 'count' | 'sum';
 
     /**
      * Count mode for count aggregation (only applies when aggregationMode === 'count').
-     * - 'distinctDays': Count distinct dayKeys (default for frequency goals)
+     * - 'distinctDays': Count distinct dayKeys (default for count goals)
      * - 'entries': Count total number of entries
      * 
      * Default: 'distinctDays' for count goals

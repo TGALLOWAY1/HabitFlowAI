@@ -59,7 +59,7 @@ export interface Habit {
     // Bundle fields
     type?: 'boolean' | 'number' | 'time' | 'bundle'; // Optional for backward compatibility
     subHabitIds?: string[]; // IDs of habits in this bundle
-    bundleParentId?: string; // ID of the parent bundle (if any)
+    bundleParentId?: string | null; // ID of the parent bundle (if any)
     order?: number; // Display order
 
     pace?: string | null; // Estimated completion date
@@ -82,6 +82,7 @@ export interface Habit {
      */
     frequency?: 'daily' | 'weekly';
     weeklyTarget?: number;
+    requiredDaysPerWeek?: number; // 1-7; must be <= assignedDays.length; 7 = strict (non-negotiable)
 
     bundleType?: 'checklist' | 'choice';
     bundleOptions?: Array<{

@@ -36,9 +36,11 @@ import { TasksPage } from './pages/TasksPage';
 import { DebugEntriesPage } from './pages/DebugEntriesPage';
 import { DevIdentityPanel } from './components/DevIdentityPanel';
 import { WellbeingHistoryPage } from './pages/WellbeingHistoryPage';
+import { AnalyticsPage } from './pages/AnalyticsPage';
+import { DashboardPrefsProvider } from './store/DashboardPrefsContext';
 
 // Simple router state
-type AppRoute = 'tracker' | 'dashboard' | 'routines' | 'goals' | 'wins' | 'journal' | 'tasks' | 'day' | 'debug-entries' | 'wellbeing-history';
+type AppRoute = 'tracker' | 'dashboard' | 'routines' | 'goals' | 'wins' | 'journal' | 'tasks' | 'day' | 'debug-entries' | 'wellbeing-history' | 'analytics';
 
 
 // Helper functions for URL syncing
@@ -72,6 +74,8 @@ function parseRouteFromLocation(location: Location): AppRoute {
       return "debug-entries";
     case "wellbeing-history":
       return "wellbeing-history";
+    case "analytics":
+      return "analytics";
     default:
 
       return "dashboard"; // default view
@@ -256,7 +260,7 @@ const HabitTrackerContent: React.FC = () => {
 
       <div className="flex flex-col gap-4">
         {/* Title Section */}
-        <div className={`flex flex-col gap-2 ${view === 'journal' ? 'hidden' : ''}`}>
+        <div className={`flex flex-col gap-2 ${view === 'journal' || view === 'analytics' ? 'hidden' : ''}`}>
           <div className="flex items-center justify-between">
             <h2 className="text-2xl font-bold text-white">
               {view === 'tracker' ? 'Habits' : view === 'dashboard' ? 'Dashboard' : view === 'routines' ? 'Routines' : view === 'tasks' ? 'Tasks' : 'Goals'}
@@ -373,8 +377,7 @@ const HabitTrackerContent: React.FC = () => {
               setCompletedGoalId(null);
               handleNavigate('goals');
             }}
-            onAddBadge={() => {
-              // Redirect to Win Archive after badge upload
+            onViewWinArchive={() => {
               setCompletedGoalId(null);
               handleNavigate('wins');
             }}
@@ -398,7 +401,7 @@ const HabitTrackerContent: React.FC = () => {
             onRepeat={async (goalId) => {
               try {
                 const original = await fetchGoal(goalId);
-                const { id, createdAt, completedAt, badgeImageUrl, sortOrder, ...goalData } = original;
+                const { id, createdAt, completedAt, sortOrder, ...goalData } = original;
                 await createGoal(goalData);
                 invalidateAllGoalCaches();
                 setCompletedGoalId(null);
@@ -498,6 +501,8 @@ const HabitTrackerContent: React.FC = () => {
           <JournalPage />
         ) : view === 'tasks' ? (
           <TasksPage />
+        ) : view === 'analytics' ? (
+          <AnalyticsPage />
         ) : view === 'debug-entries' ? (
           <DebugEntriesPage />
         ) : (
@@ -580,10 +585,12 @@ function App() {
             <HabitProvider>
               <RoutineProvider>
                 <TaskProvider>
-                  <Layout>
-                    <HabitTrackerContent />
-                  </Layout>
-                  {import.meta.env.DEV && <DevIdentityPanel />}
+                  <DashboardPrefsProvider>
+                    <Layout>
+                      <HabitTrackerContent />
+                    </Layout>
+                    {import.meta.env.DEV && <DevIdentityPanel />}
+                  </DashboardPrefsProvider>
                 </TaskProvider>
               </RoutineProvider>
             </HabitProvider>

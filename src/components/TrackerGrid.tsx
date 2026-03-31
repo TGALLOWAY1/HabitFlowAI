@@ -12,6 +12,7 @@ import { useToast } from './Toast';
 import { useHabitStore } from '../store/HabitContext';
 import { useRoutineStore } from '../store/RoutineContext';
 import { useProgressOverview } from '../lib/useProgressOverview';
+import { useDashboardPrefs } from '../store/DashboardPrefsContext';
 
 
 
@@ -219,6 +220,8 @@ const HabitRowContent = ({
     onCellPointerMove,
 }: HabitRowContentProps) => {
 
+    const { hideStreaks } = useDashboardPrefs();
+
     // Non-Negotiable Logic
     const today = new Date();
     const todayStr = format(today, 'yyyy-MM-dd');
@@ -286,7 +289,7 @@ const HabitRowContent = ({
                                 Target: {habit.goal.target} {habit.goal.unit}
                             </span>
                         )}
-                        {streak !== undefined && streak > 0 && (
+                        {!hideStreaks && streak !== undefined && streak > 0 && (
                             <div className="flex items-center gap-1 text-[10px] text-orange-400 bg-orange-400/10 px-1.5 py-0.5 rounded-full border border-orange-400/20 flex-shrink-0">
                                 <Flame size={10} className="fill-orange-400" />
                                 <span className="font-bold">{streak}</span>
@@ -1010,8 +1013,7 @@ export const TrackerGrid = ({
         refreshProgress();
     };
 
-    // Choice Log Handlers
-
+    // Choice Log Handlers (Legacy — used by HabitLogModal for pre-migration bundleOptions)
 
     const handleChoiceSave = async (payload: {
         habitId: string;
@@ -1049,23 +1051,19 @@ export const TrackerGrid = ({
         lastHandledCellRef.current = { habitId: habit.id, dateStr, t: now };
 
         // Handle Unified Choice Children (Real Habits)
+        // Write entries on the CHILD habit, not the parent. Parent completion is derived.
         if (habit.bundleParentId && !habit.isVirtual) {
             const parent = habits.find(h => h.id === habit.bundleParentId);
             if (parent && parent.bundleType === 'choice') {
-                const parentLog = logs[`${parent.id}-${dateStr}`];
-                const isCompleted = parentLog?.completedOptions?.[habit.id] !== undefined;
+                const childLog = logs[`${habit.id}-${dateStr}`];
+                const isCompleted = !!childLog?.completed;
 
                 if (isCompleted) {
-                    // CHECK GOAL TYPE
                     if (habit.goal.type === 'number') {
-                        // Open Popover for numeric habits
-                        handleOpenPopover(e, habit, dateStr, parentLog?.completedOptions?.[habit.id] || 0);
+                        handleOpenPopover(e, habit, dateStr, childLog?.value || 0);
                     } else {
-                        // Direct upsert for boolean habits
-                        await upsertHabitEntry(parent.id, dateStr, {
-                            choiceChildHabitId: habit.id,
-                            value: 1
-                        });
+                        // Toggle off: delete child entry
+                        await deleteHabitEntryByKey(habit.id, dateStr);
                         refreshProgress();
                     }
                     return;
@@ -1073,7 +1071,9 @@ export const TrackerGrid = ({
             }
         }
 
-        // Handle Virtual Choice Options (Legacy)
+        // Handle Virtual Choice Options (Legacy — pre-migration bundles only)
+        // These don't have real child habits, so parent-entry writes are the only option.
+        // After migration to real child habits, this path becomes dead code.
         if (habit.isVirtual && habit.associatedOptionId && habit.bundleParentId) {
             e.stopPropagation();
 
@@ -1238,26 +1238,54 @@ export const TrackerGrid = ({
                                         ))}
                                     </SortableContext>
                                 ) : (
-                                    <div className="flex flex-col items-center justify-center p-8 text-center">
-                                        <h3 className="text-base font-medium text-white mb-2">
-                                            Habits are actions that, when done consistently, move you towards your goals.
-                                        </h3>
-                                        <p className="text-sm text-neutral-400 mb-4">
-                                            Start with 1–3 habits you want to repeat most days.
-                                        </p>
-                                        <div className="flex flex-wrap justify-center gap-2 mb-4">
-                                            {['Drink water', '10-minute walk', 'Read 5 pages', 'Stretch', 'Vitamins'].map((ex) => (
-                                                <span key={ex} className="px-3 py-1 text-xs text-neutral-400 bg-neutral-800/80 rounded-full border border-white/5">
-                                                    {ex}
-                                                </span>
-                                            ))}
+                                    <div className="sticky left-0 w-screen max-w-full flex flex-col items-center justify-center p-6 sm:p-8 text-center">
+                                        <div className="max-w-sm mx-auto flex flex-col items-center">
+                                        {/* The Rules — matching InfoModal style */}
+                                        <div className="w-full bg-emerald-500/5 border border-emerald-500/20 rounded-lg px-3 py-2.5 mb-5">
+                                            <p className="text-xs text-emerald-400 uppercase tracking-wide font-semibold mb-1.5">The Rules</p>
+                                            <ul className="space-y-0.5 text-sm text-neutral-300">
+                                                <li>Habits are <span className="text-emerald-400 font-medium">performed</span></li>
+                                                <li>Routines are <span className="text-emerald-400 font-medium">completed</span></li>
+                                                <li>Goals are <span className="text-emerald-400 font-medium">achieved</span></li>
+                                            </ul>
                                         </div>
+
+                                        {/* Definitions — matching InfoModal structure */}
+                                        <div className="w-full space-y-4 mb-6 text-left">
+                                            <div className="pl-3 border-l-2 border-emerald-500/40">
+                                                <p className="text-sm text-neutral-200">
+                                                    <span className="font-bold text-emerald-400">Habit</span>
+                                                </p>
+                                                <p className="text-sm text-neutral-400 mt-1">A repeated behavior performed over time. Each day, a habit is simply performed or not.</p>
+                                                <div className="flex flex-wrap gap-1.5 mt-2">
+                                                    {['Drink water', '10-minute walk', 'Read 5 pages'].map((ex) => (
+                                                        <span key={ex} className="px-2.5 py-0.5 text-xs text-neutral-400 bg-neutral-800/80 rounded-full border border-white/5">{ex}</span>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                            <div className="pl-3 border-l-2 border-emerald-500/40">
+                                                <p className="text-sm text-neutral-200">
+                                                    <span className="font-bold text-emerald-400">Routine</span>
+                                                </p>
+                                                <p className="text-sm text-neutral-400 mt-1">A group of habits performed together in a sequence.</p>
+                                                <p className="text-xs text-neutral-500 italic mt-1.5 pl-2">— "Morning Reset" — Stretch + Meditate + Review goals</p>
+                                            </div>
+                                            <div className="pl-3 border-l-2 border-emerald-500/40">
+                                                <p className="text-sm text-neutral-200">
+                                                    <span className="font-bold text-emerald-400">Goal</span>
+                                                </p>
+                                                <p className="text-sm text-neutral-400 mt-1">An outcome achieved by consistently performing the habits that support it.</p>
+                                                <p className="text-xs text-neutral-500 italic mt-1.5 pl-2">— "Run a 10K" — supported by: Running habit</p>
+                                            </div>
+                                        </div>
+
                                         <button
                                             onClick={onAddHabit}
                                             className="flex items-center gap-2 px-5 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-neutral-900 font-medium rounded-lg transition-colors text-sm"
                                         >
                                             Add Your First Habit
                                         </button>
+                                        </div>
                                     </div>
                                 )}
                             </div>

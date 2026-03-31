@@ -1,10 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { X, Shield, CheckCircle2, Calculator, Layers, CheckSquare, ChevronDown, ChevronRight, Search, Trophy, Calendar, Plus, Check } from 'lucide-react';
+import { X, Shield, CheckCircle2, Calculator, Layers, CheckSquare, ChevronDown, ChevronRight, Search, Trophy, Calendar } from 'lucide-react';
+import { DayChipSelector } from './DayChipSelector';
+import { NumberChipSelector } from './NumberChipSelector';
 import { useHabitStore } from '../store/HabitContext';
 import { useRoutineStore } from '../store/RoutineContext';
 import { useGoalsWithProgress } from '../lib/useGoalsWithProgress';
 import type { Habit } from '../models/persistenceTypes';
 import { cn } from '../utils/cn';
+import { format } from 'date-fns';
+import { getBundleMemberships, createBundleMembership, endBundleMembership } from '../lib/persistenceClient';
 
 interface AddHabitModalProps {
     isOpen: boolean;
@@ -14,9 +18,9 @@ interface AddHabitModalProps {
     onNavigate?: (route: string) => void;
 }
 
-export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, categoryId, initialData, onNavigate }) => {
+export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, categoryId, initialData }) => {
     const { addHabit, updateHabit, categories, habits, addCategory } = useHabitStore();
-    const { routines, addRoutine, updateRoutine } = useRoutineStore();
+    const { routines, updateRoutine } = useRoutineStore();
 
     // Form State
     const [name, setName] = useState('');
@@ -36,9 +40,6 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
         target: string;
         unit: string;
     }>>([]);
-    // Pending Sub-Habits (Checklist Mode)
-    // removed duplicate declaration
-    // const [pendingSubHabits, setPendingSubHabits] = useState...
     const [editingPendingId, setEditingPendingId] = useState<string | null>(null);
     const [editingLinkedHabitId, setEditingLinkedHabitId] = useState<string | null>(null);
     const [modifiedLinkedHabits, setModifiedLinkedHabits] = useState<Record<string, {
@@ -61,17 +62,11 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
     // Frequency (Default to Daily for Bundles)
     const [frequency, setFrequency] = useState<'daily' | 'weekly' | 'total'>('daily');
 
-    // Assigned Days (Weekly) - REMOVED for Weekly v2, only used if user specifically wants day scheduling?
-    // PRD says: "Explicitly removed: Which day will you do this?"
-    // But we might want to keep it for "Daily" habits if we supported "Some days" (e.g. MWF).
-    // PRD says "Daily: No change".
-    // Let's keep it but hide it for weekly.
-
-
     // Scheduling
     const [scheduledTime, setScheduledTime] = useState('');
     const [durationMinutes, setDurationMinutes] = useState('30');
-    const [nonNegotiable, setNonNegotiable] = useState(false);
+    const [scheduledDays, setScheduledDays] = useState<number[]>([0, 1, 2, 3, 4, 5, 6]);
+    const [requiredDaysPerWeek, setRequiredDaysPerWeek] = useState<number>(7);
 
     // Goal Linking
     const [linkedGoalId, setLinkedGoalId] = useState<string | null>(null);
@@ -80,7 +75,6 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
 
     // Routine Linking
     const [linkedRoutineIds, setLinkedRoutineIds] = useState<string[]>([]);
-    const [showRoutineSelect, setShowRoutineSelect] = useState(false);
 
     // Weekly Intent Type Helper
     const [weeklyIntent, setWeeklyIntent] = useState<'binary' | 'frequency' | 'quantity'>('binary');
@@ -103,12 +97,10 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                 setName(initialData.name);
                 setHabitType(initialData.type === 'bundle' ? 'bundle' : 'regular');
                 setBundleMode(initialData.bundleType || (initialData.type === 'bundle' ? 'checklist' : null)); // Default to checklist for legacy
-                setBundleMode(initialData.bundleType || (initialData.type === 'bundle' ? 'checklist' : null)); // Default to checklist for legacy
 
                 setSubHabitIds(initialData.subHabitIds || []);
                 setPendingSubHabits([]); // Clear pending on open
 
-                setGoalType(initialData.goal.type || 'boolean');
                 setGoalType(initialData.goal.type || 'boolean');
                 setTarget(initialData.goal.target ? String(initialData.goal.target) : '');
                 setUnit(initialData.goal.unit || '');
@@ -124,7 +116,11 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                     else setWeeklyIntent('binary');
                 }
                 setDurationMinutes(initialData.durationMinutes?.toString() || '30');
-                setNonNegotiable(initialData.nonNegotiable || false);
+                const days = initialData.assignedDays ?? [0, 1, 2, 3, 4, 5, 6];
+                setScheduledDays(days);
+                setRequiredDaysPerWeek(
+                    initialData.requiredDaysPerWeek ?? days.length
+                );
                 setDescription(initialData.description || '');
                 setSelectedCategoryId(initialData.categoryId);
             } else {
@@ -138,7 +134,6 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                 setSubHabitIds([]);
                 setPendingSubHabits([]);
                 setGoalType('boolean');
-                setGoalType('boolean');
                 setTarget('');
                 setUnit('');
                 setFrequency('daily');
@@ -147,7 +142,8 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                 setLinkedRoutineIds([]);
                 setWeeklyIntent('binary');
                 setDurationMinutes('30');
-                setNonNegotiable(false);
+                setScheduledDays([0, 1, 2, 3, 4, 5, 6]);
+                setRequiredDaysPerWeek(7);
                 setDescription('');
 
                 // Robust Category Selection Default
@@ -181,6 +177,13 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
             window.removeEventListener('keydown', handleKeyDown);
         };
     }, [isOpen, onClose]);
+
+    // Auto-clamp requiredDaysPerWeek when scheduledDays shrinks
+    useEffect(() => {
+        if (requiredDaysPerWeek > scheduledDays.length) {
+            setRequiredDaysPerWeek(scheduledDays.length);
+        }
+    }, [scheduledDays.length, requiredDaysPerWeek]);
 
     // Auto-sync target for Boolean Weekly habits
     // Auto-sync target for Boolean Weekly habits - DEPRECATED
@@ -219,12 +222,13 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                 name,
                 categoryId: selectedCategoryId,
                 goal: goalConfig,
-                assignedDays: undefined, // Only save days for Daily (if we add 'custom daily' later) or Legacy
+                assignedDays: scheduledDays,
                 scheduledTime: scheduledTime || undefined,
                 durationMinutes: durationMinutes ? Number(durationMinutes) : undefined,
                 linkedGoalId: linkedGoalId || undefined,
                 linkedRoutineIds: linkedRoutineIds.length > 0 ? linkedRoutineIds : undefined,
-                nonNegotiable,
+                nonNegotiable: scheduledDays.length === 7 && requiredDaysPerWeek === 7,
+                requiredDaysPerWeek,
                 description: description || undefined,
                 type: habitType === 'bundle' ? 'bundle' as const : undefined,
                 subHabitIds: habitType === 'bundle' ? subHabitIds : undefined,
@@ -240,6 +244,7 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
             }
 
             // Create Pending Sub-Habits
+            const todayDayKey = format(new Date(), 'yyyy-MM-dd');
             const newSubHabitIds: string[] = [];
             for (const pending of pendingSubHabits) {
                 const newHabitData = {
@@ -256,6 +261,14 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                 };
                 const created = await addHabit(newHabitData);
                 newSubHabitIds.push(created.id);
+                // Create membership for the newly created child
+                try {
+                    await createBundleMembership({
+                        parentHabitId: savedHabit.id,
+                        childHabitId: created.id,
+                        activeFromDayKey: todayDayKey,
+                    });
+                } catch (_e) { /* best-effort */ }
             }
 
             // If Bundle, update children to point to this parent
@@ -274,14 +287,31 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                 // Determine new existing children (not pending ones, those are handled above)
                 const newlyLinkedExistingIds = subHabitIds.filter(id => !previousSubIds.includes(id));
 
-                // Unlink removed children
+                // Unlink removed children — update bundleParentId and end membership
+                // Use null (not undefined) so JSON.stringify includes the field
+                // and the server clears bundleParentId in the database.
                 for (const childId of removedIds) {
-                    await updateHabit(childId, { bundleParentId: undefined });
+                    await updateHabit(childId, { bundleParentId: null });
+                    // End active membership for this child
+                    try {
+                        const memberships = await getBundleMemberships(savedHabit.id);
+                        const active = memberships.find(m => m.childHabitId === childId && !m.activeToDayKey);
+                        if (active) {
+                            await endBundleMembership(active.id, todayDayKey);
+                        }
+                    } catch (_e) { /* membership may not exist for pre-migration bundles */ }
                 }
 
-                // Link new existing children
+                // Link new existing children — update bundleParentId and create membership
                 for (const childId of newlyLinkedExistingIds) {
                     await updateHabit(childId, { bundleParentId: savedHabit.id });
+                    try {
+                        await createBundleMembership({
+                            parentHabitId: savedHabit.id,
+                            childHabitId: childId,
+                            activeFromDayKey: todayDayKey,
+                        });
+                    } catch (_e) { /* best-effort — membership creation may fail for edge cases */ }
                 }
 
                 // Apply modifications to linked habits
@@ -334,27 +364,6 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
         }
     };
 
-    const toggleRoutine = (id: string) => {
-        setLinkedRoutineIds(prev =>
-            prev.includes(id) ? prev.filter(r => r !== id) : [...prev, id]
-        );
-    };
-
-    const handleCreateRoutine = async () => {
-        // Create a new routine with the habit name + "Routine"
-        try {
-            const newRoutine = await addRoutine({
-                title: `${name || 'New Routine'} Routine`,
-                categoryId: selectedCategoryId || undefined,
-                steps: [],
-                linkedHabitIds: [] // Will link on save
-            });
-            setLinkedRoutineIds(prev => [...prev, newRoutine.id]);
-            setShowRoutineSelect(false);
-        } catch (e) {
-            console.error("Failed to create routine", e);
-        }
-    };
 
     const toggleSubHabit = (id: string) => {
         setSubHabitIds(prev =>
@@ -585,9 +594,7 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                             />
                         </div>
 
-                        {/* Only show category selector if not pre-selected via context */}
-                        {!categoryId && (
-                            <div>
+                        <div>
                                 <label className="block text-sm font-medium text-neutral-400 mb-1">Category</label>
                                 {categories.length > 0 && !isCreatingCategory && (
                                     <select
@@ -675,7 +682,6 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                                     </button>
                                 )}
                             </div>
-                        )}
                     </div>
 
                     {/* 2. Frequency & Type (Only for Regular) */}
@@ -848,132 +854,22 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                     {/* Goal Linker */}
                     <div className="space-y-1">
                         <label className="block text-sm font-medium text-neutral-400">Connect to a Goal (Optional)</label>
-                        {availableGoals.length > 0 ? (
-                            <>
-                                <div className="relative">
-                                    <Trophy size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500" />
-                                    <select
-                                        value={linkedGoalId || ''}
-                                        onChange={(e) => setLinkedGoalId(e.target.value || null)}
-                                        className="w-full bg-neutral-800 border border-white/10 rounded-lg pl-10 pr-4 py-2 text-white focus:outline-none focus:border-emerald-500 appearance-none"
-                                    >
-                                        <option value="">No goal linked</option>
-                                        {availableGoals.map(g => (
-                                            <option key={g.id} value={g.id}>{g.title}</option>
-                                        ))}
-                                    </select>
-                                    <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-500 pointer-events-none" />
-                                </div>
-                                {onNavigate && (
-                                    <button
-                                        type="button"
-                                        onClick={() => { onClose(); onNavigate('goals'); }}
-                                        className="flex items-center gap-1 text-xs text-emerald-400 hover:text-emerald-300 transition-colors mt-1"
-                                    >
-                                        <Plus size={12} /> New goal
-                                    </button>
-                                )}
-                            </>
-                        ) : (
-                            <p className="text-sm text-neutral-500">
-                                No goals yet — you can always connect one later.
-                                {onNavigate && (
-                                    <>
-                                        {' '}
-                                        <button
-                                            type="button"
-                                            onClick={() => { onClose(); onNavigate('goals'); }}
-                                            className="text-emerald-400 hover:text-emerald-300 underline transition-colors"
-                                        >
-                                            Want to start with a goal first?
-                                        </button>
-                                    </>
-                                )}
-                            </p>
-                        )}
-                    </div>
-
-                    {/* Routine Linker */}
-                    <div className="space-y-1">
-                        <label className="block text-sm font-medium text-neutral-400">Related Routines (Optional)</label>
-
-                        {/* List of Linked Routines */}
-                        {linkedRoutineIds.length > 0 && (
-                            <div className="flex flex-wrap gap-2 mb-2">
-                                {linkedRoutineIds.map(rId => {
-                                    const routine = routines.find(r => r.id === rId);
-                                    if (!routine) return null;
-                                    return (
-                                        <div key={rId} className="flex items-center gap-1 bg-indigo-500/20 text-indigo-300 px-2 py-1 rounded text-xs border border-indigo-500/30">
-                                            <span>{routine.title}</span>
-                                            <button
-                                                type="button"
-                                                onClick={() => toggleRoutine(rId)}
-                                                className="hover:text-white"
-                                            >
-                                                <X size={12} />
-                                            </button>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        )}
-
                         <div className="relative">
-                            <button
-                                type="button"
-                                onClick={() => setShowRoutineSelect(!showRoutineSelect)}
-                                className="w-full bg-neutral-800 border border-white/10 rounded-lg px-4 py-2 text-left text-neutral-400 hover:text-white hover:bg-neutral-800/80 transition-colors flex justify-between items-center"
+                            <Trophy size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500" />
+                            <select
+                                value={linkedGoalId || ''}
+                                onChange={(e) => setLinkedGoalId(e.target.value || null)}
+                                className="w-full bg-neutral-800 border border-white/10 rounded-lg pl-10 pr-4 py-2 text-white focus:outline-none focus:border-emerald-500 appearance-none"
                             >
-                                <span className={linkedRoutineIds.length > 0 ? "text-white" : ""}>
-                                    {linkedRoutineIds.length > 0 ? "Add another routine..." : "Link or create a routine..."}
-                                </span>
-                                <ChevronDown size={16} />
-                            </button>
-
-                            {showRoutineSelect && (
-                                <div className="absolute z-10 w-full mt-1 bg-neutral-900 border border-white/10 rounded-lg shadow-xl overflow-hidden animate-in fade-in zoom-in-95">
-                                    <div className="p-2 border-b border-white/5">
-                                        <button
-                                            type="button"
-                                            onClick={handleCreateRoutine}
-                                            className="w-full flex items-center gap-2 p-2 rounded hover:bg-emerald-500/10 text-emerald-400 hover:text-emerald-300 transition-colors text-sm font-medium"
-                                        >
-                                            <Plus size={14} /> Create New Routine "{name || 'Check'}"
-                                        </button>
-                                    </div>
-                                    <div className="max-h-40 overflow-y-auto">
-                                        {routines.map(routine => (
-                                            <button
-                                                key={routine.id}
-                                                type="button"
-                                                onClick={() => {
-                                                    toggleRoutine(routine.id);
-                                                    setShowRoutineSelect(false);
-                                                }}
-                                                disabled={linkedRoutineIds.includes(routine.id)}
-                                                className={`w-full text-left px-4 py-2 text-sm transition-colors flex items-center justify-between ${linkedRoutineIds.includes(routine.id)
-                                                    ? 'bg-indigo-500/20 text-indigo-300 opacity-50 cursor-default'
-                                                    : 'text-neutral-300 hover:bg-neutral-800 hover:text-white'
-                                                    }`}
-                                            >
-                                                {routine.title}
-                                                {linkedRoutineIds.includes(routine.id) && <Check size={14} />}
-                                            </button>
-                                        ))}
-                                        {routines.length === 0 && (
-                                            <div className="p-4 text-center text-xs text-neutral-500">
-                                                No existing routines found.
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-                            )}
+                                <option value="">No goal linked</option>
+                                {availableGoals.map(g => (
+                                    <option key={g.id} value={g.id}>{g.title}</option>
+                                ))}
+                            </select>
+                            <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-500 pointer-events-none" />
                         </div>
-                        <p className="text-[10px] text-neutral-500">
-                            Checking off a linked routine will also offer to complete this habit.
-                        </p>
                     </div>
+
 
                     {/* Bundle Configuration - UNIFIED (Checklist + Choice) */}
                     {habitType === 'bundle' && (bundleMode === 'checklist' || bundleMode === 'choice') && (
@@ -1239,41 +1135,44 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                         )
                     }
 
-                    {/* 5. Extras */}
+                    {/* 5. Schedule & Streak */}
                     <div className="space-y-4 pt-2 border-t border-white/5">
-                        {/* Non-Negotiable Toggle */}
-                        <div className="bg-neutral-800/50 border border-white/5 rounded-lg p-3 flex items-center justify-between group cursor-pointer hover:bg-neutral-800 transition-colors"
-                            onClick={() => setNonNegotiable(!nonNegotiable)}>
-                            <div className="flex items-center gap-3">
-                                <div className={`p - 2 rounded - lg transition - colors ${nonNegotiable ? 'bg-yellow-500/20 text-yellow-400' : 'bg-neutral-700/50 text-neutral-500'} `}>
-                                    <Shield size={20} />
-                                </div>
-                                <div>
-                                    <h4 className={`font - medium transition - colors ${nonNegotiable ? 'text-yellow-400' : 'text-neutral-300'} `}>Non-Negotiable</h4>
-                                    <p className="text-xs text-neutral-500">Essential habit. Highlighted with a Priority Ring.</p>
-                                </div>
-                            </div>
-                            <div className={`w - 12 h - 6 rounded - full p - 1 transition - colors ${nonNegotiable ? 'bg-yellow-500' : 'bg-neutral-700'} `}>
-                                <div className={`w - 4 h - 4 rounded - full bg - white shadow - sm transition - transform ${nonNegotiable ? 'translate-x-6' : 'translate-x-0'} `} />
-                            </div>
+                        <div className="space-y-2">
+                            <label className="text-xs font-medium text-neutral-400 uppercase flex items-center gap-1">
+                                <Calendar size={12} /> Scheduled Days
+                            </label>
+                            <DayChipSelector
+                                selectedDays={scheduledDays}
+                                onChange={setScheduledDays}
+                                minSelected={1}
+                            />
                         </div>
 
-                        {/* Description - Hidden for Bundles */}
-                        {habitType !== 'bundle' && (
-                            <div>
-                                <label className="block text-sm font-medium text-neutral-400 mb-1">Description (Optional)</label>
-                                <textarea
-                                    value={description}
-                                    onChange={(e) => setDescription(e.target.value)}
-                                    className="w-full bg-neutral-800 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-emerald-500 h-20 resize-none"
-                                    placeholder="Add notes about your habit..."
-                                />
-                            </div>
-                        )}
+                        <div className="space-y-2">
+                            <label className="text-xs font-medium text-neutral-400 uppercase flex items-center gap-1">
+                                <Shield size={12} /> Days Per Week Required
+                            </label>
+                            <NumberChipSelector
+                                value={requiredDaysPerWeek}
+                                onChange={setRequiredDaysPerWeek}
+                                min={1}
+                                max={scheduledDays.length}
+                            />
+                            {scheduledDays.length === 7 && requiredDaysPerWeek === 7 && (
+                                <p className="text-xs text-yellow-400 flex items-center gap-1 mt-1">
+                                    <Shield size={10} /> Non-Negotiable — all days required
+                                </p>
+                            )}
+                            {requiredDaysPerWeek < scheduledDays.length && (
+                                <p className="text-xs text-emerald-400 mt-1">
+                                    {scheduledDays.length - requiredDaysPerWeek} grace day{scheduledDays.length - requiredDaysPerWeek !== 1 ? 's' : ''} per week
+                                </p>
+                            )}
+                        </div>
                     </div>
 
                     {/* Actions */}
-                    <div className="pt-2 flex justify-end gap-3">
+                    <div className="sticky bottom-0 pt-2 pb-1 bg-neutral-900 flex justify-end gap-3">
                         <button
                             type="button"
                             onClick={onClose}

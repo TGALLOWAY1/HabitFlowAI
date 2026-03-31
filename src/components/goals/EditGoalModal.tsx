@@ -62,7 +62,8 @@ export const EditGoalModal: React.FC<EditGoalModalProps> = ({
 
     // Filtered Habits Logic (Moved above early return to satisfy Rules of Hooks)
     const displayedHabits = useMemo(() => {
-        let filtered = habits;
+        // Filter out archived habits — consistent with all other views
+        let filtered = habits.filter(h => !h.archived);
 
         // 1. Text Search
         if (habitSearch.trim()) {

@@ -173,9 +173,11 @@ export async function uncategorizeHabitsByCategory(
 
   // Clear categoryId so habits become "uncategorized" instead of being archived.
   // Also unarchive any habits that were previously archived due to category deletion.
+  // Must set archived: false here — previously only archivedReason was cleared,
+  // leaving habits permanently invisible when archived: true remained set.
   const result = await collection.updateMany(
     scopeFilter(householdId, userId, { categoryId }),
-    { $set: { categoryId: '' }, $unset: { archivedReason: '' } }
+    { $set: { categoryId: '', archived: false }, $unset: { archivedReason: '', archivedAt: '' } }
   );
 
   return result.modifiedCount;
@@ -195,6 +197,26 @@ export async function recoverCategoryDeletedHabits(
   const result = await collection.updateMany(
     scopeFilter(householdId, userId, { archived: true, archivedReason: 'category_deleted' }),
     { $set: { archived: false, categoryId: '' }, $unset: { archivedAt: '', archivedReason: '' } }
+  );
+
+  return result.modifiedCount;
+}
+
+/**
+ * Clear linkedGoalId from all habits that reference a given goal.
+ * Called when a goal is deleted to prevent orphaned references.
+ */
+export async function unlinkHabitsFromGoal(
+  goalId: string,
+  householdId: string,
+  userId: string
+): Promise<number> {
+  const db = await getDb();
+  const collection = db.collection(COLLECTION_NAME);
+
+  const result = await collection.updateMany(
+    scopeFilter(householdId, userId, { linkedGoalId: goalId }),
+    { $unset: { linkedGoalId: '' } }
   );
 
   return result.modifiedCount;

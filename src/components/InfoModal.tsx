@@ -1,0 +1,317 @@
+import { useState } from 'react';
+import { Info, BookOpen, Sparkles } from 'lucide-react';
+
+interface InfoModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+}
+
+type Example = string | { title: string; steps: string[] };
+
+const primaryItems: { term: string; definition: string; examples: Example[] }[] = [
+  {
+    term: 'Habit',
+    definition: 'A habit is a repeated behavior performed over time. Habits are ongoing and never "finished" — each day or week, a habit is simply performed or not.',
+    examples: [
+      '"Practice Portuguese for 30 minutes"',
+      '"Run for 20 minutes"',
+    ],
+  },
+  {
+    term: 'Routine',
+    definition: 'A routine is a group of habits or actions performed together in a sequence. Completing a routine helps you perform multiple habits in one flow.',
+    examples: [
+      {
+        title: '"Portuguese Study"',
+        steps: ['Review flashcards', 'Make new flashcards', 'Say a new sentence'],
+      },
+      {
+        title: '"Run Day"',
+        steps: ['Warm-up stretch', 'Run for 20 minutes', 'Cool-down walk'],
+      },
+    ],
+  },
+  {
+    term: 'Goal',
+    definition: 'A goal is an outcome you are working toward over time. Goals are achieved by consistently performing the habits that support them.',
+    examples: [
+      '"Become conversational in Portuguese" — supported by: Practice Portuguese habit',
+      '"Run a 10K" — supported by: Running habit',
+    ],
+  },
+];
+
+const secondaryItems = [
+  {
+    term: 'Task',
+    badge: 'Dashboard only',
+    definition: 'A task is a one-time action with a clear finish. Once completed, it\'s done.',
+    examples: [
+      '"Register for Portuguese exam"',
+      '"Sign up for 10K race"',
+    ],
+  },
+  {
+    term: 'Journal',
+    badge: 'Dashboard only',
+    definition: 'The journal is for reflection and notes — not tracking.',
+    examples: [
+      '"I learned how to talk about food in Portuguese"',
+      '"Ran 5K without stopping for the first time"',
+    ],
+  },
+];
+
+type AdvancedItem = {
+  term: string;
+  definition: string;
+  bullets?: string[];
+  examples: Example[];
+};
+
+const advancedItems: AdvancedItem[] = [
+  {
+    term: 'Habit Bundles',
+    definition: 'A bundle groups multiple habits together. Two types:',
+    bullets: [
+      'Checklist Bundle — Complete a set of habits as a group. Configure how many must be done: all, any, a specific count, or a percentage.',
+      'Choice Bundle — Pick one option from a set of alternatives each day. Only one needs to be performed.',
+    ],
+    examples: [
+      { title: 'Checklist: "Morning Health"', steps: ['Take vitamins', 'Drink water', 'Stretch — success rule: complete all 3'] },
+      { title: 'Choice: "Cardio"', steps: ['Run, Cycle, or Swim — perform whichever suits the day'] },
+    ],
+  },
+  {
+    term: 'Linking',
+    definition: 'Connect habits to goals and routines for automatic progress tracking.',
+    bullets: [
+      'Habit-Goal Link — When you perform a linked habit, it counts as evidence toward your goal\'s progress.',
+      'Habit-Routine Link — When you complete a routine, its linked habits are automatically marked as performed.',
+    ],
+    examples: [
+      '"Run for 20 minutes" linked to "Run a 10K" goal — every run updates your goal progress automatically',
+    ],
+  },
+  {
+    term: 'Routine Variants',
+    definition: 'Create multiple versions of the same routine for different situations — like Quick, Standard, and Deep versions. Each variant has its own steps, duration, and linked habits.',
+    examples: [
+      { title: '"Portuguese Study" variants:', steps: ['Quick (10 min) — Review flashcards', 'Standard (30 min) — Flashcards + practice sentences + podcast', 'Deep (60 min) — All of the above + write in Portuguese'] },
+    ],
+  },
+  {
+    term: 'AI Features',
+    definition: 'AI-powered tools to enhance your experience (uses your own API key):',
+    bullets: [
+      'Variant Suggestions — AI analyzes your routine and suggests Quick/Standard/Deep variants with full step lists.',
+      'Journal Summaries — Get AI-generated summaries of your journal entries.',
+      'Persona-Driven Insights — Choose an AI persona (like "The Strategic Coach") to guide your journaling prompts.',
+    ],
+    examples: [],
+  },
+  {
+    term: 'Wellbeing Check-ins',
+    definition: 'Track how you feel with morning and evening check-ins. Rate subjective metrics like mood, energy, stress, focus, and sleep quality on simple scales.',
+    examples: [
+      '"Morning: rate sleep quality, energy, readiness"',
+      '"Evening: rate stress, satisfaction, focus for the day"',
+    ],
+  },
+  {
+    term: 'Goal Types',
+    definition: 'Three types of goals to match different objectives:',
+    bullets: [
+      'Cumulative — Track total progress toward a target number (e.g., "Run 100 miles").',
+      'Frequency — Track how often you do something in a period (e.g., "Exercise 4 times per week").',
+      'One-time — A binary milestone to achieve (e.g., "Pass the Portuguese B2 exam").',
+    ],
+    examples: [],
+  },
+];
+
+function renderExamples(examples: Example[]) {
+  if (examples.length === 0) return null;
+  return (
+    <ul className="mt-2 space-y-1.5">
+      {examples.map((ex) =>
+        typeof ex === 'string' ? (
+          <li key={ex} className="text-xs text-neutral-400 italic pl-2">
+            — {ex}
+          </li>
+        ) : (
+          <li key={ex.title} className="pl-2">
+            <p className="text-xs text-neutral-400 italic">— {ex.title}</p>
+            <ol className="mt-1 space-y-0.5 pl-4">
+              {ex.steps.map((step, idx) => (
+                <li key={step} className="text-xs text-neutral-500">
+                  {idx + 1}. {step}
+                </li>
+              ))}
+            </ol>
+          </li>
+        )
+      )}
+    </ul>
+  );
+}
+
+export function InfoModal({ isOpen, onClose }: InfoModalProps) {
+  const [activeTab, setActiveTab] = useState<'basics' | 'advanced'>('basics');
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-[100]">
+      <div
+        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+        onClick={onClose}
+      />
+      <div className="absolute inset-0 overflow-y-auto modal-scroll p-4">
+        <div
+          className="relative bg-neutral-900 border border-white/10 rounded-xl shadow-xl max-w-sm w-full mx-auto my-8 sm:my-16"
+          role="dialog"
+          aria-labelledby="info-title"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="p-4 border-b border-white/5 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Info size={18} className="text-emerald-400" />
+              <h2 id="info-title" className="text-lg font-semibold text-white">
+                How HabitFlow Works
+              </h2>
+            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              className="p-2 text-neutral-400 hover:text-white rounded-lg hover:bg-white/5"
+              aria-label="Close"
+            >
+              ✕
+            </button>
+          </div>
+
+          {/* Tab bar */}
+          <div className="flex gap-4 px-4 pt-4 border-b border-white/5">
+            <button
+              type="button"
+              onClick={() => setActiveTab('basics')}
+              className={`flex items-center gap-2 pb-3 text-sm font-medium border-b-2 transition-colors ${activeTab === 'basics'
+                ? 'border-emerald-400 text-emerald-400'
+                : 'border-transparent text-neutral-500 hover:text-neutral-300'}`}
+            >
+              <BookOpen size={16} className={activeTab === 'basics' ? 'text-emerald-400' : ''} />
+              Basics
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('advanced')}
+              className={`flex items-center gap-2 pb-3 text-sm font-medium border-b-2 transition-colors ${activeTab === 'advanced'
+                ? 'border-emerald-400 text-emerald-400'
+                : 'border-transparent text-neutral-500 hover:text-neutral-300'}`}
+            >
+              <Sparkles size={16} className={activeTab === 'advanced' ? 'text-emerald-400' : ''} />
+              Advanced
+            </button>
+          </div>
+
+          {/* Basics tab */}
+          {activeTab === 'basics' && (
+            <div className="p-4 space-y-5">
+              {/* The Rules */}
+              <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-lg px-3 py-2.5">
+                <p className="text-xs text-emerald-400 uppercase tracking-wide font-semibold mb-1.5">The Rules</p>
+                <ul className="space-y-0.5 text-sm text-neutral-300">
+                  <li>Habits are <span className="text-emerald-400 font-medium">performed</span></li>
+                  <li>Routines are <span className="text-emerald-400 font-medium">completed</span></li>
+                  <li>Goals are <span className="text-emerald-400 font-medium">achieved</span></li>
+                </ul>
+              </div>
+
+              {/* Primary: Habits, Routines, Goals */}
+              {primaryItems.map((item, i) => (
+                <div key={item.term}>
+                  <div className="pl-3 border-l-2 border-emerald-500/40">
+                    <p className="text-sm text-neutral-200">
+                      <span className="font-bold text-emerald-400">{item.term}</span>
+                    </p>
+                    <p className="text-sm text-neutral-300 mt-1">{item.definition}</p>
+                    {renderExamples(item.examples)}
+                  </div>
+                  {i < primaryItems.length - 1 && (
+                    <div className="border-b border-white/5 mt-5" />
+                  )}
+                </div>
+              ))}
+
+              {/* Secondary divider */}
+              <div className="pt-1">
+                <p className="text-xs text-neutral-600 uppercase tracking-wide font-medium">Secondary</p>
+              </div>
+
+              {/* Secondary: Tasks, Journal */}
+              {secondaryItems.map((item) => (
+                <div key={item.term} className="pl-3 border-l-2 border-neutral-700/60 opacity-80">
+                  <p className="text-sm text-neutral-300">
+                    <span className="font-semibold text-neutral-400">{item.term}</span>
+                    <span className="ml-2 text-[10px] uppercase tracking-wide bg-neutral-800 text-neutral-500 px-1.5 py-0.5 rounded">
+                      {item.badge}
+                    </span>
+                  </p>
+                  <p className="text-sm text-neutral-400 mt-1">{item.definition}</p>
+                  <ul className="mt-1.5 space-y-0.5">
+                    {item.examples.map((ex) => (
+                      <li key={ex} className="text-xs text-neutral-500 italic pl-2">
+                        — {ex}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+
+              {/* Link to advanced tab */}
+              <div className="pt-2 border-t border-white/5">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('advanced')}
+                  className="text-xs text-emerald-400/70 hover:text-emerald-400 transition-colors"
+                >
+                  Learn about bundles, linking, AI features, and more →
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Advanced tab */}
+          {activeTab === 'advanced' && (
+            <div className="p-4 space-y-5">
+              {advancedItems.map((item, i) => (
+                <div key={item.term}>
+                  <div className="pl-3 border-l-2 border-emerald-500/40">
+                    <p className="text-sm text-neutral-200">
+                      <span className="font-bold text-emerald-400">{item.term}</span>
+                    </p>
+                    <p className="text-sm text-neutral-300 mt-1">{item.definition}</p>
+                    {item.bullets && (
+                      <ul className="mt-1.5 space-y-1">
+                        {item.bullets.map((bullet) => (
+                          <li key={bullet} className="text-xs text-neutral-400 pl-2">
+                            • {bullet}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                    {renderExamples(item.examples)}
+                  </div>
+                  {i < advancedItems.length - 1 && (
+                    <div className="border-b border-white/5 mt-5" />
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}

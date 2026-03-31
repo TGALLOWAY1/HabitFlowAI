@@ -6,7 +6,6 @@
  */
 
 import type { Request, Response } from 'express';
-import multer from 'multer';
 import {
   createGoal,
   getGoalsByUser,
@@ -17,28 +16,11 @@ import {
   reorderGoals,
   validateHabitIds,
 } from '../repositories/goalRepository';
-import { getHabitsByUser } from '../repositories/habitRepository';
+import { getHabitsByUser, unlinkHabitsFromGoal } from '../repositories/habitRepository';
 // getHabitEntriesByUser removed — entries are now fetched filtered by habit ID in computeGoalsWithProgressFromData
 import { computeGoalProgressV2, computeGoalListProgress } from '../utils/goalProgressUtilsV2';
-import { saveUploadedFile } from '../utils/fileStorage';
 import type { Goal } from '../../models/persistenceTypes';
 import { getRequestIdentity } from '../middleware/identity';
-
-// Configure multer for in-memory file storage
-const upload = multer({
-  storage: multer.memoryStorage(),
-  limits: {
-    fileSize: 5 * 1024 * 1024, // 5MB limit
-  },
-  fileFilter: (_req, file, cb) => {
-    // Accept only image files
-    if (file.mimetype.startsWith('image/')) {
-      cb(null, true);
-    } else {
-      cb(new Error('Only image files are allowed'));
-    }
-  },
-});
 
 /**
  * Validate that all habit IDs in linkedHabitIds exist in the database.
@@ -72,14 +54,14 @@ function validateGoalData(data: any): string | null {
     return 'title is required and must be a non-empty string';
   }
 
-  if (!data.type || (data.type !== 'cumulative' && data.type !== 'frequency' && data.type !== 'onetime')) {
-    return 'type is required and must be either "cumulative", "frequency", or "onetime"';
+  if (!data.type || (data.type !== 'cumulative' && data.type !== 'onetime')) {
+    return 'type is required and must be either "cumulative" or "onetime"';
   }
 
-  // targetValue required only for cumulative/frequency
+  // targetValue required only for cumulative
   if (data.type !== 'onetime') {
     if (typeof data.targetValue !== 'number' || data.targetValue <= 0) {
-      return 'targetValue is required and must be a positive number for cumulative/frequency goals';
+      return 'targetValue is required and must be a positive number for cumulative goals';
     }
   }
 
@@ -510,11 +492,11 @@ export async function updateGoalRoute(req: Request, res: Response): Promise<void
     }
 
     if (req.body.type !== undefined) {
-      if (req.body.type !== 'cumulative' && req.body.type !== 'frequency' && req.body.type !== 'onetime') {
+      if (req.body.type !== 'cumulative' && req.body.type !== 'onetime') {
         res.status(400).json({
           error: {
             code: 'VALIDATION_ERROR',
-            message: 'type must be either "cumulative", "frequency", or "onetime"',
+            message: 'type must be either "cumulative" or "onetime"',
           },
         });
         return;
@@ -853,106 +835,6 @@ function getDateStringForHistory(daysAgo: number): string {
 }
 
 /**
- * Upload badge image for a completed goal.
- * 
- * POST /api/goals/:id/badge
- * 
- * Accepts multipart/form-data with an 'image' field.
- * Only allowed for completed goals (goal.completedAt != null).
- * 
- * Returns: { success: true, badgeImageUrl: string }
- */
-export async function uploadGoalBadgeRoute(req: Request, res: Response): Promise<void> {
-  try {
-    const { id } = req.params;
-
-    if (!id) {
-      res.status(400).json({
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: 'Goal ID is required',
-        },
-      });
-      return;
-    }
-
-    const { householdId, userId } = getRequestIdentity(req);
-
-    const goal = await getGoalById(id, householdId, userId);
-    if (!goal) {
-      res.status(404).json({
-        error: {
-          code: 'NOT_FOUND',
-          message: 'Goal not found',
-        },
-      });
-      return;
-    }
-
-    // Validate that goal is completed
-    if (!goal.completedAt) {
-      res.status(400).json({
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: 'Goal must be completed before uploading a badge.',
-        },
-      });
-      return;
-    }
-
-    // Check if file was uploaded
-    const file = (req as any).file;
-    if (!file) {
-      res.status(400).json({
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: 'Image file is required',
-        },
-      });
-      return;
-    }
-
-    // Save file and get URL
-    const badgeImageUrl = saveUploadedFile(file, 'badges');
-
-    const updatedGoal = await updateGoal(id, householdId, userId, {
-      badgeImageUrl,
-    });
-
-    if (!updatedGoal) {
-      res.status(500).json({
-        error: {
-          code: 'INTERNAL_SERVER_ERROR',
-          message: 'Failed to update goal with badge URL',
-        },
-      });
-      return;
-    }
-
-    res.status(200).json({
-      success: true,
-      badgeImageUrl,
-    });
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    console.error('Error uploading goal badge:', errorMessage);
-    res.status(500).json({
-      error: {
-        code: 'INTERNAL_SERVER_ERROR',
-        message: 'Failed to upload badge',
-        details: process.env.NODE_ENV === 'development' ? errorMessage : undefined,
-      },
-    });
-  }
-}
-
-/**
- * Multer middleware for badge upload.
- * Single file upload with field name 'image'.
- */
-export const uploadBadgeMiddleware = upload.single('image');
-
-/**
  * Reorder goals.
  * 
  * PATCH /api/goals/reorder
@@ -1035,6 +917,12 @@ export async function deleteGoalRoute(req: Request, res: Response): Promise<void
         },
       });
       return;
+    }
+
+    // Clean up orphaned linkedGoalId references on habits
+    const unlinkedCount = await unlinkHabitsFromGoal(id, householdId, userId);
+    if (unlinkedCount > 0) {
+      console.log(`[Goal Delete] Cleared linkedGoalId from ${unlinkedCount} habit(s) for deleted goal ${id}`);
     }
 
     res.status(200).json({

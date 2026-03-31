@@ -308,7 +308,7 @@ export async function fetchDashboardPrefs(): Promise<DashboardPrefs> {
   return response.dashboardPrefs;
 }
 
-export async function updateDashboardPrefs(patch: Partial<Pick<DashboardPrefs, 'pinnedRoutineIds' | 'checkinExtraMetricKeys'>>): Promise<DashboardPrefs> {
+export async function updateDashboardPrefs(patch: Partial<Pick<DashboardPrefs, 'pinnedRoutineIds' | 'checkinExtraMetricKeys' | 'hideStreaks'>>): Promise<DashboardPrefs> {
   const response = await apiRequest<{ dashboardPrefs: DashboardPrefs }>('/dashboardPrefs', {
     method: 'PUT',
     body: JSON.stringify(patch),
@@ -979,32 +979,6 @@ export async function reorderGoals(goalIds: string[]): Promise<void> {
 }
 
 /**
- * Upload badge image for a completed goal.
- * POST /api/goals/:id/badge (multipart/form-data, field: image)
- */
-export async function uploadGoalBadge(goalId: string, file: File): Promise<{ badgeImageUrl: string }> {
-  const url = `${API_BASE_URL}/goals/${goalId}/badge`;
-  const formData = new FormData();
-  formData.append('image', file);
-
-  const response = await fetch(url, {
-    method: 'POST',
-    credentials: 'include',
-    headers: { ...getIdentityHeaders() },
-    body: formData,
-  });
-
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    const msg = errorData?.error?.message || `Upload failed: ${response.status} ${response.statusText}`;
-    throw new Error(msg);
-  }
-  const data = await response.json();
-  invalidateGoalCaches(goalId);
-  return { badgeImageUrl: data.badgeImageUrl };
-}
-
-/**
  * Fetch all goals with progress information for the current user.
  * 
  * Efficiently fetches all goals with their progress data in a single request,
@@ -1315,5 +1289,43 @@ export async function clearHabitEntriesForDay(habitId: string, date: string): Pr
 export async function deleteAllUserData(): Promise<{ deleted: Record<string, number> }> {
   return apiRequest<{ deleted: Record<string, number> }>('/user/data', {
     method: 'DELETE',
+  });
+}
+
+// ─── Bundle Membership API ──────────────────────────────────────────────
+
+export interface BundleMembershipResponse {
+  id: string;
+  parentHabitId: string;
+  childHabitId: string;
+  activeFromDayKey: string;
+  activeToDayKey?: string | null;
+  daysOfWeek?: number[] | null;
+  graduatedAt?: string | null;
+  archivedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export async function getBundleMemberships(parentHabitId: string): Promise<BundleMembershipResponse[]> {
+  return apiRequest<BundleMembershipResponse[]>(`/bundle-memberships?parentHabitId=${parentHabitId}`);
+}
+
+export async function createBundleMembership(data: {
+  parentHabitId: string;
+  childHabitId: string;
+  activeFromDayKey: string;
+  daysOfWeek?: number[] | null;
+}): Promise<BundleMembershipResponse> {
+  return apiRequest<BundleMembershipResponse>('/bundle-memberships', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function endBundleMembership(membershipId: string, activeToDayKey: string): Promise<BundleMembershipResponse> {
+  return apiRequest<BundleMembershipResponse>(`/bundle-memberships/${membershipId}/end`, {
+    method: 'PATCH',
+    body: JSON.stringify({ activeToDayKey }),
   });
 }

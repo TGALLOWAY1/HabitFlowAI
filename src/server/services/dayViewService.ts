@@ -383,8 +383,24 @@ export async function computeDayView(
             : 0,
         weekComplete: weekProgress.isComplete,
       };
+    } else if (habit.goal.type === 'number') {
+      // Daily quantity habit: sum entry values for this day
+      const dayEntries = habitEntries.filter(
+        entry => entry.habitId === habit.id && entry.dayKey === dayKey && !entry.deletedAt
+      );
+      const currentValue = dayEntries.reduce((sum, entry) => sum + (entry.value ?? 0), 0);
+      const target = habit.goal.target ?? 1;
+      const isComplete = currentValue >= target;
+
+      status = {
+        habit,
+        isComplete,
+        currentValue,
+        targetValue: target,
+        progressPercent: target > 0 ? Math.min(100, Math.round((currentValue / target) * 100)) : 0,
+      };
     } else {
-      // Daily habit: derive daily completion
+      // Daily boolean habit: derive daily completion
       const isComplete = deriveDailyCompletion(habit.id, dayKey, habitEntries);
 
       status = {

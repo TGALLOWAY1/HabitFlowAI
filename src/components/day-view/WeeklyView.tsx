@@ -147,8 +147,8 @@ export const WeeklyView = () => {
         return groups;
     }, [weeklyHabits, categories]);
 
-    const handleToggle = (habitId: string) => {
-        toggleHabit(habitId, dateStr);
+    const handleToggle = async (habitId: string) => {
+        await toggleHabit(habitId, dateStr);
     };
 
     const handlePin = async (habitId: string) => {
@@ -156,10 +156,6 @@ export const WeeklyView = () => {
         if (habit) {
             await updateHabit(habitId, { pinned: !habit.pinned });
         }
-    };
-
-    const handleUpdateEstimate = async (habitId: string, minutes: number) => {
-        await updateHabit(habitId, { timeEstimate: minutes });
     };
 
     // Empty state
@@ -213,7 +209,6 @@ export const WeeklyView = () => {
                                 dateStr={dateStr}
                                 onToggle={handleToggle}
                                 onPin={handlePin}
-                                onUpdateEstimate={handleUpdateEstimate}
                                 onMoveToCategory={(h) => setCategoryPickerHabit(h)}
                                 allHabitsLookup={allHabitsLookup}
                                 onUpdateHabitEntry={upsertHabitEntry}
@@ -230,7 +225,6 @@ export const WeeklyView = () => {
                             dateStr={dateStr}
                             onToggle={handleToggle}
                             onPin={handlePin}
-                            onUpdateEstimate={handleUpdateEstimate}
                             onMoveToCategory={(h) => setCategoryPickerHabit(h)}
                             allHabitsLookup={allHabitsLookup}
                             onUpdateHabitEntry={upsertHabitEntry}

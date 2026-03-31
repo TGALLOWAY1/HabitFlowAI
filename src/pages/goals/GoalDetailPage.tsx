@@ -130,7 +130,7 @@ export const GoalDetailPage: React.FC<GoalDetailPageProps> = ({ goalId, onBack, 
                     return true;
                 }
 
-                // For other goal types (Frequency), accept everything
+                // For other goal types (onetime), accept everything
                 return true;
             })
             .map(entry => {
@@ -152,7 +152,7 @@ export const GoalDetailPage: React.FC<GoalDetailPageProps> = ({ goalId, onBack, 
                         if (h?.goal.type === 'boolean' && data.goal.type === 'cumulative') {
                             return h.goal.target ?? 1;
                         }
-                        return entry.value !== undefined ? entry.value : (data.goal.type === 'frequency' ? 1 : 0);
+                        return entry.value !== undefined ? entry.value : 0;
                     })(),
                     source: 'habit' as const,
                     habitName: habit?.name,
