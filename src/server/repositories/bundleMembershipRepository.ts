@@ -276,20 +276,6 @@ export async function hasActiveMembership(
 }
 
 /**
- * Get all memberships for a user (for analytics — graduated count, etc.).
- */
-export async function getAllMembershipsByUser(
-  householdId: string,
-  userId: string
-): Promise<BundleMembershipRecord[]> {
-  const db = await getDb();
-  const docs = await db.collection(COLLECTION_NAME)
-    .find(scopeFilter(householdId, userId, {}))
-    .toArray();
-  return docs.map(mapDoc);
-}
-
-/**
  * Ensure indexes for the bundleMemberships collection.
  * Call during app startup.
  */
