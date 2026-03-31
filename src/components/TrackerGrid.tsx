@@ -67,7 +67,8 @@ const HabitActionButtons = ({
     deleteConfirmId,
     setDeleteConfirmId,
     onRunRoutine,
-    onMoveToCategory
+    onMoveToCategory,
+    onAddToBundle
 }: {
     habit: Habit,
     onEdit: () => void,
