@@ -130,7 +130,7 @@ export const GoalDetailPage: React.FC<GoalDetailPageProps> = ({ goalId, onBack, 
                     return true;
                 }
 
-                // For other goal types (Frequency), accept everything
+                // For other goal types (onetime), accept everything
                 return true;
             })
             .map(entry => {

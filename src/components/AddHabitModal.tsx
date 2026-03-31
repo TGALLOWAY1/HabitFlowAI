@@ -40,9 +40,6 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
         target: string;
         unit: string;
     }>>([]);
-    // Pending Sub-Habits (Checklist Mode)
-    // removed duplicate declaration
-    // const [pendingSubHabits, setPendingSubHabits] = useState...
     const [editingPendingId, setEditingPendingId] = useState<string | null>(null);
     const [editingLinkedHabitId, setEditingLinkedHabitId] = useState<string | null>(null);
     const [modifiedLinkedHabits, setModifiedLinkedHabits] = useState<Record<string, {
@@ -64,13 +61,6 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
 
     // Frequency (Default to Daily for Bundles)
     const [frequency, setFrequency] = useState<'daily' | 'weekly' | 'total'>('daily');
-
-    // Assigned Days (Weekly) - REMOVED for Weekly v2, only used if user specifically wants day scheduling?
-    // PRD says: "Explicitly removed: Which day will you do this?"
-    // But we might want to keep it for "Daily" habits if we supported "Some days" (e.g. MWF).
-    // PRD says "Daily: No change".
-    // Let's keep it but hide it for weekly.
-
 
     // Scheduling
     const [scheduledTime, setScheduledTime] = useState('');
@@ -107,12 +97,10 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                 setName(initialData.name);
                 setHabitType(initialData.type === 'bundle' ? 'bundle' : 'regular');
                 setBundleMode(initialData.bundleType || (initialData.type === 'bundle' ? 'checklist' : null)); // Default to checklist for legacy
-                setBundleMode(initialData.bundleType || (initialData.type === 'bundle' ? 'checklist' : null)); // Default to checklist for legacy
 
                 setSubHabitIds(initialData.subHabitIds || []);
                 setPendingSubHabits([]); // Clear pending on open
 
-                setGoalType(initialData.goal.type || 'boolean');
                 setGoalType(initialData.goal.type || 'boolean');
                 setTarget(initialData.goal.target ? String(initialData.goal.target) : '');
                 setUnit(initialData.goal.unit || '');
@@ -145,7 +133,6 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
 
                 setSubHabitIds([]);
                 setPendingSubHabits([]);
-                setGoalType('boolean');
                 setGoalType('boolean');
                 setTarget('');
                 setUnit('');
