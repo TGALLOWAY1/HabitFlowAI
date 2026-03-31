@@ -138,12 +138,17 @@ export function computeHabitAnalyticsSummary(
 
   const startDayKey = format(subDays(parseISO(referenceDayKey), days - 1), 'yyyy-MM-dd');
   const dayKeys = generateDayKeyRange(startDayKey, referenceDayKey);
+  const dayKeySet = new Set(dayKeys);
+
+  if (process.env.NODE_ENV !== 'production') {
+    console.log(`[analytics] summary: ${trackable.length} trackable habits, ${entries.length} entries, range ${startDayKey}..${referenceDayKey} (${dayKeys.length} days), dayStates for ${dayStatesByHabit.size} habits`);
+  }
 
   // Consistency: days with >= 1 completion / total days
   const daysWithCompletion = new Set<string>();
   for (const [, dayMap] of dayStatesByHabit) {
     for (const [dk, state] of dayMap) {
-      if (state.completed && dayKeys.includes(dk)) {
+      if (state.completed && dayKeySet.has(dk)) {
         daysWithCompletion.add(dk);
       }
     }
@@ -181,7 +186,7 @@ export function computeHabitAnalyticsSummary(
   // Total completions (non-freeze entries in range)
   const totalCompletions = entries.filter(e => {
     const dk = getCanonicalDayKeyFromEntry(e, { timeZone });
-    return dk && dayKeys.includes(dk) && !parseFreezeType(e.note);
+    return dk && dayKeySet.has(dk) && !parseFreezeType(e.note);
   }).length;
 
   // Graduated habits count

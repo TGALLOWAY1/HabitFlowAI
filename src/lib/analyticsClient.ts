@@ -5,18 +5,7 @@
  */
 
 import { API_BASE_URL } from './persistenceConfig';
-import { getLocalTimeZone } from './persistenceClient';
-
-// Re-export getLocalTimeZone-dependent identity headers
-function getIdentityHeaders(): Record<string, string> {
-  // Import is circular-safe because we only use the function, not the module state
-  const userId = localStorage.getItem('habitflow_user_id') ?? '';
-  const householdId = localStorage.getItem('habitflow_household_id') ?? 'default-household';
-  return {
-    'X-User-Id': userId,
-    'X-Household-Id': householdId,
-  };
-}
+import { getLocalTimeZone, getIdentityHeaders } from './persistenceClient';
 
 async function analyticsRequest<T>(endpoint: string): Promise<T> {
   const url = `${API_BASE_URL}${endpoint}`;
