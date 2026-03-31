@@ -385,6 +385,71 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     };
 
     const toggleHabit = async (habitId: string, date: string) => {
+        const habit = habits.find(h => h.id === habitId);
+
+        // Checklist bundle parent: toggle all children instead of the parent itself
+        if (habit?.type === 'bundle' && habit.bundleType === 'checklist' && habit.subHabitIds?.length) {
+            const childIds = habit.subHabitIds;
+            // Determine direction: if all children are complete, toggle off; otherwise toggle on
+            const allComplete = childIds.every(id => logs[`${id}-${date}`]);
+            const previousLogs = logs;
+
+            // Optimistic update for all children
+            let updatedLogs = { ...logs };
+            for (const childId of childIds) {
+                const childKey = `${childId}-${date}`;
+                if (allComplete) {
+                    delete updatedLogs[childKey];
+                } else if (!updatedLogs[childKey]) {
+                    updatedLogs[childKey] = { habitId: childId, date, value: 1, completed: true };
+                }
+            }
+            setLogs(updatedLogs);
+
+            try {
+                const results = await Promise.all(
+                    childIds.map(childId => {
+                        const childKey = `${childId}-${date}`;
+                        const childLog = previousLogs[childKey];
+                        if (allComplete) {
+                            return clearHabitEntriesForDay(childId, date);
+                        } else if (!childLog) {
+                            return createHabitEntry({ habitId: childId, date, value: 1, source: 'manual' });
+                        }
+                        return Promise.resolve(null);
+                    })
+                );
+
+                // Apply server truth
+                setLogs(prev => {
+                    const next = { ...prev };
+                    childIds.forEach((childId, i) => {
+                        const childKey = `${childId}-${date}`;
+                        const result = results[i];
+                        if (!result) return;
+                        if (allComplete) {
+                            if (!result.dayLog) {
+                                delete next[childKey];
+                            } else {
+                                next[childKey] = result.dayLog;
+                            }
+                        } else {
+                            if (result.dayLog) {
+                                next[childKey] = result.dayLog;
+                            }
+                        }
+                    });
+                    return next;
+                });
+                scheduleBackgroundSync();
+            } catch (error) {
+                console.error('Failed to toggle checklist bundle:', error instanceof Error ? error.message : 'Unknown error');
+                setLogs(previousLogs);
+                setLastPersistenceError("Failed to update habit status. Please try again.");
+            }
+            return;
+        }
+
         // Snapshot previous state for rollback
         const previousLogs = logs;
 
