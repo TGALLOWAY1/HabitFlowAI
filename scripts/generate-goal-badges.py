@@ -67,11 +67,11 @@ GOALS = [
     },
 ]
 
-MODEL = "black-forest-labs/FLUX.1-schnell"
+MODEL = "Tongyi-MAI/Z-Image-Turbo"
 
 
 def main():
-    client = InferenceClient(provider="hf-inference", api_key=HF_TOKEN)
+    client = InferenceClient(provider="wavespeed", api_key=HF_TOKEN)
 
     for goal in GOALS:
         filename = f"{goal['name']}.png"
