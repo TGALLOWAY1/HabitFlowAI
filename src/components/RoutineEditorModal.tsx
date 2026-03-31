@@ -427,35 +427,18 @@ export const RoutineEditorModal: React.FC<RoutineEditorModalProps> = ({
                         <div className="space-y-4">
                             <div className="flex items-center justify-between">
                                 <label className="text-sm font-medium text-neutral-400">Variants</label>
-                                <div className="flex items-center gap-2">
+                                {hasGeminiApiKey() && (
                                     <button
                                         type="button"
                                         onClick={handleSuggestVariants}
                                         disabled={aiLoading || !title.trim()}
                                         className="flex items-center gap-1.5 text-purple-400 hover:text-purple-300 text-sm font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                                        title={!hasGeminiApiKey() ? 'Add Gemini API key in Settings' : 'Suggest variants with AI'}
+                                        title="Suggest variants with AI"
                                     >
                                         {aiLoading ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
                                         Suggest with AI
                                     </button>
-                                    <button
-                                        type="button"
-                                        onClick={copyVariant}
-                                        disabled={variants.length >= 10}
-                                        className="flex items-center gap-1.5 text-neutral-400 hover:text-white text-sm transition-colors disabled:opacity-40"
-                                        title="Copy current variant"
-                                    >
-                                        <Copy size={14} /> Copy
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={addVariant}
-                                        disabled={variants.length >= 10}
-                                        className="flex items-center gap-1.5 text-emerald-400 hover:text-emerald-300 text-sm font-medium transition-colors disabled:opacity-40"
-                                    >
-                                        <Plus size={14} /> Add Variant
-                                    </button>
-                                </div>
+                                )}
                             </div>
 
                             {aiError && (
@@ -463,7 +446,7 @@ export const RoutineEditorModal: React.FC<RoutineEditorModalProps> = ({
                             )}
 
                             {/* Tab Bar */}
-                            <div className="flex gap-1 overflow-x-auto pb-1 border-b border-white/5">
+                            <div className="flex items-center gap-1 overflow-x-auto pb-1 border-b border-white/5">
                                 {variants.map((v, i) => (
                                     <button
                                         key={v.id}
@@ -478,6 +461,26 @@ export const RoutineEditorModal: React.FC<RoutineEditorModalProps> = ({
                                         {v.isAiGenerated && <Sparkles size={10} className="inline ml-1 text-purple-400" />}
                                     </button>
                                 ))}
+                                <div className="flex items-center gap-1 border-l border-white/10 pl-2 ml-1 flex-shrink-0">
+                                    <button
+                                        type="button"
+                                        onClick={copyVariant}
+                                        disabled={variants.length >= 10}
+                                        className="p-2 text-neutral-500 hover:text-white transition-colors disabled:opacity-40 rounded-lg hover:bg-neutral-800/50"
+                                        title="Copy current variant"
+                                    >
+                                        <Copy size={14} />
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={addVariant}
+                                        disabled={variants.length >= 10}
+                                        className="p-2 text-emerald-400 hover:text-emerald-300 transition-colors disabled:opacity-40 rounded-lg hover:bg-neutral-800/50"
+                                        title="Add variant"
+                                    >
+                                        <Plus size={14} />
+                                    </button>
+                                </div>
                             </div>
 
                             {/* Active Variant Editor */}
@@ -495,7 +498,7 @@ export const RoutineEditorModal: React.FC<RoutineEditorModalProps> = ({
                 </div>
 
                 {/* Footer */}
-                <div className="p-6 border-t border-white/10 bg-neutral-900 flex justify-between items-center">
+                <div className="px-6 py-3 border-t border-white/10 bg-neutral-900 flex justify-between items-center">
                     <div>
                         {validationError && (
                             <span className="text-red-400 text-sm">{validationError}</span>

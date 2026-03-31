@@ -4,8 +4,8 @@
  * Manages a single variant's name, description, estimated duration, and step list.
  * Used within RoutineEditorModal for each variant tab.
  */
-import React, { useState } from 'react';
-import { Plus, Trash2, Link2, Clock, Image as ImageIcon, Loader2, ChevronDown, ChevronUp, X, Timer, BarChart3 } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { Plus, Trash2, Link2, Clock, Image as ImageIcon, Loader2, ChevronDown, ChevronUp, X, Timer, BarChart3, Settings2 } from 'lucide-react';
 import type { RoutineVariant, RoutineStep, TrackingFieldDef } from '../models/persistenceTypes';
 import type { Habit } from '../types';
 
@@ -25,7 +25,15 @@ export const VariantEditor: React.FC<VariantEditorProps> = ({
     categoryId,
 }) => {
     const [expandedStepId, setExpandedStepId] = useState<string | null>(null);
+    const [advancedOpenStepId, setAdvancedOpenStepId] = useState<string | null>(null);
     const [uploadingStepId, setUploadingStepId] = useState<string | null>(null);
+    const expandedStepRef = useRef<HTMLDivElement | null>(null);
+
+    useEffect(() => {
+        if (expandedStepId && expandedStepRef.current) {
+            expandedStepRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+    }, [expandedStepId]);
 
     const steps = variant.steps || [];
 
@@ -83,30 +91,19 @@ export const VariantEditor: React.FC<VariantEditorProps> = ({
     return (
         <div className="space-y-6">
             {/* Variant Metadata */}
-            <div className="space-y-4">
-                <div>
-                    <label className="block text-xs font-medium text-neutral-500 mb-1">Variant Name</label>
-                    <input
-                        type="text"
-                        value={variant.name}
-                        onChange={e => updateVariantField({ name: e.target.value })}
-                        className="w-full bg-neutral-900 border border-white/10 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-emerald-500 placeholder-neutral-600"
-                        placeholder="e.g., Quick, Standard, Deep"
-                    />
-                </div>
-
+            <div className="space-y-3">
                 <div className="flex gap-4">
                     <div className="flex-1">
-                        <label className="block text-xs font-medium text-neutral-500 mb-1">Description (Optional)</label>
+                        <label className="block text-xs font-medium text-neutral-500 mb-1">Variant Name</label>
                         <input
                             type="text"
-                            value={variant.description || ''}
-                            onChange={e => updateVariantField({ description: e.target.value || undefined })}
-                            className="w-full bg-neutral-900 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500 placeholder-neutral-600"
-                            placeholder="Brief description of this variant"
+                            value={variant.name}
+                            onChange={e => updateVariantField({ name: e.target.value })}
+                            className="w-full bg-neutral-900 border border-white/10 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-emerald-500 placeholder-neutral-600"
+                            placeholder="e.g., Quick, Standard, Deep"
                         />
                     </div>
-                    <div className="w-32">
+                    <div className="w-28">
                         <label className="block text-xs font-medium text-neutral-500 mb-1">Duration (min)</label>
                         <input
                             type="number"
@@ -131,6 +128,13 @@ export const VariantEditor: React.FC<VariantEditorProps> = ({
                         />
                     </div>
                 </div>
+                <input
+                    type="text"
+                    value={variant.description || ''}
+                    onChange={e => updateVariantField({ description: e.target.value || undefined })}
+                    className="w-full bg-neutral-900 border border-white/10 rounded-lg px-3 py-2 text-sm text-neutral-400 focus:outline-none focus:border-emerald-500 placeholder-neutral-600"
+                    placeholder="Description (optional)"
+                />
             </div>
 
             {/* Steps */}
@@ -155,7 +159,7 @@ export const VariantEditor: React.FC<VariantEditorProps> = ({
                     {steps.map((step, index) => {
                         const isExpanded = expandedStepId === step.id;
                         return (
-                            <div key={step.id} className="bg-neutral-800/50 border border-white/5 rounded-xl overflow-hidden transition-all duration-200">
+                            <div key={step.id} ref={isExpanded ? expandedStepRef : undefined} className="bg-neutral-800/50 border border-white/5 rounded-xl overflow-hidden transition-all duration-200">
                                 <div
                                     className="flex items-center gap-3 p-4 cursor-pointer hover:bg-white/5 transition-colors"
                                     onClick={() => setExpandedStepId(isExpanded ? null : step.id)}
@@ -221,11 +225,11 @@ export const VariantEditor: React.FC<VariantEditorProps> = ({
                                                 onChange={e => updateStep(step.id, { instruction: e.target.value })}
                                                 className="w-full bg-neutral-900 border border-white/10 rounded-lg p-3 text-sm text-neutral-300 placeholder-neutral-600 focus:outline-none focus:border-emerald-500 transition-colors resize-none"
                                                 placeholder="Detailed instructions..."
-                                                rows={3}
+                                                rows={2}
                                             />
                                         </div>
 
-                                        <div className="flex items-center gap-4 pt-2">
+                                        <div className="flex flex-wrap items-center gap-3">
                                             {/* Timer Mode Selector */}
                                             <div className="flex items-center gap-1 bg-neutral-900 border border-white/10 rounded-lg p-1">
                                                 <button
@@ -278,158 +282,178 @@ export const VariantEditor: React.FC<VariantEditorProps> = ({
                                                     />
                                                 </div>
                                             )}
-
-                                            <div className="flex-1 flex items-center gap-2 bg-neutral-900 border border-white/10 rounded-lg px-3 py-2">
-                                                <button
-                                                    onClick={() => document.getElementById(`step-image-upload-${step.id}`)?.click()}
-                                                    className="text-neutral-500 hover:text-white transition-colors"
-                                                    title="Upload Image"
-                                                    disabled={uploadingStepId === step.id}
-                                                >
-                                                    {uploadingStepId === step.id ? (
-                                                        <Loader2 size={16} className="animate-spin text-emerald-500" />
-                                                    ) : (
-                                                        <ImageIcon size={16} />
-                                                    )}
-                                                </button>
-                                                <input
-                                                    id={`step-image-upload-${step.id}`}
-                                                    type="file"
-                                                    accept="image/*"
-                                                    className="hidden"
-                                                    onChange={(e) => {
-                                                        if (e.target.files?.[0]) {
-                                                            handleStepImageUpload(e.target.files[0], step.id);
-                                                        }
-                                                        e.target.value = '';
-                                                    }}
-                                                />
-                                                <input
-                                                    type="text"
-                                                    value={step.imageUrl || ''}
-                                                    onChange={e => updateStep(step.id, { imageUrl: e.target.value })}
-                                                    placeholder="Image URL or upload"
-                                                    className="bg-transparent w-full text-sm text-white focus:outline-none placeholder-neutral-600"
-                                                />
-                                            </div>
                                         </div>
 
-                                        {step.imageUrl && (
-                                            <div className="mt-2 relative group w-full aspect-video bg-neutral-900 rounded-lg overflow-hidden border border-white/5">
-                                                <img
-                                                    src={step.imageUrl}
-                                                    alt="Step preview"
-                                                    className="w-full h-full object-cover"
-                                                />
-                                                <button
-                                                    onClick={() => updateStep(step.id, { imageUrl: undefined })}
-                                                    className="absolute top-2 right-2 p-1.5 bg-black/50 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/70"
-                                                    title="Remove Image"
-                                                >
-                                                    <X size={14} />
-                                                </button>
-                                            </div>
-                                        )}
+                                        {/* More options toggle */}
+                                        <button
+                                            type="button"
+                                            onClick={() => setAdvancedOpenStepId(advancedOpenStepId === step.id ? null : step.id)}
+                                            className="flex items-center gap-1.5 text-xs text-neutral-500 hover:text-neutral-300 transition-colors pt-1"
+                                        >
+                                            <Settings2 size={12} />
+                                            More options
+                                            {(step.imageUrl || step.linkedHabitId || (step.trackingFields && step.trackingFields.length > 0)) && (
+                                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                                            )}
+                                            <ChevronDown size={12} className={`transition-transform duration-200 ${advancedOpenStepId === step.id ? 'rotate-180' : ''}`} />
+                                        </button>
 
-                                        <div className="pt-2">
-                                            <label className="block text-xs font-medium text-neutral-500 mb-1 flex items-center gap-1">
-                                                <Link2 size={12} /> Linked Habit (Optional)
-                                            </label>
-                                            <select
-                                                value={step.linkedHabitId || ''}
-                                                onChange={e => updateStep(step.id, { linkedHabitId: e.target.value || undefined })}
-                                                className="w-full bg-neutral-900 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500"
-                                            >
-                                                <option value="">-- No Linked Habit --</option>
-                                                {filteredHabits.map(habit => (
-                                                    <option key={habit.id} value={habit.id}>
-                                                        {habit.name}
-                                                    </option>
-                                                ))}
-                                            </select>
-                                            <p className="text-[10px] text-neutral-600 mt-1">
-                                                Reaching this step will generate potential evidence for the selected habit.
-                                            </p>
-                                        </div>
+                                        {advancedOpenStepId === step.id && (
+                                            <div className="space-y-3 animate-in slide-in-from-top-2 duration-200">
+                                                {/* Image upload */}
+                                                <div className="flex items-center gap-2 bg-neutral-900 border border-white/10 rounded-lg px-3 py-2">
+                                                    <button
+                                                        onClick={() => document.getElementById(`step-image-upload-${step.id}`)?.click()}
+                                                        className="text-neutral-500 hover:text-white transition-colors"
+                                                        title="Upload Image"
+                                                        disabled={uploadingStepId === step.id}
+                                                    >
+                                                        {uploadingStepId === step.id ? (
+                                                            <Loader2 size={16} className="animate-spin text-emerald-500" />
+                                                        ) : (
+                                                            <ImageIcon size={16} />
+                                                        )}
+                                                    </button>
+                                                    <input
+                                                        id={`step-image-upload-${step.id}`}
+                                                        type="file"
+                                                        accept="image/*"
+                                                        className="hidden"
+                                                        onChange={(e) => {
+                                                            if (e.target.files?.[0]) {
+                                                                handleStepImageUpload(e.target.files[0], step.id);
+                                                            }
+                                                            e.target.value = '';
+                                                        }}
+                                                    />
+                                                    <input
+                                                        type="text"
+                                                        value={step.imageUrl || ''}
+                                                        onChange={e => updateStep(step.id, { imageUrl: e.target.value })}
+                                                        placeholder="Image URL or upload"
+                                                        className="bg-transparent w-full text-sm text-white focus:outline-none placeholder-neutral-600"
+                                                    />
+                                                </div>
 
-                                        {/* Tracking Fields */}
-                                        <div className="pt-2">
-                                            <label className="block text-xs font-medium text-neutral-500 mb-2 flex items-center gap-1">
-                                                <BarChart3 size={12} /> Tracking Fields (Optional)
-                                            </label>
-                                            <div className="space-y-2">
-                                                {(step.trackingFields || []).map((field: TrackingFieldDef) => (
-                                                    <div key={field.id} className="flex items-center gap-2 bg-neutral-900 border border-white/10 rounded-lg p-2">
-                                                        <input
-                                                            type="text"
-                                                            value={field.label}
-                                                            onChange={e => {
-                                                                const updated = (step.trackingFields || []).map(f =>
-                                                                    f.id === field.id ? { ...f, label: e.target.value } : f
-                                                                );
-                                                                updateStep(step.id, { trackingFields: updated });
-                                                            }}
-                                                            placeholder="Label (e.g., Weight)"
-                                                            className="flex-1 bg-transparent text-sm text-white focus:outline-none placeholder-neutral-600"
-                                                        />
-                                                        <select
-                                                            value={field.type}
-                                                            onChange={e => {
-                                                                const updated = (step.trackingFields || []).map(f =>
-                                                                    f.id === field.id ? { ...f, type: e.target.value as 'number' | 'text' } : f
-                                                                );
-                                                                updateStep(step.id, { trackingFields: updated });
-                                                            }}
-                                                            className="bg-neutral-800 border border-white/10 rounded px-2 py-1 text-xs text-neutral-300 focus:outline-none"
-                                                        >
-                                                            <option value="number">Number</option>
-                                                            <option value="text">Text</option>
-                                                        </select>
-                                                        <input
-                                                            type="text"
-                                                            value={field.unit || ''}
-                                                            onChange={e => {
-                                                                const updated = (step.trackingFields || []).map(f =>
-                                                                    f.id === field.id ? { ...f, unit: e.target.value || undefined } : f
-                                                                );
-                                                                updateStep(step.id, { trackingFields: updated });
-                                                            }}
-                                                            placeholder="Unit"
-                                                            className="w-16 bg-transparent text-sm text-neutral-400 focus:outline-none placeholder-neutral-600"
+                                                {step.imageUrl && (
+                                                    <div className="relative group w-full aspect-video bg-neutral-900 rounded-lg overflow-hidden border border-white/5">
+                                                        <img
+                                                            src={step.imageUrl}
+                                                            alt="Step preview"
+                                                            className="w-full h-full object-cover"
                                                         />
                                                         <button
-                                                            type="button"
-                                                            onClick={() => {
-                                                                const updated = (step.trackingFields || []).filter(f => f.id !== field.id);
-                                                                updateStep(step.id, { trackingFields: updated.length > 0 ? updated : undefined });
-                                                            }}
-                                                            className="p-1 text-neutral-600 hover:text-red-400 transition-colors"
+                                                            onClick={() => updateStep(step.id, { imageUrl: undefined })}
+                                                            className="absolute top-2 right-2 p-1.5 bg-black/50 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/70"
+                                                            title="Remove Image"
                                                         >
                                                             <X size={14} />
                                                         </button>
                                                     </div>
-                                                ))}
-                                                <button
-                                                    type="button"
-                                                    onClick={() => {
-                                                        const newField: TrackingFieldDef = {
-                                                            id: crypto.randomUUID(),
-                                                            label: '',
-                                                            type: 'number',
-                                                        };
-                                                        updateStep(step.id, {
-                                                            trackingFields: [...(step.trackingFields || []), newField],
-                                                        });
-                                                    }}
-                                                    className="flex items-center gap-1 text-xs text-neutral-500 hover:text-neutral-300 transition-colors"
-                                                >
-                                                    <Plus size={12} /> Add tracking field
-                                                </button>
+                                                )}
+
+                                                {/* Linked Habit */}
+                                                <div>
+                                                    <label className="block text-xs font-medium text-neutral-500 mb-1 flex items-center gap-1">
+                                                        <Link2 size={12} /> Linked Habit (Optional)
+                                                    </label>
+                                                    <select
+                                                        value={step.linkedHabitId || ''}
+                                                        onChange={e => updateStep(step.id, { linkedHabitId: e.target.value || undefined })}
+                                                        className="w-full bg-neutral-900 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500"
+                                                    >
+                                                        <option value="">-- No Linked Habit --</option>
+                                                        {filteredHabits.map(habit => (
+                                                            <option key={habit.id} value={habit.id}>
+                                                                {habit.name}
+                                                            </option>
+                                                        ))}
+                                                    </select>
+                                                    <p className="text-[10px] text-neutral-600 mt-1">
+                                                        Reaching this step will generate potential evidence for the selected habit.
+                                                    </p>
+                                                </div>
+
+                                                {/* Tracking Fields */}
+                                                <div>
+                                                    <label className="block text-xs font-medium text-neutral-500 mb-2 flex items-center gap-1">
+                                                        <BarChart3 size={12} /> Tracking Fields (Optional)
+                                                    </label>
+                                                    <div className="space-y-2">
+                                                        {(step.trackingFields || []).map((field: TrackingFieldDef) => (
+                                                            <div key={field.id} className="flex items-center gap-2 bg-neutral-900 border border-white/10 rounded-lg p-2">
+                                                                <input
+                                                                    type="text"
+                                                                    value={field.label}
+                                                                    onChange={e => {
+                                                                        const updated = (step.trackingFields || []).map(f =>
+                                                                            f.id === field.id ? { ...f, label: e.target.value } : f
+                                                                        );
+                                                                        updateStep(step.id, { trackingFields: updated });
+                                                                    }}
+                                                                    placeholder="Label (e.g., Weight)"
+                                                                    className="flex-1 bg-transparent text-sm text-white focus:outline-none placeholder-neutral-600"
+                                                                />
+                                                                <select
+                                                                    value={field.type}
+                                                                    onChange={e => {
+                                                                        const updated = (step.trackingFields || []).map(f =>
+                                                                            f.id === field.id ? { ...f, type: e.target.value as 'number' | 'text' } : f
+                                                                        );
+                                                                        updateStep(step.id, { trackingFields: updated });
+                                                                    }}
+                                                                    className="bg-neutral-800 border border-white/10 rounded px-2 py-1 text-xs text-neutral-300 focus:outline-none"
+                                                                >
+                                                                    <option value="number">Number</option>
+                                                                    <option value="text">Text</option>
+                                                                </select>
+                                                                <input
+                                                                    type="text"
+                                                                    value={field.unit || ''}
+                                                                    onChange={e => {
+                                                                        const updated = (step.trackingFields || []).map(f =>
+                                                                            f.id === field.id ? { ...f, unit: e.target.value || undefined } : f
+                                                                        );
+                                                                        updateStep(step.id, { trackingFields: updated });
+                                                                    }}
+                                                                    placeholder="Unit"
+                                                                    className="w-16 bg-transparent text-sm text-neutral-400 focus:outline-none placeholder-neutral-600"
+                                                                />
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => {
+                                                                        const updated = (step.trackingFields || []).filter(f => f.id !== field.id);
+                                                                        updateStep(step.id, { trackingFields: updated.length > 0 ? updated : undefined });
+                                                                    }}
+                                                                    className="p-1 text-neutral-600 hover:text-red-400 transition-colors"
+                                                                >
+                                                                    <X size={14} />
+                                                                </button>
+                                                            </div>
+                                                        ))}
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => {
+                                                                const newField: TrackingFieldDef = {
+                                                                    id: crypto.randomUUID(),
+                                                                    label: '',
+                                                                    type: 'number',
+                                                                };
+                                                                updateStep(step.id, {
+                                                                    trackingFields: [...(step.trackingFields || []), newField],
+                                                                });
+                                                            }}
+                                                            className="flex items-center gap-1 text-xs text-neutral-500 hover:text-neutral-300 transition-colors"
+                                                        >
+                                                            <Plus size={12} /> Add tracking field
+                                                        </button>
+                                                    </div>
+                                                    <p className="text-[10px] text-neutral-600 mt-1">
+                                                        Define fields to track during execution (e.g., weight, reps, BPM).
+                                                    </p>
+                                                </div>
                                             </div>
-                                            <p className="text-[10px] text-neutral-600 mt-1">
-                                                Define fields to track during execution (e.g., weight, reps, BPM).
-                                            </p>
-                                        </div>
+                                        )}
                                     </div>
                                 )}
                             </div>
