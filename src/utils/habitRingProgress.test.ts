@@ -330,14 +330,14 @@ describe('Edge cases', () => {
         expect(isHabitComplete(habit, {}, DATE)).toBe(false);
     });
 
-    it('weekly habits excluded from daily ring progress', () => {
+    it('weekly habits excluded from daily ring progress, total habits included', () => {
         const habits = [
             makeHabit({ id: 'h1', name: 'Daily habit' }),
             makeHabit({ id: 'h2', name: 'Weekly habit', frequency: 'weekly', goal: { type: 'boolean', frequency: 'weekly' } }),
             makeHabit({ id: 'h3', name: 'Total habit', goal: { type: 'number', frequency: 'total' } }),
         ];
         const result = getDailyHabitRingProgress(habits, {}, DATE);
-        expect(result.total).toBe(1); // only the daily habit
+        expect(result.total).toBe(2); // daily + total (cumulative habits need daily tracking)
     });
 
     it('child with bundleParentId excluded even if parent subHabitIds is missing', () => {
