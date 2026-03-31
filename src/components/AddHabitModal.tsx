@@ -599,9 +599,16 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                                 {categories.length > 0 && !isCreatingCategory && (
                                     <select
                                         value={selectedCategoryId}
-                                        onChange={(e) => setSelectedCategoryId(e.target.value)}
-                                        className="w-full bg-neutral-800 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-emerald-500 appearance-none mb-2"
+                                        onChange={(e) => {
+                                            if (e.target.value === '__new__') {
+                                                setIsCreatingCategory(true);
+                                            } else {
+                                                setSelectedCategoryId(e.target.value);
+                                            }
+                                        }}
+                                        className="w-full bg-neutral-800 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-emerald-500 appearance-none"
                                     >
+                                        <option value="__new__">+ New Category</option>
                                         {categories.map(cat => (
                                             <option key={cat.id} value={cat.id}>{cat.name}</option>
                                         ))}
@@ -672,7 +679,7 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                                 ) : categories.length === 0 ? (
                                     <p className="text-sm text-neutral-500 mb-2">No categories yet. Create one to get started.</p>
                                 ) : null}
-                                {!isCreatingCategory && (
+                                {!isCreatingCategory && categories.length === 0 && (
                                     <button
                                         type="button"
                                         onClick={() => setIsCreatingCategory(true)}
@@ -737,7 +744,7 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                                         }`}
                                 >
                                     <Calculator size={16} />
-                                    Numeric (Amount)
+                                    Numeric
                                 </button>
                             </div>
                         </div>
@@ -852,16 +859,15 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                     )}
 
                     {/* Goal Linker */}
-                    <div className="space-y-1">
-                        <label className="block text-sm font-medium text-neutral-400">Connect to a Goal (Optional)</label>
+                    <div>
                         <div className="relative">
-                            <Trophy size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500" />
+                            <Trophy size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-amber-400" />
                             <select
                                 value={linkedGoalId || ''}
                                 onChange={(e) => setLinkedGoalId(e.target.value || null)}
                                 className="w-full bg-neutral-800 border border-white/10 rounded-lg pl-10 pr-4 py-2 text-white focus:outline-none focus:border-emerald-500 appearance-none"
                             >
-                                <option value="">No goal linked</option>
+                                <option value="">Connect to a Goal (Optional)</option>
                                 {availableGoals.map(g => (
                                     <option key={g.id} value={g.id}>{g.title}</option>
                                 ))}
