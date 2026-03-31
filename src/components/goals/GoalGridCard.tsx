@@ -13,7 +13,7 @@ interface GoalGridCardProps {
 }
 
 /**
- * Compact card for onetime and frequency goals — single row, minimal height.
+ * Compact card for onetime goals — single row, minimal height.
  */
 const CompactGoalCard: React.FC<GoalGridCardProps> = ({
     goalWithProgress,
@@ -229,7 +229,7 @@ const CumulativeGoalCard: React.FC<GoalGridCardProps> = ({
 };
 
 /**
- * GoalGridCard — renders compact row for onetime/frequency, full card for cumulative.
+ * GoalGridCard — renders compact row for onetime, full card for cumulative.
  */
 export const GoalGridCard: React.FC<GoalGridCardProps> = (props) => {
     const { goal } = props.goalWithProgress;

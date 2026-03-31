@@ -18,7 +18,7 @@ export const DashboardPrefsProvider: React.FC<{ children: React.ReactNode }> = (
   useEffect(() => {
     fetchDashboardPrefs()
       .then((prefs: DashboardPrefs) => {
-        if (prefs.hideStreaks) setHideStreaksLocal(true);
+        setHideStreaksLocal(Boolean(prefs.hideStreaks));
       })
       .catch(() => {});
   }, []);
