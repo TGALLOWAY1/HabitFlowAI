@@ -53,6 +53,7 @@ interface TrackerGridProps {
     onRunRoutine?: (routine: Routine) => void;
     onViewHistory: (habit: Habit) => void;
     potentialEvidence?: HabitPotentialEvidence[];
+    loading?: boolean;
 }
 
 // --- Shared Components ---
@@ -776,7 +777,8 @@ export const TrackerGrid = ({
     onEditHabit,
     onRunRoutine,
     potentialEvidence,
-    onViewHistory
+    onViewHistory,
+    loading
 }: TrackerGridProps) => {
     const {
         deleteHabit,
@@ -1204,7 +1206,9 @@ export const TrackerGrid = ({
                                 </div>
                             )}
                             <div className="flex-col">
-                                {dailyHabits.length > 0 ? (
+                                {loading ? (
+                                    <div className="flex items-center justify-center p-12 text-neutral-500 text-sm">Loading habits…</div>
+                                ) : dailyHabits.length > 0 ? (
                                     <SortableContext
                                         items={dailyHabits.map(h => h.id)}
                                         strategy={verticalListSortingStrategy}

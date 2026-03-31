@@ -88,7 +88,8 @@ export const DayView = ({ onAddHabit }: DayViewProps = {}) => {
         updateHabit,
         upsertHabitEntry,
         deleteHabitEntryByKey,
-        reorderCategories
+        reorderCategories,
+        loading
     } = useHabitStore();
 
     // Drag-and-drop sensors for category reordering
@@ -273,6 +274,13 @@ export const DayView = ({ onAddHabit }: DayViewProps = {}) => {
     // Assuming categories array is sorted or we verify sort?
     // HabitContext usually returns them in DB order?
     // Let's rely on categories array order.
+
+    // Show loading state while habits are being fetched
+    if (loading) {
+        return (
+            <div className="flex items-center justify-center p-12 text-neutral-500 text-sm">Loading habits…</div>
+        );
+    }
 
     // Empty State — show actionable guidance for new users
     if (todaysHabits.length === 0) {
