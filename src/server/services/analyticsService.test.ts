@@ -7,6 +7,8 @@ import {
   computeTrendData,
   computeCategoryBreakdown,
   computeInsights,
+  computeRoutineAnalytics,
+  computeGoalAnalytics,
 } from './analyticsService';
 
 function createHabit(overrides: Partial<Habit> = {}): Habit {
@@ -302,5 +304,77 @@ describe('computeInsights', () => {
     const result = computeInsights(habits, entries, '2026-03-31', 14);
     const weekendInsight = result.find(i => i.message.includes('weekday') || i.message.includes('weekend'));
     expect(weekendInsight).toBeDefined();
+  });
+});
+
+// ─── Routine Analytics Tests ─────────────────────────────────────────────────
+
+describe('computeRoutineAnalytics', () => {
+  it('computes basic routine metrics', () => {
+    const routines = [
+      { id: 'r1', title: 'Morning Routine', userId: 'u1' },
+      { id: 'r2', title: 'Evening Routine', userId: 'u1' },
+    ] as any;
+
+    const routineLogs: Record<string, any> = {
+      'r1-2026-03-30': { routineId: 'r1', date: '2026-03-30', startedAt: '2026-03-30T07:00:00Z', completedAt: '2026-03-30T07:15:00Z', actualDurationSeconds: 900 },
+      'r1-2026-03-31': { routineId: 'r1', date: '2026-03-31', startedAt: '2026-03-31T07:00:00Z', completedAt: '2026-03-31T07:20:00Z', actualDurationSeconds: 1200 },
+      'r2-2026-03-31': { routineId: 'r2', date: '2026-03-31', startedAt: '2026-03-31T20:00:00Z', completedAt: '2026-03-31T20:10:00Z', actualDurationSeconds: 600 },
+    };
+
+    const result = computeRoutineAnalytics(routines, routineLogs, '2026-03-31', 7);
+    expect(result.totalCompleted).toBe(3);
+    expect(result.totalStarted).toBe(3);
+    expect(result.reliabilityRate).toBe(1);
+    expect(result.averageDurationSeconds).toBe(900); // (900+1200+600)/3
+    expect(result.routineBreakdown).toHaveLength(2);
+    expect(result.routineBreakdown[0].routineTitle).toBe('Morning Routine');
+  });
+
+  it('handles empty logs', () => {
+    const result = computeRoutineAnalytics([], {}, '2026-03-31', 7);
+    expect(result.totalCompleted).toBe(0);
+    expect(result.reliabilityRate).toBe(0);
+  });
+});
+
+// ─── Goal Analytics Tests ────────────────────────────────────────────────────
+
+describe('computeGoalAnalytics', () => {
+  it('computes basic goal metrics', () => {
+    const goals = [
+      { id: 'g1', title: 'Run 100 miles', type: 'cumulative', targetValue: 100, linkedHabitIds: ['h1'], aggregationMode: 'sum', createdAt: '2026-01-01' },
+      { id: 'g2', title: 'Pass exam', type: 'onetime', linkedHabitIds: [], completedAt: '2026-03-15', createdAt: '2026-01-01' },
+    ] as any;
+    const habits = [createHabit({ id: 'h1' })];
+    const entries = [
+      createEntry('h1', '2026-03-30', { value: 5 }),
+      createEntry('h1', '2026-03-31', { value: 10 }),
+    ];
+
+    const result = computeGoalAnalytics(goals, habits, entries, '2026-03-31');
+    expect(result.activeGoals).toBe(1);
+    expect(result.completedGoals).toBe(1);
+    expect(result.goalBreakdown).toHaveLength(2);
+
+    const runGoal = result.goalBreakdown.find(g => g.goalId === 'g1');
+    expect(runGoal!.progressPercent).toBe(15); // 15/100
+    expect(runGoal!.isCompleted).toBe(false);
+
+    const examGoal = result.goalBreakdown.find(g => g.goalId === 'g2');
+    expect(examGoal!.isCompleted).toBe(true);
+    expect(examGoal!.progressPercent).toBe(100);
+  });
+
+  it('marks goals at risk near deadline', () => {
+    const goals = [
+      { id: 'g1', title: 'Goal', type: 'cumulative', targetValue: 100, linkedHabitIds: ['h1'], aggregationMode: 'sum', deadline: '2026-04-10', createdAt: '2026-01-01' },
+    ] as any;
+    const habits = [createHabit({ id: 'h1' })];
+    const entries = [createEntry('h1', '2026-03-31', { value: 5 })];
+
+    const result = computeGoalAnalytics(goals, habits, entries, '2026-03-31');
+    expect(result.goalsAtRisk).toBe(1);
+    expect(result.goalBreakdown[0].isAtRisk).toBe(true);
   });
 });

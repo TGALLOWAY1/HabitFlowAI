@@ -6,7 +6,7 @@
  */
 
 import { parseISO, subDays, format, getISOWeek, getISOWeekYear, differenceInCalendarDays } from 'date-fns';
-import type { Habit, HabitEntry, Category } from '../../models/persistenceTypes';
+import type { Habit, HabitEntry, Category, Routine, RoutineLog, Goal } from '../../models/persistenceTypes';
 import type { BundleMembershipRecord } from '../domain/canonicalTypes';
 import { calculateHabitStreakMetrics, type HabitDayState } from './streakService';
 import { getCanonicalDayKeyFromEntry } from '../utils/dayKey';
@@ -517,4 +517,170 @@ export function computeInsights(
   }
 
   return insights;
+}
+
+// ─── Routine Analytics ───────────────────────────────────────────────────────
+
+export interface RoutineAnalyticsSummary {
+  totalCompleted: number;
+  totalStarted: number;
+  reliabilityRate: number;
+  averageDurationSeconds: number;
+  routineBreakdown: Array<{
+    routineId: string;
+    routineTitle: string;
+    completedCount: number;
+    averageDurationSeconds: number;
+  }>;
+}
+
+export function computeRoutineAnalytics(
+  routines: Routine[],
+  routineLogs: Record<string, RoutineLog>,
+  referenceDayKey: string,
+  days: number
+): RoutineAnalyticsSummary {
+  const startDayKey = format(subDays(parseISO(referenceDayKey), days - 1), 'yyyy-MM-dd');
+  const logs = Object.values(routineLogs).filter(log => log.date >= startDayKey && log.date <= referenceDayKey);
+
+  const totalStarted = logs.length;
+  const completedLogs = logs.filter(log => log.completedAt);
+  const totalCompleted = completedLogs.length;
+  const reliabilityRate = totalStarted > 0 ? Math.round((totalCompleted / totalStarted) * 1000) / 1000 : 0;
+
+  const durationsSeconds = completedLogs
+    .map(log => log.actualDurationSeconds)
+    .filter((d): d is number => typeof d === 'number' && d > 0);
+  const averageDurationSeconds = durationsSeconds.length > 0
+    ? Math.round(durationsSeconds.reduce((a, b) => a + b, 0) / durationsSeconds.length)
+    : 0;
+
+  // Per-routine breakdown
+  const routineMap = new Map(routines.map(r => [r.id, r]));
+  const byRoutine = new Map<string, { completed: number; durations: number[] }>();
+  for (const log of completedLogs) {
+    const entry = byRoutine.get(log.routineId) ?? { completed: 0, durations: [] };
+    entry.completed++;
+    if (typeof log.actualDurationSeconds === 'number' && log.actualDurationSeconds > 0) {
+      entry.durations.push(log.actualDurationSeconds);
+    }
+    byRoutine.set(log.routineId, entry);
+  }
+
+  const routineBreakdown = Array.from(byRoutine.entries())
+    .map(([routineId, data]) => ({
+      routineId,
+      routineTitle: routineMap.get(routineId)?.title ?? 'Unknown',
+      completedCount: data.completed,
+      averageDurationSeconds: data.durations.length > 0
+        ? Math.round(data.durations.reduce((a, b) => a + b, 0) / data.durations.length)
+        : 0,
+    }))
+    .sort((a, b) => b.completedCount - a.completedCount);
+
+  return {
+    totalCompleted,
+    totalStarted,
+    reliabilityRate,
+    averageDurationSeconds,
+    routineBreakdown,
+  };
+}
+
+// ─── Goal Analytics ──────────────────────────────────────────────────────────
+
+export interface GoalAnalyticsSummary {
+  activeGoals: number;
+  completedGoals: number;
+  averageProgressPercent: number;
+  goalsAtRisk: number;
+  goalBreakdown: Array<{
+    goalId: string;
+    goalTitle: string;
+    progressPercent: number;
+    isCompleted: boolean;
+    isAtRisk: boolean;
+  }>;
+}
+
+export function computeGoalAnalytics(
+  goals: Goal[],
+  habits: Habit[],
+  entries: HabitEntry[],
+  referenceDayKey: string,
+  timeZone?: string
+): GoalAnalyticsSummary {
+  const activeGoals = goals.filter(g => !g.completedAt);
+  const completedGoals = goals.filter(g => g.completedAt);
+
+  // Build entry lookup by habitId
+  const entriesByHabit = new Map<string, HabitEntry[]>();
+  for (const entry of entries) {
+    const existing = entriesByHabit.get(entry.habitId) ?? [];
+    existing.push(entry);
+    entriesByHabit.set(entry.habitId, existing);
+  }
+
+  const goalBreakdown: GoalAnalyticsSummary['goalBreakdown'] = [];
+
+  for (const goal of goals) {
+    let progressPercent = 0;
+    let isAtRisk = false;
+
+    if (goal.completedAt) {
+      progressPercent = 100;
+    } else if (goal.type === 'cumulative' && goal.targetValue && goal.targetValue > 0) {
+      // Compute current value from linked habit entries
+      let currentValue = 0;
+      for (const habitId of goal.linkedHabitIds) {
+        const habitEntries = entriesByHabit.get(habitId) ?? [];
+        const nonDeletedEntries = habitEntries.filter(e => !parseFreezeType(e.note));
+        if (goal.aggregationMode === 'count' || !goal.aggregationMode) {
+          if (goal.countMode === 'entries') {
+            currentValue += nonDeletedEntries.length;
+          } else {
+            // distinctDays
+            const dayKeys = new Set(nonDeletedEntries.map(e => getCanonicalDayKeyFromEntry(e, { timeZone })).filter(Boolean));
+            currentValue += dayKeys.size;
+          }
+        } else {
+          // sum
+          currentValue += nonDeletedEntries.reduce((sum, e) => sum + (typeof e.value === 'number' ? e.value : 0), 0);
+        }
+      }
+      progressPercent = Math.min(100, Math.round((currentValue / goal.targetValue) * 100));
+
+      // At risk: has deadline, less than 75% progress, deadline within 14 days
+      if (goal.deadline) {
+        const daysUntilDeadline = differenceInCalendarDays(parseISO(goal.deadline), parseISO(referenceDayKey));
+        if (daysUntilDeadline <= 14 && progressPercent < 75) {
+          isAtRisk = true;
+        }
+      }
+    } else if (goal.type === 'onetime') {
+      // One-time goals are 0% until completed
+      progressPercent = 0;
+    }
+
+    goalBreakdown.push({
+      goalId: goal.id,
+      goalTitle: goal.title,
+      progressPercent,
+      isCompleted: !!goal.completedAt,
+      isAtRisk,
+    });
+  }
+
+  const activeProgressValues = goalBreakdown.filter(g => !g.isCompleted).map(g => g.progressPercent);
+  const averageProgressPercent = activeProgressValues.length > 0
+    ? Math.round(activeProgressValues.reduce((a, b) => a + b, 0) / activeProgressValues.length)
+    : 0;
+
+  return {
+    activeGoals: activeGoals.length,
+    completedGoals: completedGoals.length,
+    averageProgressPercent,
+    goalsAtRisk: goalBreakdown.filter(g => g.isAtRisk).length,
+    goalBreakdown: goalBreakdown.sort((a, b) => b.progressPercent - a.progressPercent),
+  };
 }

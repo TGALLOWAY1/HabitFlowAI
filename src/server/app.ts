@@ -66,6 +66,8 @@ import {
   getHabitAnalyticsTrends,
   getHabitAnalyticsCategoryBreakdown,
   getHabitAnalyticsInsights,
+  getRoutineAnalyticsSummary,
+  getGoalAnalyticsSummary,
 } from './routes/analytics';
 
 export function createApp(): Express {
@@ -203,6 +205,8 @@ export function createApp(): Express {
   app.get('/api/analytics/habits/trends', getHabitAnalyticsTrends);
   app.get('/api/analytics/habits/category-breakdown', getHabitAnalyticsCategoryBreakdown);
   app.get('/api/analytics/habits/insights', getHabitAnalyticsInsights);
+  app.get('/api/analytics/routines/summary', getRoutineAnalyticsSummary);
+  app.get('/api/analytics/goals/summary', getGoalAnalyticsSummary);
   app.post('/api/ai/weekly-summary', postWeeklySummary);
   app.post('/api/ai/suggest-variants', postSuggestVariants);
   app.get('/api/admin/integrity-report', getIntegrityReport);

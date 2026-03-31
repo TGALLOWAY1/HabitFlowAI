@@ -5,31 +5,46 @@ import {
   fetchHabitTrends,
   fetchHabitCategoryBreakdown,
   fetchHabitInsights,
+  fetchRoutineSummary,
+  fetchGoalSummary,
   type HabitAnalyticsSummary,
   type HeatmapDataPoint,
   type TrendDataPoint,
   type CategoryBreakdownItem,
   type Insight,
+  type RoutineAnalyticsSummary,
+  type GoalAnalyticsSummary,
 } from '../lib/analyticsClient';
 import { SummaryCards } from '../components/analytics/SummaryCards';
 import { AnalyticsHeatmap } from '../components/analytics/AnalyticsHeatmap';
 import { TrendChart } from '../components/analytics/TrendChart';
 import { CategoryBreakdown } from '../components/analytics/CategoryBreakdown';
 import { InsightsPanel } from '../components/analytics/InsightsPanel';
+import { RoutineAnalytics } from '../components/analytics/RoutineAnalytics';
+import { GoalAnalytics } from '../components/analytics/GoalAnalytics';
 
 type TimeRange = 30 | 90 | 365;
+type AnalyticsTab = 'habits' | 'routines' | 'goals';
 
 export const AnalyticsPage: React.FC = () => {
+  const [activeTab, setActiveTab] = useState<AnalyticsTab>('habits');
   const [timeRange, setTimeRange] = useState<TimeRange>(90);
   const [loading, setLoading] = useState(true);
 
+  // Habits state
   const [summary, setSummary] = useState<HabitAnalyticsSummary | null>(null);
   const [heatmap, setHeatmap] = useState<HeatmapDataPoint[] | null>(null);
   const [trends, setTrends] = useState<TrendDataPoint[] | null>(null);
   const [categories, setCategories] = useState<CategoryBreakdownItem[] | null>(null);
   const [insights, setInsights] = useState<Insight[] | null>(null);
 
-  const loadData = useCallback(async (days: TimeRange) => {
+  // Routines state
+  const [routineData, setRoutineData] = useState<RoutineAnalyticsSummary | null>(null);
+
+  // Goals state
+  const [goalData, setGoalData] = useState<GoalAnalyticsSummary | null>(null);
+
+  const loadHabitData = useCallback(async (days: TimeRange) => {
     setLoading(true);
     try {
       const [s, h, t, c, i] = await Promise.all([
@@ -45,20 +60,52 @@ export const AnalyticsPage: React.FC = () => {
       setCategories(c);
       setInsights(i);
     } catch (err) {
-      console.error('[AnalyticsPage] Failed to load analytics:', err);
+      console.error('[AnalyticsPage] Failed to load habit analytics:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const loadRoutineData = useCallback(async (days: TimeRange) => {
+    setLoading(true);
+    try {
+      const data = await fetchRoutineSummary(days);
+      setRoutineData(data);
+    } catch (err) {
+      console.error('[AnalyticsPage] Failed to load routine analytics:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const loadGoalData = useCallback(async (days: TimeRange) => {
+    setLoading(true);
+    try {
+      const data = await fetchGoalSummary(days);
+      setGoalData(data);
+    } catch (err) {
+      console.error('[AnalyticsPage] Failed to load goal analytics:', err);
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    loadData(timeRange);
-  }, [timeRange, loadData]);
+    if (activeTab === 'habits') loadHabitData(timeRange);
+    else if (activeTab === 'routines') loadRoutineData(timeRange);
+    else if (activeTab === 'goals') loadGoalData(timeRange);
+  }, [activeTab, timeRange, loadHabitData, loadRoutineData, loadGoalData]);
 
   const rangeOptions: { value: TimeRange; label: string }[] = [
     { value: 30, label: '30d' },
     { value: 90, label: '90d' },
     { value: 365, label: '1y' },
+  ];
+
+  const tabs: { value: AnalyticsTab; label: string }[] = [
+    { value: 'habits', label: 'Habits' },
+    { value: 'routines', label: 'Routines' },
+    { value: 'goals', label: 'Goals' },
   ];
 
   return (
@@ -83,20 +130,41 @@ export const AnalyticsPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Summary Cards */}
-      <SummaryCards data={summary} loading={loading} />
+      {/* Tab Toggle */}
+      <div className="flex bg-neutral-800/50 rounded-xl p-1">
+        {tabs.map(tab => (
+          <button
+            key={tab.value}
+            onClick={() => setActiveTab(tab.value)}
+            className={`flex-1 py-2 text-sm font-medium rounded-lg transition-colors ${
+              activeTab === tab.value
+                ? 'bg-neutral-700 text-white'
+                : 'text-neutral-400 hover:text-neutral-300'
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
 
-      {/* Heatmap */}
-      <AnalyticsHeatmap data={heatmap} loading={loading} />
+      {/* Tab Content */}
+      {activeTab === 'habits' && (
+        <>
+          <SummaryCards data={summary} loading={loading} />
+          <AnalyticsHeatmap data={heatmap} loading={loading} />
+          <TrendChart data={trends} loading={loading} />
+          <CategoryBreakdown data={categories} loading={loading} />
+          <InsightsPanel data={insights} loading={loading} />
+        </>
+      )}
 
-      {/* Trend Chart */}
-      <TrendChart data={trends} loading={loading} />
+      {activeTab === 'routines' && (
+        <RoutineAnalytics data={routineData} loading={loading} />
+      )}
 
-      {/* Category Breakdown */}
-      <CategoryBreakdown data={categories} loading={loading} />
-
-      {/* Insights */}
-      <InsightsPanel data={insights} loading={loading} />
+      {activeTab === 'goals' && (
+        <GoalAnalytics data={goalData} loading={loading} />
+      )}
     </div>
   );
 };

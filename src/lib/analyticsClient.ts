@@ -98,3 +98,42 @@ export async function fetchHabitCategoryBreakdown(days = 90): Promise<CategoryBr
 export async function fetchHabitInsights(days = 90): Promise<Insight[]> {
   return analyticsRequest(`/analytics/habits/insights${buildParams(days)}`);
 }
+
+// ─── Routine Analytics ───────────────────────────────────────────────────────
+
+export interface RoutineAnalyticsSummary {
+  totalCompleted: number;
+  totalStarted: number;
+  reliabilityRate: number;
+  averageDurationSeconds: number;
+  routineBreakdown: Array<{
+    routineId: string;
+    routineTitle: string;
+    completedCount: number;
+    averageDurationSeconds: number;
+  }>;
+}
+
+export async function fetchRoutineSummary(days = 90): Promise<RoutineAnalyticsSummary> {
+  return analyticsRequest(`/analytics/routines/summary${buildParams(days)}`);
+}
+
+// ─── Goal Analytics ──────────────────────────────────────────────────────────
+
+export interface GoalAnalyticsSummary {
+  activeGoals: number;
+  completedGoals: number;
+  averageProgressPercent: number;
+  goalsAtRisk: number;
+  goalBreakdown: Array<{
+    goalId: string;
+    goalTitle: string;
+    progressPercent: number;
+    isCompleted: boolean;
+    isAtRisk: boolean;
+  }>;
+}
+
+export async function fetchGoalSummary(days = 90): Promise<GoalAnalyticsSummary> {
+  return analyticsRequest(`/analytics/goals/summary${buildParams(days)}`);
+}

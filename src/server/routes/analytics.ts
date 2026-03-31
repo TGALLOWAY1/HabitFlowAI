@@ -11,12 +11,17 @@ import { getHabitsByUser } from '../repositories/habitRepository';
 import { getHabitEntriesByUser } from '../repositories/habitEntryRepository';
 import { getCategoriesByUser } from '../repositories/categoryRepository';
 import { getAllMembershipsByUser } from '../repositories/bundleMembershipRepository';
+import { getRoutines } from '../repositories/routineRepository';
+import { getRoutineLogsByUser } from '../repositories/routineLogRepository';
+import { getGoalsByUser } from '../repositories/goalRepository';
 import {
   computeHabitAnalyticsSummary,
   computeHeatmapData,
   computeTrendData,
   computeCategoryBreakdown,
   computeInsights,
+  computeRoutineAnalytics,
+  computeGoalAnalytics,
 } from '../services/analyticsService';
 
 function parseDays(query: unknown, defaultDays = 90): number {
@@ -124,5 +129,46 @@ export async function getHabitAnalyticsInsights(req: Request, res: Response): Pr
   } catch (error) {
     console.error('[analytics] insights error:', error);
     res.status(500).json({ error: 'Failed to compute insights' });
+  }
+}
+
+export async function getRoutineAnalyticsSummary(req: Request, res: Response): Promise<void> {
+  try {
+    const { householdId, userId } = getRequestIdentity(req);
+    const timeZone = resolveTimeZone(typeof req.query.timeZone === 'string' ? req.query.timeZone : undefined);
+    const days = parseDays(req.query.days, 90);
+    const referenceDayKey = getNowDayKey(timeZone);
+
+    const [routines, routineLogs] = await Promise.all([
+      getRoutines(householdId, userId),
+      getRoutineLogsByUser(userId),
+    ]);
+
+    const analytics = computeRoutineAnalytics(routines, routineLogs, referenceDayKey, days);
+    res.json(analytics);
+  } catch (error) {
+    console.error('[analytics] routine summary error:', error);
+    res.status(500).json({ error: 'Failed to compute routine analytics' });
+  }
+}
+
+export async function getGoalAnalyticsSummary(req: Request, res: Response): Promise<void> {
+  try {
+    const { householdId, userId } = getRequestIdentity(req);
+    const timeZone = resolveTimeZone(typeof req.query.timeZone === 'string' ? req.query.timeZone : undefined);
+    const days = parseDays(req.query.days, 90);
+    const referenceDayKey = getNowDayKey(timeZone);
+
+    const [goals, habits, entries] = await Promise.all([
+      getGoalsByUser(householdId, userId),
+      getHabitsByUser(householdId, userId),
+      getHabitEntriesByUser(householdId, userId),
+    ]);
+
+    const analytics = computeGoalAnalytics(goals, habits, entries, referenceDayKey, timeZone);
+    res.json(analytics);
+  } catch (error) {
+    console.error('[analytics] goal summary error:', error);
+    res.status(500).json({ error: 'Failed to compute goal analytics' });
   }
 }
