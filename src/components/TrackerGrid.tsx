@@ -973,7 +973,7 @@ export const TrackerGrid = ({
     }, [habits]);
 
     // Initial Split based on Roots
-    const dailyHabits = useMemo(() => rootHabits.filter(h => !h.goal?.frequency || h.goal.frequency === 'daily'), [rootHabits]);
+    const dailyHabits = useMemo(() => rootHabits.filter(h => !h.goal?.frequency || h.goal.frequency === 'daily' || h.goal.frequency === 'total'), [rootHabits]);
 
     // Generate dates: Today + Last 6 days (1 week)
     const dates = useMemo(() => {
