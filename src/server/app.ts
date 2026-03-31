@@ -60,6 +60,13 @@ import habitPotentialEvidenceRoutes from './routes/habitPotentialEvidence';
 import { deleteUserData } from './routes/userData';
 import { postWeeklySummary } from './routes/aiSummary';
 import { postSuggestVariants } from './routes/aiVariantSuggestion';
+import {
+  getHabitAnalyticsSummary,
+  getHabitAnalyticsHeatmap,
+  getHabitAnalyticsTrends,
+  getHabitAnalyticsCategoryBreakdown,
+  getHabitAnalyticsInsights,
+} from './routes/analytics';
 
 export function createApp(): Express {
   const app = express();
@@ -191,6 +198,11 @@ export function createApp(): Express {
   app.delete('/api/bundle-memberships/:id', deleteBundleMembershipRoute);
   app.get('/api/dayView', getDayView);
   app.use('/api/evidence', habitPotentialEvidenceRoutes);
+  app.get('/api/analytics/habits/summary', getHabitAnalyticsSummary);
+  app.get('/api/analytics/habits/heatmap', getHabitAnalyticsHeatmap);
+  app.get('/api/analytics/habits/trends', getHabitAnalyticsTrends);
+  app.get('/api/analytics/habits/category-breakdown', getHabitAnalyticsCategoryBreakdown);
+  app.get('/api/analytics/habits/insights', getHabitAnalyticsInsights);
   app.post('/api/ai/weekly-summary', postWeeklySummary);
   app.post('/api/ai/suggest-variants', postSuggestVariants);
   app.get('/api/admin/integrity-report', getIntegrityReport);
