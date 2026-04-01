@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
-import { parseISO, format, startOfWeek } from 'date-fns';
+import { parseISO, format, startOfWeek, isSameMonth } from 'date-fns';
 import { Calendar, Sun, Moon } from 'lucide-react';
+import { getHeatmapColor } from '../../utils/analytics';
 import type { HeatmapResponse } from '../../lib/analyticsClient';
 
 interface AnalyticsHeatmapProps {
@@ -8,15 +9,13 @@ interface AnalyticsHeatmapProps {
   loading: boolean;
 }
 
-function getHeatmapColor(percent: number): string {
-  if (percent === 0) return 'bg-neutral-800/50';
-  if (percent < 0.25) return 'bg-emerald-900/80';
-  if (percent < 0.5) return 'bg-emerald-700';
-  if (percent < 0.75) return 'bg-emerald-500';
-  return 'bg-emerald-400';
+function getIntensity(percent: number): number {
+  if (percent <= 0) return 0;
+  if (percent < 0.25) return 1;
+  if (percent < 0.5) return 2;
+  if (percent < 0.75) return 3;
+  return 4;
 }
-
-const MONTH_LABELS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 export const AnalyticsHeatmap: React.FC<AnalyticsHeatmapProps> = ({ data, loading }) => {
   const grid = useMemo(() => {
@@ -28,29 +27,32 @@ export const AnalyticsHeatmap: React.FC<AnalyticsHeatmapProps> = ({ data, loadin
     const endDate = parseISO(points[points.length - 1].dayKey);
     const startDate = startOfWeek(parseISO(points[0].dayKey), { weekStartsOn: 0 });
 
-    const weeks: { dayKey: string; percent: number }[][] = [];
+    const weeks: { dayKey: string; percent: number; intensity: number }[][] = [];
     let current = new Date(startDate);
 
     while (current <= endDate) {
-      const week: { dayKey: string; percent: number }[] = [];
+      const week: { dayKey: string; percent: number; intensity: number }[] = [];
       for (let d = 0; d < 7; d++) {
         const dk = format(current, 'yyyy-MM-dd');
         const point = lookup.get(dk);
-        week.push({ dayKey: dk, percent: point?.completionPercent ?? -1 });
+        const percent = point?.completionPercent ?? -1;
+        week.push({ dayKey: dk, percent, intensity: percent < 0 ? -1 : getIntensity(percent) });
         current = new Date(current);
         current.setDate(current.getDate() + 1);
       }
       weeks.push(week);
     }
 
+    // Month labels with minimum gap check (matches dashboard logic)
     const monthLabels: { label: string; weekIndex: number }[] = [];
-    let lastMonth = -1;
-    weeks.forEach((week, i) => {
+    let lastLabelWeekIndex = -10;
+    weeks.forEach((week, index) => {
       const firstDay = parseISO(week[0].dayKey);
-      const month = firstDay.getMonth();
-      if (month !== lastMonth) {
-        monthLabels.push({ label: MONTH_LABELS[month], weekIndex: i });
-        lastMonth = month;
+      const prevFirstDay = index > 0 ? parseISO(weeks[index - 1][0].dayKey) : null;
+      const isNewMonth = index === 0 || (prevFirstDay && !isSameMonth(firstDay, prevFirstDay));
+      if (isNewMonth && index - lastLabelWeekIndex > 2) {
+        monthLabels.push({ label: format(firstDay, 'MMM'), weekIndex: index });
+        lastLabelWeekIndex = index;
       }
     });
 
@@ -76,59 +78,69 @@ export const AnalyticsHeatmap: React.FC<AnalyticsHeatmapProps> = ({ data, loadin
   }
 
   const insights = data.insights;
+  const numWeeks = grid.weeks.length;
+
+  const gridStyle: React.CSSProperties = {
+    display: 'grid',
+    gridAutoFlow: 'column',
+    gridTemplateRows: 'min-content repeat(7, 1fr)',
+    gridTemplateColumns: `auto repeat(${numWeeks}, minmax(0, 1fr))`,
+    gap: '2px',
+    width: '100%'
+  };
 
   return (
     <div className="bg-neutral-900/50 rounded-2xl border border-white/5 p-5 backdrop-blur-sm">
       <h3 className="text-sm font-medium text-neutral-400 mb-3">Activity Heatmap</h3>
 
-      {/* Month labels */}
-      <div className="flex gap-[3px] mb-1 ml-8">
-        {grid.monthLabels.map((m, i) => (
-          <div
-            key={i}
-            className="text-[10px] text-neutral-500 font-medium"
-            style={{ marginLeft: i === 0 ? 0 : `${(m.weekIndex - (grid.monthLabels[i - 1]?.weekIndex ?? 0) - 1) * 17}px` }}
-          >
-            {m.label}
-          </div>
-        ))}
-      </div>
+      <div className="w-full" style={gridStyle}>
+        {/* Column 0: Day Labels */}
+        <div className="h-6" />
+        <div className="text-[10px] text-neutral-500 font-medium flex items-center justify-end pr-2"></div>
+        <div className="text-[10px] text-neutral-500 font-medium flex items-center justify-end pr-2">Mon</div>
+        <div className="text-[10px] text-neutral-500 font-medium flex items-center justify-end pr-2"></div>
+        <div className="text-[10px] text-neutral-500 font-medium flex items-center justify-end pr-2">Wed</div>
+        <div className="text-[10px] text-neutral-500 font-medium flex items-center justify-end pr-2"></div>
+        <div className="text-[10px] text-neutral-500 font-medium flex items-center justify-end pr-2">Fri</div>
+        <div className="text-[10px] text-neutral-500 font-medium flex items-center justify-end pr-2"></div>
 
-      {/* Grid */}
-      <div className="flex gap-[3px] overflow-x-auto pb-1">
-        {/* Day labels */}
-        <div className="flex flex-col gap-[3px] mr-1 shrink-0">
-          {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((d, i) => (
-            <div key={i} className="w-6 h-[14px] text-[9px] text-neutral-500 flex items-center">
-              {i % 2 === 1 ? d : ''}
-            </div>
-          ))}
-        </div>
-
-        {grid.weeks.map((week, wi) => (
-          <div key={wi} className="flex flex-col gap-[3px]">
-            {week.map((day, di) => (
-              <div
-                key={di}
-                className={`w-[14px] h-[14px] rounded-[3px] ${
-                  day.percent < 0 ? 'bg-transparent' : getHeatmapColor(day.percent)
-                }`}
-                title={day.percent >= 0 ? `${day.dayKey}: ${Math.round(day.percent * 100)}%` : ''}
-              />
-            ))}
-          </div>
-        ))}
+        {/* Data Columns */}
+        {grid.weeks.map((week, wIndex) => {
+          const label = grid.monthLabels.find(l => l.weekIndex === wIndex);
+          return (
+            <React.Fragment key={wIndex}>
+              <div className="h-6 relative">
+                {label && (
+                  <span className="absolute bottom-1 left-0 text-[10px] text-neutral-500 font-medium whitespace-nowrap z-10">
+                    {label.label}
+                  </span>
+                )}
+              </div>
+              {week.map((day, di) => (
+                <div
+                  key={di}
+                  className={`aspect-square w-full rounded-sm ${
+                    day.intensity < 0 ? 'bg-transparent' : getHeatmapColor(day.intensity)
+                  } transition-all hover:ring-1 hover:ring-white/50`}
+                  title={day.percent >= 0 ? `${day.dayKey}: ${Math.round(day.percent * 100)}%` : ''}
+                />
+              ))}
+            </React.Fragment>
+          );
+        })}
       </div>
 
       {/* Legend */}
-      <div className="flex items-center gap-1.5 mt-3 text-[10px] text-neutral-500">
-        <span>Less</span>
-        <div className="w-[14px] h-[14px] rounded-[3px] bg-neutral-800/50" />
-        <div className="w-[14px] h-[14px] rounded-[3px] bg-emerald-900/80" />
-        <div className="w-[14px] h-[14px] rounded-[3px] bg-emerald-700" />
-        <div className="w-[14px] h-[14px] rounded-[3px] bg-emerald-500" />
-        <div className="w-[14px] h-[14px] rounded-[3px] bg-emerald-400" />
-        <span>More</span>
+      <div className="flex items-center justify-end gap-2 mt-4 text-xs text-neutral-500">
+        <span>Low</span>
+        <div className="flex items-center gap-1">
+          <div className={`w-3 h-3 rounded-sm ${getHeatmapColor(0)}`} />
+          <div className={`w-3 h-3 rounded-sm ${getHeatmapColor(1)}`} />
+          <div className={`w-3 h-3 rounded-sm ${getHeatmapColor(2)}`} />
+          <div className={`w-3 h-3 rounded-sm ${getHeatmapColor(3)}`} />
+          <div className={`w-3 h-3 rounded-sm ${getHeatmapColor(4)}`} />
+        </div>
+        <span>High</span>
       </div>
 
       {/* Heatmap Insights */}
