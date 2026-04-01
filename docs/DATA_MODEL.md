@@ -26,8 +26,22 @@ Defined in `src/models/persistenceTypes.ts` (`MONGO_COLLECTIONS`). **Current** c
 - **`habitEntries`** (canonical behavioral truth)
 - `habitPotentialEvidence`
 - **`bundleMemberships`** (temporal bundle child-parent relationships)
+- `healthMetricsDaily` (imported Apple Health data — NOT behavioral truth)
+- `habitHealthRules` (habit ↔ health data rule mappings)
+- `healthSuggestions` (pending suggestions from health rule evaluation)
 
 **Removed / no longer used:** `dayLogs`, `goalManualLogs`. Do not reference these in new code or docs.
+
+## Apple Health Integration Collections
+
+### healthMetricsDaily
+Imported daily health metrics. Upsert key: `(userId, dayKey, source)`. Fields: steps, activeCalories, sleepHours, workoutMinutes, weight. This data does NOT equal completion — it must be evaluated against rules.
+
+### habitHealthRules
+Maps a habit to a health data condition. One rule per habit (unique index on userId + habitId). Defines metric type, operator, threshold, and behavior (auto_log or suggest).
+
+### healthSuggestions
+Pending suggestions created when a `suggest` rule is satisfied. User must accept to create a HabitEntry. Statuses: pending, accepted, dismissed.
 
 ## Truth Ownership
 

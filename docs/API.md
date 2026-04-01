@@ -114,6 +114,28 @@ Base URL: `/api`
 
 - Routes mounted at `GET/POST ... /skill-tree` via `src/server/routes/skillTree.ts`.
 
+## Apple Health Integration (Feature-Gated)
+
+All endpoints require `requireHealthFeature` middleware (email whitelist).
+
+### Health Data Sync
+
+- `POST /health/apple/sync` — Sync daily health metrics (steps, calories, sleep, workouts, weight). Idempotent upsert. Triggers auto-log/suggest rule evaluation.
+
+### Habit Health Rules
+
+- `POST /habits/:habitId/health-rule` — Create health rule for a habit (one per habit)
+- `GET /habits/:habitId/health-rule` — Get the active rule
+- `PATCH /habits/:habitId/health-rule` — Update rule fields
+- `DELETE /habits/:habitId/health-rule` — Deactivate rule (past entries preserved)
+- `POST /habits/:habitId/health-rule/backfill` — Run backfill for qualifying days
+
+### Health Suggestions
+
+- `GET /health/suggestions` — Get pending suggestions
+- `POST /health/suggestions/:id/accept` — Accept suggestion (creates HabitEntry)
+- `POST /health/suggestions/:id/dismiss` — Dismiss suggestion
+
 ## Dev / Admin
 
 - `POST /dev/seedDemoEmotionalWellbeing`
