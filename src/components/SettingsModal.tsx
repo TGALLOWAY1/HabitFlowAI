@@ -1,15 +1,16 @@
 import { useState, useCallback } from 'react';
 import { useAuth } from '../store/AuthContext';
 import { getGeminiApiKey, setGeminiApiKey } from '../lib/geminiClient';
-import { deleteAllUserData } from '../lib/persistenceClient';
-import { Eye, EyeOff, Sparkles } from 'lucide-react';
+import { deleteAllUserData, isHealthFeatureEnabled } from '../lib/persistenceClient';
+import { Eye, EyeOff, Sparkles, Activity, ChevronRight } from 'lucide-react';
 
 interface SettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onNavigate?: (route: string) => void;
 }
 
-export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
+export function SettingsModal({ isOpen, onClose, onNavigate }: SettingsModalProps) {
   const { user } = useAuth();
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -84,6 +85,24 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                 Reopen setup guide
               </button>
             </section>
+
+            {/* Apple Health Integration */}
+            {isHealthFeatureEnabled(user?.email) && (
+              <section>
+                <h3 className="text-xs font-medium text-neutral-500 uppercase tracking-wider mb-2">
+                  Integrations
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => { onNavigate?.('health'); onClose(); }}
+                  className="w-full px-4 py-2.5 rounded-lg bg-neutral-800 text-neutral-200 border border-white/10 hover:bg-neutral-700 text-sm text-left flex items-center gap-2"
+                >
+                  <Activity size={16} className="text-emerald-400 flex-shrink-0" />
+                  <span className="flex-1">Apple Health</span>
+                  <ChevronRight size={16} className="text-neutral-500" />
+                </button>
+              </section>
+            )}
 
             {/* AI Integration */}
             <section>

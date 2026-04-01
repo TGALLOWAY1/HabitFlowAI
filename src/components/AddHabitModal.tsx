@@ -1,15 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, Shield, CheckCircle2, Calculator, Layers, CheckSquare, ChevronDown, ChevronRight, Search, Trophy, Calendar, Activity } from 'lucide-react';
+import { X, Shield, CheckCircle2, Calculator, Layers, CheckSquare, ChevronDown, ChevronRight, Search, Trophy, Calendar } from 'lucide-react';
 import { DayChipSelector } from './DayChipSelector';
 import { NumberChipSelector } from './NumberChipSelector';
 import { useHabitStore } from '../store/HabitContext';
 import { useRoutineStore } from '../store/RoutineContext';
 import { useGoalsWithProgress } from '../lib/useGoalsWithProgress';
-import { useAuth } from '../store/AuthContext';
-import type { Habit, HealthMetricType, HealthRuleOperator, HealthRuleBehavior } from '../models/persistenceTypes';
+import type { Habit } from '../models/persistenceTypes';
 import { cn } from '../utils/cn';
 import { format } from 'date-fns';
-import { getBundleMemberships, createBundleMembership, endBundleMembership, isHealthFeatureEnabled, createHealthRule, getHealthRule, deleteHealthRule, triggerBackfill } from '../lib/persistenceClient';
+import { getBundleMemberships, createBundleMembership, endBundleMembership } from '../lib/persistenceClient';
 import { BundlePickerModal } from './BundlePickerModal';
 import { ConvertBundleConfirmModal } from './ConvertBundleConfirmModal';
 
@@ -93,18 +92,6 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
     const [newCategoryName, setNewCategoryName] = useState('');
     const [isSubmittingCategory, setIsSubmittingCategory] = useState(false);
 
-    // Apple Health Integration
-    const { user: authUser } = useAuth();
-    const showHealthFeature = isHealthFeatureEnabled(authUser?.email);
-    const [trackingMethod, setTrackingMethod] = useState<'manual' | 'auto' | 'both'>('manual');
-    const [healthMetricType, setHealthMetricType] = useState<HealthMetricType>('steps');
-    const [healthOperator, setHealthOperator] = useState<HealthRuleOperator>('>=');
-    const [healthThreshold, setHealthThreshold] = useState('');
-    const [healthBehavior, setHealthBehavior] = useState<HealthRuleBehavior>('auto_log');
-    const [healthBackfillOption, setHealthBackfillOption] = useState<'habit_start' | 'none'>('habit_start');
-    const [existingHealthRule, setExistingHealthRule] = useState<any>(null);
-    const [_loadingHealthRule, setLoadingHealthRule] = useState(false);
-
     // Bundle UX: Add to Bundle picker + Convert confirmation
     const [showBundlePicker, setShowBundlePicker] = useState(false);
     const [showConvertConfirm, setShowConvertConfirm] = useState(false);
@@ -154,22 +141,6 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                     setFrequency('daily');
                 }
 
-                // Load existing health rule (edit mode)
-                if (showHealthFeature) {
-                    setLoadingHealthRule(true);
-                    getHealthRule(initialData.id).then(({ rule }) => {
-                        setExistingHealthRule(rule);
-                        if (rule) {
-                            setTrackingMethod(rule.behavior === 'auto_log' ? 'auto' : 'both');
-                            setHealthMetricType(rule.metricType);
-                            setHealthOperator(rule.operator);
-                            setHealthThreshold(rule.thresholdValue != null ? String(rule.thresholdValue) : '');
-                            setHealthBehavior(rule.behavior);
-                        } else {
-                            setTrackingMethod('manual');
-                        }
-                    }).catch(() => {}).finally(() => setLoadingHealthRule(false));
-                }
             } else {
                 // Add Mode
                 setName('');
@@ -192,15 +163,6 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                 setScheduledDays([0, 1, 2, 3, 4, 5, 6]);
                 setRequiredDaysPerWeek(7);
                 setDescription('');
-
-                // Reset Apple Health state
-                setTrackingMethod('manual');
-                setHealthMetricType('steps');
-                setHealthOperator('>=');
-                setHealthThreshold('');
-                setHealthBehavior('auto_log');
-                setHealthBackfillOption('habit_start');
-                setExistingHealthRule(null);
 
                 // Robust Category Selection Default
                 if (categoryId && categories.some(c => c.id === categoryId)) {
@@ -421,40 +383,6 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                             linkedHabitIds: routine.linkedHabitIds.filter(hId => hId !== savedHabit.id)
                         });
                     }
-                }
-            }
-
-            // Apple Health rule management
-            if (showHealthFeature && habitType === 'regular') {
-                const wantsHealthRule = trackingMethod === 'auto' || trackingMethod === 'both';
-                if (wantsHealthRule) {
-                    const rulePayload = {
-                        metricType: healthMetricType,
-                        operator: healthOperator,
-                        thresholdValue: healthOperator === 'exists' ? null : Number(healthThreshold) || null,
-                        behavior: healthBehavior,
-                    };
-
-                    if (existingHealthRule) {
-                        // Delete and recreate to simplify (rule fields may have changed)
-                        try {
-                            await deleteHealthRule(savedHabit.id);
-                        } catch { /* may not exist */ }
-                    }
-                    try {
-                        await createHealthRule(savedHabit.id, rulePayload);
-                        // Trigger backfill if requested (new habits only)
-                        if (!initialData && healthBackfillOption === 'habit_start') {
-                            await triggerBackfill(savedHabit.id);
-                        }
-                    } catch (e) {
-                        console.error('Failed to create health rule:', e);
-                    }
-                } else if (existingHealthRule) {
-                    // Was connected, now switching to manual — deactivate rule
-                    try {
-                        await deleteHealthRule(savedHabit.id);
-                    } catch { /* best effort */ }
                 }
             }
 
@@ -1239,173 +1167,6 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                             </div>
                         )
                     }
-
-                    {/* Apple Health Connection (feature-gated) */}
-                    {showHealthFeature && habitType === 'regular' && (
-                        <div className="space-y-3 pt-2 border-t border-white/5">
-                            <label className="text-xs font-medium text-neutral-400 uppercase flex items-center gap-1">
-                                <Activity size={12} /> Apple Health
-                            </label>
-
-                            {/* Tracking Method */}
-                            <div className="grid grid-cols-3 gap-1.5">
-                                {(['manual', 'auto', 'both'] as const).map((method) => (
-                                    <button
-                                        key={method}
-                                        type="button"
-                                        onClick={() => setTrackingMethod(method)}
-                                        className={cn(
-                                            "px-2 py-1.5 rounded-lg text-xs font-medium transition-colors border",
-                                            trackingMethod === method
-                                                ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/50"
-                                                : "bg-neutral-800 text-neutral-400 border-white/5 hover:bg-neutral-700"
-                                        )}
-                                    >
-                                        {method === 'manual' ? 'Manual' : method === 'auto' ? 'Auto' : 'Both'}
-                                    </button>
-                                ))}
-                            </div>
-
-                            {/* Rule Configuration (shown when auto or both) */}
-                            {(trackingMethod === 'auto' || trackingMethod === 'both') && (
-                                <div className="space-y-3 bg-neutral-800/30 p-3 rounded-xl border border-white/5 animate-in fade-in">
-                                    {/* Metric */}
-                                    <div className="space-y-1">
-                                        <label className="text-xs text-neutral-500">Metric</label>
-                                        <select
-                                            value={healthMetricType}
-                                            onChange={(e) => setHealthMetricType(e.target.value as HealthMetricType)}
-                                            className="w-full bg-neutral-800 border border-white/10 rounded-lg px-3 py-2 text-sm text-white"
-                                        >
-                                            <option value="steps">Steps</option>
-                                            <option value="sleep_hours">Sleep (hours)</option>
-                                            <option value="workout_minutes">Workout (minutes)</option>
-                                            <option value="active_calories">Active Calories</option>
-                                            <option value="weight">Weight</option>
-                                        </select>
-                                    </div>
-
-                                    {/* Condition */}
-                                    <div className="flex gap-2">
-                                        <div className="space-y-1 flex-1">
-                                            <label className="text-xs text-neutral-500">Condition</label>
-                                            <select
-                                                value={healthOperator}
-                                                onChange={(e) => setHealthOperator(e.target.value as HealthRuleOperator)}
-                                                className="w-full bg-neutral-800 border border-white/10 rounded-lg px-3 py-2 text-sm text-white"
-                                            >
-                                                <option value=">=">at least ({">="}) </option>
-                                                <option value="<=">at most ({"<="})</option>
-                                                <option value=">">more than ({">"}) </option>
-                                                <option value="<">less than ({"<"})</option>
-                                                <option value="exists">any value</option>
-                                            </select>
-                                        </div>
-                                        {healthOperator !== 'exists' && (
-                                            <div className="space-y-1 w-24">
-                                                <label className="text-xs text-neutral-500">Value</label>
-                                                <input
-                                                    type="number"
-                                                    value={healthThreshold}
-                                                    onChange={(e) => setHealthThreshold(e.target.value)}
-                                                    placeholder="10000"
-                                                    className="w-full bg-neutral-800 border border-white/10 rounded-lg px-3 py-2 text-sm text-white"
-                                                />
-                                            </div>
-                                        )}
-                                    </div>
-
-                                    {/* Behavior */}
-                                    <div className="space-y-1">
-                                        <label className="text-xs text-neutral-500">When satisfied</label>
-                                        <div className="grid grid-cols-2 gap-1.5">
-                                            <button
-                                                type="button"
-                                                onClick={() => setHealthBehavior('auto_log')}
-                                                className={cn(
-                                                    "px-2 py-1.5 rounded-lg text-xs font-medium border transition-colors",
-                                                    healthBehavior === 'auto_log'
-                                                        ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/50"
-                                                        : "bg-neutral-800 text-neutral-400 border-white/5"
-                                                )}
-                                            >
-                                                Auto-log
-                                            </button>
-                                            <button
-                                                type="button"
-                                                onClick={() => setHealthBehavior('suggest')}
-                                                className={cn(
-                                                    "px-2 py-1.5 rounded-lg text-xs font-medium border transition-colors",
-                                                    healthBehavior === 'suggest'
-                                                        ? "bg-sky-500/20 text-sky-400 border-sky-500/50"
-                                                        : "bg-neutral-800 text-neutral-400 border-white/5"
-                                                )}
-                                            >
-                                                Suggest
-                                            </button>
-                                        </div>
-                                    </div>
-
-                                    {/* Backfill (new habits only) */}
-                                    {!initialData && (
-                                        <div className="space-y-1">
-                                            <label className="text-xs text-neutral-500">Backfill</label>
-                                            <div className="grid grid-cols-2 gap-1.5">
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setHealthBackfillOption('habit_start')}
-                                                    className={cn(
-                                                        "px-2 py-1.5 rounded-lg text-xs font-medium border transition-colors",
-                                                        healthBackfillOption === 'habit_start'
-                                                            ? "bg-amber-500/20 text-amber-400 border-amber-500/50"
-                                                            : "bg-neutral-800 text-neutral-400 border-white/5"
-                                                    )}
-                                                >
-                                                    From start
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setHealthBackfillOption('none')}
-                                                    className={cn(
-                                                        "px-2 py-1.5 rounded-lg text-xs font-medium border transition-colors",
-                                                        healthBackfillOption === 'none'
-                                                            ? "bg-neutral-700/50 text-neutral-300 border-white/10"
-                                                            : "bg-neutral-800 text-neutral-400 border-white/5"
-                                                    )}
-                                                >
-                                                    No backfill
-                                                </button>
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    {/* Edit mode: backfill button */}
-                                    {initialData && existingHealthRule && (
-                                        <button
-                                            type="button"
-                                            onClick={async () => {
-                                                try {
-                                                    const result = await triggerBackfill(initialData.id);
-                                                    alert(`Backfill complete: ${result.created} entries created, ${result.skipped} skipped.`);
-                                                } catch {
-                                                    alert('Backfill failed.');
-                                                }
-                                            }}
-                                            className="w-full px-3 py-2 rounded-lg text-xs font-medium bg-amber-500/10 text-amber-400 border border-amber-500/30 hover:bg-amber-500/20 transition-colors"
-                                        >
-                                            Run Backfill
-                                        </button>
-                                    )}
-
-                                    {existingHealthRule && (
-                                        <p className="text-xs text-neutral-500">
-                                            Connected: {existingHealthRule.metricType} {existingHealthRule.operator} {existingHealthRule.thresholdValue ?? 'any'}
-                                        </p>
-                                    )}
-                                </div>
-                            )}
-                        </div>
-                    )}
 
                     {/* 5. Schedule & Streak */}
                     <div className="space-y-4 pt-2 border-t border-white/5">
