@@ -145,6 +145,20 @@ async function ensureCoreIndexes(database: Db): Promise<void> {
   await ensureHabitAndCategoryIndexes(database);
   await ensureAuthIndexes(database);
 
+  // Apple Health integration indexes
+  await createIndexSafe('healthMetricsDaily',
+    { householdId: 1, userId: 1, dayKey: 1, source: 1 },
+    { unique: true, name: 'idx_healthMetrics_user_day_source_unique' }
+  );
+  await createIndexSafe('habitHealthRules',
+    { householdId: 1, userId: 1, habitId: 1 },
+    { unique: true, name: 'idx_habitHealthRules_user_habit_unique' }
+  );
+  await createIndexSafe('healthSuggestions',
+    { householdId: 1, userId: 1, dayKey: 1, status: 1 },
+    { name: 'idx_healthSuggestions_user_day_status' }
+  );
+
   if (!isTestEnv()) {
     console.log('[MongoDB] Indexes ensured (habitEntries, habits, categories, auth)');
   }
