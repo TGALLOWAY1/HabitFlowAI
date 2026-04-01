@@ -79,6 +79,7 @@ export const RoutineEditorModal: React.FC<RoutineEditorModalProps> = ({
     const [currentRoutineImageUrl, setCurrentRoutineImageUrl] = useState<string | null | undefined>(null);
     const [aiLoading, setAiLoading] = useState(false);
     const [aiError, setAiError] = useState<string | null>(null);
+    const [isEditingStep, setIsEditingStep] = useState(false);
 
     const handleRoutineImageUpload = async (file: File) => {
         if (!initialRoutine?.id && mode === 'create') {
@@ -133,6 +134,7 @@ export const RoutineEditorModal: React.FC<RoutineEditorModalProps> = ({
         }
         setValidationError(null);
         setAiError(null);
+        setIsEditingStep(false);
     }, [isOpen, mode, initialRoutine]);
 
     // Variant management
@@ -324,7 +326,8 @@ export const RoutineEditorModal: React.FC<RoutineEditorModalProps> = ({
         <div className="modal-overlay fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
             <div className="w-full max-w-4xl max-h-[90dvh] h-[85vh] bg-neutral-900 border border-white/10 rounded-2xl shadow-2xl flex flex-col overflow-hidden">
 
-                {/* Header */}
+                {/* Header — hidden when editing a step to maximize space */}
+                {!isEditingStep && (
                 <div className="flex items-center justify-between p-6 border-b border-white/10 bg-neutral-900 z-10">
                     <h2 className="text-xl font-bold text-white">
                         {mode === 'create' ? 'Create Routine' : 'Edit Routine'}
@@ -333,13 +336,14 @@ export const RoutineEditorModal: React.FC<RoutineEditorModalProps> = ({
                         <X size={24} />
                     </button>
                 </div>
+                )}
 
                 {/* Main Content */}
                 <div className="flex-1 flex overflow-hidden min-h-0">
                     <div className="flex-1 overflow-y-auto modal-scroll p-8 space-y-8">
 
-                        {/* Title & Category */}
-                        <div className="space-y-4">
+                        {/* Title & Category — hidden when editing a step */}
+                        {!isEditingStep && <div className="space-y-4">
                             <div>
                                 <label className="block text-sm font-medium text-neutral-400 mb-2">Title</label>
                                 <input
@@ -421,11 +425,11 @@ export const RoutineEditorModal: React.FC<RoutineEditorModalProps> = ({
                                     </div>
                                 </div>
                             )}
-                        </div>
+                        </div>}
 
-                        {/* Variant Tabs */}
+                        {/* Variant Tabs — header/tabs hidden when editing a step */}
                         <div className="space-y-4">
-                            <div className="flex items-center justify-between">
+                            {!isEditingStep && <><div className="flex items-center justify-between">
                                 <label className="text-sm font-medium text-neutral-400">Variants</label>
                                 {hasGeminiApiKey() && (
                                     <button
@@ -482,6 +486,7 @@ export const RoutineEditorModal: React.FC<RoutineEditorModalProps> = ({
                                     </button>
                                 </div>
                             </div>
+                            </>}
 
                             {/* Active Variant Editor */}
                             {activeVariant && (
@@ -491,14 +496,15 @@ export const RoutineEditorModal: React.FC<RoutineEditorModalProps> = ({
                                     onDelete={variants.length > 1 ? () => deleteVariant(activeVariantIndex) : undefined}
                                     habits={habits}
                                     categoryId={categoryId}
+                                    onEditingStepChange={setIsEditingStep}
                                 />
                             )}
                         </div>
                     </div>
                 </div>
 
-                {/* Footer */}
-                <div className="px-6 py-3 border-t border-white/10 bg-neutral-900 flex justify-between items-center">
+                {/* Footer — hidden when editing a step to maximize space */}
+                {!isEditingStep && <div className="px-6 py-3 border-t border-white/10 bg-neutral-900 flex justify-between items-center">
                     <div>
                         {validationError && (
                             <span className="text-red-400 text-sm">{validationError}</span>
@@ -518,7 +524,7 @@ export const RoutineEditorModal: React.FC<RoutineEditorModalProps> = ({
                             {mode === 'create' ? 'Create Routine' : 'Save Changes'}
                         </button>
                     </div>
-                </div>
+                </div>}
             </div>
         </div>
     );

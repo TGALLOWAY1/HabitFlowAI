@@ -16,6 +16,7 @@ interface VariantEditorProps {
     onDelete?: () => void;
     habits: Habit[];
     categoryId?: string;
+    onEditingStepChange?: (isEditing: boolean) => void;
 }
 
 export const VariantEditor: React.FC<VariantEditorProps> = ({
@@ -24,8 +25,14 @@ export const VariantEditor: React.FC<VariantEditorProps> = ({
     onDelete,
     habits,
     categoryId,
+    onEditingStepChange,
 }) => {
     const [editingStepId, setEditingStepId] = useState<string | null>(null);
+
+    // Notify parent when editing state changes
+    React.useEffect(() => {
+        onEditingStepChange?.(editingStepId !== null);
+    }, [editingStepId, onEditingStepChange]);
 
     const steps = variant.steps || [];
 
