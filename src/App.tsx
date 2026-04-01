@@ -280,7 +280,7 @@ const HabitTrackerContent: React.FC = () => {
                 <>
                   <button
                     onClick={() => handleNavigate('wins')}
-                    className="p-2 rounded-lg hover:bg-neutral-800 text-neutral-400 hover:text-white transition-colors"
+                    className="p-2 rounded-lg hover:bg-neutral-800 text-amber-400 hover:text-amber-300 transition-colors"
                     title="Win Archive"
                   >
                     <Trophy size={20} />
