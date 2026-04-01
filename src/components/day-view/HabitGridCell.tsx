@@ -1,4 +1,4 @@
-import { Check, Target, Pin, PinOff, ListTodo, Layers, FolderInput, Trophy, Clock, Calendar, Shield, Repeat } from 'lucide-react';
+import { Check, Target, Hash, Pin, PinOff, ListTodo, Layers, FolderInput, Trophy, Clock, Calendar, Shield, Repeat } from 'lucide-react';
 import type { Habit, DayLog } from '../../types';
 import { cn } from '../../utils/cn';
 
@@ -100,14 +100,13 @@ export const HabitGridCell = ({
             return (
                 <button
                     onClick={(e) => { e.stopPropagation(); onNumericClick?.(e); }}
-                    className="flex items-center gap-1 text-[10px] font-medium text-neutral-400 hover:text-neutral-300 transition-colors"
+                    className="flex items-center gap-1 text-[10px] font-medium text-sky-400 hover:text-sky-300 transition-colors"
                 >
-                    <Target size={12} />
-                    <span>{habit.goal?.unit || 'Qty'}</span>
+                    <Hash size={12} />
                 </button>
             );
         }
-        if (habit.goal) return <Target size={12} className="text-neutral-500" />;
+        if (habit.goal) return <Target size={12} className="text-emerald-500" />;
         if (habit.timeEstimate) return <span className="text-[10px] text-neutral-500 font-medium">{habit.timeEstimate}m</span>;
         return null;
     };
