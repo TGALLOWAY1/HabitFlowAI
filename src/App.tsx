@@ -39,7 +39,6 @@ import { WellbeingHistoryPage } from './pages/WellbeingHistoryPage';
 import { AnalyticsPage } from './pages/AnalyticsPage';
 import { AppleHealthPage } from './pages/AppleHealthPage';
 import { DashboardPrefsProvider } from './store/DashboardPrefsContext';
-import { isHealthFeatureEnabled } from './lib/persistenceClient';
 
 // Simple router state
 type AppRoute = 'tracker' | 'dashboard' | 'routines' | 'goals' | 'wins' | 'journal' | 'tasks' | 'day' | 'debug-entries' | 'wellbeing-history' | 'analytics' | 'health';
