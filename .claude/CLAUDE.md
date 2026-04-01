@@ -134,6 +134,13 @@ Full documentation index at `docs/DOC_INDEX.md`. Key references:
 Any PR that changes screens, navigation, modals, or major user flows must update `docs/product/HABITFLOW_UI_ARCHITECTURE.md`.
 UI changes are not complete until the UI architecture document is updated.
 
+Any change to features, goal types, bundle behavior, AI capabilities, Apple Health integration, or habit tracking types must also update the "How HabitFlow Works" modal (`src/components/InfoModal.tsx`). This modal is the user-facing reference for how the app works — it must stay in sync with actual functionality. Specifically:
+- Adding/removing a goal type → update the Goal Types section in the Advanced tab
+- Adding/removing AI features → update the AI tab
+- Changing bundle behavior (membership rules, conversion rules) → update the Habit Bundles section
+- Adding/removing Apple Health metrics or rules → update the Health tab
+- Adding/removing habit tracking types → update the Basics tab
+
 ## Workflow
 
 - Enter plan mode for non-trivial tasks (3+ steps or architectural decisions)
