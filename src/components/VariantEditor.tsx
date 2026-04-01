@@ -5,7 +5,7 @@
  * Uses StepEditorPanel for editing individual steps in a dedicated full-view.
  */
 import React, { useState } from 'react';
-import { Plus, Trash2, Link2, Clock, ChevronUp, ChevronDown, GripVertical, Timer } from 'lucide-react';
+import { Plus, Trash2, Link2, Clock, ChevronUp, ChevronDown, Timer } from 'lucide-react';
 import type { RoutineVariant, RoutineStep } from '../models/persistenceTypes';
 import type { Habit } from '../types';
 import { StepEditorPanel } from './StepEditorPanel';
