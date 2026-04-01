@@ -23,7 +23,7 @@ export interface EntryView {
   timestampUtc: string;
   value: number | null;
   unit?: string;
-  source: 'manual' | 'routine' | 'quick' | 'import' | 'legacy' | 'test';
+  source: 'manual' | 'routine' | 'quick' | 'import' | 'apple_health' | 'legacy' | 'test';
   provenance: {
     routineId?: string;
     variantId?: string;

@@ -24,7 +24,8 @@ Secondary domains are accessed through the dashboard or header:
 5. **Journal** — Free-write, template-based, and historical journal entries
 6. **Tasks** — Today/Inbox task management
 7. **Wellbeing** — Daily check-in and historical wellbeing data
-8. **Settings** — User preferences, API keys, data management
+8. **Apple Health** — Health data sync, habit-to-health rule mapping, auto-log and suggestion flows (feature-gated)
+9. **Settings** — User preferences, API keys, data management
 
 ### Hierarchy
 
@@ -134,7 +135,16 @@ HabitFlow App
 | Info / Tutorial | Modal | Header info icon | App tutorial and feature explanations | — |
 | Habit Creation Inline | Modal | Quick-add in certain contexts | Lightweight inline habit creation | Habits |
 
-**Total: 15 pages + 16 modals = 31 distinct UI surfaces**
+### Apple Health Integration (Feature-Gated)
+
+These surfaces are only visible to users with the Apple Health feature enabled (email whitelist).
+
+| Screen Name | Type | How Opened | Purpose | Related Objects |
+|---|---|---|---|---|
+| Health Suggestion Banner | Inline Component | Auto-shown in Day View when pending suggestions exist | Accept/dismiss health-based habit suggestions | Health Suggestions, Habits, Entries |
+| Apple Health Tracking Config | Section in Add/Edit Habit Modal | Toggle "Tracking Method" in habit modal | Configure health rule: metric, operator, threshold, behavior | Habits, Health Rules |
+
+**Total: 15 pages + 16 modals + 2 feature-gated surfaces = 33 distinct UI surfaces**
 
 ---
 
@@ -220,7 +230,8 @@ graph TB
 | **Create** | Tracker → "+ Habit" → Add Habit Modal |
 | **View** | Tracker Grid / Today View / Weekly View |
 | **Edit** | Tracker → habit context menu → Add Habit Modal (edit mode) |
-| **Log / Complete** | Tracker → click checkbox (boolean) or enter value (numeric) |
+| **Log / Complete** | Tracker → click checkbox (boolean) or enter value (numeric) or auto-logged via Apple Health |
+| **Configure Health Rule** | Add/Edit Habit Modal → Tracking Method section (feature-gated) |
 | **View History** | Tracker → habit context menu → Habit History Modal |
 | **Analyze** | Dashboard heatmap, category completion rows |
 | **Assign Category** | Add Habit Modal (creation) or Category Picker Modal |
@@ -259,6 +270,8 @@ graph TB
 | **Log boolean** | Tracker grid checkbox click |
 | **Log numeric** | Tracker grid → Habit Log Modal or inline popover |
 | **Batch log (routine)** | Routine Runner completion → auto-creates entries |
+| **Auto-log (health)** | Apple Health sync → rule evaluation → auto-created entry (feature-gated) |
+| **Accept suggestion** | Health Suggestion Banner in Day View → accept button (feature-gated) |
 | **View entries** | Habit History Modal, Goal Detail entry list |
 
 ### Analytics
@@ -365,6 +378,18 @@ graph TB
 3. Click to expand → individual sub-habits shown
 4. Check/uncheck sub-habits → parent bundle updates
 5. Success rule determines when bundle counts as "complete"
+
+### Apple Health Auto-Logging & Suggestions (Feature-Gated)
+
+1. **Configure:** Add/Edit Habit Modal → set Tracking Method to "Apple Health" or "Both"
+2. Select health metric (steps, sleep, workout, calories, weight)
+3. Set condition (≥, ≤, >, <) and threshold value
+4. Choose behavior: **Auto-log** (creates entry automatically) or **Suggest** (user confirms)
+5. Optionally: select backfill period (7d, 30d, 90d, all) for new rules
+6. **Auto-log flow:** iOS app syncs health data → `POST /api/health/apple/sync` → rule evaluates → HabitEntry created with `source: 'apple_health'` → Activity icon shown on habit cell in tracker
+7. **Suggest flow:** Rule evaluates → suggestion created → Health Suggestion Banner appears in Day View → user accepts (creates entry) or dismisses
+8. **Edit rule:** Edit habit → modify threshold/behavior/metric → existing entries preserved
+9. **Remove rule:** Edit habit → switch tracking back to Manual → rule deactivated, past entries preserved
 
 ### Interact with Choice Bundle
 
@@ -484,5 +509,5 @@ This document **must be updated** whenever:
 
 ## 10. Last Updated
 
-- **Date:** 2026-03-31
-- **Branch:** `claude/document-ui-architecture-klJPq`
+- **Date:** 2026-04-01
+- **Branch:** `claude/plan-apple-health-integration-qcQEr`

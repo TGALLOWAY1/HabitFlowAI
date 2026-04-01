@@ -57,6 +57,10 @@ import {
   deleteBundleMembershipRoute,
 } from './routes/bundleMemberships';
 import habitPotentialEvidenceRoutes from './routes/habitPotentialEvidence';
+import healthRoutes from './routes/health';
+import habitHealthRuleRoutes from './routes/habitHealthRules';
+import healthSuggestionRoutes from './routes/healthSuggestions';
+import { requireHealthFeature } from './middleware/requireHealthFeature';
 import { deleteUserData } from './routes/userData';
 import { postWeeklySummary } from './routes/aiSummary';
 import { postSuggestVariants } from './routes/aiVariantSuggestion';
@@ -137,6 +141,11 @@ export function createApp(): Express {
   app.delete('/api/habits/:id', deleteHabitRoute);
   app.post('/api/habits/:id/unlink-child', unlinkBundleChildRoute);
   app.post('/api/habits/:id/convert-to-bundle', convertToBundleRoute);
+
+  // Apple Health integration (feature-gated)
+  app.use('/api/health', requireHealthFeature, healthRoutes);
+  app.use('/api/health/suggestions', requireHealthFeature, healthSuggestionRoutes);
+  app.use('/api/habits/:habitId/health-rule', requireHealthFeature, habitHealthRuleRoutes);
   app.get('/api/daySummary', getDaySummary);
   app.get('/api/wellbeingLogs', getWellbeingLogs);
   app.post('/api/wellbeingLogs', upsertWellbeingLogRoute);

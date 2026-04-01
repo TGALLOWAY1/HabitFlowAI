@@ -9,6 +9,7 @@ import { BundlePickerModal } from '../BundlePickerModal';
 import { format } from 'date-fns';
 import { Plus } from 'lucide-react';
 import { fetchDayView, getLocalTimeZone } from '../../lib/persistenceClient';
+import { HealthSuggestionBanner } from '../HealthSuggestionBanner';
 import {
     DndContext,
     closestCenter,
@@ -346,6 +347,9 @@ export const DayView = ({ onAddHabit }: DayViewProps = {}) => {
             <div className="py-3 flex items-center justify-between">
                 <p className="text-neutral-400 font-medium">{displayDate}</p>
             </div>
+
+            {/* Health Suggestions */}
+            <HealthSuggestionBanner />
 
             {/* Loading State */}
             {dayViewLoading && (

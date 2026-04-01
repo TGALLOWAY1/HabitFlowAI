@@ -1351,3 +1351,134 @@ export async function convertHabitToBundle(
     }
   );
 }
+
+// ─── Apple Health Integration ─────────────────────────────────────────
+
+import type {
+  HealthMetricDaily,
+  HabitHealthRule,
+  HealthSuggestion,
+  HealthMetricType,
+  HealthRuleOperator,
+  HealthRuleBehavior,
+} from '../models/persistenceTypes';
+
+export type { HealthMetricDaily, HabitHealthRule, HealthSuggestion };
+
+const HEALTH_FEATURE_ALLOWED_EMAILS = ['tj.galloway1@gmail.com'];
+
+/**
+ * Check if the current user has access to Apple Health features.
+ */
+export function isHealthFeatureEnabled(userEmail?: string): boolean {
+  if (!userEmail) return false;
+  return HEALTH_FEATURE_ALLOWED_EMAILS.includes(userEmail.toLowerCase());
+}
+
+/**
+ * Sync Apple Health data for a day.
+ */
+export async function syncHealthData(payload: {
+  dayKey: string;
+  timeZone?: string;
+  steps?: number | null;
+  activeCalories?: number | null;
+  sleepHours?: number | null;
+  workoutMinutes?: number | null;
+  weight?: number | null;
+}): Promise<{ metric: HealthMetricDaily; autoLogged: string[]; suggested: string[] }> {
+  return apiRequest('/health/apple/sync', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+/**
+ * Get the health rule for a habit.
+ */
+export async function getHealthRule(habitId: string): Promise<{ rule: HabitHealthRule | null }> {
+  return apiRequest(`/habits/${habitId}/health-rule`);
+}
+
+/**
+ * Create a health rule for a habit.
+ */
+export async function createHealthRule(
+  habitId: string,
+  rule: {
+    metricType: HealthMetricType;
+    operator: HealthRuleOperator;
+    thresholdValue?: number | null;
+    behavior: HealthRuleBehavior;
+  }
+): Promise<{ rule: HabitHealthRule }> {
+  return apiRequest(`/habits/${habitId}/health-rule`, {
+    method: 'POST',
+    body: JSON.stringify(rule),
+  });
+}
+
+/**
+ * Update a health rule for a habit.
+ */
+export async function updateHealthRule(
+  habitId: string,
+  patch: Partial<{
+    metricType: HealthMetricType;
+    operator: HealthRuleOperator;
+    thresholdValue: number | null;
+    behavior: HealthRuleBehavior;
+  }>
+): Promise<{ rule: HabitHealthRule }> {
+  return apiRequest(`/habits/${habitId}/health-rule`, {
+    method: 'PATCH',
+    body: JSON.stringify(patch),
+  });
+}
+
+/**
+ * Deactivate the health rule for a habit.
+ */
+export async function deleteHealthRule(habitId: string): Promise<{ success: boolean }> {
+  return apiRequest(`/habits/${habitId}/health-rule`, {
+    method: 'DELETE',
+  });
+}
+
+/**
+ * Trigger backfill for a habit based on its health rule.
+ */
+export async function triggerBackfill(
+  habitId: string,
+  startDayKey?: string
+): Promise<{ created: number; skipped: number; evaluated: number }> {
+  return apiRequest(`/habits/${habitId}/health-rule/backfill`, {
+    method: 'POST',
+    body: JSON.stringify({ startDayKey }),
+  });
+}
+
+/**
+ * Get all pending health suggestions.
+ */
+export async function getHealthSuggestions(): Promise<{ suggestions: HealthSuggestion[] }> {
+  return apiRequest('/health/suggestions');
+}
+
+/**
+ * Accept a health suggestion (creates HabitEntry).
+ */
+export async function acceptSuggestion(id: string): Promise<{ suggestion: HealthSuggestion; entry: any }> {
+  return apiRequest(`/health/suggestions/${id}/accept`, {
+    method: 'POST',
+  });
+}
+
+/**
+ * Dismiss a health suggestion.
+ */
+export async function dismissSuggestion(id: string): Promise<{ suggestion: HealthSuggestion }> {
+  return apiRequest(`/health/suggestions/${id}/dismiss`, {
+    method: 'POST',
+  });
+}

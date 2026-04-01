@@ -312,8 +312,9 @@ export interface DayLog {
      * Optional: Source of the habit completion
      * - 'manual': User clicked the checkbox in the habit list
      * - 'routine': Auto-completed by finishing a routine
+     * - 'apple_health': Auto-logged from Apple Health data
      */
-    source?: 'manual' | 'routine';
+    source?: 'manual' | 'routine' | 'apple_health';
 
     /**
      * Optional: ID of the Routine that produced this log entry
@@ -1270,6 +1271,9 @@ export const MONGO_COLLECTIONS = {
     USERS: 'users',
     INVITES: 'invites',
     SESSIONS: 'sessions',
+    HEALTH_METRICS_DAILY: 'healthMetricsDaily',
+    HABIT_HEALTH_RULES: 'habitHealthRules',
+    HEALTH_SUGGESTIONS: 'healthSuggestions',
 } as const;
 
 /**
@@ -1346,7 +1350,7 @@ export interface HabitEntry {
      * - 'import': Imported data
      * - 'test': Test data
      */
-    source: 'manual' | 'routine' | 'quick' | 'import' | 'test';
+    source: 'manual' | 'routine' | 'quick' | 'import' | 'apple_health' | 'test';
 
     /** Optional: linked routine ID */
     routineId?: string;
@@ -1396,6 +1400,15 @@ export interface HabitEntry {
      * If this entry represents a Choice Bundle completion, this stores which option was selected.
      */
     optionKey?: string;
+
+    /** ID of the health rule that created this entry (apple_health source) */
+    sourceRuleId?: string;
+
+    /** The metric value that triggered auto-log (e.g. 9432 steps) */
+    importedMetricValue?: number;
+
+    /** The metric type that triggered auto-log (e.g. 'steps') */
+    importedMetricType?: HealthMetricType;
 }
 
 export type HabitEntriesStorage = HabitEntry[];
@@ -1455,5 +1468,80 @@ export interface HabitPotentialEvidence {
 
 export type HabitPotentialEvidenceStatsStorage = HabitPotentialEvidence[];
 
+// ─── Apple Health Integration Types ─────────────────────────────────────────
 
+export type HealthMetricType = 'steps' | 'sleep_hours' | 'workout_minutes' | 'active_calories' | 'weight';
+export type HealthRuleOperator = '>=' | '<=' | '>' | '<' | 'exists';
+export type HealthRuleBehavior = 'auto_log' | 'suggest';
+
+/**
+ * HealthMetricDaily — Imported health data (NOT habits)
+ *
+ * Storage Key: 'healthMetricsDaily'
+ * Upsert Key: (userId, dayKey, source)
+ *
+ * Represents daily aggregated health metrics from an external source.
+ * This data does NOT equal habit completion — it must be evaluated
+ * against HabitHealthRules to produce HabitEntries.
+ */
+export interface HealthMetricDaily {
+    id: string;
+    userId: string;
+    dayKey: string;
+    source: 'apple_health';
+    steps?: number | null;
+    activeCalories?: number | null;
+    sleepHours?: number | null;
+    workoutMinutes?: number | null;
+    weight?: number | null;
+    rawDataJson?: string;
+    createdAt: string;
+    updatedAt: string;
+}
+
+/**
+ * HabitHealthRule — Maps a habit to a health data condition
+ *
+ * Storage Key: 'habitHealthRules'
+ * Unique Key: (userId, habitId) — one rule per habit for V1
+ *
+ * Defines how Apple Health data satisfies a habit.
+ * When the rule condition is met, the system either auto-logs
+ * a HabitEntry or creates a suggestion for user confirmation.
+ */
+export interface HabitHealthRule {
+    id: string;
+    userId: string;
+    habitId: string;
+    sourceType: 'apple_health';
+    metricType: HealthMetricType;
+    operator: HealthRuleOperator;
+    thresholdValue?: number | null;
+    behavior: HealthRuleBehavior;
+    backfillStartDayKey?: string;
+    active: boolean;
+    createdAt: string;
+    updatedAt: string;
+}
+
+/**
+ * HealthSuggestion — Pending suggestion from health data evaluation
+ *
+ * Storage Key: 'healthSuggestions'
+ *
+ * Created when a HabitHealthRule with behavior='suggest' is satisfied.
+ * The user must accept the suggestion to create a HabitEntry.
+ */
+export interface HealthSuggestion {
+    id: string;
+    userId: string;
+    habitId: string;
+    ruleId: string;
+    dayKey: string;
+    metricType: HealthMetricType;
+    metricValue: number;
+    status: 'pending' | 'accepted' | 'dismissed';
+    createdAt: string;
+    updatedAt: string;
+}
 

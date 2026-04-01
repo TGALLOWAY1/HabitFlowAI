@@ -128,7 +128,7 @@ export interface DayLog {
     date: string; // YYYY-MM-DD
     value?: number; // 0 or 1 for boolean, actual value for number, null for choice parents
     completed: boolean;
-    source?: 'manual' | 'routine';
+    source?: 'manual' | 'routine' | 'apple_health';
     routineId?: string;
 
     // Freeze Mechanics

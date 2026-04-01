@@ -1,4 +1,4 @@
-import { Check, Target, Hash, Pin, PinOff, ListTodo, Layers, FolderInput, Trophy, Clock, Calendar, Shield, Repeat } from 'lucide-react';
+import { Check, Target, Hash, Pin, PinOff, ListTodo, Layers, FolderInput, Trophy, Clock, Calendar, Shield, Repeat, Activity } from 'lucide-react';
 import type { Habit, DayLog } from '../../types';
 import { cn } from '../../utils/cn';
 
@@ -53,7 +53,8 @@ export const HabitGridCell = ({
     onChoiceSelect,
     selectedChoices,
     habitStatus,
-    onNumericClick
+    onNumericClick,
+    log
 }: HabitGridCellProps) => {
     const isChecklistBundle = habit.type === 'bundle' && habit.bundleType === 'checklist';
     const isChoiceBundle = habit.type === 'bundle' && habit.bundleType === 'choice';
@@ -186,6 +187,13 @@ export const HabitGridCell = ({
                 )}>
                     {habit.name}
                 </span>
+
+                {/* Apple Health auto-log indicator */}
+                {log?.source === 'apple_health' && (
+                    <span className="flex-shrink-0 flex items-center gap-0.5 text-[10px] text-emerald-500/70" title="Auto-logged from Apple Health">
+                        <Activity size={10} />
+                    </span>
+                )}
 
                 {/* Goal Indicator */}
                 {habit.linkedGoalId && (
