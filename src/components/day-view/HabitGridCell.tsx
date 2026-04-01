@@ -1,4 +1,4 @@
-import { Check, Target, Pin, PinOff, ListTodo, Layers, FolderInput, Trophy } from 'lucide-react';
+import { Check, Target, Pin, PinOff, ListTodo, Layers, FolderInput, Trophy, Clock, Calendar, Shield, Repeat } from 'lucide-react';
 import type { Habit, DayLog } from '../../types';
 import { cn } from '../../utils/cn';
 
@@ -98,10 +98,13 @@ export const HabitGridCell = ({
         }
         if (isQuantity && habitStatus) {
             return (
-                <span className="flex items-center gap-1 text-[10px] font-medium text-neutral-400">
+                <button
+                    onClick={(e) => { e.stopPropagation(); onNumericClick?.(e); }}
+                    className="flex items-center gap-1 text-[10px] font-medium text-neutral-400 hover:text-neutral-300 transition-colors"
+                >
                     <Target size={12} />
-                    <span>{habitStatus.currentValue}/{habitStatus.targetValue} {habit.goal?.unit ?? ''}</span>
-                </span>
+                    <span>{habit.goal?.unit || 'Qty'}</span>
+                </button>
             );
         }
         if (habit.goal) return <Target size={12} className="text-neutral-500" />;
@@ -259,6 +262,42 @@ export const HabitGridCell = ({
                 <div className="px-3 pb-3 pt-0 flex flex-col gap-3 animate-in fade-in slide-in-from-top-1 duration-200 cursor-default" onClick={e => e.stopPropagation()}>
                     <div className="h-px w-full bg-white/5 mb-1" />
 
+                    {/* Habit Metadata */}
+                    {(habit.timeEstimate || habit.frequency || habit.nonNegotiable || (isQuantity && habitStatus) || habit.assignedDays) && (
+                        <div className="flex flex-wrap gap-2">
+                            {habit.timeEstimate && (
+                                <span className="flex items-center gap-1 text-[10px] text-neutral-500 bg-white/5 px-2 py-0.5 rounded-full">
+                                    <Clock size={10} />
+                                    {habit.timeEstimate}m
+                                </span>
+                            )}
+                            {isQuantity && habitStatus && (
+                                <span className="flex items-center gap-1 text-[10px] text-neutral-500 bg-white/5 px-2 py-0.5 rounded-full">
+                                    <Target size={10} />
+                                    {habitStatus.currentValue}/{habitStatus.targetValue} {habit.goal?.unit || ''}
+                                </span>
+                            )}
+                            {habit.frequency === 'weekly' && (
+                                <span className="flex items-center gap-1 text-[10px] text-neutral-500 bg-white/5 px-2 py-0.5 rounded-full">
+                                    <Repeat size={10} />
+                                    {habit.weeklyTarget ? `${habit.weeklyTarget}x/week` : 'Weekly'}
+                                </span>
+                            )}
+                            {habit.nonNegotiable && (
+                                <span className="flex items-center gap-1 text-[10px] text-red-400/80 bg-red-500/10 px-2 py-0.5 rounded-full">
+                                    <Shield size={10} />
+                                    Non-negotiable
+                                </span>
+                            )}
+                            {habit.assignedDays && habit.assignedDays.length > 0 && habit.assignedDays.length < 7 && (
+                                <span className="flex items-center gap-1 text-[10px] text-neutral-500 bg-white/5 px-2 py-0.5 rounded-full">
+                                    <Calendar size={10} />
+                                    {habit.assignedDays.map(d => ['Su','Mo','Tu','We','Th','Fr','Sa'][d]).join(', ')}
+                                </span>
+                            )}
+                        </div>
+                    )}
+
                     {/* Actions (Pin, Move, Add to Bundle) */}
                     <div className="flex items-center justify-end gap-1">
                         {onAddToBundle && habit.type !== 'bundle' && !habit.bundleParentId && (
@@ -282,14 +321,14 @@ export const HabitGridCell = ({
                         <button
                             onClick={() => onPin(habit.id)}
                             className={cn(
-                                "flex items-center gap-1.5 px-2 py-1 rounded-md transition-colors text-xs",
+                                "p-1.5 rounded-md transition-colors",
                                 habit.pinned
                                     ? "bg-blue-500/10 text-blue-400 hover:bg-blue-500/20"
                                     : "text-neutral-500 hover:text-neutral-300 hover:bg-white/5"
                             )}
+                            title={habit.pinned ? 'Unpin' : 'Pin to Focus'}
                         >
                             {habit.pinned ? <PinOff size={12} /> : <Pin size={12} />}
-                            <span>{habit.pinned ? 'Unpin' : 'Pin to Focus'}</span>
                         </button>
                     </div>
                 </div>
