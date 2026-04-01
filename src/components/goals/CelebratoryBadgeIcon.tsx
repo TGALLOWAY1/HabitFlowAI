@@ -73,29 +73,27 @@ export const CelebratoryBadgeIcon: React.FC<CelebratoryBadgeIconProps> = ({
   size = 40,
   className = '',
 }) => {
+  const [imgFailed, setImgFailed] = React.useState(false);
   const variant = BADGE_VARIANTS[hashId(goalId) % BADGE_VARIANTS.length];
   const Icon = variant.icon;
 
-  if (badgeImageUrl) {
-    return (
-      <div
-        className={`w-full h-full flex items-center justify-center rounded-xl ${variant.bg} shadow-lg ${variant.glow} ${className}`}
-      >
-        <img
-          src={badgeImageUrl}
-          alt="Goal badge"
-          className="rounded-lg object-cover"
-          style={{ width: size * 1.6, height: size * 1.6 }}
-        />
-      </div>
-    );
-  }
+  const showImage = badgeImageUrl && !imgFailed;
 
   return (
     <div
       className={`w-full h-full flex items-center justify-center rounded-xl ${variant.bg} shadow-lg ${variant.glow} ${className}`}
     >
-      <Icon className={variant.fg} size={size} strokeWidth={1.5} />
+      {showImage ? (
+        <img
+          src={badgeImageUrl}
+          alt="Goal badge"
+          className="rounded-lg object-cover"
+          style={{ width: size * 1.6, height: size * 1.6 }}
+          onError={() => setImgFailed(true)}
+        />
+      ) : (
+        <Icon className={variant.fg} size={size} strokeWidth={1.5} />
+      )}
     </div>
   );
 };
