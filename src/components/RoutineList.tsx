@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRoutineStore } from '../store/RoutineContext';
 import { useHabitStore } from '../store/HabitContext';
 import type { Routine, Category } from '../models/persistenceTypes';
-import { Plus, MoreVertical, ChevronRight, ChevronDown, ClipboardList, Edit, Trash2, Layers } from 'lucide-react';
+import { Plus, ChevronRight, ChevronDown, ClipboardList, Edit, Trash2, Layers, Clock, ListChecks, Play, Sparkles } from 'lucide-react';
 import { cn } from '../utils/cn';
 import { resolveSteps, isMultiVariant } from '../lib/routineVariantUtils';
 
@@ -13,29 +13,15 @@ interface RoutineListProps {
     onPreview: (routine: Routine) => void;
 }
 
-// Compact Routine Card Component (Grid)
+// Expandable Routine Card Component
 const RoutineCard: React.FC<{
     routine: Routine;
+    isExpanded: boolean;
+    onExpand: () => void;
     onPreview: (routine: Routine) => void;
     onEdit: (routine: Routine) => void;
     onDelete: (routine: Routine) => void;
-}> = ({ routine, onPreview, onEdit, onDelete }) => {
-    const [menuOpen, setMenuOpen] = useState(false);
-    const menuRef = useRef<HTMLDivElement>(null);
-
-    // Close menu on click outside
-    useEffect(() => {
-        const handleClickOutside = (event: MouseEvent) => {
-            if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-                setMenuOpen(false);
-            }
-        };
-        if (menuOpen) {
-            document.addEventListener('mousedown', handleClickOutside);
-        }
-        return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, [menuOpen]);
-
+}> = ({ routine, isExpanded, onExpand, onPreview, onEdit, onDelete }) => {
     const steps = resolveSteps(routine);
     const totalSteps = steps.length;
     const hasMultipleVariants = isMultiVariant(routine);
@@ -43,12 +29,16 @@ const RoutineCard: React.FC<{
 
     return (
         <div
-            onClick={() => onPreview(routine)}
-            className="group relative bg-neutral-800/40 border border-white/5 rounded-xl px-4 py-3 hover:bg-neutral-800/80 hover:border-white/10 transition-all cursor-pointer flex items-center justify-between gap-2"
+            className={cn(
+                "relative flex flex-col rounded-lg border transition-all duration-300 overflow-hidden",
+                isExpanded
+                    ? "bg-neutral-800 border-white/10 shadow-lg scale-[1.02] z-10"
+                    : "bg-neutral-900/40 border-white/5 hover:bg-neutral-800/60 hover:border-white/10"
+            )}
         >
             {/* Routine Image (if available) */}
-            {routine.imageUrl && (
-                <div className="absolute inset-0 opacity-20 group-hover:opacity-30 transition-opacity rounded-xl overflow-hidden">
+            {routine.imageUrl && !isExpanded && (
+                <div className="absolute inset-0 opacity-20 transition-opacity rounded-lg overflow-hidden">
                     <img
                         src={routine.imageUrl}
                         alt={routine.title}
@@ -57,68 +47,106 @@ const RoutineCard: React.FC<{
                 </div>
             )}
 
-            {/* Left: Title & Menu */}
-            <div className="flex items-center gap-2 min-w-0 relative z-10">
-                <h3 className="text-white font-medium text-sm truncate leading-relaxed">
+            {/* COLLAPSED ROW (Always Visible) */}
+            <div
+                className="flex items-center gap-3 px-4 py-3 cursor-pointer relative z-10"
+                onClick={onExpand}
+            >
+                {/* Title */}
+                <span className="flex-1 text-sm font-medium truncate select-none text-neutral-300">
                     {routine.title}
-                </h3>
+                </span>
 
-                {/* Menu Action (Kebab) */}
-                <div className="relative flex-shrink-0" ref={menuRef}>
-                    <button
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            setMenuOpen(!menuOpen);
-                        }}
-                        className={cn(
-                            "p-1.5 text-neutral-500 hover:text-white hover:bg-white/10 rounded-md transition-colors",
-                            menuOpen ? "opacity-100" : "opacity-0 group-hover:opacity-100 focus:opacity-100"
-                        )}
-                        title="Options"
-                    >
-                        <MoreVertical size={16} />
-                    </button>
-
-                    {menuOpen && (
-                        <div className="absolute right-0 top-full mt-1 w-36 bg-neutral-900 border border-white/10 rounded-lg shadow-xl z-20 py-1 flex flex-col">
-                            <button
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    setMenuOpen(false);
-                                    onEdit(routine);
-                                }}
-                                className="flex items-center gap-2 px-3 py-2 text-xs text-neutral-300 hover:bg-white/5 hover:text-white w-full text-left"
-                            >
-                                <Edit size={14} /> Edit Routine
-                            </button>
-                            <button
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    setMenuOpen(false);
-                                    onDelete(routine);
-                                }}
-                                className="flex items-center gap-2 px-3 py-2 text-xs text-red-400 hover:bg-red-500/10 hover:text-red-300 w-full text-left"
-                            >
-                                <Trash2 size={14} /> Delete
-                            </button>
-                        </div>
+                {/* Metadata */}
+                <div className="flex items-center gap-2 flex-shrink-0">
+                    <span className="text-[11px] text-neutral-600">
+                        {totalSteps} steps
+                    </span>
+                    {hasMultipleVariants && (
+                        <span className="flex items-center gap-1 text-[10px] text-purple-400/80 bg-purple-500/10 px-1.5 py-0.5 rounded-full">
+                            <Layers size={10} />
+                            {variantCount}
+                        </span>
                     )}
+                    <ChevronRight size={14} className={cn(
+                        "text-neutral-600 transition-transform duration-200",
+                        isExpanded && "rotate-90"
+                    )} />
                 </div>
             </div>
 
-            {/* Right: Metadata */}
-            <div className="flex items-center gap-2 flex-shrink-0 relative z-10">
-                <span className="text-[11px] text-neutral-600">
-                    {totalSteps} steps
-                </span>
-                {hasMultipleVariants && (
-                    <span className="flex items-center gap-1 text-[10px] text-purple-400/80 bg-purple-500/10 px-1.5 py-0.5 rounded-full">
-                        <Layers size={10} />
-                        {variantCount}
-                    </span>
-                )}
-                <ChevronRight size={14} className="text-neutral-600" />
-            </div>
+            {/* EXPANDED CONTENT */}
+            {isExpanded && (
+                <div className="px-4 pb-3 pt-0 flex flex-col gap-3 animate-in fade-in slide-in-from-top-1 duration-200 cursor-default" onClick={e => e.stopPropagation()}>
+                    <div className="h-px w-full bg-white/5 mb-1" />
+
+                    {/* Variants (if multi-variant) */}
+                    {hasMultipleVariants && routine.variants && (
+                        <div className="flex flex-col gap-2">
+                            {routine.variants.map(variant => (
+                                <button
+                                    key={variant.id}
+                                    onClick={() => onPreview(routine)}
+                                    className="w-full text-left p-3 rounded-lg border border-white/5 bg-neutral-800/50 hover:border-white/15 hover:bg-neutral-800 transition-all"
+                                >
+                                    <div className="flex items-center justify-between gap-2">
+                                        <div className="flex items-center gap-2 min-w-0">
+                                            <span className="text-xs font-medium text-white truncate">{variant.name}</span>
+                                            {variant.isAiGenerated && (
+                                                <Sparkles size={10} className="text-purple-400 flex-shrink-0" />
+                                            )}
+                                        </div>
+                                        <div className="flex items-center gap-3 text-[10px] text-neutral-500 flex-shrink-0">
+                                            <span className="flex items-center gap-1">
+                                                <ListChecks size={10} />
+                                                {variant.steps.length}
+                                            </span>
+                                            {variant.estimatedDurationMinutes > 0 && (
+                                                <span className="flex items-center gap-1">
+                                                    <Clock size={10} />
+                                                    {variant.estimatedDurationMinutes}m
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
+                                    {variant.description && (
+                                        <p className="text-[10px] text-neutral-500 mt-1 line-clamp-1">{variant.description}</p>
+                                    )}
+                                </button>
+                            ))}
+                        </div>
+                    )}
+
+                    {/* Single-variant: show a Start button */}
+                    {!hasMultipleVariants && (
+                        <button
+                            onClick={() => onPreview(routine)}
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md transition-colors text-xs text-emerald-400 hover:bg-emerald-500/10 w-fit"
+                        >
+                            <Play size={12} />
+                            <span>Start Routine</span>
+                        </button>
+                    )}
+
+                    {/* Actions */}
+                    <div className="flex items-center justify-end gap-1">
+                        <button
+                            onClick={() => onEdit(routine)}
+                            className="flex items-center gap-1.5 px-2 py-1 rounded-md transition-colors text-xs text-neutral-500 hover:text-neutral-300 hover:bg-white/5"
+                        >
+                            <Edit size={12} />
+                            <span>Edit</span>
+                        </button>
+                        <button
+                            onClick={() => onDelete(routine)}
+                            className="flex items-center gap-1.5 px-2 py-1 rounded-md transition-colors text-xs text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                        >
+                            <Trash2 size={12} />
+                            <span>Delete</span>
+                        </button>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
@@ -133,6 +161,8 @@ const CategorySection: React.FC<{
     onEdit: (routine: Routine) => void;
     onDelete: (routine: Routine) => void;
 }> = ({ category, routines, isExpanded, onToggle, onPreview, onEdit, onDelete }) => {
+    const [expandedRoutineId, setExpandedRoutineId] = useState<string | null>(null);
+
     // Determine color application strategy (match Today view style)
     const isTailwindClass = category.color?.startsWith('bg-');
     const textColorClass = isTailwindClass ? category.color.replace('bg-', 'text-') : undefined;
@@ -159,7 +189,7 @@ const CategorySection: React.FC<{
                 </span>
             </button>
 
-            {/* Body (Grid) */}
+            {/* Body */}
             {isExpanded && (
                 <div
                     className="flex flex-col gap-1.5 animate-in slide-in-from-top-1 duration-200"
@@ -168,6 +198,8 @@ const CategorySection: React.FC<{
                         <RoutineCard
                             key={routine.id}
                             routine={routine}
+                            isExpanded={expandedRoutineId === routine.id}
+                            onExpand={() => setExpandedRoutineId(prev => prev === routine.id ? null : routine.id)}
                             onPreview={onPreview}
                             onEdit={onEdit}
                             onDelete={onDelete}
