@@ -406,6 +406,10 @@ export function InfoModal({ isOpen, onClose }: InfoModalProps) {
 
                 <ul className="mt-2 space-y-2">
                   <li className="text-xs text-neutral-400 pl-2">
+                    <span className="font-semibold text-neutral-300">Getting Started</span>
+                    <p className="mt-0.5">Go to Settings &rarr; Apple Health to connect metrics and create health-tracked habits from a dedicated page.</p>
+                  </li>
+                  <li className="text-xs text-neutral-400 pl-2">
                     <span className="font-semibold text-neutral-300">Supported Metrics</span>
                     <p className="mt-0.5">Steps, active calories, sleep hours, workout minutes, and weight.</p>
                   </li>

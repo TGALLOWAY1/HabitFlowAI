@@ -37,10 +37,11 @@ import { DebugEntriesPage } from './pages/DebugEntriesPage';
 import { DevIdentityPanel } from './components/DevIdentityPanel';
 import { WellbeingHistoryPage } from './pages/WellbeingHistoryPage';
 import { AnalyticsPage } from './pages/AnalyticsPage';
+import { AppleHealthPage } from './pages/AppleHealthPage';
 import { DashboardPrefsProvider } from './store/DashboardPrefsContext';
 
 // Simple router state
-type AppRoute = 'tracker' | 'dashboard' | 'routines' | 'goals' | 'wins' | 'journal' | 'tasks' | 'day' | 'debug-entries' | 'wellbeing-history' | 'analytics';
+type AppRoute = 'tracker' | 'dashboard' | 'routines' | 'goals' | 'wins' | 'journal' | 'tasks' | 'day' | 'debug-entries' | 'wellbeing-history' | 'analytics' | 'health';
 
 
 // Helper functions for URL syncing
@@ -76,6 +77,8 @@ function parseRouteFromLocation(location: Location): AppRoute {
       return "wellbeing-history";
     case "analytics":
       return "analytics";
+    case "health":
+      return "health";
     default:
 
       return "dashboard"; // default view
@@ -504,6 +507,8 @@ const HabitTrackerContent: React.FC = () => {
           <DebugEntriesPage />
         ) : view === 'analytics' ? (
           <AnalyticsPage onBack={() => handleNavigate('dashboard')} />
+        ) : view === 'health' ? (
+          <AppleHealthPage onBack={() => handleNavigate('dashboard')} />
         ) : (
           <GoalsPage
             onCreateGoal={() => setShowCreateGoal(true)}

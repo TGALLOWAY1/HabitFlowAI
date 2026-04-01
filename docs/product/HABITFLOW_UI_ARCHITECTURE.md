@@ -142,7 +142,7 @@ These surfaces are only visible to users with the Apple Health feature enabled (
 | Screen Name | Type | How Opened | Purpose | Related Objects |
 |---|---|---|---|---|
 | Health Suggestion Banner | Inline Component | Auto-shown in Day View when pending suggestions exist | Accept/dismiss health-based habit suggestions | Health Suggestions, Habits, Entries |
-| Apple Health Tracking Config | Section in Add/Edit Habit Modal | Toggle "Tracking Method" in habit modal | Configure health rule: metric, operator, threshold, behavior | Habits, Health Rules |
+| Apple Health Page | Full Page (`?view=health`) | Settings → Apple Health | Create health-tracked habits, manage connected habits, configure rules | Habits, Health Rules |
 
 **Total: 15 pages + 16 modals + 2 feature-gated surfaces = 33 distinct UI surfaces**
 
@@ -231,7 +231,7 @@ graph TB
 | **View** | Tracker Grid / Today View / Weekly View |
 | **Edit** | Tracker → habit context menu → Add Habit Modal (edit mode) |
 | **Log / Complete** | Tracker → click checkbox (boolean) or enter value (numeric) or auto-logged via Apple Health |
-| **Configure Health Rule** | Add/Edit Habit Modal → Tracking Method section (feature-gated) |
+| **Configure Health Rule** | Settings → Apple Health page (feature-gated) |
 | **View History** | Tracker → habit context menu → Habit History Modal |
 | **Analyze** | Dashboard heatmap, category completion rows |
 | **Assign Category** | Add Habit Modal (creation) or Category Picker Modal |
@@ -381,15 +381,15 @@ graph TB
 
 ### Apple Health Auto-Logging & Suggestions (Feature-Gated)
 
-1. **Configure:** Add/Edit Habit Modal → set Tracking Method to "Apple Health" or "Both"
-2. Select health metric (steps, sleep, workout, calories, weight)
-3. Set condition (≥, ≤, >, <) and threshold value
-4. Choose behavior: **Auto-log** (creates entry automatically) or **Suggest** (user confirms)
-5. Optionally: select backfill period (7d, 30d, 90d, all) for new rules
+1. **Connect:** Settings → Apple Health → choose a metric (steps, sleep, workouts, calories, weight)
+2. Configure condition (≥, ≤, >, <) and threshold value
+3. Choose behavior: **Auto-log** (creates entry automatically) or **Suggest** (user confirms)
+4. Optionally: backfill past data from habit start
+5. A new habit is created and linked to the health rule
 6. **Auto-log flow:** iOS app syncs health data → `POST /api/health/apple/sync` → rule evaluates → HabitEntry created with `source: 'apple_health'` → Activity icon shown on habit cell in tracker
 7. **Suggest flow:** Rule evaluates → suggestion created → Health Suggestion Banner appears in Day View → user accepts (creates entry) or dismisses
-8. **Edit rule:** Edit habit → modify threshold/behavior/metric → existing entries preserved
-9. **Remove rule:** Edit habit → switch tracking back to Manual → rule deactivated, past entries preserved
+8. **Manage:** Apple Health page shows all connected habits with options to run backfill or disconnect
+9. **Disconnect:** Removes health rule, past entries preserved
 
 ### Interact with Choice Bundle
 

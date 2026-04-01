@@ -201,6 +201,11 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
             <SettingsModal
                 isOpen={settingsOpen}
                 onClose={() => setSettingsOpen(false)}
+                onNavigate={(route) => {
+                    const url = `${window.location.pathname}?view=${route}`;
+                    window.history.pushState({ view: route }, '', url);
+                    window.dispatchEvent(new PopStateEvent('popstate'));
+                }}
             />
             <InfoModal
                 isOpen={infoOpen}
