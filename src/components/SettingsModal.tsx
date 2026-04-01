@@ -73,11 +73,26 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
               </section>
             )}
 
+            {/* Setup Guide */}
+            <section>
+              <button
+                type="button"
+                onClick={handleReopenGuide}
+                className="w-full px-4 py-2.5 rounded-lg bg-neutral-800 text-neutral-200 border border-white/10 hover:bg-neutral-700 text-sm text-left flex items-center gap-2"
+              >
+                <Sparkles size={16} className="text-emerald-400 flex-shrink-0" />
+                Reopen setup guide
+              </button>
+            </section>
+
             {/* AI Integration */}
             <section>
-              <h3 className="text-xs font-medium text-neutral-500 uppercase tracking-wider mb-3">
-                AI Integration
-              </h3>
+              <div className="flex items-center gap-2 mb-3">
+                <h3 className="text-xs font-medium text-neutral-500 uppercase tracking-wider">
+                  AI Integration
+                </h3>
+                <span className="text-[10px] text-neutral-600 font-medium">(~3 mins to set up)</span>
+              </div>
               <div className="space-y-3">
                 <div>
                   <label htmlFor="gemini-key" className="block text-sm text-neutral-300 mb-1.5">
@@ -87,6 +102,21 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                     Add your Google Gemini API key to enable AI-powered weekly summaries.
                     Your key is stored locally and never saved on the server.
                   </p>
+                  <ol className="text-[11px] text-neutral-500 mb-3 space-y-1 pl-4 list-decimal">
+                    <li>Go to{' '}
+                      <a
+                        href="https://aistudio.google.com/apikey"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-emerald-400 hover:text-emerald-300 underline underline-offset-2"
+                      >
+                        Google AI Studio
+                      </a>
+                    </li>
+                    <li>Sign in with your Google account</li>
+                    <li>Click <span className="text-neutral-400 font-medium">Create API Key</span></li>
+                    <li>Copy the key and paste it below</li>
+                  </ol>
                   <div className="flex gap-2">
                     <div className="relative flex-1">
                       <input
@@ -128,18 +158,6 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                   )}
                 </div>
               </div>
-            </section>
-
-            {/* Setup Guide */}
-            <section>
-              <button
-                type="button"
-                onClick={handleReopenGuide}
-                className="w-full px-4 py-2.5 rounded-lg bg-neutral-800 text-neutral-200 border border-white/10 hover:bg-neutral-700 text-sm text-left flex items-center gap-2"
-              >
-                <Sparkles size={16} className="text-emerald-400 flex-shrink-0" />
-                Reopen setup guide
-              </button>
             </section>
 
             {/* Data */}
