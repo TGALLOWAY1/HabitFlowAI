@@ -165,9 +165,9 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
                                         <button
                                             onClick={() => {
                                                 const searchParams = new URLSearchParams(window.location.search);
-                                                searchParams.set('view', 'analysis-beta');
+                                                searchParams.set('view', 'analytics');
                                                 const url = `${window.location.pathname}?${searchParams.toString()}`;
-                                                window.history.pushState({ view: 'analysis-beta' }, '', url);
+                                                window.history.pushState({ view: 'analytics' }, '', url);
                                                 window.dispatchEvent(new PopStateEvent('popstate'));
                                                 setUserMenuOpen(false);
                                             }}
