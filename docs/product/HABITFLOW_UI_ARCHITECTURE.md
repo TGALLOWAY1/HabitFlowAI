@@ -123,7 +123,7 @@ HabitFlow App
 | Bundle Picker | Modal | Habit context menu "Add to Bundle" | Select existing bundle for habit membership | Habits, Bundles |
 | Convert to Bundle Confirm | Modal | "Convert to Bundle" action | Confirmation before converting habit to bundle | Habits, Bundles |
 | Category Picker | Modal | "Move to Category" action | Change habit's category | Habits, Categories |
-| Routine Editor | Modal | "+ Routine" or edit routine | Create/edit routines with variants and steps | Routines, Habits |
+| Routine Editor | Modal | "+ Routine" or edit routine | Create/edit routines with variants; step list navigates to dedicated Step Editor panel | Routines, Habits |
 | Routine Runner | Modal | "Play" button on routine card | Step-by-step routine execution with timers | Routines, Habits, Entries |
 | Routine Preview | Modal | Preview button on routine card | Read-only routine view before starting | Routines |
 | Daily Check-in | Modal | Dashboard check-in card | Wellbeing metrics entry (sleep, mood, stress) | Wellbeing Entries |
@@ -334,9 +334,14 @@ graph TB
 2. Routine Editor Modal opens
 3. Enter title, select category, optionally upload image
 4. Add variants (for routine variations)
-5. Per variant: add steps with title, duration, linked habits
-6. Optionally: use AI suggestion (Gemini)
-7. Submit → routine created
+5. Per variant: step list shows cards with summary badges (linked habit, timer, tracking fields)
+6. Tap a step card or "Add Step" → **Step Editor Panel** slides in, replacing the step list view:
+   - Step title, instructions, timer mode
+   - **Linked Habit** (prominent section with searchable tappable chips, not a hidden dropdown)
+   - Image upload, tracking fields
+   - Back arrow returns to step list
+7. Optionally: use AI suggestion (Gemini)
+8. Submit → routine created
 
 ### Create a Goal
 
