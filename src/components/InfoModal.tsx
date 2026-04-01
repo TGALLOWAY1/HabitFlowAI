@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Info, BookOpen, Sparkles } from 'lucide-react';
+import { Info, BookOpen, Sparkles, CheckCircle2, Calculator, CheckSquare, Layers } from 'lucide-react';
 
 interface InfoModalProps {
   isOpen: boolean;
@@ -8,10 +8,11 @@ interface InfoModalProps {
 
 type Example = string | { title: string; steps: string[] };
 
-const primaryItems: { term: string; definition: string; examples: Example[] }[] = [
+const primaryItems: { term: string; definition: string; trackingTypes?: boolean; examples: Example[] }[] = [
   {
     term: 'Habit',
     definition: 'A habit is a repeated behavior performed over time. Habits are ongoing and never "finished" — each day or week, a habit is simply performed or not.',
+    trackingTypes: true,
     examples: [
       '"Practice Portuguese for 30 minutes"',
       '"Run for 20 minutes"',
@@ -66,6 +67,7 @@ type AdvancedItem = {
   term: string;
   definition: string;
   bullets?: string[];
+  customBullets?: boolean;
   examples: Example[];
 };
 
@@ -73,10 +75,7 @@ const advancedItems: AdvancedItem[] = [
   {
     term: 'Habit Bundles',
     definition: 'A bundle groups multiple habits together. Two types:',
-    bullets: [
-      'Checklist Bundle — Complete a set of habits as a group. Configure how many must be done: all, any, a specific count, or a percentage.',
-      'Choice Bundle — Pick one option from a set of alternatives each day. Only one needs to be performed.',
-    ],
+    customBullets: true,
     examples: [
       { title: 'Checklist: "Morning Health"', steps: ['Take vitamins', 'Drink water', 'Stretch — success rule: complete all 3'] },
       { title: 'Choice: "Cardio"', steps: ['Run, Cycle, or Swim — perform whichever suits the day'] },
@@ -236,6 +235,19 @@ export function InfoModal({ isOpen, onClose }: InfoModalProps) {
                       <span className="font-bold text-emerald-400">{item.term}</span>
                     </p>
                     <p className="text-sm text-neutral-300 mt-1">{item.definition}</p>
+                    {item.trackingTypes && (
+                      <div className="mt-2 space-y-1">
+                        <p className="text-xs text-neutral-500 uppercase tracking-wide font-medium">Tracking types</p>
+                        <div className="flex items-center gap-1.5 text-xs text-neutral-400 pl-2">
+                          <CheckCircle2 size={13} className="text-blue-400 shrink-0" />
+                          <span><span className="font-semibold text-blue-400">Done (Y/N)</span> — Simply mark as performed or not</span>
+                        </div>
+                        <div className="flex items-center gap-1.5 text-xs text-neutral-400 pl-2">
+                          <Calculator size={13} className="text-amber-400 shrink-0" />
+                          <span><span className="font-semibold text-amber-400">Quantity</span> — Track a numeric value (e.g., minutes, reps, pages)</span>
+                        </div>
+                      </div>
+                    )}
                     {renderExamples(item.examples)}
                   </div>
                   {i < primaryItems.length - 1 && (
@@ -292,6 +304,18 @@ export function InfoModal({ isOpen, onClose }: InfoModalProps) {
                       <span className="font-bold text-emerald-400">{item.term}</span>
                     </p>
                     <p className="text-sm text-neutral-300 mt-1">{item.definition}</p>
+                    {item.customBullets && (
+                      <ul className="mt-1.5 space-y-1.5">
+                        <li className="text-xs text-neutral-400 pl-2 flex items-start gap-1.5">
+                          <CheckSquare size={13} className="text-indigo-400 mt-0.5 shrink-0" />
+                          <span><span className="font-bold text-indigo-400">Checklist Bundle</span> — Complete a set of habits as a group. Configure how many must be done: all, any, a specific count, or a percentage.</span>
+                        </li>
+                        <li className="text-xs text-neutral-400 pl-2 flex items-start gap-1.5">
+                          <Layers size={13} className="text-amber-400 mt-0.5 shrink-0" />
+                          <span><span className="font-bold text-amber-400">Choice Bundle</span> — Pick one option from a set of alternatives each day. Only one needs to be performed.</span>
+                        </li>
+                      </ul>
+                    )}
                     {item.bullets && (
                       <ul className="mt-1.5 space-y-1">
                         {item.bullets.map((bullet) => (
