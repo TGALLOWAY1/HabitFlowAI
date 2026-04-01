@@ -31,10 +31,27 @@ export const AchievementsSection: React.FC<AchievementsSectionProps> = ({ data, 
 
   if (!data || data.length === 0) return null;
 
-  // Sort: earned first, then by id
+  // Sort by progression order, earned first within each type group
+  const DISPLAY_ORDER: Record<string, number> = {
+    'first-completion': 0,
+    'streak-7': 1,
+    'streak-14': 2,
+    'streak-30': 3,
+    'streak-60': 4,
+    'streak-90': 5,
+    'completions-50': 6,
+    'completions-100': 7,
+    'completions-500': 8,
+    'completions-1000': 9,
+    'week-10': 10,
+    'week-25': 11,
+    'consistency-80': 12,
+  };
   const sorted = [...data].sort((a, b) => {
-    if (a.earned !== b.earned) return a.earned ? -1 : 1;
-    return a.id.localeCompare(b.id);
+    const orderA = DISPLAY_ORDER[a.id] ?? 99;
+    const orderB = DISPLAY_ORDER[b.id] ?? 99;
+    if (orderA !== orderB) return orderA - orderB;
+    return a.earned === b.earned ? 0 : a.earned ? -1 : 1;
   });
 
   const earnedCount = sorted.filter(a => a.earned).length;

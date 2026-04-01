@@ -54,6 +54,7 @@ export interface HabitAnalyticsSummary {
   // Behavior patterns & achievements
   behaviorPatterns: BehaviorPatterns;
   achievements: Achievement[];
+  totalActiveDays: number;
 }
 
 export interface HeatmapDataPoint {
@@ -521,6 +522,7 @@ export function computeHabitAnalyticsSummary(
     bestWeekLabel,
     behaviorPatterns,
     achievements,
+    totalActiveDays: daysWithCompletion.size,
   };
 }
 
@@ -835,6 +837,16 @@ export function computeInsights(
       insights.push({
         type: 'warning',
         message: `"${worst.habit.name}" needs attention — only ${Math.round(worst.rate * 100)}% completion rate.`,
+      });
+    }
+  }
+
+  // 2b. Flag habits with very low completion for potential removal
+  for (const { habit, rate, scheduled } of habitRates) {
+    if (rate < 0.05 && scheduled >= 7) {
+      insights.push({
+        type: 'warning',
+        message: `Consider scaling back or removing "${habit.name}" (only ${Math.round(rate * 100)}% completion). Focus on your other priorities — we'll check back in a month to see if you want to restart it.`,
       });
     }
   }

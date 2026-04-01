@@ -122,13 +122,13 @@ export const YearHeatmapGrid: React.FC<YearHeatmapGridProps> = React.memo(({ hab
                 <div className="h-6" />
 
                 {/* Day Labels (Sun-Sat) */}
-                <div className="text-[10px] text-neutral-500 font-medium flex items-center justify-end pr-2"></div> {/* Sun */}
-                <div className="text-[10px] text-neutral-500 font-medium flex items-center justify-end pr-2">Mon</div>
-                <div className="text-[10px] text-neutral-500 font-medium flex items-center justify-end pr-2"></div> {/* Tue */}
-                <div className="text-[10px] text-neutral-500 font-medium flex items-center justify-end pr-2">Wed</div>
-                <div className="text-[10px] text-neutral-500 font-medium flex items-center justify-end pr-2"></div> {/* Thu */}
-                <div className="text-[10px] text-neutral-500 font-medium flex items-center justify-end pr-2">Fri</div>
-                <div className="text-[10px] text-neutral-500 font-medium flex items-center justify-end pr-2"></div> {/* Sat */}
+                <div className="text-[10px] text-neutral-500 font-medium flex items-center justify-end pr-2">S</div>
+                <div className="text-[10px] text-neutral-500 font-medium flex items-center justify-end pr-2">M</div>
+                <div className="text-[10px] text-neutral-500 font-medium flex items-center justify-end pr-2">T</div>
+                <div className="text-[10px] text-neutral-500 font-medium flex items-center justify-end pr-2">W</div>
+                <div className="text-[10px] text-neutral-500 font-medium flex items-center justify-end pr-2">T</div>
+                <div className="text-[10px] text-neutral-500 font-medium flex items-center justify-end pr-2">F</div>
+                <div className="text-[10px] text-neutral-500 font-medium flex items-center justify-end pr-2">S</div>
 
                 {/* Data Columns */}
                 {weeks.map((week, wIndex) => {

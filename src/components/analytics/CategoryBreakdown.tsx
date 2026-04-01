@@ -84,7 +84,7 @@ export const CategoryBreakdown: React.FC<CategoryBreakdownProps> = ({ data, load
               {/* Category color dot + name */}
               <div className="flex items-center gap-2 min-w-0 flex-1">
                 <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: color }} />
-                <span className="text-sm text-white font-medium truncate">{item.categoryName}</span>
+                <span className="text-sm font-medium truncate" style={{ color }}>{item.categoryName}</span>
               </div>
 
               {/* Completion % */}
