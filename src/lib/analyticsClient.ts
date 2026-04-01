@@ -62,6 +62,7 @@ export interface HabitAnalyticsSummary {
   bestWeekLabel: string;
   behaviorPatterns: BehaviorPatterns;
   achievements: Achievement[];
+  totalActiveDays: number;
 }
 
 export interface HeatmapDataPoint {

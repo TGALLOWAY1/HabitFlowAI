@@ -1,5 +1,5 @@
 import React from 'react';
-import { Calendar, BarChart3, Percent, Star, AlertTriangle, Layers, Sun, Moon } from 'lucide-react';
+import { Calendar, BarChart3, Percent, Star, Sun, Moon, Layers } from 'lucide-react';
 import type { BehaviorPatterns as BehaviorPatternsType } from '../../lib/analyticsClient';
 
 interface BehaviorPatternsProps {
@@ -38,12 +38,6 @@ export const BehaviorPatterns: React.FC<BehaviorPatternsProps> = ({ data, loadin
       color: 'text-emerald-400',
     },
     {
-      icon: AlertTriangle,
-      label: 'Least Consistent',
-      value: `${data.leastConsistentDay.day} (${Math.round(data.leastConsistentDay.rate * 100)}%)`,
-      color: 'text-amber-400',
-    },
-    {
       icon: BarChart3,
       label: 'Avg Habits/Day',
       value: `${data.avgHabitsPerDay}`,
@@ -67,12 +61,6 @@ export const BehaviorPatterns: React.FC<BehaviorPatternsProps> = ({ data, loadin
       value: `${data.bestWeek.completions} (${data.bestWeek.label})`,
       color: 'text-emerald-400',
     },
-    {
-      icon: AlertTriangle,
-      label: 'Worst Week',
-      value: `${data.worstWeek.completions} (${data.worstWeek.label})`,
-      color: 'text-red-400',
-    },
     ...(data.weekdayRate !== data.weekendRate ? [{
       icon: data.weekdayRate > data.weekendRate ? Sun : Moon,
       label: 'Stronger On',
@@ -90,14 +78,6 @@ export const BehaviorPatterns: React.FC<BehaviorPatternsProps> = ({ data, loadin
       label: 'Top Category',
       value: `${data.mostCompletedCategory.name} (${data.mostCompletedCategory.completions})`,
       color: 'text-emerald-400',
-    });
-  }
-  if (data.leastCompletedCategory) {
-    cards.push({
-      icon: Layers,
-      label: 'Needs Focus',
-      value: `${data.leastCompletedCategory.name} (${data.leastCompletedCategory.completions})`,
-      color: 'text-amber-400',
     });
   }
 

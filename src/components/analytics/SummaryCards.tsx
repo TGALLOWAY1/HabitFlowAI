@@ -1,5 +1,6 @@
 import React from 'react';
-import { Flame, Target, TrendingUp, TrendingDown, Minus, Calendar, BarChart3 } from 'lucide-react';
+import { Flame, Target, TrendingUp, TrendingDown, Minus, Calendar, BarChart3, Info } from 'lucide-react';
+import { Tooltip } from 'react-tooltip';
 import type { HabitAnalyticsSummary } from '../../lib/analyticsClient';
 
 interface SummaryCardsProps {
@@ -70,7 +71,15 @@ export const SummaryCards: React.FC<SummaryCardsProps> = ({ data, loading }) => 
             </div>
           </div>
           <div className="text-3xl font-bold text-white mt-2">{consistencyPct}%</div>
-          <div className="text-xs text-neutral-400 font-medium mt-1">Consistency</div>
+          <div className="flex items-center gap-1 mt-1">
+            <span className="text-xs text-neutral-400 font-medium">Consistency</span>
+            <Info
+              size={12}
+              className="text-neutral-500 cursor-help"
+              data-tooltip-id="summary-tooltip"
+              data-tooltip-content="How regularly you complete habits relative to your schedule. Higher means fewer missed days."
+            />
+          </div>
           <div className="mt-2">
             <TrendArrow direction={data.trendDirection} delta={data.trendDelta} />
           </div>
@@ -84,9 +93,17 @@ export const SummaryCards: React.FC<SummaryCardsProps> = ({ data, loading }) => 
             </div>
           </div>
           <div className="text-3xl font-bold text-white mt-2">{completionPct}%</div>
-          <div className="text-xs text-neutral-400 font-medium mt-1">Completion Rate</div>
+          <div className="flex items-center gap-1 mt-1">
+            <span className="text-xs text-neutral-400 font-medium">Completion Rate</span>
+            <Info
+              size={12}
+              className="text-neutral-500 cursor-help"
+              data-tooltip-id="summary-tooltip"
+              data-tooltip-content="Percentage of scheduled habits you completed. The total below is the raw number of completions in this period."
+            />
+          </div>
           <div className="mt-2">
-            <span className="text-xs text-neutral-500">{data.totalCompletions} total</span>
+            <span className="text-xs text-neutral-500">{data.totalCompletions} total completions</span>
           </div>
         </div>
       </div>
@@ -96,19 +113,48 @@ export const SummaryCards: React.FC<SummaryCardsProps> = ({ data, loading }) => 
         <div className="bg-neutral-900/50 rounded-2xl border border-white/5 p-4 backdrop-blur-sm text-center">
           <BarChart3 size={14} className="text-teal-400 mx-auto mb-1" />
           <div className="text-xl font-bold text-white">{data.averageHabitsPerDay}</div>
-          <div className="text-[10px] text-neutral-400 mt-0.5">Avg/Day</div>
+          <div className="flex items-center justify-center gap-1 mt-0.5">
+            <span className="text-[10px] text-neutral-400">Avg/Day</span>
+            <Info
+              size={10}
+              className="text-neutral-500 cursor-help"
+              data-tooltip-id="summary-tooltip"
+              data-tooltip-content="Average number of habits you complete per day."
+            />
+          </div>
         </div>
         <div className="bg-neutral-900/50 rounded-2xl border border-white/5 p-4 backdrop-blur-sm text-center">
           <Calendar size={14} className="text-teal-400 mx-auto mb-1" />
           <div className="text-sm font-bold text-white leading-tight">{data.mostConsistentDayOfWeek}</div>
-          <div className="text-[10px] text-neutral-400 mt-0.5">Best Day</div>
+          <div className="flex items-center justify-center gap-1 mt-0.5">
+            <span className="text-[10px] text-neutral-400">Best Day</span>
+            <Info
+              size={10}
+              className="text-neutral-500 cursor-help"
+              data-tooltip-id="summary-tooltip"
+              data-tooltip-content="The day of the week where you have the highest completion rate."
+            />
+          </div>
         </div>
         <div className="bg-neutral-900/50 rounded-2xl border border-white/5 p-4 backdrop-blur-sm text-center">
           <Target size={14} className="text-teal-400 mx-auto mb-1" />
           <div className="text-xl font-bold text-white">{data.graduatedHabits}</div>
-          <div className="text-[10px] text-neutral-400 mt-0.5">Graduated</div>
+          <div className="flex items-center justify-center gap-1 mt-0.5">
+            <span className="text-[10px] text-neutral-400">Graduated</span>
+            <Info
+              size={10}
+              className="text-neutral-500 cursor-help"
+              data-tooltip-id="summary-tooltip"
+              data-tooltip-content="Habits completed consistently enough to be considered mastered."
+            />
+          </div>
         </div>
       </div>
+
+      <Tooltip
+        id="summary-tooltip"
+        className="z-50 !bg-neutral-800 !text-white !opacity-100 !rounded-lg !px-3 !py-2 !text-xs !max-w-[200px]"
+      />
     </div>
   );
 };
