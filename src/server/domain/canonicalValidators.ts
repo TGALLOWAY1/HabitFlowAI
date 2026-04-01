@@ -92,8 +92,8 @@ export function validateHabitEntryPayloadStructure(payload: Partial<HabitEntryPa
 
     // Validate source if provided
     if (payload.source !== undefined) {
-        const validSources: Array<'manual' | 'routine' | 'quick' | 'import' | 'test'> = 
-            ['manual', 'routine', 'quick', 'import', 'test'];
+        const validSources: Array<'manual' | 'routine' | 'quick' | 'import' | 'apple_health' | 'test'> =
+            ['manual', 'routine', 'quick', 'import', 'apple_health', 'test'];
         if (!validSources.includes(payload.source)) {
             return {
                 valid: false,

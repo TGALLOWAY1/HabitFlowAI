@@ -19,7 +19,7 @@ export type { EntryView } from '../services/truthQuery';
  * 
  * Defines where an entry came from, used for provenance tracking.
  */
-export type EntrySource = 'manual' | 'routine' | 'quick' | 'import' | 'test';
+export type EntrySource = 'manual' | 'routine' | 'quick' | 'import' | 'apple_health' | 'test';
 
 /**
  * HabitEntryRecord - Canonical shape for HabitEntry stored in database
@@ -74,6 +74,14 @@ export interface HabitEntryRecord {
     bundleOptionLabel?: string;
     unitSnapshot?: string;
     optionKey?: string;
+
+    // Apple Health provenance fields
+    /** ID of the health rule that created this entry */
+    sourceRuleId?: string;
+    /** The metric value that triggered auto-log */
+    importedMetricValue?: number;
+    /** The metric type that triggered auto-log */
+    importedMetricType?: string;
 }
 
 /**
