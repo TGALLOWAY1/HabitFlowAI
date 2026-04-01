@@ -841,12 +841,29 @@ export function computeInsights(
     }
   }
 
-  // 2b. Flag habits with very low completion for potential removal
-  for (const { habit, rate, scheduled } of habitRates) {
-    if (rate < 0.05 && scheduled >= 7) {
+  // 2b. Flag habits with consecutive zero-completion days
+  for (const habit of trackable) {
+    const dayMap = dayStatesByHabit.get(habit.id);
+    // Count consecutive days with no completion, working backwards from today
+    let consecutiveZeroDays = 0;
+    for (let i = dayKeys.length - 1; i >= 0; i--) {
+      const dk = dayKeys[i];
+      const dow = new Date(dk + 'T12:00:00Z').getUTCDay();
+      const isScheduled = !habit.assignedDays || habit.assignedDays.length === 0 || habit.assignedDays.includes(dow);
+      if (!isScheduled) continue;
+      if (dayMap?.get(dk)?.completed) break;
+      consecutiveZeroDays++;
+    }
+
+    if (consecutiveZeroDays >= 30) {
       insights.push({
         type: 'warning',
-        message: `Consider scaling back or removing "${habit.name}" (only ${Math.round(rate * 100)}% completion). Focus on your other priorities — we'll check back in a month to see if you want to restart it.`,
+        message: `"${habit.name}" has had no completions for ${consecutiveZeroDays} days. Consider pausing it and resuming when you're ready to focus on it again.`,
+      });
+    } else if (consecutiveZeroDays >= 14) {
+      insights.push({
+        type: 'warning',
+        message: `"${habit.name}" hasn't been completed in ${consecutiveZeroDays} days. Consider scaling back its frequency or adjusting your approach.`,
       });
     }
   }

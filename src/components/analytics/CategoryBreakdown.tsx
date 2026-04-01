@@ -7,7 +7,10 @@ interface CategoryBreakdownProps {
   loading: boolean;
 }
 
-function tailwindToHex(tw: string): string {
+function resolveColor(color: string): string {
+  // If it's already a hex/rgb/hsl color, use it directly
+  if (!color.startsWith('bg-')) return color;
+
   const map: Record<string, string> = {
     'bg-emerald-500': '#10b981',
     'bg-blue-500': '#3b82f6',
@@ -21,7 +24,7 @@ function tailwindToHex(tw: string): string {
     'bg-cyan-500': '#06b6d4',
     'bg-neutral-500': '#737373',
   };
-  return map[tw] ?? '#10b981';
+  return map[color] ?? '#737373';
 }
 
 const statusColors: Record<string, string> = {
@@ -74,7 +77,7 @@ export const CategoryBreakdown: React.FC<CategoryBreakdownProps> = ({ data, load
       <div className="space-y-3">
         {data.map(item => {
           const pct = Math.round(item.completionRate * 100);
-          const color = tailwindToHex(item.color);
+          const color = resolveColor(item.color);
           const TrendIcon = trendIcons[item.trendDirection];
           const trendColor = trendColors[item.trendDirection];
           const statusStyle = statusColors[item.status] ?? statusColors['Stable'];
