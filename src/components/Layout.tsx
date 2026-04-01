@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useRef, useEffect } from 'react';
-import { LayoutGrid, Settings, User, LogOut, Info, Eye, EyeOff } from 'lucide-react';
+import { LayoutGrid, Settings, User, LogOut, Info, Eye, EyeOff, FlaskConical } from 'lucide-react';
 import { useHabitStore } from '../store/HabitContext';
 import { useAuth } from '../store/AuthContext';
 import { useDashboardPrefs } from '../store/DashboardPrefsContext';
@@ -15,6 +15,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
     const { refreshHabitsAndCategories } = useHabitStore();
     const { user, logout } = useAuth();
     const { hideStreaks, setHideStreaks } = useDashboardPrefs();
+    const isBetaUser = user?.email?.toLowerCase() === 'tj.galloway1@gmail.com';
     const isDev = import.meta.env.DEV;
     const isDemo = getActiveUserMode() === 'demo';
     const [devNotice, setDevNotice] = useState<string | null>(null);
@@ -160,6 +161,22 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
                                         {hideStreaks ? <Eye size={14} /> : <EyeOff size={14} />}
                                         {hideStreaks ? 'Show streaks' : 'Hide streaks'}
                                     </button>
+                                    {isBetaUser && (
+                                        <button
+                                            onClick={() => {
+                                                const searchParams = new URLSearchParams(window.location.search);
+                                                searchParams.set('view', 'analysis-beta');
+                                                const url = `${window.location.pathname}?${searchParams.toString()}`;
+                                                window.history.pushState({ view: 'analysis-beta' }, '', url);
+                                                window.dispatchEvent(new PopStateEvent('popstate'));
+                                                setUserMenuOpen(false);
+                                            }}
+                                            className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-neutral-400 hover:text-white hover:bg-white/5 transition-colors"
+                                        >
+                                            <FlaskConical size={14} />
+                                            Analysis (Beta)
+                                        </button>
+                                    )}
                                     <button
                                         onClick={async () => {
                                             setUserMenuOpen(false);
