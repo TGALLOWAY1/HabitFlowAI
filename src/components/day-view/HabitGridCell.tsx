@@ -53,7 +53,8 @@ export const HabitGridCell = ({
     onChoiceSelect,
     selectedChoices,
     habitStatus,
-    onNumericClick
+    onNumericClick,
+    log
 }: HabitGridCellProps) => {
     const isChecklistBundle = habit.type === 'bundle' && habit.bundleType === 'checklist';
     const isChoiceBundle = habit.type === 'bundle' && habit.bundleType === 'choice';

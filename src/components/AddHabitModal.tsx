@@ -103,7 +103,7 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
     const [healthBehavior, setHealthBehavior] = useState<HealthRuleBehavior>('auto_log');
     const [healthBackfillOption, setHealthBackfillOption] = useState<'habit_start' | 'none'>('habit_start');
     const [existingHealthRule, setExistingHealthRule] = useState<any>(null);
-    const [loadingHealthRule, setLoadingHealthRule] = useState(false);
+    const [_loadingHealthRule, setLoadingHealthRule] = useState(false);
 
     // Bundle UX: Add to Bundle picker + Convert confirmation
     const [showBundlePicker, setShowBundlePicker] = useState(false);
@@ -1294,7 +1294,7 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                                                 onChange={(e) => setHealthOperator(e.target.value as HealthRuleOperator)}
                                                 className="w-full bg-neutral-800 border border-white/10 rounded-lg px-3 py-2 text-sm text-white"
                                             >
-                                                <option value=">=">at least (>=)</option>
+                                                <option value=">=">at least ({">="}) </option>
                                                 <option value="<=">at most ({"<="})</option>
                                                 <option value=">">more than ({">"}) </option>
                                                 <option value="<">less than ({"<"})</option>
