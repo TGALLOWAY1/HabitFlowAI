@@ -121,7 +121,6 @@ Deployment: Render (backend via `render.yaml`) + Vercel (frontend via `vercel.js
 - **Simplicity First**: Make every change as simple as possible. Minimal code impact.
 - **No Laziness**: Find root causes. No temporary fixes.
 - **Minimal Impact**: Changes should only touch what's necessary.
-- **Concrete Impact Examples**: When describing bugs, fixes, or behavioral changes, include a concrete example showing the before/after impact with real numbers. Example: "A weekly habit previously showed ~14% completion rate (1/7 days). Now correctly shows 100% (1/1 week)." This makes the impact immediately understandable and helps reviewers assess severity.
 
 ## Documentation
 
@@ -141,6 +140,10 @@ Any change to features, goal types, bundle behavior, AI capabilities, Apple Heal
 - Changing bundle behavior (membership rules, conversion rules) → update the Habit Bundles section
 - Adding/removing Apple Health metrics or rules → update the Health tab
 - Adding/removing habit tracking types → update the Basics tab
+
+## Communication Style
+
+- When explaining bugs, audit findings, or architectural decisions, **include concrete impact examples**. Show the user exactly what goes wrong with specific numbers and scenarios (e.g., "A weekly habit previously showed ~14% completion rate (1/7 days). Now correctly shows 100% (1/1 week)."). Abstract descriptions are less actionable than concrete before/after examples.
 
 ## Workflow
 
