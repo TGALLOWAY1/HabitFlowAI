@@ -7,12 +7,7 @@ vi.mock('../../repositories/habitRepository', () => ({
   deleteHabit: vi.fn(),
 }));
 
-vi.mock('../../repositories/habitEntryRepository', () => ({
-  deleteHabitEntriesByHabit: vi.fn(),
-}));
-
 import { getHabitById, deleteHabit } from '../../repositories/habitRepository';
-import { deleteHabitEntriesByHabit } from '../../repositories/habitEntryRepository';
 
 function createRes(): Response {
   return {
@@ -26,7 +21,7 @@ describe('deleteHabitRoute', () => {
     vi.clearAllMocks();
   });
 
-  it('cascades habitEntries before deleting habit', async () => {
+  it('deletes habit without cascade-deleting entries (entries persist for goal progress)', async () => {
     vi.mocked(getHabitById).mockResolvedValue({
       id: 'habit-1',
       categoryId: 'cat-1',
@@ -35,7 +30,6 @@ describe('deleteHabitRoute', () => {
       archived: false,
       createdAt: '2026-01-01T00:00:00.000Z',
     });
-    vi.mocked(deleteHabitEntriesByHabit).mockResolvedValue(4);
     vi.mocked(deleteHabit).mockResolvedValue(true);
 
     const req = {
@@ -47,18 +41,16 @@ describe('deleteHabitRoute', () => {
 
     await deleteHabitRoute(req, res);
 
-    expect(deleteHabitEntriesByHabit).toHaveBeenCalledWith('habit-1', 'household-1', 'test-user');
     expect(deleteHabit).toHaveBeenCalledWith('habit-1', 'household-1', 'test-user');
     expect(res.status).toHaveBeenCalledWith(200);
     expect(vi.mocked(res.json).mock.calls[0][0]).toEqual(
       expect.objectContaining({
         message: 'Habit deleted successfully',
-        deletedEntriesCount: 4,
       })
     );
   });
 
-  it('returns 404 and skips cascades when habit does not exist', async () => {
+  it('returns 404 when habit does not exist', async () => {
     vi.mocked(getHabitById).mockResolvedValue(null);
 
     const req = {
@@ -70,9 +62,7 @@ describe('deleteHabitRoute', () => {
 
     await deleteHabitRoute(req, res);
 
-    expect(deleteHabitEntriesByHabit).not.toHaveBeenCalled();
     expect(deleteHabit).not.toHaveBeenCalled();
     expect(res.status).toHaveBeenCalledWith(404);
   });
 });
-

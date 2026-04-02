@@ -388,18 +388,21 @@ export async function getHabitEntriesByUser(
 export async function getHabitEntriesByHabitIds(
     habitIds: string[],
     householdId: string,
-    userId: string
+    userId: string,
+    options?: { includeDeleted?: boolean }
 ): Promise<HabitEntry[]> {
     if (habitIds.length === 0) return [];
 
     const db = await getDb();
     const collection = db.collection(COLLECTION_NAME);
 
+    const filter: Record<string, unknown> = { habitId: { $in: habitIds } };
+    if (!options?.includeDeleted) {
+        filter.deletedAt = { $exists: false };
+    }
+
     const documents = await collection
-        .find(scopeFilter(householdId, userId, {
-            habitId: { $in: habitIds },
-            deletedAt: { $exists: false },
-        }))
+        .find(scopeFilter(householdId, userId, filter))
         .toArray();
 
     return documents.map(doc => mapDocToEntry(doc));
@@ -414,19 +417,24 @@ export async function getHabitEntriesByHabitIdsSince(
     habitIds: string[],
     householdId: string,
     userId: string,
-    sinceDayKey: string
+    sinceDayKey: string,
+    options?: { includeDeleted?: boolean }
 ): Promise<HabitEntry[]> {
     if (habitIds.length === 0) return [];
 
     const db = await getDb();
     const collection = db.collection(COLLECTION_NAME);
 
+    const filter: Record<string, unknown> = {
+        habitId: { $in: habitIds },
+        dayKey: { $gte: sinceDayKey },
+    };
+    if (!options?.includeDeleted) {
+        filter.deletedAt = { $exists: false };
+    }
+
     const documents = await collection
-        .find(scopeFilter(householdId, userId, {
-            habitId: { $in: habitIds },
-            deletedAt: { $exists: false },
-            dayKey: { $gte: sinceDayKey },
-        }))
+        .find(scopeFilter(householdId, userId, filter))
         .toArray();
 
     return documents.map(doc => mapDocToEntry(doc));
@@ -480,19 +488,24 @@ export async function reassignEntries(
 export async function aggregateHabitEntryTotals(
     habitIds: string[],
     householdId: string,
-    userId: string
+    userId: string,
+    options?: { includeDeleted?: boolean }
 ): Promise<Array<{ habitId: string; totalValue: number; entryCount: number; distinctDays: number }>> {
     if (habitIds.length === 0) return [];
 
     const db = await getDb();
     const collection = db.collection(COLLECTION_NAME);
 
+    const matchFilter: Record<string, unknown> = {
+        habitId: { $in: habitIds },
+    };
+    if (!options?.includeDeleted) {
+        matchFilter.deletedAt = { $exists: false };
+    }
+
     const pipeline = [
         {
-            $match: scopeFilter(householdId, userId, {
-                habitId: { $in: habitIds },
-                deletedAt: { $exists: false },
-            }),
+            $match: scopeFilter(householdId, userId, matchFilter),
         },
         {
             $group: {

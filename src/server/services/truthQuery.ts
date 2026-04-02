@@ -68,9 +68,11 @@ export async function getEntryViewsForHabits(
   habitIds: string[],
   householdId: string,
   userId: string,
-  args: { startDayKey?: DayKey; endDayKey?: DayKey; timeZone: string }
+  args: { startDayKey?: DayKey; endDayKey?: DayKey; timeZone: string; includeDeleted?: boolean }
 ): Promise<EntryView[]> {
-  const entries = await getHabitEntriesByHabitIds(habitIds, householdId, userId);
+  const entries = await getHabitEntriesByHabitIds(habitIds, householdId, userId, {
+    includeDeleted: args.includeDeleted,
+  });
   return buildEntryViewsFromEntries(entries, habitIds, args);
 }
 
@@ -110,9 +112,11 @@ export async function getRecentEntryViewsForHabits(
   habitIds: string[],
   householdId: string,
   userId: string,
-  args: { sinceDayKey: DayKey; timeZone: string }
+  args: { sinceDayKey: DayKey; timeZone: string; includeDeleted?: boolean }
 ): Promise<EntryView[]> {
-  const entries = await getHabitEntriesByHabitIdsSince(habitIds, householdId, userId, args.sinceDayKey);
+  const entries = await getHabitEntriesByHabitIdsSince(
+    habitIds, householdId, userId, args.sinceDayKey, { includeDeleted: args.includeDeleted }
+  );
   return buildEntryViewsFromEntries(entries, habitIds, { timeZone: args.timeZone });
 }
 

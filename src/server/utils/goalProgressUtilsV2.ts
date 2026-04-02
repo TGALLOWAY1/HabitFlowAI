@@ -115,11 +115,17 @@ export async function computeGoalProgressV2(
 
   const resolvedHabitIds = await resolveBundleIds(goal.linkedHabitIds, householdId, userId);
 
+  // Include deleted entries so that contributions from deleted habits
+  // (whose entries were cascade-soft-deleted) still count toward goal progress.
   const entryViews = await getEntryViewsForHabits(resolvedHabitIds, householdId, userId, {
     timeZone,
+    includeDeleted: true,
   });
 
-  const activeEntries = entryViews.filter(entry => !entry.deletedAt);
+  // Only filter out entries the user explicitly deleted (not cascade-deleted).
+  // Going forward, entries are no longer cascade-deleted on habit deletion,
+  // but older data may still have cascade-deleted entries we need to include.
+  const activeEntries = entryViews;
 
   const allHabits = await getHabitsByUser(householdId, userId);
   const habitMap = new Map(allHabits.map(h => [h.id, h]));
@@ -165,21 +171,22 @@ export function computeFullGoalProgressV2(
     currentValue = entryViews.reduce((sum, entry) => {
       if (habitMap && goal.unit) {
         const habit = habitMap.get(entry.habitId);
-        if (!habit) return sum;
+        // Deleted habits won't be in the map — still count their raw entry value
+        if (habit) {
+          if (habit.goal.type === 'boolean') {
+            // Boolean habits contribute their target value per entry
+            // e.g. "do 25 pull ups" (boolean, target=25) contributes 25 per check-in
+            return sum + (habit.goal.target ?? 1);
+          }
 
-        if (habit.goal.type === 'boolean') {
-          // Boolean habits contribute their target value per entry
-          // e.g. "do 25 pull ups" (boolean, target=25) contributes 25 per check-in
-          return sum + (habit.goal.target ?? 1);
-        }
-
-        if (entry.unit && !unitsMatch(goal.unit, entry.unit)) {
-          warnings.push({
-            type: 'UNIT_MISMATCH',
-            habitId: entry.habitId,
-            expectedUnit: goal.unit,
-            foundUnit: entry.unit,
-          });
+          if (entry.unit && !unitsMatch(goal.unit, entry.unit)) {
+            warnings.push({
+              type: 'UNIT_MISMATCH',
+              habitId: entry.habitId,
+              expectedUnit: goal.unit,
+              foundUnit: entry.unit,
+            });
+          }
         }
       }
       return sum + (entry.value ?? 0);
@@ -214,8 +221,7 @@ export function computeFullGoalProgressV2(
       dayValue = dayEntries.reduce((sum, entry) => {
         if (habitMap && goal.unit) {
           const habit = habitMap.get(entry.habitId);
-          if (!habit) return sum;
-          if (habit.goal.type === 'boolean') {
+          if (habit?.goal.type === 'boolean') {
             return sum + (habit.goal.target ?? 1);
           }
         }
@@ -333,13 +339,12 @@ export async function computeGoalsWithProgressFromData(
     }
   }
 
-  // Use pre-fetched entries if available, otherwise fetch from DB
+  // Include deleted entries so contributions from deleted habits still count.
   const allEntryViews = prefetchedEntries
     ? buildEntryViewsFromEntries(prefetchedEntries, Array.from(allHabitIds), { timeZone })
-    : await getEntryViewsForHabits(Array.from(allHabitIds), householdId, userId, { timeZone });
+    : await getEntryViewsForHabits(Array.from(allHabitIds), householdId, userId, { timeZone, includeDeleted: true });
 
-  // Filter out deleted entries
-  const activeEntryViews = allEntryViews.filter(entry => !entry.deletedAt);
+  const activeEntryViews = allEntryViews;
 
   // Build map of entries by habitId for efficient lookup
   const entriesByHabitId = new Map<string, EntryView[]>();
@@ -430,17 +435,19 @@ export async function computeGoalListProgress(
   // Two parallel queries instead of one huge unbounded query:
   // 1. Aggregation: get totals per habit (sum, count, distinctDays) — no docs transferred
   // 2. Recent entries: only last 30 days for heatmap + inactivity
+  // Include deleted entries so contributions from deleted habits still count.
   const [aggregatedTotals, recentEntryViews] = await Promise.all([
-    aggregateHabitEntryTotals(allHabitIdArray, householdId, userId),
+    aggregateHabitEntryTotals(allHabitIdArray, householdId, userId, { includeDeleted: true }),
     getRecentEntryViewsForHabits(allHabitIdArray, householdId, userId, {
       sinceDayKey,
       timeZone,
+      includeDeleted: true,
     }),
   ]);
 
   // Build lookup maps
   const totalsMap = new Map(aggregatedTotals.map(t => [t.habitId, t]));
-  const activeRecentEntries = recentEntryViews.filter(entry => !entry.deletedAt);
+  const activeRecentEntries = recentEntryViews;
 
   const recentEntriesByHabitId = new Map<string, EntryView[]>();
   for (const entry of activeRecentEntries) {
@@ -464,16 +471,16 @@ export async function computeGoalListProgress(
     if (aggregationMode === 'sum') {
       currentValue = 0;
       for (const habitId of resolvedIds) {
-        const habit = habitMap.get(habitId);
-        if (!habit) continue;
         const totals = totalsMap.get(habitId);
         if (!totals) continue;
 
-        if (habit.goal.type === 'boolean') {
+        const habit = habitMap.get(habitId);
+        // Deleted habits won't be in the map — still count their raw totals
+        if (habit?.goal.type === 'boolean') {
           // Boolean habits contribute target value per entry
           currentValue += (habit.goal.target ?? 1) * totals.entryCount;
         } else {
-          if (goal.unit) {
+          if (habit && goal.unit) {
             const habitUnit = habit.goal.unit;
             if (habitUnit && !unitsMatch(goal.unit, habitUnit)) {
               warnings.push({
@@ -574,8 +581,7 @@ export async function computeGoalListProgress(
         dayValue = dayEntries.reduce((sum, entry) => {
           if (habitMap && goal.unit) {
             const habit = habitMap.get(entry.habitId);
-            if (!habit) return sum;
-            if (habit.goal.type === 'boolean') {
+            if (habit?.goal.type === 'boolean') {
               return sum + (habit.goal.target ?? 1);
             }
           }

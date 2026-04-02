@@ -17,7 +17,8 @@ import {
   recoverCategoryDeletedHabits,
 } from '../repositories/habitRepository';
 import { createCategory, getCategoriesByUser, getCategoryById } from '../repositories/categoryRepository';
-import { deleteHabitEntriesByHabit } from '../repositories/habitEntryRepository';
+// deleteHabitEntriesByHabit intentionally not imported — entries persist after
+// habit deletion so goal progress includes historical contributions.
 import { endMembership } from '../repositories/bundleMembershipRepository';
 import { convertHabitToBundle, ConversionError } from '../services/habitConversionService';
 import type { Habit } from '../../models/persistenceTypes';
@@ -393,8 +394,11 @@ export async function deleteHabitRoute(req: Request, res: Response): Promise<voi
       return;
     }
 
-    const deletedEntriesCount = await deleteHabitEntriesByHabit(id, householdId, userId);
-
+    // Entries are intentionally NOT cascade-deleted. They persist as orphans
+    // so that goal progress still includes historical contributions from
+    // deleted habits. Orphaned entries are invisible in normal views (day view
+    // only iterates over existing habits) but remain queryable by habitId for
+    // goal aggregation.
     const deleted = await deleteHabit(id, householdId, userId);
 
     if (!deleted) {
@@ -409,7 +413,6 @@ export async function deleteHabitRoute(req: Request, res: Response): Promise<voi
 
     res.status(200).json({
       message: 'Habit deleted successfully',
-      deletedEntriesCount,
     });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
