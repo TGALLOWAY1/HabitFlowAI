@@ -292,8 +292,15 @@ export function getDailyHabitRingProgress(
     date: string
 ): { completed: number; total: number } {
     const dailyRootHabits = getHabitsForDate(habits, new Date(date));
-    const completed = dailyRootHabits.filter(h => isHabitComplete(h, logs, date)).length;
-    return { completed, total: dailyRootHabits.length };
+    // Exclude bundle parents from ring metrics — their completion is derived
+    // from children, who are already excluded from root. This aligns with
+    // analytics (which also excludes bundle parents via isTrackableHabit).
+    // Without this, a user with 3 standalone + 1 bundle sees 4 total in the
+    // ring but 5 total in analytics (3 standalone + 2 children), causing
+    // inconsistent completion percentages across views.
+    const trackable = dailyRootHabits.filter(h => h.type !== 'bundle');
+    const completed = trackable.filter(h => isHabitComplete(h, logs, date)).length;
+    return { completed, total: trackable.length };
 }
 
 export function getHabitsForDate(

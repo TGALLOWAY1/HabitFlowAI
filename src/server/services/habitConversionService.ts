@@ -8,6 +8,7 @@
 import { getHabitById, createHabit, updateHabit } from '../repositories/habitRepository';
 import { reassignEntries } from '../repositories/habitEntryRepository';
 import { createMembership } from '../repositories/bundleMembershipRepository';
+import { getClient } from '../lib/mongoClient';
 import { getNowDayKey, resolveTimeZone } from '../utils/dayKey';
 import type { Habit } from '../../models/persistenceTypes';
 import type { BundleMembershipRecord } from '../domain/canonicalTypes';
@@ -40,7 +41,7 @@ export async function convertHabitToBundle(
 ): Promise<ConvertToBundleResult> {
   const { bundleType, children: childDefs, checklistSuccessRule, timeZone } = request;
 
-  // 1. Validate the existing habit
+  // 1. Validate the existing habit (read-only, before transaction)
   const habit = await getHabitById(habitId, householdId, userId);
   if (!habit) {
     throw new ConversionError('HABIT_NOT_FOUND', 'Habit not found');
@@ -58,7 +59,140 @@ export async function convertHabitToBundle(
   const resolvedTz = resolveTimeZone(timeZone);
   const todayDayKey = getNowDayKey(resolvedTz);
 
-  // 2. Reassign historical entries to a legacy child (if any entries exist)
+  // 2. Execute all mutations in a transaction (requires replica set).
+  // Falls back to non-transactional execution if replica set unavailable
+  // (e.g., standalone mongod in tests).
+  const client = await getClient();
+  const session = client.startSession();
+
+  try {
+    let result: ConvertToBundleResult | undefined;
+
+    const doConversion = async () => {
+      let legacyChild: Habit | null = null;
+      const memberships: BundleMembershipRecord[] = [];
+
+      // 2a. Reassign historical entries to a legacy child
+      const { modifiedCount, earliestDayKey } = await reassignEntries(
+        habitId, '__pending__', householdId, userId, session
+      );
+
+      if (modifiedCount > 0 && earliestDayKey) {
+        legacyChild = await createHabit(
+          {
+            name: `${habit.name} (history)`,
+            categoryId: habit.categoryId,
+            goal: { type: 'boolean', target: 1, frequency: 'daily' },
+            bundleParentId: habitId,
+          },
+          householdId,
+          userId,
+          session
+        );
+
+        await reassignEntries('__pending__', legacyChild.id, householdId, userId, session);
+        await updateHabit(legacyChild.id, householdId, userId, { archived: true }, session);
+        legacyChild = { ...legacyChild, archived: true };
+
+        const dayBefore = getDayBefore(todayDayKey);
+        const legacyMembership = await createMembership(
+          habitId, legacyChild.id, earliestDayKey,
+          householdId, userId, dayBefore, null, session
+        );
+        memberships.push(legacyMembership);
+      }
+
+      // 2b. Create new child habits
+      const defaultGoal: Habit['goal'] = { type: 'boolean', target: 1, frequency: 'daily' };
+      const createdChildren: Habit[] = [];
+
+      for (const childDef of childDefs) {
+        const child = await createHabit(
+          {
+            name: childDef.name.trim(),
+            categoryId: habit.categoryId,
+            goal: childDef.goal || defaultGoal,
+            bundleParentId: habitId,
+          },
+          householdId,
+          userId,
+          session
+        );
+        createdChildren.push(child);
+
+        const membership = await createMembership(
+          habitId, child.id, todayDayKey,
+          householdId, userId, null, null, session
+        );
+        memberships.push(membership);
+      }
+
+      // 2c. Update the parent habit to be a bundle
+      const allChildIds = [
+        ...(legacyChild ? [legacyChild.id] : []),
+        ...createdChildren.map(c => c.id),
+      ];
+
+      const parentPatch: Partial<Omit<Habit, 'id' | 'createdAt'>> = {
+        type: 'bundle',
+        bundleType,
+        subHabitIds: allChildIds,
+      };
+
+      if (bundleType === 'checklist' && checklistSuccessRule) {
+        parentPatch.checklistSuccessRule = checklistSuccessRule;
+      }
+
+      const updatedParent = await updateHabit(habitId, householdId, userId, parentPatch, session);
+      if (!updatedParent) {
+        throw new ConversionError('UPDATE_FAILED', 'Failed to update parent habit');
+      }
+
+      result = {
+        parent: updatedParent,
+        children: createdChildren,
+        legacyChild,
+        memberships,
+      };
+    };
+
+    try {
+      await session.withTransaction(doConversion);
+    } catch (txError: unknown) {
+      // If transactions aren't supported (standalone mongod), fall back to direct execution.
+      // This ensures tests and dev environments without replica sets still work.
+      const code = (txError as { codeName?: string })?.codeName;
+      if (code === 'IllegalOperation' || code === 'NotAReplicaSet' || code === 'NoSuchTransaction') {
+        session.endSession();
+        // Re-run without session (non-transactional fallback)
+        return convertHabitToBundleNoTx(habitId, householdId, userId, habit, childDefs, bundleType, checklistSuccessRule, todayDayKey);
+      }
+      throw txError;
+    }
+
+    if (!result) {
+      throw new ConversionError('TRANSACTION_FAILED', 'Transaction completed but result is undefined');
+    }
+    return result;
+  } finally {
+    session.endSession();
+  }
+}
+
+/**
+ * Non-transactional fallback for environments without replica set support.
+ * Same logic as the transactional path but without session passing.
+ */
+async function convertHabitToBundleNoTx(
+  habitId: string,
+  householdId: string,
+  userId: string,
+  habit: Habit,
+  childDefs: ConvertToBundleChild[],
+  bundleType: 'choice' | 'checklist',
+  checklistSuccessRule: ChecklistSuccessRule | null | undefined,
+  todayDayKey: string
+): Promise<ConvertToBundleResult> {
   let legacyChild: Habit | null = null;
   const memberships: BundleMembershipRecord[] = [];
 
@@ -67,7 +201,6 @@ export async function convertHabitToBundle(
   );
 
   if (modifiedCount > 0 && earliestDayKey) {
-    // Create the legacy child habit
     legacyChild = await createHabit(
       {
         name: `${habit.name} (history)`,
@@ -79,31 +212,18 @@ export async function convertHabitToBundle(
       userId
     );
 
-    // Now reassign the entries from '__pending__' to the real legacy child ID
     await reassignEntries('__pending__', legacyChild.id, householdId, userId);
-
-    // Archive the legacy child so it's hidden from active lists
     await updateHabit(legacyChild.id, householdId, userId, { archived: true });
     legacyChild = { ...legacyChild, archived: true };
 
-    // Compute activeToDayKey: day before conversion
     const dayBefore = getDayBefore(todayDayKey);
-
-    // Create membership for legacy child covering historical range
     const legacyMembership = await createMembership(
-      habitId,
-      legacyChild.id,
-      earliestDayKey,
-      householdId,
-      userId,
-      dayBefore
+      habitId, legacyChild.id, earliestDayKey,
+      householdId, userId, dayBefore
     );
     memberships.push(legacyMembership);
-  } else if (modifiedCount === 0) {
-    // No entries to reassign — revert the placeholder (no-op since nothing was changed)
   }
 
-  // 3. Create new child habits
   const defaultGoal: Habit['goal'] = { type: 'boolean', target: 1, frequency: 'daily' };
   const createdChildren: Habit[] = [];
 
@@ -120,19 +240,13 @@ export async function convertHabitToBundle(
     );
     createdChildren.push(child);
 
-    // Create active membership for each new child
     const membership = await createMembership(
-      habitId,
-      child.id,
-      todayDayKey,
-      householdId,
-      userId,
-      null
+      habitId, child.id, todayDayKey,
+      householdId, userId, null
     );
     memberships.push(membership);
   }
 
-  // 4. Update the parent habit to be a bundle
   const allChildIds = [
     ...(legacyChild ? [legacyChild.id] : []),
     ...createdChildren.map(c => c.id),

@@ -121,6 +121,7 @@ Deployment: Render (backend via `render.yaml`) + Vercel (frontend via `vercel.js
 - **Simplicity First**: Make every change as simple as possible. Minimal code impact.
 - **No Laziness**: Find root causes. No temporary fixes.
 - **Minimal Impact**: Changes should only touch what's necessary.
+- **Concrete Impact Examples**: When describing bugs, fixes, or behavioral changes, include a concrete example showing the before/after impact with real numbers. Example: "A weekly habit previously showed ~14% completion rate (1/7 days). Now correctly shows 100% (1/1 week)." This makes the impact immediately understandable and helps reviewers assess severity.
 
 ## Documentation
 

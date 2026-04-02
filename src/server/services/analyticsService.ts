@@ -10,6 +10,7 @@ import type { Habit, HabitEntry, Category, Routine, RoutineLog, Goal } from '../
 import type { BundleMembershipRecord } from '../domain/canonicalTypes';
 import { calculateHabitStreakMetrics, type HabitDayState } from './streakService';
 import { getCanonicalDayKeyFromEntry } from '../utils/dayKey';
+import { isTrackableHabit, getScheduledHabitsForDay } from './scheduleEngine';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -154,23 +155,14 @@ function generateDayKeyRange(startDayKey: string, endDayKey: string): string[] {
   return days;
 }
 
-/**
- * Determine which active (non-archived, non-bundle-parent) habits were scheduled on a given day.
- * If a habit has no assignedDays, it's considered scheduled every day.
- */
-function getScheduledHabitsForDay(habits: Habit[], dayKey: string): Habit[] {
-  const dayOfWeek = new Date(dayKey + 'T12:00:00Z').getUTCDay();
-  return habits.filter(h => {
-    if (!h.assignedDays || h.assignedDays.length === 0) return true;
-    return h.assignedDays.includes(dayOfWeek);
-  });
-}
+// getScheduledHabitsForDay and isTrackableHabit are imported from scheduleEngine.ts
+// (shared with streakService and progress views for consistent opportunity counting)
 
 /**
- * Filter to trackable habits: non-archived, non-bundle-parent.
+ * Filter to trackable habits using the shared schedule engine predicate.
  */
 function getTrackableHabits(habits: Habit[]): Habit[] {
-  return habits.filter(h => !h.archived && h.type !== 'bundle');
+  return habits.filter(isTrackableHabit);
 }
 
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];

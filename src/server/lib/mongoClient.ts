@@ -389,4 +389,18 @@ export async function isConnected(): Promise<boolean> {
   }
 }
 
+/**
+ * Get the underlying MongoClient instance.
+ * Required for session/transaction support.
+ * Ensures connection is established before returning.
+ */
+export async function getClient(): Promise<MongoClient> {
+  // Ensure connection is established
+  await getDb();
+  if (!client) {
+    throw new Error('MongoClient not available after getDb()');
+  }
+  return client;
+}
+
 export { HABIT_ENTRIES_UNIQUE_INDEX_NAME };
