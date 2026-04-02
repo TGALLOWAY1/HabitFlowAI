@@ -16,7 +16,7 @@ import {
   deactivateHealthRule,
 } from '../repositories/habitHealthRuleRepository';
 import { runBackfill } from '../services/healthBackfillService';
-import { getNowDayKey } from '../utils/dayKey';
+import { getNowDayKey, resolveTimeZone } from '../utils/dayKey';
 import type { HealthMetricType, HealthRuleOperator, HealthRuleBehavior } from '../../models/persistenceTypes';
 
 const router = Router({ mergeParams: true });
@@ -201,7 +201,10 @@ router.post('/backfill', async (req: Request, res: Response) => {
   try {
     const { householdId, userId } = getRequestIdentity(req);
     const { habitId } = req.params;
-    const { startDayKey: customStartDayKey } = req.body;
+    const { startDayKey: customStartDayKey, timeZone } = req.body;
+
+    // Resolve user timezone for accurate dayKey boundaries
+    const userTimeZone = resolveTimeZone(typeof timeZone === 'string' ? timeZone : undefined);
 
     // Get habit
     const habit = await getHabitById(habitId, householdId, userId);
@@ -219,7 +222,7 @@ router.post('/backfill', async (req: Request, res: Response) => {
 
     // Determine start date: custom, or habit creation date
     const startDayKey = customStartDayKey || habit.createdAt.slice(0, 10);
-    const endDayKey = getNowDayKey();
+    const endDayKey = getNowDayKey(userTimeZone);
 
     const result = await runBackfill(habit, rule, startDayKey, endDayKey, householdId, userId);
 
