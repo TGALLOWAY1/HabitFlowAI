@@ -107,7 +107,7 @@ function buildUrlForRoute(route: AppRoute, params: Record<string, string> = {}):
 }
 
 const HabitTrackerContent: React.FC = () => {
-  const { categories, habits, logs, toggleHabit, updateLog, lastPersistenceError, clearPersistenceError, potentialEvidence, loading } = useHabitStore();
+  const { categories, habits, logs, toggleHabit, updateLog, deleteHabit, lastPersistenceError, clearPersistenceError, potentialEvidence, loading } = useHabitStore();
   const [activeCategoryId, setActiveCategoryId] = useState<string>('');
   const UNCATEGORIZED_ID = '__uncategorized__';
 
@@ -470,7 +470,16 @@ const HabitTrackerContent: React.FC = () => {
           ) : trackerViewMode === 'weekly' ? (
             <WeeklyView />
           ) : (
-            <DayView onAddHabit={() => setIsModalOpen(true)} />
+            <DayView
+              onAddHabit={() => setIsModalOpen(true)}
+              onEditHabit={(habit) => {
+                setEditingHabit(habit);
+                setIsBundleConvert(false);
+                setIsModalOpen(true);
+              }}
+              onViewHistory={(habit) => setHistoryHabit(habit)}
+              onDeleteHabit={deleteHabit}
+            />
           )
         ) : view === 'dashboard' ? (
           <ProgressDashboard

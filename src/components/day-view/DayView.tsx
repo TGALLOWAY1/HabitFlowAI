@@ -79,9 +79,12 @@ const SortableCategoryWrapper: React.FC<SortableCategoryWrapperProps> = ({ id, c
 
 interface DayViewProps {
     onAddHabit?: () => void;
+    onEditHabit?: (habit: Habit) => void;
+    onViewHistory?: (habit: Habit) => void;
+    onDeleteHabit?: (id: string) => Promise<void>;
 }
 
-export const DayView = ({ onAddHabit }: DayViewProps = {}) => {
+export const DayView = ({ onAddHabit, onEditHabit, onViewHistory, onDeleteHabit }: DayViewProps = {}) => {
     const {
         habits,
         categories,
@@ -406,6 +409,9 @@ export const DayView = ({ onAddHabit }: DayViewProps = {}) => {
                                                 onPin={handlePin}
                                                 onMoveToCategory={(h) => setCategoryPickerHabit(h)}
                                                 onAddToBundle={(h) => setBundlePickerHabit(h)}
+                                                onViewHistory={onViewHistory}
+                                                onEditHabit={onEditHabit}
+                                                onDeleteHabit={onDeleteHabit}
                                                 allHabitsLookup={allHabitsLookup}
                                                 onUpdateHabitEntry={upsertHabitEntry}
                                                 deleteHabitEntryByKey={deleteHabitEntryByKey}
@@ -426,6 +432,9 @@ export const DayView = ({ onAddHabit }: DayViewProps = {}) => {
                                     onPin={handlePin}
                                     onMoveToCategory={(h) => setCategoryPickerHabit(h)}
                                     onAddToBundle={(h) => setBundlePickerHabit(h)}
+                                    onViewHistory={onViewHistory}
+                                    onEditHabit={onEditHabit}
+                                    onDeleteHabit={onDeleteHabit}
                                     allHabitsLookup={allHabitsLookup}
                                     onUpdateHabitEntry={upsertHabitEntry}
                                     deleteHabitEntryByKey={deleteHabitEntryByKey}

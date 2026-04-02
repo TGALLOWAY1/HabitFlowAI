@@ -100,7 +100,7 @@ HabitFlow App
 |---|---|---|---|---|---|
 | Dashboard | Page | Bottom tab / default view | Overview hub with progress, shortcuts | Goals, Routines, Habits, Journal, Tasks, Wellbeing | Goal Detail, Tracker, Routines, Journal, Tasks, Wellbeing History, Check-in Modal |
 | Tracker (Grid) | Page | Bottom tab "Habits" | Grid of habits by category, daily logging | Habits, Categories, Entries | Add Habit Modal, Habit History, Category Picker |
-| Tracker (Today) | Page | View toggle on Tracker | Single-day habit view grouped by category | Habits, Entries | Same as Grid |
+| Tracker (Today) | Page | View toggle on Tracker | Single-day habit view grouped by category, with full action icons (history, edit, delete, move, bundle) in expanded card | Habits, Entries | Same as Grid |
 | Tracker (Weekly) | Page | View toggle on Tracker | Week-at-a-glance overview | Habits, Entries | Same as Grid |
 | Routines List | Page | Bottom tab "Routines" | Card list of all routines | Routines | Routine Editor, Runner, Preview |
 | Goals List | Page | Bottom tab "Goals" | Collapsible category stacks with progress bars | Goals, Categories | Create Goal Flow, Goal Detail, Edit Goal Modal |
@@ -119,7 +119,7 @@ HabitFlow App
 | Screen Name | Type | How Opened | Purpose | Related Objects |
 |---|---|---|---|---|
 | Add/Edit Habit | Modal | "+ Habit" button or habit edit action | Full habit creation/editing with bundle support | Habits, Categories, Goals, Bundles |
-| Habit History | Modal | Habit context menu "History" | View historical entries for a habit | Habits, Entries |
+| Habit History | Modal | Habit context menu "History" | Calendar-based history view with scrollable month calendar (top) and date entry list (bottom); select a date to edit/create entries | Habits, Entries |
 | Habit Log | Modal | Long-press / click habit entry cell | Manual value entry for numeric habits | Habits, Entries |
 | Bundle Picker | Modal | Habit context menu "Add to Bundle" | Select existing bundle for habit membership | Habits, Bundles |
 | Convert to Bundle Confirm | Modal | "Convert to Bundle" action | Confirmation before converting habit to bundle | Habits, Bundles |

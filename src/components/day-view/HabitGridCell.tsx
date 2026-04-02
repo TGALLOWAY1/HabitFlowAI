@@ -1,4 +1,4 @@
-import { Check, Target, Hash, Pin, PinOff, ListTodo, Layers, FolderInput, Trophy, Clock, Calendar, Shield, Repeat, Activity } from 'lucide-react';
+import { Check, Target, Hash, Pin, PinOff, ListTodo, Layers, FolderInput, Trophy, Clock, Calendar, Shield, Repeat, Activity, History, Pencil, Trash2 } from 'lucide-react';
 import type { Habit, DayLog } from '../../types';
 import { cn } from '../../utils/cn';
 
@@ -23,6 +23,9 @@ interface HabitGridCellProps {
     onPin: (id: string) => void;
     onMoveToCategory?: (habit: Habit) => void;
     onAddToBundle?: (habit: Habit) => void;
+    onViewHistory?: (habit: Habit) => void;
+    onEditHabit?: (habit: Habit) => void;
+    onDeleteHabit?: (id: string) => Promise<void>;
 
     // Bundle Props
     subHabits?: Habit[];
@@ -47,6 +50,9 @@ export const HabitGridCell = ({
     onPin,
     onMoveToCategory,
     onAddToBundle,
+    onViewHistory,
+    onEditHabit,
+    onDeleteHabit,
     subHabits,
     subHabitStatuses,
     onSubHabitToggle,
@@ -305,7 +311,7 @@ export const HabitGridCell = ({
                         </div>
                     )}
 
-                    {/* Actions (Pin, Move, Add to Bundle) */}
+                    {/* Actions */}
                     <div className="flex items-center justify-end gap-1">
                         {onAddToBundle && habit.type !== 'bundle' && !habit.bundleParentId && (
                             <button
@@ -325,6 +331,24 @@ export const HabitGridCell = ({
                                 <span>Move</span>
                             </button>
                         )}
+                        {onViewHistory && (
+                            <button
+                                onClick={() => onViewHistory(habit)}
+                                className="p-1.5 rounded-md transition-colors text-neutral-500 hover:text-neutral-300 hover:bg-white/5"
+                                title="View History"
+                            >
+                                <History size={12} />
+                            </button>
+                        )}
+                        {onEditHabit && (
+                            <button
+                                onClick={() => onEditHabit(habit)}
+                                className="p-1.5 rounded-md transition-colors text-neutral-500 hover:text-neutral-300 hover:bg-white/5"
+                                title="Edit Habit"
+                            >
+                                <Pencil size={12} />
+                            </button>
+                        )}
                         <button
                             onClick={() => onPin(habit.id)}
                             className={cn(
@@ -337,6 +361,19 @@ export const HabitGridCell = ({
                         >
                             {habit.pinned ? <PinOff size={12} /> : <Pin size={12} />}
                         </button>
+                        {onDeleteHabit && (
+                            <button
+                                onClick={async () => {
+                                    if (confirm(`Delete "${habit.name}"? This cannot be undone.`)) {
+                                        await onDeleteHabit(habit.id);
+                                    }
+                                }}
+                                className="p-1.5 rounded-md transition-colors text-neutral-500 hover:text-red-400 hover:bg-white/5"
+                                title="Delete Habit"
+                            >
+                                <Trash2 size={12} />
+                            </button>
+                        )}
                     </div>
                 </div>
             )}
