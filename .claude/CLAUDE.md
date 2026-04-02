@@ -141,6 +141,10 @@ Any change to features, goal types, bundle behavior, AI capabilities, Apple Heal
 - Adding/removing Apple Health metrics or rules → update the Health tab
 - Adding/removing habit tracking types → update the Basics tab
 
+## Communication Style
+
+- When explaining bugs, audit findings, or architectural decisions, **include concrete impact examples**. Show the user exactly what goes wrong with specific numbers and scenarios (e.g., "A weekly habit previously showed ~14% completion rate (1/7 days). Now correctly shows 100% (1/1 week)."). Abstract descriptions are less actionable than concrete before/after examples.
+
 ## Workflow
 
 - Enter plan mode for non-trivial tasks (3+ steps or architectural decisions)

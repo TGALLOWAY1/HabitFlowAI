@@ -5,6 +5,7 @@
  * All queries are scoped by householdId + userId (user-owned in household).
  */
 
+import type { ClientSession } from 'mongodb';
 import { getDb } from '../lib/mongoClient';
 import { scopeFilter, requireScope } from '../lib/scoping';
 import type { Habit } from '../../models/persistenceTypes';
@@ -19,7 +20,8 @@ function stripScope(doc: any): Habit {
 export async function createHabit(
   data: Omit<Habit, 'id' | 'createdAt' | 'archived'>,
   householdId: string,
-  userId: string
+  userId: string,
+  session?: ClientSession
 ): Promise<Habit> {
   const scope = requireScope(householdId, userId);
   const db = await getDb();
@@ -43,7 +45,7 @@ export async function createHabit(
         userId: scope.userId,
       },
     },
-    { upsert: true, returnDocument: 'after' }
+    { upsert: true, returnDocument: 'after', session }
   );
 
   if (!result) {
@@ -104,7 +106,8 @@ export async function updateHabit(
   id: string,
   householdId: string,
   userId: string,
-  patch: Partial<Omit<Habit, 'id' | 'createdAt'>>
+  patch: Partial<Omit<Habit, 'id' | 'createdAt'>>,
+  session?: ClientSession
 ): Promise<Habit | null> {
   const db = await getDb();
   const collection = db.collection(COLLECTION_NAME);
@@ -112,7 +115,7 @@ export async function updateHabit(
   const result = await collection.findOneAndUpdate(
     scopeFilter(householdId, userId, { id }),
     { $set: patch },
-    { returnDocument: 'after' }
+    { returnDocument: 'after', session }
   );
 
   if (!result) return null;

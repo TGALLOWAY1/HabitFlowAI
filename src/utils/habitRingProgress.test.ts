@@ -121,12 +121,12 @@ describe('Case B — standalone + checklist bundle', () => {
         ...cl.children,
     ];
 
-    it('total = 3 (2 standalone + 1 bundle), not 6', () => {
+    it('total = 2 (standalone only — bundle parents excluded from ring metrics)', () => {
         const result = getDailyHabitRingProgress(habits, {}, DATE);
-        expect(result.total).toBe(3);
+        expect(result.total).toBe(2);
     });
 
-    it('bundle children are excluded from root habits', () => {
+    it('bundle children are excluded from root habits, parent is still in root (for DayView rendering)', () => {
         const childIds = getBundleChildIds(habits);
         expect(childIds.size).toBe(4);
         const root = getRootHabits(habits);
@@ -147,9 +147,9 @@ describe('Case C — standalone + choice bundle', () => {
         ...ch.children,
     ];
 
-    it('total = 3 (2 standalone + 1 bundle), not 5', () => {
+    it('total = 2 (standalone only — bundle parents excluded from ring metrics)', () => {
         const result = getDailyHabitRingProgress(habits, {}, DATE);
-        expect(result.total).toBe(3);
+        expect(result.total).toBe(2);
     });
 });
 
@@ -167,9 +167,9 @@ describe('Case D — mixed: standalone + checklist + choice', () => {
         ...ch.children,
     ];
 
-    it('total = 3 (1 standalone + 1 checklist + 1 choice)', () => {
+    it('total = 1 (standalone only — bundle parents excluded from ring metrics)', () => {
         const result = getDailyHabitRingProgress(habits, {}, DATE);
-        expect(result.total).toBe(3);
+        expect(result.total).toBe(1);
     });
 });
 
@@ -201,7 +201,7 @@ describe('Case E — bundle completion semantics', () => {
             expect(isHabitComplete(cl.parent, logs, DATE)).toBe(true);
         });
 
-        it('ring counts 1 completed when all children done', () => {
+        it('ring excludes bundle parents — 0 trackable when only bundles present', () => {
             const logs = Object.fromEntries([
                 makeLog('cl-child-1', DATE, true),
                 makeLog('cl-child-2', DATE, true),
@@ -209,15 +209,7 @@ describe('Case E — bundle completion semantics', () => {
                 makeLog('cl-child-4', DATE, true),
             ]);
             const result = getDailyHabitRingProgress(habits, logs, DATE);
-            expect(result).toEqual({ completed: 1, total: 1 });
-        });
-
-        it('ring counts 0 completed when partially done', () => {
-            const logs = Object.fromEntries([
-                makeLog('cl-child-1', DATE, true),
-            ]);
-            const result = getDailyHabitRingProgress(habits, logs, DATE);
-            expect(result).toEqual({ completed: 0, total: 1 });
+            expect(result).toEqual({ completed: 0, total: 0 });
         });
     });
 
@@ -236,12 +228,12 @@ describe('Case E — bundle completion semantics', () => {
             expect(isHabitComplete(ch.parent, {}, DATE)).toBe(false);
         });
 
-        it('ring counts 1 completed when one option selected', () => {
+        it('ring excludes bundle parents — 0 trackable when only bundles present', () => {
             const logs = Object.fromEntries([
                 makeLog('ch-opt-1', DATE, true),
             ]);
             const result = getDailyHabitRingProgress(habits, logs, DATE);
-            expect(result).toEqual({ completed: 1, total: 1 });
+            expect(result).toEqual({ completed: 0, total: 0 });
         });
     });
 });
@@ -267,7 +259,7 @@ describe('Case F — no double-counting of parent and children', () => {
         expect(root[0].id).toBe('bundle-ch');
     });
 
-    it('mixed scenario: completed count never exceeds total', () => {
+    it('mixed scenario: ring counts only standalone habits (bundle parents excluded)', () => {
         const standalone = standaloneHabits();
         const habits = [
             ...standalone,
@@ -286,8 +278,11 @@ describe('Case F — no double-counting of parent and children', () => {
             makeLog('ch-opt-1', DATE, true),
         ]);
         const result = getDailyHabitRingProgress(habits, logs, DATE);
-        expect(result.total).toBe(5); // 3 standalone + 1 checklist + 1 choice
-        expect(result.completed).toBe(5);
+        // Ring counts 3 standalone only — bundle parents excluded for
+        // consistency with analytics (which also excludes bundle parents
+        // via isTrackableHabit). Children are excluded by getBundleChildIds.
+        expect(result.total).toBe(3);
+        expect(result.completed).toBe(3);
         expect(result.completed).toBeLessThanOrEqual(result.total);
     });
 });

@@ -5,6 +5,7 @@
  * All queries are scoped by householdId + userId.
  */
 
+import type { ClientSession } from 'mongodb';
 import { getDb } from '../lib/mongoClient';
 import { scopeFilter, requireScope } from '../lib/scoping';
 import { randomUUID } from 'crypto';
@@ -27,7 +28,8 @@ export async function createMembership(
   householdId: string,
   userId: string,
   activeToDayKey?: string | null,
-  daysOfWeek?: number[] | null
+  daysOfWeek?: number[] | null,
+  session?: ClientSession
 ): Promise<BundleMembershipRecord> {
   requireScope(householdId, userId);
   const db = await getDb();
@@ -49,7 +51,7 @@ export async function createMembership(
     ...record,
     householdId,
     userId,
-  });
+  }, { session });
 
   return record;
 }

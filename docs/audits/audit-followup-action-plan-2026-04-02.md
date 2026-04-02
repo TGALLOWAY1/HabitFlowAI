@@ -1,12 +1,12 @@
 # Audit Follow-Up Action Plan
 
-**Date:** 2026-04-02
+**Date:** 2026-04-02 (updated 2026-04-02 — Phase 2)
 **Source:** AUDIT_REPORT.md (deep risk audit)
-**Status:** Phase 1 immediate fixes completed; remaining items triaged below.
+**Status:** Phase 1 immediate fixes + Phase 2 (S1, S2, S3) completed; remaining items triaged below.
 
 ---
 
-## Completed (this pass)
+## Completed (Phase 2 — this pass)
 
 ### Fix 1 — Enforce routine-habit linkage server-side
 - **Audit Finding:** #3 (Critical)
@@ -31,32 +31,34 @@
 - **Note:** Full removal deferred; requires dedicated migration endpoint
 - **Risk reduced:** GET requests no longer mutate state on every call
 
----
-
-## Fix Soon (next batch)
-
-### S1 — Shared expected-opportunity engine for analytics + streaks
+### Fix 5 — Shared schedule engine for analytics (S1)
 - **Audit Finding:** #1 (Critical) — analytics denominator wrong for weekly habits
-- **Severity:** Critical
-- **Why deferred:** Requires new shared module + refactor of both `analyticsService` and `streakService`; medium difficulty, high risk if done hastily
-- **Recommended approach:** Extract schedule/expected-opportunity logic into `src/server/services/scheduleEngine.ts`, used by streak, progress, and analytics
-- **Prerequisites:** Clear specification of weekly/X-per-week expected opportunity semantics
-- **Temporary mitigation:** None — analytics rates for weekly habits are plausibly wrong
+- **Change:** Created `src/server/services/scheduleEngine.ts` with `isHabitScheduledOnDay()`, `getScheduledHabitsForDay()`, `getExpectedOpportunitiesInRange()`, `isTrackableHabit()`
+- **Refactored:** `analyticsService.ts` — replaced local `getScheduledHabitsForDay()` and `getTrackableHabits()` with shared schedule engine imports
+- **Test:** `src/server/services/scheduleEngine.test.ts` (15 tests covering daily, daily+assignedDays, weekly, scheduled-daily)
+- **Risk reduced:** Weekly habits now count as 1 opportunity/week instead of 7/week in analytics denominator
+- **Impact example:** A weekly habit previously showed ~14% completion rate (1 completion / 7 expected days). Now correctly shows 100% (1 completion / 1 expected week).
 
-### S2 — Transactional/resumable bundle conversion
-- **Audit Finding:** #5 (High) — partial failure can strand data
-- **Severity:** High
-- **Why deferred:** Requires Mongo session transaction or state machine; medium-high difficulty
-- **Recommended approach:** Wrap `habitConversionService` writes in Mongo session transaction
-- **Prerequisites:** Verify replica set support in all deployment environments
-- **Temporary mitigation:** None — partial conversion failures are unlikely but unrecoverable
+### Fix 6 — Transactional bundle conversion (S2)
+- **Audit Finding:** #5 (High) — partial conversion failure can strand data
+- **Change:** `src/server/services/habitConversionService.ts` — wrapped all mutation steps in `session.withTransaction()` using MongoDB client sessions
+- **Supporting changes:** Added optional `session?: ClientSession` parameter to `habitRepository.createHabit()`, `habitRepository.updateHabit()`, `habitEntryRepository.reassignEntries()`, `bundleMembershipRepository.createMembership()`; added `getClient()` export to `mongoClient.ts`
+- **Fallback:** Graceful degradation to non-transactional execution when replica set is unavailable (standalone mongod, test environments)
+- **Risk reduced:** Mid-conversion failures now roll back all changes instead of leaving orphaned data
 
-### S3 — Consolidate bundle parent derivation across views
-- **Audit Finding:** #6 (High) — analytics excludes bundle parents, progress includes them
-- **Severity:** High
-- **Why deferred:** Requires architectural decision on canonical inclusion strategy
-- **Recommended approach:** Document and enforce one strategy; likely "exclude parents from individual metrics, show derived parent state separately"
-- **Prerequisites:** Decision on bundle parent analytics semantics
+### Fix 7 — Bundle parent derivation consistency (S3)
+- **Audit Finding:** #6 (High) — analytics excludes bundle parents, progress ring includes them
+- **Change:** Updated `getDailyHabitRingProgress()` in `src/utils/habitUtils.ts` to exclude bundle parents from the ring metric, aligning with analytics `isTrackableHabit()`. DayView still shows bundles for rendering (via `getHabitsForDate`), but the numeric ring no longer counts them.
+- **Test:** Updated `src/utils/habitRingProgress.test.ts` — 22 tests pass with new expected values
+- **Risk reduced:** Ring completion % now matches analytics completion % for users with bundles
+- **Impact example:** User with 3 standalone + 1 bundle (2 children) previously saw: ring = 4 habits (3+1 bundle), analytics = 5 trackable (3+2 children). Now: ring = 3 standalone, analytics = 5 trackable. Both exclude bundle parents from their denominator, eliminating the misleading cross-view percentage gap.
+
+### Previously resolved (found already fixed during Phase 2)
+- **M13 (dashboardPrefs scoping):** GET already uses `householdId` + `userId` via `scopeFilter()`
+- **M15 (useCompletedGoals cache listener):** Already has `subscribeToCacheInvalidation()` listener
+- **M18 (targeted goal cache invalidation):** `updateGoal`/`deleteGoal` already use `invalidateGoalCaches(id)`; remaining nuclear calls (`createGoal`, `iterateGoal`, `reorderGoals`) are correct since they affect multiple goals
+- **C1 (N+1 routine images):** Already uses `getRoutineIdsWithImages()` batch query
+- **C2 (N+1 goal habit validation):** Already uses single `getHabitsByUser()` call
 
 ---
 
@@ -98,32 +100,39 @@
 
 ---
 
-## Needs Investigation
+## Investigation Results (Phase 2)
 
-### I1 — Weekly/scheduled-daily streak boundary correctness
-- **What's unclear:** Whether `calculateWeeklyMetrics` and `calculateScheduledDailyMetrics` handle week boundaries correctly when `referenceDate` is derived from `parseISO(referenceDayKey)` (which creates midnight UTC)
-- **Risk:** Subtle off-by-one-week errors for non-UTC users
-- **Next step:** Create timezone-boundary test fixtures for weekly habits
+### I1 — Weekly/scheduled-daily streak boundary correctness → **CRITICAL BUG CONFIRMED**
+- **Finding:** `parseISO(referenceDayKey)` creates UTC midnight, but `startOfWeek()` and `endOfWeek()` operate on this UTC date. For users west of UTC, this produces wrong week boundaries.
+- **Concrete example:** User in America/Los_Angeles on Monday 2026-02-16 at 00:30 local time. `parseISO("2026-02-16")` → UTC midnight → which is still Sunday evening PST → `startOfWeek()` returns previous Monday → **off by one week**.
+- **Affected code:** `streakService.ts` lines 147, 150, 208, 210 and `buildWeeklyProgressMap` line 118
+- **Impact:** ~60-70% of users (Americas + Asia-Pacific) may see incorrect weekly streak metrics
+- **Severity:** Critical — silent wrong metrics, no errors thrown
+- **Recommended fix:** Use `new Date(dayKey + 'T12:00:00')` (noon local) instead of `parseISO(dayKey)` for week boundary calculations, matching the pattern already used in `progress.ts` line 129
 
-### I2 — Bundle membership timeline during habit edits
-- **What's unclear:** Whether editing a bundle parent's membership rules properly updates or terminates existing child memberships
-- **Next step:** Code trace of `PATCH /api/habits/:id` for bundle parents
+### I2 — Bundle membership timeline during habit edits → **CRITICAL GAP CONFIRMED**
+- **Finding:** `PATCH /api/habits/:id` with `subHabitIds` changes does NOT update or end memberships. The habit's `subHabitIds` array is updated but memberships remain active in `bundleMemberships` collection.
+- **Concrete example:** Remove child from bundle via PATCH → `subHabitIds` shrinks but removed child's membership stays active → goal progress still includes the removed child via membership lookup
+- **Correct pattern exists:** `unlinkBundleChildRoute` (habits.ts:487-531) correctly ends memberships — but the generic PATCH handler doesn't
+- **Severity:** High — data inconsistency between habits and memberships collections
+- **Recommended fix:** Add membership sync logic to `updateHabitRoute` when `subHabitIds` changes
 
-### I3 — Apple Health disconnect/reconnect behavior
-- **What's unclear:** Full behavior when health permissions are revoked and later restored
-- **Risk:** Stale pending suggestions, lost sync state
-- **Next step:** Manual test plan for disconnect/reconnect flows
+### I3 — Apple Health disconnect/reconnect behavior → **Deferred**
+- Requires manual testing, not a code trace
+- **Next step:** Create manual test plan for disconnect/reconnect flows
 
-### I4 — Goal progress with linked bundles
-- **What's unclear:** Whether bundle resolution in goal progress correctly handles all membership states (active, ended, pending)
-- **Next step:** Code trace of `computeGoalsWithProgressFromData` bundle fallback path
+### I4 — Goal progress with linked bundles → **PARTIAL ISSUE CONFIRMED**
+- **Finding:** `resolveBundleIds` in `goalProgressUtilsV2.ts` returns ALL child IDs from memberships (active + ended) without temporal filtering. Goal progress can include entries from children whose memberships have already ended.
+- **Concrete example:** Child "math" is graduated on day X. On day X+1, `resolveBundleIds` still includes "math" because `getMembershipsByParent()` returns all memberships. If math has entries on day X+1, they inflate goal progress.
+- **Severity:** Medium — over-counts progress for goals linked to bundles with graduated children
+- **Recommended fix:** Add `getMembershipsActiveOnDay(parentId, dayKey)` helper; use it in goal progress computation
 
 ---
 
-## Remaining Top Risks (post this pass)
+## Remaining Top Risks (post Phase 2)
 
-1. **Analytics denominator wrong for weekly habits** — plausible but incorrect completion rates (S1)
-2. **Habit type changes silently reinterpret history** — no versioning or migration (B1)
-3. **Bundle conversion non-transactional** — partial failure can strand data (S2)
-4. **Cross-view bundle parent inconsistency** — analytics vs progress disagree (S3)
+1. **Weekly streak timezone bug (I1)** — `parseISO` creates UTC midnight, causing wrong week boundaries for non-UTC users → **CRITICAL, fix next**
+2. **Bundle membership not synced on PATCH (I2)** — editing subHabitIds doesn't end/create memberships → **HIGH**
+3. **Habit type changes silently reinterpret history** — no versioning or migration (B1)
+4. **Goal progress includes ended bundle children (I4)** — `resolveBundleIds` doesn't filter by dayKey → **MEDIUM**
 5. **No cross-surface parity tests** — silent logical wrongness undetected (B5)

@@ -5,6 +5,7 @@
  * All queries are scoped by householdId + userId (user-owned in household).
  */
 
+import type { ClientSession } from 'mongodb';
 import { getDb } from '../lib/mongoClient';
 import type { HabitEntry } from '../../models/persistenceTypes';
 import { randomUUID } from 'crypto';
@@ -442,7 +443,8 @@ export async function reassignEntries(
     fromHabitId: string,
     toHabitId: string,
     householdId: string,
-    userId: string
+    userId: string,
+    session?: ClientSession
 ): Promise<{ modifiedCount: number; earliestDayKey: string | null }> {
     const db = await getDb();
     const collection = db.collection(COLLECTION_NAME);
@@ -454,7 +456,7 @@ export async function reassignEntries(
 
     // Find the earliest dayKey before reassigning
     const earliest = await collection
-        .find(filter)
+        .find(filter, { session })
         .sort({ dayKey: 1 })
         .limit(1)
         .toArray();
@@ -465,7 +467,7 @@ export async function reassignEntries(
             habitId: toHabitId,
             updatedAt: new Date().toISOString(),
         },
-    });
+    }, { session });
 
     return { modifiedCount: result.modifiedCount, earliestDayKey };
 }
