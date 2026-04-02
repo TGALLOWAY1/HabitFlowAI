@@ -23,8 +23,11 @@ import { convertHabitToBundle, ConversionError } from '../services/habitConversi
 import type { Habit } from '../../models/persistenceTypes';
 import { getRequestIdentity } from '../middleware/identity';
 
-// One-time recovery: track which users have been recovered to avoid repeated DB calls
+// One-time recovery: track which users have been recovered to avoid repeated DB calls.
+// Both recovery layers run at most once per user per server process to avoid
+// mutating state on every GET request (audit finding: read-path side effects).
 const recoveredUsers = new Set<string>();
+const selfHealedUsers = new Set<string>();
 
 /**
  * Get all habits for the current user.
@@ -54,49 +57,57 @@ export async function getHabits(req: Request, res: Response): Promise<void> {
     } else {
       habits = await getHabitsByUser(householdId, userId);
 
-      // Self-heal legacy/orphaned habits:
+      // Self-heal legacy/orphaned habits (one-time per user per server process):
       // Any habit with missing/invalid categoryId (or archived due old category-delete behavior)
       // is reassigned to a real "No Category" bucket so it is visible and manageable in UI.
-      const categories = await getCategoriesByUser(householdId, userId);
-      const categoryIds = new Set(categories.map(c => c.id));
-      const noCategoryName = 'No Category';
-      let noCategory = categories.find(c => c.name.trim().toLowerCase() === noCategoryName.toLowerCase());
+      // NOTE: This should eventually move to a dedicated migration/admin endpoint to avoid
+      // read-path side effects entirely. Gated to once-per-session to limit mutation frequency.
+      const selfHealKey = `${householdId}:${userId}`;
+      if (!selfHealedUsers.has(selfHealKey)) {
+        selfHealedUsers.add(selfHealKey);
 
-      const habitsNeedingRecovery = habits.filter(h => {
-        const missingCategoryId = typeof h.categoryId !== 'string' || h.categoryId.trim().length === 0;
-        const invalidCategoryId = !!h.categoryId && !categoryIds.has(h.categoryId);
-        // Also recover habits that are archived but have NO archivedReason —
-        // these were stranded by a bug where uncategorizeHabitsByCategory cleared
-        // archivedReason without setting archived: false.
-        const archivedWithoutReason = h.archived === true && !(h as any).archivedReason;
-        return missingCategoryId || invalidCategoryId || archivedWithoutReason;
-      });
+        const categories = await getCategoriesByUser(householdId, userId);
+        const categoryIds = new Set(categories.map(c => c.id));
+        const noCategoryName = 'No Category';
+        let noCategory = categories.find(c => c.name.trim().toLowerCase() === noCategoryName.toLowerCase());
 
-      if (habitsNeedingRecovery.length > 0) {
-        // Only create "No Category" if any habit actually needs reassignment
-        const needsReassignment = habitsNeedingRecovery.some(h => !h.categoryId || !categoryIds.has(h.categoryId));
-        if (needsReassignment && !noCategory) {
-          noCategory = await createCategory(
-            { name: noCategoryName, color: 'bg-neutral-600' },
-            householdId,
-            userId
+        const habitsNeedingRecovery = habits.filter(h => {
+          const missingCategoryId = typeof h.categoryId !== 'string' || h.categoryId.trim().length === 0;
+          const invalidCategoryId = !!h.categoryId && !categoryIds.has(h.categoryId);
+          // Also recover habits that are archived but have NO archivedReason —
+          // these were stranded by a bug where uncategorizeHabitsByCategory cleared
+          // archivedReason without setting archived: false.
+          const archivedWithoutReason = h.archived === true && !(h as any).archivedReason;
+          return missingCategoryId || invalidCategoryId || archivedWithoutReason;
+        });
+
+        if (habitsNeedingRecovery.length > 0) {
+          console.log(`[Self-heal] Found ${habitsNeedingRecovery.length} orphaned habits for user ${userId}`);
+          // Only create "No Category" if any habit actually needs reassignment
+          const needsReassignment = habitsNeedingRecovery.some(h => !h.categoryId || !categoryIds.has(h.categoryId));
+          if (needsReassignment && !noCategory) {
+            noCategory = await createCategory(
+              { name: noCategoryName, color: 'bg-neutral-600' },
+              householdId,
+              userId
+            );
+          }
+
+          const updatedHabits = await Promise.all(
+            habitsNeedingRecovery.map(h => {
+              // If the habit has a valid categoryId, keep it — just unarchive.
+              // Only reassign to "No Category" if categoryId is missing/invalid.
+              const hasValidCategory = !!h.categoryId && categoryIds.has(h.categoryId);
+              return updateHabit(h.id, householdId, userId, {
+                categoryId: hasValidCategory ? h.categoryId : noCategory!.id,
+                archived: false,
+              });
+            })
           );
+
+          const updatedMap = new Map(updatedHabits.filter(Boolean).map(h => [h!.id, h!]));
+          habits = habits.map(h => updatedMap.get(h.id) ?? h);
         }
-
-        const updatedHabits = await Promise.all(
-          habitsNeedingRecovery.map(h => {
-            // If the habit has a valid categoryId, keep it — just unarchive.
-            // Only reassign to "No Category" if categoryId is missing/invalid.
-            const hasValidCategory = !!h.categoryId && categoryIds.has(h.categoryId);
-            return updateHabit(h.id, householdId, userId, {
-              categoryId: hasValidCategory ? h.categoryId : noCategory!.id,
-              archived: false,
-            });
-          })
-        );
-
-        const updatedMap = new Map(updatedHabits.filter(Boolean).map(h => [h!.id, h!]));
-        habits = habits.map(h => updatedMap.get(h.id) ?? h);
       }
     }
 

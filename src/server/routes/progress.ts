@@ -124,7 +124,9 @@ export async function getProgressOverview(req: Request, res: Response): Promise<
 
     // Build habitsToday array with canonical streak metrics
     const habitsToday = [];
-    const referenceDate = new Date();
+    // Derive referenceDate from todayDate in the user's timezone to avoid
+    // timezone drift between the dayKey anchor and Date-based week calculations.
+    const referenceDate = new Date(todayDate + 'T12:00:00');
 
     for (const habit of activeHabits) {
       const dayStates = Array.from(dayStatesByHabit.get(habit.id)?.values() ?? []);

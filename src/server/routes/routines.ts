@@ -964,13 +964,26 @@ export async function submitRoutineRoute(req: Request, res: Response): Promise<v
 
     // Do not write DayLogs directly. DayLogs are derived from HabitEntries.
     // Guardrail: Routines never imply completion. Only create HabitEntries when habitIdsToComplete is explicitly provided.
-    const habitIds = habitIdsToComplete || [];
+    const habitIds: string[] = habitIdsToComplete || [];
+
+    // Server-side guardrail: only allow completing habits that are actually linked to this routine.
+    // This prevents accidental or malicious completion of arbitrary habits via a routine submission.
+    if (habitIds.length > 0) {
+      const linkedSet = new Set(routine.linkedHabitIds || []);
+      const unlinkedIds = habitIds.filter((hid: string) => !linkedSet.has(hid));
+      if (unlinkedIds.length > 0) {
+        res.status(400).json({
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: `habitIdsToComplete contains habit IDs not linked to this routine: ${unlinkedIds.join(', ')}`,
+          },
+        });
+        return;
+      }
+    }
 
     // Create entries in parallel for better performance
     const entryPromises = habitIds.map(async (habitId: string) => {
-      // Security check: Only allow completing habits that are actually linked to this routine?
-      // For now, implicit trust if user requests it, assuming frontend filters correctly.
-      // Ideally, check if habitId is in routine.linkedHabitIds or allow flexibility.
 
       // Upsert HabitEntry with routine provenance (dayKey/logDate are set by upsertHabitEntry from args)
       const entry = await upsertHabitEntry(habitId, logDate, householdId, userId, {
