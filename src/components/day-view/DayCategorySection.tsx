@@ -210,6 +210,7 @@ export const DayCategorySection = ({
                                 subHabits={subHabits}
                                 subHabitStatuses={subHabitStatuses}
                                 habitStatus={status}
+                                childStatusMap={habit.type === 'bundle' && habit.bundleType === 'choice' ? habitStatusMap : undefined}
                                 onSubHabitToggle={async (subHabitId) => {
                                     if (pendingMutation) return;
                                     setPendingMutation(true);
@@ -219,8 +220,26 @@ export const DayCategorySection = ({
 
                                 // Choice bundle: toggle individual children (multi-select)
                                 selectedChoices={selectedChoices}
-                                onChoiceSelect={async (optionKey) => {
+                                onChoiceSelect={async (optionKey, e) => {
                                     if (pendingMutation) return;
+                                    const childHabit = allHabitsLookup.get(optionKey);
+                                    const isNumeric = childHabit?.goal?.type === 'number';
+
+                                    // Numeric children: open popover for quantity input
+                                    if (isNumeric) {
+                                        const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                                        const childStatus = habitStatusMap.get(optionKey);
+                                        setPopover({
+                                            isOpen: true,
+                                            habitId: optionKey,
+                                            initialValue: childStatus?.currentValue ?? 0,
+                                            unit: childHabit?.goal?.unit,
+                                            position: { top: rect.bottom + 4, left: rect.left }
+                                        });
+                                        return;
+                                    }
+
+                                    // Boolean children: simple toggle
                                     setPendingMutation(true);
                                     try {
                                         if (selectedChoices?.has(optionKey)) {

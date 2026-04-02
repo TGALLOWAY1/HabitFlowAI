@@ -33,12 +33,13 @@ interface HabitGridCellProps {
     onSubHabitToggle?: (subHabitId: string) => void | Promise<void>;
 
     // For Choice Bundles
-    onChoiceSelect?: (optionKey: string) => void | Promise<void>;
+    onChoiceSelect?: (optionKey: string, e: React.MouseEvent) => void | Promise<void>;
     selectedChoices?: Set<string>;
 
     // Status & Quantity
     habitStatus?: DayViewHabitStatus;
     onNumericClick?: (e: React.MouseEvent) => void;
+    childStatusMap?: Map<string, DayViewHabitStatus>;
 }
 
 export const HabitGridCell = ({
@@ -60,7 +61,8 @@ export const HabitGridCell = ({
     selectedChoices,
     habitStatus,
     onNumericClick,
-    log
+    log,
+    childStatusMap
 }: HabitGridCellProps) => {
     const isChecklistBundle = habit.type === 'bundle' && habit.bundleType === 'checklist';
     const isChoiceBundle = habit.type === 'bundle' && habit.bundleType === 'choice';
@@ -256,7 +258,7 @@ export const HabitGridCell = ({
                             key={option.id}
                             onClick={(e) => {
                                 e.stopPropagation();
-                                onChoiceSelect?.(option.id);
+                                onChoiceSelect?.(option.id, e);
                             }}
                             className={cn(
                                 "px-2 py-1 rounded text-[10px] font-medium border transition-all",
@@ -266,6 +268,9 @@ export const HabitGridCell = ({
                             )}
                         >
                             {option.name}
+                            {option.goal?.type === 'number' && childStatusMap?.get(option.id)?.currentValue
+                                ? ` (${childStatusMap.get(option.id)!.currentValue}${option.goal.unit ? ` ${option.goal.unit}` : ''})`
+                                : null}
                             {option.linkedGoalId && <Trophy size={10} className="flex-shrink-0 text-amber-500" />}
                         </button>
                     ))}
