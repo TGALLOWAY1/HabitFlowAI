@@ -237,10 +237,11 @@ export const HabitGridCell = ({
                                     {childDone && <Check size={10} strokeWidth={3} />}
                                 </button>
                                 <span className={cn(
-                                    "text-xs truncate transition-colors",
+                                    "text-xs truncate transition-colors flex items-center gap-1",
                                     childDone ? "text-neutral-600 line-through" : "text-neutral-400"
                                 )}>
                                     {child.name}
+                                    {child.linkedGoalId && <Trophy size={10} className="flex-shrink-0 text-amber-500" />}
                                 </span>
                             </div>
                         );
@@ -265,6 +266,7 @@ export const HabitGridCell = ({
                             )}
                         >
                             {option.name}
+                            {option.linkedGoalId && <Trophy size={10} className="flex-shrink-0 text-amber-500" />}
                         </button>
                     ))}
                 </div>

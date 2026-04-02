@@ -1,7 +1,7 @@
 import React from 'react';
 import { type Habit, type DayLog } from '../types';
 import { cn } from '../utils/cn';
-import { Check, ListTodo, Layers } from 'lucide-react';
+import { Check, ListTodo, Layers, Trophy } from 'lucide-react';
 import { format } from 'date-fns';
 import { createPortal } from 'react-dom';
 
@@ -52,6 +52,7 @@ export const DailyBundleRow: React.FC<BundleRowProps> = ({
                             <span className="font-medium text-neutral-200 flex items-center gap-2">
                                 {habit.name}
                                 {isChoice ? <Layers size={14} className="text-amber-400" /> : <ListTodo size={14} className="text-indigo-400" />}
+                                {habit.linkedGoalId && <Trophy size={12} className="text-amber-500" />}
                             </span>
                             <span className="text-xs text-neutral-500">
                                 {isChoice ? (habit.bundleOptions?.length || 0) + ' Options' : (subHabits.length || 0) + ' items'}
@@ -151,7 +152,10 @@ export const DailyBundleRow: React.FC<BundleRowProps> = ({
                                     handleCellClick(e, child, format(new Date(), 'yyyy-MM-dd'));
                                 }}
                             >
-                                <span className="text-sm text-neutral-400 truncate">{child.name}</span>
+                                <span className="text-sm text-neutral-400 truncate flex items-center gap-1.5">
+                                    {child.name}
+                                    {child.linkedGoalId && <Trophy size={10} className="flex-shrink-0 text-amber-500" />}
+                                </span>
                                 {/* Child Actions */}
                                 <div className="absolute right-2 opacity-0 group-hover:opacity-100 flex gap-2 bg-neutral-900/80 p-1 rounded">
                                     <button onClick={(e) => { e.stopPropagation(); onEditHabit(child); }} className="text-[10px] text-neutral-500 hover:text-white uppercase tracking-wider font-semibold">Edit</button>
