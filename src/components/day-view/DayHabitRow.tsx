@@ -1,5 +1,5 @@
 import React from 'react';
-import { Check, Target, Hash, Clock, Pin, PinOff, ChevronDown, ChevronRight } from 'lucide-react';
+import { Check, Target, Hash, Clock, Pin, PinOff, ChevronDown, ChevronRight, Trophy } from 'lucide-react';
 import type { Habit, DayLog } from '../../types';
 import { cn } from '../../utils/cn';
 
@@ -89,6 +89,10 @@ export const DayHabitRow = ({
 
                     {/* Metadata Row */}
                     <div className="flex items-center gap-3 mt-0.5 text-xs text-neutral-500">
+                        {/* Linked Goal Trophy */}
+                        {habit.linkedGoalId && (
+                            <Trophy size={12} className="flex-shrink-0 text-amber-500" />
+                        )}
                         {/* Goal Indicator */}
                         {habit.goal && (
                             <div className="flex items-center gap-1 hover:text-neutral-300 transition-colors cursor-help" title={`Goal: ${habit.goal.target ?? 1} ${habit.goal.unit ?? 'times'} (${habit.goal.frequency})`}>
