@@ -206,6 +206,29 @@ export async function recoverCategoryDeletedHabits(
 }
 
 /**
+ * Set linkedGoalId on all specified habits.
+ * Called when a goal is created or updated to keep the bidirectional link in sync.
+ */
+export async function linkHabitsToGoal(
+  habitIds: string[],
+  goalId: string,
+  householdId: string,
+  userId: string
+): Promise<number> {
+  if (habitIds.length === 0) return 0;
+
+  const db = await getDb();
+  const collection = db.collection(COLLECTION_NAME);
+
+  const result = await collection.updateMany(
+    scopeFilter(householdId, userId, { id: { $in: habitIds } }),
+    { $set: { linkedGoalId: goalId } }
+  );
+
+  return result.modifiedCount;
+}
+
+/**
  * Clear linkedGoalId from all habits that reference a given goal.
  * Called when a goal is deleted to prevent orphaned references.
  */
