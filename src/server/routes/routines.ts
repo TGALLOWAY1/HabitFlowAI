@@ -76,8 +76,8 @@ function validateRoutineStep(step: any, index: number): string | null {
     return `Step ${index}: imageUrl must be a string if provided`;
   }
 
-  if (step.durationSeconds !== undefined && (typeof step.durationSeconds !== 'number' || step.durationSeconds < 0)) {
-    return `Step ${index}: durationSeconds must be a non-negative number if provided`;
+  if (step.timerSeconds !== undefined && (typeof step.timerSeconds !== 'number' || step.timerSeconds < 0)) {
+    return `Step ${index}: timerSeconds must be a non-negative number if provided`;
   }
 
   if (step.timerMode !== undefined && step.timerMode !== 'countdown' && step.timerMode !== 'stopwatch') {

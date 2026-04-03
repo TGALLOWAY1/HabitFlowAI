@@ -249,6 +249,13 @@ export const RoutineEditorModal: React.FC<RoutineEditorModalProps> = ({
             if (variant.steps.length === 0) return `"${variant.name}": Add at least one step`;
             for (const step of variant.steps) {
                 if (!step.title.trim()) return `"${variant.name}": All steps must have a title`;
+                if (step.trackingFields && step.trackingFields.length > 0) {
+                    for (const field of step.trackingFields) {
+                        if (!field.label.trim()) {
+                            return `"${variant.name}" → "${step.title}": All tracking fields must have a label`;
+                        }
+                    }
+                }
             }
         }
         return null;
@@ -314,7 +321,8 @@ export const RoutineEditorModal: React.FC<RoutineEditorModalProps> = ({
             onClose();
         } catch (err) {
             console.error(err);
-            setValidationError('Failed to save routine');
+            const errorMessage = err instanceof Error ? err.message : 'Failed to save routine';
+            setValidationError(errorMessage);
         }
     };
 
