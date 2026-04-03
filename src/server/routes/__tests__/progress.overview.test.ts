@@ -54,9 +54,10 @@ function weeklyHabit(id: string, target = 3): Habit {
     name: 'Weekly Habit',
     goal: {
       type: 'boolean',
-      frequency: 'weekly',
-      target,
+      frequency: 'daily',
+      target: 1,
     },
+    timesPerWeek: target,
     archived: false,
     createdAt: '2026-01-01T00:00:00.000Z',
   };

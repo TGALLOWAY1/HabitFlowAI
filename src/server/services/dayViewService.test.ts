@@ -104,9 +104,10 @@ describe('dayViewService', () => {
         name: 'Weekly Habit',
         goal: {
           type: 'boolean',
-          frequency: 'weekly',
-          target: 1, // Binary: any entry completes
+          frequency: 'daily',
+          target: 1,
         },
+        timesPerWeek: 1,
         archived: false,
         createdAt: '2025-01-01T00:00:00.000Z',
       };
@@ -141,9 +142,10 @@ describe('dayViewService', () => {
         name: 'Weekly Habit',
         goal: {
           type: 'boolean',
-          frequency: 'weekly',
-          target: 3, // Frequency: need 3 days
+          frequency: 'daily',
+          target: 1,
         },
+        timesPerWeek: 3,
         archived: false,
         createdAt: '2025-01-01T00:00:00.000Z',
       };
@@ -200,10 +202,11 @@ describe('dayViewService', () => {
         name: 'Weekly Quantity Habit',
         goal: {
           type: 'number',
-          frequency: 'weekly',
-          target: 10, // Need 10 total
+          frequency: 'daily',
+          target: 10,
           unit: 'miles',
         },
+        timesPerWeek: 10,
         archived: false,
         createdAt: '2025-01-01T00:00:00.000Z',
       };

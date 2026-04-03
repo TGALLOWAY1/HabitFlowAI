@@ -50,43 +50,37 @@ export const PREDEFINED_HABITS: { categoryName: string; habit: Omit<Habit, 'id' 
 
     // Music
     { categoryName: 'Music', habit: { name: 'Music/Theory Practice', goal: { type: 'boolean', frequency: 'daily' }, archived: false } },
-    { categoryName: 'Music', habit: { name: 'Record Music Content', goal: { type: 'number', target: 2, unit: 'sessions', frequency: 'weekly' }, archived: false } },
+    { categoryName: 'Music', habit: { name: 'Record Music Content', goal: { type: 'number', target: 2, unit: 'sessions', frequency: 'daily' }, timesPerWeek: 2, archived: false } },
 
-    // Weekly Habits (Physical)
-    { categoryName: 'Physical Health', habit: { name: 'Gym', goal: { type: 'number', target: 3, unit: 'sessions', frequency: 'weekly' }, archived: false } },
-    { categoryName: 'Physical Health', habit: { name: 'Run', goal: { type: 'number', target: 3, unit: 'sessions', frequency: 'weekly' }, archived: false } },
-    { categoryName: 'Physical Health', habit: { name: 'Yoga Session', goal: { type: 'boolean', frequency: 'weekly' }, archived: false } },
-    { categoryName: 'Physical Health', habit: { name: 'Long Run', goal: { type: 'boolean', frequency: 'weekly' }, archived: false } },
-    { categoryName: 'Physical Health', habit: { name: 'Kickboxing Class', goal: { type: 'boolean', frequency: 'weekly' }, archived: false } },
-    { categoryName: 'Physical Health', habit: { name: 'Climbing + Weights', goal: { type: 'boolean', frequency: 'weekly' }, archived: false } },
-    { categoryName: 'Physical Health', habit: { name: 'Meal Prep', goal: { type: 'boolean', frequency: 'weekly' }, archived: false } },
+    // Weekly-quota Habits (Physical)
+    { categoryName: 'Physical Health', habit: { name: 'Gym', goal: { type: 'boolean', frequency: 'daily' }, timesPerWeek: 3, archived: false } },
+    { categoryName: 'Physical Health', habit: { name: 'Run', goal: { type: 'boolean', frequency: 'daily' }, timesPerWeek: 3, archived: false } },
+    { categoryName: 'Physical Health', habit: { name: 'Yoga Session', goal: { type: 'boolean', frequency: 'daily' }, timesPerWeek: 1, archived: false } },
+    { categoryName: 'Physical Health', habit: { name: 'Long Run', goal: { type: 'boolean', frequency: 'daily' }, timesPerWeek: 1, archived: false } },
+    { categoryName: 'Physical Health', habit: { name: 'Kickboxing Class', goal: { type: 'boolean', frequency: 'daily' }, timesPerWeek: 1, archived: false } },
+    { categoryName: 'Physical Health', habit: { name: 'Climbing + Weights', goal: { type: 'boolean', frequency: 'daily' }, timesPerWeek: 1, archived: false } },
+    { categoryName: 'Physical Health', habit: { name: 'Meal Prep', goal: { type: 'boolean', frequency: 'daily' }, timesPerWeek: 1, archived: false } },
 
-    // Weekly Habits (Mental Health)
-    { categoryName: 'Mental Health', habit: { name: 'Spontaneity / Journaling', goal: { type: 'boolean', frequency: 'weekly' }, archived: false } },
-    { categoryName: 'Mental Health', habit: { name: 'Weekly Reflection', goal: { type: 'boolean', frequency: 'weekly' }, archived: false } },
+    // Weekly-quota Habits (Mental Health)
+    { categoryName: 'Mental Health', habit: { name: 'Spontaneity / Journaling', goal: { type: 'boolean', frequency: 'daily' }, timesPerWeek: 1, archived: false } },
+    { categoryName: 'Mental Health', habit: { name: 'Weekly Reflection', goal: { type: 'boolean', frequency: 'daily' }, timesPerWeek: 1, archived: false } },
 
-    // Weekly Habits (Relationships)
-    { categoryName: 'Relationships', habit: { name: 'Date / Quality Time', goal: { type: 'boolean', frequency: 'weekly' }, archived: false } },
-    { categoryName: 'Relationships', habit: { name: 'Emotional Check-in', goal: { type: 'boolean', frequency: 'weekly' }, archived: false } },
-
-    // Weekly Habits (Family & Friends) - Putting in Relationships for now as there is no Family category in the list above, but I should probably add it or merge it. 
-    // User asked for "Family & Friends" in the proposal, but I didn't add it to the Categories list in step 1. 
-    // I'll add it to "Relationships" for now to keep categories manageable, or create a new one?
-    // The proposal had "Relationships" and "Family & Friends" as separate sections but I only listed "Relationships" in the Categories section of the artifact.
-    // Let's stick to the categories defined in PREDEFINED_CATEGORIES. I'll put Family stuff in Relationships.
-    { categoryName: 'Relationships', habit: { name: 'Social Activity', goal: { type: 'boolean', frequency: 'weekly' }, archived: false } },
-    { categoryName: 'Relationships', habit: { name: 'Family/Friend Check-in', goal: { type: 'boolean', frequency: 'weekly' }, archived: false } },
-    { categoryName: 'Relationships', habit: { name: 'Support Sister', goal: { type: 'boolean', frequency: 'weekly' }, archived: false } },
+    // Weekly-quota Habits (Relationships)
+    { categoryName: 'Relationships', habit: { name: 'Date / Quality Time', goal: { type: 'boolean', frequency: 'daily' }, timesPerWeek: 1, archived: false } },
+    { categoryName: 'Relationships', habit: { name: 'Emotional Check-in', goal: { type: 'boolean', frequency: 'daily' }, timesPerWeek: 1, archived: false } },
+    { categoryName: 'Relationships', habit: { name: 'Social Activity', goal: { type: 'boolean', frequency: 'daily' }, timesPerWeek: 1, archived: false } },
+    { categoryName: 'Relationships', habit: { name: 'Family/Friend Check-in', goal: { type: 'boolean', frequency: 'daily' }, timesPerWeek: 1, archived: false } },
+    { categoryName: 'Relationships', habit: { name: 'Support Sister', goal: { type: 'boolean', frequency: 'daily' }, timesPerWeek: 1, archived: false } },
 
     // Career & Growth
-    { categoryName: 'Career & Growth', habit: { name: 'ML Study Block', goal: { type: 'boolean', frequency: 'weekly' }, archived: false } },
-    { categoryName: 'Career & Growth', habit: { name: 'Azure AI-102 Prep', goal: { type: 'boolean', frequency: 'weekly' }, archived: false } },
-    { categoryName: 'Career & Growth', habit: { name: 'Math Study Block', goal: { type: 'boolean', frequency: 'weekly' }, archived: false } },
-    { categoryName: 'Career & Growth', habit: { name: 'Project Review', goal: { type: 'boolean', frequency: 'weekly' }, archived: false } },
-    { categoryName: 'Career & Growth', habit: { name: 'Job Search Sprint', goal: { type: 'boolean', frequency: 'weekly' }, archived: false } },
+    { categoryName: 'Career & Growth', habit: { name: 'ML Study Block', goal: { type: 'boolean', frequency: 'daily' }, timesPerWeek: 1, archived: false } },
+    { categoryName: 'Career & Growth', habit: { name: 'Azure AI-102 Prep', goal: { type: 'boolean', frequency: 'daily' }, timesPerWeek: 1, archived: false } },
+    { categoryName: 'Career & Growth', habit: { name: 'Math Study Block', goal: { type: 'boolean', frequency: 'daily' }, timesPerWeek: 1, archived: false } },
+    { categoryName: 'Career & Growth', habit: { name: 'Project Review', goal: { type: 'boolean', frequency: 'daily' }, timesPerWeek: 1, archived: false } },
+    { categoryName: 'Career & Growth', habit: { name: 'Job Search Sprint', goal: { type: 'boolean', frequency: 'daily' }, timesPerWeek: 1, archived: false } },
 
     // Financial
-    { categoryName: 'Financial', habit: { name: 'Budget Review', goal: { type: 'boolean', frequency: 'weekly' }, archived: false } },
-    { categoryName: 'Financial', habit: { name: 'Savings Check', goal: { type: 'boolean', frequency: 'weekly' }, archived: false } },
-    { categoryName: 'Financial', habit: { name: 'Adjust Savings Plan', goal: { type: 'boolean', frequency: 'weekly' }, archived: false } },
+    { categoryName: 'Financial', habit: { name: 'Budget Review', goal: { type: 'boolean', frequency: 'daily' }, timesPerWeek: 1, archived: false } },
+    { categoryName: 'Financial', habit: { name: 'Savings Check', goal: { type: 'boolean', frequency: 'daily' }, timesPerWeek: 1, archived: false } },
+    { categoryName: 'Financial', habit: { name: 'Adjust Savings Plan', goal: { type: 'boolean', frequency: 'daily' }, timesPerWeek: 1, archived: false } },
 ];

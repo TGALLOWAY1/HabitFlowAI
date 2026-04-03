@@ -320,11 +320,15 @@ export function getHabitsForDate(
         if (childIds.has(h.id)) return false;
 
         // 3. Frequency Logic
-        // Check both root frequency and goal.frequency (legacy/imported data might only have it in goal)
         // 'total' (cumulative) habits also appear daily — they track daily contributions toward a cumulative goal.
-        const frequency = h.frequency || h.goal.frequency;
 
-        if (frequency !== 'daily' && frequency !== 'total') return false;
+        // Weekly-quota habits: show on assigned days if set, otherwise every day
+        if (h.timesPerWeek != null && h.timesPerWeek > 0) {
+            if (h.assignedDays && h.assignedDays.length > 0) {
+                return h.assignedDays.includes(dow);
+            }
+            return true;
+        }
 
         // 4. If habit has specific assigned days, only show on those days
         if (h.assignedDays && h.assignedDays.length > 0) {

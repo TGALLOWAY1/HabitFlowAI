@@ -47,20 +47,20 @@ export function isTrackableHabit(habit: Habit): boolean {
  * Determines if a habit is "scheduled" (expected) on a specific day.
  *
  * Rules:
- * - Daily habit, no assignedDays → every day
+ * - timesPerWeek + assignedDays → only on assigned days
+ * - timesPerWeek, no assignedDays → every day (user picks which days)
  * - Daily habit, with assignedDays → only on those days
- * - Weekly habit → once per week (on Monday, or first assignedDay if set)
- * - Scheduled-daily (assignedDays + requiredDaysPerWeek) → on assigned days
+ * - Daily habit, no assignedDays → every day
  */
 export function isHabitScheduledOnDay(habit: Habit, dayKey: string): boolean {
-  const freq = habit.goal.frequency;
   const dow = dayOfWeek(dayKey);
 
-  if (freq === 'weekly') {
-    // Weekly habits count as scheduled once per week.
-    // Use the first assignedDay if set, otherwise Monday (1).
-    const scheduledDay = habit.assignedDays?.length ? habit.assignedDays[0] : 1;
-    return dow === scheduledDay;
+  if (habit.timesPerWeek != null && habit.timesPerWeek > 0) {
+    // Weekly-quota habit: show on assigned days if set, otherwise every day
+    if (habit.assignedDays && habit.assignedDays.length > 0) {
+      return habit.assignedDays.includes(dow);
+    }
+    return true;
   }
 
   // Daily or total frequency
@@ -94,10 +94,19 @@ export function getExpectedOpportunitiesInRange(
 
   if (totalDays <= 0) return 0;
 
-  const freq = habit.goal.frequency;
-
-  if (freq === 'weekly') {
-    // Count distinct weeks in the range
+  if (habit.timesPerWeek != null && habit.timesPerWeek > 0) {
+    if (habit.assignedDays && habit.assignedDays.length > 0) {
+      // Count assigned days in range
+      let count = 0;
+      for (let i = 0; i < totalDays; i++) {
+        const d = new Date(start);
+        d.setDate(d.getDate() + i);
+        const dow = d.getUTCDay();
+        if (habit.assignedDays.includes(dow)) count++;
+      }
+      return count;
+    }
+    // No assignedDays: count distinct weeks in range
     const weeks = new Set<string>();
     for (let i = 0; i < totalDays; i++) {
       const d = new Date(start);

@@ -283,7 +283,7 @@ export const HabitGridCell = ({
                     <div className="h-px w-full bg-white/5 mb-1" />
 
                     {/* Habit Metadata */}
-                    {(habit.timeEstimate || habit.frequency || habit.nonNegotiable || (isQuantity && habitStatus) || habit.assignedDays) && (
+                    {(habit.timeEstimate || habit.timesPerWeek || habit.nonNegotiable || (isQuantity && habitStatus) || habit.assignedDays) && (
                         <div className="flex flex-wrap gap-2">
                             {habit.timeEstimate && (
                                 <span className="flex items-center gap-1 text-[10px] text-neutral-500 bg-white/5 px-2 py-0.5 rounded-full">
@@ -297,10 +297,10 @@ export const HabitGridCell = ({
                                     {habitStatus.currentValue}/{habitStatus.targetValue} {habit.goal?.unit || ''}
                                 </span>
                             )}
-                            {habit.frequency === 'weekly' && (
+                            {habit.timesPerWeek != null && habit.timesPerWeek > 0 && (
                                 <span className="flex items-center gap-1 text-[10px] text-neutral-500 bg-white/5 px-2 py-0.5 rounded-full">
                                     <Repeat size={10} />
-                                    {habit.weeklyTarget ? `${habit.weeklyTarget}x/week` : 'Weekly'}
+                                    {habit.timesPerWeek}x/week
                                 </span>
                             )}
                             {habit.nonNegotiable && (

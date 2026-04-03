@@ -108,7 +108,7 @@ function buildWeeklyProgressMap(
   targetOverride?: number
 ): Map<string, WeeklyProgress> {
   const isQuantity = habit.goal.type === 'number';
-  const target = targetOverride ?? habit.goal.target ?? 1;
+  const target = targetOverride ?? habit.timesPerWeek ?? habit.goal.target ?? 1;
 
   const rawWeekMap = new Map<string, { total: number; distinctDays: Set<string> }>();
 
@@ -145,7 +145,7 @@ function calculateWeeklyMetrics(
   referenceDayKey?: string
 ): HabitStreakMetrics {
   const referenceDay = referenceDayKey ? parseISO(referenceDayKey) : referenceDate;
-  const target = habit.goal.target ?? 1;
+  const target = habit.timesPerWeek ?? habit.goal.target ?? 1;
   const weeklyProgressMap = buildWeeklyProgressMap(dayStates, habit);
   const currentWeekKey = weekStartDayKey(referenceDay);
   const currentWeek = weeklyProgressMap.get(currentWeekKey) ?? { progress: 0, satisfied: false };
@@ -261,7 +261,7 @@ export function calculateHabitStreakMetrics(
   referenceDate: Date = new Date(),
   referenceDayKey?: string
 ): HabitStreakMetrics {
-  if (habit.goal.frequency === 'weekly') {
+  if (habit.timesPerWeek != null && habit.timesPerWeek > 0) {
     return calculateWeeklyMetrics(dayStates, habit, referenceDate, referenceDayKey);
   }
 

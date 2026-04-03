@@ -64,11 +64,12 @@ export interface HabitGoal {
      */
     unit?: string;
 
-    /** 
-     * Tracking frequency: 'daily', 'weekly', or 'total' (cumulative goal)
+    /**
+     * Tracking frequency: 'daily' or 'total' (cumulative goal)
      * 'total' means the goal is cumulative across all time (e.g., "Run 100 miles total")
+     * Note: 'weekly' was removed — use timesPerWeek on the Habit instead.
      */
-    frequency: 'daily' | 'weekly' | 'total';
+    frequency: 'daily' | 'total';
 }
 
 /**
@@ -194,10 +195,11 @@ export interface Habit {
     freezeCount?: number;
 
     /**
-     * New fields for Frequency & Bundles (Single-Entry MVP)
+     * Number of times per week the habit should be completed.
+     * When set, streak logic uses weekly-window evaluation (consecutive satisfied weeks).
+     * Replaces the old 'weekly' frequency type + weeklyTarget.
      */
-    frequency?: 'daily' | 'weekly';
-    weeklyTarget?: number;
+    timesPerWeek?: number;
 
     /**
      * Number of days per week the habit must be completed to maintain a streak.

@@ -34,22 +34,15 @@ export function computeHabitStatus(
     schema?: { habits: Habit[] } // Needed for looking up bundle children
 ): HabitStatus {
 
-    // 1. Weekly Habit Logic
-    if (habit.frequency === 'weekly') {
-        if (!habit.weeklyTarget) {
-            // Edge case: Weekly habit missing target. Treat as 1x/week.
-            return { isComplete: false, currentValue: 0, targetValue: 1 };
-        }
-
-        // We assume 'allEntries' passed here are relevant to the WEEK context 
-        // OR we filter them here if they contain more history.
-        // Ideally, caller passes entries filtered by week range.
+    // 1. Weekly-quota Habit Logic
+    if (habit.timesPerWeek != null && habit.timesPerWeek > 0) {
+        // Caller should pass entries filtered to the week range.
         const weekDistinctDays = new Set(allEntries.map(e => e.dateKey)).size;
 
         return {
-            isComplete: weekDistinctDays >= habit.weeklyTarget,
+            isComplete: weekDistinctDays >= habit.timesPerWeek,
             currentValue: weekDistinctDays,
-            targetValue: habit.weeklyTarget
+            targetValue: habit.timesPerWeek
         };
     }
 

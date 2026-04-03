@@ -102,9 +102,10 @@ describe('dayViewService - derivation logic', () => {
         name: 'Weekly Habit',
         goal: {
           type: 'boolean',
-          frequency: 'weekly',
-          target: 1, // Binary
+          frequency: 'daily',
+          target: 1,
         },
+        timesPerWeek: 1,
         archived: false,
         createdAt: '2025-01-01T00:00:00.000Z',
       };
@@ -141,9 +142,10 @@ describe('dayViewService - derivation logic', () => {
         name: 'Weekly Habit',
         goal: {
           type: 'boolean',
-          frequency: 'weekly',
-          target: 3, // Frequency: need 3 days
+          frequency: 'daily',
+          target: 1,
         },
+        timesPerWeek: 3,
         archived: false,
         createdAt: '2025-01-01T00:00:00.000Z',
       };
@@ -204,10 +206,11 @@ describe('dayViewService - derivation logic', () => {
         name: 'Weekly Quantity Habit',
         goal: {
           type: 'number',
-          frequency: 'weekly',
+          frequency: 'daily',
           target: 10,
           unit: 'miles',
         },
+        timesPerWeek: 10,
         archived: false,
         createdAt: '2025-01-01T00:00:00.000Z',
       };
