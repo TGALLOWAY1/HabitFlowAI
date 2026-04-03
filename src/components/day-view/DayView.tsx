@@ -157,8 +157,8 @@ export const DayView = ({ onAddHabit, onEditHabit, onViewHistory, onDeleteHabit 
     // 1. Filter Habits for Today (Root level, frequency match)
     const todaysHabits = useMemo(() => {
         if (!habits) return [];
-        return getHabitsForDate(habits, today);
-    }, [habits, today]);
+        return getHabitsForDate(habits, dateStr);
+    }, [habits, dateStr]);
 
     // Lookup Map for Bundle Resolution
     const allHabitsLookup = useMemo(() => {

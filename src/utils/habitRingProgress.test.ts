@@ -15,6 +15,7 @@ import {
     getDailyHabitRingProgress,
     getBundleChildIds,
     computeBundleStatus,
+    getHabitsForDate,
 } from './habitUtils';
 import type { Habit, DayLog } from '../types';
 
@@ -333,6 +334,47 @@ describe('Edge cases', () => {
         ];
         const result = getDailyHabitRingProgress(habits, {}, DATE);
         expect(result.total).toBe(2); // daily + total (cumulative habits need daily tracking)
+    });
+
+    // --- assignedDays schedule filtering ---
+    // DATE = '2026-03-28' is a Saturday (day 6)
+
+    it('habit with assignedDays is excluded when not scheduled for the day', () => {
+        const habits = [
+            makeHabit({ id: 'h1', name: 'MWF habit', assignedDays: [1, 3, 5] }), // Mon/Wed/Fri only
+            makeHabit({ id: 'h2', name: 'Every day habit' }),
+        ];
+        // Saturday — h1 should be excluded
+        const result = getHabitsForDate(habits, DATE);
+        expect(result.map(h => h.id)).toEqual(['h2']);
+    });
+
+    it('habit with assignedDays is included when scheduled for the day', () => {
+        const habits = [
+            makeHabit({ id: 'h1', name: 'Sat/Sun habit', assignedDays: [0, 6] }), // Sun/Sat
+            makeHabit({ id: 'h2', name: 'Every day habit' }),
+        ];
+        // Saturday — both should appear
+        const result = getHabitsForDate(habits, DATE);
+        expect(result.map(h => h.id)).toEqual(['h1', 'h2']);
+    });
+
+    it('habit without assignedDays shows every day', () => {
+        const habits = [makeHabit({ id: 'h1', name: 'Daily' })];
+        // Check multiple days of the week
+        expect(getHabitsForDate(habits, '2026-03-23').length).toBe(1); // Monday
+        expect(getHabitsForDate(habits, '2026-03-26').length).toBe(1); // Thursday
+        expect(getHabitsForDate(habits, DATE).length).toBe(1);         // Saturday
+    });
+
+    it('ring progress excludes unscheduled habits from total', () => {
+        const habits = [
+            makeHabit({ id: 'h1', name: 'MWF', assignedDays: [1, 3, 5] }),
+            makeHabit({ id: 'h2', name: 'Every day' }),
+        ];
+        // Saturday — only h2 counts toward the ring
+        const result = getDailyHabitRingProgress(habits, {}, DATE);
+        expect(result.total).toBe(1);
     });
 
     it('child with bundleParentId excluded even if parent subHabitIds is missing', () => {
