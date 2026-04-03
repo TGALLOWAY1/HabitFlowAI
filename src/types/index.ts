@@ -42,7 +42,7 @@ export interface HabitGoal {
     type: 'boolean' | 'number';
     target?: number; // e.g., 8 (hours), 2000 (calories)
     unit?: string; // e.g., 'hrs', 'kcal'
-    frequency: 'daily' | 'weekly' | 'total'; // 'total' for cumulative goals
+    frequency: 'daily' | 'total';
 }
 
 export interface Habit {
@@ -78,10 +78,10 @@ export interface Habit {
     freezeCount?: number; // Max 3
 
     /**
-     * Frequency & Bundles (frontend aligned)
+     * Number of times per week the habit should be completed.
+     * Replaces the old 'weekly' frequency type + weeklyTarget.
      */
-    frequency?: 'daily' | 'weekly';
-    weeklyTarget?: number;
+    timesPerWeek?: number;
     requiredDaysPerWeek?: number; // 1-7; must be <= assignedDays.length; 7 = strict (non-negotiable)
 
     bundleType?: 'checklist' | 'choice';

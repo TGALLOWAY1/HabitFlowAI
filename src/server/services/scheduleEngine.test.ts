@@ -59,25 +59,27 @@ describe('isHabitScheduledOnDay', () => {
     });
   });
 
-  describe('weekly habit, no assignedDays', () => {
+  describe('timesPerWeek habit, no assignedDays', () => {
     const habit = makeHabit({
-      goal: { type: 'boolean', target: 1, frequency: 'weekly' },
+      goal: { type: 'boolean', target: 1, frequency: 'daily' },
+      timesPerWeek: 3,
     });
 
-    it('is scheduled on Monday only (default weekly day)', () => {
+    it('is scheduled every day (user picks which days)', () => {
       expect(isHabitScheduledOnDay(habit, '2026-03-30')).toBe(true);  // Monday
-      expect(isHabitScheduledOnDay(habit, '2026-03-31')).toBe(false); // Tuesday
-      expect(isHabitScheduledOnDay(habit, '2026-04-05')).toBe(false); // Sunday
+      expect(isHabitScheduledOnDay(habit, '2026-03-31')).toBe(true);  // Tuesday
+      expect(isHabitScheduledOnDay(habit, '2026-04-05')).toBe(true);  // Sunday
     });
   });
 
-  describe('weekly habit with assignedDays', () => {
+  describe('timesPerWeek habit with assignedDays', () => {
     const habit = makeHabit({
-      goal: { type: 'boolean', target: 1, frequency: 'weekly' },
+      goal: { type: 'boolean', target: 1, frequency: 'daily' },
+      timesPerWeek: 1,
       assignedDays: [3], // Wednesday
     });
 
-    it('is scheduled on first assignedDay only', () => {
+    it('is scheduled on assigned days only', () => {
       expect(isHabitScheduledOnDay(habit, '2026-03-30')).toBe(false); // Monday
       expect(isHabitScheduledOnDay(habit, '2026-04-01')).toBe(true);  // Wednesday
       expect(isHabitScheduledOnDay(habit, '2026-04-03')).toBe(false); // Friday
@@ -103,17 +105,18 @@ describe('getScheduledHabitsForDay', () => {
     const daily = makeHabit({ id: 'daily' });
     const weekly = makeHabit({
       id: 'weekly',
-      goal: { type: 'boolean', target: 1, frequency: 'weekly' },
+      goal: { type: 'boolean', target: 1, frequency: 'daily' },
+      timesPerWeek: 1,
     });
     const mwf = makeHabit({ id: 'mwf', assignedDays: [1, 3, 5] });
 
-    // Monday: daily + weekly (default Monday) + mwf
+    // Monday: daily + weekly (timesPerWeek shows every day) + mwf
     const monday = getScheduledHabitsForDay([daily, weekly, mwf], '2026-03-30');
     expect(monday.map(h => h.id).sort()).toEqual(['daily', 'mwf', 'weekly']);
 
-    // Tuesday: daily only
+    // Tuesday: daily + weekly (timesPerWeek shows every day)
     const tuesday = getScheduledHabitsForDay([daily, weekly, mwf], '2026-03-31');
-    expect(tuesday.map(h => h.id)).toEqual(['daily']);
+    expect(tuesday.map(h => h.id).sort()).toEqual(['daily', 'weekly']);
   });
 });
 
@@ -130,22 +133,34 @@ describe('getExpectedOpportunitiesInRange', () => {
     expect(getExpectedOpportunitiesInRange(habit, '2026-03-30', '2026-04-05')).toBe(3);
   });
 
-  it('weekly habit: 1 opportunity per week', () => {
+  it('timesPerWeek habit without assignedDays: 1 opportunity per week', () => {
     const habit = makeHabit({
-      goal: { type: 'boolean', target: 1, frequency: 'weekly' },
+      goal: { type: 'boolean', target: 1, frequency: 'daily' },
+      timesPerWeek: 3,
     });
-    // 1 week = 1 opportunity
+    // 1 week = 1 opportunity (counted by distinct weeks)
     expect(getExpectedOpportunitiesInRange(habit, '2026-03-30', '2026-04-05')).toBe(1);
     // 2 weeks = 2 opportunities
     expect(getExpectedOpportunitiesInRange(habit, '2026-03-30', '2026-04-12')).toBe(2);
   });
 
-  it('weekly habit across partial weeks: counts each week touched', () => {
+  it('timesPerWeek habit across partial weeks: counts each week touched', () => {
     const habit = makeHabit({
-      goal: { type: 'boolean', target: 1, frequency: 'weekly' },
+      goal: { type: 'boolean', target: 1, frequency: 'daily' },
+      timesPerWeek: 1,
     });
     // Wed 4/1 to Tue 4/7 spans 2 ISO weeks (W14 Mon 3/30 and W15 Mon 4/6)
     expect(getExpectedOpportunitiesInRange(habit, '2026-04-01', '2026-04-07')).toBe(2);
+  });
+
+  it('timesPerWeek habit with assignedDays: counts assigned days in range', () => {
+    const habit = makeHabit({
+      goal: { type: 'boolean', target: 1, frequency: 'daily' },
+      timesPerWeek: 2,
+      assignedDays: [1, 3, 5], // Mon, Wed, Fri
+    });
+    // Mon 3/30 to Sun 4/5 = 3 assigned days
+    expect(getExpectedOpportunitiesInRange(habit, '2026-03-30', '2026-04-05')).toBe(3);
   });
 
   it('single day range returns 1 for daily habit', () => {

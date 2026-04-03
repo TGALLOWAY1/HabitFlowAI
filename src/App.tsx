@@ -29,7 +29,7 @@ import { WinArchivePage } from './pages/goals/WinArchivePage';
 import { iterateGoal, createGoal, fetchGoal } from './lib/persistenceClient';
 import { invalidateAllGoalCaches } from './lib/goalDataCache';
 import { DayView } from './components/day-view/DayView';
-import { WeeklyView } from './components/day-view/WeeklyView';
+import { ScheduleView } from './components/day-view/ScheduleView';
 import { GoalScheduleView } from './pages/goals/GoalScheduleView';
 
 import { JournalPage } from './pages/JournalPage';
@@ -163,9 +163,9 @@ const HabitTrackerContent: React.FC = () => {
     return params.get("goalId");
   });
 
-  // Track View Mode: 'grid', 'day', or 'weekly' — default to 'day' for new users
-  const [trackerViewMode, setTrackerViewMode] = useState<'grid' | 'day' | 'weekly'>(() =>
-    habits.length === 0 ? 'day' : 'grid'
+  // Track View Mode: 'all', 'day', or 'schedule' — default to 'day' for new users
+  const [trackerViewMode, setTrackerViewMode] = useState<'all' | 'day' | 'schedule'>(() =>
+    habits.length === 0 ? 'day' : 'all'
   );
 
   // Goals View Mode: 'all', 'schedule', or 'achievements'
@@ -338,10 +338,10 @@ const HabitTrackerContent: React.FC = () => {
             <div className="flex justify-center">
               <div className="flex bg-neutral-800 p-0.5 rounded-lg">
                 <button
-                  onClick={() => setTrackerViewMode('grid')}
-                  className={`px-3 py-1 text-sm font-medium rounded-md transition-all ${trackerViewMode === 'grid' ? 'bg-neutral-600 text-white shadow-sm' : 'text-neutral-400 hover:text-white'}`}
+                  onClick={() => setTrackerViewMode('all')}
+                  className={`px-3 py-1 text-sm font-medium rounded-md transition-all ${trackerViewMode === 'all' ? 'bg-neutral-600 text-white shadow-sm' : 'text-neutral-400 hover:text-white'}`}
                 >
-                  Grid
+                  All
                 </button>
                 <button
                   onClick={() => setTrackerViewMode('day')}
@@ -350,10 +350,10 @@ const HabitTrackerContent: React.FC = () => {
                   Today
                 </button>
                 <button
-                  onClick={() => setTrackerViewMode('weekly')}
-                  className={`px-3 py-1 text-sm font-medium rounded-md transition-all ${trackerViewMode === 'weekly' ? 'bg-neutral-600 text-white shadow-sm' : 'text-neutral-400 hover:text-white'}`}
+                  onClick={() => setTrackerViewMode('schedule')}
+                  className={`px-3 py-1 text-sm font-medium rounded-md transition-all ${trackerViewMode === 'schedule' ? 'bg-neutral-600 text-white shadow-sm' : 'text-neutral-400 hover:text-white'}`}
                 >
-                  Weekly
+                  Schedule
                 </button>
               </div>
             </div>
@@ -365,7 +365,7 @@ const HabitTrackerContent: React.FC = () => {
 
 
       {
-        view === 'tracker' && trackerViewMode === 'grid' && (
+        view === 'tracker' && trackerViewMode === 'all' && (
           <CategoryTabs
             categories={visibleCategories}
             activeCategoryId={activeCategoryId}
@@ -376,7 +376,7 @@ const HabitTrackerContent: React.FC = () => {
       }
 
       {
-        view === 'tracker' && activeCategoryId && trackerViewMode === 'grid' && (
+        view === 'tracker' && activeCategoryId && trackerViewMode === 'all' && (
           <CategoryMomentumBanner
             categoryId={activeCategoryId}
             habits={filteredHabits}
@@ -467,7 +467,7 @@ const HabitTrackerContent: React.FC = () => {
             }}
           />
         ) : view === 'tracker' ? (
-          trackerViewMode === 'grid' ? (
+          trackerViewMode === 'all' ? (
             <TrackerGrid
               habits={filteredHabits}
               logs={logs}
@@ -492,8 +492,8 @@ const HabitTrackerContent: React.FC = () => {
               potentialEvidence={potentialEvidence}
               loading={loading}
             />
-          ) : trackerViewMode === 'weekly' ? (
-            <WeeklyView />
+          ) : trackerViewMode === 'schedule' ? (
+            <ScheduleView />
           ) : (
             <DayView
               onAddHabit={() => setIsModalOpen(true)}

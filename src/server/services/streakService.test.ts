@@ -66,7 +66,8 @@ describe('streakService', () => {
 
   it('calculates weekly streaks and weekly atRisk state from weekly progress', () => {
     const habit = createHabit({
-      goal: { type: 'boolean', frequency: 'weekly', target: 3 },
+      goal: { type: 'boolean', frequency: 'daily', target: 1 },
+      timesPerWeek: 3,
     });
     const dayStates: HabitDayState[] = [
       // Week of 2026-02-02 (satisfied: 3 days)

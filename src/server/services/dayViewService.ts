@@ -135,7 +135,7 @@ function deriveWeeklyProgress(
       !entry.deletedAt
   );
 
-  const target = habit.goal.target ?? 1;
+  const target = habit.timesPerWeek ?? habit.goal.target ?? 1;
 
   // Determine weekly type
   const isQuantity = habit.goal.type === 'number';
@@ -244,7 +244,7 @@ function deriveBundleCompletion(
   for (const childHabit of childHabits) {
     let childComplete = false;
 
-    if (childHabit.goal.frequency === 'weekly') {
+    if (childHabit.timesPerWeek != null && childHabit.timesPerWeek > 0) {
       // Weekly child: check if week is complete
       if (weekStartDayKey && weekEndDayKey) {
         const weekProgress = deriveWeeklyProgress(
@@ -363,7 +363,7 @@ export async function computeDayView(
         completedChildrenCount: bundleStatus.completedChildrenCount,
         totalChildrenCount: bundleStatus.totalChildrenCount,
       };
-    } else if (habit.goal.frequency === 'weekly') {
+    } else if (habit.timesPerWeek != null && habit.timesPerWeek > 0) {
       // Weekly habit: derive week progress
       const weekProgress = deriveWeeklyProgress(
         habit,

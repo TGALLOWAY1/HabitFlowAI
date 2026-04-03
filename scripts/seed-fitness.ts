@@ -97,15 +97,15 @@ type HabitSeedSpec = {
   key: 'run' | 'lift' | 'recovery' | 'eat_clean' | 'meal_prep';
   name: string;
   type: 'numeric' | 'choice' | 'boolean';
-  frequency: 'daily' | 'weekly';
+  timesPerWeek?: number;
 };
 
 const HABITS: HabitSeedSpec[] = [
-  { key: 'run', name: 'Run', type: 'numeric', frequency: 'daily' },
-  { key: 'lift', name: 'Lift', type: 'choice', frequency: 'daily' },
-  { key: 'recovery', name: 'Recovery', type: 'choice', frequency: 'daily' },
-  { key: 'eat_clean', name: 'Eat Clean', type: 'boolean', frequency: 'daily' },
-  { key: 'meal_prep', name: 'Meal Prep', type: 'boolean', frequency: 'weekly' },
+  { key: 'run', name: 'Run', type: 'numeric' },
+  { key: 'lift', name: 'Lift', type: 'choice' },
+  { key: 'recovery', name: 'Recovery', type: 'choice' },
+  { key: 'eat_clean', name: 'Eat Clean', type: 'boolean' },
+  { key: 'meal_prep', name: 'Meal Prep', type: 'boolean', timesPerWeek: 1 },
 ];
 
 const LIFT_OPTIONS = ['push', 'pull', 'legs'];
@@ -133,7 +133,6 @@ async function ensureSeedHabits(userId: string): Promise<Record<HabitSeedSpec['k
         name: spec.name,
         goal: { type: 'number', frequency: 'daily', unit: 'miles' },
         type: 'number',
-        frequency: 'daily',
         order: 900 + i,
       };
     } else if (spec.type === 'choice') {
@@ -144,7 +143,6 @@ async function ensureSeedHabits(userId: string): Promise<Record<HabitSeedSpec['k
         name: spec.name,
         goal: { type: 'boolean', frequency: 'daily' },
         type: 'bundle',
-        frequency: 'daily',
         bundleType: 'choice',
         bundleOptions: options.map((opt, idx) => ({
           id: `opt_${spec.key}_${opt}_${idx}`,
@@ -153,13 +151,13 @@ async function ensureSeedHabits(userId: string): Promise<Record<HabitSeedSpec['k
         order: 900 + i,
       };
     } else {
-      // Boolean habits (Eat Clean daily, Meal Prep weekly)
+      // Boolean habits (Eat Clean daily, Meal Prep weekly via timesPerWeek)
       habitData = {
         categoryId: category.id,
         name: spec.name,
-        goal: { type: 'boolean', frequency: spec.frequency },
+        goal: { type: 'boolean', frequency: 'daily' },
         type: 'boolean',
-        frequency: spec.frequency,
+        ...(spec.timesPerWeek != null ? { timesPerWeek: spec.timesPerWeek } : {}),
         order: 900 + i,
       };
     }

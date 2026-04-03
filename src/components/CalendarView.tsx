@@ -78,7 +78,7 @@ export const CalendarView: React.FC = () => {
     }), [currentWeekStart]);
 
     // Data Filtering
-    const weeklyHabits = useMemo(() => habits.filter(h => h.goal.frequency === 'weekly' && !h.archived), [habits]);
+    const weeklyHabits = useMemo(() => habits.filter(h => h.timesPerWeek != null && h.timesPerWeek > 0 && !h.archived), [habits]);
 
     // Split into "Scheduled" and "Unassigned"
     const scheduledHabits = useMemo(() =>

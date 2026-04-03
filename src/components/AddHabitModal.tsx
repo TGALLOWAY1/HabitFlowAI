@@ -6,7 +6,6 @@ import { useHabitStore } from '../store/HabitContext';
 import { useRoutineStore } from '../store/RoutineContext';
 import { useGoalsWithProgress } from '../lib/useGoalsWithProgress';
 import type { Habit } from '../models/persistenceTypes';
-import { cn } from '../utils/cn';
 import { format } from 'date-fns';
 import { getBundleMemberships, createBundleMembership, endBundleMembership } from '../lib/persistenceClient';
 import { BundlePickerModal } from './BundlePickerModal';
@@ -62,8 +61,8 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
     const [target, setTarget] = useState(''); // Numeric target
     const [unit, setUnit] = useState('');
 
-    // Frequency (Default to Daily for Bundles)
-    const [frequency, setFrequency] = useState<'daily' | 'weekly'>('daily');
+    // Times per week (optional weekly quota)
+    const [timesPerWeek, setTimesPerWeek] = useState<string>('');
 
     // Scheduling
     const [scheduledTime, setScheduledTime] = useState('');
@@ -79,8 +78,6 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
     // Routine Linking
     const [linkedRoutineIds, setLinkedRoutineIds] = useState<string[]>([]);
 
-    // Weekly Intent Type Helper
-    const [weeklyIntent, setWeeklyIntent] = useState<'binary' | 'frequency' | 'quantity'>('binary');
 
     // Metadata
     const [description, setDescription] = useState('');
@@ -113,19 +110,10 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                 setGoalType(initialData.goal.type || 'boolean');
                 setTarget(initialData.goal.target ? String(initialData.goal.target) : '');
                 setUnit(initialData.goal.unit || '');
-                // Normalize legacy 'total' frequency to 'daily' — cumulative tracking
-                // is now expressed via numeric goal type, not a separate frequency.
-                setFrequency(initialData.goal.frequency === 'total' ? 'daily' : initialData.goal.frequency);
+                setTimesPerWeek(initialData.timesPerWeek ? String(initialData.timesPerWeek) : '');
                 setScheduledTime(initialData.scheduledTime || '');
                 setLinkedGoalId(initialData.linkedGoalId || null);
                 setLinkedRoutineIds(initialData.linkedRoutineIds || []);
-
-                // Infer Weekly Intent
-                if (initialData.goal.frequency === 'weekly') {
-                    if (initialData.goal.type === 'number') setWeeklyIntent('quantity');
-                    else if (initialData.goal.target && initialData.goal.target > 1) setWeeklyIntent('frequency');
-                    else setWeeklyIntent('binary');
-                }
                 setDurationMinutes(initialData.durationMinutes?.toString() || '30');
                 const days = initialData.assignedDays ?? [0, 1, 2, 3, 4, 5, 6];
                 setScheduledDays(days);
@@ -138,7 +126,7 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                 // If opened via "Convert to Bundle" action, auto-switch to bundle mode
                 if (initialBundleConvert && initialData.type !== 'bundle') {
                     setHabitType('bundle');
-                    setFrequency('daily');
+                    setTimesPerWeek('');
                 }
 
             } else {
@@ -154,11 +142,10 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                 setGoalType('boolean');
                 setTarget('');
                 setUnit('');
-                setFrequency('daily');
+                setTimesPerWeek('');
                 setScheduledTime('');
                 setLinkedGoalId(null);
                 setLinkedRoutineIds([]);
-                setWeeklyIntent('binary');
                 setDurationMinutes('30');
                 setScheduledDays([0, 1, 2, 3, 4, 5, 6]);
                 setRequiredDaysPerWeek(7);
@@ -245,13 +232,16 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                 type: goalType,
                 target: finalTarget,
                 unit: unit || undefined,
-                frequency: frequency,
+                frequency: 'daily' as const,
             };
+
+            const timesPerWeekNum = timesPerWeek ? Number(timesPerWeek) : undefined;
 
             const habitData = {
                 name,
                 categoryId: selectedCategoryId,
                 goal: goalConfig,
+                timesPerWeek: timesPerWeekNum && timesPerWeekNum > 0 ? timesPerWeekNum : undefined,
                 assignedDays: scheduledDays,
                 scheduledTime: scheduledTime || undefined,
                 durationMinutes: durationMinutes ? Number(durationMinutes) : undefined,
@@ -284,7 +274,7 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                         type: pending.goalType,
                         target: pending.goalType === 'number' && pending.target ? Number(pending.target) : undefined,
                         unit: pending.goalType === 'number' ? pending.unit : undefined,
-                        frequency: frequency, // Inherit frequency (daily/weekly)
+                        frequency: 'daily' as const,
                     },
                     assignedDays: undefined, // Inherit schedule
                     bundleParentId: savedHabit.id, // Link to parent immediately
@@ -354,7 +344,7 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                             type: mod.goalType,
                             target: mod.goalType === 'number' && mod.target ? Number(mod.target) : undefined,
                             unit: mod.goalType === 'number' ? mod.unit : undefined,
-                            frequency: frequency // Inherit bundle frequency
+                            frequency: 'daily' as const
                         }
                     });
                 }
@@ -531,7 +521,6 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                             onClick={() => {
                                 setHabitType('regular');
                                 setBundleMode(null);
-                                setFrequency('daily');
                             }}
                             className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-md text-sm font-medium transition-all ${habitType === 'regular'
                                 ? 'bg-emerald-500 text-neutral-900 shadow-lg'
@@ -545,7 +534,6 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                             type="button"
                             onClick={() => {
                                 setHabitType('bundle');
-                                setFrequency('daily'); // Enforce Daily for bundles
                             }}
                             className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-md text-sm font-medium transition-all ${habitType === 'bundle'
                                 ? 'bg-indigo-500 text-white shadow-lg'
@@ -725,32 +713,13 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                             </div>
                     </div>
 
-                    {/* 2. Frequency & Type (Only for Regular) */}
+                    {/* 2. Tracking Style (Only for Regular) */}
                     {habitType === 'regular' && (
                         <div className="space-y-3">
                             <label className="block text-sm font-medium text-neutral-400">Tracking Style</label>
 
-                            {/* Frequency Selector */}
-                            <div className="grid grid-cols-2 gap-2">
-                                {(['daily', 'weekly'] as const).map((freq) => (
-                                    <button
-                                        key={freq}
-                                        type="button"
-                                        onClick={() => {
-                                            setFrequency(freq);
-                                        }}
-                                        className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors border ${frequency === freq
-                                            ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/50'
-                                            : 'bg-neutral-800 text-neutral-400 border-white/5 hover:bg-neutral-700'
-                                            }`}
-                                    >
-                                        {freq.charAt(0).toUpperCase() + freq.slice(1)}
-                                    </button>
-                                ))}
-                            </div>
-
                             {/* Goal Type Toggle */}
-                            <div className="grid grid-cols-2 gap-2 mt-2">
+                            <div className="grid grid-cols-2 gap-2">
                                 <button
                                     type="button"
                                     onClick={() => setGoalType('boolean')}
@@ -774,113 +743,20 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                                     Numeric
                                 </button>
                             </div>
-                        </div>
-                    )}
 
-                    {/* Step 3: Weekly Configuration (If Weekly) */}
-                    {habitType === 'regular' && frequency === 'weekly' && (
-                        <div className="space-y-4 animate-in fade-in slide-in-from-top-1 bg-neutral-800/20 p-4 rounded-xl border border-white/5">
-                            <label className="text-sm font-medium text-neutral-300">Weekly Intent</label>
-
-                            <div className="grid grid-cols-1 gap-2">
-                                <button
-                                    type="button"
-                                    onClick={() => {
-                                        setWeeklyIntent('binary');
-                                        setGoalType('boolean');
-                                        setTarget('1');
-                                    }}
-                                    className={cn(
-                                        "flex items-center gap-3 p-3 rounded-xl border text-left transition-all",
-                                        weeklyIntent === 'binary'
-                                            ? "bg-emerald-500/10 border-emerald-500/50 text-emerald-200"
-                                            : "bg-neutral-800 border-white/5 text-neutral-400 hover:bg-neutral-800/80"
-                                    )}
-                                >
-                                    <div className={cn("p-2 rounded-lg", weeklyIntent === 'binary' ? "bg-emerald-500 text-neutral-900" : "bg-neutral-700")}>
-                                        <CheckCircle2 size={16} />
-                                    </div>
-                                    <div>
-                                        <div className="text-sm font-medium">Do once per week</div>
-                                        <div className="text-xs opacity-70">Example: Go to Yoga</div>
-                                    </div>
-                                </button>
-
-                                <button
-                                    type="button"
-                                    onClick={() => {
-                                        setWeeklyIntent('frequency');
-                                        setGoalType('boolean');
-                                        setTarget('');
-                                    }}
-                                    className={cn(
-                                        "flex items-center gap-3 p-3 rounded-xl border text-left transition-all",
-                                        weeklyIntent === 'frequency'
-                                            ? "bg-blue-500/10 border-blue-500/50 text-blue-200"
-                                            : "bg-neutral-800 border-white/5 text-neutral-400 hover:bg-neutral-800/80"
-                                    )}
-                                >
-                                    <div className={cn("p-2 rounded-lg", weeklyIntent === 'frequency' ? "bg-blue-500 text-white" : "bg-neutral-700")}>
-                                        <Calendar size={16} />
-                                    </div>
-                                    <div className="flex-1">
-                                        <div className="text-sm font-medium">Do multiple times</div>
-                                        <div className="text-xs opacity-70">Example: Gym 3x</div>
-                                    </div>
-                                    {weeklyIntent === 'frequency' && (
-                                        <div className="flex items-center gap-1 bg-neutral-900 rounded p-1">
-                                            <input
-                                                type="number"
-                                                value={target}
-                                                onChange={(e) => setTarget(e.target.value)}
-                                                placeholder="#"
-                                                className="w-8 bg-transparent text-center text-sm outline-none"
-                                                onClick={(e) => e.stopPropagation()}
-                                            />
-                                            <span className="text-xs text-neutral-500 pr-1">/wk</span>
-                                        </div>
-                                    )}
-                                </button>
-
-                                <button
-                                    type="button"
-                                    onClick={() => {
-                                        setWeeklyIntent('quantity');
-                                        setGoalType('number');
-                                    }}
-                                    className={cn(
-                                        "flex items-center gap-3 p-3 rounded-xl border text-left transition-all",
-                                        weeklyIntent === 'quantity'
-                                            ? "bg-amber-500/10 border-amber-500/50 text-amber-200"
-                                            : "bg-neutral-800 border-white/5 text-neutral-400 hover:bg-neutral-800/80"
-                                    )}
-                                >
-                                    <div className={cn("p-2 rounded-lg", weeklyIntent === 'quantity' ? "bg-amber-500 text-neutral-900" : "bg-neutral-700")}>
-                                        <Calculator size={16} />
-                                    </div>
-                                    <div className="flex-1">
-                                        <div className="text-sm font-medium">Reach a quantity</div>
-                                        <div className="text-xs opacity-70">Example: Run 30 miles</div>
-                                    </div>
-                                    {weeklyIntent === 'quantity' && (
-                                        <div className="flex items-center gap-1 bg-neutral-900 rounded p-1" onClick={(e) => e.stopPropagation()}>
-                                            <input
-                                                type="number"
-                                                value={target}
-                                                onChange={(e) => setTarget(e.target.value)}
-                                                placeholder="Target"
-                                                className="w-12 bg-transparent text-center text-sm outline-none"
-                                            />
-                                            <input
-                                                type="text"
-                                                value={unit}
-                                                onChange={(e) => setUnit(e.target.value)}
-                                                placeholder="Unit"
-                                                className="w-12 bg-transparent text-center text-sm outline-none border-l border-white/10"
-                                            />
-                                        </div>
-                                    )}
-                                </button>
+                            {/* Weekly Target (optional) */}
+                            <div className="flex items-center gap-3 mt-2">
+                                <label className="text-sm text-neutral-400 whitespace-nowrap">Times per week</label>
+                                <input
+                                    type="number"
+                                    min="1"
+                                    max="7"
+                                    value={timesPerWeek}
+                                    onChange={(e) => setTimesPerWeek(e.target.value)}
+                                    placeholder="—"
+                                    className="w-16 bg-neutral-800 border border-white/10 rounded-lg px-3 py-1.5 text-white text-sm text-center focus:outline-none focus:border-emerald-500"
+                                />
+                                <span className="text-xs text-neutral-500">Leave empty for daily</span>
                             </div>
                         </div>
                     )}
@@ -1138,7 +1014,7 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
 
                     {/* 4. Numeric Target Configuration */}
                     {
-                        habitType === 'regular' && frequency !== 'weekly' && goalType === 'number' && (
+                        habitType === 'regular' && goalType === 'number' && (
                             <div className="grid grid-cols-2 gap-4 pt-2 border-t border-white/5">
                                 <div>
                                     <label className="block text-sm font-medium text-neutral-400 mb-1">

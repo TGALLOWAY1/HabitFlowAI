@@ -137,7 +137,7 @@ export async function getProgressOverview(req: Request, res: Response): Promise<
       const value = habit.goal.type === 'number' && todayState ? todayState.value : undefined;
       const streak = streakMetrics.currentStreak;
 
-      const isWeeklyStreak = habit.goal.frequency === 'weekly' ||
+      const isWeeklyStreak = (habit.timesPerWeek != null && habit.timesPerWeek > 0) ||
         (habit.assignedDays?.length && habit.requiredDaysPerWeek);
       const formattedStreak = isWeeklyStreak
         ? `${streak} ${streak === 1 ? 'week' : 'weeks'}`
