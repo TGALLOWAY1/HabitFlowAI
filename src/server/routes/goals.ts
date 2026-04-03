@@ -16,7 +16,7 @@ import {
   reorderGoals,
   validateHabitIds,
 } from '../repositories/goalRepository';
-import { getHabitsByUser, unlinkHabitsFromGoal } from '../repositories/habitRepository';
+import { getHabitsByUser, linkHabitsToGoal, unlinkHabitsFromGoal } from '../repositories/habitRepository';
 // getHabitEntriesByUser removed — entries are now fetched filtered by habit ID in computeGoalsWithProgressFromData
 import { computeGoalProgressV2, computeGoalListProgress } from '../utils/goalProgressUtilsV2';
 import type { Goal } from '../../models/persistenceTypes';
@@ -441,6 +441,11 @@ export async function createGoalRoute(req: Request, res: Response): Promise<void
       userId
     );
 
+    // Sync linkedGoalId on linked habits (bidirectional link)
+    if (goal.linkedHabitIds.length > 0) {
+      await linkHabitsToGoal(goal.linkedHabitIds, goal.id, householdId, userId);
+    }
+
     // Fire-and-forget badge generation — never blocks the response
     generateBadgeForGoal(goal.id, goal.title, householdId, userId);
 
@@ -695,6 +700,13 @@ export async function updateGoalRoute(req: Request, res: Response): Promise<void
       }
     }
 
+    // Fetch existing goal to diff linkedHabitIds if they're changing
+    let previousLinkedHabitIds: string[] | null = null;
+    if (patch.linkedHabitIds) {
+      const existing = existingGoal || await getGoalById(id, householdId, userId);
+      previousLinkedHabitIds = existing?.linkedHabitIds || [];
+    }
+
     const goal = await updateGoal(id, householdId, userId, patch);
 
     if (!goal) {
@@ -705,6 +717,21 @@ export async function updateGoalRoute(req: Request, res: Response): Promise<void
         },
       });
       return;
+    }
+
+    // Sync linkedGoalId on habits when linkedHabitIds changes
+    if (patch.linkedHabitIds && previousLinkedHabitIds !== null) {
+      // Clear linkedGoalId from habits no longer linked to this goal
+      const currentSet = new Set(patch.linkedHabitIds);
+      const hasRemovals = previousLinkedHabitIds.some(hid => !currentSet.has(hid));
+      if (hasRemovals) {
+        await unlinkHabitsFromGoal(id, householdId, userId);
+      }
+
+      // Set linkedGoalId on all currently linked habits
+      if (patch.linkedHabitIds.length > 0) {
+        await linkHabitsToGoal(patch.linkedHabitIds, id, householdId, userId);
+      }
     }
 
     let iteratedGoal: Goal | null = null;
