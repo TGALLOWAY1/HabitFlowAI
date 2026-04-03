@@ -291,7 +291,7 @@ export function getDailyHabitRingProgress(
     logs: Record<string, DayLog>,
     date: string
 ): { completed: number; total: number } {
-    const dailyRootHabits = getHabitsForDate(habits, new Date(date));
+    const dailyRootHabits = getHabitsForDate(habits, date);
     // Exclude bundle parents from ring metrics — their completion is derived
     // from children, who are already excluded from root. This aligns with
     // analytics (which also excludes bundle parents via isTrackableHabit).
@@ -305,10 +305,12 @@ export function getDailyHabitRingProgress(
 
 export function getHabitsForDate(
     habits: Habit[],
-    _date: Date
+    dayKey: string
 ): Habit[] {
     // Identify child IDs to exclude them from root list
     const childIds = getBundleChildIds(habits);
+    // Day-of-week using noon UTC to avoid DST edge cases (matches scheduleEngine convention)
+    const dow = new Date(dayKey + 'T12:00:00Z').getUTCDay();
 
     return habits.filter(h => {
         // 1. Must not be archived
@@ -323,6 +325,11 @@ export function getHabitsForDate(
         const frequency = h.frequency || h.goal.frequency;
 
         if (frequency !== 'daily' && frequency !== 'total') return false;
+
+        // 4. If habit has specific assigned days, only show on those days
+        if (h.assignedDays && h.assignedDays.length > 0) {
+            return h.assignedDays.includes(dow);
+        }
 
         return true;
     });
