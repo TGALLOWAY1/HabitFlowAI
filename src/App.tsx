@@ -19,7 +19,7 @@ import { RoutinePreviewModal } from './components/RoutinePreviewModal';
 import { HabitHistoryModal } from './components/HabitHistoryModal';
 import { BottomTabBar } from './components/BottomTabBar';
 
-import { Plus, Trophy } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import type { Routine, Habit } from './types';
 import { GoalsPage } from './pages/goals/GoalsPage';
 import { CreateGoalModal } from './components/CreateGoalModal';
@@ -30,6 +30,7 @@ import { iterateGoal, createGoal, fetchGoal } from './lib/persistenceClient';
 import { invalidateAllGoalCaches } from './lib/goalDataCache';
 import { DayView } from './components/day-view/DayView';
 import { WeeklyView } from './components/day-view/WeeklyView';
+import { GoalScheduleView } from './pages/goals/GoalScheduleView';
 
 import { JournalPage } from './pages/JournalPage';
 import { TasksPage } from './pages/TasksPage';
@@ -167,6 +168,9 @@ const HabitTrackerContent: React.FC = () => {
     habits.length === 0 ? 'day' : 'grid'
   );
 
+  // Goals View Mode: 'all', 'schedule', or 'achievements'
+  const [goalsViewMode, setGoalsViewMode] = useState<'all' | 'schedule' | 'achievements'>('all');
+
 
   const [showCreateGoal, setShowCreateGoal] = useState(false);
   const [completedGoalId, setCompletedGoalId] = useState<string | null>(null);
@@ -282,23 +286,14 @@ const HabitTrackerContent: React.FC = () => {
                   <Plus size={20} />
                 </button>
               )}
-              {view === 'goals' && (
-                <>
-                  <button
-                    onClick={() => handleNavigate('wins')}
-                    className="p-2 rounded-lg hover:bg-neutral-800 text-amber-400 hover:text-amber-300 transition-colors"
-                    title="Win Archive"
-                  >
-                    <Trophy size={20} />
-                  </button>
-                  <button
-                    onClick={() => setShowCreateGoal(true)}
-                    className="p-2 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-neutral-900 transition-colors"
-                    title="Create Goal"
-                  >
-                    <Plus size={20} />
-                  </button>
-                </>
+              {view === 'goals' && !selectedGoalId && (
+                <button
+                  onClick={() => setShowCreateGoal(true)}
+                  className="p-2 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-neutral-900 transition-colors"
+                  title="Create Goal"
+                >
+                  <Plus size={20} />
+                </button>
               )}
               {view === 'routines' && (
                 <button
@@ -311,6 +306,32 @@ const HabitTrackerContent: React.FC = () => {
               )}
             </div>
           </div>
+
+          {/* Goals View Toggle — centered below title */}
+          {view === 'goals' && !selectedGoalId && !completedGoalId && (
+            <div className="flex justify-center">
+              <div className="flex bg-neutral-800 p-0.5 rounded-lg">
+                <button
+                  onClick={() => setGoalsViewMode('all')}
+                  className={`px-3 py-1 text-sm font-medium rounded-md transition-all ${goalsViewMode === 'all' ? 'bg-neutral-600 text-white shadow-sm' : 'text-neutral-400 hover:text-white'}`}
+                >
+                  All
+                </button>
+                <button
+                  onClick={() => setGoalsViewMode('schedule')}
+                  className={`px-3 py-1 text-sm font-medium rounded-md transition-all ${goalsViewMode === 'schedule' ? 'bg-neutral-600 text-white shadow-sm' : 'text-neutral-400 hover:text-white'}`}
+                >
+                  Schedule
+                </button>
+                <button
+                  onClick={() => setGoalsViewMode('achievements')}
+                  className={`px-3 py-1 text-sm font-medium rounded-md transition-all ${goalsViewMode === 'achievements' ? 'bg-neutral-600 text-white shadow-sm' : 'text-neutral-400 hover:text-white'}`}
+                >
+                  Achievements
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Tracker View Toggle — centered below title */}
           {view === 'tracker' && (
@@ -374,7 +395,8 @@ const HabitTrackerContent: React.FC = () => {
             }}
             onViewWinArchive={() => {
               setCompletedGoalId(null);
-              handleNavigate('wins');
+              setGoalsViewMode('achievements');
+              handleNavigate('goals');
             }}
             onViewGoalDetail={(goalId) => {
               setCompletedGoalId(null);
@@ -407,10 +429,12 @@ const HabitTrackerContent: React.FC = () => {
             }}
             onArchive={() => {
               setCompletedGoalId(null);
-              handleNavigate('wins');
+              setGoalsViewMode('achievements');
+              handleNavigate('goals');
             }}
           />
         ) : view === 'wins' ? (
+          // Legacy wins route: show achievements tab within goals
           <WinArchivePage
             onViewGoal={(goalId) => {
               handleNavigate('goals', { goalId });
@@ -429,7 +453,8 @@ const HabitTrackerContent: React.FC = () => {
               handleNavigate('goals');
             }}
             onViewWinArchive={() => {
-              handleNavigate('wins');
+              setGoalsViewMode('achievements');
+              handleNavigate('goals');
             }}
             onViewHabit={(habitId) => {
               const habit = habits.find(h => h.id === habitId);
@@ -518,6 +543,18 @@ const HabitTrackerContent: React.FC = () => {
           <AnalyticsPage onBack={() => handleNavigate('dashboard')} />
         ) : view === 'health' ? (
           <AppleHealthPage onBack={() => handleNavigate('dashboard')} />
+        ) : goalsViewMode === 'schedule' ? (
+          <GoalScheduleView
+            onViewGoal={(goalId) => {
+              handleNavigate('goals', { goalId });
+            }}
+          />
+        ) : goalsViewMode === 'achievements' ? (
+          <WinArchivePage
+            onViewGoal={(goalId) => {
+              handleNavigate('goals', { goalId });
+            }}
+          />
         ) : (
           <GoalsPage
             onCreateGoal={() => setShowCreateGoal(true)}
@@ -529,7 +566,7 @@ const HabitTrackerContent: React.FC = () => {
               handleNavigate('goals');
             }}
             onViewWinArchive={() => {
-              handleNavigate('wins');
+              setGoalsViewMode('achievements');
             }}
           />
         )

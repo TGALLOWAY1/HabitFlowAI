@@ -115,17 +115,11 @@ export async function computeGoalProgressV2(
 
   const resolvedHabitIds = await resolveBundleIds(goal.linkedHabitIds, householdId, userId);
 
-  // Include deleted entries so that contributions from deleted habits
-  // (whose entries were cascade-soft-deleted) still count toward goal progress.
-  const entryViews = await getEntryViewsForHabits(resolvedHabitIds, householdId, userId, {
+  // Exclude soft-deleted entries (deletedAt set). Entries from deleted habits
+  // are still included because deleting a habit does not set deletedAt on its entries.
+  const activeEntries = await getEntryViewsForHabits(resolvedHabitIds, householdId, userId, {
     timeZone,
-    includeDeleted: true,
   });
-
-  // Only filter out entries the user explicitly deleted (not cascade-deleted).
-  // Going forward, entries are no longer cascade-deleted on habit deletion,
-  // but older data may still have cascade-deleted entries we need to include.
-  const activeEntries = entryViews;
 
   const allHabits = await getHabitsByUser(householdId, userId);
   const habitMap = new Map(allHabits.map(h => [h.id, h]));
@@ -339,12 +333,11 @@ export async function computeGoalsWithProgressFromData(
     }
   }
 
-  // Include deleted entries so contributions from deleted habits still count.
-  const allEntryViews = prefetchedEntries
+  // Exclude soft-deleted entries. Entries from deleted habits are still included
+  // because deleting a habit does not set deletedAt on its entries.
+  const activeEntryViews = prefetchedEntries
     ? buildEntryViewsFromEntries(prefetchedEntries, Array.from(allHabitIds), { timeZone })
-    : await getEntryViewsForHabits(Array.from(allHabitIds), householdId, userId, { timeZone, includeDeleted: true });
-
-  const activeEntryViews = allEntryViews;
+    : await getEntryViewsForHabits(Array.from(allHabitIds), householdId, userId, { timeZone });
 
   // Build map of entries by habitId for efficient lookup
   const entriesByHabitId = new Map<string, EntryView[]>();
@@ -435,13 +428,13 @@ export async function computeGoalListProgress(
   // Two parallel queries instead of one huge unbounded query:
   // 1. Aggregation: get totals per habit (sum, count, distinctDays) — no docs transferred
   // 2. Recent entries: only last 30 days for heatmap + inactivity
-  // Include deleted entries so contributions from deleted habits still count.
+  // Exclude soft-deleted entries (deletedAt set). Entries from deleted habits
+  // are still included because deleting a habit does not set deletedAt on its entries.
   const [aggregatedTotals, recentEntryViews] = await Promise.all([
-    aggregateHabitEntryTotals(allHabitIdArray, householdId, userId, { includeDeleted: true }),
+    aggregateHabitEntryTotals(allHabitIdArray, householdId, userId),
     getRecentEntryViewsForHabits(allHabitIdArray, householdId, userId, {
       sinceDayKey,
       timeZone,
-      includeDeleted: true,
     }),
   ]);
 
