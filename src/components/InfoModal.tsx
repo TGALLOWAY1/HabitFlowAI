@@ -360,6 +360,9 @@ export function InfoModal({ isOpen, onClose }: InfoModalProps) {
                     <span><span className="font-semibold text-emerald-400">One-time</span> — A binary milestone to achieve (e.g., "Pass the Portuguese B2 exam").</span>
                   </li>
                 </ul>
+                <p className="text-xs text-neutral-500 mt-2">
+                  The Goals page has three views: <span className="text-neutral-400">All</span> (active goals), <span className="text-neutral-400">Schedule</span> (calendar with deadlines, forecasts, and milestones), and <span className="text-neutral-400">Achievements</span> (completed goals gallery).
+                </p>
               </div>
             </div>
           )}

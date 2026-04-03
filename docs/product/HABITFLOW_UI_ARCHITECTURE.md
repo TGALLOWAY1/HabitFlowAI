@@ -68,13 +68,18 @@ HabitFlow App
 │   │   ├── Start / Run (→ modal)
 │   │   └── Edit (→ modal)
 │   │
-│   └── Goals
-│       ├── Goal List (collapsible category stacks)
+│   └── Goals (toggle: All / Schedule / Achievements)
+│       ├── All — Goal List (collapsible category stacks)
+│       ├── Schedule — Insight calendar (deadlines, forecasts, milestones)
+│       │   ├── Month grid with event dots
+│       │   ├── Category filter
+│       │   ├── Single-goal focus mode
+│       │   └── Date detail panel (cluster inspection)
+│       ├── Achievements — Completed goals gallery (was Win Archive)
 │       ├── [+] Create Goal (→ multi-step flow)
 │       ├── Goal Detail Page (charts, entries, linked habits)
 │       ├── Edit Goal (→ modal)
-│       ├── Goal Completed Page (celebration)
-│       └── Win Archive (→ gallery page)
+│       └── Goal Completed Page (celebration)
 │
 ├── Journal (via dashboard card or direct URL)
 │   ├── Free Write tab
@@ -103,10 +108,11 @@ HabitFlow App
 | Tracker (Today) | Page | View toggle on Tracker | Single-day habit view grouped by category, with full action icons (history, edit, delete, move, bundle) in expanded card | Habits, Entries | Same as Grid |
 | Tracker (Weekly) | Page | View toggle on Tracker | Week-at-a-glance overview | Habits, Entries | Same as Grid |
 | Routines List | Page | Bottom tab "Routines" | Card list of all routines | Routines | Routine Editor, Runner, Preview |
-| Goals List | Page | Bottom tab "Goals" | Collapsible category stacks with progress bars | Goals, Categories | Create Goal Flow, Goal Detail, Edit Goal Modal |
+| Goals — All | Page | Bottom tab "Goals", "All" toggle | Collapsible category stacks with progress bars | Goals, Categories | Create Goal Flow, Goal Detail, Edit Goal Modal |
+| Goals — Schedule | Page | "Schedule" toggle on Goals | Insight calendar with deadlines, forecasts, milestones | Goals, Categories | Goal Detail, Focus Mode |
+| Goals — Achievements | Page | "Achievements" toggle on Goals | Gallery of completed goals (was Win Archive) | Goals | Goal Detail |
 | Goal Detail | Page | Click goal card / pinned goal | Charts, entries, linked habits for one goal | Goals, Habits, Entries | Edit Goal Modal, Goal Completed |
-| Goal Completed | Page | Auto-shown on 100% or manual | Celebratory screen with next actions | Goals | Win Archive, Goal Detail, Level Up |
-| Win Archive | Page | Trophy icon on Goals page / Goal Completed | Gallery of completed goals | Goals | Goal Detail |
+| Goal Completed | Page | Auto-shown on 100% or manual | Celebratory screen with next actions | Goals | Achievements, Goal Detail, Level Up |
 | Create Goal (Step 1) | Modal | "+ Goal" button on Goals page | Enter goal details (title, type, target, deadline, category) | Goals, Categories | Create Goal Step 2 |
 | Create Goal (Step 2) | Modal | Next from Step 1 | Link habits to goal (filtered by category if selected) | Goals, Habits | Goals List (on submit) |
 | Journal | Page | Dashboard card / `?view=journal` | Free-write, templates, history tabs | Journal Entries | — |
