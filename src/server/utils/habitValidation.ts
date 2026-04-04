@@ -47,12 +47,11 @@ export function validateHabitEntryPayload(habit: Habit, entryPayload: Partial<Ha
 
         // 1b. Validate Child Habit ID if present (Unification Model)
         if (entryPayload.choiceChildHabitId) {
-            // We can't validate existence of child habit easily here without fetching it.
-            // But we can check if it's in subHabitIds if the habit has them.
-            if (habit.subHabitIds && !habit.subHabitIds.includes(entryPayload.choiceChildHabitId)) {
-                // Warn or fail? 
-                // It's possible the child was removed from bundle but stats remain.
-                // But for *creation* of entry, it should be in the bundle.
+            if (!habit.subHabitIds || habit.subHabitIds.length === 0) {
+                // Legacy choice bundles use bundleOptionId, not choiceChildHabitId
+                return { valid: false, error: 'choiceChildHabitId is not valid for legacy choice bundles. Use bundleOptionId.' };
+            }
+            if (!habit.subHabitIds.includes(entryPayload.choiceChildHabitId)) {
                 return { valid: false, error: `Habit ${entryPayload.choiceChildHabitId} is not a valid child of this choice bundle.` };
             }
         }

@@ -250,6 +250,103 @@ describe('POST /api/entries - Payload Validation', () => {
   });
 });
 
+describe('Choice Bundle Validation', () => {
+  it('rejects choiceChildHabitId on legacy choice bundle without subHabitIds', async () => {
+    const category = await createCategory(
+      { name: 'Bundle Cat', color: '#222222' },
+      TEST_HOUSEHOLD_ID,
+      TEST_USER_ID
+    );
+    const habit = await createHabit(
+      {
+        name: 'Legacy Choice',
+        categoryId: category.id,
+        goal: { type: 'boolean', frequency: 'daily' },
+        bundleType: 'choice',
+        bundleOptions: [
+          { id: 'opt-a', label: 'Option A', metricConfig: { mode: 'none' } },
+        ],
+      } as any,
+      TEST_HOUSEHOLD_ID,
+      TEST_USER_ID
+    );
+
+    const response = await request(app)
+      .post('/api/entries')
+      .send({
+        habitId: habit.id,
+        date: '2025-01-15',
+        value: 1,
+        choiceChildHabitId: 'some-random-habit-id',
+      });
+
+    expect(response.status).toBe(400);
+    expect(response.body.error).toContain('choiceChildHabitId is not valid for legacy choice bundles');
+  });
+
+  it('rejects choiceChildHabitId not in subHabitIds', async () => {
+    const category = await createCategory(
+      { name: 'Unified Cat', color: '#333333' },
+      TEST_HOUSEHOLD_ID,
+      TEST_USER_ID
+    );
+    const habit = await createHabit(
+      {
+        name: 'Unified Choice',
+        categoryId: category.id,
+        goal: { type: 'boolean', frequency: 'daily' },
+        bundleType: 'choice',
+        subHabitIds: ['child-1', 'child-2'],
+      } as any,
+      TEST_HOUSEHOLD_ID,
+      TEST_USER_ID
+    );
+
+    const response = await request(app)
+      .post('/api/entries')
+      .send({
+        habitId: habit.id,
+        date: '2025-01-15',
+        value: 1,
+        choiceChildHabitId: 'nonexistent-child',
+      });
+
+    expect(response.status).toBe(400);
+    expect(response.body.error).toContain('is not a valid child');
+  });
+
+  it('rejects entry on checklist bundle parent', async () => {
+    const category = await createCategory(
+      { name: 'Checklist Cat', color: '#444444' },
+      TEST_HOUSEHOLD_ID,
+      TEST_USER_ID
+    );
+    const habit = await createHabit(
+      {
+        name: 'Checklist Bundle',
+        categoryId: category.id,
+        goal: { type: 'boolean', frequency: 'daily' },
+        type: 'bundle',
+        bundleType: 'checklist',
+        subHabitIds: ['child-a'],
+      } as any,
+      TEST_HOUSEHOLD_ID,
+      TEST_USER_ID
+    );
+
+    const response = await request(app)
+      .post('/api/entries')
+      .send({
+        habitId: habit.id,
+        date: '2025-01-15',
+        value: 1,
+      });
+
+    expect(response.status).toBe(400);
+    expect(response.body.error).toContain('derived from children');
+  });
+});
+
 describe('PUT /api/entries - TrackerGrid-style payload (upsert)', () => {
   let choiceHabitId: string;
   const dayKey = '2025-01-20';

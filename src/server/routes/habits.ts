@@ -17,6 +17,7 @@ import {
   recoverCategoryDeletedHabits,
 } from '../repositories/habitRepository';
 import { createCategory, getCategoriesByUser, getCategoryById } from '../repositories/categoryRepository';
+import { addHabitToGoalLinkedIds, removeHabitFromGoalLinkedIds } from '../repositories/goalRepository';
 // deleteHabitEntriesByHabit intentionally not imported — entries persist after
 // habit deletion so goal progress includes historical contributions.
 import { endMembership } from '../repositories/bundleMembershipRepository';
@@ -207,6 +208,11 @@ export async function createHabitRoute(req: Request, res: Response): Promise<voi
       userId
     );
 
+    // Sync goal's linkedHabitIds when habit is created with a goal link
+    if (linkedGoalId) {
+      await addHabitToGoalLinkedIds(linkedGoalId, habit.id, householdId, userId);
+    }
+
     res.status(201).json({
       habit,
     });
@@ -340,11 +346,28 @@ export async function updateHabitRoute(req: Request, res: Response): Promise<voi
       }
     }
 
+    // If linkedGoalId is changing, fetch old habit to know previous goal link
+    let oldLinkedGoalId: string | null | undefined;
+    if (linkedGoalId !== undefined) {
+      const oldHabit = await getHabitById(id, householdId, userId);
+      oldLinkedGoalId = oldHabit?.linkedGoalId ?? null;
+    }
+
     const habit = await updateHabit(id, householdId, userId, patch);
 
     if (!habit) {
       res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Habit not found' } });
       return;
+    }
+
+    // Sync goal's linkedHabitIds when habit's linkedGoalId changes
+    if (linkedGoalId !== undefined && linkedGoalId !== oldLinkedGoalId) {
+      if (oldLinkedGoalId) {
+        await removeHabitFromGoalLinkedIds(oldLinkedGoalId, id, householdId, userId);
+      }
+      if (linkedGoalId) {
+        await addHabitToGoalLinkedIds(linkedGoalId, id, householdId, userId);
+      }
     }
 
     res.status(200).json({ habit });

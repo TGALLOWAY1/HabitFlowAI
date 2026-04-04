@@ -130,18 +130,6 @@ export interface Habit {
      */
     order?: number;
 
-    /** 
-     * Estimated completion date (for cumulative goals)
-     * 
-     * ⚠️ CRITICAL: This field is NOT persisted to MongoDB.
-     * It is calculated on-the-fly using getEstimatedCompletionDate() utility.
-     * The field exists in the type for runtime use but is never written to storage.
-     * 
-     * TODO: Exclude this field from MongoDB schema. It should be a computed property
-     * or calculated in the application layer, not stored in the database.
-     */
-    pace?: string | null;
-
     // Bundle fields
     type?: 'boolean' | 'number' | 'time' | 'bundle'; // Optional for backward compatibility
     subHabitIds?: string[]; // IDs of habits in this bundle
@@ -1381,6 +1369,9 @@ export interface HabitEntry {
 
     /** Optional note */
     note?: string;
+
+    /** Freeze type indicator. When present, this entry is a freeze marker, not a completion. */
+    freezeType?: 'manual' | 'auto' | 'soft';
 
     /** Soft delete timestamp */
     deletedAt?: string;

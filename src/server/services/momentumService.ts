@@ -1,13 +1,20 @@
-import type { DayLog, GlobalMomentumState, CategoryMomentumState } from '../../types';
+import type { GlobalMomentumState, CategoryMomentumState } from '../../types';
 import { subDays, parseISO, isSameDay } from 'date-fns';
+
+/** Minimal record for momentum calculations — replaces deprecated DayLog dependency. */
+export interface CompletionRecord {
+    habitId: string;
+    date: string;       // YYYY-MM-DD
+    completed: boolean;
+}
 
 /**
  * Momentum Service
- * 
+ *
  * Handles logic for:
  * 1. Global Momentum (Life-level)
  * 2. Category Momentum (Domain-level)
- * 
+ *
  * Philosophy: "Momentum > Purity. Engagement > Streak Anxiety."
  */
 
@@ -15,7 +22,7 @@ import { subDays, parseISO, isSameDay } from 'date-fns';
  * Calculates the number of "Active Days" in the last 7 days.
  * An active day is any day where at least one habit was completed.
  */
-function calculateActiveDays(logs: DayLog[], windowSize: number = 7, referenceDate: Date = new Date(), filterFn?: (log: DayLog) => boolean): number {
+function calculateActiveDays(logs: CompletionRecord[], windowSize: number = 7, referenceDate: Date = new Date(), filterFn?: (log: CompletionRecord) => boolean): number {
     let activeDaysCount = 0;
 
     for (let i = 0; i < windowSize; i++) {
@@ -41,7 +48,7 @@ function calculateActiveDays(logs: DayLog[], windowSize: number = 7, referenceDa
     return activeDaysCount;
 }
 
-export const calculateGlobalMomentum = (logs: DayLog[]): { state: GlobalMomentumState; activeDays: number } => {
+export const calculateGlobalMomentum = (logs: CompletionRecord[]): { state: GlobalMomentumState; activeDays: number } => {
     const activeDays = calculateActiveDays(logs);
 
     let state: GlobalMomentumState = 'Ready';
@@ -56,7 +63,7 @@ export const calculateGlobalMomentum = (logs: DayLog[]): { state: GlobalMomentum
 };
 
 export const calculateCategoryMomentum = (
-    logs: DayLog[],
+    logs: CompletionRecord[],
     categoryHabitIds: string[]
 ): { state: CategoryMomentumState; activeDays: number } => {
 

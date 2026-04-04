@@ -62,8 +62,6 @@ export interface Habit {
     bundleParentId?: string | null; // ID of the parent bundle (if any)
     order?: number; // Display order
 
-    pace?: string | null; // Estimated completion date
-
     // Calendar View Fields
     assignedDays?: number[]; // 0=Sun, 6=Sat
     scheduledTime?: string; // HH:mm

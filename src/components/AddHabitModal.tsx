@@ -73,7 +73,9 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
     // Goal Linking
     const [linkedGoalId, setLinkedGoalId] = useState<string | null>(null);
     const { data: goalsData } = useGoalsWithProgress();
-    const availableGoals = goalsData?.map(g => g.goal) || [];
+    const availableGoals = (goalsData?.map(g => g.goal) || []).filter(
+        g => !selectedCategoryId || g.categoryId === selectedCategoryId
+    );
 
     // Routine Linking
     const [linkedRoutineIds, setLinkedRoutineIds] = useState<string[]>([]);
