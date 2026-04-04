@@ -24,6 +24,16 @@
 
 Identity and scoping map: `docs/audits/m5_identity_map.md`.
 
+## System Model (Architecture Blueprint)
+
+Comprehensive system model and consistency audit produced 2026-04-04:
+
+- `docs/system-model/HABITFLOW_ENTITY_MODEL.md` — Exhaustive inventory of all 20+ entities, fields, types, and purposes.
+- `docs/system-model/HABITFLOW_RELATIONSHIPS.md` — ERD-style relationship diagram with cardinalities and dual-link requirements.
+- `docs/system-model/HABITFLOW_UX_PATHS.md` — Every UX path for create/edit/delete/complete across all views and modals.
+- `docs/system-model/HABITFLOW_SYSTEM_RULES.md` — Design contract: 30 numbered invariant rules governing truth, completion, scheduling, linking, streaks, goals, and analytics.
+- `docs/system-model/HABITFLOW_BUG_ANALYSIS.md` — Identified bugs, inconsistencies, design risks, and tech debt with file/line references.
+
 ## Historical / Archived
 
 - `docs/archive/PSYCHOLOGICAL_SAFETY_V0.md` — ARCHIVED psychological-safety-first direction (preserved, not current v1 direction).
