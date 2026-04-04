@@ -45,7 +45,9 @@ And the health routes (`src/server/routes/health.ts` line 49, `src/server/routes
 
 **Impact:** All Apple Health auto-logged entries lose their provenance when read back through truthQuery. The `source` field in EntryView says `'manual'` for apple_health entries. Analytics cannot distinguish auto-logged vs manually logged entries.
 
-**Fix:** Add `entry.source === 'apple_health'` (and `'legacy'`) to the condition at lines 158-163.
+**Fix:** Add `entry.source === 'apple_health'` to the condition at lines 158-163. (`'legacy'` is not a valid `HabitEntry.source` value — only present in `EntryView` — so no entries are created with it; the fallback to `'manual'` is correct for that case.)
+
+**Status:** Resolved. Added `'apple_health'` to the source allowlist in `mapEntryToView`.
 
 ---
 
@@ -69,6 +71,8 @@ The code comment at lines 29-31 acknowledges this is an MVP limitation:
 ```
 
 **Impact:** Weekly habits (those with `timesPerWeek` set) and total-frequency habits never receive auto-freezes. Users with weekly habits can lose streaks even when they have freeze inventory available. The freeze service also only checks "yesterday" (line 24: `const yesterday = subDays(new Date(), 1)`), which is appropriate for daily habits but the weekly equivalent would need to check the previous week boundary.
+
+**Status:** Resolved. Added weekly habit freeze support: on Mondays, the service checks if the previous week (Mon-Sun) was unsatisfied (completions < `timesPerWeek`) and if there was an active streak to protect (the week before was satisfied). If so, creates a freeze marker on the previous week's Sunday and decrements freeze inventory.
 
 ---
 
@@ -103,6 +107,8 @@ const validDayKeys = new Set(
 A legitimate entry with `value: 0` (e.g., user logs "0 glasses of water") gets `completed: true` with `value: 0`. For boolean habits this is fine (any entry = complete). But for numeric habits, the dayViewService correctly checks `value >= target` (`src/server/services/dayViewService.ts` line 150: `isComplete = currentValue >= target`), while the streak service counts the day as valid regardless.
 
 **Impact:** For numeric habits, a user could maintain a daily streak by logging value=0, even though the day view would correctly show the habit as incomplete (0 < target). The streak counter and the day view give contradictory signals.
+
+**Status:** Resolved. Added a post-aggregation correction pass in `progress.ts` that sets `completed = value >= target` for numeric habits (those with `goal.type === 'number'` and `goal.target > 0`). This runs after all entries are summed and after bundle derivation, but before momentum and streak calculations consume the data. Boolean habits remain unaffected (any entry = complete).
 
 ---
 
@@ -341,9 +347,9 @@ Traced the logic through `src/server/services/dayViewService.ts`:
 
 | ID | Type | Severity | Component | Status |
 |----|------|----------|-----------|--------|
-| BUG-1 | Bug | Medium | truthQuery.ts | Unresolved |
-| BUG-2 | Bug | Medium | freezeService.ts | Unresolved (acknowledged MVP limitation) |
-| BUG-3 | Bug | Low-Med | progress.ts / streakService.ts | Unresolved |
+| BUG-1 | Bug | Medium | truthQuery.ts | **Resolved** |
+| BUG-2 | Bug | Medium | freezeService.ts | **Resolved** |
+| BUG-3 | Bug | Low-Med | progress.ts / streakService.ts | **Resolved** |
 | INC-1 | Inconsistency | Medium | Goal-Habit bidirectional sync | Verified: habit-side update does not sync to goal |
 | INC-2 | Inconsistency | Low | momentumService types | Tech debt |
 | INC-3 | Inconsistency | Medium | Habit creation modal parity | Verified: inline modal missing many fields |

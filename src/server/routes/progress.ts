@@ -95,6 +95,21 @@ export async function getProgressOverview(req: Request, res: Response): Promise<
       }
     }
 
+    // Fix completed flag for numeric habits: respect goal target.
+    // The entry aggregation loop sets completed=true for any non-freeze entry,
+    // but numeric habits require value >= target to be truly complete.
+    for (const habit of activeHabits) {
+      if (habit.goal.type === 'number' && habit.goal.target != null && habit.goal.target > 0) {
+        const dayMap = dayStatesByHabit.get(habit.id);
+        if (!dayMap) continue;
+        for (const state of dayMap.values()) {
+          if (!state.isFrozen) {
+            state.completed = state.value >= habit.goal.target;
+          }
+        }
+      }
+    }
+
     // Build a completion-only log array for momentum calculations
     const completionLogs: DayLog[] = Array.from(dayStatesByHabit.entries()).flatMap(([habitId, dayMap]) =>
       Array.from(dayMap.values())
