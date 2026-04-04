@@ -160,6 +160,7 @@ function mapEntryToView(entry: HabitEntry, timeZone: string): EntryView {
     entry.source === 'routine' ||
     entry.source === 'quick' ||
     entry.source === 'import' ||
+    entry.source === 'apple_health' ||
     entry.source === 'test'
   ) {
     source = entry.source;
