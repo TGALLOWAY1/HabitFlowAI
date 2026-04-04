@@ -1,4 +1,4 @@
-import type { Habit, DayLog } from '../../types';
+import type { Habit } from '../../types';
 import { createHabitEntry, getHabitEntriesForDay } from '../repositories/habitEntryRepository';
 import { updateHabit } from '../repositories/habitRepository';
 
@@ -31,13 +31,13 @@ async function countWeekCompletions(
         const dayStr = format(day, 'yyyy-MM-dd');
         const entries = await getHabitEntriesForDay(habitId, dayStr, householdId, userId);
         // Count days with at least one non-freeze entry
-        const hasCompletion = entries.some(e => !e.note?.startsWith('freeze:'));
+        const hasCompletion = entries.some(e => !e.freezeType && !e.note?.startsWith('freeze:'));
         if (hasCompletion) count++;
     }
     return count;
 }
 
-export const processAutoFreezes = async (habits: Habit[], _logs: Record<string, DayLog>, householdId: string, userId: string): Promise<void> => {
+export const processAutoFreezes = async (habits: Habit[], _logs: Record<string, unknown>, householdId: string, userId: string): Promise<void> => {
     const now = new Date();
     const yesterday = subDays(now, 1);
     const yesterdayStr = format(yesterday, 'yyyy-MM-dd');
@@ -68,7 +68,7 @@ export const processAutoFreezes = async (habits: Habit[], _logs: Record<string, 
             const prevWeekSunday = subDays(currentWeekStart, 1);
             const prevWeekSundayStr = format(prevWeekSunday, 'yyyy-MM-dd');
             const sundayEntries = await getHabitEntriesForDay(habitId, prevWeekSundayStr, householdId, userId);
-            const alreadyFrozen = sundayEntries.some(e => e.note?.startsWith('freeze:'));
+            const alreadyFrozen = sundayEntries.some(e => e.freezeType || e.note?.startsWith('freeze:'));
             if (alreadyFrozen) continue;
 
             // Create freeze marker on previous week's Sunday
@@ -79,6 +79,7 @@ export const processAutoFreezes = async (habits: Habit[], _logs: Record<string, 
                 value: 0,
                 source: 'manual',
                 note: 'freeze:auto',
+                freezeType: 'auto',
             }, householdId, userId);
 
             await updateHabit(habitId, householdId, userId, {
@@ -114,6 +115,7 @@ export const processAutoFreezes = async (habits: Habit[], _logs: Record<string, 
                 value: 0,
                 source: 'manual',
                 note: 'freeze:auto',
+                freezeType: 'auto',
             }, householdId, userId);
 
             // 2. Decrement Inventory

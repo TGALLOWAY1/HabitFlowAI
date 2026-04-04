@@ -15,13 +15,16 @@ import { calculateGlobalMomentum, calculateCategoryMomentum, getMomentumCopy } f
 import { calculateHabitStreakMetrics, type HabitDayState } from '../services/streakService';
 import { resolveTimeZone, getNowDayKey, getCanonicalDayKeyFromEntry } from '../utils/dayKey';
 import type { MomentumState } from '../../types';
-import type { DayLog } from '../../models/persistenceTypes';
+import type { CompletionRecord } from '../services/momentumService';
 import type { BundleMembershipRecord } from '../domain/canonicalTypes';
 import { getRequestIdentity } from '../middleware/identity';
 import { evaluateChecklistSuccess } from '../services/checklistSuccessService';
 import type { Habit } from '../../models/persistenceTypes';
 
-function parseFreezeType(note?: string): 'manual' | 'auto' | 'soft' | undefined {
+function parseFreezeType(entry: { freezeType?: string; note?: string }): 'manual' | 'auto' | 'soft' | undefined {
+  // Prefer dedicated field; fall back to legacy note parsing
+  if (entry.freezeType === 'manual' || entry.freezeType === 'auto' || entry.freezeType === 'soft') return entry.freezeType;
+  const note = entry.note;
   if (!note || !note.startsWith('freeze:')) return undefined;
   const raw = note.slice('freeze:'.length);
   if (raw === 'manual' || raw === 'auto' || raw === 'soft') return raw;
@@ -62,7 +65,7 @@ export async function getProgressOverview(req: Request, res: Response): Promise<
         completed: false,
       };
 
-      const freezeType = parseFreezeType(entry.note);
+      const freezeType = parseFreezeType(entry);
       if (freezeType) {
         existing.isFrozen = true;
       } else {
@@ -111,7 +114,7 @@ export async function getProgressOverview(req: Request, res: Response): Promise<
     }
 
     // Build a completion-only log array for momentum calculations
-    const completionLogs: DayLog[] = Array.from(dayStatesByHabit.entries()).flatMap(([habitId, dayMap]) =>
+    const completionLogs: CompletionRecord[] = Array.from(dayStatesByHabit.entries()).flatMap(([habitId, dayMap]) =>
       Array.from(dayMap.values())
         .filter(state => state.completed)
         .map(state => ({

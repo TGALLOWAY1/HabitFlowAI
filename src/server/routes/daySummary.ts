@@ -14,7 +14,7 @@ type AggregatedDayEntry = {
   count: number;
   valueSum: number;
   hasFreeze: boolean;
-  freezeType?: DayLog['freezeType'];
+  freezeType?: 'manual' | 'auto' | 'soft';
   latestTimestamp: string;
   latestSource: HabitEntry['source'];
   latestRoutineId?: string;
@@ -36,7 +36,10 @@ function isDayKeyInRange(dayKey: string, startDayKey: string, endDayKey: string)
   return dayKey >= startDayKey && dayKey <= endDayKey;
 }
 
-function parseFreezeType(note?: string): DayLog['freezeType'] | undefined {
+function parseFreezeType(entry: { freezeType?: string; note?: string }): 'manual' | 'auto' | 'soft' | undefined {
+  // Prefer dedicated field; fall back to legacy note parsing
+  if (entry.freezeType === 'manual' || entry.freezeType === 'auto' || entry.freezeType === 'soft') return entry.freezeType;
+  const note = entry.note;
   if (!note || !note.startsWith('freeze:')) return undefined;
   const raw = note.slice('freeze:'.length);
   if (raw === 'manual' || raw === 'auto' || raw === 'soft') {
@@ -73,7 +76,7 @@ function aggregateEntries(
       completedOptions: {},
     };
 
-    const freezeType = parseFreezeType(entry.note);
+    const freezeType = parseFreezeType(entry);
     if (freezeType) {
       existing.hasFreeze = true;
       existing.freezeType = freezeType;

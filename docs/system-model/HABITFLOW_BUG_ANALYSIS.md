@@ -350,15 +350,15 @@ Traced the logic through `src/server/services/dayViewService.ts`:
 | BUG-1 | Bug | Medium | truthQuery.ts | **Resolved** |
 | BUG-2 | Bug | Medium | freezeService.ts | **Resolved** |
 | BUG-3 | Bug | Low-Med | progress.ts / streakService.ts | **Resolved** |
-| INC-1 | Inconsistency | Medium | Goal-Habit bidirectional sync | Verified: habit-side update does not sync to goal |
-| INC-2 | Inconsistency | Low | momentumService types | Tech debt |
-| INC-3 | Inconsistency | Medium | Habit creation modal parity | Verified: inline modal missing many fields |
-| INC-4 | Inconsistency | Low | Category filters in modals | Unresolved |
-| INC-5 | Inconsistency | Medium | Schedule filtering | Needs verification |
-| RISK-1 | Design Risk | Low | Freeze detection via note parsing | Unresolved |
-| RISK-2 | Design Risk | Medium | Bundle parent entry validation | Unresolved |
-| RISK-3 | Design Risk | Medium | Legacy bundleOptions coexistence | Migration needed |
-| DEBT-1 | Tech Debt | Low | DayLog type removal | Planned |
-| DEBT-2 | Tech Debt | Low | Entry date field consolidation | Planned |
-| DEBT-3 | Tech Debt | Low | Wellbeing format migration | Planned |
-| DEBT-4 | Tech Debt | Low | Habit.pace field | Planned |
+| INC-1 | Inconsistency | Medium | Goal-Habit bidirectional sync | **Resolved**. Habit-side updates now sync goal's linkedHabitIds via atomic $addToSet/$pull. |
+| INC-2 | Inconsistency | Low | momentumService types | **Resolved**. Server-side momentumService decoupled from DayLog; uses CompletionRecord. |
+| INC-3 | Inconsistency | Medium | Habit creation modal parity | Deferred: inline modal missing many fields (feature enhancement) |
+| INC-4 | Inconsistency | Low | Category filters in modals | **Resolved**. AddHabitModal goal dropdown now filters by selected category. |
+| INC-5 | Inconsistency | Medium | Schedule filtering | Deferred: needs careful backend behavior change |
+| RISK-1 | Design Risk | Low | Freeze detection via note parsing | **Mitigated**. Added `freezeType` field to HabitEntry; parseFreezeType checks field first, falls back to note parsing for legacy entries. |
+| RISK-2 | Design Risk | Medium | Bundle parent entry validation | **Resolved**. Legacy choice bundles now reject choiceChildHabitId; must use bundleOptionId. |
+| RISK-3 | Design Risk | Medium | Legacy bundleOptions coexistence | Deferred: migration needed |
+| DEBT-1 | Tech Debt | Low | DayLog type removal | **Partially resolved**. Server momentum/progress decoupled from DayLog. Frontend + daySummary API still use DayLog shape. |
+| DEBT-2 | Tech Debt | Low | Entry date field consolidation | Deferred: requires data migration |
+| DEBT-3 | Tech Debt | Low | Wellbeing format migration | Deferred: large scope (19 files) |
+| DEBT-4 | Tech Debt | Low | Habit.pace field | **Resolved**. Removed from Habit interface. |

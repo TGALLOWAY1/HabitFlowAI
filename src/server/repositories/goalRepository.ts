@@ -144,3 +144,39 @@ export function validateHabitIds(habitIds: any[]): boolean {
   if (!Array.isArray(habitIds)) return false;
   return habitIds.every(id => typeof id === 'string' && id.trim().length > 0);
 }
+
+/**
+ * Atomically add a habitId to a goal's linkedHabitIds array.
+ * Uses $addToSet for idempotency.
+ */
+export async function addHabitToGoalLinkedIds(
+  goalId: string,
+  habitId: string,
+  householdId: string,
+  userId: string
+): Promise<void> {
+  const db = await getDb();
+  const collection = db.collection(COLLECTION_NAME);
+  await collection.updateOne(
+    scopeFilter(householdId, userId, { id: goalId }),
+    { $addToSet: { linkedHabitIds: habitId } }
+  );
+}
+
+/**
+ * Atomically remove a habitId from a goal's linkedHabitIds array.
+ * Uses $pull for idempotency.
+ */
+export async function removeHabitFromGoalLinkedIds(
+  goalId: string,
+  habitId: string,
+  householdId: string,
+  userId: string
+): Promise<void> {
+  const db = await getDb();
+  const collection = db.collection(COLLECTION_NAME);
+  await collection.updateOne(
+    scopeFilter(householdId, userId, { id: goalId }),
+    { $pull: { linkedHabitIds: habitId } as any }
+  );
+}
