@@ -14,7 +14,42 @@ const COLLECTION_NAME = 'habits';
 
 function stripScope(doc: any): Habit {
   const { _id, userId: _, householdId: __, ...habit } = doc;
-  return habit as Habit;
+  return normalizeHabit(habit as Habit);
+}
+
+/**
+ * Normalize legacy habit data from MongoDB.
+ * Handles the weekly frequency migration: old habits may have
+ * `frequency: 'weekly'` (top-level) + `weeklyTarget` instead of `timesPerWeek`,
+ * and `goal.frequency: 'weekly'` instead of `'daily'`.
+ */
+function normalizeHabit(habit: Habit): Habit {
+  const raw = habit as any;
+
+  // Ensure goal exists (safety net for malformed MongoDB documents)
+  if (!habit.goal) {
+    habit.goal = { type: 'boolean', frequency: 'daily' };
+  }
+
+  // Migrate top-level frequency:'weekly' + weeklyTarget → timesPerWeek
+  if (raw.frequency === 'weekly' && habit.timesPerWeek == null) {
+    habit.timesPerWeek = raw.weeklyTarget ?? 1;
+  }
+
+  // Migrate goal.frequency:'weekly' → 'daily'
+  if ((habit.goal as any).frequency === 'weekly') {
+    habit.goal = { ...habit.goal, frequency: 'daily' };
+    // If timesPerWeek still not set, derive from goal.target
+    if (habit.timesPerWeek == null) {
+      habit.timesPerWeek = habit.goal.target ?? 1;
+    }
+  }
+
+  // Clean up legacy fields (don't persist, just strip from returned object)
+  delete raw.frequency;
+  delete raw.weeklyTarget;
+
+  return habit;
 }
 
 export async function createHabit(

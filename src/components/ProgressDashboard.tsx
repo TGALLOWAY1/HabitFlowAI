@@ -79,13 +79,13 @@ export const ProgressDashboard: React.FC<ProgressDashboardProps> = ({
         }
     });
 
+    const [guideForceOpen, setGuideForceOpen] = useState(false);
+
     const dismissGuide = useCallback(() => {
         setGuideDismissed(true);
         setGuideForceOpen(false);
         try { localStorage.setItem(SETUP_GUIDE_DISMISSED_KEY, 'true'); } catch { /* noop */ }
     }, []);
-
-    const [guideForceOpen, setGuideForceOpen] = useState(false);
 
     // Listen for settings "reopen guide" event
     useEffect(() => {

@@ -218,7 +218,6 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             } catch (error) {
                 console.error('[HabitContext] Error in initialize():', error);
                 setLoading(false);
-                throw error;
             }
         };
 
