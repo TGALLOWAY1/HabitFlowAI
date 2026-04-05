@@ -9,16 +9,24 @@ import './config/env'; // Load environment variables first
 import { assertMongoEnabled } from './config';
 import { createApp } from './app';
 import { closeConnection } from './lib/mongoClient';
+import { runStartupMigrations } from './migrations/startup';
 
 assertMongoEnabled();
 
 const app = createApp();
 const PORT = process.env.PORT || 3001;
 
-const server = app.listen(PORT, () => {
+const server = app.listen(PORT, async () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);
   console.log(`📡 API endpoints available at http://localhost:${PORT}/api`);
   console.log(`💾 MongoDB persistence: ENABLED (required)`);
+
+  // Run data migrations after server is listening (non-blocking)
+  try {
+    await runStartupMigrations();
+  } catch (err) {
+    console.error('Startup migrations failed (non-fatal):', err);
+  }
 });
 
 process.on('SIGTERM', async () => {
