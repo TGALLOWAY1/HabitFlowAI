@@ -70,6 +70,10 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
     const [scheduledDays, setScheduledDays] = useState<number[]>([0, 1, 2, 3, 4, 5, 6]);
     const [requiredDaysPerWeek, setRequiredDaysPerWeek] = useState<number>(7);
 
+    // Metadata
+    const [description, setDescription] = useState('');
+    const [selectedCategoryId, setSelectedCategoryId] = useState(categoryId || '');
+
     // Goal Linking
     const [linkedGoalId, setLinkedGoalId] = useState<string | null>(null);
     const { data: goalsData } = useGoalsWithProgress();
@@ -79,11 +83,6 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
 
     // Routine Linking
     const [linkedRoutineIds, setLinkedRoutineIds] = useState<string[]>([]);
-
-
-    // Metadata
-    const [description, setDescription] = useState('');
-    const [selectedCategoryId, setSelectedCategoryId] = useState(categoryId || '');
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     // Inline Category Creation
