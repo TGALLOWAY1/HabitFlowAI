@@ -72,6 +72,7 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
 
     // Goal Linking
     const [linkedGoalId, setLinkedGoalId] = useState<string | null>(null);
+    const [selectedCategoryId, setSelectedCategoryId] = useState(categoryId || '');
     const { data: goalsData } = useGoalsWithProgress();
     const availableGoals = (goalsData?.map(g => g.goal) || []).filter(
         g => !selectedCategoryId || g.categoryId === selectedCategoryId
@@ -83,7 +84,6 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
 
     // Metadata
     const [description, setDescription] = useState('');
-    const [selectedCategoryId, setSelectedCategoryId] = useState(categoryId || '');
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     // Inline Category Creation
