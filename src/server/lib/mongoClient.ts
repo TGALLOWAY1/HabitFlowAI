@@ -205,20 +205,12 @@ export async function getDb(): Promise<Db> {
     }
   };
 
-  // Return existing database instance if available
+  // Return existing database instance if available.
+  // Trust the MongoDB driver's built-in connection monitoring —
+  // it handles connection pool health internally. If the connection
+  // is dead, the next query will fail and the driver will reconnect.
   if (db && client) {
-    // Verify connection is still alive
-    try {
-      await client.db().admin().ping();
-      await runIndexEnsurance(db);
-      return db;
-    } catch {
-      // Connection is dead, reset and reconnect
-      console.warn('MongoDB connection lost, reconnecting...');
-      client = null;
-      db = null;
-      connectionPromise = null;
-    }
+    return db;
   }
 
   // If connection is in progress, wait for it

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import type { Category, Habit, DayLog, DailyWellbeing, HabitPotentialEvidence } from '../types';
 import {
     fetchCategories,
@@ -181,30 +181,22 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     // Initial load: categories, habits, logs, and wellbeing logs
     // Each subsystem loads independently so one failure doesn't block others
     useEffect(() => {
-        console.log('[HabitContext] Initial load useEffect triggered. initializedRef.current:', initializedRef.current);
         // Prevent double execution in React StrictMode
         if (initializedRef.current) {
-            console.log('[HabitContext] Already initialized, skipping');
             return;
         }
         initializedRef.current = true;
-        console.log('[HabitContext] Starting initialization...');
 
         const initialize = async () => {
-            console.log('[HabitContext] initialize() called');
             try {
-                // Fire all data fetches in parallel to ensure one slow/failed request doesn't block others
-                console.log('[HabitContext] Starting parallel data fetch...');
-
-                // We use Promise.allSettled so that if one fails, the others still succeed
+                // Fire all data fetches in parallel — one failure doesn't block others
                 const results = await Promise.allSettled([
-                    refreshHabitsAndCategories().then(() => console.log('[HabitContext] Habits/Categories loaded')),
-                    loadLogsFromApi().then(() => console.log('[HabitContext] Day logs loaded')),
+                    refreshHabitsAndCategories(),
+                    loadLogsFromApi(),
                     loadWellbeingLogsFromApi().then(() => {
-                        console.log('[HabitContext] Wellbeing logs loaded');
                         hasLoadedWellbeingRef.current = true;
                     }),
-                    fetchEvidenceForToday().then(() => console.log('[HabitContext] Evidence loaded'))
+                    fetchEvidenceForToday()
                 ]);
 
                 results.forEach((result, index) => {
@@ -213,7 +205,6 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                     }
                 });
 
-                console.log('[HabitContext] Initialization complete');
                 setLoading(false);
             } catch (error) {
                 console.error('[HabitContext] Error in initialize():', error);
@@ -256,7 +247,6 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
 
     const logWellbeing = async (date: string, data: DailyWellbeing) => {
-        console.log('[logWellbeing] FUNCTION CALLED with:', { date, data });
         // Snapshot previous state for rollback
         const previousWellbeingLogs = wellbeingLogs;
 
@@ -282,16 +272,9 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
         // Save to MongoDB
         try {
-            console.log('[logWellbeing] Saving wellbeing log:', { date, mergedData });
-            const savedLog = await saveWellbeingLog(mergedData);
-            console.log('[logWellbeing] Successfully saved wellbeing log:', savedLog);
-
-            // Verify the saved log has a date field
-            if (!savedLog.date) {
-                console.error('[logWellbeing] WARNING: Saved log missing date field:', savedLog);
-            }
+            await saveWellbeingLog(mergedData);
         } catch (error) {
-            console.error('[logWellbeing] Failed to save wellbeing log to API:', error instanceof Error ? error.message : 'Unknown error', error);
+            console.error('Failed to save wellbeing log to API:', error instanceof Error ? error.message : 'Unknown error');
             // Rollback to previous state
             setWellbeingLogs(previousWellbeingLogs);
             setLastPersistenceError("Some changes couldn't be saved. Please try again.");
@@ -705,7 +688,7 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             }
         }
 
-        console.log(`Imported ${addedCount} new habits (${habitsData.length - addedCount} were duplicates).`);
+        // Import complete: addedCount new, (habitsData.length - addedCount) duplicates skipped
 
         // Update state with fresh data
         setCategories(updatedCategories);
@@ -875,36 +858,43 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     };
 
 
+    // Memoize provider value to prevent unnecessary re-renders of consumers.
+    // When state hasn't changed (e.g., parent re-renders), consumers keep the
+    // cached value and skip re-rendering. When state changes, useMemo re-runs
+    // and creates fresh callbacks with correct closures.
+    const contextValue = useMemo(() => ({
+        categories,
+        habits,
+        logs,
+        wellbeingLogs,
+        addCategory,
+        updateCategory,
+        addHabit,
+        updateHabit,
+        moveHabitToCategory,
+        toggleHabit,
+        updateLog,
+        updateHabitEntry: updateHabitEntryContext,
+        deleteHabitEntry: deleteHabitEntryContext,
+        deleteHabit,
+        deleteCategory,
+        importHabits,
+        reorderCategories,
+        reorderHabits,
+        logWellbeing,
+        lastPersistenceError,
+        clearPersistenceError,
+        refreshDayLogs,
+        refreshHabitsAndCategories,
+        potentialEvidence,
+        upsertHabitEntry: upsertHabitEntryContext,
+        deleteHabitEntryByKey: deleteHabitEntryByKeyContext,
+        loading,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }), [categories, habits, logs, wellbeingLogs, potentialEvidence, lastPersistenceError, loading]);
+
     return (
-        <HabitContext.Provider value={{
-            categories,
-            habits,
-            logs,
-            wellbeingLogs,
-            addCategory,
-            updateCategory,
-            addHabit,
-            updateHabit,
-            moveHabitToCategory,
-            toggleHabit,
-            updateLog,
-            updateHabitEntry: updateHabitEntryContext,
-            deleteHabitEntry: deleteHabitEntryContext,
-            deleteHabit,
-            deleteCategory,
-            importHabits,
-            reorderCategories,
-            reorderHabits,
-            logWellbeing,
-            lastPersistenceError,
-            clearPersistenceError,
-            refreshDayLogs,
-            refreshHabitsAndCategories,
-            potentialEvidence,
-            upsertHabitEntry: upsertHabitEntryContext,
-            deleteHabitEntryByKey: deleteHabitEntryByKeyContext,
-            loading,
-        }}>
+        <HabitContext.Provider value={contextValue}>
             {children}
         </HabitContext.Provider>
     );

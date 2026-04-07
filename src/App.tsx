@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, Suspense } from 'react';
 import { AuthProvider } from './store/AuthContext';
 import { HabitProvider, useHabitStore } from './store/HabitContext';
 import { RoutineProvider } from './store/RoutineContext';
@@ -21,25 +21,26 @@ import { BottomTabBar } from './components/BottomTabBar';
 
 import { Plus } from 'lucide-react';
 import type { Routine, Habit } from './types';
-import { GoalsPage } from './pages/goals/GoalsPage';
 import { CreateGoalModal } from './components/CreateGoalModal';
-import { GoalDetailPage } from './pages/goals/GoalDetailPage';
-import { GoalCompletedPage } from './pages/goals/GoalCompletedPage';
-import { WinArchivePage } from './pages/goals/WinArchivePage';
 import { iterateGoal, createGoal, fetchGoal } from './lib/persistenceClient';
 import { invalidateAllGoalCaches } from './lib/goalDataCache';
 import { DayView } from './components/day-view/DayView';
 import { ScheduleView } from './components/day-view/ScheduleView';
-import { GoalScheduleView } from './pages/goals/GoalScheduleView';
-
-import { JournalPage } from './pages/JournalPage';
-import { TasksPage } from './pages/TasksPage';
-import { DebugEntriesPage } from './pages/DebugEntriesPage';
 import { DevIdentityPanel } from './components/DevIdentityPanel';
-import { WellbeingHistoryPage } from './pages/WellbeingHistoryPage';
-import { AnalyticsPage } from './pages/AnalyticsPage';
-import { AppleHealthPage } from './pages/AppleHealthPage';
 import { DashboardPrefsProvider } from './store/DashboardPrefsContext';
+
+// Lazy-loaded pages — split into separate chunks for faster initial load
+const GoalsPage = React.lazy(() => import('./pages/goals/GoalsPage').then(m => ({ default: m.GoalsPage })));
+const GoalDetailPage = React.lazy(() => import('./pages/goals/GoalDetailPage').then(m => ({ default: m.GoalDetailPage })));
+const GoalCompletedPage = React.lazy(() => import('./pages/goals/GoalCompletedPage').then(m => ({ default: m.GoalCompletedPage })));
+const WinArchivePage = React.lazy(() => import('./pages/goals/WinArchivePage').then(m => ({ default: m.WinArchivePage })));
+const GoalScheduleView = React.lazy(() => import('./pages/goals/GoalScheduleView').then(m => ({ default: m.GoalScheduleView })));
+const JournalPage = React.lazy(() => import('./pages/JournalPage').then(m => ({ default: m.JournalPage })));
+const TasksPage = React.lazy(() => import('./pages/TasksPage').then(m => ({ default: m.TasksPage })));
+const DebugEntriesPage = React.lazy(() => import('./pages/DebugEntriesPage').then(m => ({ default: m.DebugEntriesPage })));
+const WellbeingHistoryPage = React.lazy(() => import('./pages/WellbeingHistoryPage').then(m => ({ default: m.WellbeingHistoryPage })));
+const AnalyticsPage = React.lazy(() => import('./pages/AnalyticsPage').then(m => ({ default: m.AnalyticsPage })));
+const AppleHealthPage = React.lazy(() => import('./pages/AppleHealthPage').then(m => ({ default: m.AppleHealthPage })));
 
 // Simple router state
 type AppRoute = 'tracker' | 'dashboard' | 'routines' | 'goals' | 'wins' | 'journal' | 'tasks' | 'day' | 'debug-entries' | 'wellbeing-history' | 'analytics' | 'health';
@@ -385,6 +386,7 @@ const HabitTrackerContent: React.FC = () => {
         )
       }
 
+      <Suspense fallback={<div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500" /></div>}>
       {
         completedGoalId ? (
           <GoalCompletedPage
@@ -571,6 +573,7 @@ const HabitTrackerContent: React.FC = () => {
           />
         )
       }
+      </Suspense>
 
       <AddHabitModal
         isOpen={isModalOpen}
