@@ -2,6 +2,7 @@ import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
 import type { Request, Response } from 'express';
 import type { Habit, HabitEntry } from '../../../models/persistenceTypes';
 import { getProgressOverview } from '../progress';
+import { progressCache } from '../../lib/cacheInstances';
 
 vi.mock('../../repositories/habitRepository', () => ({
   getHabitsByUser: vi.fn(),
@@ -96,6 +97,7 @@ describe('getProgressOverview', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.useFakeTimers();
+    progressCache.clear();
     vi.mocked(getGoalsByUser).mockResolvedValue([]);
     vi.mocked(computeGoalsWithProgressFromData).mockResolvedValue([]);
   });
