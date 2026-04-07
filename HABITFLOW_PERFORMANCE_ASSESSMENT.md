@@ -1764,3 +1764,228 @@ Fix 3.4 (TrackerGrid Virtualization) — independent
 3. **Fix 3.2** (split HabitContext) — 3-5 days, independent, high frontend impact
 4. **Fix 3.4** (TrackerGrid virtualization) — 3 days, independent, high impact for power users
 5. **Fix 3.3** (React Query) — 5-7 days, largest effort, builds on 3.2 conceptually
+
+---
+
+## 14. Verification & Benchmarking Checklist
+
+Every performance fix must be verified before and after implementation. This section provides concrete, reproducible test procedures.
+
+---
+
+### 14.1 Pre-Implementation Baseline Collection
+
+Before implementing any fix, capture these baselines. All measurements should use a test user with realistic data: **50+ habits, 6+ months of entries, 5+ goals with bundles, 3+ routines.**
+
+#### Backend Baselines (via curl or Postman)
+
+Run each endpoint 5 times, discard the first (cold start), average the remaining 4.
+
+```bash
+# Headers required for all requests
+HEADERS='-H "X-Household-Id: <test-household>" -H "X-User-Id: <test-user>" -H "Cookie: hf_session=<token>"'
+
+# 1. Progress overview (most impactful endpoint)
+curl -w "\n%{time_total}s" $HEADERS http://localhost:3001/api/progress/overview
+
+# 2. Day summary (400-day window)
+curl -w "\n%{time_total}s" $HEADERS "http://localhost:3001/api/daySummary?startDayKey=2025-03-03&endDayKey=2026-04-07"
+
+# 3. Analytics — each endpoint separately
+curl -w "\n%{time_total}s" $HEADERS "http://localhost:3001/api/analytics/habits/summary?days=90"
+curl -w "\n%{time_total}s" $HEADERS "http://localhost:3001/api/analytics/habits/heatmap?days=365"
+curl -w "\n%{time_total}s" $HEADERS "http://localhost:3001/api/analytics/habits/trends?days=90"
+curl -w "\n%{time_total}s" $HEADERS "http://localhost:3001/api/analytics/habits/category-breakdown?days=90"
+curl -w "\n%{time_total}s" $HEADERS "http://localhost:3001/api/analytics/habits/insights?days=90"
+
+# 4. Goals with progress
+curl -w "\n%{time_total}s" $HEADERS http://localhost:3001/api/goals-with-progress
+
+# 5. Day view
+curl -w "\n%{time_total}s" $HEADERS "http://localhost:3001/api/dayView?dayKey=2026-04-07"
+```
+
+**Record:** Response time (ms), response size (bytes), and any `[SLOW]` log output from the server.
+
+#### Frontend Baselines (via Chrome DevTools)
+
+| Test | How to measure | Target metric |
+|------|---------------|---------------|
+| **Initial bundle size** | DevTools → Network → filter JS → size column (gzipped) | Total JS transferred |
+| **Time to interactive** | DevTools → Performance → record page load → Time to Interactive marker | Seconds |
+| **Dashboard render** | React DevTools Profiler → navigate to dashboard → record → total render time | Milliseconds |
+| **Habit toggle re-renders** | React DevTools Profiler → toggle one habit → count components that re-rendered | Component count |
+| **TrackerGrid DOM nodes** | DevTools Console → `document.querySelectorAll('[data-habit-cell]').length` (or similar selector) | Node count |
+| **Analytics page load** | DevTools → Network → navigate to analytics → count requests + total time | Request count, total ms |
+
+#### Baseline Recording Template
+
+```
+Date: ____
+User: ____ (habit count: ___, entry count: ___, goal count: ___, bundle count: ___)
+
+Backend:
+  progress/overview:      ___ms, ___KB
+  daySummary (400d):      ___ms, ___KB
+  analytics/summary:      ___ms, ___KB
+  analytics/heatmap:      ___ms, ___KB
+  analytics/trends:       ___ms, ___KB
+  analytics/breakdown:    ___ms, ___KB
+  analytics/insights:     ___ms, ___KB
+  goals-with-progress:    ___ms, ___KB
+  dayView:                ___ms, ___KB
+
+Frontend:
+  Initial JS bundle:      ___KB gzipped
+  Time to interactive:    ___s
+  Dashboard render:       ___ms
+  Habit toggle re-renders: ___ components
+  TrackerGrid DOM nodes:  ___
+  Analytics page requests: ___
+```
+
+---
+
+### 14.2 Per-Fix Verification Procedures
+
+#### Fix 2.3 (Date-Range Filtering) Verification
+
+- [ ] **Correctness:** Compare analytics endpoint output before and after. For `days=90`, results must be identical (service functions already filter by date in-memory).
+- [ ] **Performance:** Measure analytics endpoint response times. Expect 50-80% reduction.
+- [ ] **Index usage:** Run `db.habitEntries.find({...}).explain("executionStats")` in MongoDB shell. Confirm the query uses `idx_habitEntries_user_dayKey` (IXSCAN, not COLLSCAN).
+- [ ] **Edge cases:** Test with a user who has 0 entries, 1 entry, and 10,000+ entries.
+- [ ] **Test suite:** `npm run test:run` passes with no new failures.
+
+#### Fix 2.4 (Consolidated Analytics) Verification
+
+- [ ] **Correctness:** Call `/api/analytics/habits/all?days=90&heatmapDays=365` and compare each field against the individual endpoint responses. Must be byte-identical for `summary`, `trends`, `categoryBreakdown`, `insights`. Heatmap may differ if `heatmapDays` changed.
+- [ ] **Performance:** 1 network request instead of 4-5 on analytics page. Total time should be less than the slowest individual endpoint (since data is loaded once).
+- [ ] **Frontend:** Analytics page still renders all charts correctly.
+
+#### Fix 2.5 (Reduce 400-Day Window) Verification
+
+- [ ] **Initial load:** Confirm daySummary request uses 90-day window (check Network tab payload size).
+- [ ] **TrackerGrid navigation:** Scroll to a month >90 days ago. Verify data loads dynamically (not blank).
+- [ ] **Streaks:** Verify streak display on dashboard is unchanged (streaks come from progress overview, not daySummary).
+- [ ] **Momentum:** Verify momentum metrics on dashboard are unchanged.
+
+#### Fix 3.1 (Server Cache) Verification
+
+- [ ] **Cache hit:** Call progress overview twice within 30s. Second call should return in <5ms (check server logs).
+- [ ] **Cache invalidation:** Toggle a habit entry → immediately call progress overview. Response should reflect the new entry (cache was invalidated).
+- [ ] **TTL expiry:** Wait >30s → call progress overview. Should recompute (check server timing logs).
+- [ ] **Memory:** Under load (100+ cached entries), memory usage should stay <10MB for cache.
+
+#### Fix 3.2 (Split HabitContext) Verification
+
+- [ ] **Functional parity:** All existing behavior works identically. Run full test suite.
+- [ ] **Re-render reduction:** Using React DevTools Profiler:
+  - Toggle a habit → only HabitLogContext consumers re-render (not category-only consumers)
+  - Update a category name → only HabitDataContext consumers re-render (not log consumers)
+  - Log wellbeing → only WellbeingContext consumers re-render (~3 components)
+
+#### Fix 3.4 (TrackerGrid Virtualization) Verification
+
+- [ ] **DOM node count:** With 50 habits in month view, `document.querySelectorAll` should show ~310 cells (10 visible rows × 31 days) not 1,550.
+- [ ] **Scrolling:** Smooth scroll through all habits. No blank flicker.
+- [ ] **Drag-and-drop:** Reorder habits via drag still works correctly.
+- [ ] **Category headers:** Visible and correctly positioned.
+- [ ] **Mobile:** Test on a real mobile device or Chrome DevTools mobile emulation.
+
+---
+
+### 14.3 Regression Testing Checklist
+
+After **any** performance fix, verify these critical paths are unbroken:
+
+| # | Test | How |
+|---|------|-----|
+| 1 | **Habit toggle persists** | Toggle a habit → refresh → still toggled |
+| 2 | **Streak accuracy** | Check a known habit's streak → matches manual count |
+| 3 | **Goal progress** | Create a goal → toggle linked habits → progress % correct |
+| 4 | **Bundle completion** | Complete all bundle children → parent shows complete |
+| 5 | **Day view shows today's data** | Navigate to day view → today's entries visible |
+| 6 | **Analytics charts render** | Navigate to analytics → all 4 charts visible with data |
+| 7 | **Routine execution** | Start a routine → complete steps → evidence recorded |
+| 8 | **Wellbeing checkin** | Log wellbeing → entry appears in history |
+| 9 | **Journal entry** | Create a journal entry → appears in list |
+| 10 | **Task CRUD** | Create, update, complete, delete a task |
+| 11 | **Build succeeds** | `npm run build` exits 0 |
+| 12 | **Tests pass** | `npm run test:run` passes |
+| 13 | **Lint passes** | `npm run lint:beta` exits 0 |
+
+---
+
+### 14.4 Performance Budget
+
+Target metrics for the fully optimized app (after all Phase 2 + Phase 3 fixes):
+
+| Metric | Current (estimated) | Target | Measurement |
+|--------|-------------------|--------|-------------|
+| **Initial JS bundle** | ~200KB gzipped | <130KB gzipped | `ls -la dist/assets/*.js` |
+| **Largest lazy chunk** | N/A (single chunk) | <80KB gzipped | Vite build output |
+| **Time to interactive (desktop)** | 1.5-3s | <1.5s | Lighthouse |
+| **Time to interactive (mobile 4G)** | 3-5s | <2.5s | Lighthouse throttled |
+| **LCP (Largest Contentful Paint)** | ~3-5s | <2.5s | Web Vitals |
+| **INP (Interaction to Next Paint)** | ~200-400ms | <200ms | Web Vitals |
+| **Progress overview response** | 200-500ms | <50ms (cached), <200ms (uncached) | Server timing logs |
+| **Analytics page response** | 4× 200-500ms | 1× <150ms | Server timing logs |
+| **DaySummary response** | 100-300ms | <100ms | Server timing logs |
+| **Components re-rendered on habit toggle** | ~50+ | <15 | React DevTools Profiler |
+| **TrackerGrid DOM nodes (50 habits)** | ~1,550 | <400 | DOM query |
+| **DB queries per app load** | ~40-60 | <20 | Server query logs |
+
+---
+
+### 14.5 Monitoring After Deployment
+
+Once performance fixes are deployed, add lightweight production monitoring:
+
+1. **Server-side slow request log** (Section 9.1) — log any request >100ms with endpoint, duration, userId hash
+2. **Client-side performance beacon** — report LCP, INP, and TTFB via `web-vitals` library to a lightweight endpoint or analytics service
+3. **Bundle size CI check** — add a build step that fails if total JS exceeds 300KB gzipped (prevents regression)
+4. **MongoDB slow query profiler** — set `slowOpThresholdMs: 50` in Atlas/profiler settings
+
+---
+
+## 15. Summary: Full Optimization Roadmap
+
+### Completed (Phase 1)
+
+| Fix | Impact |
+|-----|--------|
+| Memoize HabitContext + RoutineContext providers | 40-60% fewer unnecessary re-renders |
+| Batch N+1 bundle membership queries | 50-200ms saved per progress/daySummary request |
+| Remove getDb() ping overhead | 15-40ms saved per request |
+| Route-level code splitting + Vite chunks | 30-50% smaller initial bundle |
+
+### Next Up (Phase 2) — Estimated 4-5 days total
+
+| Priority | Fix | Impact | Effort |
+|----------|-----|--------|--------|
+| 1 | Add missing DB indexes | Enables efficient range queries | 1 hour |
+| 2 | Gate console logging | Clean production output | 30 min |
+| 3 | Date-range filtering for entries | 70-90% less data loaded in analytics | 1 day |
+| 4 | Consolidate analytics endpoint | 4× fewer API calls + DB queries | 1 day |
+| 5 | Reduce 400-day window to 90 days | 75% smaller initial payload | 1 day |
+
+### Later (Phase 3) — Estimated 15-23 days total
+
+| Priority | Fix | Impact | Effort |
+|----------|-----|--------|--------|
+| 1 | Server-side TTL cache | Sub-50ms cached responses | 3 days |
+| 2 | Session caching | 18 fewer DB queries per app load | 1 day |
+| 3 | Split HabitContext | Targeted re-renders (toggle affects 12 not 37 components) | 3-5 days |
+| 4 | TrackerGrid virtualization | 80-90% DOM reduction for power users | 3 days |
+| 5 | React Query migration | Automatic dedup, caching, refetch for all data | 5-7 days |
+
+### Conservative Total Impact Estimate
+
+| Metric | Before All Fixes | After Phase 1 (done) | After Phase 2 | After Phase 3 |
+|--------|-----------------|---------------------|----------------|----------------|
+| Initial bundle | ~200KB | ~130KB | ~130KB | ~130KB |
+| Time to interactive (mobile) | 3-5s | 2-3.5s | 1.5-2.5s | 1-2s |
+| DB queries per app load | 40-60 | 25-35 | 15-25 | 10-15 |
+| Progress overview latency | 200-500ms | 150-350ms | 100-250ms | <50ms (cached) |
+| Components re-rendered on toggle | 50+ | 15-20 | 15-20 | <10 |
+| Analytics page DB entry reads | 146,000 (4 × 36,500) | 146,000 | ~4,500 | ~4,500 (cached) |
