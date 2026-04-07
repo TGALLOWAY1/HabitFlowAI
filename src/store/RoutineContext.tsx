@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
 import type { Routine, RoutineLog } from '../models/persistenceTypes';
 import type { StepStatus } from '../models/persistenceTypes';
 import {
@@ -286,37 +286,38 @@ export const RoutineProvider: React.FC<{ children: React.ReactNode }> = ({ child
         }
     }, [executionState, activeRoutine, activeVariantId, currentStepIndex]);
 
+    const contextValue = useMemo(() => ({
+        routines,
+        routineLogs,
+        loading,
+        error,
+        refreshRoutines,
+        addRoutine,
+        updateRoutine,
+        deleteRoutine,
+        activeRoutine,
+        activeVariantId,
+        executionState,
+        currentStepIndex,
+        stepStates,
+        startedAt,
+        stepTrackingData,
+        stepTimingData,
+        setStepTrackingValue,
+        recordStepTime,
+        selectRoutine,
+        selectVariant,
+        startRoutine,
+        exitRoutine,
+        nextStep,
+        prevStep,
+        skipStep,
+        setStepState
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }), [routines, routineLogs, loading, error, activeRoutine, activeVariantId, executionState, currentStepIndex, stepStates, startedAt, stepTrackingData, stepTimingData]);
+
     return (
-        <RoutineContext.Provider
-            value={{
-                routines,
-                routineLogs,
-                loading,
-                error,
-                refreshRoutines,
-                addRoutine,
-                updateRoutine,
-                deleteRoutine,
-                activeRoutine,
-                activeVariantId,
-                executionState,
-                currentStepIndex,
-                stepStates,
-                startedAt,
-                stepTrackingData,
-                stepTimingData,
-                setStepTrackingValue,
-                recordStepTime,
-                selectRoutine,
-                selectVariant,
-                startRoutine,
-                exitRoutine,
-                nextStep,
-                prevStep,
-                skipStep,
-                setStepState
-            }}
-        >
+        <RoutineContext.Provider value={contextValue}>
             {children}
         </RoutineContext.Provider>
     );
