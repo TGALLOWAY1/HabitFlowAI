@@ -935,3 +935,352 @@ All Phase 2 items from Section 8 remain unimplemented:
 | 3.3 | Adopt React Query / TanStack Query | ❌ Not started — not in package.json |
 | 3.4 | TrackerGrid virtualization | ❌ Not started — no virtualization library installed |
 | 3.5 | Server-side session caching | ❌ Not started — 2 DB queries per request with no cache |
+
+---
+
+## 12. Phase 2: Targeted Structural Improvements — Implementation Details
+
+These fixes address the remaining high-impact performance bottlenecks. Each specification is written for direct implementation handoff with concrete file paths, code patterns, and risk notes.
+
+---
+
+### Fix 2.3: Date-Range Filtering for Habit Entries
+
+**Problem:** `getHabitEntriesByUser()` loads ALL non-deleted entries with no date filter. Called by 8+ endpoints. A user with 2 years of data (50 habits × 730 days = 36,500 entries) loads everything on every request.
+
+**Files to modify:**
+- `src/server/repositories/habitEntryRepository.ts` — add new query function
+- `src/server/routes/analytics.ts` — use date-filtered queries (7 endpoint handlers)
+- `src/server/lib/mongoClient.ts` — add supporting index
+
+#### Step 1: Add `getHabitEntriesByUserInRange()` to the repository
+
+**File:** `src/server/repositories/habitEntryRepository.ts`
+
+A date-range-filtered variant of `getHabitEntriesByUser()` already has a partial precedent: `getHabitEntriesByHabitIdsSince()` (lines 416-441) filters by `dayKey >= sinceDayKey` for specific habit IDs. The new function generalizes this for all user entries within a date window.
+
+```ts
+export async function getHabitEntriesByUserInRange(
+    householdId: string,
+    userId: string,
+    startDayKey: string,
+    endDayKey: string,
+): Promise<HabitEntry[]> {
+    const db = await getDb();
+    const collection = db.collection<HabitEntry>('habitEntries');
+    const documents = await collection
+        .find(scopeFilter(householdId, userId, {
+            deletedAt: { $exists: false },
+            dayKey: { $gte: startDayKey, $lte: endDayKey },
+        }))
+        .toArray();
+    return documents.map(mapDocument);
+}
+```
+
+**Why `dayKey` string comparison works:** DayKey format is `YYYY-MM-DD` which sorts lexicographically. `'2026-01-15' >= '2026-01-01'` is correct.
+
+#### Step 2: Add compound index for date-range queries
+
+**File:** `src/server/lib/mongoClient.ts` — inside `ensureCoreIndexes()`
+
+```ts
+await habitEntries.createIndex(
+    { householdId: 1, userId: 1, dayKey: 1 },
+    { name: 'idx_habitEntries_user_dayKey' }
+);
+```
+
+This index supports the new `$gte/$lte` dayKey filter efficiently. The existing `(householdId, userId, habitId, dayKey)` unique index is insufficient because it requires `habitId` as a prefix.
+
+#### Step 3: Update analytics endpoints to use date-filtered queries
+
+**File:** `src/server/routes/analytics.ts`
+
+Each of the 5 habit analytics endpoints currently does:
+```ts
+// BEFORE: Loads ALL entries
+const entries = await getHabitEntriesByUser(householdId, userId);
+```
+
+Replace with:
+```ts
+// AFTER: Loads only entries within the requested date range
+const startDayKey = format(subDays(parseISO(referenceDayKey), days - 1), 'yyyy-MM-dd');
+const entries = await getHabitEntriesByUserInRange(householdId, userId, startDayKey, referenceDayKey);
+```
+
+**Endpoints to update (all 5 habit analytics + 2 others):**
+
+| Handler | Line | `days` default | Notes |
+|---------|------|----------------|-------|
+| `getHabitAnalyticsSummary` | 42 | 90 | Standard conversion |
+| `getHabitAnalyticsHeatmap` | 64 | 365 | Largest window — still much better than ALL entries |
+| `getHabitAnalyticsTrends` | 84 | 90 | Standard conversion |
+| `getHabitAnalyticsCategoryBreakdown` | 104 | 90 | Standard conversion |
+| `getHabitAnalyticsInsights` | 125 | 90 | Standard conversion |
+| `getRoutineAnalyticsSummary` | 147 | 90 | Also loads routines/logs — only entries need the range filter |
+| `getGoalAnalyticsSummary` | 167 | — | Goal analytics may need full history for lifetime progress; evaluate case-by-case |
+
+**Do NOT change yet:**
+- `GET /api/progress/overview` — streak calculation requires full history for `bestStreak`. Apply date filtering only after server-side caching (Fix 3.1) absorbs the cost.
+- `GET /api/daySummary` — already parameterized with `startDayKey`/`endDayKey` but still calls `getHabitEntriesByUser()` internally. Requires careful migration since frontend depends on the response shape.
+
+#### Expected Impact
+
+| Metric | Before | After |
+|--------|--------|-------|
+| Entries loaded per analytics request (2-year user) | ~36,500 | ~4,500 (90 days) or ~18,250 (365 days for heatmap) |
+| Analytics page total entries loaded (4 endpoints) | ~146,000 (4 × 36,500) | ~22,250 (3 × 4,500 + 1 × 4,750) |
+| DB read amplification | 4× full table scan | 4× bounded range scan |
+| Response time (estimated) | 200-500ms per endpoint | 50-150ms per endpoint |
+
+**Effort:** 1 day | **Risk:** Low — analytics service functions already accept entries as input; only the data source changes. All in-memory date filtering in the service layer becomes redundant but harmless.
+
+---
+
+### Fix 2.4: Consolidate Analytics Into Single Endpoint
+
+**Problem:** The analytics page fires 4-5 parallel API calls, each independently loading habits + entries + memberships from the database. Even with Fix 2.3 (date filtering), this is 4-5 redundant DB reads for the same data.
+
+**Files to modify:**
+- `src/server/routes/analytics.ts` — add consolidated endpoint
+- `src/server/services/analyticsService.ts` — add `computeAllHabitAnalytics()` function
+- `src/pages/AnalyticsPage.tsx` — call single endpoint instead of 4
+
+#### Step 1: Add consolidated service function
+
+**File:** `src/server/services/analyticsService.ts`
+
+```ts
+export interface AllHabitAnalytics {
+    summary: HabitAnalyticsSummary;
+    heatmap: HeatmapResponse;
+    trends: TrendDataPoint[];
+    categoryBreakdown: CategoryBreakdownItem[];
+    insights: Insight[];
+}
+
+export function computeAllHabitAnalytics(
+    habits: Habit[],
+    entries: HabitEntry[],
+    memberships: BundleMembershipRecord[],
+    categories: Category[],
+    referenceDayKey: string,
+    days: number,
+    heatmapDays: number,
+    timeZone?: string,
+): AllHabitAnalytics {
+    return {
+        summary: computeHabitAnalyticsSummary(habits, entries, memberships, categories, referenceDayKey, days, timeZone),
+        heatmap: computeHeatmapData(habits, entries, referenceDayKey, heatmapDays, timeZone),
+        trends: computeTrendData(habits, entries, referenceDayKey, days, timeZone),
+        categoryBreakdown: computeCategoryBreakdown(habits, entries, categories, referenceDayKey, days, timeZone),
+        insights: computeInsights(habits, entries, referenceDayKey, days, timeZone),
+    };
+}
+```
+
+**Note:** The heatmap uses a 365-day window while other analytics use 90 days. The consolidated function should accept both `days` and `heatmapDays`, and the single DB query should load `max(days, heatmapDays)` worth of entries. Each sub-function already does its own in-memory date filtering, so passing the larger dataset is correct.
+
+#### Step 2: Add consolidated route
+
+**File:** `src/server/routes/analytics.ts`
+
+```ts
+// GET /api/analytics/habits/all?days=90&heatmapDays=365&timeZone=America/New_York
+router.get('/habits/all', async (req, res) => {
+    const { householdId, userId } = req;
+    const days = parseDays(req.query.days, 90);
+    const heatmapDays = parseDays(req.query.heatmapDays, 365);
+    const timeZone = resolveTimeZone(req.query.timeZone);
+    const referenceDayKey = todayDayKey(timeZone);
+
+    const maxDays = Math.max(days, heatmapDays);
+    const startDayKey = format(subDays(parseISO(referenceDayKey), maxDays - 1), 'yyyy-MM-dd');
+
+    const [habits, entries, memberships, categories] = await Promise.all([
+        getHabitsByUser(householdId, userId),
+        getHabitEntriesByUserInRange(householdId, userId, startDayKey, referenceDayKey),
+        getAllMembershipsByUser(householdId, userId),
+        getCategoriesByUser(householdId, userId),
+    ]);
+
+    const result = computeAllHabitAnalytics(
+        habits, entries, memberships, categories,
+        referenceDayKey, days, heatmapDays, timeZone,
+    );
+
+    res.json(result);
+});
+```
+
+**One DB query for entries instead of 5.** Habits, memberships, and categories also fetched once each in parallel.
+
+#### Step 3: Update frontend to use consolidated endpoint
+
+**File:** `src/pages/AnalyticsPage.tsx`
+
+Replace 4-5 separate `fetch` calls with a single call to `/api/analytics/habits/all`. Destructure the response into the same state variables.
+
+**Keep old endpoints alive** — they serve as individual-metric APIs for potential future use (e.g., embedding a single chart elsewhere). No breaking change.
+
+#### Expected Impact
+
+| Metric | Before | After |
+|--------|--------|-------|
+| API calls per analytics page load | 4-5 | 1 |
+| DB queries for entries | 4-5 | 1 |
+| DB queries for habits | 4-5 | 1 |
+| Network round trips | 4-5 | 1 |
+
+**Effort:** 1 day | **Risk:** Low — additive new endpoint + new frontend path. Old endpoints remain.
+
+---
+
+### Fix 2.5: Reduce Default Log Window From 400 to 90 Days
+
+**Problem:** `HabitContext.tsx:98` hard-codes a 400-day window for `fetchDaySummary()`. For an active user with 50 habits, this produces a ~100-300KB payload that blocks the loading state. Most users only need the last 30-90 days for their primary view.
+
+**Files to modify:**
+- `src/store/HabitContext.tsx` — reduce initial window, add on-demand loading
+- `src/server/routes/daySummary.ts` — ensure it respects the date range (it already accepts `startDayKey`/`endDayKey` params)
+
+#### Step 1: Reduce initial window to 90 days
+
+**File:** `src/store/HabitContext.tsx`
+
+```ts
+// BEFORE (line 98):
+start.setDate(start.getDate() - 400);
+
+// AFTER:
+start.setDate(start.getDate() - 90);
+```
+
+#### Step 2: Add on-demand historical loading
+
+When the user navigates to a month beyond the loaded 90-day range (e.g., scrolling back in TrackerGrid), fetch that month's data and merge into state:
+
+```ts
+const loadHistoricalRange = useCallback(async (startDayKey: string, endDayKey: string) => {
+    const { timeZone } = getCanonicalSummaryWindow();
+    const historicalLogs = await fetchDaySummary(startDayKey, endDayKey, timeZone);
+    setLogs(prev => ({ ...prev, ...historicalLogs }));
+}, []);
+```
+
+Expose `loadHistoricalRange` through the context value so TrackerGrid can call it when the user navigates to an older month.
+
+#### Step 3: TrackerGrid integration
+
+**File:** `src/components/TrackerGrid.tsx`
+
+When the user changes the displayed month/date range and the target range extends beyond loaded data:
+
+```ts
+useEffect(() => {
+    const oldestLoadedDayKey = /* derive from logs keys */;
+    const viewStartDayKey = format(startOfMonth(currentMonth), 'yyyy-MM-dd');
+    if (viewStartDayKey < oldestLoadedDayKey) {
+        loadHistoricalRange(viewStartDayKey, oldestLoadedDayKey);
+    }
+}, [currentMonth]);
+```
+
+#### Risks & Mitigations
+
+| Risk | Mitigation |
+|------|------------|
+| TrackerGrid shows empty cells for months beyond 90 days | On-demand fetch (Step 2-3) fills them when user navigates |
+| Streak calculation needs full history | Streaks are computed server-side in `progress.ts`, which calls `getHabitEntriesByUser()` (full load). This fix only affects the client-side day summary — streaks are unaffected |
+| Progress overview needs momentum data beyond 90 days | Progress overview has its own data path via `/api/progress/overview`, not affected by this change |
+
+#### Expected Impact
+
+| Metric | Before | After |
+|--------|--------|-------|
+| Initial daySummary payload (50 habits) | ~100-300KB (400 days) | ~25-75KB (90 days) |
+| Time-to-interactive reduction | — | ~0.5-1.5s faster (less data to download, parse, and process) |
+| Memory footprint in HabitContext | ~50KB state object | ~12KB state object |
+
+**Effort:** 1 day | **Risk:** Medium — must ensure on-demand loading works smoothly with TrackerGrid month navigation. Test with a user who has >90 days of data.
+
+---
+
+### Fix 2.6: Add Missing Database Indexes
+
+**Problem:** Key query patterns lack compound indexes. `getHabitEntriesByUser()` filters on `(householdId, userId, deletedAt: { $exists: false })` but no index covers this exact filter. Date-range queries (once Fix 2.3 is implemented) need a dayKey-based index.
+
+**File to modify:** `src/server/lib/mongoClient.ts` — inside `ensureCoreIndexes()`
+
+#### Indexes to add
+
+```ts
+// 1. Support getHabitEntriesByUserInRange() — date-range queries
+await habitEntries.createIndex(
+    { householdId: 1, userId: 1, dayKey: 1 },
+    { name: 'idx_habitEntries_user_dayKey' }
+);
+
+// 2. Support soft-delete filtering in getHabitEntriesByUser()
+// Uses partial filter expression to only index non-deleted entries
+await habitEntries.createIndex(
+    { householdId: 1, userId: 1 },
+    {
+        name: 'idx_habitEntries_user_active',
+        partialFilterExpression: { deletedAt: { $exists: false } },
+    }
+);
+
+// 3. Support getMembershipsByParent() if still used anywhere
+await db.collection('bundleMemberships').createIndex(
+    { householdId: 1, userId: 1, parentHabitId: 1 },
+    { name: 'idx_bundleMemberships_user_parent' }
+);
+```
+
+**Why partial filter expression for index #2:** Instead of indexing `deletedAt` (which is `null`/absent for 99%+ of entries), a partial index on `{ householdId, userId }` WHERE `deletedAt` doesn't exist is smaller and faster. MongoDB uses this index when the query filter matches the partial expression.
+
+#### Expected Impact
+
+- Date-range queries go from collection scan to index scan
+- Soft-delete queries use partial index instead of full scan + filter
+- Index creation is idempotent (MongoDB skips if index already exists)
+
+**Effort:** 1 hour | **Risk:** Low — indexes are additive. `ensureCoreIndexes()` already handles index creation on startup.
+
+---
+
+### Fix 2.7: Gate Console Logging Behind NODE_ENV
+
+**Problem:** HabitContext initialization path has 8+ `console.log` statements that run in production.
+
+**File:** `src/store/HabitContext.tsx`
+
+**Fix:** Wrap debug logging in a development check:
+
+```ts
+const isDev = import.meta.env.DEV; // Vite strips this in production builds
+
+// Then replace:
+console.log('[loadWellbeingLogsFromApi] ...');
+// With:
+if (isDev) console.log('[loadWellbeingLogsFromApi] ...');
+```
+
+Vite's `import.meta.env.DEV` is statically replaced at build time. Dead-code elimination removes the entire `if` block in production builds, so there's zero runtime cost.
+
+**Effort:** 30 min | **Risk:** None
+
+---
+
+### Phase 2 Priority Order
+
+Implement in this order for maximum progressive impact:
+
+1. **Fix 2.6** (indexes) — 1 hour, enables Fix 2.3 to be fast
+2. **Fix 2.7** (console logging) — 30 min, trivial cleanup
+3. **Fix 2.3** (date-range filtering) — 1 day, biggest single impact
+4. **Fix 2.4** (consolidate analytics) — 1 day, builds on 2.3
+5. **Fix 2.5** (reduce 400-day window) — 1 day, independent of 2.3/2.4
