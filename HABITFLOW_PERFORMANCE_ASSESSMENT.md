@@ -874,3 +874,64 @@ build: {
 
 **Effort:** 1 day (including testing all routes, verifying lazy imports work, adding Suspense boundaries).
 **Risk:** Low — well-established React pattern. Verify named exports work with the `.then(m => ({ default: m.X }))` pattern since pages use named exports.
+
+---
+
+## 11. Implementation Status & Results
+
+**Last updated:** 2026-04-07
+
+### Phase 1 Quick Wins — COMPLETED
+
+All Phase 1 quick wins from Section 8 have been implemented and merged via PRs #412 and #413.
+
+| # | Fix | Status | PR | Evidence |
+|---|-----|--------|-----|----------|
+| 1.1 | **Memoize HabitContext provider value** | ✅ Done | #413 | `useMemo` wrapping provider value at `HabitContext.tsx:865-894` with correct dependency array |
+| 1.2 | **N+1 bundle queries in progress.ts** | ✅ Done | #413 | Single `getAllMembershipsByUser()` call at `progress.ts:86`, batch grouped into `membershipsByParent` map |
+| 1.3 | **N+1 bundle queries in daySummary.ts** | ✅ Done | #413 | Single `getAllMembershipsByUser()` call at `daySummary.ts:194`, same batch pattern |
+| 1.4 | **Remove getDb() ping overhead** | ✅ Done | #413 | Ping removed from cached-connection path in `mongoClient.ts`. Ping only on initial `connectToMongo()` |
+| 1.5 | **Console logging in init path** | ⚠️ Partial | — | Logs still present in HabitContext init path. Could be gated behind `NODE_ENV !== 'production'` |
+
+### Top Priority Fixes — COMPLETED
+
+| Fix | Status | PR | Evidence |
+|-----|--------|-----|----------|
+| **Memoize HabitContext** (Fix 1) | ✅ Done | #413 | See 1.1 above |
+| **Memoize RoutineContext** (bonus) | ✅ Done | #413 | `useMemo` wrapping provider value at `RoutineContext.tsx:289-317` |
+| **N+1 bundle queries** (Fix 2) | ✅ Done | #413 | See 1.2, 1.3 above |
+| **Route-level code splitting** (Fix 3) | ✅ Done | #413 | `React.lazy()` for all non-initial pages at `App.tsx:33-43`, `<Suspense>` boundary at line 389 |
+| **Vite manual chunks** (Fix 3 addon) | ✅ Done | #413 | `vendor`, `charts`, `dnd` chunks in `vite.config.ts:10-14` |
+
+### Expected Impact of Phase 1 Fixes
+
+| Metric | Before | After (estimated) |
+|--------|--------|-------------------|
+| Initial bundle size | ~200KB+ gzipped (single chunk) | ~120-140KB initial + lazy chunks on demand |
+| Re-renders on habit toggle | Entire app tree (50+ components) | Only components consuming changed state |
+| Progress overview DB queries (10 bundles) | 10+ sequential queries | 1 batch query |
+| Day summary DB queries (10 bundles) | 10+ sequential queries | 1 batch query |
+| getDb() overhead per call | 5-10ms ping | 0ms (driver manages health) |
+
+### Phase 2 Status — NOT STARTED
+
+All Phase 2 items from Section 8 remain unimplemented:
+
+| # | Fix | Status | Current State |
+|---|-----|--------|---------------|
+| 2.1 | Code splitting | ✅ Done (moved to Phase 1) | Implemented in #413 |
+| 2.2 | Vite chunking | ✅ Done (moved to Phase 1) | Implemented in #413 |
+| 2.3 | Date-range filtering for entries | ❌ Not started | `getHabitEntriesByUser()` still loads ALL entries with no date filter |
+| 2.4 | Consolidate analytics endpoint | ❌ Not started | Still 5 separate endpoints, each loading ALL entries independently |
+| 2.5 | Reduce 400-day log window | ❌ Not started | `HabitContext.tsx:98` still fetches 400 days on every init |
+| 2.6 | Add missing DB indexes | ⚠️ Partial | `(householdId, userId, habitId, dayKey)` exists; `(householdId, userId, deletedAt)` still missing |
+
+### Phase 3 Status — NOT STARTED
+
+| # | Fix | Status |
+|---|-----|--------|
+| 3.1 | Server-side caching (LRU/TTL) | ❌ Not started — zero caching infrastructure exists |
+| 3.2 | Split HabitContext into 3 contexts | ❌ Not started |
+| 3.3 | Adopt React Query / TanStack Query | ❌ Not started — not in package.json |
+| 3.4 | TrackerGrid virtualization | ❌ Not started — no virtualization library installed |
+| 3.5 | Server-side session caching | ❌ Not started — 2 DB queries per request with no cache |
