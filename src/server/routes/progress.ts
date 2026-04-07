@@ -9,7 +9,7 @@ import { getHabitEntriesByUser } from '../repositories/habitEntryRepository';
 
 import { getHabitsByUser } from '../repositories/habitRepository';
 import { getGoalsByUser } from '../repositories/goalRepository';
-import { getMembershipsByParent } from '../repositories/bundleMembershipRepository';
+import { getAllMembershipsByUser } from '../repositories/bundleMembershipRepository';
 import { computeGoalsWithProgressFromData } from '../utils/goalProgressUtilsV2';
 import { calculateGlobalMomentum, calculateCategoryMomentum, getMomentumCopy } from '../services/momentumService';
 import { calculateHabitStreakMetrics, type HabitDayState } from '../services/streakService';
@@ -82,8 +82,17 @@ export async function getProgressOverview(req: Request, res: Response): Promise<
       h => h.type === 'bundle' && (h.bundleType === 'choice' || h.bundleType === 'checklist')
     );
 
+    // Batch-fetch all memberships in one query instead of N+1 per parent
+    const allMemberships = await getAllMembershipsByUser(householdId, userId);
+    const membershipsByParent = new Map<string, BundleMembershipRecord[]>();
+    for (const m of allMemberships) {
+      const existing = membershipsByParent.get(m.parentHabitId) ?? [];
+      existing.push(m);
+      membershipsByParent.set(m.parentHabitId, existing);
+    }
+
     for (const parent of bundleParents) {
-      const memberships = await getMembershipsByParent(parent.id, householdId, userId);
+      const memberships = membershipsByParent.get(parent.id) ?? [];
       const parentDayMap = new Map<string, HabitDayState>();
 
       if (memberships.length > 0) {

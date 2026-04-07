@@ -3,7 +3,8 @@ import type { DayLog, HabitEntry, Habit } from '../../models/persistenceTypes';
 import { validateDayKey } from '../domain/canonicalValidators';
 import { getHabitsByUser } from '../repositories/habitRepository';
 import { getHabitEntriesByUser } from '../repositories/habitEntryRepository';
-import { getMembershipsByParent } from '../repositories/bundleMembershipRepository';
+import { getAllMembershipsByUser } from '../repositories/bundleMembershipRepository';
+import type { BundleMembershipRecord } from '../domain/canonicalTypes';
 import { evaluateChecklistSuccess } from '../services/checklistSuccessService';
 import { resolveTimeZone, getNowDayKey, getDayKeyForDate, getCanonicalDayKeyFromEntry } from '../utils/dayKey';
 import { getRequestIdentity } from '../middleware/identity';
@@ -189,10 +190,19 @@ export async function getDaySummary(req: Request, res: Response): Promise<void> 
       (h: Habit) => h.type === 'bundle' && (h.bundleType === 'checklist' || h.bundleType === 'choice')
     );
 
+    // Batch-fetch all memberships in one query instead of N+1 per parent
+    const allMemberships = await getAllMembershipsByUser(householdId, userId);
+    const membershipsByParent = new Map<string, BundleMembershipRecord[]>();
+    for (const m of allMemberships) {
+      const existing = membershipsByParent.get(m.parentHabitId) ?? [];
+      existing.push(m);
+      membershipsByParent.set(m.parentHabitId, existing);
+    }
+
     for (const parent of bundleParents) {
       // Resolve children: memberships (temporal) or fallback to static subHabitIds
       const childIds: string[] = parent.subHabitIds ?? [];
-      const memberships = await getMembershipsByParent(parent.id, householdId, userId);
+      const memberships = membershipsByParent.get(parent.id) ?? [];
 
       // Collect all dayKeys where at least one child has a log
       const dayKeysWithChildLogs = new Set<string>();
