@@ -913,18 +913,17 @@ All Phase 1 quick wins from Section 8 have been implemented and merged via PRs #
 | Day summary DB queries (10 bundles) | 10+ sequential queries | 1 batch query |
 | getDb() overhead per call | 5-10ms ping | 0ms (driver manages health) |
 
-### Phase 2 Status — NOT STARTED
+### Phase 2 Status — COMPLETED
 
-All Phase 2 items from Section 8 remain unimplemented:
-
-| # | Fix | Status | Current State |
-|---|-----|--------|---------------|
-| 2.1 | Code splitting | ✅ Done (moved to Phase 1) | Implemented in #413 |
-| 2.2 | Vite chunking | ✅ Done (moved to Phase 1) | Implemented in #413 |
-| 2.3 | Date-range filtering for entries | ❌ Not started | `getHabitEntriesByUser()` still loads ALL entries with no date filter |
-| 2.4 | Consolidate analytics endpoint | ❌ Not started | Still 5 separate endpoints, each loading ALL entries independently |
-| 2.5 | Reduce 400-day log window | ❌ Not started | `HabitContext.tsx:98` still fetches 400 days on every init |
-| 2.6 | Add missing DB indexes | ⚠️ Partial | `(householdId, userId, habitId, dayKey)` exists; `(householdId, userId, deletedAt)` still missing |
+| # | Fix | Status | Evidence |
+|---|-----|--------|----------|
+| 2.1 | Code splitting | ✅ Done (Phase 1) | `App.tsx:33-43` — `React.lazy()` |
+| 2.2 | Vite chunking | ✅ Done (Phase 1) | `vite.config.ts:10-14` — vendor/charts/dnd chunks |
+| 2.3 | Date-range filtering for entries | ✅ Done | `getHabitEntriesByUserInRange()` added to repository; 6 analytics endpoints updated |
+| 2.4 | Consolidate analytics endpoint | ✅ Done | `GET /api/analytics/habits/all` — 1 API call returns all 5 metrics; frontend uses `fetchAllHabitAnalytics()` |
+| 2.5 | Reduce 400-day log window | ✅ Done | `HabitContext.tsx:101` now 90 days; `extendLogWindow()` added for on-demand year heatmap |
+| 2.6 | Add missing DB indexes | ✅ Done | `idx_habitEntries_user_dayKey` + `idx_bundleMemberships_user_parent` added |
+| 2.7 | Gate console logging | ✅ Done | Debug logs in HabitContext gated behind `import.meta.env.DEV` |
 
 ### Phase 3 Status — NOT STARTED
 
