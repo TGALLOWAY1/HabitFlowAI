@@ -70,6 +70,7 @@ import {
   getHabitAnalyticsTrends,
   getHabitAnalyticsCategoryBreakdown,
   getHabitAnalyticsInsights,
+  getAllHabitAnalytics,
   getRoutineAnalyticsSummary,
   getGoalAnalyticsSummary,
 } from './routes/analytics';
@@ -212,6 +213,7 @@ export function createApp(): Express {
   app.use('/api/evidence', habitPotentialEvidenceRoutes);
   app.post('/api/ai/weekly-summary', postWeeklySummary);
   app.post('/api/ai/suggest-variants', postSuggestVariants);
+  app.get('/api/analytics/habits/all', getAllHabitAnalytics);
   app.get('/api/analytics/habits/summary', getHabitAnalyticsSummary);
   app.get('/api/analytics/habits/heatmap', getHabitAnalyticsHeatmap);
   app.get('/api/analytics/habits/trends', getHabitAnalyticsTrends);

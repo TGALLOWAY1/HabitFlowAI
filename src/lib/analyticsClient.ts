@@ -115,6 +115,24 @@ function buildParams(days: number): string {
   return `?days=${days}&timeZone=${encodeURIComponent(timeZone)}`;
 }
 
+export interface AllHabitAnalytics {
+  summary: HabitAnalyticsSummary;
+  heatmap: HeatmapResponse;
+  trends: TrendDataPoint[];
+  categoryBreakdown: CategoryBreakdownItem[];
+  insights: Insight[];
+}
+
+/**
+ * Consolidated habit analytics — fetches summary, heatmap, trends,
+ * categoryBreakdown, and insights in a single API call.
+ */
+export async function fetchAllHabitAnalytics(days = 90, heatmapDays = 365): Promise<AllHabitAnalytics> {
+  const timeZone = getLocalTimeZone();
+  const params = `?days=${days}&heatmapDays=${heatmapDays}&timeZone=${encodeURIComponent(timeZone)}`;
+  return analyticsRequest(`/analytics/habits/all${params}`);
+}
+
 export async function fetchHabitSummary(days = 90): Promise<HabitAnalyticsSummary> {
   return analyticsRequest(`/analytics/habits/summary${buildParams(days)}`);
 }

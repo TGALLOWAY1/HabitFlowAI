@@ -167,6 +167,45 @@ export async function getRoutineAnalyticsSummary(req: Request, res: Response): P
   }
 }
 
+/**
+ * Consolidated habit analytics endpoint — returns summary, heatmap, trends,
+ * categoryBreakdown, and insights in a single response from a single DB load.
+ * Replaces 4 separate API calls with 1.
+ */
+export async function getAllHabitAnalytics(req: Request, res: Response): Promise<void> {
+  try {
+    const { householdId, userId } = getRequestIdentity(req);
+    const timeZone = resolveTimeZone(typeof req.query.timeZone === 'string' ? req.query.timeZone : undefined);
+    const days = parseDays(req.query.days, 90);
+    const heatmapDays = parseDays(req.query.heatmapDays, 365);
+    const referenceDayKey = getNowDayKey(timeZone);
+
+    // Load entries for the larger of the two windows — sub-functions filter internally
+    const maxDays = Math.max(days, heatmapDays);
+    const rangeStart = startDayKeyForRange(referenceDayKey, maxDays);
+
+    const [habits, entries, memberships, categories] = await Promise.all([
+      getHabitsByUser(householdId, userId),
+      getHabitEntriesByUserInRange(householdId, userId, rangeStart, referenceDayKey),
+      getAllMembershipsByUser(householdId, userId),
+      getCategoriesByUser(householdId, userId),
+    ]);
+
+    const result = {
+      summary: computeHabitAnalyticsSummary(habits, entries, memberships, categories, referenceDayKey, days, timeZone),
+      heatmap: computeHeatmapData(habits, entries, referenceDayKey, heatmapDays, timeZone),
+      trends: computeTrendData(habits, entries, referenceDayKey, days, timeZone),
+      categoryBreakdown: computeCategoryBreakdown(habits, entries, categories, referenceDayKey, days, timeZone),
+      insights: computeInsights(habits, entries, referenceDayKey, days, timeZone),
+    };
+
+    res.json(result);
+  } catch (error) {
+    console.error('[analytics] all habit analytics error:', error);
+    res.status(500).json({ error: 'Failed to compute habit analytics' });
+  }
+}
+
 export async function getGoalAnalyticsSummary(req: Request, res: Response): Promise<void> {
   try {
     const { householdId, userId } = getRequestIdentity(req);
