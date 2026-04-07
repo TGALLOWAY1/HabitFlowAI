@@ -50,6 +50,7 @@ interface HabitContextType {
     lastPersistenceError: string | null;
     clearPersistenceError: () => void;
     refreshDayLogs: () => Promise<void>;
+    extendLogWindow: (startDayKey: string, endDayKey: string) => Promise<void>;
     refreshHabitsAndCategories: () => Promise<void>;
     updateCategory: (id: string, patch: Partial<Omit<Category, 'id'>>) => Promise<void>;
     updateHabitEntry: (id: string, patch: any) => Promise<void>; // eslint-disable-line @typescript-eslint/no-explicit-any
@@ -98,7 +99,7 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const getCanonicalSummaryWindow = () => {
         const end = new Date();
         const start = new Date();
-        start.setDate(start.getDate() - 400);
+        start.setDate(start.getDate() - 90);
         return {
             startDayKey: toLocalDayKey(start),
             endDayKey: toLocalDayKey(end),
@@ -750,8 +751,25 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         }
     };
 
+    // Extend the loaded log window on demand (e.g., when the year heatmap is shown).
+    // Merges fetched data into existing logs without replacing the current window.
+    const extendingRef = useRef(false);
+    const extendLogWindow = useCallback(async (startDayKey: string, endDayKey: string) => {
+        if (extendingRef.current) return; // prevent concurrent extensions
+        extendingRef.current = true;
+        try {
+            const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+            const historicalLogs = await fetchDaySummary(startDayKey, endDayKey, timeZone);
+            setLogs(prev => ({ ...historicalLogs, ...prev }));
+        } catch (error) {
+            console.error('Failed to extend log window', error);
+        } finally {
+            extendingRef.current = false;
+        }
+    }, []);
+
     // Debounced background sync — ensures eventual consistency without
-    // blocking every mutation with a full 400-day refetch.
+    // blocking every mutation with a full 90-day refetch.
     const bgSyncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const scheduleBackgroundSync = () => {
         if (bgSyncTimerRef.current) clearTimeout(bgSyncTimerRef.current);
@@ -888,6 +906,7 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         lastPersistenceError,
         clearPersistenceError,
         refreshDayLogs,
+        extendLogWindow,
         refreshHabitsAndCategories,
         potentialEvidence,
         upsertHabitEntry: upsertHabitEntryContext,
