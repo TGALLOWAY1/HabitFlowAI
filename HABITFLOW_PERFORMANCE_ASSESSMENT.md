@@ -1284,3 +1284,483 @@ Implement in this order for maximum progressive impact:
 3. **Fix 2.3** (date-range filtering) — 1 day, biggest single impact
 4. **Fix 2.4** (consolidate analytics) — 1 day, builds on 2.3
 5. **Fix 2.5** (reduce 400-day window) — 1 day, independent of 2.3/2.4
+
+---
+
+## 13. Phase 3: Architecture Roadmap — Detailed Plans
+
+Phase 3 fixes involve structural changes that touch multiple files and require careful migration. Each plan includes dependency analysis, migration strategy, and rollback considerations.
+
+---
+
+### Fix 3.1: Server-Side In-Memory Cache
+
+**Problem:** Zero caching infrastructure exists on the server. Every request recalculates streaks, momentum, analytics, and goal progress from raw entries. The progress overview endpoint (the most-hit endpoint) likely takes 200-500ms per call, every time, for long-term users.
+
+**Goal:** Sub-50ms responses for repeated reads of the same data, with correct invalidation on writes.
+
+#### Design
+
+Create a generic TTL cache utility, then apply it to the three highest-traffic read paths.
+
+**New file:** `src/server/lib/cache.ts`
+
+```ts
+interface CacheEntry<T> {
+    data: T;
+    expiresAt: number;
+}
+
+export class TTLCache<T> {
+    private store = new Map<string, CacheEntry<T>>();
+    private readonly ttlMs: number;
+    private readonly maxEntries: number;
+
+    constructor(ttlMs: number, maxEntries = 500) {
+        this.ttlMs = ttlMs;
+        this.maxEntries = maxEntries;
+    }
+
+    get(key: string): T | undefined {
+        const entry = this.store.get(key);
+        if (!entry) return undefined;
+        if (Date.now() > entry.expiresAt) {
+            this.store.delete(key);
+            return undefined;
+        }
+        return entry.data;
+    }
+
+    set(key: string, data: T): void {
+        // Simple eviction: if at capacity, delete oldest entry
+        if (this.store.size >= this.maxEntries) {
+            const firstKey = this.store.keys().next().value;
+            if (firstKey) this.store.delete(firstKey);
+        }
+        this.store.set(key, { data, expiresAt: Date.now() + this.ttlMs });
+    }
+
+    invalidate(key: string): void {
+        this.store.delete(key);
+    }
+
+    invalidateByPrefix(prefix: string): void {
+        for (const key of this.store.keys()) {
+            if (key.startsWith(prefix)) this.store.delete(key);
+        }
+    }
+
+    clear(): void {
+        this.store.clear();
+    }
+}
+```
+
+**No external dependencies.** A simple Map-based cache is sufficient for a single-process Node.js server. If HabitFlowAI scales to multiple processes, migrate to Redis.
+
+#### Cache Instances
+
+```ts
+// src/server/lib/cacheInstances.ts
+
+import { TTLCache } from './cache';
+
+// Progress overview — 30s TTL, invalidated on habit entry writes
+export const progressCache = new TTLCache<ProgressOverviewResponse>(30_000);
+
+// Analytics results — 60s TTL, invalidated on habit entry writes
+export const analyticsCache = new TTLCache<AllHabitAnalytics>(60_000);
+
+// Streak metrics — 60s TTL, invalidated on habit entry writes
+export const streakCache = new TTLCache<Map<string, StreakMetrics>>(60_000);
+```
+
+**Cache key pattern:** `${userId}:${dayKey}` for progress, `${userId}:${days}` for analytics.
+
+#### Integration Points
+
+**Read path** (progress.ts):
+```ts
+const cacheKey = `${userId}:${referenceDayKey}`;
+const cached = progressCache.get(cacheKey);
+if (cached) return res.json(cached);
+
+// ... compute result ...
+progressCache.set(cacheKey, result);
+res.json(result);
+```
+
+**Write path** (invalidation in entry mutation routes):
+```ts
+// In POST/PUT/DELETE /api/entries handlers:
+progressCache.invalidateByPrefix(`${userId}:`);
+analyticsCache.invalidateByPrefix(`${userId}:`);
+streakCache.invalidateByPrefix(`${userId}:`);
+```
+
+#### Invalidation Matrix
+
+| Write operation | Caches to invalidate |
+|----------------|---------------------|
+| Create/update/delete habit entry | progressCache, analyticsCache, streakCache |
+| Create/update/delete habit | progressCache (habit list changed) |
+| Create/update/delete goal | progressCache (goal progress changed) |
+| Create/update/delete bundle membership | progressCache |
+| Log wellbeing | None (wellbeing has separate data path) |
+
+#### Expected Impact
+
+| Endpoint | Uncached | Cached |
+|----------|----------|--------|
+| `/api/progress/overview` | 200-500ms | <5ms |
+| `/api/analytics/habits/all` | 150-400ms | <5ms |
+| `/api/daySummary` | 100-300ms | <5ms (if added) |
+
+**Effort:** 3 days (cache utility + integration into 3-5 routes + invalidation hooks + testing)
+**Risk:** Medium — cache invalidation is the hard part. Must ensure all write paths correctly invalidate. Missing an invalidation path = stale data shown to user. Mitigation: short TTLs (30-60s) bound staleness even if invalidation is missed.
+
+---
+
+### Fix 3.2: Split HabitContext Into Focused Contexts
+
+**Problem:** HabitContext is a monolithic provider holding 7 state variables and 24 functions. Any change to any state variable triggers re-renders in all 37 consuming components, even if they only use `categories` (10 components) or `habits` (15 components).
+
+**Goal:** Components only re-render when their specific data changes. Toggling a habit shouldn't re-render category management UI.
+
+#### Proposed Split
+
+| Context | State | Functions | Consumers |
+|---------|-------|-----------|-----------|
+| **HabitDataContext** | `habits`, `categories` | `addHabit`, `updateHabit`, `deleteHabit`, `reorderHabits`, `moveHabitToCategory`, `addCategory`, `updateCategory`, `deleteCategory`, `reorderCategories`, `importHabits`, `refreshHabitsAndCategories` | ~25 components (most common) |
+| **HabitLogContext** | `logs`, `potentialEvidence` | `toggleHabit`, `updateLog`, `updateHabitEntry`, `deleteHabitEntry`, `upsertHabitEntry`, `deleteHabitEntryByKey`, `refreshDayLogs`, `loadHistoricalRange` | ~12 components (TrackerGrid, DayView, heatmaps) |
+| **WellbeingContext** | `wellbeingLogs` | `logWellbeing` | ~3 components (DailyCheckInCard, DailyCheckInModal, ProgressRings) |
+| **HabitMetaContext** | `loading`, `lastPersistenceError` | `clearPersistenceError` | ~2 components (App.tsx, error displays) |
+
+#### Migration Strategy
+
+**Phase A: Create new context files (non-breaking)**
+1. Create `src/store/HabitDataContext.tsx` — habits and categories
+2. Create `src/store/HabitLogContext.tsx` — logs and evidence
+3. Create `src/store/WellbeingContext.tsx` — wellbeing logs
+4. Keep `HabitContext.tsx` as a **compatibility shim** that composes all 3:
+
+```tsx
+// HabitContext.tsx — backward-compatible wrapper
+export function HabitProvider({ children }) {
+    return (
+        <HabitDataProvider>
+            <HabitLogProvider>
+                <WellbeingProvider>
+                    {children}
+                </WellbeingProvider>
+            </HabitLogProvider>
+        </HabitDataProvider>
+    );
+}
+
+// useHabitStore() still works — reads from all 3 contexts
+export function useHabitStore() {
+    const data = useHabitData();
+    const logCtx = useHabitLogs();
+    const wellbeing = useWellbeing();
+    return { ...data, ...logCtx, ...wellbeing };
+}
+```
+
+This means **zero changes to existing consumers** in Phase A. Everything still works via `useHabitStore()`.
+
+**Phase B: Migrate consumers incrementally**
+- Replace `useHabitStore()` with specific hooks where possible:
+  - `const { categories } = useHabitData();` instead of `const { categories } = useHabitStore();`
+  - Components that only need categories stop re-rendering on log changes
+- Migrate ~5 files per PR, starting with the simplest (single-property consumers)
+
+**Phase C: Remove compatibility shim**
+- Once all 37 consumers are migrated, `useHabitStore()` can be deprecated
+- Or keep it as a convenience for components that genuinely need cross-context data
+
+#### Consumer Analysis — What Each Component Needs
+
+| Only needs HabitData | Only needs HabitLogs | Only needs Wellbeing | Needs multiple |
+|---------------------|---------------------|---------------------|----------------|
+| GoalsPage (categories) | YearHeatmapGrid (logs) | DailyCheckInCard (wellbeingLogs) | App.tsx (all) |
+| GoalScheduleView (categories) | CategoryCompletionRow (logs) | DailyCheckInModal (wellbeingLogs, logWellbeing) | TrackerGrid (all) |
+| GoalDetailPage (habits) | RecentHeatmapGrid (logs) | | DayView (all) |
+| DebugEntriesPage (habits) | AccomplishmentsLog (habits+logs) | | ProgressRings (habits+logs+wellbeing) |
+| GoalCard (habits) | | | |
+| Heatmap (habits) | | | |
+| CategoryTabs (categories) | | | |
+| RoutineList (categories) | | | |
+| ActivitySection (habits+categories) | | | |
+| 10 more... | | | |
+
+**Key win:** The ~25 components that only need `habits`/`categories` stop re-rendering when `logs` change (every habit toggle). This is the most frequent state change in the app.
+
+#### Expected Impact
+
+| Scenario | Before (single context) | After (split) |
+|----------|------------------------|----------------|
+| Toggle a habit cell | All 37 consumers re-render | Only ~12 log consumers re-render |
+| Update a category name | All 37 consumers re-render | Only ~25 data consumers re-render |
+| Log wellbeing | All 37 consumers re-render | Only ~3 wellbeing consumers re-render |
+
+**Effort:** 3-5 days (Phase A: 1 day, Phase B: 2-3 days, Phase C: 1 day)
+**Risk:** Medium-High — need to audit all 37 consumers. The compatibility shim (Phase A) eliminates risk of breaking changes during migration. Cross-context data dependencies (e.g., `AccomplishmentsLog` needs both `habits` and `logs`) require careful handling.
+
+---
+
+### Fix 3.3: Adopt React Query (TanStack Query)
+
+**Problem:** Data fetching is manual across 63 functions in `persistenceClient.ts` with no request deduplication, no automatic cache management, no stale-while-revalidate (except the hand-built `goalDataCache.ts`), and no optimistic updates (except manual implementations in a few places).
+
+**Goal:** Automatic request deduplication, cache management, background refetching, and optimistic updates out of the box.
+
+#### Why React Query
+
+- **Request deduplication:** If two components request the same data simultaneously, only one HTTP request fires.
+- **Stale-while-revalidate:** Built-in, configurable per query. Replaces the manual `goalDataCache.ts`.
+- **Optimistic updates:** Built-in mutation callbacks (`onMutate`, `onError`, `onSettled`). Replaces manual state rollback logic.
+- **Cache invalidation:** `queryClient.invalidateQueries(['habits'])` replaces manual cache key management.
+- **DevTools:** React Query DevTools provides real-time visibility into cache state, query timing, and staleness.
+
+#### Migration Strategy
+
+**This is the largest migration in Phase 3.** It touches `persistenceClient.ts` (1,484 lines, 63 functions), all custom hooks, and most components that fetch data. It should be done incrementally, one data domain at a time.
+
+**Phase A: Install and configure**
+1. `npm install @tanstack/react-query @tanstack/react-query-devtools`
+2. Add `QueryClientProvider` to `src/App.tsx` (above other providers)
+3. Configure defaults: `staleTime: 30_000`, `gcTime: 5 * 60_000`
+
+**Phase B: Migrate goal data first (smallest, best-isolated)**
+- Replace `goalDataCache.ts` + `useGoalsWithProgress.ts` + `useGoalDetail.ts` + `useCompletedGoals.ts` with React Query hooks
+- This domain is already cache-aware (30s TTL), so the migration validates the approach
+- Remove `goalDataCache.ts` after migration
+
+**Phase C: Migrate analytics data**
+- Replace the 4-5 analytics fetch calls with a single `useQuery(['analytics', days])` (or the consolidated endpoint from Fix 2.4)
+- Low consumer count makes this safe
+
+**Phase D: Migrate habit data (largest)**
+- This is the big one: replace `HabitContext`'s manual fetching with React Query
+- `useQuery(['habits', userId])` for habits, `useQuery(['logs', userId, startDayKey, endDayKey])` for day summary
+- Context providers become thin wrappers around React Query hooks
+- Can coexist with the context split (Fix 3.2) — each split context internally uses React Query
+
+**Phase E: Migrate routines, tasks, journal, wellbeing**
+- Each domain is relatively isolated
+- Replace manual fetch + state management with `useQuery` + `useMutation`
+
+#### Mapping to Existing Patterns
+
+| Current Pattern | React Query Equivalent |
+|----------------|----------------------|
+| `goalDataCache.ts` (manual TTL cache) | `useQuery({ queryKey, staleTime: 30_000 })` |
+| `subscribeToCacheInvalidation()` | `queryClient.invalidateQueries()` |
+| `invalidateAllGoalCaches()` | `queryClient.invalidateQueries(['goals'])` |
+| `persistenceClient.fetchGoalsWithProgress()` | `queryFn` passed to `useQuery` |
+| HabitContext `Promise.allSettled` init | Multiple `useQuery` hooks with `Suspense` or individual loading states |
+| Manual `setLogs(prev => ...)` optimistic update | `useMutation({ onMutate })` with cache rollback |
+
+#### Expected Impact
+
+| Metric | Before | After |
+|--------|--------|-------|
+| Duplicate API requests (same data, multiple components) | Common | Eliminated (automatic dedup) |
+| Cache management code | ~200 lines (goalDataCache.ts + manual state) | ~0 (handled by React Query) |
+| Background refetch logic | Manual in a few hooks | Automatic for all queries |
+| DevTools for data inspection | Console.log only | React Query DevTools |
+| Code in persistenceClient.ts | 1,484 lines (fetch + state management) | ~800 lines (fetch only, state managed by RQ) |
+
+**Effort:** 5-7 days (Phase A: 0.5 day, Phase B: 1 day, Phase C: 0.5 day, Phase D: 2-3 days, Phase E: 1-2 days)
+**Risk:** Medium — large migration surface, but each phase is independently deployable. React Query is well-documented and battle-tested. The main risk is incorrect cache key design leading to stale data.
+
+---
+
+### Fix 3.4: TrackerGrid Virtualization
+
+**Problem:** TrackerGrid (1,538 lines) renders ALL habit rows as DOM nodes. For 50 habits × 31 days = 1,550+ interactive cells. At 100 habits, layout recalculation on each toggle causes visible jank, especially on mobile.
+
+**Goal:** Only render visible rows + a small buffer. Reduce DOM node count by 70-90% for power users.
+
+#### Recommended Library: `@tanstack/react-virtual`
+
+**Why:** Lightweight (8KB), framework-agnostic, works well with variable row heights. Better maintained than `react-window`. Compatible with React 19.
+
+#### Implementation Approach
+
+```tsx
+import { useVirtualizer } from '@tanstack/react-virtual';
+
+function TrackerGrid() {
+    const parentRef = useRef<HTMLDivElement>(null);
+
+    const rowVirtualizer = useVirtualizer({
+        count: rootHabits.length,
+        getScrollElement: () => parentRef.current,
+        estimateSize: () => 48, // estimated row height in px
+        overscan: 5, // render 5 rows above/below viewport
+    });
+
+    return (
+        <div ref={parentRef} style={{ height: '100%', overflow: 'auto' }}>
+            <div style={{ height: `${rowVirtualizer.getTotalSize()}px`, position: 'relative' }}>
+                {rowVirtualizer.getVirtualItems().map(virtualRow => {
+                    const habit = rootHabits[virtualRow.index];
+                    return (
+                        <div
+                            key={habit.id}
+                            style={{
+                                position: 'absolute',
+                                top: 0,
+                                transform: `translateY(${virtualRow.start}px)`,
+                                width: '100%',
+                            }}
+                        >
+                            <HabitRow habit={habit} dates={dates} /* ... */ />
+                        </div>
+                    );
+                })}
+            </div>
+        </div>
+    );
+}
+```
+
+#### Challenges
+
+| Challenge | Mitigation |
+|-----------|------------|
+| **Drag-and-drop with @dnd-kit** | @dnd-kit supports virtualized lists via `SortableContext` with `strategy={verticalListSortingStrategy}`. Items must have stable `id` props. The virtualized rows need to be the sortable items. |
+| **Category headers interspersed with habit rows** | Flatten categories + habits into a single list with type discriminator: `{ type: 'header', categoryId } | { type: 'habit', habit }`. Virtualizer counts all items. |
+| **Variable row heights** | Use `measureElement` from react-virtual for dynamic measurement. Category headers may be taller than habit rows. |
+| **Horizontal scroll for dates** | Only virtualize vertically (rows). The date columns are typically 7-31 and don't need virtualization — they're lightweight compared to the row count. |
+
+#### When to Apply
+
+This optimization is only impactful for users with **40+ habits**. For users with 10-20 habits, the DOM is manageable. Consider:
+- Adding a feature flag to enable virtualization
+- Or always virtualizing (simpler code path, no conditional logic)
+
+#### Expected Impact
+
+| Habits | Before (DOM nodes) | After (DOM nodes) | Reduction |
+|--------|-------------------|-------------------|-----------|
+| 20 | 620 | ~310 (10 visible × 31) | 50% |
+| 50 | 1,550 | ~310 | 80% |
+| 100 | 3,100 | ~310 | 90% |
+
+**Effort:** 3 days (virtualizer setup + @dnd-kit integration + category header handling + testing)
+**Risk:** Medium — @dnd-kit + virtualization integration requires careful testing. The 1,538-line component is complex.
+
+---
+
+### Fix 3.5: Server-Side Session Caching
+
+**Problem:** Session middleware makes 2 sequential DB queries per authenticated request: `findSessionByTokenHash()` + `findUserById()`. For 10 API calls on app load, that's 20 DB queries just for auth.
+
+**File:** `src/server/middleware/session.ts`
+
+#### Implementation
+
+```ts
+import { TTLCache } from '../lib/cache'; // from Fix 3.1
+
+interface CachedSession {
+    userId: string;
+    householdId: string;
+    email: string;
+    displayName: string;
+    role: 'admin' | 'member';
+}
+
+const sessionCache = new TTLCache<CachedSession>(60_000); // 60s TTL
+
+export async function sessionMiddleware(req, res, next) {
+    const raw = req.cookies?.[SESSION_COOKIE_NAME];
+    if (!raw || typeof raw !== 'string') return next();
+
+    const tokenHash = hashSessionToken(raw);
+
+    // Check cache first
+    const cached = sessionCache.get(tokenHash);
+    if (cached) {
+        req.userId = cached.userId;
+        req.householdId = cached.householdId;
+        req.authUser = {
+            email: cached.email,
+            displayName: cached.displayName,
+            role: cached.role,
+        };
+        return next();
+    }
+
+    // Cache miss — query DB
+    const session = await findSessionByTokenHash(tokenHash);
+    if (!session) return next();
+
+    const user = await findUserById(session.userId);
+    if (!user) return next();
+
+    // Populate cache
+    sessionCache.set(tokenHash, {
+        userId: session.userId,
+        householdId: session.householdId,
+        email: user.email,
+        displayName: user.displayName,
+        role: user.role,
+    });
+
+    req.userId = session.userId;
+    req.householdId = session.householdId;
+    req.authUser = { email: user.email, displayName: user.displayName, role: user.role };
+    next();
+}
+```
+
+**Logout invalidation:** On `POST /api/auth/logout`, explicitly evict:
+```ts
+sessionCache.invalidate(tokenHash);
+```
+
+#### Security Considerations
+
+| Concern | Mitigation |
+|---------|------------|
+| Revoked sessions stay cached | 60s TTL bounds maximum staleness. User cannot do meaningful damage in 60s after session revocation. |
+| Cache key is token hash (not raw token) | No raw tokens stored in memory |
+| Cross-user data leakage | Cache key is unique per session. No shared keys. |
+| Memory growth | `TTLCache` has `maxEntries` cap (default 500). Each entry is ~200 bytes. Max memory: ~100KB. |
+
+#### Expected Impact
+
+| Metric | Before | After |
+|--------|--------|-------|
+| DB queries for auth per request | 2 (session + user) | 0 (cache hit) or 2 (cache miss, once per 60s) |
+| Auth overhead per request | 10-25ms | <1ms (cache hit) |
+| DB queries saved per 10-request app load | 20 | 18 (first request misses, other 9 hit cache) |
+
+**Effort:** 1 day | **Risk:** Low-Medium — the TTL approach is conservative. Depends on Fix 3.1 for the cache utility.
+
+---
+
+### Phase 3 Dependency Graph
+
+```
+Fix 3.1 (Server Cache Utility)
+  ├── Fix 3.5 (Session Caching) — depends on cache utility
+  └── used by progress/analytics route caching
+
+Fix 3.2 (Split HabitContext)
+  └── Fix 3.3 (React Query) — can coexist, each split context uses RQ internally
+
+Fix 3.4 (TrackerGrid Virtualization) — independent
+```
+
+### Phase 3 Priority Order
+
+1. **Fix 3.1** (server cache utility) — 3 days, unlocks 3.5 and route caching
+2. **Fix 3.5** (session caching) — 1 day, depends on 3.1, immediate impact
+3. **Fix 3.2** (split HabitContext) — 3-5 days, independent, high frontend impact
+4. **Fix 3.4** (TrackerGrid virtualization) — 3 days, independent, high impact for power users
+5. **Fix 3.3** (React Query) — 5-7 days, largest effort, builds on 3.2 conceptually
