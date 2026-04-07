@@ -453,3 +453,99 @@ The app is usable but will feel increasingly slow as users accumulate data. With
 - **Risk:** Mobile and desktop load identical payloads. No reduced data mode, no progressive loading, no viewport-based data fetching.
 - **Impact:** Mobile users on slower connections download the same 400-day log summary as desktop users on fiber.
 - **Severity:** **Medium**
+
+---
+
+## 7. Most Likely Root Causes of Perceived Slowness
+
+Ranked by likely contribution to user-perceived slowness.
+
+### Rank 1: Monolithic Bundle + No Code Splitting
+- **What:** The entire application (all pages, all charts, all icons, all drag-and-drop code) is shipped as a single JavaScript chunk. No route-level splitting.
+- **Where:** `src/App.tsx:14-42` (static imports), `vite.config.ts` (no chunking config)
+- **Why it matters:** First paint is blocked until the full ~200KB+ gzipped bundle is downloaded, decompressed (~700KB+), and parsed. On mobile/slow connections, this alone accounts for 2-4 seconds of load time.
+- **Confidence:** **Very High** — this is a structural fact, not a heuristic.
+- **How to verify:** Run `npx vite build --report` or use `rollup-plugin-visualizer` to see the single-chunk output. Measure bundle size with `ls -la dist/assets/*.js`.
+
+### Rank 2: Unmemoized HabitContext Provider Value
+- **What:** The HabitContext provider creates a new value object on every render, causing all consuming components to re-render unnecessarily.
+- **Where:** `src/store/HabitContext.tsx:879-907`
+- **Why it matters:** Every state change (toggling a habit, logging wellbeing, etc.) triggers a cascade re-render through the entire component tree: TrackerGrid (1,550+ cells), ProgressDashboard (8+ children with charts), DayView, and every other mounted component that calls `useHabitStore()`.
+- **Confidence:** **Very High** — React's reconciliation behavior with reference equality checks is well-documented.
+- **How to verify:** React DevTools Profiler → toggle a single habit → observe how many components re-render. Expected: nearly all mounted components.
+
+### Rank 3: 400-Day Log Fetch on Every Init
+- **What:** HabitContext fetches a 400-day log summary on every app initialization, producing a potentially 100-300KB response.
+- **Where:** `src/store/HabitContext.tsx:200-208`, window computed at lines 95-103
+- **Why it matters:** This is the slowest of the 4 parallel init requests, and `setLoading(false)` waits for all 4 to settle. Time-to-first-render is gated by this large payload.
+- **Confidence:** **High** — payload size scales linearly with habit count × days.
+- **How to verify:** Network tab → filter `daySummary` → check response size and time for a user with 50+ habits.
+
+### Rank 4: N+1 Bundle Membership Queries
+- **What:** Progress overview and day summary endpoints loop over bundle parents, issuing one DB query per parent.
+- **Where:** `src/server/routes/progress.ts:85-86`, `src/server/routes/daySummary.ts:192-195`
+- **Why it matters:** Each sequential query adds 5-20ms of network/DB round-trip time. With 10 bundles, that's 50-200ms of unnecessary sequential latency.
+- **Confidence:** **High** — the N+1 pattern is visible in the code and the batch alternative already exists.
+- **How to verify:** Add timing logs around the bundle loop, or count DB queries per request.
+
+### Rank 5: No Server-Side Caching + Repeated Full-Entry Loads
+- **What:** Every request recalculates streaks, momentum, and analytics from raw entries. Analytics page loads ALL entries 4 separate times.
+- **Where:** `src/server/routes/analytics.ts:40-64`, `src/server/routes/progress.ts:44`, `src/server/services/streakService.ts`
+- **Why it matters:** For long-term users, this is O(total_entries) work per request with no amortization. The analytics page multiplies this by 4x.
+- **Confidence:** **High** — the code paths are clear and there is zero caching infrastructure.
+- **How to verify:** Add `console.time()` around the full progress overview handler. Expect 200-500ms for users with 5,000+ entries.
+
+### Rank 6: Ping + Index Check on Every DB Access
+- **What:** `getDb()` pings MongoDB and runs index ensurance on every call.
+- **Where:** `src/server/lib/mongoClient.ts:210-214`
+- **Why it matters:** Adds 5-10ms per DB operation. A request that makes 4 DB calls pays 20-40ms in ping overhead alone.
+- **Confidence:** **Medium-High** — ping latency depends on network conditions; local dev is fast, production may be slower.
+- **How to verify:** Comment out the ping, measure response time difference.
+
+### Rank 7: TrackerGrid DOM Weight
+- **What:** 1,550+ interactive DOM nodes with no virtualization, full re-render on state change.
+- **Where:** `src/components/TrackerGrid.tsx`
+- **Why it matters:** Layout recalculation of 1,500+ nodes is expensive, especially on mobile. Each habit toggle causes a full diff.
+- **Confidence:** **Medium** — depends on actual habit count. 20 habits × 31 days = 620 nodes (fine). 80 habits × 31 days = 2,480 nodes (problematic).
+- **How to verify:** Chrome DevTools → Performance tab → toggle a habit → measure layout time.
+
+---
+
+## 8. Recommended Fixes
+
+### Phase 1: High-Impact Quick Wins
+
+These can be implemented in <1 day each with low risk.
+
+| # | Issue | Fix | Expected Impact | Effort | Risk | Files |
+|---|-------|-----|----------------|--------|------|-------|
+| 1.1 | **Unmemoized HabitContext value** | Wrap provider value in `useMemo` with dependency array of all state variables | 40-60% reduction in unnecessary re-renders | 1 hour | Low — pure React optimization, no data flow change | `src/store/HabitContext.tsx:879-907` |
+| 1.2 | **N+1 bundle queries in progress.ts** | Replace `getMembershipsByParent()` loop with `getAllMembershipsByUser()` (already used in analytics.ts:43), group by parentHabitId | 50-200ms faster progress overview for users with bundles | 2 hours | Low — the batch function already exists and is tested | `src/server/routes/progress.ts:80-99` |
+| 1.3 | **N+1 bundle queries in daySummary.ts** | Same fix as 1.2 | 50-200ms faster day summary | 2 hours | Low | `src/server/routes/daySummary.ts:188-210` |
+| 1.4 | **Ping on every getDb()** | Remove the `ping()` call from the cached-connection path. Trust the MongoDB driver's connection monitoring. Keep ping only for initial connection and reconnection. | 5-10ms saved per DB call, 15-40ms per request | 30 min | Low — MongoDB Node driver handles connection health internally | `src/server/lib/mongoClient.ts:210-214` |
+| 1.5 | **Console logging in init path** | Remove or gate behind `NODE_ENV !== 'production'` the 8+ `console.log` calls in HabitContext initialization | Minor — reduces noise and microsecond overhead | 15 min | None | `src/store/HabitContext.tsx:184-216` |
+
+### Phase 2: Targeted Structural Improvements
+
+These require 1-3 days each but deliver significant, measurable improvements.
+
+| # | Issue | Fix | Expected Impact | Effort | Risk | Files |
+|---|-------|-----|----------------|--------|------|-------|
+| 2.1 | **No code splitting** | Use `React.lazy()` + `Suspense` for non-initial pages: `GoalsPage`, `GoalDetailPage`, `AnalyticsPage`, `AppleHealthPage`, `JournalPage`, `WellbeingHistoryPage`, `TasksPage`, `DebugEntriesPage`. Add Suspense fallback (spinner or skeleton). | 30-50% smaller initial bundle. Faster first paint by ~1-2s on mobile. | 1 day | Low — lazy loading is a well-understood pattern. Test that navigation still works. | `src/App.tsx:14-42` |
+| 2.2 | **Vite chunking** | Add `build.rollupOptions.output.manualChunks` to split: `vendor` (react, react-dom), `charts` (recharts), `dnd` (@dnd-kit), `date` (date-fns). | Better cache hit rates on deploys. Charts chunk only loaded when needed (with 2.1). | 2 hours | Low | `vite.config.ts` |
+| 2.3 | **Date-range filtering for entries** | Add `getHabitEntriesByDateRange(householdId, userId, startDayKey, endDayKey)` to `habitEntryRepository.ts`. Update analytics and progress endpoints to pass appropriate date ranges. | 70-90% reduction in data loaded for analytics (90 days vs all time). | 1 day | **Medium** — must ensure streak calculations that need full history still work. Progress overview may need full history for "best streak". Analytics endpoints have a `days` parameter already. | `src/server/repositories/habitEntryRepository.ts`, `src/server/routes/analytics.ts`, `src/server/routes/progress.ts` |
+| 2.4 | **Consolidate analytics endpoint** | Create a single `GET /api/analytics/all?days=90` endpoint that loads entries once and computes all metrics (summary, heatmap, trends, breakdown). Frontend calls 1 endpoint instead of 4. | 4× reduction in DB reads on analytics page. | 1 day | Low — pure server refactor, new endpoint, old endpoints can remain. | `src/server/routes/analytics.ts`, `src/server/services/analyticsService.ts`, `src/pages/AnalyticsPage.tsx` |
+| 2.5 | **Reduce default log window** | Change 400-day default to 90 days for initial load. Add a "load more" mechanism or lazy-load historical data when user navigates to history views. | 75% smaller initial payload. Faster time-to-interactive. | 1 day | **Medium** — must ensure TrackerGrid can still show past months. May need to fetch additional data when user scrolls to older months. | `src/store/HabitContext.tsx:95-103` |
+| 2.6 | **Add missing DB indexes** | Add compound index: `habitEntries (householdId, userId, deletedAt)`. Add index for date-range queries (once 2.3 is implemented): `habitEntries (householdId, userId, dayKey)`. | Faster query execution for full-entry loads. | 1 hour | Low — indexes are additive; `ensureCoreIndexes` already handles index creation. | `src/server/lib/mongoClient.ts:141+` |
+
+### Phase 3: Deeper Architecture Work
+
+These require 3+ days and involve structural changes.
+
+| # | Issue | Fix | Expected Impact | Effort | Risk | Files |
+|---|-------|-----|----------------|--------|------|-------|
+| 3.1 | **No server-side caching** | Add in-memory TTL cache (e.g., `lru-cache` or simple Map with TTL) for: (a) progress overview results keyed by `userId+dayKey` with 30s TTL, (b) streak metrics keyed by `userId+habitId` with 60s TTL, (c) analytics results keyed by `userId+days` with 60s TTL. Invalidate on write operations. | 80-95% reduction in server computation for repeated requests. Sub-50ms responses for cached data. | 3 days | **Medium** — cache invalidation is the hard part. Must invalidate on habit entry creation/update/delete, goal mutations, and bundle membership changes. | New `src/server/lib/cache.ts`, modify routes and repositories. |
+| 3.2 | **Split HabitContext** | Break into 3 contexts: `HabitDataContext` (habits, categories — changes rarely), `HabitLogContext` (logs — changes on toggle), `WellbeingContext` (wellbeing — changes rarely). Components subscribe only to what they need. | Targeted re-renders. Dashboard doesn't re-render when wellbeing changes. TrackerGrid doesn't re-render when categories change. | 3 days | **Medium-High** — need to audit all `useHabitStore()` consumers and split their subscriptions. | `src/store/HabitContext.tsx` → split into 3 files, update all consumers. |
+| 3.3 | **Adopt React Query / TanStack Query** | Replace manual data fetching hooks and goalDataCache with React Query. Get automatic request deduplication, background refetching, cache management, and optimistic updates. | Eliminates duplicate requests, provides stale-while-revalidate out of the box, reduces boilerplate. | 5 days | **Medium** — large migration touching all data-fetching hooks. The existing goal cache pattern maps well to React Query concepts. | `src/lib/persistenceClient.ts`, all `use*` hooks, `src/lib/goalDataCache.ts` (replaced). |
+| 3.4 | **TrackerGrid virtualization** | Implement row virtualization using `react-window` or `@tanstack/react-virtual` for the habit rows. Only render habits visible in the viewport + a buffer. | 70-90% DOM reduction for users with 50+ habits. Smooth scrolling on mobile. | 3 days | **Medium** — drag-and-drop interaction with `@dnd-kit` needs careful integration with virtualized lists. | `src/components/TrackerGrid.tsx` |
+| 3.5 | **Server-side session caching** | Cache validated sessions in a simple in-memory Map with 60s TTL. Reduces DB query per request to a Map lookup. | 5-15ms saved per request. | 1 day | **Low-Medium** — must handle session invalidation (logout) correctly. | `src/server/middleware/session.ts` |
