@@ -549,3 +549,328 @@ These require 3+ days and involve structural changes.
 | 3.3 | **Adopt React Query / TanStack Query** | Replace manual data fetching hooks and goalDataCache with React Query. Get automatic request deduplication, background refetching, cache management, and optimistic updates. | Eliminates duplicate requests, provides stale-while-revalidate out of the box, reduces boilerplate. | 5 days | **Medium** — large migration touching all data-fetching hooks. The existing goal cache pattern maps well to React Query concepts. | `src/lib/persistenceClient.ts`, all `use*` hooks, `src/lib/goalDataCache.ts` (replaced). |
 | 3.4 | **TrackerGrid virtualization** | Implement row virtualization using `react-window` or `@tanstack/react-virtual` for the habit rows. Only render habits visible in the viewport + a buffer. | 70-90% DOM reduction for users with 50+ habits. Smooth scrolling on mobile. | 3 days | **Medium** — drag-and-drop interaction with `@dnd-kit` needs careful integration with virtualized lists. | `src/components/TrackerGrid.tsx` |
 | 3.5 | **Server-side session caching** | Cache validated sessions in a simple in-memory Map with 60s TTL. Reduces DB query per request to a Map lookup. | 5-15ms saved per request. | 1 day | **Low-Medium** — must handle session invalidation (logout) correctly. | `src/server/middleware/session.ts` |
+
+---
+
+## 9. Instrumentation / Measurement Plan
+
+The codebase currently has **no performance instrumentation** beyond `console.log` debug statements. The following should be added to measure, validate, and monitor performance improvements.
+
+### 9.1 Server-Side: API Duration Logging
+
+**What to add:** Middleware that logs request duration for every API call.
+
+**Where:** `src/server/app.ts` — add as the first middleware after CORS.
+
+**Implementation:**
+```ts
+app.use((req, res, next) => {
+  const start = process.hrtime.bigint();
+  res.on('finish', () => {
+    const durationMs = Number(process.hrtime.bigint() - start) / 1_000_000;
+    if (durationMs > 100) { // Only log slow requests
+      console.warn(`[SLOW] ${req.method} ${req.path} ${durationMs.toFixed(1)}ms`);
+    }
+  });
+  next();
+});
+```
+
+**What to log:** Method, path, duration, response size, userId (hashed). Flag anything >100ms.
+
+### 9.2 Server-Side: Slow Query Logging
+
+**What to add:** Wrap key repository functions with timing.
+
+**Where:** `src/server/repositories/habitEntryRepository.ts` — around `getHabitEntriesByUser()`.
+
+**What to log:** Query name, filter parameters, result count, duration. Flag any query >50ms or returning >1,000 documents.
+
+### 9.3 Client-Side: Route Load Timing
+
+**What to add:** `performance.mark()` and `performance.measure()` around route transitions.
+
+**Where:** `src/App.tsx` — in the route rendering logic, mark when a view change starts and when the component finishes its first render.
+
+**Implementation:**
+```ts
+useEffect(() => {
+  performance.mark(`route-${view}-start`);
+  return () => {
+    performance.mark(`route-${view}-end`);
+    performance.measure(`route-${view}`, `route-${view}-start`, `route-${view}-end`);
+  };
+}, [view]);
+```
+
+### 9.4 Client-Side: API Call Duration
+
+**What to add:** Timing wrapper in `persistenceClient.ts` around `apiRequest()`.
+
+**Where:** `src/lib/persistenceClient.ts:166-253` — the `apiRequest()` function.
+
+**What to log:** Endpoint, method, duration, response size. Report to console in dev, optionally send to a lightweight analytics endpoint in production.
+
+### 9.5 Client-Side: Web Vitals
+
+**What to add:** Install `web-vitals` library and report Core Web Vitals (LCP, FID, CLS, TTFB, INP).
+
+**Where:** `src/main.tsx` — after app mount.
+
+**What to track:**
+- **LCP (Largest Contentful Paint):** Target <2.5s. Currently likely 3-5s on mobile due to bundle size.
+- **INP (Interaction to Next Paint):** Target <200ms. Currently at risk due to unmemoized context re-renders.
+- **CLS (Cumulative Layout Shift):** Likely fine — no lazy-loaded images or dynamic content shifts observed.
+- **TTFB (Time to First Byte):** Target <600ms. Depends on server hosting (Render cold starts).
+
+### 9.6 Bundle Analysis
+
+**What to add:** Configure `rollup-plugin-visualizer` in Vite config.
+
+**Where:** `vite.config.ts` — add as a plugin with `template: 'treemap'`.
+
+**What to measure:** Total bundle size, per-dependency size, identify largest chunks. Run after each build to track regressions.
+
+### 9.7 React Render Profiling
+
+**What to use:** React DevTools Profiler (already available since React 19 is in StrictMode).
+
+**What to measure:**
+1. Toggle a habit in TrackerGrid → count re-rendered components → should be <10, currently likely 50+.
+2. Navigate between views → measure render time of each page component.
+3. Dashboard load → measure time from mount to data-populated render.
+
+### 9.8 Database Query Profiling
+
+**What to add:** Enable MongoDB slow query log.
+
+**How:** In MongoDB Atlas or self-hosted, set `slowOpThresholdMs: 50` in the profiler settings.
+
+**What to watch:** Queries without index usage (COLLSCAN), queries returning >500 documents, queries taking >50ms.
+
+---
+
+## 10. Safe Implementation Notes
+
+Performance optimizations must not break correctness. The following areas require extra care.
+
+### 10.1 Streaks
+
+**Risk:** If `getHabitEntriesByDateRange()` (fix 2.3) is used for progress overview, streak calculations that walk backward through history may produce incorrect results if the date range is too narrow.
+
+**Mitigation:** The `calculateHabitStreakMetrics()` function in `streakService.ts` needs ALL historical data to compute `bestStreak` correctly. Options:
+- Keep progress overview using full entry load (no date filter) for streaks.
+- Cache computed streaks and only recalculate when entries change.
+- Accept that "best streak" may require a separate, less frequent query.
+
+**Recommendation:** Apply date-range filtering to analytics endpoints only (where `days` parameter already exists). Keep progress overview with full history until server-side caching (fix 3.1) absorbs the cost.
+
+### 10.2 Habit Entries (Canonical Truth)
+
+**Risk:** Any caching or date-range filtering must not cause stale or missing entries to be displayed. `habitEntries` is the single source of truth per CLAUDE.md.
+
+**Mitigation:**
+- Server-side caches (fix 3.1) must invalidate on any write to `habitEntries`.
+- Client-side caching must invalidate when `toggleHabit`, `updateLog`, `createHabitEntry`, etc. are called.
+- The existing `goalDataCache.ts` pattern (manual invalidation after mutations) is a good model.
+
+### 10.3 Goal Progress
+
+**Risk:** Changing bundle membership resolution from sequential to batch (fix 1.2) could produce different results if the grouping logic differs from the per-parent query.
+
+**Mitigation:** The batch function `getAllMembershipsByUser()` returns the same data as individual `getMembershipsByParent()` calls — it's a superset. Group the results by `parentHabitId` and the derivation logic remains identical.
+
+**Test:** Compare progress overview output before and after the fix for a user with bundles.
+
+### 10.4 Routines Completion Flow
+
+**Risk:** Minimal. Routine data lives in a separate context (`RoutineContext`) and is not directly affected by the proposed performance fixes.
+
+**Mitigation:** If context splitting (fix 3.2) is implemented, ensure `RoutineContext` can still read habit data when needed (e.g., for routine steps that reference habits).
+
+### 10.5 Analytics / History Correctness
+
+**Risk:** Consolidating analytics into a single endpoint (fix 2.4) must produce identical results to the current 4 separate endpoints.
+
+**Mitigation:** Write integration tests that compare outputs of old and new endpoints for a test user with known data. The service functions (`computeHabitAnalyticsSummary`, `computeHeatmapData`, etc.) remain unchanged — only the data loading path changes.
+
+### 10.6 User Identity / Household Scoping
+
+**Risk:** Server-side session caching (fix 3.5) must correctly scope cached sessions to avoid cross-user data leakage.
+
+**Mitigation:** Cache key must be the session token hash (already unique per user). TTL must be short enough (60s) that revoked sessions expire quickly. On logout, explicitly evict the cached session.
+
+### 10.7 DayKey / Timezone Correctness
+
+**Risk:** Date-range filtering (fix 2.3) must respect the user's timezone. Filtering by `dayKey` string comparison is safe because `dayKey` format is `YYYY-MM-DD` which sorts lexicographically.
+
+**Mitigation:** Ensure `startDayKey` and `endDayKey` are computed using the same timezone resolution as the rest of the system (`resolveTimeZone()` in `src/server/utils/dayKey.ts`).
+
+### 10.8 Reducing the 400-Day Window (Fix 2.5)
+
+**Risk:** TrackerGrid allows navigating to past months. If the initial load only fetches 90 days, navigating to month 4 will show empty data.
+
+**Mitigation:** Implement on-demand fetching: when the user navigates to a month outside the loaded range, fetch that month's data and merge it into state. The HabitContext already has a `refreshDayLogs()` function that could be parameterized with a date range.
+
+---
+
+## TOP_PRIORITY_PERFORMANCE_FIXES
+
+The 3 best next actions to take immediately, written for direct implementation handoff.
+
+---
+
+### Fix 1: Memoize HabitContext Provider Value
+
+**File:** `src/store/HabitContext.tsx`
+**Lines:** 879-907
+
+**Current code (simplified):**
+```tsx
+<HabitContext.Provider value={{
+    categories, habits, logs, wellbeingLogs,
+    addCategory, updateCategory, addHabit, updateHabit,
+    moveHabitToCategory, toggleHabit, updateLog,
+    updateHabitEntry: updateHabitEntryContext,
+    deleteHabitEntry: deleteHabitEntryContext,
+    deleteHabit, deleteCategory, importHabits,
+    reorderCategories, reorderHabits, logWellbeing,
+    lastPersistenceError, clearPersistenceError,
+    refreshDayLogs, refreshHabitsAndCategories,
+    potentialEvidence, upsertHabitEntry: upsertHabitEntryContext,
+    deleteHabitEntryByKey: deleteHabitEntryByKeyContext, loading,
+}}>
+```
+
+**Fix:** Wrap in `useMemo`. All the callback functions are already wrapped in `useCallback`, so they're stable references. The dependency array should include only the state values:
+
+```tsx
+const contextValue = useMemo(() => ({
+    categories, habits, logs, wellbeingLogs,
+    addCategory, updateCategory, addHabit, updateHabit,
+    moveHabitToCategory, toggleHabit, updateLog,
+    updateHabitEntry: updateHabitEntryContext,
+    deleteHabitEntry: deleteHabitEntryContext,
+    deleteHabit, deleteCategory, importHabits,
+    reorderCategories, reorderHabits, logWellbeing,
+    lastPersistenceError, clearPersistenceError,
+    refreshDayLogs, refreshHabitsAndCategories,
+    potentialEvidence, upsertHabitEntry: upsertHabitEntryContext,
+    deleteHabitEntryByKey: deleteHabitEntryByKeyContext, loading,
+}), [categories, habits, logs, wellbeingLogs, potentialEvidence, lastPersistenceError, loading]);
+
+// Then:
+<HabitContext.Provider value={contextValue}>
+```
+
+**Expected impact:** 40-60% fewer unnecessary re-renders across the entire app. Every component consuming `useHabitStore()` will only re-render when actual state data changes.
+
+**Effort:** 1 hour (including verification with React DevTools Profiler).
+**Risk:** Low — no functional change, pure render optimization.
+
+---
+
+### Fix 2: Eliminate N+1 Bundle Membership Queries in Progress Overview
+
+**File:** `src/server/routes/progress.ts`
+**Lines:** 80-99
+
+**Current code:**
+```ts
+for (const parent of bundleParents) {
+  const memberships = await getMembershipsByParent(parent.id, householdId, userId);
+  // ... per-parent derivation
+}
+```
+
+**Fix:** Replace with a single batch fetch (the function already exists at `src/server/repositories/bundleMembershipRepository.ts` and is used in `analytics.ts:43`):
+
+```ts
+import { getAllMembershipsByUser } from '../repositories/bundleMembershipRepository';
+
+// Replace the loop with:
+const allMemberships = await getAllMembershipsByUser(householdId, userId);
+const membershipsByParent = new Map<string, BundleMembershipRecord[]>();
+for (const m of allMemberships) {
+  const existing = membershipsByParent.get(m.parentHabitId) ?? [];
+  existing.push(m);
+  membershipsByParent.set(m.parentHabitId, existing);
+}
+
+for (const parent of bundleParents) {
+  const memberships = membershipsByParent.get(parent.id) ?? [];
+  // ... rest of derivation logic unchanged
+}
+```
+
+**Also apply to:** `src/server/routes/daySummary.ts:192-195` (same pattern).
+
+**Expected impact:** 1 DB query instead of N queries. Saves 50-200ms for users with bundles. Progress overview and day summary both get faster.
+
+**Effort:** 2 hours (including both files + testing).
+**Risk:** Low — `getAllMembershipsByUser()` is already tested and used in production by analytics endpoints.
+
+---
+
+### Fix 3: Add Route-Level Code Splitting
+
+**File:** `src/App.tsx`
+**Lines:** 14-42
+
+**Current code:**
+```ts
+import { GoalsPage } from './pages/goals/GoalsPage';
+import { AnalyticsPage } from './pages/AnalyticsPage';
+import { JournalPage } from './pages/JournalPage';
+// ... etc
+```
+
+**Fix:** Replace static imports with `React.lazy()` for pages that aren't on the initial route:
+
+```ts
+import React, { Suspense } from 'react';
+
+// Keep eager: TrackerGrid, ProgressDashboard, DayView (initial routes)
+// Lazy load everything else:
+const GoalsPage = React.lazy(() => import('./pages/goals/GoalsPage').then(m => ({ default: m.GoalsPage })));
+const GoalDetailPage = React.lazy(() => import('./pages/goals/GoalDetailPage').then(m => ({ default: m.GoalDetailPage })));
+const GoalCompletedPage = React.lazy(() => import('./pages/goals/GoalCompletedPage').then(m => ({ default: m.GoalCompletedPage })));
+const WinArchivePage = React.lazy(() => import('./pages/goals/WinArchivePage').then(m => ({ default: m.WinArchivePage })));
+const GoalScheduleView = React.lazy(() => import('./pages/goals/GoalScheduleView').then(m => ({ default: m.GoalScheduleView })));
+const AnalyticsPage = React.lazy(() => import('./pages/AnalyticsPage').then(m => ({ default: m.AnalyticsPage })));
+const JournalPage = React.lazy(() => import('./pages/JournalPage').then(m => ({ default: m.JournalPage })));
+const TasksPage = React.lazy(() => import('./pages/TasksPage').then(m => ({ default: m.TasksPage })));
+const AppleHealthPage = React.lazy(() => import('./pages/AppleHealthPage').then(m => ({ default: m.AppleHealthPage })));
+const WellbeingHistoryPage = React.lazy(() => import('./pages/WellbeingHistoryPage').then(m => ({ default: m.WellbeingHistoryPage })));
+const DebugEntriesPage = React.lazy(() => import('./pages/DebugEntriesPage').then(m => ({ default: m.DebugEntriesPage })));
+```
+
+Then wrap the route rendering section with `Suspense`:
+
+```tsx
+<Suspense fallback={<div className="flex items-center justify-center h-64">
+  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500" />
+</div>}>
+  {/* existing route switch */}
+</Suspense>
+```
+
+**Also recommended (combine with this):** Add `manualChunks` to `vite.config.ts`:
+```ts
+build: {
+  rollupOptions: {
+    output: {
+      manualChunks: {
+        vendor: ['react', 'react-dom'],
+        charts: ['recharts'],
+        dnd: ['@dnd-kit/core', '@dnd-kit/sortable', '@dnd-kit/utilities'],
+      }
+    }
+  }
+}
+```
+
+**Expected impact:** 30-50% smaller initial bundle. Goals, analytics, journal, health pages load on demand. Charts chunk (~27KB) only downloaded when visiting a page that uses charts. Faster first paint by 1-2s on mobile.
+
+**Effort:** 1 day (including testing all routes, verifying lazy imports work, adding Suspense boundaries).
+**Risk:** Low — well-established React pattern. Verify named exports work with the `.then(m => ({ default: m.X }))` pattern since pages use named exports.
