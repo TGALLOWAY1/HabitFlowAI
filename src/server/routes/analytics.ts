@@ -8,7 +8,8 @@ import type { Request, Response } from 'express';
 import { getRequestIdentity } from '../middleware/identity';
 import { resolveTimeZone, getNowDayKey } from '../utils/dayKey';
 import { getHabitsByUser } from '../repositories/habitRepository';
-import { getHabitEntriesByUser } from '../repositories/habitEntryRepository';
+import { getHabitEntriesByUser, getHabitEntriesByUserInRange } from '../repositories/habitEntryRepository';
+import { subDays, parseISO, format } from 'date-fns';
 import { getCategoriesByUser } from '../repositories/categoryRepository';
 import { getAllMembershipsByUser } from '../repositories/bundleMembershipRepository';
 import { getRoutines } from '../repositories/routineRepository';
@@ -30,6 +31,11 @@ function parseDays(query: unknown, defaultDays = 90): number {
   return raw;
 }
 
+/** Compute the start dayKey for a date-range query: referenceDayKey minus (days - 1). */
+function startDayKeyForRange(referenceDayKey: string, days: number): string {
+  return format(subDays(parseISO(referenceDayKey), days - 1), 'yyyy-MM-dd');
+}
+
 export async function getHabitAnalyticsSummary(req: Request, res: Response): Promise<void> {
   try {
     const { householdId, userId } = getRequestIdentity(req);
@@ -37,9 +43,10 @@ export async function getHabitAnalyticsSummary(req: Request, res: Response): Pro
     const days = parseDays(req.query.days, 90);
     const referenceDayKey = getNowDayKey(timeZone);
 
+    const rangeStart = startDayKeyForRange(referenceDayKey, days);
     const [habits, entries, memberships, categories] = await Promise.all([
       getHabitsByUser(householdId, userId),
-      getHabitEntriesByUser(householdId, userId),
+      getHabitEntriesByUserInRange(householdId, userId, rangeStart, referenceDayKey),
       getAllMembershipsByUser(householdId, userId),
       getCategoriesByUser(householdId, userId),
     ]);
@@ -59,9 +66,10 @@ export async function getHabitAnalyticsHeatmap(req: Request, res: Response): Pro
     const days = parseDays(req.query.days, 365);
     const referenceDayKey = getNowDayKey(timeZone);
 
+    const rangeStart = startDayKeyForRange(referenceDayKey, days);
     const [habits, entries] = await Promise.all([
       getHabitsByUser(householdId, userId),
-      getHabitEntriesByUser(householdId, userId),
+      getHabitEntriesByUserInRange(householdId, userId, rangeStart, referenceDayKey),
     ]);
 
     const heatmap = computeHeatmapData(habits, entries, referenceDayKey, days, timeZone);
@@ -79,9 +87,10 @@ export async function getHabitAnalyticsTrends(req: Request, res: Response): Prom
     const days = parseDays(req.query.days, 90);
     const referenceDayKey = getNowDayKey(timeZone);
 
+    const rangeStart = startDayKeyForRange(referenceDayKey, days);
     const [habits, entries] = await Promise.all([
       getHabitsByUser(householdId, userId),
-      getHabitEntriesByUser(householdId, userId),
+      getHabitEntriesByUserInRange(householdId, userId, rangeStart, referenceDayKey),
     ]);
 
     const trends = computeTrendData(habits, entries, referenceDayKey, days, timeZone);
@@ -99,9 +108,10 @@ export async function getHabitAnalyticsCategoryBreakdown(req: Request, res: Resp
     const days = parseDays(req.query.days, 90);
     const referenceDayKey = getNowDayKey(timeZone);
 
+    const rangeStart = startDayKeyForRange(referenceDayKey, days);
     const [habits, entries, categories] = await Promise.all([
       getHabitsByUser(householdId, userId),
-      getHabitEntriesByUser(householdId, userId),
+      getHabitEntriesByUserInRange(householdId, userId, rangeStart, referenceDayKey),
       getCategoriesByUser(householdId, userId),
     ]);
 
@@ -120,9 +130,10 @@ export async function getHabitAnalyticsInsights(req: Request, res: Response): Pr
     const days = parseDays(req.query.days, 90);
     const referenceDayKey = getNowDayKey(timeZone);
 
+    const rangeStart = startDayKeyForRange(referenceDayKey, days);
     const [habits, entries] = await Promise.all([
       getHabitsByUser(householdId, userId),
-      getHabitEntriesByUser(householdId, userId),
+      getHabitEntriesByUserInRange(householdId, userId, rangeStart, referenceDayKey),
     ]);
 
     const insights = computeInsights(habits, entries, referenceDayKey, days, timeZone);
@@ -140,11 +151,12 @@ export async function getRoutineAnalyticsSummary(req: Request, res: Response): P
     const days = parseDays(req.query.days, 90);
     const referenceDayKey = getNowDayKey(timeZone);
 
+    const rangeStart = startDayKeyForRange(referenceDayKey, days);
     const [routines, routineLogs, habits, entries] = await Promise.all([
       getRoutines(householdId, userId),
       getRoutineLogsByUser(userId),
       getHabitsByUser(householdId, userId),
-      getHabitEntriesByUser(householdId, userId),
+      getHabitEntriesByUserInRange(householdId, userId, rangeStart, referenceDayKey),
     ]);
 
     const analytics = computeRoutineAnalytics(routines, routineLogs, habits, entries, referenceDayKey, days, timeZone);
