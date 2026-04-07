@@ -19,6 +19,7 @@ import { validateDayKey, assertTimeZone, validateHabitEntryPayloadStructure, ass
 import { normalizeHabitEntryPayload } from '../utils/dayKeyNormalization';
 import { resolveTimeZone, getNowDayKey } from '../utils/dayKey';
 import { getRequestIdentity } from '../middleware/identity';
+import { invalidateUserCaches } from '../lib/cacheInstances';
 
 /**
  * Get entry views for a habit (via truthQuery).
@@ -167,6 +168,7 @@ export async function createHabitEntryRoute(req: Request, res: Response): Promis
             userId
         );
 
+        invalidateUserCaches(userId);
         res.status(201).json({
             entry: responseEntry,
             dayLog: updatedDayLog
@@ -244,6 +246,7 @@ export async function deleteHabitEntryRoute(req: Request, res: Response): Promis
 
         const updatedDayLog = await recomputeDayLogForHabit(habitId, dayKey, householdId, userId);
 
+        invalidateUserCaches(userId);
         res.json({
             success: true,
             dayLog: updatedDayLog // might be null if day is empty now
@@ -335,6 +338,7 @@ export async function updateHabitEntryRoute(req: Request, res: Response): Promis
 
             const newDayLog = await recomputeDayLogForHabit(habitId, newDayKey, householdId, userId);
 
+            invalidateUserCaches(userId);
             // Return the new dayLog (old one is cleaned up if no entries remain)
             res.json({
                 entry: responseEntry, // Includes date as derived alias
@@ -349,6 +353,7 @@ export async function updateHabitEntryRoute(req: Request, res: Response): Promis
                 userId
             );
 
+            invalidateUserCaches(userId);
             res.json({
                 entry: responseEntry,
                 dayLog: updatedDayLog
@@ -386,6 +391,7 @@ export async function deleteHabitEntriesForDayRoute(req: Request, res: Response)
 
         const updatedDayLog = await recomputeDayLogForHabit(habitId, dayKey, householdId, userId);
 
+        invalidateUserCaches(userId);
         res.json({
             success: true,
             dayLog: updatedDayLog
@@ -431,6 +437,7 @@ export async function upsertHabitEntryRoute(req: Request, res: Response): Promis
 
         const updatedDayLog = await recomputeDayLogForHabit(habitId, dateKey, householdId, userId);
 
+        invalidateUserCaches(userId);
         res.json({
             entry,
             dayLog: updatedDayLog
@@ -505,6 +512,7 @@ export async function batchCreateEntriesRoute(req: Request, res: Response): Prom
             results.push({ habitId: entry.habitId, dayKey: entry.dayKey ?? dayKey, id: entry.id });
         }
 
+        invalidateUserCaches(userId);
         res.status(200).json({ created, updated, results });
     } catch (error) {
         console.error('Error in batch create entries:', error);
@@ -549,6 +557,7 @@ export async function deleteHabitEntryByKeyRoute(req: Request, res: Response): P
         // 2. Recompute dayLog after deletion
         const updatedDayLog = await recomputeDayLogForHabit(habitId, dateKey, householdId, userId);
 
+        invalidateUserCaches(userId);
         res.json({
             success: true,
             dayLog: updatedDayLog

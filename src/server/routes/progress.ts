@@ -20,6 +20,7 @@ import type { BundleMembershipRecord } from '../domain/canonicalTypes';
 import { getRequestIdentity } from '../middleware/identity';
 import { evaluateChecklistSuccess } from '../services/checklistSuccessService';
 import type { Habit } from '../../models/persistenceTypes';
+import { progressCache } from '../lib/cacheInstances';
 
 function parseFreezeType(entry: { freezeType?: string; note?: string }): 'manual' | 'auto' | 'soft' | undefined {
   // Prefer dedicated field; fall back to legacy note parsing
@@ -37,6 +38,14 @@ export async function getProgressOverview(req: Request, res: Response): Promise<
     const requestedTimeZone = resolveTimeZone(typeof req.query?.timeZone === 'string' ? req.query.timeZone : undefined);
 
     const todayDate = getNowDayKey(requestedTimeZone);
+
+    // Check cache before computing
+    const cacheKey = `${userId}:${todayDate}`;
+    const cached = progressCache.get(cacheKey);
+    if (cached) {
+      res.status(200).json(cached);
+      return;
+    }
 
     // Fetch habits, entries, and goals in parallel (previously sequential + redundant)
     const [habits, habitEntries, goals] = await Promise.all([
@@ -193,7 +202,7 @@ export async function getProgressOverview(req: Request, res: Response): Promise<
     );
 
     // Return combined response
-    res.status(200).json({
+    const result = {
       todayDate,
       habitsToday,
       goalsWithProgress,
@@ -204,7 +213,9 @@ export async function getProgressOverview(req: Request, res: Response): Promise<
         },
         category: categoryMomentum
       }
-    });
+    };
+    progressCache.set(cacheKey, result);
+    res.status(200).json(result);
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     console.error('Error fetching progress overview:', errorMessage);

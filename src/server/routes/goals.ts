@@ -22,6 +22,7 @@ import { computeGoalProgressV2, computeGoalListProgress } from '../utils/goalPro
 import type { Goal } from '../../models/persistenceTypes';
 import { getRequestIdentity } from '../middleware/identity';
 import { generateBadgeForGoal } from '../services/badgeGenerationService';
+import { invalidateUserCaches } from '../lib/cacheInstances';
 
 /**
  * Validate that all habit IDs in linkedHabitIds exist in the database.
@@ -449,6 +450,7 @@ export async function createGoalRoute(req: Request, res: Response): Promise<void
     // Fire-and-forget badge generation — never blocks the response
     generateBadgeForGoal(goal.id, goal.title, householdId, userId);
 
+    invalidateUserCaches(userId);
     res.status(201).json({
       goal,
     });
@@ -739,6 +741,7 @@ export async function updateGoalRoute(req: Request, res: Response): Promise<void
       iteratedGoal = await createGoal(buildIteratedGoalData(goal, currentValueForIteration), householdId, userId);
     }
 
+    invalidateUserCaches(userId);
     res.status(200).json({
       goal,
       iteratedGoal,
@@ -956,6 +959,7 @@ export async function deleteGoalRoute(req: Request, res: Response): Promise<void
       console.log(`[Goal Delete] Cleared linkedGoalId from ${unlinkedCount} habit(s) for deleted goal ${id}`);
     }
 
+    invalidateUserCaches(userId);
     res.status(200).json({
       message: 'Goal deleted successfully',
     });

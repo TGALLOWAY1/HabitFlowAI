@@ -24,6 +24,7 @@ import {
   computeRoutineAnalytics,
   computeGoalAnalytics,
 } from '../services/analyticsService';
+import { analyticsCache } from '../lib/cacheInstances';
 
 function parseDays(query: unknown, defaultDays = 90): number {
   const raw = typeof query === 'string' ? parseInt(query, 10) : NaN;
@@ -180,6 +181,14 @@ export async function getAllHabitAnalytics(req: Request, res: Response): Promise
     const heatmapDays = parseDays(req.query.heatmapDays, 365);
     const referenceDayKey = getNowDayKey(timeZone);
 
+    // Check cache before computing
+    const cacheKey = `${userId}:${days}:${heatmapDays}`;
+    const cached = analyticsCache.get(cacheKey);
+    if (cached) {
+      res.json(cached);
+      return;
+    }
+
     // Load entries for the larger of the two windows — sub-functions filter internally
     const maxDays = Math.max(days, heatmapDays);
     const rangeStart = startDayKeyForRange(referenceDayKey, maxDays);
@@ -199,6 +208,7 @@ export async function getAllHabitAnalytics(req: Request, res: Response): Promise
       insights: computeInsights(habits, entries, referenceDayKey, days, timeZone),
     };
 
+    analyticsCache.set(cacheKey, result);
     res.json(result);
   } catch (error) {
     console.error('[analytics] all habit analytics error:', error);

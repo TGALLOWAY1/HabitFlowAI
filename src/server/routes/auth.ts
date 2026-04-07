@@ -22,6 +22,7 @@ import {
   deleteSessionByTokenHash,
 } from '../repositories/sessionRepository';
 import { hashInviteCode, hashSessionToken } from '../lib/authCrypto';
+import { sessionCache } from '../middleware/session';
 
 const SALT_ROUNDS = 12;
 
@@ -216,6 +217,7 @@ export async function postLogout(req: Request, res: Response): Promise<void> {
   const raw = req.cookies?.['hf_session'];
   if (raw && typeof raw === 'string') {
     const tokenHash = hashSessionToken(raw);
+    sessionCache.invalidate(tokenHash);
     await deleteSessionByTokenHash(tokenHash);
   }
   clearSessionCookie(res);

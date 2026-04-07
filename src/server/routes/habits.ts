@@ -24,6 +24,7 @@ import { endMembership } from '../repositories/bundleMembershipRepository';
 import { convertHabitToBundle, ConversionError } from '../services/habitConversionService';
 import type { Habit } from '../../models/persistenceTypes';
 import { getRequestIdentity } from '../middleware/identity';
+import { invalidateUserCaches } from '../lib/cacheInstances';
 
 // One-time recovery: track which users have been recovered to avoid repeated DB calls.
 // Both recovery layers run at most once per user per server process to avoid
@@ -213,6 +214,7 @@ export async function createHabitRoute(req: Request, res: Response): Promise<voi
       await addHabitToGoalLinkedIds(linkedGoalId, habit.id, householdId, userId);
     }
 
+    invalidateUserCaches(userId);
     res.status(201).json({
       habit,
     });
@@ -370,6 +372,7 @@ export async function updateHabitRoute(req: Request, res: Response): Promise<voi
       }
     }
 
+    invalidateUserCaches(userId);
     res.status(200).json({ habit });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
@@ -434,6 +437,7 @@ export async function deleteHabitRoute(req: Request, res: Response): Promise<voi
       return;
     }
 
+    invalidateUserCaches(userId);
     res.status(200).json({
       message: 'Habit deleted successfully',
     });
@@ -546,6 +550,7 @@ export async function unlinkBundleChildRoute(req: Request, res: Response): Promi
     // 3. End active membership
     await endMembership(parentId, childId, activeToDayKey, householdId, userId);
 
+    invalidateUserCaches(userId);
     res.status(200).json({ success: true });
   } catch (error) {
     const msg = error instanceof Error ? error.message : 'Unknown error';
@@ -601,6 +606,7 @@ export async function convertToBundleRoute(req: Request, res: Response): Promise
       timeZone,
     });
 
+    invalidateUserCaches(userId);
     res.status(200).json(result);
   } catch (error) {
     if (error instanceof ConversionError) {
