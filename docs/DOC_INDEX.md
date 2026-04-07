@@ -34,6 +34,11 @@ Comprehensive system model and consistency audit produced 2026-04-04:
 - `docs/system-model/HABITFLOW_SYSTEM_RULES.md` — Design contract: 30 numbered invariant rules governing truth, completion, scheduling, linking, streaks, goals, and analytics.
 - `docs/system-model/HABITFLOW_BUG_ANALYSIS.md` — Identified bugs, inconsistencies, design risks, and tech debt with file/line references.
 
+## Performance
+
+- `HABITFLOW_PERFORMANCE_ASSESSMENT.md` — Full-stack performance audit: findings (Sections 1-10), implementation status (Section 11), Phase 2 fix specs (Section 12), Phase 3 architecture roadmap (Section 13), verification checklist (Section 14), and full optimization roadmap summary (Section 15).
+- `tasks/todo.md` — Deep audit of redundant DB calls (34 issues across all pages) with fix priority phases.
+
 ## Historical / Archived
 
 - `docs/archive/PSYCHOLOGICAL_SAFETY_V0.md` — ARCHIVED psychological-safety-first direction (preserved, not current v1 direction).
