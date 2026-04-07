@@ -159,6 +159,18 @@ async function ensureCoreIndexes(database: Db): Promise<void> {
     { name: 'idx_healthSuggestions_user_day_status' }
   );
 
+  // Performance indexes: date-range queries on habitEntries
+  await createIndexSafe('habitEntries',
+    { householdId: 1, userId: 1, dayKey: 1 },
+    { name: 'idx_habitEntries_user_dayKey' }
+  );
+
+  // Performance indexes: bundle membership lookups by parent
+  await createIndexSafe('bundleMemberships',
+    { householdId: 1, userId: 1, parentHabitId: 1 },
+    { name: 'idx_bundleMemberships_user_parent' }
+  );
+
   if (!isTestEnv()) {
     console.log('[MongoDB] Indexes ensured (habitEntries, habits, categories, auth)');
   }

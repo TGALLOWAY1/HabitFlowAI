@@ -1,5 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import type { Category, Habit, DayLog, DailyWellbeing, HabitPotentialEvidence } from '../types';
+
+const __DEV__ = import.meta.env.DEV;
+
 import {
     fetchCategories,
     saveCategory,
@@ -119,9 +122,9 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     // Helper function to load wellbeing logs
     const loadWellbeingLogsFromApi = useCallback(async () => {
         try {
-            console.log('[loadWellbeingLogsFromApi] Fetching wellbeing logs from API...');
+            if (__DEV__) console.log('[loadWellbeingLogsFromApi] Fetching wellbeing logs from API...');
             const apiWellbeingLogs = await fetchWellbeingLogs();
-            console.log('[loadWellbeingLogsFromApi] Received wellbeing logs from API:', {
+            if (__DEV__) console.log('[loadWellbeingLogsFromApi] Received wellbeing logs from API:', {
                 count: Object.keys(apiWellbeingLogs).length,
                 keys: Object.keys(apiWellbeingLogs),
                 logs: apiWellbeingLogs
@@ -134,13 +137,13 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 if (log && typeof log === 'object' && log.date && typeof log.date === 'string') {
                     // Use log.date as the canonical key (not the Record key, in case they differ)
                     validatedLogs[log.date] = log;
-                    console.log(`[loadWellbeingLogsFromApi] Validated log for date: ${log.date}`);
+                    if (__DEV__) console.log(`[loadWellbeingLogsFromApi] Validated log for date: ${log.date}`);
                 } else {
                     console.warn(`[loadWellbeingLogsFromApi] Skipping wellbeing log with invalid or missing date field. Key: ${key}`, log);
                 }
             }
 
-            console.log('[loadWellbeingLogsFromApi] Setting validated logs:', {
+            if (__DEV__) console.log('[loadWellbeingLogsFromApi] Setting validated logs:', {
                 count: Object.keys(validatedLogs).length,
                 dates: Object.keys(validatedLogs)
             });
