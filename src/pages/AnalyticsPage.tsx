@@ -2,10 +2,7 @@ import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { ArrowLeft } from 'lucide-react';
 import { useAuth } from '../store/AuthContext';
 import {
-  fetchHabitSummary,
-  fetchHabitTrends,
-  fetchHabitCategoryBreakdown,
-  fetchHabitInsights,
+  fetchAllHabitAnalytics,
   fetchRoutineSummary,
   fetchGoalSummary,
   type HabitAnalyticsSummary,
@@ -72,16 +69,12 @@ export const AnalyticsPage: React.FC<AnalyticsPageProps> = ({ onBack }) => {
   const loadHabitData = useCallback(async (days: number) => {
     setLoading(true);
     try {
-      const [s, t, c, i] = await Promise.all([
-        fetchHabitSummary(days),
-        fetchHabitTrends(days),
-        fetchHabitCategoryBreakdown(days),
-        fetchHabitInsights(days),
-      ]);
-      setSummary(s);
-      setTrends(t);
-      setCategories(c);
-      setInsights(i);
+      const result = await fetchAllHabitAnalytics(days);
+      setSummary(result.summary);
+      setTrends(result.trends);
+      setCategories(result.categoryBreakdown);
+      setInsights(result.insights);
+      const s = result.summary;
 
       // Smart default: auto-bump to 14d if user has more than 7 days of activity
       if (!hasAutoBumped.current && days === 7 && s.totalActiveDays > 7) {

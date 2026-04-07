@@ -377,6 +377,36 @@ export async function getHabitEntriesByUser(
 }
 
 /**
+ * Get all habit entries for a user within a dayKey date range.
+ * Uses the (householdId, userId, dayKey) index for efficient bounded queries.
+ * DayKey format YYYY-MM-DD sorts lexicographically, so $gte/$lte works correctly.
+ *
+ * @param householdId - Household ID
+ * @param userId - User ID
+ * @param startDayKey - Inclusive start date (YYYY-MM-DD)
+ * @param endDayKey - Inclusive end date (YYYY-MM-DD)
+ * @returns Array of HabitEntry within the date range
+ */
+export async function getHabitEntriesByUserInRange(
+    householdId: string,
+    userId: string,
+    startDayKey: string,
+    endDayKey: string,
+): Promise<HabitEntry[]> {
+    const db = await getDb();
+    const collection = db.collection(COLLECTION_NAME);
+
+    const documents = await collection
+        .find(scopeFilter(householdId, userId, {
+            deletedAt: { $exists: false },
+            dayKey: { $gte: startDayKey, $lte: endDayKey },
+        }))
+        .toArray();
+
+    return documents.map(doc => mapDocToEntry(doc));
+}
+
+/**
  * Get habit entries for a specific set of habit IDs (scoped to household + user).
  * Uses MongoDB $in to filter at the DB level, avoiding loading all user entries.
  *

@@ -1,5 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import type { Category, Habit, DayLog, DailyWellbeing, HabitPotentialEvidence } from '../types';
+
+const __DEV__ = import.meta.env.DEV;
+
 import {
     fetchCategories,
     saveCategory,
@@ -47,6 +50,7 @@ interface HabitContextType {
     lastPersistenceError: string | null;
     clearPersistenceError: () => void;
     refreshDayLogs: () => Promise<void>;
+    extendLogWindow: (startDayKey: string, endDayKey: string) => Promise<void>;
     refreshHabitsAndCategories: () => Promise<void>;
     updateCategory: (id: string, patch: Partial<Omit<Category, 'id'>>) => Promise<void>;
     updateHabitEntry: (id: string, patch: any) => Promise<void>; // eslint-disable-line @typescript-eslint/no-explicit-any
@@ -95,7 +99,7 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const getCanonicalSummaryWindow = () => {
         const end = new Date();
         const start = new Date();
-        start.setDate(start.getDate() - 400);
+        start.setDate(start.getDate() - 90);
         return {
             startDayKey: toLocalDayKey(start),
             endDayKey: toLocalDayKey(end),
@@ -119,9 +123,9 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     // Helper function to load wellbeing logs
     const loadWellbeingLogsFromApi = useCallback(async () => {
         try {
-            console.log('[loadWellbeingLogsFromApi] Fetching wellbeing logs from API...');
+            if (__DEV__) console.log('[loadWellbeingLogsFromApi] Fetching wellbeing logs from API...');
             const apiWellbeingLogs = await fetchWellbeingLogs();
-            console.log('[loadWellbeingLogsFromApi] Received wellbeing logs from API:', {
+            if (__DEV__) console.log('[loadWellbeingLogsFromApi] Received wellbeing logs from API:', {
                 count: Object.keys(apiWellbeingLogs).length,
                 keys: Object.keys(apiWellbeingLogs),
                 logs: apiWellbeingLogs
@@ -134,13 +138,13 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 if (log && typeof log === 'object' && log.date && typeof log.date === 'string') {
                     // Use log.date as the canonical key (not the Record key, in case they differ)
                     validatedLogs[log.date] = log;
-                    console.log(`[loadWellbeingLogsFromApi] Validated log for date: ${log.date}`);
+                    if (__DEV__) console.log(`[loadWellbeingLogsFromApi] Validated log for date: ${log.date}`);
                 } else {
                     console.warn(`[loadWellbeingLogsFromApi] Skipping wellbeing log with invalid or missing date field. Key: ${key}`, log);
                 }
             }
 
-            console.log('[loadWellbeingLogsFromApi] Setting validated logs:', {
+            if (__DEV__) console.log('[loadWellbeingLogsFromApi] Setting validated logs:', {
                 count: Object.keys(validatedLogs).length,
                 dates: Object.keys(validatedLogs)
             });
@@ -747,8 +751,25 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         }
     };
 
+    // Extend the loaded log window on demand (e.g., when the year heatmap is shown).
+    // Merges fetched data into existing logs without replacing the current window.
+    const extendingRef = useRef(false);
+    const extendLogWindow = useCallback(async (startDayKey: string, endDayKey: string) => {
+        if (extendingRef.current) return; // prevent concurrent extensions
+        extendingRef.current = true;
+        try {
+            const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+            const historicalLogs = await fetchDaySummary(startDayKey, endDayKey, timeZone);
+            setLogs(prev => ({ ...historicalLogs, ...prev }));
+        } catch (error) {
+            console.error('Failed to extend log window', error);
+        } finally {
+            extendingRef.current = false;
+        }
+    }, []);
+
     // Debounced background sync — ensures eventual consistency without
-    // blocking every mutation with a full 400-day refetch.
+    // blocking every mutation with a full 90-day refetch.
     const bgSyncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const scheduleBackgroundSync = () => {
         if (bgSyncTimerRef.current) clearTimeout(bgSyncTimerRef.current);
@@ -885,6 +906,7 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         lastPersistenceError,
         clearPersistenceError,
         refreshDayLogs,
+        extendLogWindow,
         refreshHabitsAndCategories,
         potentialEvidence,
         upsertHabitEntry: upsertHabitEntryContext,

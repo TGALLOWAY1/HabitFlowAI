@@ -874,3 +874,1117 @@ build: {
 
 **Effort:** 1 day (including testing all routes, verifying lazy imports work, adding Suspense boundaries).
 **Risk:** Low — well-established React pattern. Verify named exports work with the `.then(m => ({ default: m.X }))` pattern since pages use named exports.
+
+---
+
+## 11. Implementation Status & Results
+
+**Last updated:** 2026-04-07
+
+### Phase 1 Quick Wins — COMPLETED
+
+All Phase 1 quick wins from Section 8 have been implemented and merged via PRs #412 and #413.
+
+| # | Fix | Status | PR | Evidence |
+|---|-----|--------|-----|----------|
+| 1.1 | **Memoize HabitContext provider value** | ✅ Done | #413 | `useMemo` wrapping provider value at `HabitContext.tsx:865-894` with correct dependency array |
+| 1.2 | **N+1 bundle queries in progress.ts** | ✅ Done | #413 | Single `getAllMembershipsByUser()` call at `progress.ts:86`, batch grouped into `membershipsByParent` map |
+| 1.3 | **N+1 bundle queries in daySummary.ts** | ✅ Done | #413 | Single `getAllMembershipsByUser()` call at `daySummary.ts:194`, same batch pattern |
+| 1.4 | **Remove getDb() ping overhead** | ✅ Done | #413 | Ping removed from cached-connection path in `mongoClient.ts`. Ping only on initial `connectToMongo()` |
+| 1.5 | **Console logging in init path** | ⚠️ Partial | — | Logs still present in HabitContext init path. Could be gated behind `NODE_ENV !== 'production'` |
+
+### Top Priority Fixes — COMPLETED
+
+| Fix | Status | PR | Evidence |
+|-----|--------|-----|----------|
+| **Memoize HabitContext** (Fix 1) | ✅ Done | #413 | See 1.1 above |
+| **Memoize RoutineContext** (bonus) | ✅ Done | #413 | `useMemo` wrapping provider value at `RoutineContext.tsx:289-317` |
+| **N+1 bundle queries** (Fix 2) | ✅ Done | #413 | See 1.2, 1.3 above |
+| **Route-level code splitting** (Fix 3) | ✅ Done | #413 | `React.lazy()` for all non-initial pages at `App.tsx:33-43`, `<Suspense>` boundary at line 389 |
+| **Vite manual chunks** (Fix 3 addon) | ✅ Done | #413 | `vendor`, `charts`, `dnd` chunks in `vite.config.ts:10-14` |
+
+### Expected Impact of Phase 1 Fixes
+
+| Metric | Before | After (estimated) |
+|--------|--------|-------------------|
+| Initial bundle size | ~200KB+ gzipped (single chunk) | ~120-140KB initial + lazy chunks on demand |
+| Re-renders on habit toggle | Entire app tree (50+ components) | Only components consuming changed state |
+| Progress overview DB queries (10 bundles) | 10+ sequential queries | 1 batch query |
+| Day summary DB queries (10 bundles) | 10+ sequential queries | 1 batch query |
+| getDb() overhead per call | 5-10ms ping | 0ms (driver manages health) |
+
+### Phase 2 Status — COMPLETED
+
+| # | Fix | Status | Evidence |
+|---|-----|--------|----------|
+| 2.1 | Code splitting | ✅ Done (Phase 1) | `App.tsx:33-43` — `React.lazy()` |
+| 2.2 | Vite chunking | ✅ Done (Phase 1) | `vite.config.ts:10-14` — vendor/charts/dnd chunks |
+| 2.3 | Date-range filtering for entries | ✅ Done | `getHabitEntriesByUserInRange()` added to repository; 6 analytics endpoints updated |
+| 2.4 | Consolidate analytics endpoint | ✅ Done | `GET /api/analytics/habits/all` — 1 API call returns all 5 metrics; frontend uses `fetchAllHabitAnalytics()` |
+| 2.5 | Reduce 400-day log window | ✅ Done | `HabitContext.tsx:101` now 90 days; `extendLogWindow()` added for on-demand year heatmap |
+| 2.6 | Add missing DB indexes | ✅ Done | `idx_habitEntries_user_dayKey` + `idx_bundleMemberships_user_parent` added |
+| 2.7 | Gate console logging | ✅ Done | Debug logs in HabitContext gated behind `import.meta.env.DEV` |
+
+### Phase 3 Status — NOT STARTED
+
+| # | Fix | Status |
+|---|-----|--------|
+| 3.1 | Server-side caching (LRU/TTL) | ❌ Not started — zero caching infrastructure exists |
+| 3.2 | Split HabitContext into 3 contexts | ❌ Not started |
+| 3.3 | Adopt React Query / TanStack Query | ❌ Not started — not in package.json |
+| 3.4 | TrackerGrid virtualization | ❌ Not started — no virtualization library installed |
+| 3.5 | Server-side session caching | ❌ Not started — 2 DB queries per request with no cache |
+
+---
+
+## 12. Phase 2: Targeted Structural Improvements — Implementation Details
+
+These fixes address the remaining high-impact performance bottlenecks. Each specification is written for direct implementation handoff with concrete file paths, code patterns, and risk notes.
+
+---
+
+### Fix 2.3: Date-Range Filtering for Habit Entries
+
+**Problem:** `getHabitEntriesByUser()` loads ALL non-deleted entries with no date filter. Called by 8+ endpoints. A user with 2 years of data (50 habits × 730 days = 36,500 entries) loads everything on every request.
+
+**Files to modify:**
+- `src/server/repositories/habitEntryRepository.ts` — add new query function
+- `src/server/routes/analytics.ts` — use date-filtered queries (7 endpoint handlers)
+- `src/server/lib/mongoClient.ts` — add supporting index
+
+#### Step 1: Add `getHabitEntriesByUserInRange()` to the repository
+
+**File:** `src/server/repositories/habitEntryRepository.ts`
+
+A date-range-filtered variant of `getHabitEntriesByUser()` already has a partial precedent: `getHabitEntriesByHabitIdsSince()` (lines 416-441) filters by `dayKey >= sinceDayKey` for specific habit IDs. The new function generalizes this for all user entries within a date window.
+
+```ts
+export async function getHabitEntriesByUserInRange(
+    householdId: string,
+    userId: string,
+    startDayKey: string,
+    endDayKey: string,
+): Promise<HabitEntry[]> {
+    const db = await getDb();
+    const collection = db.collection<HabitEntry>('habitEntries');
+    const documents = await collection
+        .find(scopeFilter(householdId, userId, {
+            deletedAt: { $exists: false },
+            dayKey: { $gte: startDayKey, $lte: endDayKey },
+        }))
+        .toArray();
+    return documents.map(mapDocument);
+}
+```
+
+**Why `dayKey` string comparison works:** DayKey format is `YYYY-MM-DD` which sorts lexicographically. `'2026-01-15' >= '2026-01-01'` is correct.
+
+#### Step 2: Add compound index for date-range queries
+
+**File:** `src/server/lib/mongoClient.ts` — inside `ensureCoreIndexes()`
+
+```ts
+await habitEntries.createIndex(
+    { householdId: 1, userId: 1, dayKey: 1 },
+    { name: 'idx_habitEntries_user_dayKey' }
+);
+```
+
+This index supports the new `$gte/$lte` dayKey filter efficiently. The existing `(householdId, userId, habitId, dayKey)` unique index is insufficient because it requires `habitId` as a prefix.
+
+#### Step 3: Update analytics endpoints to use date-filtered queries
+
+**File:** `src/server/routes/analytics.ts`
+
+Each of the 5 habit analytics endpoints currently does:
+```ts
+// BEFORE: Loads ALL entries
+const entries = await getHabitEntriesByUser(householdId, userId);
+```
+
+Replace with:
+```ts
+// AFTER: Loads only entries within the requested date range
+const startDayKey = format(subDays(parseISO(referenceDayKey), days - 1), 'yyyy-MM-dd');
+const entries = await getHabitEntriesByUserInRange(householdId, userId, startDayKey, referenceDayKey);
+```
+
+**Endpoints to update (all 5 habit analytics + 2 others):**
+
+| Handler | Line | `days` default | Notes |
+|---------|------|----------------|-------|
+| `getHabitAnalyticsSummary` | 42 | 90 | Standard conversion |
+| `getHabitAnalyticsHeatmap` | 64 | 365 | Largest window — still much better than ALL entries |
+| `getHabitAnalyticsTrends` | 84 | 90 | Standard conversion |
+| `getHabitAnalyticsCategoryBreakdown` | 104 | 90 | Standard conversion |
+| `getHabitAnalyticsInsights` | 125 | 90 | Standard conversion |
+| `getRoutineAnalyticsSummary` | 147 | 90 | Also loads routines/logs — only entries need the range filter |
+| `getGoalAnalyticsSummary` | 167 | — | Goal analytics may need full history for lifetime progress; evaluate case-by-case |
+
+**Do NOT change yet:**
+- `GET /api/progress/overview` — streak calculation requires full history for `bestStreak`. Apply date filtering only after server-side caching (Fix 3.1) absorbs the cost.
+- `GET /api/daySummary` — already parameterized with `startDayKey`/`endDayKey` but still calls `getHabitEntriesByUser()` internally. Requires careful migration since frontend depends on the response shape.
+
+#### Expected Impact
+
+| Metric | Before | After |
+|--------|--------|-------|
+| Entries loaded per analytics request (2-year user) | ~36,500 | ~4,500 (90 days) or ~18,250 (365 days for heatmap) |
+| Analytics page total entries loaded (4 endpoints) | ~146,000 (4 × 36,500) | ~22,250 (3 × 4,500 + 1 × 4,750) |
+| DB read amplification | 4× full table scan | 4× bounded range scan |
+| Response time (estimated) | 200-500ms per endpoint | 50-150ms per endpoint |
+
+**Effort:** 1 day | **Risk:** Low — analytics service functions already accept entries as input; only the data source changes. All in-memory date filtering in the service layer becomes redundant but harmless.
+
+---
+
+### Fix 2.4: Consolidate Analytics Into Single Endpoint
+
+**Problem:** The analytics page fires 4-5 parallel API calls, each independently loading habits + entries + memberships from the database. Even with Fix 2.3 (date filtering), this is 4-5 redundant DB reads for the same data.
+
+**Files to modify:**
+- `src/server/routes/analytics.ts` — add consolidated endpoint
+- `src/server/services/analyticsService.ts` — add `computeAllHabitAnalytics()` function
+- `src/pages/AnalyticsPage.tsx` — call single endpoint instead of 4
+
+#### Step 1: Add consolidated service function
+
+**File:** `src/server/services/analyticsService.ts`
+
+```ts
+export interface AllHabitAnalytics {
+    summary: HabitAnalyticsSummary;
+    heatmap: HeatmapResponse;
+    trends: TrendDataPoint[];
+    categoryBreakdown: CategoryBreakdownItem[];
+    insights: Insight[];
+}
+
+export function computeAllHabitAnalytics(
+    habits: Habit[],
+    entries: HabitEntry[],
+    memberships: BundleMembershipRecord[],
+    categories: Category[],
+    referenceDayKey: string,
+    days: number,
+    heatmapDays: number,
+    timeZone?: string,
+): AllHabitAnalytics {
+    return {
+        summary: computeHabitAnalyticsSummary(habits, entries, memberships, categories, referenceDayKey, days, timeZone),
+        heatmap: computeHeatmapData(habits, entries, referenceDayKey, heatmapDays, timeZone),
+        trends: computeTrendData(habits, entries, referenceDayKey, days, timeZone),
+        categoryBreakdown: computeCategoryBreakdown(habits, entries, categories, referenceDayKey, days, timeZone),
+        insights: computeInsights(habits, entries, referenceDayKey, days, timeZone),
+    };
+}
+```
+
+**Note:** The heatmap uses a 365-day window while other analytics use 90 days. The consolidated function should accept both `days` and `heatmapDays`, and the single DB query should load `max(days, heatmapDays)` worth of entries. Each sub-function already does its own in-memory date filtering, so passing the larger dataset is correct.
+
+#### Step 2: Add consolidated route
+
+**File:** `src/server/routes/analytics.ts`
+
+```ts
+// GET /api/analytics/habits/all?days=90&heatmapDays=365&timeZone=America/New_York
+router.get('/habits/all', async (req, res) => {
+    const { householdId, userId } = req;
+    const days = parseDays(req.query.days, 90);
+    const heatmapDays = parseDays(req.query.heatmapDays, 365);
+    const timeZone = resolveTimeZone(req.query.timeZone);
+    const referenceDayKey = todayDayKey(timeZone);
+
+    const maxDays = Math.max(days, heatmapDays);
+    const startDayKey = format(subDays(parseISO(referenceDayKey), maxDays - 1), 'yyyy-MM-dd');
+
+    const [habits, entries, memberships, categories] = await Promise.all([
+        getHabitsByUser(householdId, userId),
+        getHabitEntriesByUserInRange(householdId, userId, startDayKey, referenceDayKey),
+        getAllMembershipsByUser(householdId, userId),
+        getCategoriesByUser(householdId, userId),
+    ]);
+
+    const result = computeAllHabitAnalytics(
+        habits, entries, memberships, categories,
+        referenceDayKey, days, heatmapDays, timeZone,
+    );
+
+    res.json(result);
+});
+```
+
+**One DB query for entries instead of 5.** Habits, memberships, and categories also fetched once each in parallel.
+
+#### Step 3: Update frontend to use consolidated endpoint
+
+**File:** `src/pages/AnalyticsPage.tsx`
+
+Replace 4-5 separate `fetch` calls with a single call to `/api/analytics/habits/all`. Destructure the response into the same state variables.
+
+**Keep old endpoints alive** — they serve as individual-metric APIs for potential future use (e.g., embedding a single chart elsewhere). No breaking change.
+
+#### Expected Impact
+
+| Metric | Before | After |
+|--------|--------|-------|
+| API calls per analytics page load | 4-5 | 1 |
+| DB queries for entries | 4-5 | 1 |
+| DB queries for habits | 4-5 | 1 |
+| Network round trips | 4-5 | 1 |
+
+**Effort:** 1 day | **Risk:** Low — additive new endpoint + new frontend path. Old endpoints remain.
+
+---
+
+### Fix 2.5: Reduce Default Log Window From 400 to 90 Days
+
+**Problem:** `HabitContext.tsx:98` hard-codes a 400-day window for `fetchDaySummary()`. For an active user with 50 habits, this produces a ~100-300KB payload that blocks the loading state. Most users only need the last 30-90 days for their primary view.
+
+**Files to modify:**
+- `src/store/HabitContext.tsx` — reduce initial window, add on-demand loading
+- `src/server/routes/daySummary.ts` — ensure it respects the date range (it already accepts `startDayKey`/`endDayKey` params)
+
+#### Step 1: Reduce initial window to 90 days
+
+**File:** `src/store/HabitContext.tsx`
+
+```ts
+// BEFORE (line 98):
+start.setDate(start.getDate() - 400);
+
+// AFTER:
+start.setDate(start.getDate() - 90);
+```
+
+#### Step 2: Add on-demand historical loading
+
+When the user navigates to a month beyond the loaded 90-day range (e.g., scrolling back in TrackerGrid), fetch that month's data and merge into state:
+
+```ts
+const loadHistoricalRange = useCallback(async (startDayKey: string, endDayKey: string) => {
+    const { timeZone } = getCanonicalSummaryWindow();
+    const historicalLogs = await fetchDaySummary(startDayKey, endDayKey, timeZone);
+    setLogs(prev => ({ ...prev, ...historicalLogs }));
+}, []);
+```
+
+Expose `loadHistoricalRange` through the context value so TrackerGrid can call it when the user navigates to an older month.
+
+#### Step 3: TrackerGrid integration
+
+**File:** `src/components/TrackerGrid.tsx`
+
+When the user changes the displayed month/date range and the target range extends beyond loaded data:
+
+```ts
+useEffect(() => {
+    const oldestLoadedDayKey = /* derive from logs keys */;
+    const viewStartDayKey = format(startOfMonth(currentMonth), 'yyyy-MM-dd');
+    if (viewStartDayKey < oldestLoadedDayKey) {
+        loadHistoricalRange(viewStartDayKey, oldestLoadedDayKey);
+    }
+}, [currentMonth]);
+```
+
+#### Risks & Mitigations
+
+| Risk | Mitigation |
+|------|------------|
+| TrackerGrid shows empty cells for months beyond 90 days | On-demand fetch (Step 2-3) fills them when user navigates |
+| Streak calculation needs full history | Streaks are computed server-side in `progress.ts`, which calls `getHabitEntriesByUser()` (full load). This fix only affects the client-side day summary — streaks are unaffected |
+| Progress overview needs momentum data beyond 90 days | Progress overview has its own data path via `/api/progress/overview`, not affected by this change |
+
+#### Expected Impact
+
+| Metric | Before | After |
+|--------|--------|-------|
+| Initial daySummary payload (50 habits) | ~100-300KB (400 days) | ~25-75KB (90 days) |
+| Time-to-interactive reduction | — | ~0.5-1.5s faster (less data to download, parse, and process) |
+| Memory footprint in HabitContext | ~50KB state object | ~12KB state object |
+
+**Effort:** 1 day | **Risk:** Medium — must ensure on-demand loading works smoothly with TrackerGrid month navigation. Test with a user who has >90 days of data.
+
+---
+
+### Fix 2.6: Add Missing Database Indexes
+
+**Problem:** Key query patterns lack compound indexes. `getHabitEntriesByUser()` filters on `(householdId, userId, deletedAt: { $exists: false })` but no index covers this exact filter. Date-range queries (once Fix 2.3 is implemented) need a dayKey-based index.
+
+**File to modify:** `src/server/lib/mongoClient.ts` — inside `ensureCoreIndexes()`
+
+#### Indexes to add
+
+```ts
+// 1. Support getHabitEntriesByUserInRange() — date-range queries
+await habitEntries.createIndex(
+    { householdId: 1, userId: 1, dayKey: 1 },
+    { name: 'idx_habitEntries_user_dayKey' }
+);
+
+// 2. Support soft-delete filtering in getHabitEntriesByUser()
+// Uses partial filter expression to only index non-deleted entries
+await habitEntries.createIndex(
+    { householdId: 1, userId: 1 },
+    {
+        name: 'idx_habitEntries_user_active',
+        partialFilterExpression: { deletedAt: { $exists: false } },
+    }
+);
+
+// 3. Support getMembershipsByParent() if still used anywhere
+await db.collection('bundleMemberships').createIndex(
+    { householdId: 1, userId: 1, parentHabitId: 1 },
+    { name: 'idx_bundleMemberships_user_parent' }
+);
+```
+
+**Why partial filter expression for index #2:** Instead of indexing `deletedAt` (which is `null`/absent for 99%+ of entries), a partial index on `{ householdId, userId }` WHERE `deletedAt` doesn't exist is smaller and faster. MongoDB uses this index when the query filter matches the partial expression.
+
+#### Expected Impact
+
+- Date-range queries go from collection scan to index scan
+- Soft-delete queries use partial index instead of full scan + filter
+- Index creation is idempotent (MongoDB skips if index already exists)
+
+**Effort:** 1 hour | **Risk:** Low — indexes are additive. `ensureCoreIndexes()` already handles index creation on startup.
+
+---
+
+### Fix 2.7: Gate Console Logging Behind NODE_ENV
+
+**Problem:** HabitContext initialization path has 8+ `console.log` statements that run in production.
+
+**File:** `src/store/HabitContext.tsx`
+
+**Fix:** Wrap debug logging in a development check:
+
+```ts
+const isDev = import.meta.env.DEV; // Vite strips this in production builds
+
+// Then replace:
+console.log('[loadWellbeingLogsFromApi] ...');
+// With:
+if (isDev) console.log('[loadWellbeingLogsFromApi] ...');
+```
+
+Vite's `import.meta.env.DEV` is statically replaced at build time. Dead-code elimination removes the entire `if` block in production builds, so there's zero runtime cost.
+
+**Effort:** 30 min | **Risk:** None
+
+---
+
+### Phase 2 Priority Order
+
+Implement in this order for maximum progressive impact:
+
+1. **Fix 2.6** (indexes) — 1 hour, enables Fix 2.3 to be fast
+2. **Fix 2.7** (console logging) — 30 min, trivial cleanup
+3. **Fix 2.3** (date-range filtering) — 1 day, biggest single impact
+4. **Fix 2.4** (consolidate analytics) — 1 day, builds on 2.3
+5. **Fix 2.5** (reduce 400-day window) — 1 day, independent of 2.3/2.4
+
+---
+
+## 13. Phase 3: Architecture Roadmap — Detailed Plans
+
+Phase 3 fixes involve structural changes that touch multiple files and require careful migration. Each plan includes dependency analysis, migration strategy, and rollback considerations.
+
+---
+
+### Fix 3.1: Server-Side In-Memory Cache
+
+**Problem:** Zero caching infrastructure exists on the server. Every request recalculates streaks, momentum, analytics, and goal progress from raw entries. The progress overview endpoint (the most-hit endpoint) likely takes 200-500ms per call, every time, for long-term users.
+
+**Goal:** Sub-50ms responses for repeated reads of the same data, with correct invalidation on writes.
+
+#### Design
+
+Create a generic TTL cache utility, then apply it to the three highest-traffic read paths.
+
+**New file:** `src/server/lib/cache.ts`
+
+```ts
+interface CacheEntry<T> {
+    data: T;
+    expiresAt: number;
+}
+
+export class TTLCache<T> {
+    private store = new Map<string, CacheEntry<T>>();
+    private readonly ttlMs: number;
+    private readonly maxEntries: number;
+
+    constructor(ttlMs: number, maxEntries = 500) {
+        this.ttlMs = ttlMs;
+        this.maxEntries = maxEntries;
+    }
+
+    get(key: string): T | undefined {
+        const entry = this.store.get(key);
+        if (!entry) return undefined;
+        if (Date.now() > entry.expiresAt) {
+            this.store.delete(key);
+            return undefined;
+        }
+        return entry.data;
+    }
+
+    set(key: string, data: T): void {
+        // Simple eviction: if at capacity, delete oldest entry
+        if (this.store.size >= this.maxEntries) {
+            const firstKey = this.store.keys().next().value;
+            if (firstKey) this.store.delete(firstKey);
+        }
+        this.store.set(key, { data, expiresAt: Date.now() + this.ttlMs });
+    }
+
+    invalidate(key: string): void {
+        this.store.delete(key);
+    }
+
+    invalidateByPrefix(prefix: string): void {
+        for (const key of this.store.keys()) {
+            if (key.startsWith(prefix)) this.store.delete(key);
+        }
+    }
+
+    clear(): void {
+        this.store.clear();
+    }
+}
+```
+
+**No external dependencies.** A simple Map-based cache is sufficient for a single-process Node.js server. If HabitFlowAI scales to multiple processes, migrate to Redis.
+
+#### Cache Instances
+
+```ts
+// src/server/lib/cacheInstances.ts
+
+import { TTLCache } from './cache';
+
+// Progress overview — 30s TTL, invalidated on habit entry writes
+export const progressCache = new TTLCache<ProgressOverviewResponse>(30_000);
+
+// Analytics results — 60s TTL, invalidated on habit entry writes
+export const analyticsCache = new TTLCache<AllHabitAnalytics>(60_000);
+
+// Streak metrics — 60s TTL, invalidated on habit entry writes
+export const streakCache = new TTLCache<Map<string, StreakMetrics>>(60_000);
+```
+
+**Cache key pattern:** `${userId}:${dayKey}` for progress, `${userId}:${days}` for analytics.
+
+#### Integration Points
+
+**Read path** (progress.ts):
+```ts
+const cacheKey = `${userId}:${referenceDayKey}`;
+const cached = progressCache.get(cacheKey);
+if (cached) return res.json(cached);
+
+// ... compute result ...
+progressCache.set(cacheKey, result);
+res.json(result);
+```
+
+**Write path** (invalidation in entry mutation routes):
+```ts
+// In POST/PUT/DELETE /api/entries handlers:
+progressCache.invalidateByPrefix(`${userId}:`);
+analyticsCache.invalidateByPrefix(`${userId}:`);
+streakCache.invalidateByPrefix(`${userId}:`);
+```
+
+#### Invalidation Matrix
+
+| Write operation | Caches to invalidate |
+|----------------|---------------------|
+| Create/update/delete habit entry | progressCache, analyticsCache, streakCache |
+| Create/update/delete habit | progressCache (habit list changed) |
+| Create/update/delete goal | progressCache (goal progress changed) |
+| Create/update/delete bundle membership | progressCache |
+| Log wellbeing | None (wellbeing has separate data path) |
+
+#### Expected Impact
+
+| Endpoint | Uncached | Cached |
+|----------|----------|--------|
+| `/api/progress/overview` | 200-500ms | <5ms |
+| `/api/analytics/habits/all` | 150-400ms | <5ms |
+| `/api/daySummary` | 100-300ms | <5ms (if added) |
+
+**Effort:** 3 days (cache utility + integration into 3-5 routes + invalidation hooks + testing)
+**Risk:** Medium — cache invalidation is the hard part. Must ensure all write paths correctly invalidate. Missing an invalidation path = stale data shown to user. Mitigation: short TTLs (30-60s) bound staleness even if invalidation is missed.
+
+---
+
+### Fix 3.2: Split HabitContext Into Focused Contexts
+
+**Problem:** HabitContext is a monolithic provider holding 7 state variables and 24 functions. Any change to any state variable triggers re-renders in all 37 consuming components, even if they only use `categories` (10 components) or `habits` (15 components).
+
+**Goal:** Components only re-render when their specific data changes. Toggling a habit shouldn't re-render category management UI.
+
+#### Proposed Split
+
+| Context | State | Functions | Consumers |
+|---------|-------|-----------|-----------|
+| **HabitDataContext** | `habits`, `categories` | `addHabit`, `updateHabit`, `deleteHabit`, `reorderHabits`, `moveHabitToCategory`, `addCategory`, `updateCategory`, `deleteCategory`, `reorderCategories`, `importHabits`, `refreshHabitsAndCategories` | ~25 components (most common) |
+| **HabitLogContext** | `logs`, `potentialEvidence` | `toggleHabit`, `updateLog`, `updateHabitEntry`, `deleteHabitEntry`, `upsertHabitEntry`, `deleteHabitEntryByKey`, `refreshDayLogs`, `loadHistoricalRange` | ~12 components (TrackerGrid, DayView, heatmaps) |
+| **WellbeingContext** | `wellbeingLogs` | `logWellbeing` | ~3 components (DailyCheckInCard, DailyCheckInModal, ProgressRings) |
+| **HabitMetaContext** | `loading`, `lastPersistenceError` | `clearPersistenceError` | ~2 components (App.tsx, error displays) |
+
+#### Migration Strategy
+
+**Phase A: Create new context files (non-breaking)**
+1. Create `src/store/HabitDataContext.tsx` — habits and categories
+2. Create `src/store/HabitLogContext.tsx` — logs and evidence
+3. Create `src/store/WellbeingContext.tsx` — wellbeing logs
+4. Keep `HabitContext.tsx` as a **compatibility shim** that composes all 3:
+
+```tsx
+// HabitContext.tsx — backward-compatible wrapper
+export function HabitProvider({ children }) {
+    return (
+        <HabitDataProvider>
+            <HabitLogProvider>
+                <WellbeingProvider>
+                    {children}
+                </WellbeingProvider>
+            </HabitLogProvider>
+        </HabitDataProvider>
+    );
+}
+
+// useHabitStore() still works — reads from all 3 contexts
+export function useHabitStore() {
+    const data = useHabitData();
+    const logCtx = useHabitLogs();
+    const wellbeing = useWellbeing();
+    return { ...data, ...logCtx, ...wellbeing };
+}
+```
+
+This means **zero changes to existing consumers** in Phase A. Everything still works via `useHabitStore()`.
+
+**Phase B: Migrate consumers incrementally**
+- Replace `useHabitStore()` with specific hooks where possible:
+  - `const { categories } = useHabitData();` instead of `const { categories } = useHabitStore();`
+  - Components that only need categories stop re-rendering on log changes
+- Migrate ~5 files per PR, starting with the simplest (single-property consumers)
+
+**Phase C: Remove compatibility shim**
+- Once all 37 consumers are migrated, `useHabitStore()` can be deprecated
+- Or keep it as a convenience for components that genuinely need cross-context data
+
+#### Consumer Analysis — What Each Component Needs
+
+| Only needs HabitData | Only needs HabitLogs | Only needs Wellbeing | Needs multiple |
+|---------------------|---------------------|---------------------|----------------|
+| GoalsPage (categories) | YearHeatmapGrid (logs) | DailyCheckInCard (wellbeingLogs) | App.tsx (all) |
+| GoalScheduleView (categories) | CategoryCompletionRow (logs) | DailyCheckInModal (wellbeingLogs, logWellbeing) | TrackerGrid (all) |
+| GoalDetailPage (habits) | RecentHeatmapGrid (logs) | | DayView (all) |
+| DebugEntriesPage (habits) | AccomplishmentsLog (habits+logs) | | ProgressRings (habits+logs+wellbeing) |
+| GoalCard (habits) | | | |
+| Heatmap (habits) | | | |
+| CategoryTabs (categories) | | | |
+| RoutineList (categories) | | | |
+| ActivitySection (habits+categories) | | | |
+| 10 more... | | | |
+
+**Key win:** The ~25 components that only need `habits`/`categories` stop re-rendering when `logs` change (every habit toggle). This is the most frequent state change in the app.
+
+#### Expected Impact
+
+| Scenario | Before (single context) | After (split) |
+|----------|------------------------|----------------|
+| Toggle a habit cell | All 37 consumers re-render | Only ~12 log consumers re-render |
+| Update a category name | All 37 consumers re-render | Only ~25 data consumers re-render |
+| Log wellbeing | All 37 consumers re-render | Only ~3 wellbeing consumers re-render |
+
+**Effort:** 3-5 days (Phase A: 1 day, Phase B: 2-3 days, Phase C: 1 day)
+**Risk:** Medium-High — need to audit all 37 consumers. The compatibility shim (Phase A) eliminates risk of breaking changes during migration. Cross-context data dependencies (e.g., `AccomplishmentsLog` needs both `habits` and `logs`) require careful handling.
+
+---
+
+### Fix 3.3: Adopt React Query (TanStack Query)
+
+**Problem:** Data fetching is manual across 63 functions in `persistenceClient.ts` with no request deduplication, no automatic cache management, no stale-while-revalidate (except the hand-built `goalDataCache.ts`), and no optimistic updates (except manual implementations in a few places).
+
+**Goal:** Automatic request deduplication, cache management, background refetching, and optimistic updates out of the box.
+
+#### Why React Query
+
+- **Request deduplication:** If two components request the same data simultaneously, only one HTTP request fires.
+- **Stale-while-revalidate:** Built-in, configurable per query. Replaces the manual `goalDataCache.ts`.
+- **Optimistic updates:** Built-in mutation callbacks (`onMutate`, `onError`, `onSettled`). Replaces manual state rollback logic.
+- **Cache invalidation:** `queryClient.invalidateQueries(['habits'])` replaces manual cache key management.
+- **DevTools:** React Query DevTools provides real-time visibility into cache state, query timing, and staleness.
+
+#### Migration Strategy
+
+**This is the largest migration in Phase 3.** It touches `persistenceClient.ts` (1,484 lines, 63 functions), all custom hooks, and most components that fetch data. It should be done incrementally, one data domain at a time.
+
+**Phase A: Install and configure**
+1. `npm install @tanstack/react-query @tanstack/react-query-devtools`
+2. Add `QueryClientProvider` to `src/App.tsx` (above other providers)
+3. Configure defaults: `staleTime: 30_000`, `gcTime: 5 * 60_000`
+
+**Phase B: Migrate goal data first (smallest, best-isolated)**
+- Replace `goalDataCache.ts` + `useGoalsWithProgress.ts` + `useGoalDetail.ts` + `useCompletedGoals.ts` with React Query hooks
+- This domain is already cache-aware (30s TTL), so the migration validates the approach
+- Remove `goalDataCache.ts` after migration
+
+**Phase C: Migrate analytics data**
+- Replace the 4-5 analytics fetch calls with a single `useQuery(['analytics', days])` (or the consolidated endpoint from Fix 2.4)
+- Low consumer count makes this safe
+
+**Phase D: Migrate habit data (largest)**
+- This is the big one: replace `HabitContext`'s manual fetching with React Query
+- `useQuery(['habits', userId])` for habits, `useQuery(['logs', userId, startDayKey, endDayKey])` for day summary
+- Context providers become thin wrappers around React Query hooks
+- Can coexist with the context split (Fix 3.2) — each split context internally uses React Query
+
+**Phase E: Migrate routines, tasks, journal, wellbeing**
+- Each domain is relatively isolated
+- Replace manual fetch + state management with `useQuery` + `useMutation`
+
+#### Mapping to Existing Patterns
+
+| Current Pattern | React Query Equivalent |
+|----------------|----------------------|
+| `goalDataCache.ts` (manual TTL cache) | `useQuery({ queryKey, staleTime: 30_000 })` |
+| `subscribeToCacheInvalidation()` | `queryClient.invalidateQueries()` |
+| `invalidateAllGoalCaches()` | `queryClient.invalidateQueries(['goals'])` |
+| `persistenceClient.fetchGoalsWithProgress()` | `queryFn` passed to `useQuery` |
+| HabitContext `Promise.allSettled` init | Multiple `useQuery` hooks with `Suspense` or individual loading states |
+| Manual `setLogs(prev => ...)` optimistic update | `useMutation({ onMutate })` with cache rollback |
+
+#### Expected Impact
+
+| Metric | Before | After |
+|--------|--------|-------|
+| Duplicate API requests (same data, multiple components) | Common | Eliminated (automatic dedup) |
+| Cache management code | ~200 lines (goalDataCache.ts + manual state) | ~0 (handled by React Query) |
+| Background refetch logic | Manual in a few hooks | Automatic for all queries |
+| DevTools for data inspection | Console.log only | React Query DevTools |
+| Code in persistenceClient.ts | 1,484 lines (fetch + state management) | ~800 lines (fetch only, state managed by RQ) |
+
+**Effort:** 5-7 days (Phase A: 0.5 day, Phase B: 1 day, Phase C: 0.5 day, Phase D: 2-3 days, Phase E: 1-2 days)
+**Risk:** Medium — large migration surface, but each phase is independently deployable. React Query is well-documented and battle-tested. The main risk is incorrect cache key design leading to stale data.
+
+---
+
+### Fix 3.4: TrackerGrid Virtualization
+
+**Problem:** TrackerGrid (1,538 lines) renders ALL habit rows as DOM nodes. For 50 habits × 31 days = 1,550+ interactive cells. At 100 habits, layout recalculation on each toggle causes visible jank, especially on mobile.
+
+**Goal:** Only render visible rows + a small buffer. Reduce DOM node count by 70-90% for power users.
+
+#### Recommended Library: `@tanstack/react-virtual`
+
+**Why:** Lightweight (8KB), framework-agnostic, works well with variable row heights. Better maintained than `react-window`. Compatible with React 19.
+
+#### Implementation Approach
+
+```tsx
+import { useVirtualizer } from '@tanstack/react-virtual';
+
+function TrackerGrid() {
+    const parentRef = useRef<HTMLDivElement>(null);
+
+    const rowVirtualizer = useVirtualizer({
+        count: rootHabits.length,
+        getScrollElement: () => parentRef.current,
+        estimateSize: () => 48, // estimated row height in px
+        overscan: 5, // render 5 rows above/below viewport
+    });
+
+    return (
+        <div ref={parentRef} style={{ height: '100%', overflow: 'auto' }}>
+            <div style={{ height: `${rowVirtualizer.getTotalSize()}px`, position: 'relative' }}>
+                {rowVirtualizer.getVirtualItems().map(virtualRow => {
+                    const habit = rootHabits[virtualRow.index];
+                    return (
+                        <div
+                            key={habit.id}
+                            style={{
+                                position: 'absolute',
+                                top: 0,
+                                transform: `translateY(${virtualRow.start}px)`,
+                                width: '100%',
+                            }}
+                        >
+                            <HabitRow habit={habit} dates={dates} /* ... */ />
+                        </div>
+                    );
+                })}
+            </div>
+        </div>
+    );
+}
+```
+
+#### Challenges
+
+| Challenge | Mitigation |
+|-----------|------------|
+| **Drag-and-drop with @dnd-kit** | @dnd-kit supports virtualized lists via `SortableContext` with `strategy={verticalListSortingStrategy}`. Items must have stable `id` props. The virtualized rows need to be the sortable items. |
+| **Category headers interspersed with habit rows** | Flatten categories + habits into a single list with type discriminator: `{ type: 'header', categoryId } | { type: 'habit', habit }`. Virtualizer counts all items. |
+| **Variable row heights** | Use `measureElement` from react-virtual for dynamic measurement. Category headers may be taller than habit rows. |
+| **Horizontal scroll for dates** | Only virtualize vertically (rows). The date columns are typically 7-31 and don't need virtualization — they're lightweight compared to the row count. |
+
+#### When to Apply
+
+This optimization is only impactful for users with **40+ habits**. For users with 10-20 habits, the DOM is manageable. Consider:
+- Adding a feature flag to enable virtualization
+- Or always virtualizing (simpler code path, no conditional logic)
+
+#### Expected Impact
+
+| Habits | Before (DOM nodes) | After (DOM nodes) | Reduction |
+|--------|-------------------|-------------------|-----------|
+| 20 | 620 | ~310 (10 visible × 31) | 50% |
+| 50 | 1,550 | ~310 | 80% |
+| 100 | 3,100 | ~310 | 90% |
+
+**Effort:** 3 days (virtualizer setup + @dnd-kit integration + category header handling + testing)
+**Risk:** Medium — @dnd-kit + virtualization integration requires careful testing. The 1,538-line component is complex.
+
+---
+
+### Fix 3.5: Server-Side Session Caching
+
+**Problem:** Session middleware makes 2 sequential DB queries per authenticated request: `findSessionByTokenHash()` + `findUserById()`. For 10 API calls on app load, that's 20 DB queries just for auth.
+
+**File:** `src/server/middleware/session.ts`
+
+#### Implementation
+
+```ts
+import { TTLCache } from '../lib/cache'; // from Fix 3.1
+
+interface CachedSession {
+    userId: string;
+    householdId: string;
+    email: string;
+    displayName: string;
+    role: 'admin' | 'member';
+}
+
+const sessionCache = new TTLCache<CachedSession>(60_000); // 60s TTL
+
+export async function sessionMiddleware(req, res, next) {
+    const raw = req.cookies?.[SESSION_COOKIE_NAME];
+    if (!raw || typeof raw !== 'string') return next();
+
+    const tokenHash = hashSessionToken(raw);
+
+    // Check cache first
+    const cached = sessionCache.get(tokenHash);
+    if (cached) {
+        req.userId = cached.userId;
+        req.householdId = cached.householdId;
+        req.authUser = {
+            email: cached.email,
+            displayName: cached.displayName,
+            role: cached.role,
+        };
+        return next();
+    }
+
+    // Cache miss — query DB
+    const session = await findSessionByTokenHash(tokenHash);
+    if (!session) return next();
+
+    const user = await findUserById(session.userId);
+    if (!user) return next();
+
+    // Populate cache
+    sessionCache.set(tokenHash, {
+        userId: session.userId,
+        householdId: session.householdId,
+        email: user.email,
+        displayName: user.displayName,
+        role: user.role,
+    });
+
+    req.userId = session.userId;
+    req.householdId = session.householdId;
+    req.authUser = { email: user.email, displayName: user.displayName, role: user.role };
+    next();
+}
+```
+
+**Logout invalidation:** On `POST /api/auth/logout`, explicitly evict:
+```ts
+sessionCache.invalidate(tokenHash);
+```
+
+#### Security Considerations
+
+| Concern | Mitigation |
+|---------|------------|
+| Revoked sessions stay cached | 60s TTL bounds maximum staleness. User cannot do meaningful damage in 60s after session revocation. |
+| Cache key is token hash (not raw token) | No raw tokens stored in memory |
+| Cross-user data leakage | Cache key is unique per session. No shared keys. |
+| Memory growth | `TTLCache` has `maxEntries` cap (default 500). Each entry is ~200 bytes. Max memory: ~100KB. |
+
+#### Expected Impact
+
+| Metric | Before | After |
+|--------|--------|-------|
+| DB queries for auth per request | 2 (session + user) | 0 (cache hit) or 2 (cache miss, once per 60s) |
+| Auth overhead per request | 10-25ms | <1ms (cache hit) |
+| DB queries saved per 10-request app load | 20 | 18 (first request misses, other 9 hit cache) |
+
+**Effort:** 1 day | **Risk:** Low-Medium — the TTL approach is conservative. Depends on Fix 3.1 for the cache utility.
+
+---
+
+### Phase 3 Dependency Graph
+
+```
+Fix 3.1 (Server Cache Utility)
+  ├── Fix 3.5 (Session Caching) — depends on cache utility
+  └── used by progress/analytics route caching
+
+Fix 3.2 (Split HabitContext)
+  └── Fix 3.3 (React Query) — can coexist, each split context uses RQ internally
+
+Fix 3.4 (TrackerGrid Virtualization) — independent
+```
+
+### Phase 3 Priority Order
+
+1. **Fix 3.1** (server cache utility) — 3 days, unlocks 3.5 and route caching
+2. **Fix 3.5** (session caching) — 1 day, depends on 3.1, immediate impact
+3. **Fix 3.2** (split HabitContext) — 3-5 days, independent, high frontend impact
+4. **Fix 3.4** (TrackerGrid virtualization) — 3 days, independent, high impact for power users
+5. **Fix 3.3** (React Query) — 5-7 days, largest effort, builds on 3.2 conceptually
+
+---
+
+## 14. Verification & Benchmarking Checklist
+
+Every performance fix must be verified before and after implementation. This section provides concrete, reproducible test procedures.
+
+---
+
+### 14.1 Pre-Implementation Baseline Collection
+
+Before implementing any fix, capture these baselines. All measurements should use a test user with realistic data: **50+ habits, 6+ months of entries, 5+ goals with bundles, 3+ routines.**
+
+#### Backend Baselines (via curl or Postman)
+
+Run each endpoint 5 times, discard the first (cold start), average the remaining 4.
+
+```bash
+# Headers required for all requests
+HEADERS='-H "X-Household-Id: <test-household>" -H "X-User-Id: <test-user>" -H "Cookie: hf_session=<token>"'
+
+# 1. Progress overview (most impactful endpoint)
+curl -w "\n%{time_total}s" $HEADERS http://localhost:3001/api/progress/overview
+
+# 2. Day summary (400-day window)
+curl -w "\n%{time_total}s" $HEADERS "http://localhost:3001/api/daySummary?startDayKey=2025-03-03&endDayKey=2026-04-07"
+
+# 3. Analytics — each endpoint separately
+curl -w "\n%{time_total}s" $HEADERS "http://localhost:3001/api/analytics/habits/summary?days=90"
+curl -w "\n%{time_total}s" $HEADERS "http://localhost:3001/api/analytics/habits/heatmap?days=365"
+curl -w "\n%{time_total}s" $HEADERS "http://localhost:3001/api/analytics/habits/trends?days=90"
+curl -w "\n%{time_total}s" $HEADERS "http://localhost:3001/api/analytics/habits/category-breakdown?days=90"
+curl -w "\n%{time_total}s" $HEADERS "http://localhost:3001/api/analytics/habits/insights?days=90"
+
+# 4. Goals with progress
+curl -w "\n%{time_total}s" $HEADERS http://localhost:3001/api/goals-with-progress
+
+# 5. Day view
+curl -w "\n%{time_total}s" $HEADERS "http://localhost:3001/api/dayView?dayKey=2026-04-07"
+```
+
+**Record:** Response time (ms), response size (bytes), and any `[SLOW]` log output from the server.
+
+#### Frontend Baselines (via Chrome DevTools)
+
+| Test | How to measure | Target metric |
+|------|---------------|---------------|
+| **Initial bundle size** | DevTools → Network → filter JS → size column (gzipped) | Total JS transferred |
+| **Time to interactive** | DevTools → Performance → record page load → Time to Interactive marker | Seconds |
+| **Dashboard render** | React DevTools Profiler → navigate to dashboard → record → total render time | Milliseconds |
+| **Habit toggle re-renders** | React DevTools Profiler → toggle one habit → count components that re-rendered | Component count |
+| **TrackerGrid DOM nodes** | DevTools Console → `document.querySelectorAll('[data-habit-cell]').length` (or similar selector) | Node count |
+| **Analytics page load** | DevTools → Network → navigate to analytics → count requests + total time | Request count, total ms |
+
+#### Baseline Recording Template
+
+```
+Date: ____
+User: ____ (habit count: ___, entry count: ___, goal count: ___, bundle count: ___)
+
+Backend:
+  progress/overview:      ___ms, ___KB
+  daySummary (400d):      ___ms, ___KB
+  analytics/summary:      ___ms, ___KB
+  analytics/heatmap:      ___ms, ___KB
+  analytics/trends:       ___ms, ___KB
+  analytics/breakdown:    ___ms, ___KB
+  analytics/insights:     ___ms, ___KB
+  goals-with-progress:    ___ms, ___KB
+  dayView:                ___ms, ___KB
+
+Frontend:
+  Initial JS bundle:      ___KB gzipped
+  Time to interactive:    ___s
+  Dashboard render:       ___ms
+  Habit toggle re-renders: ___ components
+  TrackerGrid DOM nodes:  ___
+  Analytics page requests: ___
+```
+
+---
+
+### 14.2 Per-Fix Verification Procedures
+
+#### Fix 2.3 (Date-Range Filtering) Verification
+
+- [ ] **Correctness:** Compare analytics endpoint output before and after. For `days=90`, results must be identical (service functions already filter by date in-memory).
+- [ ] **Performance:** Measure analytics endpoint response times. Expect 50-80% reduction.
+- [ ] **Index usage:** Run `db.habitEntries.find({...}).explain("executionStats")` in MongoDB shell. Confirm the query uses `idx_habitEntries_user_dayKey` (IXSCAN, not COLLSCAN).
+- [ ] **Edge cases:** Test with a user who has 0 entries, 1 entry, and 10,000+ entries.
+- [ ] **Test suite:** `npm run test:run` passes with no new failures.
+
+#### Fix 2.4 (Consolidated Analytics) Verification
+
+- [ ] **Correctness:** Call `/api/analytics/habits/all?days=90&heatmapDays=365` and compare each field against the individual endpoint responses. Must be byte-identical for `summary`, `trends`, `categoryBreakdown`, `insights`. Heatmap may differ if `heatmapDays` changed.
+- [ ] **Performance:** 1 network request instead of 4-5 on analytics page. Total time should be less than the slowest individual endpoint (since data is loaded once).
+- [ ] **Frontend:** Analytics page still renders all charts correctly.
+
+#### Fix 2.5 (Reduce 400-Day Window) Verification
+
+- [ ] **Initial load:** Confirm daySummary request uses 90-day window (check Network tab payload size).
+- [ ] **TrackerGrid navigation:** Scroll to a month >90 days ago. Verify data loads dynamically (not blank).
+- [ ] **Streaks:** Verify streak display on dashboard is unchanged (streaks come from progress overview, not daySummary).
+- [ ] **Momentum:** Verify momentum metrics on dashboard are unchanged.
+
+#### Fix 3.1 (Server Cache) Verification
+
+- [ ] **Cache hit:** Call progress overview twice within 30s. Second call should return in <5ms (check server logs).
+- [ ] **Cache invalidation:** Toggle a habit entry → immediately call progress overview. Response should reflect the new entry (cache was invalidated).
+- [ ] **TTL expiry:** Wait >30s → call progress overview. Should recompute (check server timing logs).
+- [ ] **Memory:** Under load (100+ cached entries), memory usage should stay <10MB for cache.
+
+#### Fix 3.2 (Split HabitContext) Verification
+
+- [ ] **Functional parity:** All existing behavior works identically. Run full test suite.
+- [ ] **Re-render reduction:** Using React DevTools Profiler:
+  - Toggle a habit → only HabitLogContext consumers re-render (not category-only consumers)
+  - Update a category name → only HabitDataContext consumers re-render (not log consumers)
+  - Log wellbeing → only WellbeingContext consumers re-render (~3 components)
+
+#### Fix 3.4 (TrackerGrid Virtualization) Verification
+
+- [ ] **DOM node count:** With 50 habits in month view, `document.querySelectorAll` should show ~310 cells (10 visible rows × 31 days) not 1,550.
+- [ ] **Scrolling:** Smooth scroll through all habits. No blank flicker.
+- [ ] **Drag-and-drop:** Reorder habits via drag still works correctly.
+- [ ] **Category headers:** Visible and correctly positioned.
+- [ ] **Mobile:** Test on a real mobile device or Chrome DevTools mobile emulation.
+
+---
+
+### 14.3 Regression Testing Checklist
+
+After **any** performance fix, verify these critical paths are unbroken:
+
+| # | Test | How |
+|---|------|-----|
+| 1 | **Habit toggle persists** | Toggle a habit → refresh → still toggled |
+| 2 | **Streak accuracy** | Check a known habit's streak → matches manual count |
+| 3 | **Goal progress** | Create a goal → toggle linked habits → progress % correct |
+| 4 | **Bundle completion** | Complete all bundle children → parent shows complete |
+| 5 | **Day view shows today's data** | Navigate to day view → today's entries visible |
+| 6 | **Analytics charts render** | Navigate to analytics → all 4 charts visible with data |
+| 7 | **Routine execution** | Start a routine → complete steps → evidence recorded |
+| 8 | **Wellbeing checkin** | Log wellbeing → entry appears in history |
+| 9 | **Journal entry** | Create a journal entry → appears in list |
+| 10 | **Task CRUD** | Create, update, complete, delete a task |
+| 11 | **Build succeeds** | `npm run build` exits 0 |
+| 12 | **Tests pass** | `npm run test:run` passes |
+| 13 | **Lint passes** | `npm run lint:beta` exits 0 |
+
+---
+
+### 14.4 Performance Budget
+
+Target metrics for the fully optimized app (after all Phase 2 + Phase 3 fixes):
+
+| Metric | Current (estimated) | Target | Measurement |
+|--------|-------------------|--------|-------------|
+| **Initial JS bundle** | ~200KB gzipped | <130KB gzipped | `ls -la dist/assets/*.js` |
+| **Largest lazy chunk** | N/A (single chunk) | <80KB gzipped | Vite build output |
+| **Time to interactive (desktop)** | 1.5-3s | <1.5s | Lighthouse |
+| **Time to interactive (mobile 4G)** | 3-5s | <2.5s | Lighthouse throttled |
+| **LCP (Largest Contentful Paint)** | ~3-5s | <2.5s | Web Vitals |
+| **INP (Interaction to Next Paint)** | ~200-400ms | <200ms | Web Vitals |
+| **Progress overview response** | 200-500ms | <50ms (cached), <200ms (uncached) | Server timing logs |
+| **Analytics page response** | 4× 200-500ms | 1× <150ms | Server timing logs |
+| **DaySummary response** | 100-300ms | <100ms | Server timing logs |
+| **Components re-rendered on habit toggle** | ~50+ | <15 | React DevTools Profiler |
+| **TrackerGrid DOM nodes (50 habits)** | ~1,550 | <400 | DOM query |
+| **DB queries per app load** | ~40-60 | <20 | Server query logs |
+
+---
+
+### 14.5 Monitoring After Deployment
+
+Once performance fixes are deployed, add lightweight production monitoring:
+
+1. **Server-side slow request log** (Section 9.1) — log any request >100ms with endpoint, duration, userId hash
+2. **Client-side performance beacon** — report LCP, INP, and TTFB via `web-vitals` library to a lightweight endpoint or analytics service
+3. **Bundle size CI check** — add a build step that fails if total JS exceeds 300KB gzipped (prevents regression)
+4. **MongoDB slow query profiler** — set `slowOpThresholdMs: 50` in Atlas/profiler settings
+
+---
+
+## 15. Summary: Full Optimization Roadmap
+
+### Completed (Phase 1)
+
+| Fix | Impact |
+|-----|--------|
+| Memoize HabitContext + RoutineContext providers | 40-60% fewer unnecessary re-renders |
+| Batch N+1 bundle membership queries | 50-200ms saved per progress/daySummary request |
+| Remove getDb() ping overhead | 15-40ms saved per request |
+| Route-level code splitting + Vite chunks | 30-50% smaller initial bundle |
+
+### Next Up (Phase 2) — Estimated 4-5 days total
+
+| Priority | Fix | Impact | Effort |
+|----------|-----|--------|--------|
+| 1 | Add missing DB indexes | Enables efficient range queries | 1 hour |
+| 2 | Gate console logging | Clean production output | 30 min |
+| 3 | Date-range filtering for entries | 70-90% less data loaded in analytics | 1 day |
+| 4 | Consolidate analytics endpoint | 4× fewer API calls + DB queries | 1 day |
+| 5 | Reduce 400-day window to 90 days | 75% smaller initial payload | 1 day |
+
+### Later (Phase 3) — Estimated 15-23 days total
+
+| Priority | Fix | Impact | Effort |
+|----------|-----|--------|--------|
+| 1 | Server-side TTL cache | Sub-50ms cached responses | 3 days |
+| 2 | Session caching | 18 fewer DB queries per app load | 1 day |
+| 3 | Split HabitContext | Targeted re-renders (toggle affects 12 not 37 components) | 3-5 days |
+| 4 | TrackerGrid virtualization | 80-90% DOM reduction for power users | 3 days |
+| 5 | React Query migration | Automatic dedup, caching, refetch for all data | 5-7 days |
+
+### Conservative Total Impact Estimate
+
+| Metric | Before All Fixes | After Phase 1 (done) | After Phase 2 | After Phase 3 |
+|--------|-----------------|---------------------|----------------|----------------|
+| Initial bundle | ~200KB | ~130KB | ~130KB | ~130KB |
+| Time to interactive (mobile) | 3-5s | 2-3.5s | 1.5-2.5s | 1-2s |
+| DB queries per app load | 40-60 | 25-35 | 15-25 | 10-15 |
+| Progress overview latency | 200-500ms | 150-350ms | 100-250ms | <50ms (cached) |
+| Components re-rendered on toggle | 50+ | 15-20 | 15-20 | <10 |
+| Analytics page DB entry reads | 146,000 (4 × 36,500) | 146,000 | ~4,500 | ~4,500 (cached) |

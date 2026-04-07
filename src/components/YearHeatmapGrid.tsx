@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import { useHabitStore } from '../store/HabitContext';
 import { getHeatmapColor } from '../utils/analytics';
 import { getBundleChildIds, isHabitComplete } from '../utils/habitUtils';
@@ -11,7 +11,20 @@ interface YearHeatmapGridProps {
 }
 
 export const YearHeatmapGrid: React.FC<YearHeatmapGridProps> = React.memo(({ habits }) => {
-    const { logs } = useHabitStore();
+    const { logs, extendLogWindow } = useHabitStore();
+
+    // On mount, extend the log window to cover a full year if needed.
+    // The initial load only fetches 90 days; the year heatmap needs 365.
+    const hasExtended = useRef(false);
+    useEffect(() => {
+        if (hasExtended.current) return;
+        hasExtended.current = true;
+        const today = new Date();
+        const yearAgo = subDays(today, 365);
+        const startDayKey = format(yearAgo, 'yyyy-MM-dd');
+        const endDayKey = format(subDays(today, 91), 'yyyy-MM-dd'); // Only fetch the gap (day 91-365)
+        extendLogWindow(startDayKey, endDayKey);
+    }, [extendLogWindow]);
 
     const { weeks, monthLabels } = useMemo(() => {
         const today = new Date();
