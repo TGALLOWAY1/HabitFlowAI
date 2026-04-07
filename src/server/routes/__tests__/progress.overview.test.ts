@@ -15,6 +15,10 @@ vi.mock('../../repositories/goalRepository', () => ({
   getGoalsByUser: vi.fn(),
 }));
 
+vi.mock('../../repositories/bundleMembershipRepository', () => ({
+  getAllMembershipsByUser: vi.fn().mockResolvedValue([]),
+}));
+
 vi.mock('../../utils/goalProgressUtilsV2', () => ({
   computeGoalsWithProgressFromData: vi.fn(),
 }));

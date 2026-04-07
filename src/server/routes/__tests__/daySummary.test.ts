@@ -11,6 +11,10 @@ vi.mock('../../repositories/habitEntryRepository', () => ({
   getHabitEntriesByUser: vi.fn(),
 }));
 
+vi.mock('../../repositories/bundleMembershipRepository', () => ({
+  getAllMembershipsByUser: vi.fn().mockResolvedValue([]),
+}));
+
 import { getHabitsByUser } from '../../repositories/habitRepository';
 import { getHabitEntriesByUser } from '../../repositories/habitEntryRepository';
 
