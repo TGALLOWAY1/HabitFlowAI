@@ -269,3 +269,187 @@ The app is usable but will feel increasingly slow as users accumulate data. With
 - No `setInterval`-based polling found.
 - **Risk:** If the user leaves the tab open and returns, they see stale data until they navigate away and back. Not a performance issue, but a freshness trade-off.
 - **Severity:** **Low**
+
+---
+
+## 5. Backend / API / Database Findings
+
+### 5.1 N+1 Bundle Membership Queries
+
+**Finding: Two critical endpoints loop over bundle parents with sequential database queries.**
+
+- **`GET /api/progress/overview`** — `src/server/routes/progress.ts:85-86`:
+  ```ts
+  for (const parent of bundleParents) {
+    const memberships = await getMembershipsByParent(parent.id, householdId, userId);
+    // ... per-parent derivation
+  }
+  ```
+  If a user has 10 bundle parents, this is 10 sequential DB queries within a single request handler.
+
+- **`GET /api/daySummary`** — `src/server/routes/daySummary.ts:192-195`:
+  ```ts
+  for (const parent of bundleParents) {
+    const memberships = await getMembershipsByParent(parent.id, householdId, userId);
+    // ... per-parent derivation
+  }
+  ```
+  Same pattern, same cost.
+
+- **Notably:** The analytics routes already use `getAllMembershipsByUser()` (at `analytics.ts:43`) — the batch-fetch function exists but isn't used in progress or daySummary.
+
+- **Impact:** Adds 50-200ms per request depending on bundle count and DB latency.
+- **Fix complexity:** Low — replace loop with existing `getAllMembershipsByUser()` + client-side grouping.
+- **Severity:** **High**
+
+### 5.2 Unfiltered Full-Entry Loads
+
+**Finding: `getHabitEntriesByUser()` loads ALL non-deleted entries with no date range, limit, or projection.**
+
+- **Location:** `src/server/repositories/habitEntryRepository.ts:365-377`:
+  ```ts
+  const documents = await collection
+    .find(scopeFilter(householdId, userId, { deletedAt: { $exists: false } }))
+    .toArray();
+  ```
+  Returns every entry ever created by the user. No `.limit()`, no date-range filter, no `.projection()`.
+
+- **Callers:**
+  - `GET /api/progress/overview` (`progress.ts:44`) — all entries for streak/momentum calculation
+  - `GET /api/analytics/habits/summary` (`analytics.ts:42`) — all entries
+  - `GET /api/analytics/habits/heatmap` (`analytics.ts:64`) — all entries
+  - `GET /api/analytics/habits/trends` (`analytics.ts:80+`) — all entries
+  - `GET /api/analytics/habits/categoryBreakdown` (`analytics.ts:100+`) — all entries
+
+- **Scaling concern:** A user tracking 50 habits daily for 2 years generates ~36,500 entries. Loading all of them on every request is O(n) in perpetuity with no bound.
+- **Impact:** 100-500ms+ per endpoint for long-term users, multiplied by 4x on the analytics page.
+- **Severity:** **High**
+
+### 5.3 Ping on Every `getDb()` Call
+
+**Finding: Every database access pings MongoDB to verify the connection is alive.**
+
+- **Location:** `src/server/lib/mongoClient.ts:210-214`:
+  ```ts
+  if (db && client) {
+    try {
+      await client.db().admin().ping();  // 5-10ms per call
+      await runIndexEnsurance(db);
+      return db;
+    }
+  }
+  ```
+  The `getDb()` function is called by every repository function. Each call does:
+  1. `admin().ping()` — verifies connection (~5-10ms network round-trip)
+  2. `ensureCoreIndexes()` — guarded by `indexesEnsuredForDbName` check (fast after first call)
+
+- **Impact:** 5-10ms added to every single database operation. For an endpoint that makes 3 DB calls, that's 15-30ms of pure ping overhead.
+- **Better approach:** Trust the MongoDB driver's built-in connection monitoring. Only reconnect on actual operation failures. The driver already handles connection pool health internally.
+- **Severity:** **Medium-High**
+
+### 5.4 Index Ensurance on Every `getDb()` Call
+
+**Finding: `ensureCoreIndexes()` is called on every `getDb()` invocation.**
+
+- While `ensureCoreIndexes()` at `mongoClient.ts:123-166` has a guard (`indexesEnsuredForDbName`), it's still called every time `getDb()` is invoked. After the first call, it returns immediately, but the function call + string comparison overhead is unnecessary.
+- The `runIndexEnsurance` wrapper itself is recreated as a closure on every `getDb()` call (line 199-206).
+- **Impact:** Negligible after first request, but the `ping()` issue amplifies it.
+- **Severity:** **Low**
+
+### 5.5 Streak Calculation Per Habit Per Request
+
+**Finding: Streak metrics are recalculated from raw entry data for every active habit on every progress overview request.**
+
+- **Location:** `src/server/services/streakService.ts` — `calculateHabitStreakMetrics()` processes all day states for a habit:
+  1. Filters completed/frozen entries
+  2. Sorts all dayKeys
+  3. Walks backward to find current streak (O(n) per habit)
+  4. Calculates best consecutive span (O(n) per habit)
+  
+- Called in `progress.ts` for every active habit (line ~130+).
+- **Impact:** For 50 active habits with 400 days each: 50 × 400 = 20,000 iterations minimum.
+- **No caching:** Results are discarded after each request. The same streaks are recalculated on the next page load.
+- **Severity:** **Medium** — the computation itself is fast (O(n) linear), but it's done repeatedly with no caching.
+
+### 5.6 Missing Database Indexes
+
+**Finding: Current indexes cover the basics but miss key query patterns.**
+
+- **Existing indexes** (`mongoClient.ts:141-160`):
+  - `habitEntries`: `(userId, id)` unique, `(userId, habitId, timestamp)`, `(userId, habitId, dayKey)` unique
+  - `healthMetricsDaily`: `(householdId, userId, dayKey, source)` unique
+  - `habitHealthRules`: `(householdId, userId, habitId)` unique
+  - `healthSuggestions`: `(householdId, userId, dayKey, status)`
+
+- **Missing indexes for common query patterns:**
+  - `habitEntries (householdId, userId, deletedAt)` — used by `getHabitEntriesByUser()` which is called by 5+ endpoints. Current query uses `scopeFilter(householdId, userId, { deletedAt: { $exists: false } })` but there's no compound index covering this filter.
+  - `habitEntries (householdId, userId, dayKey)` — for date-range queries (not yet implemented but needed for the recommended fix in 5.2)
+  - `bundleMemberships (householdId, userId, parentHabitId)` — for `getMembershipsByParent()` calls
+
+- **Impact:** Without a covering index, `getHabitEntriesByUser()` may perform a collection scan on the `deletedAt` filter portion.
+- **Severity:** **Medium**
+
+### 5.7 No Server-Side Caching
+
+**Finding: Zero caching mechanisms exist on the server.**
+
+- No Redis integration
+- No in-memory cache (LRU, TTL, etc.)
+- No materialized views / precomputed tables
+- No ETag generation for conditional responses
+- The only "cache" is the per-request variable reuse within a single request handler
+
+- **Impact:** Every request recalculates everything from scratch. The progress overview endpoint (streak calculation + momentum + bundle derivation + goal progress) likely takes 200-500ms per call, every time.
+- **Severity:** **High** for frequently-hit endpoints like progress overview.
+
+### 5.8 Session Query on Every Request
+
+**Finding: Session middleware queries the database to validate the session on every authenticated request.**
+
+- `src/server/middleware/session.ts` reads the `hf_session` cookie, hashes it, and queries the `sessions` collection.
+- This adds one DB query per request for session validation.
+- **Impact:** ~5-15ms per request. Compounded with the `ping()` overhead, that's 10-25ms before any business logic runs.
+- **Better approach:** Cache validated sessions in memory with a short TTL (e.g., 60s).
+- **Severity:** **Medium**
+
+---
+
+## 6. Mobile-Specific Performance Risks
+
+### 6.1 TrackerGrid DOM Weight
+
+- **Risk:** 1,550+ interactive DOM nodes (50 habits × 31 days) in the tracker grid is heavy for mobile devices. Lower-end phones (2-3GB RAM, older SoCs) will struggle with layout recalculation when cells are toggled.
+- **Compounding factor:** Each cell toggle triggers a full grid re-render (due to unmemoized context) — all 1,550+ cells are diffed and potentially re-laid out.
+- **Expected behavior on mobile:** Noticeable jank (100-300ms) when toggling a habit cell. Scrolling may feel stuttery on the month view.
+- **Severity:** **High** on mobile
+
+### 6.2 Chart Rendering
+
+- **Risk:** Recharts `ResponsiveContainer` triggers layout reflow on resize events. On mobile, orientation changes and virtual keyboard appearance/disappearance trigger resize events, causing chart re-renders.
+- **Components affected:** `ProgressRings` (dashboard), `GoalSparkline` (goals page), `GoalTrendChart` (goal detail), `TrendChart` (analytics).
+- **Expected behavior:** Charts may flicker or lag during orientation changes. Multiple sparklines on the goals page multiply this effect.
+- **Severity:** **Medium** on mobile
+
+### 6.3 Single-Chunk Bundle Parse Time
+
+- **Risk:** Mobile browsers parse JavaScript significantly slower than desktop (~2-5x). A ~200KB+ gzipped bundle decompresses to ~600KB-1MB of JavaScript that must be parsed before any rendering begins.
+- **Expected behavior:** On a mid-range phone with a 3G/4G connection, initial load could take 5-8 seconds (download + parse + execute + API calls + render).
+- **Severity:** **High** on mobile
+
+### 6.4 Large Context State in Memory
+
+- **Risk:** HabitContext holds ~50KB of state (400 days of logs for potentially 50+ habits). On memory-constrained mobile devices, this contributes to memory pressure and potential garbage collection pauses.
+- **Compounding factor:** The unmemoized provider value creates a new object reference on every render, generating garbage for the GC to collect.
+- **Severity:** **Low-Medium** — modern phones handle this, but older devices may experience GC pauses.
+
+### 6.5 Touch Interaction Latency
+
+- **Risk:** Drag-and-drop via `@dnd-kit` on TrackerGrid and GoalsPage may feel unresponsive on touch devices if the component is mid-re-render when the touch event fires.
+- **Risk:** No `touch-action: manipulation` CSS found, which means the browser's default 300ms tap delay may apply on some older mobile browsers.
+- **Severity:** **Low-Medium**
+
+### 6.6 No Mobile-Specific Data Loading
+
+- **Risk:** Mobile and desktop load identical payloads. No reduced data mode, no progressive loading, no viewport-based data fetching.
+- **Impact:** Mobile users on slower connections download the same 400-day log summary as desktop users on fiber.
+- **Severity:** **Medium**
