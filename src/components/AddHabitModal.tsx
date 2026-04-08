@@ -62,9 +62,6 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
     const [target, setTarget] = useState(''); // Numeric target
     const [unit, setUnit] = useState('');
 
-    // Times per week (optional weekly quota)
-    const [timesPerWeek, setTimesPerWeek] = useState<string>('');
-
     // Scheduling
     const [scheduledTime, setScheduledTime] = useState('');
     const [durationMinutes, setDurationMinutes] = useState('30');
@@ -112,7 +109,6 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                 setGoalType(initialData.goal.type || 'boolean');
                 setTarget(initialData.goal.target ? String(initialData.goal.target) : '');
                 setUnit(initialData.goal.unit || '');
-                setTimesPerWeek(initialData.timesPerWeek ? String(initialData.timesPerWeek) : '');
                 setScheduledTime(initialData.scheduledTime || '');
                 setLinkedGoalId(initialData.linkedGoalId || null);
                 setLinkedRoutineIds(initialData.linkedRoutineIds || []);
@@ -128,7 +124,6 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                 // If opened via "Convert to Bundle" action, auto-switch to bundle mode
                 if (initialBundleConvert && initialData.type !== 'bundle') {
                     setHabitType('bundle');
-                    setTimesPerWeek('');
                 }
 
             } else {
@@ -144,7 +139,6 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                 setGoalType('boolean');
                 setTarget('');
                 setUnit('');
-                setTimesPerWeek('');
                 setScheduledTime('');
                 setLinkedGoalId(null);
                 setLinkedRoutineIds([]);
@@ -237,13 +231,10 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                 frequency: 'daily' as const,
             };
 
-            const timesPerWeekNum = timesPerWeek ? Number(timesPerWeek) : undefined;
-
             const habitData = {
                 name,
                 categoryId: selectedCategoryId,
                 goal: goalConfig,
-                timesPerWeek: timesPerWeekNum && timesPerWeekNum > 0 ? timesPerWeekNum : undefined,
                 assignedDays: scheduledDays,
                 scheduledTime: scheduledTime || undefined,
                 durationMinutes: durationMinutes ? Number(durationMinutes) : undefined,
@@ -746,20 +737,6 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                                 </button>
                             </div>
 
-                            {/* Weekly Target (optional) */}
-                            <div className="flex items-center gap-3 mt-2">
-                                <label className="text-sm text-neutral-400 whitespace-nowrap">Times per week</label>
-                                <input
-                                    type="number"
-                                    min="1"
-                                    max="7"
-                                    value={timesPerWeek}
-                                    onChange={(e) => setTimesPerWeek(e.target.value)}
-                                    placeholder="—"
-                                    className="w-16 bg-neutral-800 border border-white/10 rounded-lg px-3 py-1.5 text-white text-sm text-center focus:outline-none focus:border-emerald-500"
-                                />
-                                <span className="text-xs text-neutral-500">Leave empty for daily</span>
-                            </div>
                         </div>
                     )}
 
