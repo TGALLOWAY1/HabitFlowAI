@@ -925,15 +925,15 @@ All Phase 1 quick wins from Section 8 have been implemented and merged via PRs #
 | 2.6 | Add missing DB indexes | ✅ Done | `idx_habitEntries_user_dayKey` + `idx_bundleMemberships_user_parent` added |
 | 2.7 | Gate console logging | ✅ Done | Debug logs in HabitContext gated behind `import.meta.env.DEV` |
 
-### Phase 3 Status — NOT STARTED
+### Phase 3 Status — IN PROGRESS
 
 | # | Fix | Status |
 |---|-----|--------|
-| 3.1 | Server-side caching (LRU/TTL) | ❌ Not started — zero caching infrastructure exists |
+| 3.1 | Server-side caching (LRU/TTL) | ✅ Done | `src/server/lib/cache.ts` + `cacheInstances.ts` — TTLCache for progress (30s) and analytics (60s), invalidation on all write routes |
 | 3.2 | Split HabitContext into 3 contexts | ❌ Not started |
 | 3.3 | Adopt React Query / TanStack Query | ❌ Not started — not in package.json |
 | 3.4 | TrackerGrid virtualization | ❌ Not started — no virtualization library installed |
-| 3.5 | Server-side session caching | ❌ Not started — 2 DB queries per request with no cache |
+| 3.5 | Server-side session caching | ✅ Done | `src/server/middleware/session.ts` — 60s TTL cache, invalidated on logout |
 
 ---
 

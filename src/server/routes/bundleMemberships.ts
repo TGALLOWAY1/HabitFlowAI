@@ -7,6 +7,7 @@
 
 import type { Request, Response } from 'express';
 import { getRequestIdentity } from '../middleware/identity';
+import { invalidateUserCaches } from '../lib/cacheInstances';
 import { validateDayKey } from '../domain/canonicalValidators';
 import { getHabitById } from '../repositories/habitRepository';
 import { getHabitEntriesByHabit } from '../repositories/habitEntryRepository';
@@ -148,6 +149,7 @@ export async function createBundleMembershipRoute(req: Request, res: Response): 
       daysOfWeek
     );
 
+    invalidateUserCaches(userId);
     res.status(201).json(membership);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
@@ -208,6 +210,7 @@ export async function endBundleMembershipRoute(req: Request, res: Response): Pro
     }
 
     const result = await getMembershipById(id, householdId, userId);
+    invalidateUserCaches(userId);
     res.json(result);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
@@ -238,6 +241,7 @@ export async function archiveBundleMembershipRoute(req: Request, res: Response):
     }
 
     const result = await getMembershipById(id, householdId, userId);
+    invalidateUserCaches(userId);
     res.json(result);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
@@ -297,6 +301,7 @@ export async function graduateBundleMembershipRoute(req: Request, res: Response)
     }
 
     const result = await getMembershipById(id, householdId, userId);
+    invalidateUserCaches(userId);
     res.json(result);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
@@ -337,6 +342,7 @@ export async function deleteBundleMembershipRoute(req: Request, res: Response): 
       return;
     }
 
+    invalidateUserCaches(userId);
     res.status(204).send();
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
