@@ -10,6 +10,7 @@
  */
 
 import { updateGoal } from '../repositories/goalRepository';
+import type { Goal } from '../../models/persistenceTypes';
 
 // ---------------------------------------------------------------------------
 // Configuration
@@ -27,6 +28,49 @@ const STYLE_PROMPT =
   'Minimalist circular medal, vibrant gradient, clean vector style, ' +
   'no text, no letters, no words, dark background, centered composition, ' +
   'high contrast, bold colors, simple shapes.';
+
+// ---------------------------------------------------------------------------
+// Image validation helpers
+// ---------------------------------------------------------------------------
+
+/** Minimum plausible image size in bytes (a real 256x256 image is thousands of bytes). */
+const MIN_IMAGE_BYTES = 100;
+
+/**
+ * Detect the MIME type of an image buffer by inspecting magic bytes.
+ * Returns null for unrecognized formats.
+ */
+function detectImageMimeType(buf: Buffer): string | null {
+  if (buf.length < 4) return null;
+
+  // PNG: \x89PNG
+  if (buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4e && buf[3] === 0x47) {
+    return 'image/png';
+  }
+  // JPEG: \xFF\xD8\xFF
+  if (buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff) {
+    return 'image/jpeg';
+  }
+  // WebP: RIFF....WEBP
+  if (
+    buf.length >= 12 &&
+    buf[0] === 0x52 && buf[1] === 0x49 && buf[2] === 0x46 && buf[3] === 0x46 && // RIFF
+    buf[8] === 0x57 && buf[9] === 0x45 && buf[10] === 0x42 && buf[11] === 0x50   // WEBP
+  ) {
+    return 'image/webp';
+  }
+
+  return null;
+}
+
+/**
+ * Validate that a buffer contains a recognizable image format.
+ */
+function validateImageBuffer(buf: Buffer): { valid: boolean; mimeType: string | null } {
+  if (buf.length < MIN_IMAGE_BYTES) return { valid: false, mimeType: null };
+  const mimeType = detectImageMimeType(buf);
+  return { valid: mimeType !== null, mimeType };
+}
 
 // ---------------------------------------------------------------------------
 // Prompt builder
@@ -58,9 +102,8 @@ async function generateImageBytes(prompt: string, hfToken: string): Promise<Buff
       model: HF_MODEL,
       prompt,
       provider: HF_PROVIDER,
-      // Keep images small for fast loading
-      width: 256,
-      height: 256,
+      size: '256x256',
+      response_format: 'b64_json',
     }),
   });
 
@@ -78,21 +121,34 @@ async function generateImageBytes(prompt: string, hfToken: string): Promise<Buff
     };
     const item = json.data?.[0];
     if (item?.b64_json) {
-      return Buffer.from(item.b64_json, 'base64');
+      const buf = Buffer.from(item.b64_json, 'base64');
+      if (!validateImageBuffer(buf).valid) {
+        console.warn('[BadgeGen] b64_json response failed image validation');
+        return null;
+      }
+      return buf;
     }
     if (item?.url) {
-      // Fetch the image from the returned URL
+      // Fallback: fetch image from the returned URL
       const imgResponse = await fetch(item.url);
       if (!imgResponse.ok) return null;
-      const arrayBuffer = await imgResponse.arrayBuffer();
-      return Buffer.from(arrayBuffer);
+      const buf = Buffer.from(await imgResponse.arrayBuffer());
+      if (!validateImageBuffer(buf).valid) {
+        console.warn('[BadgeGen] URL-fetched response failed image validation');
+        return null;
+      }
+      return buf;
     }
     return null;
   }
 
   // Direct binary image response
-  const arrayBuffer = await response.arrayBuffer();
-  return Buffer.from(arrayBuffer);
+  const buf = Buffer.from(await response.arrayBuffer());
+  if (!validateImageBuffer(buf).valid) {
+    console.warn('[BadgeGen] Binary response failed image validation');
+    return null;
+  }
+  return buf;
 }
 
 // ---------------------------------------------------------------------------
@@ -128,9 +184,14 @@ export async function generateBadgeForGoal(
       return;
     }
 
-    // Store as base64 data URL (PNG)
+    // Detect actual image format and store as properly-typed data URL
+    const mimeType = detectImageMimeType(imageBytes);
+    if (!mimeType) {
+      console.warn(`[BadgeGen] Unrecognized image format for goal ${goalId}`);
+      return;
+    }
     const base64 = imageBytes.toString('base64');
-    const dataUrl = `data:image/png;base64,${base64}`;
+    const dataUrl = `data:${mimeType};base64,${base64}`;
 
     await updateGoal(goalId, householdId, userId, { badgeImageUrl: dataUrl });
     console.log(`[BadgeGen] Badge saved for goal ${goalId} (${Math.round(base64.length / 1024)}KB)`);
@@ -139,4 +200,58 @@ export async function generateBadgeForGoal(
     const msg = error instanceof Error ? error.message : String(error);
     console.error(`[BadgeGen] Failed for goal ${goalId}: ${msg}`);
   }
+}
+
+// ---------------------------------------------------------------------------
+// Badge backfill for existing goals
+// ---------------------------------------------------------------------------
+
+/** Track goals already queued for backfill to avoid duplicate API calls. */
+const backfillAttempted = new Set<string>();
+
+/**
+ * Returns true if a goal's badge should be regenerated.
+ *
+ * Triggers on:
+ *  - Missing badgeImageUrl (never generated or generation failed)
+ *  - badgeImageUrl with hardcoded image/png MIME (from the old buggy code that
+ *    always labelled images as PNG regardless of actual format)
+ */
+function needsBadgeRegeneration(goal: Goal): boolean {
+  if (!goal.badgeImageUrl) return true;
+  if (goal.badgeImageUrl.startsWith('data:image/png;base64,')) return true;
+  return false;
+}
+
+/**
+ * Fire-and-forget backfill of badges for goals that are missing them or have
+ * corrupt data URLs from the old generation code.
+ *
+ * Designed to be called after responding to the client — never blocks the
+ * HTTP response.  Uses an in-memory Set so each goal is only attempted once
+ * per server lifetime.
+ */
+export function backfillGoalBadges(
+  goals: Goal[],
+  householdId: string,
+  userId: string,
+): void {
+  const candidates = goals.filter(
+    g => !backfillAttempted.has(g.id) && needsBadgeRegeneration(g),
+  );
+  if (candidates.length === 0) return;
+
+  console.log(`[BadgeGen] Backfilling badges for ${candidates.length} goal(s)`);
+
+  for (const goal of candidates) {
+    backfillAttempted.add(goal.id);
+  }
+
+  // Stagger calls to avoid hammering the HF API
+  candidates.forEach((goal, i) => {
+    setTimeout(
+      () => generateBadgeForGoal(goal.id, goal.title, householdId, userId),
+      i * 2000,
+    );
+  });
 }

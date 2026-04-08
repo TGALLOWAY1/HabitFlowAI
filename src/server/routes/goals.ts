@@ -21,7 +21,7 @@ import { getHabitsByUser, linkHabitsToGoal, unlinkHabitsFromGoal } from '../repo
 import { computeGoalProgressV2, computeGoalListProgress } from '../utils/goalProgressUtilsV2';
 import type { Goal } from '../../models/persistenceTypes';
 import { getRequestIdentity } from '../middleware/identity';
-import { generateBadgeForGoal } from '../services/badgeGenerationService';
+import { generateBadgeForGoal, backfillGoalBadges } from '../services/badgeGenerationService';
 import { invalidateUserCaches } from '../lib/cacheInstances';
 
 /**
@@ -204,6 +204,10 @@ export async function getCompletedGoals(req: Request, res: Response): Promise<vo
 
     // Return array of goal objects (progress optional for V1, not included here)
     res.status(200).json(goals.map(goal => ({ goal })));
+
+    // Fire-and-forget: regenerate badges for goals that are missing them or
+    // have corrupt data URLs from the old generation code.
+    backfillGoalBadges(goals, householdId, userId);
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     console.error('Error fetching completed goals:', errorMessage);

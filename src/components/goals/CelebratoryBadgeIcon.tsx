@@ -74,6 +74,12 @@ export const CelebratoryBadgeIcon: React.FC<CelebratoryBadgeIconProps> = ({
   className = '',
 }) => {
   const [imgFailed, setImgFailed] = React.useState(false);
+
+  // Reset failure state when the badge URL changes (e.g. after async generation completes)
+  React.useEffect(() => {
+    setImgFailed(false);
+  }, [badgeImageUrl]);
+
   const variant = BADGE_VARIANTS[hashId(goalId) % BADGE_VARIANTS.length];
   const Icon = variant.icon;
 
