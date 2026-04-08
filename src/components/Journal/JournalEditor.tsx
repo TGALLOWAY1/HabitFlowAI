@@ -10,7 +10,7 @@ import {
 
 interface JournalEditorProps {
     existingEntry?: JournalEntry;
-    onSave: () => void;
+    onSave: (entry?: JournalEntry) => void;
     onCancel?: () => void;
     initialTemplateId?: string;
     /** When true, renders without the card container, header row, and footer — just the editor content. */
@@ -214,12 +214,13 @@ export function JournalEditor({ existingEntry, onSave, onCancel, initialTemplate
                 date
             };
 
+            let savedEntry: JournalEntry;
             if (existingEntry) {
-                await updateEntry(existingEntry.id, payload);
+                savedEntry = await updateEntry(existingEntry.id, payload);
             } else {
-                await createEntry(payload);
+                savedEntry = await createEntry(payload);
             }
-            onSave();
+            onSave(savedEntry);
         } catch (error) {
             console.error('Failed to save entry', error);
             alert('Failed to save entry. Please try again.');

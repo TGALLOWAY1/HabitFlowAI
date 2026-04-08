@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { format } from 'date-fns';
+import { format, subDays } from 'date-fns';
 import { fetchEntries, deleteEntry } from '../../api/journal';
 import type { JournalEntry } from '../../models/persistenceTypes';
 import { JOURNAL_TEMPLATES } from '../../data/journalTemplates';
@@ -7,16 +7,18 @@ import { Trash2, Edit2, BookOpen } from 'lucide-react';
 
 interface JournalDisplayProps {
     onEdit: (entry: JournalEntry) => void;
+    lastSavedEntry?: JournalEntry;
 }
 
-export function JournalDisplay({ onEdit }: JournalDisplayProps) {
+export function JournalDisplay({ onEdit, lastSavedEntry }: JournalDisplayProps) {
     const [entries, setEntries] = useState<JournalEntry[]>([]);
     const [loading, setLoading] = useState(true);
 
     const loadEntries = async () => {
         try {
             setLoading(true);
-            const data = await fetchEntries();
+            const startDate = format(subDays(new Date(), 90), 'yyyy-MM-dd');
+            const data = await fetchEntries({ startDate });
             setEntries(data);
         } catch (error) {
             console.error('Failed to load journal entries', error);
@@ -28,6 +30,18 @@ export function JournalDisplay({ onEdit }: JournalDisplayProps) {
     useEffect(() => {
         loadEntries();
     }, []);
+
+    // Optimistic update: merge saved entry into local state without refetching
+    useEffect(() => {
+        if (!lastSavedEntry) return;
+        setEntries(prev => {
+            const filtered = prev.filter(e => e.id !== lastSavedEntry.id);
+            // Insert at correct position (sorted by date desc)
+            const idx = filtered.findIndex(e => e.date < lastSavedEntry.date);
+            if (idx === -1) return [...filtered, lastSavedEntry];
+            return [...filtered.slice(0, idx), lastSavedEntry, ...filtered.slice(idx)];
+        });
+    }, [lastSavedEntry]);
 
     const handleDelete = async (id: string) => {
         if (!window.confirm('Are you sure you want to delete this entry?')) return;

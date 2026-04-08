@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { fetchProgressOverview } from './persistenceClient';
 import type { ProgressOverview } from '../types';
-import { getCachedProgressOverview, setCachedProgressOverview } from './goalDataCache';
+import { getCachedProgressOverview, setCachedProgressOverview, isProgressOverviewFresh } from './goalDataCache';
 
 /**
  * Hook to fetch progress overview combining habits and goals.
@@ -51,8 +51,8 @@ export function useProgressOverview(): {
                 setData(cached);
                 setLoading(false);
                 setError(undefined);
-                // Still fetch in background to ensure freshness (stale-while-revalidate pattern)
-                // but don't show loading state
+                // Skip background fetch if cache is still fresh within TTL
+                if (isProgressOverviewFresh()) return;
             } else {
                 setLoading(true);
             }

@@ -24,8 +24,10 @@ import type { JournalEntry } from '../../models/persistenceTypes';
 export async function getEntriesRoute(req: Request, res: Response): Promise<void> {
     try {
         const { userId } = getRequestIdentity(req);
+        const startDate = typeof req.query.startDate === 'string' ? req.query.startDate : undefined;
+        const endDate = typeof req.query.endDate === 'string' ? req.query.endDate : undefined;
 
-        const entries = await getEntriesByUser(userId);
+        const entries = await getEntriesByUser(userId, { startDate, endDate });
 
         res.status(200).json({
             entries,

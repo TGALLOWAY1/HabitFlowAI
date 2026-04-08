@@ -15,7 +15,7 @@ import { Loader2, ArrowLeft, Check, Edit, Trash2, Trophy, TrendingUp } from 'luc
 import { format, parseISO } from 'date-fns';
 import { DeleteGoalConfirmModal } from '../../components/goals/DeleteGoalConfirmModal';
 import { EditGoalModal } from '../../components/goals/EditGoalModal';
-import { deleteGoal, markGoalAsCompleted, fetchHabitEntries, getLocalTimeZone, createGoal } from '../../lib/persistenceClient';
+import { deleteGoal, markGoalAsCompleted, createGoal } from '../../lib/persistenceClient';
 import { GoalStatusChip } from '../../components/goals/GoalSharedComponents';
 import { GoalTrendChart } from '../../components/goals/GoalTrendChart';
 
@@ -37,7 +37,7 @@ type Tab = 'cumulative' | 'dayByDay' | 'trend';
 
 export const GoalDetailPage: React.FC<GoalDetailPageProps> = ({ goalId, onBack, onNavigateToCompleted, onViewHabit, onViewGoal }) => {
     const { data, loading, error, refetch } = useGoalDetail(goalId);
-    const { habits } = useHabitStore();
+    const { habits, logs } = useHabitStore();
     const [activeTab, setActiveTab] = useState<Tab>('cumulative');
     const [showEditModal, setShowEditModal] = useState(false);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -47,9 +47,6 @@ export const GoalDetailPage: React.FC<GoalDetailPageProps> = ({ goalId, onBack, 
     const [extendTarget, setExtendTarget] = useState('');
     const [isExtending, setIsExtending] = useState(false);
     const [extendError, setExtendError] = useState<string | null>(null);
-
-    // Habit Entries State
-    const [linkedHabitEntries, setLinkedHabitEntries] = useState<HabitEntry[]>([]);
 
     // Track previous state to prevent infinite loops (Auto-completion)
     const previousPercentRef = useRef<number | null>(null);
@@ -70,49 +67,36 @@ export const GoalDetailPage: React.FC<GoalDetailPageProps> = ({ goalId, onBack, 
             .filter((habit): habit is NonNullable<typeof habit> => habit !== undefined);
     }, [data, habitMap]);
 
-    // Fetch Linked Habit Entries (via truthQuery)
-    useEffect(() => {
-        const loadEntries = async () => {
-            if (!data?.goal.linkedHabitIds.length) {
-                setLinkedHabitEntries([]);
-                return;
-            }
+    // Derive linked habit entries from HabitContext logs (already pre-fetched)
+    // instead of making N separate API calls per linked habit
+    const linkedHabitEntries = useMemo(() => {
+        if (!data?.goal.linkedHabitIds.length) return [];
 
-            try {
-                console.log('[GoalDetail] Loading entries for habits:', data.goal.linkedHabitIds);
-                // Fetch all habit entries in parallel
-                const entryArrays = await Promise.all(
-                    data.goal.linkedHabitIds.map(habitId =>
-                        fetchHabitEntries(habitId, undefined, undefined, getLocalTimeZone())
-                            .then(entries => {
-                                console.log(`[GoalDetail] Fetched ${entries.length} entries for habit ${habitId}`);
-                                return entries.map((ev: any) => ({
-                                    id: ev.id || `entry-${ev.habitId}-${ev.dayKey}`,
-                                    habitId: ev.habitId,
-                                    timestamp: ev.timestampUtc,
-                                    dayKey: ev.dayKey,
-                                    date: ev.dayKey,
-                                    dateKey: ev.dayKey,
-                                    value: ev.value,
-                                    source: ev.source,
-                                    routineId: ev.provenance.routineId,
-                                    deletedAt: ev.deletedAt,
-                                    createdAt: ev.timestampUtc,
-                                    updatedAt: ev.timestampUtc,
-                                }));
-                            })
-                    )
-                );
-                setLinkedHabitEntries(entryArrays.flat());
-            } catch (err) {
-                console.error("Failed to load habit entries", err);
-            }
-        };
+        const linkedSet = new Set(data.goal.linkedHabitIds);
+        const entries: HabitEntry[] = [];
 
-        if (data) {
-            loadEntries();
+        for (const [_key, dayLog] of Object.entries(logs)) {
+            if (!linkedSet.has(dayLog.habitId)) continue;
+            if (!dayLog.completed && !dayLog.value) continue;
+
+            entries.push({
+                id: `entry-${dayLog.habitId}-${dayLog.date}`,
+                habitId: dayLog.habitId,
+                timestamp: dayLog.date,
+                dayKey: dayLog.date,
+                date: dayLog.date,
+                dateKey: dayLog.date,
+                value: dayLog.value ?? (dayLog.completed ? 1 : 0),
+                source: dayLog.source,
+                routineId: dayLog.routineId,
+                deletedAt: undefined,
+                createdAt: dayLog.date,
+                updatedAt: dayLog.date,
+            } as HabitEntry);
         }
-    }, [data?.goal.linkedHabitIds]);
+
+        return entries;
+    }, [data?.goal.linkedHabitIds, logs]);
 
     // Combine Data for Charts/List
     const combinedEntries = useMemo(() => {

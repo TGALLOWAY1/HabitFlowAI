@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { fetchGoalDetail } from './persistenceClient';
 import type { GoalDetail } from '../types';
-import { getCachedGoalDetail, setCachedGoalDetail } from './goalDataCache';
+import { getCachedGoalDetail, setCachedGoalDetail, isGoalDetailFresh } from './goalDataCache';
 
 /**
  * Hook to fetch goal detail information.
@@ -53,8 +53,8 @@ export function useGoalDetail(goalId: string): {
             setData(cached);
             setLoading(false);
             setError(undefined);
-            // Still fetch in background to ensure freshness (stale-while-revalidate pattern)
-            // but don't show loading state
+            // Skip background fetch if cache is still fresh within TTL
+            if (isGoalDetailFresh(goalId)) return;
         } else {
             setLoading(true);
         }
