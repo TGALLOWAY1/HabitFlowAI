@@ -301,6 +301,36 @@ export async function upsertWellbeingEntries(params: {
 }
 
 /**
+ * Aggregate WellbeingEntry[] into Record<string, DailyWellbeing> shape.
+ * Groups entries by dayKey and reconstructs morning/evening session objects.
+ * Used by HabitContext to read from wellbeingEntries instead of wellbeingLogs (C3 audit fix).
+ */
+export function aggregateEntriesToDailyWellbeing(entries: WellbeingEntry[]): Record<string, DailyWellbeing> {
+  const result: Record<string, DailyWellbeing> = {};
+
+  for (const entry of entries) {
+    const dayKey = entry.dayKey;
+    if (!result[dayKey]) {
+      result[dayKey] = { date: dayKey };
+    }
+    const daily = result[dayKey];
+
+    if (entry.timeOfDay === 'morning') {
+      if (!daily.morning) daily.morning = {};
+      (daily.morning as Record<string, unknown>)[entry.metricKey] = entry.value;
+    } else if (entry.timeOfDay === 'evening') {
+      if (!daily.evening) daily.evening = {};
+      (daily.evening as Record<string, unknown>)[entry.metricKey] = entry.value;
+    } else {
+      // Legacy top-level fields (timeOfDay=null)
+      (daily as unknown as Record<string, unknown>)[entry.metricKey] = entry.value;
+    }
+  }
+
+  return result;
+}
+
+/**
  * Dashboard Prefs (view-only)
  */
 export async function fetchDashboardPrefs(): Promise<DashboardPrefs> {
@@ -1221,6 +1251,23 @@ export async function recordRoutineStepReached(routineId: string, stepId: string
   await apiRequest<{ data?: unknown }>('/evidence/step-reached', {
     method: 'POST',
     body: JSON.stringify({ routineId, stepId, date, ...(variantId ? { variantId } : {}) }),
+  });
+}
+
+/**
+ * POST /api/evidence/steps-reached-batch
+ *
+ * Batch-record multiple routine steps reached in a single request.
+ * Used at routine completion instead of per-step calls (M12 audit fix).
+ */
+export async function recordRoutineStepsReachedBatch(
+  routineId: string,
+  steps: Array<{ stepId: string; date: string; variantId?: string }>
+): Promise<void> {
+  if (steps.length === 0) return;
+  await apiRequest<{ data?: unknown }>('/evidence/steps-reached-batch', {
+    method: 'POST',
+    body: JSON.stringify({ routineId, steps }),
   });
 }
 

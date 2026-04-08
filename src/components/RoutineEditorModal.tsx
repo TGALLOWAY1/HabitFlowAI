@@ -63,7 +63,7 @@ export const RoutineEditorModal: React.FC<RoutineEditorModalProps> = ({
     initialVariantId,
     onClose,
 }) => {
-    const { addRoutine, updateRoutine, refreshRoutines } = useRoutineStore();
+    const { addRoutine, updateRoutine } = useRoutineStore();
     const { categories, habits, updateHabit } = useHabitStore();
 
     // Form State
@@ -102,7 +102,6 @@ export const RoutineEditorModal: React.FC<RoutineEditorModalProps> = ({
             const result = await uploadRoutineImage(routineId, file);
             await updateRoutine(routineId, { imageId: result.imageId });
             setCurrentRoutineImageUrl(result.imageUrl);
-            await refreshRoutines();
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : 'Failed to upload image.';
             setRoutineImageError(errorMessage);
@@ -392,7 +391,6 @@ export const RoutineEditorModal: React.FC<RoutineEditorModalProps> = ({
                                                                 await deleteRoutineImage(initialRoutine.id);
                                                                 await updateRoutine(initialRoutine.id, { imageId: undefined });
                                                                 setCurrentRoutineImageUrl(null);
-                                                                await refreshRoutines();
                                                             } catch (error) {
                                                                 setRoutineImageError('Failed to delete image.');
                                                             }

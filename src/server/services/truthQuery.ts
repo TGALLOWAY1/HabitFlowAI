@@ -43,7 +43,10 @@ export async function getEntryViewsForHabit(
   userId: string,
   args: { startDayKey?: DayKey; endDayKey?: DayKey; timeZone: string }
 ): Promise<EntryView[]> {
-  const entries = await getHabitEntriesByHabit(habitId, householdId, userId);
+  const entries = await getHabitEntriesByHabit(habitId, householdId, userId, {
+    startDayKey: args.startDayKey,
+    endDayKey: args.endDayKey,
+  });
   const entryViews = entries.map(entry => mapEntryToView(entry, args.timeZone));
 
   const filteredViews = entryViews.filter(view => {
@@ -72,6 +75,8 @@ export async function getEntryViewsForHabits(
 ): Promise<EntryView[]> {
   const entries = await getHabitEntriesByHabitIds(habitIds, householdId, userId, {
     includeDeleted: args.includeDeleted,
+    startDayKey: args.startDayKey,
+    endDayKey: args.endDayKey,
   });
   return buildEntryViewsFromEntries(entries, habitIds, args);
 }

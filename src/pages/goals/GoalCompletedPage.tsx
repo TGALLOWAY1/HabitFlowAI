@@ -4,6 +4,26 @@ import { useGoalDetail } from '../../lib/useGoalDetail';
 import { format, parseISO, differenceInDays } from 'date-fns';
 import { Loader2 } from 'lucide-react';
 import { CelebratoryBadgeIcon } from '../../components/goals/CelebratoryBadgeIcon';
+import { getCachedGoalsWithProgress, getCachedCompletedGoals } from '../../lib/goalDataCache';
+import type { Goal } from '../../types';
+
+/**
+ * Try to find goal metadata from already-cached data (goals-with-progress or completed-goals).
+ * Avoids a full detail fetch when the goal is already in memory.
+ */
+function findGoalInCache(goalId: string): Goal | null {
+    const goalsWithProgress = getCachedGoalsWithProgress();
+    if (goalsWithProgress) {
+        const match = goalsWithProgress.find(g => g.goal.id === goalId);
+        if (match) return match.goal;
+    }
+    const completedGoals = getCachedCompletedGoals();
+    if (completedGoals) {
+        const match = completedGoals.find(g => g.id === goalId);
+        if (match) return match;
+    }
+    return null;
+}
 
 interface GoalCompletedPageProps {
     goalId: string;
@@ -19,6 +39,9 @@ interface GoalCompletedPageProps {
  * Celebration page shown when a goal is completed.
  * Displays confetti animation and goal completion details.
  * This is the first screen users see when they finish a goal.
+ *
+ * Performance: checks goal caches first to avoid a full detail fetch
+ * when goal metadata is already in memory (M17 audit fix).
  */
 export const GoalCompletedPage: React.FC<GoalCompletedPageProps> = ({
     goalId,
@@ -29,7 +52,10 @@ export const GoalCompletedPage: React.FC<GoalCompletedPageProps> = ({
     onRepeat,
     onArchive,
 }) => {
-    const { data, loading } = useGoalDetail(goalId);
+    // Check caches first — only fetch detail as fallback
+    const cachedGoal = useMemo(() => findGoalInCache(goalId), [goalId]);
+    const { data, loading } = useGoalDetail(cachedGoal ? '' : goalId);
+    const goal = cachedGoal ?? data?.goal;
     const [showConfetti, setShowConfetti] = useState(true);
 
     // Hide confetti after animation completes
@@ -42,18 +68,18 @@ export const GoalCompletedPage: React.FC<GoalCompletedPageProps> = ({
 
     // Calculate time span (must be before early returns to satisfy Rules of Hooks)
     const timeSpan = useMemo(() => {
-        if (!data?.goal.createdAt || !data?.goal.completedAt) return null;
+        if (!goal?.createdAt || !goal?.completedAt) return null;
         try {
-            const startDate = parseISO(data.goal.createdAt);
-            const endDate = parseISO(data.goal.completedAt);
+            const startDate = parseISO(goal.createdAt);
+            const endDate = parseISO(goal.completedAt);
             const days = differenceInDays(endDate, startDate);
             return days;
         } catch {
             return null;
         }
-    }, [data?.goal.createdAt, data?.goal.completedAt]);
+    }, [goal?.createdAt, goal?.completedAt]);
 
-    if (loading) {
+    if (!cachedGoal && loading) {
         return (
             <div className="w-full max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
                 <div className="flex flex-col items-center gap-4 py-12">
@@ -64,7 +90,7 @@ export const GoalCompletedPage: React.FC<GoalCompletedPageProps> = ({
         );
     }
 
-    if (!data) {
+    if (!goal) {
         return (
             <div className="w-full max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
                 <div className="text-center py-12 text-neutral-500">
@@ -73,8 +99,6 @@ export const GoalCompletedPage: React.FC<GoalCompletedPageProps> = ({
             </div>
         );
     }
-
-    const { goal } = data;
 
     // Format dates for display
     const createdDateFormatted = goal.createdAt

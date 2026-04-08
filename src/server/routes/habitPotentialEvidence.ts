@@ -91,11 +91,89 @@ router.post('/step-reached', async (req, res) => {
 });
 
 /**
+ * POST /api/evidence/steps-reached-batch
+ *
+ * Records multiple routine steps reached in a single request.
+ * Replaces per-step POST calls during routine execution (M12 audit fix).
+ *
+ * Body: { routineId, steps: [{ stepId, date, variantId? }] }
+ */
+router.post('/steps-reached-batch', async (req, res) => {
+    try {
+        const { householdId, userId } = getRequestIdentity(req);
+        const { routineId, steps } = req.body;
+
+        if (!routineId || !Array.isArray(steps) || steps.length === 0) {
+            return res.status(400).json({ error: 'Missing required fields: routineId, steps[]' });
+        }
+
+        const routine = await getRoutine(householdId, userId, routineId);
+        if (!routine) {
+            return res.status(404).json({ error: 'Routine not found' });
+        }
+
+        const results: Array<{ stepId: string; status: string }> = [];
+
+        for (const { stepId, date, variantId } of steps) {
+            if (!stepId || !date) {
+                results.push({ stepId: stepId || 'unknown', status: 'skipped' });
+                continue;
+            }
+
+            const exists = await evidenceExistsForStep(routineId, stepId, date, householdId, userId);
+            if (exists) {
+                results.push({ stepId, status: 'exists' });
+                continue;
+            }
+
+            // Find step in variant or root steps
+            let step = null;
+            if (variantId && routine.variants) {
+                const variant = routine.variants.find(v => v.id === variantId);
+                if (variant) step = variant.steps.find(s => s.id === stepId);
+            }
+            if (!step) {
+                if (routine.variants) {
+                    for (const v of routine.variants) {
+                        step = v.steps.find(s => s.id === stepId);
+                        if (step) break;
+                    }
+                }
+                if (!step) step = routine.steps.find(s => s.id === stepId);
+            }
+
+            if (!step || !step.linkedHabitId) {
+                results.push({ stepId, status: step ? 'ignored' : 'not_found' });
+                continue;
+            }
+
+            await createPotentialEvidence({
+                habitId: step.linkedHabitId,
+                routineId,
+                stepId,
+                date,
+                timestamp: new Date().toISOString(),
+                source: 'routine-step',
+                ...(variantId ? { variantId } : {}),
+            }, householdId, userId);
+
+            results.push({ stepId, status: 'created' });
+        }
+
+        res.status(201).json({ data: { results } });
+
+    } catch (error) {
+        console.error('Error recording batch step evidence:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+/**
  * GET /api/evidence
- * 
+ *
  * Get potential evidence for a specific day.
  * Query: ?date=YYYY-MM-DD
- * 
+ *
  * Returns: { data: { evidence: HabitPotentialEvidence[] } }
  */
 router.get('/', async (req, res) => {

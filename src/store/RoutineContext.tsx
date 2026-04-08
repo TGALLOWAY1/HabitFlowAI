@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo, useRef } from 'react';
 import type { Routine, RoutineLog } from '../models/persistenceTypes';
 import type { StepStatus } from '../models/persistenceTypes';
 import {
@@ -7,7 +7,7 @@ import {
     createRoutine as createRoutineApi,
     updateRoutine as updateRoutineApi,
     deleteRoutine as deleteRoutineApi,
-    recordRoutineStepReached,
+    recordRoutineStepsReachedBatch,
 } from '../lib/persistenceClient';
 import { resolveSteps } from '../lib/routineVariantUtils';
 
@@ -76,6 +76,9 @@ export const RoutineProvider: React.FC<{ children: React.ReactNode }> = ({ child
     const [startedAt, setStartedAt] = useState<string | null>(null);
     const [stepTrackingData, setStepTrackingData] = useState<Record<string, Record<string, string | number>>>({});
     const [stepTimingData, setStepTimingData] = useState<Record<string, number>>({});
+
+    // Accumulate reached steps with linked habits for batch submission (M12 audit fix)
+    const reachedStepsRef = useRef<Array<{ stepId: string; date: string; variantId?: string }>>([]);
 
     // Load routines from MongoDB on mount
     useEffect(() => {
@@ -218,6 +221,16 @@ export const RoutineProvider: React.FC<{ children: React.ReactNode }> = ({ child
     };
 
     const exitRoutine = () => {
+        // Batch-submit accumulated step evidence before clearing state (M12 audit fix)
+        const routineId = activeRoutine?.id;
+        const pendingSteps = reachedStepsRef.current;
+        if (routineId && pendingSteps.length > 0) {
+            recordRoutineStepsReachedBatch(routineId, pendingSteps).catch(err =>
+                console.error('Failed to batch-record step evidence:', err)
+            );
+        }
+        reachedStepsRef.current = [];
+
         setExecutionState('browse');
         setActiveRoutine(null);
         setActiveVariantId(null);
@@ -267,21 +280,21 @@ export const RoutineProvider: React.FC<{ children: React.ReactNode }> = ({ child
         nextStep();
     };
 
-    // Monitor step changes in Execute mode to generate evidence
+    // Accumulate reached steps with linked habits for batch submission on exit (M12 audit fix)
     useEffect(() => {
         if (executionState === 'execute' && activeRoutine) {
             const steps = resolveSteps(activeRoutine, activeVariantId || undefined);
             const step = steps[currentStepIndex];
             if (step && step.linkedHabitId) {
                 const today = new Date().toLocaleDateString('en-CA');
-                recordRoutineStepReached(
-                    activeRoutine.id,
-                    step.id,
-                    today,
-                    activeVariantId || undefined
-                ).catch(err =>
-                    console.error('Failed to record potential evidence:', err)
-                );
+                const alreadyRecorded = reachedStepsRef.current.some(s => s.stepId === step.id);
+                if (!alreadyRecorded) {
+                    reachedStepsRef.current.push({
+                        stepId: step.id,
+                        date: today,
+                        ...(activeVariantId ? { variantId: activeVariantId } : {}),
+                    });
+                }
             }
         }
     }, [executionState, activeRoutine, activeVariantId, currentStepIndex]);
