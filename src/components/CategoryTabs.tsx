@@ -2,6 +2,7 @@ import React from 'react';
 import { useHabitStore } from '../store/HabitContext';
 import type { Category } from '../types';
 import { Plus, X, Check } from 'lucide-react';
+import { nextCategoryColor } from '../utils/categoryColors';
 import {
     DndContext,
     closestCenter,
@@ -147,7 +148,6 @@ const SortableCategoryPill: React.FC<SortableCategoryPillProps> = ({
             ref={setNodeRef}
             style={style}
             {...attributes}
-            {...dragProps}
             className={`relative group ${reorderMode ? 'animate-wiggle' : ''}`}
             onDoubleClick={(e) => {
                 e.stopPropagation();
@@ -157,6 +157,7 @@ const SortableCategoryPill: React.FC<SortableCategoryPillProps> = ({
             onPointerUp={handleLongPressCancel}
             onPointerLeave={handleLongPressCancel}
             onPointerCancel={handleLongPressCancel}
+            {...dragProps}
         >
             <button
                 onClick={reorderMode ? undefined : onSelect}
@@ -244,7 +245,7 @@ export const CategoryTabs: React.FC<CategoryTabsProps> = ({
             // Close form immediately — optimistic UI shows the tab right away
             setNewCategoryName('');
             setIsAdding(false);
-            await addCategory({ name: trimmed, color: 'bg-neutral-600' });
+            await addCategory({ name: trimmed, color: nextCategoryColor(categories) });
         } catch (error) {
             const msg = error instanceof Error ? error.message : 'Failed to add category';
             setAddCategoryError(msg.includes('already exists') ? 'Category already exists. Choose a different name.' : msg);

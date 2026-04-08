@@ -10,6 +10,7 @@ import { format } from 'date-fns';
 import { getBundleMemberships, createBundleMembership, endBundleMembership } from '../lib/persistenceClient';
 import { BundlePickerModal } from './BundlePickerModal';
 import { ConvertBundleConfirmModal } from './ConvertBundleConfirmModal';
+import { nextCategoryColor } from '../utils/categoryColors';
 
 interface AddHabitModalProps {
     isOpen: boolean;
@@ -650,7 +651,7 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                                                         (async () => {
                                                             setIsSubmittingCategory(true);
                                                             try {
-                                                                const newCat = await addCategory({ name: newCategoryName.trim(), color: 'bg-emerald-500' });
+                                                                const newCat = await addCategory({ name: newCategoryName.trim(), color: nextCategoryColor(categories) });
                                                                 setSelectedCategoryId(newCat.id);
                                                                 setIsCreatingCategory(false);
                                                                 setNewCategoryName('');
@@ -675,7 +676,7 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                                                 if (!newCategoryName.trim()) return;
                                                 setIsSubmittingCategory(true);
                                                 try {
-                                                    const newCat = await addCategory({ name: newCategoryName.trim(), color: 'bg-emerald-500' });
+                                                    const newCat = await addCategory({ name: newCategoryName.trim(), color: nextCategoryColor(categories) });
                                                     setSelectedCategoryId(newCat.id);
                                                     setIsCreatingCategory(false);
                                                     setNewCategoryName('');
