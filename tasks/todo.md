@@ -238,15 +238,15 @@ Comprehensive audit identified **34 distinct issues** across the entire applicat
 - [x] H7: Consolidate TrackerGrid refresh pattern (debounced refreshProgress, 9 calls → 1 coalesced)
 - [x] M18: Use targeted goal cache invalidation instead of clearing all (removed 6 redundant invalidateAllGoalCaches calls)
 
-### Phase 2: High Impact (2-3 days)
-- [ ] C3: Migrate to single wellbeing collection
-- [ ] C5/M10: Unify goal data caching across hooks
-- [ ] H1: Reuse HabitContext data in GoalDetailPage
-- [ ] H5/H6: Add journal date filtering + optimistic updates
-- [ ] M14: Add TTL freshness check before background refetch
-- [ ] M15: Add cache invalidation listener to useCompletedGoals
+### Phase 2: High Impact (2-3 days) ✅ COMPLETED
+- [x] C5/M10: Unify goal data caching — cross-populate goals-with-progress cache from progress overview
+- [x] H1: GoalDetailPage derives entries from HabitContext logs (eliminated N API calls per linked habit)
+- [x] H5/H6: Journal date filtering (90-day default window) + optimistic updates (no remount refetch)
+- [x] M14: TTL freshness check — skip background refetch when cache is still within 30s TTL
+- [x] M15: Cache invalidation listener on useCompletedGoals (already implemented)
 
 ### Phase 3: Medium Impact (3-5 days)
+- [ ] C3: Migrate to single wellbeing collection (moved from Phase 2 — complex multi-component migration)
 - [ ] M1: Lazy-load context providers by route (or bootstrap endpoint)
 - [ ] M2: Reduce HabitContext window from 400 to 90 days
 - [ ] M5: Targeted routine state updates instead of full refresh
