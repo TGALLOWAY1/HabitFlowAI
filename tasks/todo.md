@@ -231,12 +231,12 @@ Comprehensive audit identified **34 distinct issues** across the entire applicat
 
 ## Recommended Fix Priority
 
-### Phase 1: Highest ROI (1-2 days)
-- [ ] C1: Add batch image query, fix N+1 in routine list
-- [ ] C2: Fix N+1 in goal habit validation
-- [ ] C4: Add session caching middleware
-- [ ] H7: Consolidate TrackerGrid refresh pattern
-- [ ] M18: Use targeted goal cache invalidation instead of clearing all
+### Phase 1: Highest ROI (1-2 days) ✅ COMPLETED
+- [x] C1: Add batch image query, fix N+1 in routine list (already fixed)
+- [x] C2: Fix N+1 in goal habit validation (already fixed)
+- [x] C4: Add session caching middleware (fixed in Phase 3 caching PR)
+- [x] H7: Consolidate TrackerGrid refresh pattern (debounced refreshProgress, 9 calls → 1 coalesced)
+- [x] M18: Use targeted goal cache invalidation instead of clearing all (removed 6 redundant invalidateAllGoalCaches calls)
 
 ### Phase 2: High Impact (2-3 days)
 - [ ] C3: Migrate to single wellbeing collection

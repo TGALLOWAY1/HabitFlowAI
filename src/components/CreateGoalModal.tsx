@@ -2,7 +2,6 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { X, Target, CalendarCheck, Plus, Search, Loader2, AlertCircle, Calendar, ChevronLeft } from 'lucide-react';
 import { useHabitStore } from '../store/HabitContext';
 import { createGoal } from '../lib/persistenceClient';
-import { invalidateAllGoalCaches } from '../lib/goalDataCache';
 import { HabitCreationInlineModal } from './HabitCreationInlineModal';
 
 interface CreateGoalModalProps {
@@ -159,7 +158,6 @@ export const CreateGoalModal: React.FC<CreateGoalModalProps> = ({ isOpen, onClos
                 categoryId: categoryId || undefined,
             });
 
-            invalidateAllGoalCaches();
             onClose();
         } catch (err) {
             const errorMessage = err instanceof Error ? err.message : 'Failed to create goal';
