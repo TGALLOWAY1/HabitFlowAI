@@ -10,6 +10,7 @@
  */
 
 import { updateGoal } from '../repositories/goalRepository';
+import type { Goal } from '../../models/persistenceTypes';
 
 // ---------------------------------------------------------------------------
 // Configuration
@@ -199,4 +200,58 @@ export async function generateBadgeForGoal(
     const msg = error instanceof Error ? error.message : String(error);
     console.error(`[BadgeGen] Failed for goal ${goalId}: ${msg}`);
   }
+}
+
+// ---------------------------------------------------------------------------
+// Badge backfill for existing goals
+// ---------------------------------------------------------------------------
+
+/** Track goals already queued for backfill to avoid duplicate API calls. */
+const backfillAttempted = new Set<string>();
+
+/**
+ * Returns true if a goal's badge should be regenerated.
+ *
+ * Triggers on:
+ *  - Missing badgeImageUrl (never generated or generation failed)
+ *  - badgeImageUrl with hardcoded image/png MIME (from the old buggy code that
+ *    always labelled images as PNG regardless of actual format)
+ */
+function needsBadgeRegeneration(goal: Goal): boolean {
+  if (!goal.badgeImageUrl) return true;
+  if (goal.badgeImageUrl.startsWith('data:image/png;base64,')) return true;
+  return false;
+}
+
+/**
+ * Fire-and-forget backfill of badges for goals that are missing them or have
+ * corrupt data URLs from the old generation code.
+ *
+ * Designed to be called after responding to the client — never blocks the
+ * HTTP response.  Uses an in-memory Set so each goal is only attempted once
+ * per server lifetime.
+ */
+export function backfillGoalBadges(
+  goals: Goal[],
+  householdId: string,
+  userId: string,
+): void {
+  const candidates = goals.filter(
+    g => !backfillAttempted.has(g.id) && needsBadgeRegeneration(g),
+  );
+  if (candidates.length === 0) return;
+
+  console.log(`[BadgeGen] Backfilling badges for ${candidates.length} goal(s)`);
+
+  for (const goal of candidates) {
+    backfillAttempted.add(goal.id);
+  }
+
+  // Stagger calls to avoid hammering the HF API
+  candidates.forEach((goal, i) => {
+    setTimeout(
+      () => generateBadgeForGoal(goal.id, goal.title, householdId, userId),
+      i * 2000,
+    );
+  });
 }
