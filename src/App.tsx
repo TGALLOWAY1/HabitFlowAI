@@ -23,7 +23,6 @@ import { Plus } from 'lucide-react';
 import type { Routine, Habit } from './types';
 import { CreateGoalModal } from './components/CreateGoalModal';
 import { iterateGoal, createGoal, fetchGoal } from './lib/persistenceClient';
-import { invalidateAllGoalCaches } from './lib/goalDataCache';
 import { DayView } from './components/day-view/DayView';
 import { ScheduleView } from './components/day-view/ScheduleView';
 import { DevIdentityPanel } from './components/DevIdentityPanel';
@@ -422,7 +421,6 @@ const HabitTrackerContent: React.FC = () => {
                 const original = await fetchGoal(goalId);
                 const { id, createdAt, completedAt, sortOrder, ...goalData } = original;
                 await createGoal(goalData);
-                invalidateAllGoalCaches();
                 setCompletedGoalId(null);
                 handleNavigate('goals');
               } catch (err) {

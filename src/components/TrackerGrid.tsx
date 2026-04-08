@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { format, eachDayOfInterval, subDays, isToday } from 'date-fns';
 import { type Habit, type DayLog, type Routine, type HabitPotentialEvidence } from '../types';
 import { cn } from '../utils/cn';
@@ -814,6 +814,23 @@ export const TrackerGrid = ({
     const { data: progressData, refresh: refreshProgress } = useProgressOverview();
     const { showToast } = useToast();
 
+    // Debounce refreshProgress to coalesce rapid mutations (e.g., toggling multiple cells)
+    // into a single HTTP request. Optimistic UI via habitProgressMap provides instant feedback.
+    const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const debouncedRefreshProgress = useCallback(() => {
+        if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
+        refreshTimerRef.current = setTimeout(() => {
+            refreshTimerRef.current = null;
+            refreshProgress();
+        }, 300);
+    }, [refreshProgress]);
+
+    useEffect(() => {
+        return () => {
+            if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
+        };
+    }, []);
+
     const [contextMenu, setContextMenu] = useState<{
         x: number;
         y: number;
@@ -944,7 +961,7 @@ export const TrackerGrid = ({
     const handleClearEntry = async (habitId: string, dateStr: string) => {
         try {
             await deleteHabitEntryByKey(habitId, dateStr);
-            refreshProgress();
+            debouncedRefreshProgress();
             showToast('Entry cleared', 'success');
         } catch (err) {
             console.error('Failed to clear entry:', err);
@@ -1036,7 +1053,7 @@ export const TrackerGrid = ({
         if (!habit) return;
 
         await toggleHabit(habitId, date);
-        refreshProgress();
+        debouncedRefreshProgress();
     };
 
     // Choice Log Handlers (Legacy — used by HabitLogModal for pre-migration bundleOptions)
@@ -1055,7 +1072,7 @@ export const TrackerGrid = ({
             value: payload.value,
             unitSnapshot: payload.unitSnapshot
         });
-        refreshProgress();
+        debouncedRefreshProgress();
     };
 
     const handleOpenPopover = (e: React.MouseEvent, habit: Habit, date: string, val: number) => {
@@ -1090,7 +1107,7 @@ export const TrackerGrid = ({
                     } else {
                         // Toggle off: delete child entry
                         await deleteHabitEntryByKey(habit.id, dateStr);
-                        refreshProgress();
+                        debouncedRefreshProgress();
                     }
                     return;
                 }
@@ -1117,7 +1134,7 @@ export const TrackerGrid = ({
                         value: 1
                     });
                 }
-                refreshProgress();
+                debouncedRefreshProgress();
             } else {
                 const position = getPopoverPosition(e);
                 setPopoverState({
@@ -1145,7 +1162,7 @@ export const TrackerGrid = ({
             if (hasExistingEntry) {
                 try {
                     await deleteHabitEntryByKey(habit.id, dateStr);
-                    refreshProgress();
+                    debouncedRefreshProgress();
                 } catch (error) {
                     console.error('Failed to delete habit entry in delete mode:', error);
                 }
@@ -1372,7 +1389,7 @@ export const TrackerGrid = ({
                         } else {
                             await upsertHabitEntry(habitId, date, { value: val });
                         }
-                        refreshProgress();
+                        debouncedRefreshProgress();
                         setPopoverState(prev => ({ ...prev, isOpen: false }));
                     } catch (error) {
                         console.error('Failed to update log:', error);
@@ -1385,7 +1402,7 @@ export const TrackerGrid = ({
                 onClear={popoverState.initialValue > 0 ? async () => {
                     try {
                         await deleteHabitEntryByKey(popoverState.habitId, popoverState.date);
-                        refreshProgress();
+                        debouncedRefreshProgress();
                         showToast('Entry cleared', 'success');
                     } catch (err) {
                         console.error('Failed to clear entry:', err);

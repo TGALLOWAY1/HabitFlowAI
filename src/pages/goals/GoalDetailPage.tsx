@@ -16,7 +16,6 @@ import { format, parseISO } from 'date-fns';
 import { DeleteGoalConfirmModal } from '../../components/goals/DeleteGoalConfirmModal';
 import { EditGoalModal } from '../../components/goals/EditGoalModal';
 import { deleteGoal, markGoalAsCompleted, fetchHabitEntries, getLocalTimeZone, createGoal } from '../../lib/persistenceClient';
-import { invalidateAllGoalCaches } from '../../lib/goalDataCache';
 import { GoalStatusChip } from '../../components/goals/GoalSharedComponents';
 import { GoalTrendChart } from '../../components/goals/GoalTrendChart';
 
@@ -193,7 +192,6 @@ export const GoalDetailPage: React.FC<GoalDetailPageProps> = ({ goalId, onBack, 
     const handleDeleteGoal = async () => {
         try {
             await deleteGoal(goalId);
-            invalidateAllGoalCaches();
             if (onBack) onBack();
         } catch (err) {
             console.error('Error deleting goal:', err);
@@ -204,7 +202,6 @@ export const GoalDetailPage: React.FC<GoalDetailPageProps> = ({ goalId, onBack, 
         setIsMarkingComplete(true);
         try {
             await markGoalAsCompleted(goalId);
-            invalidateAllGoalCaches();
             setShowCompleteConfirm(false);
             if (onNavigateToCompleted) onNavigateToCompleted(goalId);
             else refetch();
@@ -250,8 +247,6 @@ export const GoalDetailPage: React.FC<GoalDetailPageProps> = ({ goalId, onBack, 
                 notes: goal.notes,
             });
 
-            invalidateAllGoalCaches();
-
             // Navigate to the new active goal
             if (onViewGoal) {
                 onViewGoal(newGoal.id);
@@ -278,7 +273,6 @@ export const GoalDetailPage: React.FC<GoalDetailPageProps> = ({ goalId, onBack, 
             if ((previousPercentRef.current === null || previousPercentRef.current < 100)) {
                 isCompletingRef.current = true;
                 markGoalAsCompleted(goalId).then(() => {
-                    invalidateAllGoalCaches();
                     refetch();
                     if (onNavigateToCompleted) onNavigateToCompleted(goalId);
                 }).catch(err => {
