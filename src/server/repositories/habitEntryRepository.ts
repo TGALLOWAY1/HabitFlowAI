@@ -101,17 +101,27 @@ export async function getHabitEntries(
 
 /**
  * Get habit entries by habit ID (scoped to household + user).
+ * Supports optional dayKey range filtering at the DB level.
  */
 export async function getHabitEntriesByHabit(
     habitId: string,
     householdId: string,
-    userId: string
+    userId: string,
+    options?: { startDayKey?: string; endDayKey?: string }
 ): Promise<HabitEntry[]> {
     const db = await getDb();
     const collection = db.collection(COLLECTION_NAME);
 
+    const filter: Record<string, unknown> = { habitId, deletedAt: { $exists: false } };
+    if (options?.startDayKey || options?.endDayKey) {
+        const dayKeyFilter: Record<string, string> = {};
+        if (options.startDayKey) dayKeyFilter.$gte = options.startDayKey;
+        if (options.endDayKey) dayKeyFilter.$lte = options.endDayKey;
+        filter.dayKey = dayKeyFilter;
+    }
+
     const documents = await collection
-        .find(scopeFilter(householdId, userId, { habitId, deletedAt: { $exists: false } }))
+        .find(scopeFilter(householdId, userId, filter))
         .sort({ timestamp: -1 })
         .toArray();
 
@@ -419,7 +429,7 @@ export async function getHabitEntriesByHabitIds(
     habitIds: string[],
     householdId: string,
     userId: string,
-    options?: { includeDeleted?: boolean }
+    options?: { includeDeleted?: boolean; startDayKey?: string; endDayKey?: string }
 ): Promise<HabitEntry[]> {
     if (habitIds.length === 0) return [];
 
@@ -429,6 +439,12 @@ export async function getHabitEntriesByHabitIds(
     const filter: Record<string, unknown> = { habitId: { $in: habitIds } };
     if (!options?.includeDeleted) {
         filter.deletedAt = { $exists: false };
+    }
+    if (options?.startDayKey || options?.endDayKey) {
+        const dayKeyFilter: Record<string, string> = {};
+        if (options.startDayKey) dayKeyFilter.$gte = options.startDayKey;
+        if (options.endDayKey) dayKeyFilter.$lte = options.endDayKey;
+        filter.dayKey = dayKeyFilter;
     }
 
     const documents = await collection

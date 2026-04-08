@@ -14,8 +14,9 @@ import {
     deleteHabit as deleteHabitApi,
     fetchDaySummary,
 
-    fetchWellbeingLogs,
-    saveWellbeingLog,
+    fetchWellbeingEntries,
+    upsertWellbeingEntries,
+    aggregateEntriesToDailyWellbeing,
     reorderHabits as reorderHabitsApi,
     updateCategory as updateCategoryApi,
     createHabitEntry,
@@ -26,6 +27,8 @@ import {
     upsertHabitEntry,
     deleteHabitEntryByKey,
 } from '../lib/persistenceClient';
+import type { WellbeingMetricKey } from '../models/persistenceTypes';
+import { WELLBEING_METRIC_KEYS } from '../models/persistenceTypes';
 
 interface HabitContextType {
     categories: Category[];
@@ -120,38 +123,22 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         }
     }, []);
 
-    // Helper function to load wellbeing logs
+    // Load wellbeing data from canonical wellbeingEntries collection (C3 audit fix)
     const loadWellbeingLogsFromApi = useCallback(async () => {
         try {
-            if (__DEV__) console.log('[loadWellbeingLogsFromApi] Fetching wellbeing logs from API...');
-            const apiWellbeingLogs = await fetchWellbeingLogs();
-            if (__DEV__) console.log('[loadWellbeingLogsFromApi] Received wellbeing logs from API:', {
-                count: Object.keys(apiWellbeingLogs).length,
-                keys: Object.keys(apiWellbeingLogs),
-                logs: apiWellbeingLogs
-            });
+            if (__DEV__) console.log('[loadWellbeingLogsFromApi] Fetching from wellbeingEntries...');
+            const { startDayKey, endDayKey } = getCanonicalSummaryWindow();
+            const entries = await fetchWellbeingEntries({ startDayKey, endDayKey });
+            const aggregated = aggregateEntriesToDailyWellbeing(entries);
 
-            // Defensive: Ensure all logs have a valid date field and filter out any that don't
-            // Also ensure the Record keys match the date field in each log
-            const validatedLogs: Record<string, DailyWellbeing> = {};
-            for (const [key, log] of Object.entries(apiWellbeingLogs)) {
-                if (log && typeof log === 'object' && log.date && typeof log.date === 'string') {
-                    // Use log.date as the canonical key (not the Record key, in case they differ)
-                    validatedLogs[log.date] = log;
-                    if (__DEV__) console.log(`[loadWellbeingLogsFromApi] Validated log for date: ${log.date}`);
-                } else {
-                    console.warn(`[loadWellbeingLogsFromApi] Skipping wellbeing log with invalid or missing date field. Key: ${key}`, log);
-                }
-            }
-
-            if (__DEV__) console.log('[loadWellbeingLogsFromApi] Setting validated logs:', {
-                count: Object.keys(validatedLogs).length,
-                dates: Object.keys(validatedLogs)
+            if (__DEV__) console.log('[loadWellbeingLogsFromApi] Aggregated entries:', {
+                entryCount: entries.length,
+                dayCount: Object.keys(aggregated).length,
             });
-            setWellbeingLogs(validatedLogs);
+            setWellbeingLogs(aggregated);
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-            console.error('[loadWellbeingLogsFromApi] Failed to fetch wellbeing logs from API:', errorMessage, error);
+            console.error('[loadWellbeingLogsFromApi] Failed to fetch wellbeing entries:', errorMessage, error);
             setLastPersistenceError("Couldn't load wellbeing logs. Some data may be missing.");
         }
     }, []);
@@ -255,14 +242,11 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         const previousWellbeingLogs = wellbeingLogs;
 
         // Merge with existing data for the date
-        // Ensure date is always set to the parameter value (not from data.date which might differ)
         const existing = wellbeingLogs[date] || { date };
         const mergedData: DailyWellbeing = {
             ...existing,
             ...data,
-            // Always use the date parameter as the canonical date key
             date: date,
-            // Deep merge morning/evening if provided, preserving the other if not
             morning: data.morning ? { ...existing.morning, ...data.morning } : existing.morning,
             evening: data.evening ? { ...existing.evening, ...data.evening } : existing.evening,
         };
@@ -274,12 +258,32 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         // Optimistic update: update state immediately
         setWellbeingLogs(updatedWellbeingLogs);
 
-        // Save to MongoDB
+        // Derive WellbeingEntry upsert inputs from the merged session data (C3 audit fix)
+        const upsertInputs: Array<{
+            dayKey: string;
+            timeOfDay?: 'morning' | 'evening' | null;
+            metricKey: WellbeingMetricKey;
+            value: number | string | null;
+            source: 'checkin';
+        }> = [];
+
+        const addSession = (timeOfDay: 'morning' | 'evening', session: Record<string, unknown> | undefined) => {
+            if (!session) return;
+            for (const key of WELLBEING_METRIC_KEYS) {
+                const value = session[key];
+                if (value !== undefined) {
+                    upsertInputs.push({ dayKey: date, timeOfDay, metricKey: key, value: value as number | string | null, source: 'checkin' });
+                }
+            }
+        };
+        addSession('morning', mergedData.morning as Record<string, unknown> | undefined);
+        addSession('evening', mergedData.evening as Record<string, unknown> | undefined);
+
+        // Save to canonical wellbeingEntries collection
         try {
-            await saveWellbeingLog(mergedData);
+            await upsertWellbeingEntries({ entries: upsertInputs });
         } catch (error) {
-            console.error('Failed to save wellbeing log to API:', error instanceof Error ? error.message : 'Unknown error');
-            // Rollback to previous state
+            console.error('Failed to save wellbeing entries:', error instanceof Error ? error.message : 'Unknown error');
             setWellbeingLogs(previousWellbeingLogs);
             setLastPersistenceError("Some changes couldn't be saved. Please try again.");
         }

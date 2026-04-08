@@ -245,12 +245,12 @@ Comprehensive audit identified **34 distinct issues** across the entire applicat
 - [x] M14: TTL freshness check — skip background refetch when cache is still within 30s TTL
 - [x] M15: Cache invalidation listener on useCompletedGoals (already implemented)
 
-### Phase 3: Medium Impact (3-5 days)
-- [ ] C3: Migrate to single wellbeing collection (moved from Phase 2 — complex multi-component migration)
-- [ ] M1: Lazy-load context providers by route (or bootstrap endpoint)
-- [ ] M2: Reduce HabitContext window from 400 to 90 days
-- [ ] M5: Targeted routine state updates instead of full refresh
-- [ ] M8: Push date range filtering to MongoDB query level
-- [ ] M12: Batch routine step evidence submissions
-- [ ] M16: Check cache TTL before WinArchivePage force-refetch
-- [ ] M17: Use lightweight endpoint for GoalCompletedPage
+### Phase 3: Medium Impact (3-5 days) ✅ COMPLETED
+- [x] C3: Migrate to single wellbeing collection — frontend reads/writes wellbeingEntries only, dual-write adapter removed
+- [ ] M1: Lazy-load context providers by route (deferred — high risk, standalone effort)
+- [x] M2: Reduce HabitContext window from 400 to 90 days (completed in Phase 2 commit 96f7c0a)
+- [x] M5: Targeted routine state updates — removed redundant refreshRoutines() after image upload/delete
+- [x] M8: Push date range filtering to MongoDB query level — startDayKey/endDayKey passed through to repository
+- [x] M12: Batch routine step evidence submissions — accumulated during execution, single batch POST on exit
+- [x] M16: Check cache TTL before WinArchivePage force-refetch (already implemented via useCompletedGoals TTL logic)
+- [x] M17: GoalCompletedPage uses cached goal data from goals-with-progress/completed-goals cache, falls back to detail fetch
