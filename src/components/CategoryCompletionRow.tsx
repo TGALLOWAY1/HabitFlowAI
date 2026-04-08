@@ -4,6 +4,7 @@ import { useHabitStore } from '../store/HabitContext';
 import { getHeatmapColor } from '../utils/analytics';
 import { Tooltip } from 'react-tooltip';
 import { ChevronRight } from 'lucide-react';
+import { resolveTextColorClass } from '../utils/categoryColors';
 
 interface CategoryCompletionRowProps {
     category: any;
@@ -60,19 +61,7 @@ export const CategoryCompletionRow: React.FC<CategoryCompletionRowProps> = React
         return { days: processedDays, totalCompletions: rangeTotal };
     }, [habits, logs, range]);
 
-    // Color helper for category text
-    const colorMap: Record<string, string> = {
-        'bg-emerald-500': 'text-emerald-500',
-        'bg-violet-500': 'text-violet-500',
-        'bg-rose-500': 'text-rose-500',
-        'bg-amber-500': 'text-amber-500',
-        'bg-blue-500': 'text-blue-500',
-        'bg-fuchsia-500': 'text-fuchsia-500',
-        'bg-cyan-500': 'text-cyan-500',
-        'bg-green-500': 'text-green-500',
-        'bg-purple-500': 'text-purple-500',
-    };
-    const textColorClass = colorMap[category.color] || 'text-white';
+    const textColorClass = resolveTextColorClass(category.color);
 
     return (
         <button

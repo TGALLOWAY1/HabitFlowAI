@@ -1,31 +1,7 @@
 import React from 'react';
 import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import type { CategoryBreakdownItem } from '../../lib/analyticsClient';
-
-interface CategoryBreakdownProps {
-  data: CategoryBreakdownItem[] | null;
-  loading: boolean;
-}
-
-function resolveColor(color: string): string {
-  // If it's already a hex/rgb/hsl color, use it directly
-  if (!color.startsWith('bg-')) return color;
-
-  const map: Record<string, string> = {
-    'bg-emerald-500': '#10b981',
-    'bg-blue-500': '#3b82f6',
-    'bg-purple-500': '#a855f7',
-    'bg-red-500': '#ef4444',
-    'bg-orange-500': '#f97316',
-    'bg-yellow-500': '#eab308',
-    'bg-pink-500': '#ec4899',
-    'bg-teal-500': '#14b8a6',
-    'bg-indigo-500': '#6366f1',
-    'bg-cyan-500': '#06b6d4',
-    'bg-neutral-500': '#737373',
-  };
-  return map[color] ?? '#737373';
-}
+import { resolveColorHex } from '../../utils/categoryColors';
 
 const statusColors: Record<string, string> = {
   'Strong': 'bg-emerald-500/15 text-emerald-400',
@@ -77,7 +53,7 @@ export const CategoryBreakdown: React.FC<CategoryBreakdownProps> = ({ data, load
       <div className="space-y-3">
         {data.map(item => {
           const pct = Math.round(item.completionRate * 100);
-          const color = resolveColor(item.color);
+          const color = resolveColorHex(item.color);
           const TrendIcon = trendIcons[item.trendDirection];
           const trendColor = trendColors[item.trendDirection];
           const statusStyle = statusColors[item.status] ?? statusColors['Stable'];
