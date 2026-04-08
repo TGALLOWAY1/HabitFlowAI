@@ -103,18 +103,30 @@ export async function upsertEntryByTemplateAndDate(
 }
 
 /**
- * Get all journal entries for a user.
- * 
+ * Get journal entries for a user, optionally filtered by date range.
+ *
  * @param userId - User ID to filter entries
+ * @param options - Optional date range filters (startDate, endDate as YYYY-MM-DD)
  * @returns Array of entries, sorted by date (desc) then created at (desc)
  */
-export async function getEntriesByUser(userId: string): Promise<JournalEntry[]> {
+export async function getEntriesByUser(
+    userId: string,
+    options?: { startDate?: string; endDate?: string }
+): Promise<JournalEntry[]> {
 
     const db = await getDb();
     const collection = db.collection(COLLECTION_NAME);
 
+    const filter: Record<string, unknown> = { userId };
+    if (options?.startDate || options?.endDate) {
+        const dateFilter: Record<string, string> = {};
+        if (options.startDate) dateFilter.$gte = options.startDate;
+        if (options.endDate) dateFilter.$lte = options.endDate;
+        filter.date = dateFilter;
+    }
+
     const documents = await collection
-        .find({ userId })
+        .find(filter)
         .sort({ date: -1, createdAt: -1 })
         .toArray();
 

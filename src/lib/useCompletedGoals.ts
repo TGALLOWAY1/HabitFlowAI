@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { fetchCompletedGoals } from './persistenceClient';
 import type { CompletedGoal } from '../types';
-import { getCachedCompletedGoals, setCachedCompletedGoals, subscribeToCacheInvalidation } from './goalDataCache';
+import { getCachedCompletedGoals, setCachedCompletedGoals, isCompletedGoalsFresh, subscribeToCacheInvalidation } from './goalDataCache';
 
 /**
  * Hook to fetch completed goals for the Win Archive.
@@ -43,8 +43,8 @@ export function useCompletedGoals(): {
             setGoals(cached);
             setLoading(false);
             setError(undefined);
-            // Still fetch in background to ensure freshness (stale-while-revalidate pattern)
-            // but don't show loading state
+            // Skip background fetch if cache is still fresh within TTL
+            if (isCompletedGoalsFresh()) return;
         } else {
             setLoading(true);
         }

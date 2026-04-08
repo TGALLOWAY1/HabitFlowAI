@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { fetchGoalsWithProgress } from './persistenceClient';
 import type { GoalWithProgress } from '../models/persistenceTypes';
-import { getCachedGoalsWithProgress, setCachedGoalsWithProgress, subscribeToCacheInvalidation } from './goalDataCache';
+import { getCachedGoalsWithProgress, setCachedGoalsWithProgress, isGoalsWithProgressFresh, subscribeToCacheInvalidation } from './goalDataCache';
 
 /**
  * Hook to fetch goals with progress information.
@@ -38,8 +38,8 @@ export function useGoalsWithProgress() {
             setGoals(cached);
             setLoading(false);
             setError(null);
-            // Still fetch in background to ensure freshness (stale-while-revalidate pattern)
-            // but don't show loading state
+            // Skip background fetch if cache is still fresh within TTL
+            if (isGoalsWithProgressFresh()) return;
         } else {
             setLoading(true);
         }

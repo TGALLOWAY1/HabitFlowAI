@@ -45,10 +45,14 @@ async function apiRequest<T>(
 }
 
 /**
- * Fetch all journal entries.
+ * Fetch journal entries, optionally filtered by date range.
  */
-export async function fetchEntries(): Promise<JournalEntry[]> {
-    const response = await apiRequest<{ entries: JournalEntry[] }>('/journal');
+export async function fetchEntries(options?: { startDate?: string; endDate?: string }): Promise<JournalEntry[]> {
+    const params = new URLSearchParams();
+    if (options?.startDate) params.set('startDate', options.startDate);
+    if (options?.endDate) params.set('endDate', options.endDate);
+    const query = params.toString();
+    const response = await apiRequest<{ entries: JournalEntry[] }>(`/journal${query ? `?${query}` : ''}`);
     return response.entries;
 }
 

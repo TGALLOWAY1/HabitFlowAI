@@ -54,8 +54,18 @@ export function subscribeToCacheInvalidation(listener: CacheListener): () => voi
 }
 
 /**
+ * Check if a specific cache key has fresh (non-expired) data.
+ * Use this to skip redundant background refetches when cached data is still within TTL.
+ */
+function isCacheFresh(key: string): boolean {
+    const entry = cache.get(key);
+    if (!entry) return false;
+    return (Date.now() - entry.timestamp) < CACHE_TTL;
+}
+
+/**
  * Get cached data if it exists and is not stale.
- * 
+ *
  * @param key - Cache key
  * @returns Cached data or null if not found/stale
  */
@@ -176,6 +186,13 @@ export function getCachedGoalsWithProgress(): GoalWithProgress[] | null {
 }
 
 /**
+ * Check if goals-with-progress cache is fresh (within TTL).
+ */
+export function isGoalsWithProgressFresh(): boolean {
+    return isCacheFresh(CACHE_KEY_GOALS_WITH_PROGRESS);
+}
+
+/**
  * Set cached goals with progress.
  */
 export function setCachedGoalsWithProgress(data: GoalWithProgress[]): void {
@@ -190,10 +207,22 @@ export function getCachedProgressOverview(): ProgressOverview | null {
 }
 
 /**
+ * Check if progress-overview cache is fresh (within TTL).
+ */
+export function isProgressOverviewFresh(): boolean {
+    return isCacheFresh(CACHE_KEY_PROGRESS_OVERVIEW);
+}
+
+/**
  * Set cached progress overview.
+ * Also cross-populates the goals-with-progress cache to avoid redundant fetches (C5/M10).
  */
 export function setCachedProgressOverview(data: ProgressOverview): void {
     setCached(CACHE_KEY_PROGRESS_OVERVIEW, data);
+    // Cross-populate: progress overview includes goalsWithProgress data
+    if (data.goalsWithProgress) {
+        setCached(CACHE_KEY_GOALS_WITH_PROGRESS, data.goalsWithProgress);
+    }
 }
 
 /**
@@ -201,6 +230,13 @@ export function setCachedProgressOverview(data: ProgressOverview): void {
  */
 export function getCachedCompletedGoals(): CompletedGoal[] | null {
     return getCached<CompletedGoal[]>(CACHE_KEY_COMPLETED_GOALS);
+}
+
+/**
+ * Check if completed-goals cache is fresh (within TTL).
+ */
+export function isCompletedGoalsFresh(): boolean {
+    return isCacheFresh(CACHE_KEY_COMPLETED_GOALS);
 }
 
 /**
@@ -215,6 +251,13 @@ export function setCachedCompletedGoals(data: CompletedGoal[]): void {
  */
 export function getCachedGoalDetail(goalId: string): GoalDetail | null {
     return getCached<GoalDetail>(getGoalDetailCacheKey(goalId));
+}
+
+/**
+ * Check if goal-detail cache is fresh for a specific goal (within TTL).
+ */
+export function isGoalDetailFresh(goalId: string): boolean {
+    return isCacheFresh(getGoalDetailCacheKey(goalId));
 }
 
 /**

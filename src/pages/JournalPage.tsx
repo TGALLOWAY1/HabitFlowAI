@@ -12,20 +12,20 @@ export function JournalPage() {
     // If true, we are in a special "Edit Mode" that overrides the tabs
     const [isEditingExisting, setIsEditingExisting] = useState(false);
 
-    // Key to force refresh of list after save
-    const [refreshKey, setRefreshKey] = useState(0);
     // Key to force remount of free-write editor after save
     const [freeWriteKey, setFreeWriteKey] = useState(0);
+    // Last saved entry for optimistic updates (avoids full refetch)
+    const [lastSavedEntry, setLastSavedEntry] = useState<JournalEntry | undefined>(undefined);
 
     const handleEdit = (entry: JournalEntry) => {
         setEditingEntry(entry);
         setIsEditingExisting(true);
     };
 
-    const handleSave = () => {
+    const handleSave = (entry?: JournalEntry) => {
         setEditingEntry(undefined);
         setIsEditingExisting(false);
-        setRefreshKey(prev => prev + 1);
+        if (entry) setLastSavedEntry(entry);
         setFreeWriteKey(prev => prev + 1);
         // Switch to history to see new/updated entry
         setActiveTab('history');
@@ -101,8 +101,8 @@ export function JournalPage() {
                     </div>
                 ) : (
                     // History Tab
-                    <div className="animate-in fade-in duration-300" key={refreshKey}>
-                        <JournalDisplay onEdit={handleEdit} />
+                    <div className="animate-in fade-in duration-300">
+                        <JournalDisplay onEdit={handleEdit} lastSavedEntry={lastSavedEntry} />
                     </div>
                 )}
             </div>
