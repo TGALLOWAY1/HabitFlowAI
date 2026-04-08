@@ -3,6 +3,11 @@ import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import type { CategoryBreakdownItem } from '../../lib/analyticsClient';
 import { resolveColorHex } from '../../utils/categoryColors';
 
+interface CategoryBreakdownProps {
+  data: CategoryBreakdownItem[] | null;
+  loading: boolean;
+}
+
 const statusColors: Record<string, string> = {
   'Strong': 'bg-emerald-500/15 text-emerald-400',
   'Improving': 'bg-blue-500/15 text-blue-400',
