@@ -38,7 +38,7 @@ export function JournalPage() {
     };
 
     const tabs: { id: JournalTab; label: string; icon: typeof PenLine }[] = [
-        { id: 'free', label: 'Free', icon: PenLine },
+        { id: 'free', label: 'Free Write', icon: PenLine },
         { id: 'templates', label: 'Templates', icon: LayoutTemplate },
         { id: 'history', label: 'History', icon: History },
     ];
