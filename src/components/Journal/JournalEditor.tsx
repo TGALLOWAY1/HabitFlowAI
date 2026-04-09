@@ -62,7 +62,7 @@ export function JournalEditor({ existingEntry, onSave, onCancel, initialTemplate
 
     const [mode, setMode] = useState<'standard' | 'deep' | 'free'>(existingEntry?.mode || (initialTemplateId === 'free-write' ? 'free' : 'standard'));
     const [content, setContent] = useState<Record<string, string>>(existingEntry?.content || {});
-    const [date, setDate] = useState<string>(existingEntry?.date || new Date().toLocaleDateString('en-CA'));
+    const [date] = useState<string>(existingEntry?.date || new Date().toLocaleDateString('en-CA'));
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     const { pinnedIds, togglePin, isPinned } = usePinnedJournalTemplates();
