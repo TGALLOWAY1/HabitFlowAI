@@ -29,9 +29,9 @@ export async function getDashboardPrefsRoute(req: Request, res: Response): Promi
 export async function updateDashboardPrefsRoute(req: Request, res: Response): Promise<void> {
   try {
     const { householdId, userId } = getRequestIdentity(req);
-    const { pinnedRoutineIds, checkinExtraMetricKeys, hideStreaks } = req.body || {};
+    const { pinnedRoutineIds, pinnedJournalTemplateIds, checkinExtraMetricKeys, hideStreaks } = req.body || {};
 
-    const prefs = await updateDashboardPrefs(householdId, userId, { pinnedRoutineIds, checkinExtraMetricKeys, hideStreaks });
+    const prefs = await updateDashboardPrefs(householdId, userId, { pinnedRoutineIds, pinnedJournalTemplateIds, checkinExtraMetricKeys, hideStreaks });
     res.status(200).json({ dashboardPrefs: prefs });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';

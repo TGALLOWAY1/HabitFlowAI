@@ -7,6 +7,7 @@
 
 import { getDb } from '../lib/mongoClient';
 import { MONGO_COLLECTIONS, WELLBEING_METRIC_KEYS, isWellbeingMetricKey, type DashboardPrefs } from '../../models/persistenceTypes';
+import { JOURNAL_TEMPLATES } from '../../data/journalTemplates';
 import { getRoutines } from './routineRepository';
 import { requireScope, scopeFilter } from '../lib/scoping';
 
@@ -40,7 +41,7 @@ export async function getDashboardPrefs(householdId: string, userId: string): Pr
 export async function updateDashboardPrefs(
   householdId: string,
   userId: string,
-  patch: { pinnedRoutineIds?: string[]; checkinExtraMetricKeys?: string[]; hideStreaks?: boolean }
+  patch: { pinnedRoutineIds?: string[]; pinnedJournalTemplateIds?: string[]; checkinExtraMetricKeys?: string[]; hideStreaks?: boolean }
 ): Promise<DashboardPrefs> {
   const scope = requireScope(householdId, userId);
   await ensureIndexes();
@@ -65,6 +66,19 @@ export async function updateDashboardPrefs(
     const filtered = ids.filter((id) => validIdSet.has(id));
 
     update.pinnedRoutineIds = filtered;
+  }
+
+  if (patch.pinnedJournalTemplateIds !== undefined) {
+    if (!Array.isArray(patch.pinnedJournalTemplateIds)) {
+      throw new Error('pinnedJournalTemplateIds must be an array of template IDs');
+    }
+    const ids = patch.pinnedJournalTemplateIds
+      .filter((x) => typeof x === 'string')
+      .map((x) => x.trim())
+      .filter((x) => x.length > 0);
+
+    const validIdSet = new Set(JOURNAL_TEMPLATES.map((t) => t.id));
+    update.pinnedJournalTemplateIds = ids.filter((id) => validIdSet.has(id));
   }
 
   if (patch.checkinExtraMetricKeys !== undefined) {
