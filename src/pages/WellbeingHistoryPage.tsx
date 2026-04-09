@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { ArrowLeft, Activity, Battery, Target, Brain, Wind } from 'lucide-react';
+import { ArrowLeft, Activity, Battery, Target, Brain, Wind, Grid3X3, CalendarRange, BarChart3 } from 'lucide-react';
 import type { WellbeingMetricKey } from '../models/persistenceTypes';
 import { useWellbeingEntriesRange } from '../hooks/useWellbeingEntriesRange';
 
@@ -192,16 +192,19 @@ export const WellbeingHistoryPage: React.FC<Props> = ({ onBack }) => {
           Back
         </button>
 
-        <div className="flex bg-neutral-800 rounded-md p-0.5 border border-white/5">
+        <div className="flex gap-3">
           {([30, 90, 180] as const).map((d) => (
             <button
               key={d}
               onClick={() => setWindowDays(d)}
-              className={`px-3 py-1 text-xs font-semibold rounded transition-colors ${
-                windowDays === d ? 'bg-neutral-700 text-white' : 'text-neutral-400 hover:text-white'
+              className={`pb-2 px-2 text-xs font-semibold transition-colors relative ${
+                windowDays === d ? 'text-emerald-400' : 'text-white/40 hover:text-white/60'
               }`}
             >
               {d}d
+              {windowDays === d && (
+                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-emerald-400 rounded-t-full" />
+              )}
             </button>
           ))}
         </div>
@@ -217,16 +220,26 @@ export const WellbeingHistoryPage: React.FC<Props> = ({ onBack }) => {
           </div>
 
           <div className="flex flex-wrap gap-2 items-center">
-            <div className="flex bg-neutral-800 rounded-md p-0.5 border border-white/5 mr-2">
-              {(['heatmap', 'weekly', 'multiples'] as const).map((v) => (
+            <div className="flex gap-4 border-b border-white/5 mr-2">
+              {([
+                { id: 'heatmap' as const, label: 'Heat Map', icon: Grid3X3 },
+                { id: 'weekly' as const, label: 'Weekly Summary', icon: CalendarRange },
+                { id: 'multiples' as const, label: 'Small Multiples', icon: BarChart3 },
+              ]).map(({ id, label, icon: Icon }) => (
                 <button
-                  key={v}
-                  onClick={() => setView(v)}
-                  className={`px-3 py-1 text-xs font-semibold rounded transition-colors ${
-                    view === v ? 'bg-neutral-700 text-white' : 'text-neutral-400 hover:text-white'
+                  key={id}
+                  onClick={() => setView(id)}
+                  className={`pb-3 px-2 text-xs font-semibold transition-colors relative ${
+                    view === id ? 'text-emerald-400' : 'text-white/40 hover:text-white/60'
                   }`}
                 >
-                  {v === 'heatmap' ? 'Heat Map' : v === 'weekly' ? 'Weekly Summary' : 'Small Multiples'}
+                  <div className="flex items-center gap-1.5">
+                    <Icon size={14} />
+                    {label}
+                  </div>
+                  {view === id && (
+                    <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-emerald-400 rounded-t-full" />
+                  )}
                 </button>
               ))}
             </div>

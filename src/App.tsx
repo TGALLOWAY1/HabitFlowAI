@@ -19,7 +19,7 @@ import { RoutinePreviewModal } from './components/RoutinePreviewModal';
 import { HabitHistoryModal } from './components/HabitHistoryModal';
 import { BottomTabBar } from './components/BottomTabBar';
 
-import { Plus } from 'lucide-react';
+import { Plus, List, CalendarDays, CalendarClock, Trophy } from 'lucide-react';
 import type { Routine, Habit } from './types';
 import { CreateGoalModal } from './components/CreateGoalModal';
 import { iterateGoal, createGoal, fetchGoal } from './lib/persistenceClient';
@@ -309,53 +309,51 @@ const HabitTrackerContent: React.FC = () => {
 
           {/* Goals View Toggle — centered below title */}
           {view === 'goals' && !selectedGoalId && !completedGoalId && (
-            <div className="flex justify-center">
-              <div className="flex bg-neutral-800 p-0.5 rounded-lg">
+            <div className="flex gap-4 border-b border-white/5">
+              {([
+                { id: 'all' as const, label: 'All', icon: List },
+                { id: 'schedule' as const, label: 'Schedule', icon: CalendarClock },
+                { id: 'achievements' as const, label: 'Achievements', icon: Trophy },
+              ]).map(({ id, label, icon: Icon }) => (
                 <button
-                  onClick={() => setGoalsViewMode('all')}
-                  className={`px-3 py-1 text-sm font-medium rounded-md transition-all ${goalsViewMode === 'all' ? 'bg-neutral-600 text-white shadow-sm' : 'text-neutral-400 hover:text-white'}`}
+                  key={id}
+                  onClick={() => setGoalsViewMode(id)}
+                  className={`pb-3 px-3 text-sm font-medium transition-colors relative ${goalsViewMode === id ? 'text-emerald-400' : 'text-white/40 hover:text-white/60'}`}
                 >
-                  All
+                  <div className="flex items-center gap-2">
+                    <Icon size={16} />
+                    {label}
+                  </div>
+                  {goalsViewMode === id && (
+                    <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-emerald-400 rounded-t-full" />
+                  )}
                 </button>
-                <button
-                  onClick={() => setGoalsViewMode('schedule')}
-                  className={`px-3 py-1 text-sm font-medium rounded-md transition-all ${goalsViewMode === 'schedule' ? 'bg-neutral-600 text-white shadow-sm' : 'text-neutral-400 hover:text-white'}`}
-                >
-                  Schedule
-                </button>
-                <button
-                  onClick={() => setGoalsViewMode('achievements')}
-                  className={`px-3 py-1 text-sm font-medium rounded-md transition-all ${goalsViewMode === 'achievements' ? 'bg-neutral-600 text-white shadow-sm' : 'text-neutral-400 hover:text-white'}`}
-                >
-                  Achievements
-                </button>
-              </div>
+              ))}
             </div>
           )}
 
           {/* Tracker View Toggle — centered below title */}
           {view === 'tracker' && (
-            <div className="flex justify-center">
-              <div className="flex bg-neutral-800 p-0.5 rounded-lg">
+            <div className="flex gap-4 border-b border-white/5">
+              {([
+                { id: 'all' as const, label: 'All', icon: List },
+                { id: 'day' as const, label: 'Today', icon: CalendarDays },
+                { id: 'schedule' as const, label: 'Schedule', icon: CalendarClock },
+              ]).map(({ id, label, icon: Icon }) => (
                 <button
-                  onClick={() => setTrackerViewMode('all')}
-                  className={`px-3 py-1 text-sm font-medium rounded-md transition-all ${trackerViewMode === 'all' ? 'bg-neutral-600 text-white shadow-sm' : 'text-neutral-400 hover:text-white'}`}
+                  key={id}
+                  onClick={() => setTrackerViewMode(id)}
+                  className={`pb-3 px-3 text-sm font-medium transition-colors relative ${trackerViewMode === id ? 'text-emerald-400' : 'text-white/40 hover:text-white/60'}`}
                 >
-                  All
+                  <div className="flex items-center gap-2">
+                    <Icon size={16} />
+                    {label}
+                  </div>
+                  {trackerViewMode === id && (
+                    <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-emerald-400 rounded-t-full" />
+                  )}
                 </button>
-                <button
-                  onClick={() => setTrackerViewMode('day')}
-                  className={`px-3 py-1 text-sm font-medium rounded-md transition-all ${trackerViewMode === 'day' ? 'bg-neutral-600 text-white shadow-sm' : 'text-neutral-400 hover:text-white'}`}
-                >
-                  Today
-                </button>
-                <button
-                  onClick={() => setTrackerViewMode('schedule')}
-                  className={`px-3 py-1 text-sm font-medium rounded-md transition-all ${trackerViewMode === 'schedule' ? 'bg-neutral-600 text-white shadow-sm' : 'text-neutral-400 hover:text-white'}`}
-                >
-                  Schedule
-                </button>
-              </div>
+              ))}
             </div>
           )}
         </div>

@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, CheckSquare, RefreshCw, Target } from 'lucide-react';
 import { useAuth } from '../store/AuthContext';
 import {
   fetchAllHabitAnalytics,
@@ -127,10 +127,10 @@ export const AnalyticsPage: React.FC<AnalyticsPageProps> = ({ onBack }) => {
 
   if (!isAuthorized) return null;
 
-  const tabs: { value: AnalyticsTab; label: string }[] = [
-    { value: 'habits', label: 'Habits' },
-    { value: 'routines', label: 'Routines' },
-    { value: 'goals', label: 'Goals' },
+  const tabs: { value: AnalyticsTab; label: string; icon: typeof ArrowLeft }[] = [
+    { value: 'habits', label: 'Habits', icon: CheckSquare },
+    { value: 'routines', label: 'Routines', icon: RefreshCw },
+    { value: 'goals', label: 'Goals', icon: Target },
   ];
 
   return (
@@ -183,18 +183,22 @@ export const AnalyticsPage: React.FC<AnalyticsPageProps> = ({ onBack }) => {
       )}
 
       {/* Tab Toggle */}
-      <div className="flex bg-neutral-800/50 rounded-xl p-1">
-        {tabs.map(tab => (
+      <div className="flex gap-4 border-b border-white/5">
+        {tabs.map(({ value, label, icon: Icon }) => (
           <button
-            key={tab.value}
-            onClick={() => setActiveTab(tab.value)}
-            className={`flex-1 py-2 text-sm font-medium rounded-lg transition-colors ${
-              activeTab === tab.value
-                ? 'bg-neutral-700 text-white'
-                : 'text-neutral-400 hover:text-neutral-300'
+            key={value}
+            onClick={() => setActiveTab(value)}
+            className={`pb-3 px-3 text-sm font-medium transition-colors relative ${
+              activeTab === value ? 'text-emerald-400' : 'text-white/40 hover:text-white/60'
             }`}
           >
-            {tab.label}
+            <div className="flex items-center gap-2">
+              <Icon size={16} />
+              {label}
+            </div>
+            {activeTab === value && (
+              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-emerald-400 rounded-t-full" />
+            )}
           </button>
         ))}
       </div>
