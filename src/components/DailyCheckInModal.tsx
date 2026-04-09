@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Save, Sun, Moon, Battery, Activity, Brain, Wind, Target, Focus as FocusIcon, Heart, SmilePlus } from 'lucide-react';
+import { X, Save, Sun, Moon, Battery, Activity, Brain, Wind, Target, Focus as FocusIcon, Heart, SmilePlus, History } from 'lucide-react';
 import { useHabitStore } from '../store/HabitContext';
 import { format } from 'date-fns';
 import type { WellbeingSession } from '../types';
@@ -10,6 +10,7 @@ import { fetchDashboardPrefs, updateDashboardPrefs } from '../lib/persistenceCli
 interface DailyCheckInModalProps {
     isOpen: boolean;
     onClose: () => void;
+    onNavigateHistory?: () => void;
 }
 
 const INITIAL_SESSION: WellbeingSession = {
@@ -62,7 +63,7 @@ const METRIC_UI: Record<WellbeingMetricKey, MetricUiConfig> = {
     recovery: { key: 'recovery', label: 'Recovery', icon: null, colorClass: 'text-neutral-400', min: 0, max: 4, step: 1, kind: 'number' },
 };
 
-export const DailyCheckInModal: React.FC<DailyCheckInModalProps> = ({ isOpen, onClose }) => {
+export const DailyCheckInModal: React.FC<DailyCheckInModalProps> = ({ isOpen, onClose, onNavigateHistory }) => {
     const { logWellbeing, wellbeingLogs } = useHabitStore();
     const today = format(new Date(), 'yyyy-MM-dd');
     const persona = getActivePersonaConfig();
@@ -254,6 +255,15 @@ export const DailyCheckInModal: React.FC<DailyCheckInModalProps> = ({ isOpen, on
                             <Moon size={16} className={activeTab === 'evening' ? 'text-indigo-400' : ''} />
                             Evening
                         </button>
+                        {onNavigateHistory && (
+                            <button
+                                onClick={onNavigateHistory}
+                                className="flex items-center gap-2 pb-3 text-sm font-medium border-b-2 border-transparent text-neutral-400 hover:text-white transition-colors ml-auto"
+                            >
+                                <History size={16} />
+                                History
+                            </button>
+                        )}
                     </div>
                 </div>
 

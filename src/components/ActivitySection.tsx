@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Globe, FolderOpen } from 'lucide-react';
 import { useHabitStore } from '../store/HabitContext';
 import { Heatmap } from './Heatmap';
 import { CategoryCompletionRow } from './CategoryCompletionRow';
@@ -46,27 +47,27 @@ export const ActivitySection: React.FC<ActivitySectionProps> = ({ onSelectCatego
             </div>
           )}
         </div>
-        <div className="flex p-1 bg-neutral-800 rounded-lg self-start lg:self-auto">
-          <button
-            onClick={() => setActivityTab('overall')}
-            className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all ${
-              activityTab === 'overall'
-                ? 'bg-neutral-700 text-white shadow-sm'
-                : 'text-neutral-400 hover:text-white'
-            }`}
-          >
-            Overall
-          </button>
-          <button
-            onClick={() => setActivityTab('category')}
-            className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all ${
-              activityTab === 'category'
-                ? 'bg-neutral-700 text-white shadow-sm'
-                : 'text-neutral-400 hover:text-white'
-            }`}
-          >
-            By Category
-          </button>
+        <div className="flex gap-4 border-b border-white/5 self-start lg:self-auto">
+          {([
+            { id: 'overall' as const, label: 'Overall', icon: Globe },
+            { id: 'category' as const, label: 'By Category', icon: FolderOpen },
+          ]).map(({ id, label, icon: Icon }) => (
+            <button
+              key={id}
+              onClick={() => setActivityTab(id)}
+              className={`pb-3 px-3 text-sm font-medium transition-colors relative ${
+                activityTab === id ? 'text-emerald-400' : 'text-white/40 hover:text-white/60'
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <Icon size={16} />
+                {label}
+              </div>
+              {activityTab === id && (
+                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-emerald-400 rounded-t-full" />
+              )}
+            </button>
+          ))}
         </div>
       </div>
 
