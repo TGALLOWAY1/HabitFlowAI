@@ -2,10 +2,10 @@ import { useState } from 'react';
 import { JournalDisplay } from '../components/Journal/JournalDisplay';
 import { JournalEditor } from '../components/Journal/JournalEditor';
 import type { JournalEntry } from '../models/persistenceTypes';
-import { PenLine, LayoutTemplate, History, Sparkles } from 'lucide-react';
-import { JournalSummaryCard } from '../components/Journal/JournalSummaryCard';
+import { PenLine, LayoutTemplate, History } from 'lucide-react';
+import { JournalSummaryBanner } from '../components/Journal/JournalSummaryBanner';
 
-type JournalTab = 'free' | 'templates' | 'history' | 'summary';
+type JournalTab = 'free' | 'templates' | 'history';
 
 export function JournalPage() {
     const [activeTab, setActiveTab] = useState<JournalTab>('free');
@@ -41,7 +41,6 @@ export function JournalPage() {
         { id: 'free', label: 'Free', icon: PenLine },
         { id: 'templates', label: 'Templates', icon: LayoutTemplate },
         { id: 'history', label: 'History', icon: History },
-        { id: 'summary', label: 'Summary', icon: Sparkles },
     ];
 
     return (
@@ -52,6 +51,9 @@ export function JournalPage() {
                     The journal is for reflection and notes — not a to-do list or tracker.
                 </p>
             )}
+
+            {/* AI Weekly Summary Banner */}
+            {!isEditingExisting && <JournalSummaryBanner />}
 
             {/* Tab Navigation (Hidden when editing an existing entry to focus) */}
             {!isEditingExisting && (
@@ -101,15 +103,10 @@ export function JournalPage() {
                             onSave={handleSave}
                         />
                     </div>
-                ) : activeTab === 'history' ? (
+                ) : (
                     // History Tab
                     <div className="animate-in fade-in duration-300">
                         <JournalDisplay onEdit={handleEdit} lastSavedEntry={lastSavedEntry} />
-                    </div>
-                ) : (
-                    // Summary Tab
-                    <div className="animate-in fade-in duration-300">
-                        <JournalSummaryCard />
                     </div>
                 )}
             </div>

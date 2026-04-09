@@ -9,7 +9,7 @@
 
 import type { Request, Response } from 'express';
 import { getRequestIdentity } from '../middleware/identity';
-import { getEntriesByUser } from '../repositories/journal';
+import { getEntriesByUser, upsertEntryByTemplateAndDate } from '../repositories/journal';
 import { JOURNAL_TEMPLATES, FREE_WRITE_TEMPLATE } from '../../data/journalTemplates';
 import type { JournalTemplate, JournalPrompt } from '../../data/journalTemplates';
 
@@ -178,11 +178,20 @@ Please write the weekly journal summary now.`;
     const outputPart = parts.find(p => !p.thought && p.text) ?? parts[0];
     const summaryText = outputPart?.text ?? 'Unable to generate journal summary. Please try again.';
 
+    // Persist summary as a journal entry (upsert: one per day)
+    const savedEntry = await upsertEntryByTemplateAndDate({
+      templateId: 'ai-weekly-summary',
+      mode: 'free',
+      content: { summary: summaryText },
+      date: endDate,
+    }, userId);
+
     res.status(200).json({
       summary: summaryText,
       period: { start: startDate, end: endDate },
       journalEntriesCount: entries.length,
       templatesUsed,
+      entryId: savedEntry.id,
     });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';

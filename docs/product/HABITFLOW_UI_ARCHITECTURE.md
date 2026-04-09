@@ -47,7 +47,6 @@ HabitFlow App
 │   │   ├── Tasks Card (→ Tasks Page)
 │   │   ├── Journal Card (→ Journal Page)
 │   │   ├── Weekly Summary
-│   │   ├── Journal Summary (AI-powered weekly journal insights)
 │   │   └── Heatmap (30d / 90d / year)
 │   │
 │   ├── Habits (Tracker)
@@ -83,6 +82,7 @@ HabitFlow App
 │       └── Goal Completed Page (celebration)
 │
 ├── Journal (via dashboard card or direct URL)
+│   ├── AI Weekly Summary Banner (auto-generated, dismissible)
 │   ├── Free Write tab
 │   ├── Templates tab
 │   └── History tab
@@ -116,7 +116,7 @@ HabitFlow App
 | Goal Completed | Page | Auto-shown on 100% or manual | Celebratory screen with next actions | Goals | Achievements, Goal Detail, Level Up |
 | Create Goal (Step 1) | Modal | "+ Goal" button on Goals page | Enter goal details (title, type, target, deadline, category) | Goals, Categories | Create Goal Step 2 |
 | Create Goal (Step 2) | Modal | Next from Step 1 | Link habits to goal (filtered by category if selected) | Goals, Habits | Goals List (on submit) |
-| Journal | Page | Dashboard card / `?view=journal` | Free-write, templates, history, and AI summary tabs | Journal Entries | — |
+| Journal | Page | Dashboard card / `?view=journal` | Free-write, templates, history tabs; auto-generated AI summary banner | Journal Entries | — |
 | Tasks | Page | Dashboard card / `?view=tasks` | Today + Inbox columns | Tasks | — |
 | Wellbeing History | Page | Dashboard link | Historical wellbeing charts and trends | Wellbeing Entries | — |
 | Debug Entries | Page (dev) | `?view=debug-entries` | Testing entry data | Entries | — |
