@@ -10,6 +10,7 @@ import { format } from 'date-fns';
 import { getBundleMemberships, createBundleMembership, endBundleMembership } from '../lib/persistenceClient';
 import { BundlePickerModal } from './BundlePickerModal';
 import { ConvertBundleConfirmModal } from './ConvertBundleConfirmModal';
+import { GoalCreationInlineModal } from './GoalCreationInlineModal';
 import { nextCategoryColor } from '../utils/categoryColors';
 
 interface AddHabitModalProps {
@@ -83,6 +84,9 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
     const [linkedRoutineIds, setLinkedRoutineIds] = useState<string[]>([]);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
+    // Inline Goal Creation
+    const [isCreateGoalOpen, setIsCreateGoalOpen] = useState(false);
+
     // Inline Category Creation
     const [isCreatingCategory, setIsCreatingCategory] = useState(false);
     const [newCategoryName, setNewCategoryName] = useState('');
@@ -141,6 +145,7 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                 setUnit('');
                 setScheduledTime('');
                 setLinkedGoalId(null);
+                setIsCreateGoalOpen(false);
                 setLinkedRoutineIds([]);
                 setDurationMinutes('30');
                 setScheduledDays([0, 1, 2, 3, 4, 5, 6]);
@@ -746,10 +751,18 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                             <Trophy size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-amber-400" />
                             <select
                                 value={linkedGoalId || ''}
-                                onChange={(e) => setLinkedGoalId(e.target.value || null)}
+                                onChange={(e) => {
+                                    if (e.target.value === '__new__') {
+                                        setIsCreateGoalOpen(true);
+                                    } else {
+                                        setLinkedGoalId(e.target.value || null);
+                                    }
+                                }}
                                 className="w-full bg-neutral-800 border border-white/10 rounded-lg pl-10 pr-4 py-2 text-white focus:outline-none focus:border-emerald-500 appearance-none"
                             >
                                 <option value="">Connect to a Goal (Optional)</option>
+                                <option value="__new__">+ Create New Goal</option>
+                                {availableGoals.length > 0 && <option disabled>──────────</option>}
                                 {availableGoals.map(g => (
                                     <option key={g.id} value={g.id}>{g.title}</option>
                                 ))}
@@ -1128,6 +1141,13 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                 habitName={name}
                 bundleType={bundleMode || 'checklist'}
                 childCount={subHabitIds.length + pendingSubHabits.length}
+            />
+
+            <GoalCreationInlineModal
+                isOpen={isCreateGoalOpen}
+                onClose={() => setIsCreateGoalOpen(false)}
+                onGoalCreated={(goalId) => setLinkedGoalId(goalId)}
+                defaultCategoryId={selectedCategoryId || undefined}
             />
         </div >
     );
