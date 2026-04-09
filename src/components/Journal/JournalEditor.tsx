@@ -4,7 +4,7 @@ import { JOURNAL_TEMPLATES, FREE_WRITE_TEMPLATE, JOURNAL_CATEGORIES } from '../.
 import type { JournalTemplate } from '../../data/journalTemplates';
 import { createEntry, updateEntry } from '../../api/journal';
 import {
-    ChevronDown, ChevronUp, ChevronRight, Save, Sparkles, ChevronLeft, Star,
+    ChevronDown, ChevronUp, ChevronRight, Save, Sparkles, Star, X,
     Sunrise, Moon, Heart, Wind, Brain, Microscope, Dumbbell,
     Utensils, Target, Sprout, Users, PenLine, type LucideIcon
 } from 'lucide-react';
@@ -336,50 +336,24 @@ export function JournalEditor({ existingEntry, onSave, onCancel, initialTemplate
     return (
         <div className="bg-zinc-900 border border-white/10 rounded-2xl p-0 shadow-2xl relative max-w-4xl mx-auto h-[calc(100vh-14rem)] flex flex-col overflow-hidden">
             <div className="flex justify-between items-center px-6 py-4 border-b border-white/5 bg-zinc-900/95 backdrop-blur z-10">
-                <div className="flex items-center gap-4">
-                    {!existingEntry && (
-                        <button
-                            onClick={handleBackToSelection}
-                            className="flex items-center gap-1 text-sm text-white/50 hover:text-white px-3 py-1.5 rounded-lg hover:bg-white/5 transition-colors"
-                        >
-                            <ChevronLeft size={16} />
-                            Back to Templates
-                        </button>
-                    )}
-                    <div className="h-6 w-px bg-white/10 mx-2 hidden md:block"></div>
-                    <div>
-                        <h2 className="text-lg font-bold text-white flex items-center gap-2">
-                            <span className="text-emerald-400">
-                                <WritingIcon size={20} />
-                            </span>
-                            {currentTemplate.title}
-                        </h2>
-                    </div>
-                </div>
-                <div className="flex items-center gap-3">
-                    <input
-                        type="date"
-                        value={date}
-                        onChange={(e) => setDate(e.target.value)}
-                        className="bg-transparent text-white/60 text-sm text-right focus:outline-none focus:text-white hover:text-white transition-colors cursor-pointer"
-                    />
-                </div>
+                <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                    <span className="text-emerald-400">
+                        <WritingIcon size={20} />
+                    </span>
+                    {currentTemplate.title}
+                </h2>
+                {!existingEntry && (
+                    <button
+                        onClick={handleBackToSelection}
+                        className="text-white/40 hover:text-white p-1.5 rounded-lg hover:bg-white/10 transition-colors"
+                        aria-label="Close template"
+                    >
+                        <X size={20} />
+                    </button>
+                )}
             </div>
 
             <div className="flex-1 overflow-y-auto modal-scroll p-6 md:p-8 space-y-8 bg-[#0a0a0a]">
-                {selectedTemplateId !== 'free-write' && (
-                    <div className="bg-white/5 border border-white/5 rounded-xl p-4 flex items-start gap-4">
-                        <div className="p-2 bg-emerald-500/10 rounded-lg">
-                            <Sparkles size={18} className="text-emerald-400" />
-                        </div>
-                        <div>
-                            <h4 className="text-sm font-semibold text-emerald-200 uppercase tracking-widest mb-1">Active Persona</h4>
-                            <p className="text-white/80 font-medium text-lg">{currentTemplate.persona}</p>
-                            <p className="text-white/40 text-sm mt-1">Tone: {currentTemplate.tone}</p>
-                        </div>
-                    </div>
-                )}
-
                 {selectedTemplateId === 'free-write' ? (
                     <div className="relative h-full min-h-[500px]">
                         <textarea
