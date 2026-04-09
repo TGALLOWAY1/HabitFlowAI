@@ -45,13 +45,6 @@ export function JournalPage() {
 
     return (
         <div className="px-3 sm:px-4 pb-0 max-w-4xl mx-auto">
-            {/* Description */}
-            {!isEditingExisting && (
-                <p className="text-neutral-400 text-sm leading-relaxed mb-4">
-                    The journal is for reflection and notes — not a to-do list or tracker.
-                </p>
-            )}
-
             {/* AI Weekly Summary Banner */}
             {!isEditingExisting && <JournalSummaryBanner />}
 
