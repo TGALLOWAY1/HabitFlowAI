@@ -19,9 +19,10 @@ import { RoutinePreviewModal } from './components/RoutinePreviewModal';
 import { HabitHistoryModal } from './components/HabitHistoryModal';
 import { BottomTabBar } from './components/BottomTabBar';
 
-import { Plus, List, CalendarDays, CalendarClock, Trophy } from 'lucide-react';
+import { Plus, List, CalendarDays, CalendarClock, Trophy, Route } from 'lucide-react';
 import type { Routine, Habit } from './types';
 import { CreateGoalModal } from './components/CreateGoalModal';
+import { CreateGoalTrackModal } from './components/goals/CreateGoalTrackModal';
 import { iterateGoal, createGoal, fetchGoal } from './lib/persistenceClient';
 import { DayView } from './components/day-view/DayView';
 import { ScheduleView } from './components/day-view/ScheduleView';
@@ -197,6 +198,7 @@ const HabitTrackerContent: React.FC = () => {
 
 
   const [showCreateGoal, setShowCreateGoal] = useState(false);
+  const [showCreateTrack, setShowCreateTrack] = useState(false);
   const [completedGoalId, setCompletedGoalId] = useState<string | null>(null);
 
   // Routine State
@@ -318,13 +320,23 @@ const HabitTrackerContent: React.FC = () => {
                 </button>
               )}
               {view === 'goals' && !selectedGoalId && (
-                <button
-                  onClick={() => setShowCreateGoal(true)}
-                  className="p-2 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-neutral-900 transition-colors"
-                  title="Create Goal"
-                >
-                  <Plus size={20} />
-                </button>
+                <>
+                  <button
+                    onClick={() => setShowCreateTrack(true)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-neutral-400 hover:text-emerald-400 bg-neutral-800/50 hover:bg-neutral-800 border border-white/5 rounded-lg transition-colors"
+                    title="New Track"
+                  >
+                    <Route size={13} />
+                    New Track
+                  </button>
+                  <button
+                    onClick={() => setShowCreateGoal(true)}
+                    className="p-2 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-neutral-900 transition-colors"
+                    title="Create Goal"
+                  >
+                    <Plus size={20} />
+                  </button>
+                </>
               )}
               {view === 'routines' && (
                 <button
@@ -340,26 +352,37 @@ const HabitTrackerContent: React.FC = () => {
 
           {/* Goals View Toggle — centered below title */}
           {view === 'goals' && !selectedGoalId && !completedGoalId && (
-            <div className="flex gap-4 border-b border-white/5">
-              {([
-                { id: 'all' as const, label: 'All', icon: List },
-                { id: 'schedule' as const, label: 'Schedule', icon: CalendarClock },
-                { id: 'achievements' as const, label: 'Achievements', icon: Trophy },
-              ]).map(({ id, label, icon: Icon }) => (
-                <button
-                  key={id}
-                  onClick={() => setGoalsViewMode(id)}
-                  className={`pb-3 px-3 text-sm font-medium transition-colors relative ${goalsViewMode === id ? 'text-emerald-400' : 'text-white/40 hover:text-white/60'}`}
-                >
-                  <div className="flex items-center gap-2">
-                    <Icon size={16} />
-                    {label}
-                  </div>
-                  {goalsViewMode === id && (
-                    <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-emerald-400 rounded-t-full" />
-                  )}
-                </button>
-              ))}
+            <div className="flex items-center border-b border-white/5">
+              <div className="flex gap-4 flex-1">
+                {([
+                  { id: 'all' as const, label: 'All', icon: List },
+                  { id: 'schedule' as const, label: 'Schedule', icon: CalendarClock },
+                ]).map(({ id, label, icon: Icon }) => (
+                  <button
+                    key={id}
+                    onClick={() => setGoalsViewMode(id)}
+                    className={`pb-3 px-3 text-sm font-medium transition-colors relative ${goalsViewMode === id ? 'text-emerald-400' : 'text-white/40 hover:text-white/60'}`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <Icon size={16} />
+                      {label}
+                    </div>
+                    {goalsViewMode === id && (
+                      <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-emerald-400 rounded-t-full" />
+                    )}
+                  </button>
+                ))}
+              </div>
+              <button
+                onClick={() => setGoalsViewMode('achievements')}
+                className={`pb-3 px-3 transition-colors relative ${goalsViewMode === 'achievements' ? 'text-amber-400' : 'text-amber-400/40 hover:text-amber-400/70'}`}
+                title="Achievements"
+              >
+                <Trophy size={18} />
+                {goalsViewMode === 'achievements' && (
+                  <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-amber-400 rounded-t-full" />
+                )}
+              </button>
             </div>
           )}
 
@@ -669,6 +692,14 @@ const HabitTrackerContent: React.FC = () => {
       <CreateGoalModal
         isOpen={showCreateGoal}
         onClose={() => setShowCreateGoal(false)}
+      />
+
+      <CreateGoalTrackModal
+        isOpen={showCreateTrack}
+        onClose={() => setShowCreateTrack(false)}
+        onSuccess={(trackId) => {
+          handleNavigate('goals', { trackId });
+        }}
       />
 
       <BottomTabBar activeView={view} onNavigate={handleNavigate} />

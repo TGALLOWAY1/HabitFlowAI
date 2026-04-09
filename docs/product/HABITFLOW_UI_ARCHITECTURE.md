@@ -109,9 +109,9 @@ HabitFlow App
 | Tracker (Today) | Page | View toggle on Tracker | Single-day habit view grouped by category, with full action icons (history, edit, delete, move, bundle) in expanded card | Habits, Entries | Same as Grid |
 | Tracker (Weekly) | Page | View toggle on Tracker | Week-at-a-glance overview | Habits, Entries | Same as Grid |
 | Routines List | Page | Bottom tab "Routines" | Card list of all routines | Routines | Routine Editor, Runner, Preview |
-| Goals — All | Page | Bottom tab "Goals", "All" toggle | Collapsible category stacks with progress bars | Goals, Categories | Create Goal Flow, Goal Detail, Edit Goal Modal |
+| Goals — All | Page | Bottom tab "Goals", "All" toggle | Collapsible category stacks with progress bars. "New Track" button in header bar next to "+" | Goals, Categories | Create Goal Flow, Goal Detail, Edit Goal Modal, Create Track Modal |
 | Goals — Schedule | Page | "Schedule" toggle on Goals | Insight calendar with deadlines, forecasts, milestones | Goals, Categories | Goal Detail, Focus Mode |
-| Goals — Achievements | Page | "Achievements" toggle on Goals | Gallery of completed goals (was Win Archive) | Goals | Goal Detail |
+| Goals — Achievements | Page | Amber trophy icon in Goals tab bar | Gallery of completed goals (was Win Archive) | Goals | Goal Detail |
 | Goal Detail | Page | Click goal card / pinned goal | Charts, entries, linked habits for one goal | Goals, Habits, Entries | Edit Goal Modal, Goal Completed |
 | Goal Completed | Page | Auto-shown on 100% or manual | Celebratory screen with next actions | Goals | Achievements, Goal Detail, Level Up |
 | Goal Track Detail | Page | Click track in Goals page | Track name, ordered goals with states, reorder, add/remove goals | Goal Tracks, Goals | Goal Detail, Goals List |
