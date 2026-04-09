@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useCallback } from 'react';
-import { Plus, Target, ChevronDown, ChevronRight } from 'lucide-react';
+import { Plus, Target, ChevronDown, ChevronRight, Route } from 'lucide-react';
 import {
     DndContext,
     closestCenter,
@@ -21,6 +21,7 @@ import { useGoalsWithProgress } from '../../lib/useGoalsWithProgress';
 import { useGoalTracks } from '../../lib/useGoalTracks';
 import { GoalGridCard } from '../../components/goals/GoalGridCard';
 import { GoalTrackSection } from '../../components/goals/GoalTrackSection';
+import { CreateGoalTrackModal } from '../../components/goals/CreateGoalTrackModal';
 import { Loader2, AlertCircle } from 'lucide-react';
 import { EditGoalModal } from '../../components/goals/EditGoalModal';
 import { useHabitStore } from '../../store/HabitContext';
@@ -207,10 +208,11 @@ export const GoalsPage: React.FC<GoalsPageProps> = ({
     onViewTrack,
 }) => {
     const { data, loading, error, refetch } = useGoalsWithProgress();
-    const { data: tracks } = useGoalTracks();
+    const { data: tracks, refetch: refetchTracks } = useGoalTracks();
     const { categories } = useHabitStore();
     const [editingGoalId, setEditingGoalId] = useState<string | null>(null);
     const [expandedStacks, setExpandedStacks] = useState<Set<string>>(new Set());
+    const [showCreateTrack, setShowCreateTrack] = useState(false);
 
     const sensors = useSensors(
         useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -325,19 +327,39 @@ export const GoalsPage: React.FC<GoalsPageProps> = ({
                         <p className="text-sm text-neutral-400 mb-5 leading-relaxed">
                             Track progress over time toward outcomes, milestones, or events.
                         </p>
-                        {onCreateGoal && (
+                        <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+                            {onCreateGoal && (
+                                <button
+                                    onClick={onCreateGoal}
+                                    className="flex items-center gap-2 px-6 py-3 bg-emerald-500 hover:bg-emerald-400 text-neutral-900 font-medium rounded-lg transition-colors text-sm"
+                                >
+                                    <Plus size={18} />
+                                    Create Your First Goal
+                                </button>
+                            )}
                             <button
-                                onClick={onCreateGoal}
-                                className="flex items-center gap-2 px-6 py-3 bg-emerald-500 hover:bg-emerald-400 text-neutral-900 font-medium rounded-lg transition-colors mx-auto text-sm"
+                                onClick={() => setShowCreateTrack(true)}
+                                className="flex items-center gap-2 px-5 py-3 bg-neutral-800 hover:bg-neutral-700 text-neutral-300 font-medium rounded-lg transition-colors text-sm border border-white/10"
                             >
-                                <Plus size={18} />
-                                Create Your First Goal
+                                <Route size={16} />
+                                Create a Track
                             </button>
-                        )}
+                        </div>
                     </div>
                 </div>
             ) : (
                 <div className="space-y-5">
+                    {/* Create Track action */}
+                    <div className="flex justify-end">
+                        <button
+                            onClick={() => setShowCreateTrack(true)}
+                            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-neutral-400 hover:text-emerald-400 bg-neutral-800/50 hover:bg-neutral-800 border border-white/5 rounded-lg transition-colors"
+                        >
+                            <Route size={13} />
+                            New Track
+                        </button>
+                    </div>
+
                     {goalStacks.map((stack) => {
                         const isExpanded = expandedStacks.has(stack.category.id);
                         const trackGoalCount = stack.tracks.reduce((sum, tg) => sum + tg.goals.length, 0);
@@ -379,6 +401,17 @@ export const GoalsPage: React.FC<GoalsPageProps> = ({
                     />
                 );
             })()}
+
+            {/* Create Track Modal */}
+            <CreateGoalTrackModal
+                isOpen={showCreateTrack}
+                onClose={() => setShowCreateTrack(false)}
+                onSuccess={(trackId) => {
+                    refetchTracks();
+                    refetch();
+                    onViewTrack?.(trackId);
+                }}
+            />
         </div>
     );
 };

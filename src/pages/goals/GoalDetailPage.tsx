@@ -11,13 +11,15 @@
 import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { useGoalDetail } from '../../lib/useGoalDetail';
 import { useHabitStore } from '../../store/HabitContext';
-import { Loader2, ArrowLeft, Check, Edit, Trash2, Trophy, TrendingUp } from 'lucide-react';
+import { Loader2, ArrowLeft, Check, Edit, Trash2, Trophy, TrendingUp, Route, Plus } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { DeleteGoalConfirmModal } from '../../components/goals/DeleteGoalConfirmModal';
 import { EditGoalModal } from '../../components/goals/EditGoalModal';
-import { deleteGoal, markGoalAsCompleted, createGoal } from '../../lib/persistenceClient';
+import { CreateGoalTrackModal } from '../../components/goals/CreateGoalTrackModal';
+import { deleteGoal, markGoalAsCompleted, createGoal, addGoalToTrack, fetchGoalTracks, removeGoalFromTrack } from '../../lib/persistenceClient';
 import { GoalStatusChip } from '../../components/goals/GoalSharedComponents';
 import { GoalTrendChart } from '../../components/goals/GoalTrendChart';
+import type { GoalTrack } from '../../types';
 
 import { GoalCumulativeChart } from '../../components/goals/GoalCumulativeChart';
 import { GoalWeeklySummary } from '../../components/goals/GoalWeeklySummary';
@@ -47,6 +49,9 @@ export const GoalDetailPage: React.FC<GoalDetailPageProps> = ({ goalId, onBack, 
     const [extendTarget, setExtendTarget] = useState('');
     const [isExtending, setIsExtending] = useState(false);
     const [extendError, setExtendError] = useState<string | null>(null);
+    const [showTrackMenu, setShowTrackMenu] = useState(false);
+    const [showCreateTrackModal, setShowCreateTrackModal] = useState(false);
+    const [availableTracks, setAvailableTracks] = useState<GoalTrack[]>([]);
 
     // Track previous state to prevent infinite loops (Auto-completion)
     const previousPercentRef = useRef<number | null>(null);
@@ -304,6 +309,84 @@ export const GoalDetailPage: React.FC<GoalDetailPageProps> = ({ goalId, onBack, 
                     </button>
                 )}
                 <div className="flex items-center gap-2">
+                    {/* Track action — only for standalone, non-completed goals */}
+                    {!goal.trackId && !goal.completedAt && (
+                        <div className="relative">
+                            <button
+                                onClick={async () => {
+                                    if (showTrackMenu) {
+                                        setShowTrackMenu(false);
+                                        return;
+                                    }
+                                    try {
+                                        const tracks = await fetchGoalTracks();
+                                        setAvailableTracks(tracks.filter(t => t.categoryId === goal.categoryId && !t.completedAt));
+                                    } catch { /* ignore */ }
+                                    setShowTrackMenu(true);
+                                }}
+                                className="min-h-[44px] min-w-[44px] flex items-center justify-center text-neutral-400 hover:text-emerald-400 hover:bg-emerald-500/10 rounded-lg transition-colors"
+                                aria-label="Add to track"
+                                title="Add to track"
+                            >
+                                <Route size={18} />
+                            </button>
+                            {showTrackMenu && (
+                                <div className="absolute right-0 top-full mt-1 w-56 bg-neutral-800 border border-white/10 rounded-lg shadow-xl z-50 py-1">
+                                    <button
+                                        onClick={() => {
+                                            setShowTrackMenu(false);
+                                            setShowCreateTrackModal(true);
+                                        }}
+                                        className="w-full text-left px-3 py-2 text-sm text-emerald-400 hover:bg-neutral-700/50 flex items-center gap-2"
+                                    >
+                                        <Plus size={14} />
+                                        Create new track
+                                    </button>
+                                    {availableTracks.length > 0 && (
+                                        <>
+                                            <div className="border-t border-white/5 my-1" />
+                                            <div className="px-3 py-1 text-[10px] text-neutral-500 uppercase tracking-wider">Add to existing track</div>
+                                            {availableTracks.map(track => (
+                                                <button
+                                                    key={track.id}
+                                                    onClick={async () => {
+                                                        setShowTrackMenu(false);
+                                                        try {
+                                                            await addGoalToTrack(track.id, goal.id);
+                                                            refetch();
+                                                        } catch (err) {
+                                                            console.error('Failed to add goal to track:', err);
+                                                        }
+                                                    }}
+                                                    className="w-full text-left px-3 py-2 text-sm text-neutral-300 hover:bg-neutral-700/50"
+                                                >
+                                                    {track.name}
+                                                </button>
+                                            ))}
+                                        </>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                    )}
+                    {/* Remove from track — only for tracked goals */}
+                    {goal.trackId && !goal.completedAt && (
+                        <button
+                            onClick={async () => {
+                                try {
+                                    await removeGoalFromTrack(goal.trackId!, goal.id);
+                                    refetch();
+                                } catch (err) {
+                                    console.error('Failed to remove from track:', err);
+                                }
+                            }}
+                            className="min-h-[44px] flex items-center gap-1.5 px-3 text-xs text-neutral-500 hover:text-neutral-300 hover:bg-white/5 rounded-lg transition-colors"
+                            title="Remove from track"
+                        >
+                            <Route size={14} />
+                            <span>Remove from track</span>
+                        </button>
+                    )}
                     <button onClick={() => setShowEditModal(true)} className="min-h-[44px] min-w-[44px] flex items-center justify-center text-neutral-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors" aria-label="Edit goal">
                         <Edit size={18} />
                     </button>
@@ -626,6 +709,22 @@ export const GoalDetailPage: React.FC<GoalDetailPageProps> = ({ goalId, onBack, 
                     goalTitle={data.goal.title}
                 />
             )}
+
+            {/* Create Track Modal (from goal detail) */}
+            <CreateGoalTrackModal
+                isOpen={showCreateTrackModal}
+                onClose={() => setShowCreateTrackModal(false)}
+                defaultCategoryId={data.goal.categoryId}
+                onSuccess={async (trackId) => {
+                    // Add this goal to the newly created track
+                    try {
+                        await addGoalToTrack(trackId, data.goal.id);
+                        refetch();
+                    } catch (err) {
+                        console.error('Failed to add goal to new track:', err);
+                    }
+                }}
+            />
         </div>
     );
 };
