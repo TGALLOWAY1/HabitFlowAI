@@ -9,6 +9,7 @@
 - `docs/API.md` — backend route inventory and API contracts.
 - `docs/DATA_MODEL.md` — implemented collections and ownership boundaries (post–M6).
 - `docs/DEV_GUIDE.md` — setup, scripts, testing, and runbook.
+- `docs/FEATURES.md` — canonical feature list organized by domain (habits, routines, goals, journal, AI, etc.).
 - `docs/VERIFICATION.md` — consistency and dashboard validation checklist.
 - `docs/maintenance/verification.md` — test suite commands and smoke test checklist.
 - `docs/semantics/daykey.md` — DayKey and timezone policy (America/New_York fallback).
