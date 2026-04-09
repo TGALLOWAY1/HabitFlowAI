@@ -11,51 +11,59 @@ interface MiniHeatmapProps {
 }
 
 export const MiniHeatmap: React.FC<MiniHeatmapProps> = ({ data }) => {
-    // Data comes most recent first. Reverse to chronological order.
-    const allData = data.slice(0, 28).reverse();
+    // Data comes most recent first. Keep that order so today is top-left.
+    const allData = data.slice(0, 28);
 
-    // Count how many days have progress
-    const daysWithProgress = allData.filter(d => d.hasProgress).length;
+    // Group into weeks of 7 (week 0 = most recent)
+    const weeks: (typeof allData)[] = [];
+    for (let i = 0; i < allData.length; i += 7) {
+        weeks.push(allData.slice(i, i + 7));
+    }
 
-    // Show 7 boxes (1 week) when little/no progress, expand to full 28 when active
-    const cellCount = daysWithProgress >= 3 ? 28 : 7;
-    const relevantData = cellCount === 7 ? allData.slice(-7) : allData;
+    // Show consecutive weeks with progress (from most recent), up to 4.
+    // Always show at least 1 week.
+    let weekCount = 0;
+    for (let i = 0; i < weeks.length && i < 4; i++) {
+        if (weeks[i].some(d => d.hasProgress)) {
+            weekCount = i + 1;
+        } else {
+            break;
+        }
+    }
+    weekCount = Math.max(weekCount, 1);
 
-    const paddedData = [...relevantData];
-    while (paddedData.length < cellCount) {
-        paddedData.unshift({ date: `empty-${paddedData.length}`, value: 0, hasProgress: false });
+    // Build display data from selected weeks
+    const displayData = allData.slice(0, weekCount * 7);
+
+    // Pad last row if data doesn't fill it
+    while (displayData.length % 7 !== 0) {
+        displayData.push({ date: `empty-${displayData.length}`, value: 0, hasProgress: false });
     }
 
     return (
         <div className="flex flex-col gap-1 w-full">
-            {/* 7 cols grid (4 rows implied by 28 items) */}
             <div className="grid grid-cols-7 gap-1 w-full relative">
-                {paddedData.map((day) => {
-                    // Default to visible "empty" slot for ALL cells, including padding
+                {displayData.map((day, idx) => {
                     let bgClass = "bg-white/5";
-
                     if (day.hasProgress) {
                         bgClass = "bg-emerald-500";
                     }
-                    // REMOVED: explicit check making 'empty' dates transparent. 
-                    // We want them visible as placeholders.
 
-                    // Simple formatting for the native title tooltip
-                    // If it's a real date, format it nicely
+                    const isToday = idx === 0 && !String(day.date).startsWith('empty');
+
                     let tooltipText = "";
                     if (!String(day.date).startsWith('empty')) {
-                        // Use basic toLocaleDateString for now to avoid date-fns import if we want to keep it simple
-                        // Or just use the raw string if it is YYYY-MM-DD
                         tooltipText = `${day.date}: ${day.value}`;
                     }
 
                     return (
                         <div
                             key={day.date}
-                            className={`w-full aspect-square rounded-[1px] ${bgClass} relative group/cell`}
+                            className={`w-full aspect-square rounded-[1px] ${bgClass} relative group/cell ${
+                                isToday ? 'ring-1.5 ring-white/50 rounded-sm' : ''
+                            }`}
                             title={tooltipText}
                         >
-                            {/* Custom CSS Tooltip on hover */}
                             {!String(day.date).startsWith('empty') && (
                                 <div className="hidden group-hover/cell:block absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 bg-neutral-900 border border-white/10 text-[10px] text-white rounded whitespace-nowrap z-10 pointer-events-none shadow-xl">
                                     {day.date} • {day.value}
