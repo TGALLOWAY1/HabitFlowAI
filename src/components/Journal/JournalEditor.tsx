@@ -74,7 +74,7 @@ export function JournalEditor({ existingEntry, onSave, onCancel, initialTemplate
     // Mode, Content, Date are local ephemeral state (lost on refresh unless saved, or we could persist content to localStorage)
     const [mode, setMode] = useState<'standard' | 'deep' | 'free'>(existingEntry?.mode || (initialTemplateId === 'free-write' ? 'free' : 'standard'));
     const [content, setContent] = useState<Record<string, string>>(existingEntry?.content || {});
-    const [date, setDate] = useState<string>(existingEntry?.date || new Date().toISOString().split('T')[0]);
+    const [date, setDate] = useState<string>(existingEntry?.date || new Date().toLocaleDateString('en-CA'));
 
     const [isSubmitting, setIsSubmitting] = useState(false);
 

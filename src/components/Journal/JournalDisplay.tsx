@@ -105,7 +105,7 @@ export function JournalDisplay({ onEdit, lastSavedEntry }: JournalDisplayProps) 
                                 )}
                             </div>
                             <h4 className="text-lg font-medium text-white">
-                                {format(new Date(entry.date), 'EEEE, MMMM do, yyyy')}
+                                {format(new Date(entry.date + 'T00:00:00'), 'EEEE, MMMM do, yyyy')}
                             </h4>
                         </div>
 
