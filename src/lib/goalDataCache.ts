@@ -22,8 +22,8 @@
  * - Stale-while-revalidate: shows cached data immediately, fetches fresh data in background
  */
 
-import type { GoalWithProgress } from '../models/persistenceTypes';
-import type { GoalDetail, CompletedGoal, ProgressOverview } from '../types';
+import type { GoalWithProgress, GoalTrack } from '../models/persistenceTypes';
+import type { GoalDetail, CompletedGoal, ProgressOverview, GoalTrackWithGoals } from '../types';
 
 // Cache entry with timestamp
 interface CacheEntry<T> {
@@ -265,4 +265,32 @@ export function isGoalDetailFresh(goalId: string): boolean {
  */
 export function setCachedGoalDetail(goalId: string, data: GoalDetail): void {
     setCached(getGoalDetailCacheKey(goalId), data);
+}
+
+// ─── Goal Tracks Cache ──────────────────────────────────
+
+const CACHE_KEY_GOAL_TRACKS = 'goal-tracks';
+
+function getGoalTrackDetailCacheKey(trackId: string): string {
+    return `goal-track-detail-${trackId}`;
+}
+
+export function getCachedGoalTracks(): GoalTrack[] | null {
+    return getCached<GoalTrack[]>(CACHE_KEY_GOAL_TRACKS);
+}
+
+export function isGoalTracksFresh(): boolean {
+    return isCacheFresh(CACHE_KEY_GOAL_TRACKS);
+}
+
+export function setCachedGoalTracks(data: GoalTrack[]): void {
+    setCached(CACHE_KEY_GOAL_TRACKS, data);
+}
+
+export function getCachedGoalTrackDetail(trackId: string): GoalTrackWithGoals | null {
+    return getCached<GoalTrackWithGoals>(getGoalTrackDetailCacheKey(trackId));
+}
+
+export function setCachedGoalTrackDetail(trackId: string, data: GoalTrackWithGoals): void {
+    setCached(getGoalTrackDetailCacheKey(trackId), data);
 }

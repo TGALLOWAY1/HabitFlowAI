@@ -1,5 +1,5 @@
 import React from 'react';
-import { Flame, CheckCircle2, Star, Award, Zap, Lock } from 'lucide-react';
+import { Flame, CheckCircle2, Star, Award, Zap, Lock, Route } from 'lucide-react';
 import type { Achievement } from '../../lib/analyticsClient';
 
 interface AchievementsSectionProps {
@@ -13,6 +13,7 @@ const iconMap: Record<string, React.ElementType> = {
   week: Star,
   consistency: Award,
   first: Zap,
+  track: Route,
 };
 
 export const AchievementsSection: React.FC<AchievementsSectionProps> = ({ data, loading }) => {

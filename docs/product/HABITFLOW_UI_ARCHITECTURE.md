@@ -114,6 +114,7 @@ HabitFlow App
 | Goals — Achievements | Page | "Achievements" toggle on Goals | Gallery of completed goals (was Win Archive) | Goals | Goal Detail |
 | Goal Detail | Page | Click goal card / pinned goal | Charts, entries, linked habits for one goal | Goals, Habits, Entries | Edit Goal Modal, Goal Completed |
 | Goal Completed | Page | Auto-shown on 100% or manual | Celebratory screen with next actions | Goals | Achievements, Goal Detail, Level Up |
+| Goal Track Detail | Page | Click track in Goals page | Track name, ordered goals with states, reorder, add/remove goals | Goal Tracks, Goals | Goal Detail, Goals List |
 | Create Goal (Step 1) | Modal | "+ Goal" button on Goals page | Enter goal details (title, type, target, deadline, category) | Goals, Categories | Create Goal Step 2 |
 | Create Goal (Step 2) | Modal | Next from Step 1 | Link habits to goal (filtered by category if selected) | Goals, Habits | Goals List (on submit) |
 | Journal | Page | Dashboard card / `?view=journal` | Free-write, templates, history tabs; auto-generated AI summary banner | Journal Entries | — |

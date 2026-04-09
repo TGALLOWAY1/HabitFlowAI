@@ -334,6 +334,21 @@ export const GoalDetailPage: React.FC<GoalDetailPageProps> = ({ goalId, onBack, 
                         </div>
                     </div>
 
+                    {/* Track context info */}
+                    {goal.trackId && goal.activeWindowStart && (
+                        <div className="mt-2 px-3 py-2 bg-emerald-500/5 border border-emerald-500/10 rounded-lg">
+                            <p className="text-xs text-emerald-400/80">
+                                {goal.trackStatus === 'active'
+                                    ? `Progress tracked since ${format(parseISO(goal.activeWindowStart), 'MMM d, yyyy')}. Only habit entries from this date onward count toward this goal.`
+                                    : goal.trackStatus === 'completed' && goal.activeWindowEnd
+                                    ? `Progress tracked from ${format(parseISO(goal.activeWindowStart), 'MMM d, yyyy')} to ${format(parseISO(goal.activeWindowEnd), 'MMM d, yyyy')}.`
+                                    : goal.trackStatus === 'locked'
+                                    ? 'This goal is locked. It will become active when earlier goals in the track are completed.'
+                                    : ''}
+                            </p>
+                        </div>
+                    )}
+
                     {/* Progress Bar with Inline Milestones */}
                     <div className="relative pt-6 pb-2">
                         <div className="h-4 bg-neutral-800 rounded-full overflow-hidden relative">

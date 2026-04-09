@@ -1047,10 +1047,69 @@ export interface Goal {
      * Goals without sortOrder will be sorted by createdAt (asc) as fallback.
      */
     sortOrder?: number;
+
+    /** ID of the GoalTrack this goal belongs to (undefined = standalone goal) */
+    trackId?: string;
+
+    /** Position within the track (0-based). Only meaningful when trackId is set. */
+    trackOrder?: number;
+
+    /**
+     * Track lifecycle status. Only set when goal is in a track.
+     * - 'locked': future goal in sequence, not yet active
+     * - 'active': currently active goal in the track
+     * - 'completed': goal completed within the track
+     */
+    trackStatus?: 'locked' | 'active' | 'completed';
+
+    /**
+     * DayKey (YYYY-MM-DD) when this goal became active in a track.
+     * Progress for tracked goals only counts entries on or after this date.
+     */
+    activeWindowStart?: string;
+
+    /**
+     * DayKey (YYYY-MM-DD) when this goal was completed/deactivated in a track.
+     * Progress for tracked goals only counts entries on or before this date.
+     * Undefined means the window is still open (goal is currently active).
+     */
+    activeWindowEnd?: string;
 }
 
 /** Goals stored as an array */
 export type GoalsStorage = Goal[];
+
+/**
+ * Goal Track Entity
+ *
+ * Storage Key: 'goalTracks'
+ *
+ * An ordered sequence of goals within a single category.
+ * Only one goal per track is active at a time.
+ * Completing the active goal automatically advances the track.
+ */
+export interface GoalTrack {
+    /** Unique identifier */
+    id: string;
+
+    /** Display name of the track (e.g., "Certification Path") */
+    name: string;
+
+    /** ID of the Category this track belongs to. All goals in the track must match. */
+    categoryId: string;
+
+    /** Optional description of the track */
+    description?: string;
+
+    /** ISO 8601 timestamp of when the track was created */
+    createdAt: string;
+
+    /** ISO 8601 timestamp of when the track was last updated */
+    updatedAt: string;
+
+    /** ISO 8601 timestamp of when all goals in the track were completed. Null to reopen. */
+    completedAt?: string | null;
+}
 
 /**
  * Goal Progress Warning
@@ -1251,6 +1310,7 @@ export const MONGO_COLLECTIONS = {
     WELLBEING_ENTRIES: 'wellbeingEntries',
     ROUTINES: 'routines',
     GOALS: 'goals',
+    GOAL_TRACKS: 'goalTracks',
     GOAL_MANUAL_LOGS: 'goalManualLogs',
     ROUTINE_LOGS: 'routineLogs',
     ROUTINE_IMAGES: 'routineImages',

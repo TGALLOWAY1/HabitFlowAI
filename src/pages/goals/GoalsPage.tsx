@@ -18,7 +18,9 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { useGoalsWithProgress } from '../../lib/useGoalsWithProgress';
+import { useGoalTracks } from '../../lib/useGoalTracks';
 import { GoalGridCard } from '../../components/goals/GoalGridCard';
+import { GoalTrackSection } from '../../components/goals/GoalTrackSection';
 import { Loader2, AlertCircle } from 'lucide-react';
 import { EditGoalModal } from '../../components/goals/EditGoalModal';
 import { useHabitStore } from '../../store/HabitContext';
@@ -31,6 +33,7 @@ interface GoalsPageProps {
     onViewGoal?: (goalId: string) => void;
     onNavigateToCompleted?: (goalId: string) => void;
     onViewWinArchive?: () => void;
+    onViewTrack?: (trackId: string) => void;
 }
 
 // Sortable wrapper for a goal card
@@ -71,12 +74,13 @@ const SortableGoalCard: React.FC<{
 };
 
 interface StackProps {
-    stack: { category: { id: string; name: string; color: string }; goals: Array<{ id: string }> };
+    stack: { category: { id: string; name: string; color: string }; goals: Array<{ id: string; type?: string }>; tracks: Array<{ track: { id: string; name: string; categoryId: string; description?: string; createdAt: string; updatedAt: string; completedAt?: string | null }; goals: Array<{ id: string; trackStatus?: string; trackOrder?: number; type?: string; title: string; completedAt?: string | null; activeWindowStart?: string }> }> };
     isExpanded: boolean;
     goalCount: number;
     onToggle: () => void;
     getGoalWithProgress: (goalId: string) => GoalWithProgress | undefined;
     onViewGoal?: (goalId: string) => void;
+    onViewTrack?: (trackId: string) => void;
     onEdit: (goalId: string) => void;
     onNavigateToCompleted?: (goalId: string) => void;
     onDragEnd: (event: DragEndEvent, categoryId: string) => void;
@@ -92,6 +96,7 @@ const Stack: React.FC<StackProps> = ({
     onToggle,
     getGoalWithProgress,
     onViewGoal,
+    onViewTrack,
     onEdit,
     onNavigateToCompleted,
     onDragEnd,
@@ -172,6 +177,22 @@ const Stack: React.FC<StackProps> = ({
                             )}
                         </SortableContext>
                     </DndContext>
+
+                    {/* Track sections */}
+                    {stack.tracks && stack.tracks.length > 0 && (
+                        <div className={stack.goals.length > 0 ? 'mt-3 space-y-2' : 'space-y-2'}>
+                            {stack.tracks.map((tg) => (
+                                <GoalTrackSection
+                                    key={tg.track.id}
+                                    track={tg.track as any}
+                                    goals={tg.goals as any}
+                                    getGoalWithProgress={getGoalWithProgress}
+                                    onViewGoal={onViewGoal}
+                                    onViewTrack={onViewTrack}
+                                />
+                            ))}
+                        </div>
+                    )}
                 </div>
             )}
         </div>
@@ -182,9 +203,11 @@ export const GoalsPage: React.FC<GoalsPageProps> = ({
     onCreateGoal,
     onViewGoal,
     onNavigateToCompleted,
-    onViewWinArchive: _onViewWinArchive
+    onViewWinArchive: _onViewWinArchive,
+    onViewTrack,
 }) => {
     const { data, loading, error, refetch } = useGoalsWithProgress();
+    const { data: tracks } = useGoalTracks();
     const { categories } = useHabitStore();
     const [editingGoalId, setEditingGoalId] = useState<string | null>(null);
     const [expandedStacks, setExpandedStacks] = useState<Set<string>>(new Set());
@@ -202,8 +225,8 @@ export const GoalsPage: React.FC<GoalsPageProps> = ({
     const goalStacks = useMemo(() => {
         if (!data || !categories) return [];
         const goals = data.map(gwp => gwp.goal);
-        return buildGoalStacks({ goals, categories });
-    }, [data, categories]);
+        return buildGoalStacks({ goals, categories, tracks });
+    }, [data, categories, tracks]);
 
     // Initialize all stacks as expanded on mount
     React.useEffect(() => {
@@ -317,8 +340,10 @@ export const GoalsPage: React.FC<GoalsPageProps> = ({
                 <div className="space-y-5">
                     {goalStacks.map((stack) => {
                         const isExpanded = expandedStacks.has(stack.category.id);
-                        const goalCount = stack.goals.length;
-                        const hasCumulativeGoals = stack.goals.some(g => g.type === 'cumulative');
+                        const trackGoalCount = stack.tracks.reduce((sum, tg) => sum + tg.goals.length, 0);
+                        const goalCount = stack.goals.length + trackGoalCount;
+                        const allGoals = [...stack.goals, ...stack.tracks.flatMap(tg => tg.goals)];
+                        const hasCumulativeGoals = allGoals.some(g => g.type === 'cumulative');
 
                         return (
                             <Stack
@@ -329,6 +354,7 @@ export const GoalsPage: React.FC<GoalsPageProps> = ({
                                 onToggle={() => toggleStack(stack.category.id)}
                                 getGoalWithProgress={getGoalWithProgress}
                                 onViewGoal={onViewGoal}
+                                onViewTrack={onViewTrack}
                                 onEdit={(goalId) => setEditingGoalId(goalId)}
                                 onNavigateToCompleted={onNavigateToCompleted}
                                 onDragEnd={handleDragEnd}

@@ -124,7 +124,12 @@ export async function computeGoalProgressV2(
   const allHabits = await getHabitsByUser(householdId, userId);
   const habitMap = new Map(allHabits.map(h => [h.id, h]));
 
-  return computeFullGoalProgressV2(goal, activeEntries, habitMap, timeZone);
+  // For tracked goals, only count entries within the active window
+  const dateWindow = goal.activeWindowStart
+    ? { start: goal.activeWindowStart, end: goal.activeWindowEnd || undefined }
+    : undefined;
+
+  return computeFullGoalProgressV2(goal, activeEntries, habitMap, timeZone, dateWindow);
 }
 
 /**
@@ -140,8 +145,18 @@ export function computeFullGoalProgressV2(
   goal: Goal,
   entryViews: EntryView[],
   habitMap?: Map<string, Habit>,
-  _timeZone: string = 'UTC'
+  _timeZone: string = 'UTC',
+  dateWindow?: { start: string; end?: string }
 ): GoalProgress {
+  // For tracked goals, filter entries to the active window
+  const filteredEntries = dateWindow
+    ? entryViews.filter(e => {
+        if (e.dayKey < dateWindow.start) return false;
+        if (dateWindow.end && e.dayKey > dateWindow.end) return false;
+        return true;
+      })
+    : entryViews;
+
   const aggregationMode = getAggregationMode(goal);
   const countMode = getCountMode(goal);
 
@@ -151,7 +166,7 @@ export function computeFullGoalProgressV2(
   }
 
   const entriesByDate = new Map<DayKey, EntryView[]>();
-  for (const entry of entryViews) {
+  for (const entry of filteredEntries) {
     if (!entriesByDate.has(entry.dayKey)) {
       entriesByDate.set(entry.dayKey, []);
     }
@@ -162,7 +177,7 @@ export function computeFullGoalProgressV2(
 
   let currentValue: number;
   if (aggregationMode === 'sum') {
-    currentValue = entryViews.reduce((sum, entry) => {
+    currentValue = filteredEntries.reduce((sum, entry) => {
       if (habitMap && goal.unit) {
         const habit = habitMap.get(entry.habitId);
         // Deleted habits won't be in the map — still count their raw entry value
@@ -187,10 +202,10 @@ export function computeFullGoalProgressV2(
     }, 0);
   } else {
     if (countMode === 'entries') {
-      currentValue = entryViews.length;
+      currentValue = filteredEntries.length;
     } else {
       const completedDayKeys = new Set<DayKey>();
-      for (const entry of entryViews) {
+      for (const entry of filteredEntries) {
         completedDayKeys.add(entry.dayKey);
       }
       currentValue = completedDayKeys.size;
@@ -359,7 +374,12 @@ export async function computeGoalsWithProgressFromData(
       goalEntryViews.push(...habitEntries);
     }
 
-    const progress = computeFullGoalProgressV2(goal, goalEntryViews, habitMap, timeZone);
+    // For tracked goals, only count entries within the active window
+    const dateWindow = goal.activeWindowStart
+      ? { start: goal.activeWindowStart, end: goal.activeWindowEnd || undefined }
+      : undefined;
+
+    const progress = computeFullGoalProgressV2(goal, goalEntryViews, habitMap, timeZone, dateWindow);
 
     results.push({
       goal,
@@ -452,7 +472,29 @@ export async function computeGoalListProgress(
 
   const results: Array<{ goal: Goal; progress: GoalProgress }> = [];
 
-  for (const goal of goals) {
+  // Separate tracked goals (need date-windowed computation) from standalone goals
+  const trackedGoals = goals.filter(g => !!g.activeWindowStart);
+  const standaloneGoals = goals.filter(g => !g.activeWindowStart);
+
+  // Process tracked goals via full entry path with date window filtering
+  if (trackedGoals.length > 0) {
+    for (const goal of trackedGoals) {
+      const resolvedIds = resolvedHabitsCache.get(goal.id) || [];
+      const dateWindow = { start: goal.activeWindowStart!, end: goal.activeWindowEnd || undefined };
+
+      // Fetch entries for this goal's linked habits within the active window
+      const windowedEntries = await getEntryViewsForHabits(resolvedIds, householdId, userId, {
+        startDayKey: dateWindow.start as DayKey,
+        endDayKey: dateWindow.end as DayKey | undefined,
+        timeZone,
+      });
+
+      const progress = computeFullGoalProgressV2(goal, windowedEntries, habitMap, timeZone, dateWindow);
+      results.push({ goal, progress });
+    }
+  }
+
+  for (const goal of standaloneGoals) {
     const resolvedIds = resolvedHabitsCache.get(goal.id) || [];
 
     // Compute currentValue from aggregated totals (no entry iteration needed)

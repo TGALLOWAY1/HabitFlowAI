@@ -147,9 +147,16 @@ export type { Routine, RoutineStep, RoutineVariant, HabitEntry, HabitPotentialEv
 export type Theme = 'dark' | 'light';
 
 // Re-export Goal and GoalProgress from persistenceTypes for frontend use
-// Re-export Goal and GoalProgress from persistenceTypes for frontend use
-import type { Goal, GoalProgress, GoalWithProgress } from '../models/persistenceTypes';
-export type { Goal, GoalProgress, GoalWithProgress };
+import type { Goal, GoalProgress, GoalWithProgress, GoalTrack } from '../models/persistenceTypes';
+export type { Goal, GoalProgress, GoalWithProgress, GoalTrack };
+
+/**
+ * Goal Track with its ordered goals and their progress.
+ */
+export interface GoalTrackWithGoals {
+    track: GoalTrack;
+    goals: Goal[];
+}
 
 /**
  * Completed Goal

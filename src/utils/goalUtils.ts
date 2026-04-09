@@ -1,31 +1,43 @@
 /**
  * Goal Utility Functions
- * 
+ *
  * Helper functions for goal-related operations, particularly around sorting and ordering.
  */
 
-import type { Goal, Category } from '../models/persistenceTypes';
+import type { Goal, GoalTrack, Category } from '../models/persistenceTypes';
 
 /**
- * Goal Stack
- * 
- * Represents a category with its associated goals, ready for display.
+ * A group of goals belonging to a single track within a category stack.
  */
-export interface GoalStack {
-    category: Category;
+export interface TrackGroup {
+    track: GoalTrack;
     goals: Goal[];
 }
 
 /**
+ * Goal Stack
+ *
+ * Represents a category with its associated goals, ready for display.
+ * Goals are split into standalone goals and track-grouped goals.
+ */
+export interface GoalStack {
+    category: Category;
+    /** Standalone goals (not in any track) */
+    goals: Goal[];
+    /** Goals grouped by track */
+    tracks: TrackGroup[];
+}
+
+/**
  * Normalizes sort orders for goals within a category.
- * 
+ *
  * Assigns missing sort orders deterministically based on:
  * 1. Existing sortOrder values (preserved)
  * 2. createdAt timestamp (ascending) as fallback
  * 3. title (alphabetical) as final fallback
- * 
+ *
  * This ensures stable ordering without changing progress computation.
- * 
+ *
  * @param goalsInCategory - Array of goals in the same category (or all goals if categoryId is undefined)
  * @returns Array of goals with sortOrder assigned (mutates input array)
  */
@@ -67,130 +79,129 @@ export function normalizeGoalSortOrders(goalsInCategory: Goal[]): Goal[] {
 }
 
 /**
- * Builds goal stacks grouped by category.
- * 
- * Groups goals by their categoryId, filters out empty categories and completed goals,
- * and orders both stacks and goals within stacks according to the specified rules.
- * 
- * Ordering Rules:
- * - Stacks ordered by category name (ascending) - categories don't have sortOrder
- * - Goals within a stack ordered by goal.sortOrder (fallback: createdAt asc)
- * 
- * Filtering Rules:
- * - Only includes categories that have at least one goal
- * - Excludes completed goals (where completedAt is not null)
- * - Goals without categoryId are placed in an "Uncategorized" synthetic category
- *   (following the pattern used in RoutineList)
- * 
- * @param params - Parameters object
- * @param params.goals - Array of goals to group
- * @param params.categories - Array of all categories
- * @returns Array of goal stacks, ordered and filtered
+ * Sort goals by sortOrder then createdAt.
+ */
+function sortGoalsByOrder(goals: Goal[]): Goal[] {
+    return [...goals].sort((a, b) => {
+        const orderA = a.sortOrder ?? Infinity;
+        const orderB = b.sortOrder ?? Infinity;
+        if (orderA !== orderB) return orderA - orderB;
+        return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+    });
+}
+
+/**
+ * Builds goal stacks grouped by category, with track sub-grouping.
+ *
+ * Within each category, goals are split into:
+ * - standalone goals (no trackId)
+ * - track groups (goals grouped by trackId, ordered by trackOrder)
+ *
+ * Completed standalone goals are filtered out (they belong in Win Archive).
+ * Completed goals within tracks are kept (they show track history).
  */
 export function buildGoalStacks({
     goals,
     categories,
+    tracks = [],
 }: {
     goals: Goal[];
     categories: Category[];
+    tracks?: GoalTrack[];
 }): GoalStack[] {
-    // Filter out completed goals (they belong in Win Archive)
-    const activeGoals = goals.filter(goal => !goal.completedAt);
-
-    // Create a map of category ID to Category for quick lookup
     const categoryMap = new Map<string, Category>(
         categories.map(cat => [cat.id, cat])
     );
+    const trackMap = new Map<string, GoalTrack>(
+        tracks.map(t => [t.id, t])
+    );
 
-    // Group goals by categoryId
-    const goalsByCategoryId = new Map<string, Goal[]>();
+    // Separate tracked goals from standalone goals
+    const standaloneGoals = goals.filter(g => !g.trackId && !g.completedAt);
+    const trackedGoals = goals.filter(g => !!g.trackId);
+
+    // Group standalone goals by categoryId
+    const standaloneByCategory = new Map<string, Goal[]>();
     const uncategorizedGoals: Goal[] = [];
 
-    for (const goal of activeGoals) {
+    for (const goal of standaloneGoals) {
         if (goal.categoryId && categoryMap.has(goal.categoryId)) {
-            // Goal has a valid category
-            const existing = goalsByCategoryId.get(goal.categoryId) || [];
+            const existing = standaloneByCategory.get(goal.categoryId) || [];
             existing.push(goal);
-            goalsByCategoryId.set(goal.categoryId, existing);
-        } else if (!goal.categoryId) {
-            // Goal has no categoryId - add to uncategorized
-            uncategorizedGoals.push(goal);
+            standaloneByCategory.set(goal.categoryId, existing);
         } else {
-            // Goal references non-existent category (deleted?) — treat as uncategorized
             uncategorizedGoals.push(goal);
         }
     }
 
-    // Build stacks from categories that have goals
+    // Group tracked goals by trackId, then by category
+    const trackGroupsByCategory = new Map<string, TrackGroup[]>();
+
+    const goalsByTrackId = new Map<string, Goal[]>();
+    for (const goal of trackedGoals) {
+        const existing = goalsByTrackId.get(goal.trackId!) || [];
+        existing.push(goal);
+        goalsByTrackId.set(goal.trackId!, existing);
+    }
+
+    for (const [trackId, trackGoals] of goalsByTrackId) {
+        const track = trackMap.get(trackId);
+        if (!track) continue; // orphaned track reference — skip
+
+        // Skip completed tracks entirely (all goals done)
+        if (track.completedAt) continue;
+
+        const categoryId = track.categoryId;
+        const sortedTrackGoals = [...trackGoals].sort(
+            (a, b) => (a.trackOrder ?? 0) - (b.trackOrder ?? 0)
+        );
+
+        const group: TrackGroup = { track, goals: sortedTrackGoals };
+        const existing = trackGroupsByCategory.get(categoryId) || [];
+        existing.push(group);
+        trackGroupsByCategory.set(categoryId, existing);
+    }
+
+    // Build stacks
     const stacks: GoalStack[] = [];
 
-    // Add stacks for categories that have goals
-    for (const category of categories) {
-        const categoryGoals = goalsByCategoryId.get(category.id);
-        if (categoryGoals && categoryGoals.length > 0) {
-            // Sort goals within the stack: sortOrder (lower first), then createdAt (asc)
-            const sortedGoals = [...categoryGoals].sort((a, b) => {
-                const orderA = a.sortOrder ?? Infinity;
-                const orderB = b.sortOrder ?? Infinity;
-                if (orderA !== orderB) {
-                    return orderA - orderB;
-                }
-                // Fallback to createdAt ascending
-                return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
-            });
+    // Collect all category IDs that have content
+    const categoriesWithContent = new Set<string>();
+    for (const catId of standaloneByCategory.keys()) categoriesWithContent.add(catId);
+    for (const catId of trackGroupsByCategory.keys()) categoriesWithContent.add(catId);
 
-            stacks.push({
-                category,
-                goals: sortedGoals,
-            });
-        }
+    for (const category of categories) {
+        if (!categoriesWithContent.has(category.id)) continue;
+
+        const catStandalone = standaloneByCategory.get(category.id) || [];
+        const catTracks = trackGroupsByCategory.get(category.id) || [];
+
+        stacks.push({
+            category,
+            goals: sortGoalsByOrder(catStandalone),
+            tracks: catTracks.sort((a, b) => a.track.createdAt.localeCompare(b.track.createdAt)),
+        });
     }
 
     // Add "Uncategorized" stack if there are uncategorized goals
     if (uncategorizedGoals.length > 0) {
-        // Sort uncategorized goals: sortOrder (lower first), then createdAt (asc)
-        const sortedUncategorized = [...uncategorizedGoals].sort((a, b) => {
-            const orderA = a.sortOrder ?? Infinity;
-            const orderB = b.sortOrder ?? Infinity;
-            if (orderA !== orderB) {
-                return orderA - orderB;
-            }
-            // Fallback to createdAt ascending
-            return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
-        });
-
         stacks.push({
             category: {
                 id: 'uncategorized',
                 name: 'Uncategorized',
                 color: 'bg-neutral-600',
             },
-            goals: sortedUncategorized,
+            goals: sortGoalsByOrder(uncategorizedGoals),
+            tracks: [],
         });
     }
 
-    // Sort stacks by category name (ascending) - categories don't have sortOrder
-    // Put "Uncategorized" at the end
+    // Sort stacks by category name, "Uncategorized" last
     stacks.sort((a, b) => {
-        // Uncategorized always goes last
         if (a.category.id === 'uncategorized') return 1;
         if (b.category.id === 'uncategorized') return -1;
-        // Otherwise sort by name
         return a.category.name.localeCompare(b.category.name);
     });
 
-    // Dev-only console log for testing
-    if (process.env.NODE_ENV === 'development') {
-        console.log('[buildGoalStacks]', {
-            totalStacks: stacks.length,
-            stacksByCategory: stacks.map(stack => ({
-                categoryName: stack.category.name,
-                goalCount: stack.goals.length,
-            })),
-            totalGoals: stacks.reduce((sum, stack) => sum + stack.goals.length, 0),
-        });
-    }
-
     return stacks;
 }
-
