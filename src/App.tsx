@@ -28,18 +28,37 @@ import { ScheduleView } from './components/day-view/ScheduleView';
 import { DevIdentityPanel } from './components/DevIdentityPanel';
 import { DashboardPrefsProvider } from './store/DashboardPrefsContext';
 
+// Retry wrapper for lazy imports — handles stale chunk failures after deployments
+function lazyRetry<T extends React.ComponentType<any>>(
+  factory: () => Promise<{ default: T }>
+): React.LazyExoticComponent<T> {
+  return React.lazy(() =>
+    factory().catch(() => {
+      // Chunk likely outdated after a deployment — reload once to get fresh assets
+      const key = 'chunk-retry-reload';
+      if (!sessionStorage.getItem(key)) {
+        sessionStorage.setItem(key, '1');
+        window.location.reload();
+        return new Promise<never>(() => {}); // suspend until reload
+      }
+      sessionStorage.removeItem(key);
+      return factory(); // second attempt after reload flag is set
+    })
+  );
+}
+
 // Lazy-loaded pages — split into separate chunks for faster initial load
-const GoalsPage = React.lazy(() => import('./pages/goals/GoalsPage').then(m => ({ default: m.GoalsPage })));
-const GoalDetailPage = React.lazy(() => import('./pages/goals/GoalDetailPage').then(m => ({ default: m.GoalDetailPage })));
-const GoalCompletedPage = React.lazy(() => import('./pages/goals/GoalCompletedPage').then(m => ({ default: m.GoalCompletedPage })));
-const WinArchivePage = React.lazy(() => import('./pages/goals/WinArchivePage').then(m => ({ default: m.WinArchivePage })));
-const GoalScheduleView = React.lazy(() => import('./pages/goals/GoalScheduleView').then(m => ({ default: m.GoalScheduleView })));
-const JournalPage = React.lazy(() => import('./pages/JournalPage').then(m => ({ default: m.JournalPage })));
-const TasksPage = React.lazy(() => import('./pages/TasksPage').then(m => ({ default: m.TasksPage })));
-const DebugEntriesPage = React.lazy(() => import('./pages/DebugEntriesPage').then(m => ({ default: m.DebugEntriesPage })));
-const WellbeingHistoryPage = React.lazy(() => import('./pages/WellbeingHistoryPage').then(m => ({ default: m.WellbeingHistoryPage })));
-const AnalyticsPage = React.lazy(() => import('./pages/AnalyticsPage').then(m => ({ default: m.AnalyticsPage })));
-const AppleHealthPage = React.lazy(() => import('./pages/AppleHealthPage').then(m => ({ default: m.AppleHealthPage })));
+const GoalsPage = lazyRetry(() => import('./pages/goals/GoalsPage').then(m => ({ default: m.GoalsPage })));
+const GoalDetailPage = lazyRetry(() => import('./pages/goals/GoalDetailPage').then(m => ({ default: m.GoalDetailPage })));
+const GoalCompletedPage = lazyRetry(() => import('./pages/goals/GoalCompletedPage').then(m => ({ default: m.GoalCompletedPage })));
+const WinArchivePage = lazyRetry(() => import('./pages/goals/WinArchivePage').then(m => ({ default: m.WinArchivePage })));
+const GoalScheduleView = lazyRetry(() => import('./pages/goals/GoalScheduleView').then(m => ({ default: m.GoalScheduleView })));
+const JournalPage = lazyRetry(() => import('./pages/JournalPage').then(m => ({ default: m.JournalPage })));
+const TasksPage = lazyRetry(() => import('./pages/TasksPage').then(m => ({ default: m.TasksPage })));
+const DebugEntriesPage = lazyRetry(() => import('./pages/DebugEntriesPage').then(m => ({ default: m.DebugEntriesPage })));
+const WellbeingHistoryPage = lazyRetry(() => import('./pages/WellbeingHistoryPage').then(m => ({ default: m.WellbeingHistoryPage })));
+const AnalyticsPage = lazyRetry(() => import('./pages/AnalyticsPage').then(m => ({ default: m.AnalyticsPage })));
+const AppleHealthPage = lazyRetry(() => import('./pages/AppleHealthPage').then(m => ({ default: m.AppleHealthPage })));
 
 // Simple router state
 type AppRoute = 'tracker' | 'dashboard' | 'routines' | 'goals' | 'wins' | 'journal' | 'tasks' | 'day' | 'debug-entries' | 'wellbeing-history' | 'analytics' | 'health';
