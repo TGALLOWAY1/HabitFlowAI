@@ -1,9 +1,21 @@
 /**
  * ErrorBoundary — catches unhandled React errors and shows a recovery UI
  * instead of a white screen crash.
+ *
+ * Chunk-loading errors (stale assets after deployment) are auto-recovered
+ * via a one-time page reload.
  */
 
 import React from 'react';
+
+function isChunkLoadError(error: Error): boolean {
+  const msg = error.message || '';
+  return (
+    msg.includes('Failed to fetch dynamically imported module') ||
+    msg.includes('Importing a module script failed') ||
+    msg.includes('error loading dynamically imported module')
+  );
+}
 
 interface ErrorBoundaryState {
   hasError: boolean;
@@ -25,6 +37,17 @@ export class ErrorBoundary extends React.Component<
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     console.error('[ErrorBoundary] Uncaught error:', error, errorInfo);
+
+    // Auto-reload once for chunk loading failures (stale assets after deploy)
+    if (isChunkLoadError(error)) {
+      const key = 'eb-chunk-reload';
+      if (!sessionStorage.getItem(key)) {
+        sessionStorage.setItem(key, '1');
+        window.location.reload();
+        return;
+      }
+      sessionStorage.removeItem(key);
+    }
   }
 
   render() {

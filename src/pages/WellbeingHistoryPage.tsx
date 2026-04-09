@@ -1,7 +1,10 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { ArrowLeft, Activity, Battery, Target, Brain, Wind, Grid3X3, CalendarRange, BarChart3 } from 'lucide-react';
 import type { WellbeingMetricKey } from '../models/persistenceTypes';
 import { useWellbeingEntriesRange } from '../hooks/useWellbeingEntriesRange';
+import { useAuth } from '../store/AuthContext';
+
+const BETA_EMAIL = 'tj.galloway1@gmail.com';
 
 type Props = {
   onBack: () => void;
@@ -57,12 +60,23 @@ function formatWeekLabel(weekStartDayKey: string): string {
 }
 
 export const WellbeingHistoryPage: React.FC<Props> = ({ onBack }) => {
+  const { user } = useAuth();
+  const isAuthorized = user?.email?.toLowerCase() === BETA_EMAIL;
+
   const [windowDays, setWindowDays] = useState<30 | 90 | 180>(90);
   const [view, setView] = useState<HistoryView>('heatmap');
   const [metric, setMetric] = useState<SelectableMetric>('anxiety');
   const [hover, setHover] = useState<{ dayKey: string; value: number | null } | null>(null);
 
   const { loading, error, getDailyAverage, startDayKey, endDayKey } = useWellbeingEntriesRange(windowDays);
+
+  useEffect(() => {
+    if (!isAuthorized) {
+      onBack();
+    }
+  }, [isAuthorized, onBack]);
+
+  if (!isAuthorized) return null;
 
   const cellsForMetric = useMemo(() => {
     // Calendar-style grid: 7 columns (Sun..Sat), rows are weeks.
