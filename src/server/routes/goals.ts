@@ -642,6 +642,21 @@ export async function updateGoalRoute(req: Request, res: Response): Promise<void
       patch.categoryId = req.body.categoryId || undefined;
     }
 
+    // Block category changes for tracked goals (must match track category)
+    if (patch.categoryId !== undefined) {
+      const { householdId: hid, userId: uid } = getRequestIdentity(req);
+      const existingForCategoryCheck = await getGoalById(id, hid, uid);
+      if (existingForCategoryCheck?.trackId) {
+        res.status(400).json({
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: 'Cannot change category of a goal that belongs to a track. Remove it from the track first.',
+          },
+        });
+        return;
+      }
+    }
+
     if (req.body.sortOrder !== undefined) {
       if (typeof req.body.sortOrder !== 'number' || !Number.isInteger(req.body.sortOrder) || req.body.sortOrder < 0) {
         res.status(400).json({
@@ -713,7 +728,7 @@ export async function updateGoalRoute(req: Request, res: Response): Promise<void
       previousLinkedHabitIds = existing?.linkedHabitIds || [];
     }
 
-    const goal = await updateGoal(id, householdId, userId, patch);
+    let goal = await updateGoal(id, householdId, userId, patch);
 
     if (!goal) {
       res.status(404).json({
@@ -737,6 +752,28 @@ export async function updateGoalRoute(req: Request, res: Response): Promise<void
       // Set linkedGoalId on all currently linked habits
       if (patch.linkedHabitIds.length > 0) {
         await linkHabitsToGoal(patch.linkedHabitIds, id, householdId, userId);
+      }
+    }
+
+    // Track advancement: when a tracked goal is completed, close its window and activate next
+    if (patch.completedAt && goal.trackId && existingGoal && !existingGoal.completedAt) {
+      const today = new Date();
+      const dayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+
+      // Close active window and mark as completed in track
+      await updateGoal(id, householdId, userId, {
+        activeWindowEnd: dayKey,
+        trackStatus: 'completed',
+      } as Partial<Goal>);
+
+      // Advance the track to the next goal
+      const { advanceTrack } = await import('./goalTracks');
+      await advanceTrack(goal.trackId, householdId, userId);
+
+      // Re-fetch to include track fields in response
+      const updatedGoal = await getGoalById(id, householdId, userId);
+      if (updatedGoal) {
+        goal = updatedGoal;
       }
     }
 
@@ -944,6 +981,13 @@ export async function deleteGoalRoute(req: Request, res: Response): Promise<void
     }
 
     const { householdId, userId } = getRequestIdentity(req);
+
+    // If goal is in a track, handle track advancement before deletion
+    const goalToDelete = await getGoalById(id, householdId, userId);
+    if (goalToDelete?.trackId && goalToDelete.trackStatus === 'active') {
+      const { advanceTrack } = await import('./goalTracks');
+      await advanceTrack(goalToDelete.trackId, householdId, userId);
+    }
 
     const deleted = await deleteGoal(id, householdId, userId);
 

@@ -171,6 +171,16 @@ async function ensureCoreIndexes(database: Db): Promise<void> {
     { name: 'idx_bundleMemberships_user_parent' }
   );
 
+  // Goal Tracks indexes
+  await createIndexSafe('goalTracks',
+    { householdId: 1, userId: 1 },
+    { name: 'idx_goalTracks_user' }
+  );
+  await createIndexSafe('goals',
+    { householdId: 1, userId: 1, trackId: 1 },
+    { name: 'idx_goals_user_track' }
+  );
+
   if (!isTestEnv()) {
     console.log('[MongoDB] Indexes ensured (habitEntries, habits, categories, auth)');
   }

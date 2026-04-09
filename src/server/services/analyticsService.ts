@@ -33,7 +33,7 @@ export interface Achievement {
   label: string;
   description: string;
   earned: boolean;
-  icon: 'streak' | 'completions' | 'week' | 'consistency' | 'first';
+  icon: 'streak' | 'completions' | 'week' | 'consistency' | 'first' | 'track';
 }
 
 export interface HabitAnalyticsSummary {
@@ -319,6 +319,48 @@ function computeAchievements(
     description: 'Maintained 80%+ consistency score',
     earned: consistencyScore >= 0.8,
     icon: 'consistency',
+  });
+
+  return achievements;
+}
+
+/**
+ * Compute achievements related to Goal Tracks.
+ */
+export function computeGoalTrackAchievements(
+  tracks: Array<{ id: string; completedAt?: string | null }>,
+  trackedGoals: Array<{ trackId?: string; trackStatus?: string }>
+): Achievement[] {
+  const achievements: Achievement[] = [];
+  const completedTrackCount = tracks.filter(t => t.completedAt).length;
+  const goalsInTracksCompleted = trackedGoals.filter(g => g.trackStatus === 'completed').length;
+
+  achievements.push({
+    id: 'track-first-completed',
+    label: 'Journey Complete',
+    description: 'Completed your first Goal Track',
+    earned: completedTrackCount >= 1,
+    icon: 'track',
+  });
+
+  achievements.push({
+    id: 'track-goals-3',
+    label: 'Triple Step',
+    description: 'Completed 3 goals within tracks',
+    earned: goalsInTracksCompleted >= 3,
+    icon: 'track',
+  });
+
+  achievements.push({
+    id: 'track-full-5',
+    label: 'Grand Journey',
+    description: 'Completed a track with 5+ goals',
+    earned: tracks.some(t => {
+      if (!t.completedAt) return false;
+      const trackGoals = trackedGoals.filter(g => g.trackId === t.id);
+      return trackGoals.length >= 5;
+    }),
+    icon: 'track',
   });
 
   return achievements;

@@ -51,6 +51,7 @@ function lazyRetry<T extends React.ComponentType<any>>(
 const GoalsPage = lazyRetry(() => import('./pages/goals/GoalsPage').then(m => ({ default: m.GoalsPage })));
 const GoalDetailPage = lazyRetry(() => import('./pages/goals/GoalDetailPage').then(m => ({ default: m.GoalDetailPage })));
 const GoalCompletedPage = lazyRetry(() => import('./pages/goals/GoalCompletedPage').then(m => ({ default: m.GoalCompletedPage })));
+const GoalTrackDetailPage = lazyRetry(() => import('./pages/goals/GoalTrackDetailPage').then(m => ({ default: m.GoalTrackDetailPage })));
 const WinArchivePage = lazyRetry(() => import('./pages/goals/WinArchivePage').then(m => ({ default: m.WinArchivePage })));
 const GoalScheduleView = lazyRetry(() => import('./pages/goals/GoalScheduleView').then(m => ({ default: m.GoalScheduleView })));
 const JournalPage = lazyRetry(() => import('./pages/JournalPage').then(m => ({ default: m.JournalPage })));
@@ -181,6 +182,10 @@ const HabitTrackerContent: React.FC = () => {
     const params = new URLSearchParams(window.location.search);
     return params.get("goalId");
   });
+  const [selectedTrackId, setSelectedTrackId] = useState<string | null>(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get("trackId");
+  });
 
   // Track View Mode: 'all', 'day', or 'schedule' — default to 'day' for new users
   const [trackerViewMode, setTrackerViewMode] = useState<'all' | 'day' | 'schedule'>(() =>
@@ -221,6 +226,7 @@ const HabitTrackerContent: React.FC = () => {
       const params = new URLSearchParams(window.location.search);
       setView(route);
       setSelectedGoalId(params.get("goalId"));
+      setSelectedTrackId(params.get("trackId"));
       setShowCreateGoal(false);
     };
 
@@ -238,12 +244,18 @@ const HabitTrackerContent: React.FC = () => {
     // Update ephemeral state based on route
     if (params.goalId) {
       setSelectedGoalId(params.goalId);
+      setSelectedTrackId(null);
+    } else if (params.trackId) {
+      setSelectedTrackId(params.trackId);
+      setSelectedGoalId(null);
     } else if (route !== 'goals') {
-      // Clear selected goal if navigating away or back to main list
+      // Clear selected goal/track if navigating away
       setSelectedGoalId(null);
-    } else if (route === 'goals' && !params.goalId) {
-      // Explicitly clearing goal ID when going back to goal list
+      setSelectedTrackId(null);
+    } else if (route === 'goals' && !params.goalId && !params.trackId) {
+      // Explicitly clearing when going back to goal list
       setSelectedGoalId(null);
+      setSelectedTrackId(null);
     }
 
     const url = buildUrlForRoute(route, params);
@@ -483,6 +495,16 @@ const HabitTrackerContent: React.FC = () => {
               handleNavigate('goals', { goalId });
             }}
           />
+        ) : selectedTrackId ? (
+          <GoalTrackDetailPage
+            trackId={selectedTrackId}
+            onBack={() => {
+              handleNavigate('goals');
+            }}
+            onViewGoal={(goalId) => {
+              handleNavigate('goals', { goalId });
+            }}
+          />
         ) : view === 'tracker' ? (
           trackerViewMode === 'all' ? (
             <TrackerGrid
@@ -584,6 +606,9 @@ const HabitTrackerContent: React.FC = () => {
             }}
             onViewWinArchive={() => {
               setGoalsViewMode('achievements');
+            }}
+            onViewTrack={(trackId) => {
+              handleNavigate('goals', { trackId });
             }}
           />
         )

@@ -15,6 +15,7 @@ import { getAllMembershipsByUser } from '../repositories/bundleMembershipReposit
 import { getRoutines } from '../repositories/routineRepository';
 import { getRoutineLogsByUser } from '../repositories/routineLogRepository';
 import { getGoalsByUser } from '../repositories/goalRepository';
+import { getGoalTracksByUser } from '../repositories/goalTrackRepository';
 import {
   computeHabitAnalyticsSummary,
   computeHeatmapData,
@@ -23,6 +24,7 @@ import {
   computeInsights,
   computeRoutineAnalytics,
   computeGoalAnalytics,
+  computeGoalTrackAchievements,
 } from '../services/analyticsService';
 import { analyticsCache } from '../lib/cacheInstances';
 
@@ -193,15 +195,26 @@ export async function getAllHabitAnalytics(req: Request, res: Response): Promise
     const maxDays = Math.max(days, heatmapDays);
     const rangeStart = startDayKeyForRange(referenceDayKey, maxDays);
 
-    const [habits, entries, memberships, categories] = await Promise.all([
+    const [habits, entries, memberships, categories, goalTracks, goals] = await Promise.all([
       getHabitsByUser(householdId, userId),
       getHabitEntriesByUserInRange(householdId, userId, rangeStart, referenceDayKey),
       getAllMembershipsByUser(householdId, userId),
       getCategoriesByUser(householdId, userId),
+      getGoalTracksByUser(householdId, userId),
+      getGoalsByUser(householdId, userId),
     ]);
 
+    const summary = computeHabitAnalyticsSummary(habits, entries, memberships, categories, referenceDayKey, days, timeZone);
+
+    // Merge goal track achievements into the summary
+    const trackedGoals = goals.filter(g => g.trackId);
+    const trackAchievements = computeGoalTrackAchievements(goalTracks, trackedGoals);
+    if (summary.achievements) {
+      summary.achievements = [...summary.achievements, ...trackAchievements];
+    }
+
     const result = {
-      summary: computeHabitAnalyticsSummary(habits, entries, memberships, categories, referenceDayKey, days, timeZone),
+      summary,
       heatmap: computeHeatmapData(habits, entries, referenceDayKey, heatmapDays, timeZone),
       trends: computeTrendData(habits, entries, referenceDayKey, days, timeZone),
       categoryBreakdown: computeCategoryBreakdown(habits, entries, categories, referenceDayKey, days, timeZone),

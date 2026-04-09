@@ -43,7 +43,7 @@ export interface Achievement {
   label: string;
   description: string;
   earned: boolean;
-  icon: 'streak' | 'completions' | 'week' | 'consistency' | 'first';
+  icon: 'streak' | 'completions' | 'week' | 'consistency' | 'first' | 'track';
 }
 
 export interface HabitAnalyticsSummary {

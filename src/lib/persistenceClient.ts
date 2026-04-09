@@ -5,11 +5,11 @@
  * All persistent data is stored in MongoDB via this client.
  */
 
-import type { Category, Habit, DayLog, DailyWellbeing, Goal, GoalWithProgress, Routine, RoutineLog, HabitEntry } from '../models/persistenceTypes';
+import type { Category, Habit, DayLog, DailyWellbeing, Goal, GoalWithProgress, GoalTrack, Routine, RoutineLog, HabitEntry } from '../models/persistenceTypes';
 import type { WellbeingEntry, WellbeingMetricKey } from '../models/persistenceTypes';
 import type { DashboardPrefs, HouseholdUser } from '../models/persistenceTypes';
 
-import type { GoalDetail, CompletedGoal, ProgressOverview } from '../types';
+import type { GoalDetail, CompletedGoal, ProgressOverview, GoalTrackWithGoals } from '../types';
 import type { Task, CreateTaskRequest, UpdateTaskRequest } from '../types/task';
 
 import { API_BASE_URL } from './persistenceConfig';
@@ -1061,6 +1061,59 @@ export async function fetchGoalDetail(goalId: string): Promise<GoalDetail> {
 export async function fetchCompletedGoals(): Promise<CompletedGoal[]> {
   const response = await apiRequest<Array<{ goal: Goal }>>('/goals/completed');
   return response.map(item => item.goal);
+}
+
+// ─── Goal Tracks ────────────────────────────────────────
+
+export async function fetchGoalTracks(): Promise<GoalTrack[]> {
+  return apiRequest<GoalTrack[]>('/goal-tracks');
+}
+
+export async function fetchGoalTrack(id: string): Promise<GoalTrackWithGoals> {
+  return apiRequest<GoalTrackWithGoals>(`/goal-tracks/${id}`);
+}
+
+export async function createGoalTrack(data: { name: string; categoryId: string; description?: string }): Promise<GoalTrack> {
+  return apiRequest<GoalTrack>('/goal-tracks', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updateGoalTrack(id: string, patch: { name?: string; description?: string }): Promise<GoalTrack> {
+  return apiRequest<GoalTrack>(`/goal-tracks/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(patch),
+  });
+}
+
+export async function deleteGoalTrack(id: string): Promise<void> {
+  await apiRequest(`/goal-tracks/${id}`, { method: 'DELETE' });
+  invalidateGoalDataCache();
+}
+
+export async function addGoalToTrack(trackId: string, goalId: string, position?: number): Promise<Goal> {
+  const body: Record<string, unknown> = { goalId };
+  if (position !== undefined) body.position = position;
+  const result = await apiRequest<Goal>(`/goal-tracks/${trackId}/goals`, {
+    method: 'POST',
+    body: JSON.stringify(body),
+  });
+  invalidateGoalDataCache();
+  return result;
+}
+
+export async function removeGoalFromTrack(trackId: string, goalId: string): Promise<void> {
+  await apiRequest(`/goal-tracks/${trackId}/goals/${goalId}`, { method: 'DELETE' });
+  invalidateGoalDataCache();
+}
+
+export async function reorderTrackGoals(trackId: string, goalIds: string[]): Promise<void> {
+  await apiRequest(`/goal-tracks/${trackId}/goals/reorder`, {
+    method: 'PATCH',
+    body: JSON.stringify({ goalIds }),
+  });
+  invalidateGoalDataCache();
 }
 
 /**

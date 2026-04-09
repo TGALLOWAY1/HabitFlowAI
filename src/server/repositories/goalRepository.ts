@@ -180,3 +180,50 @@ export async function removeHabitFromGoalLinkedIds(
     { $pull: { linkedHabitIds: habitId } as any }
   );
 }
+
+/**
+ * Get all goals belonging to a specific track, ordered by trackOrder.
+ */
+export async function getGoalsByTrack(
+  trackId: string,
+  householdId: string,
+  userId: string
+): Promise<Goal[]> {
+  const db = await getDb();
+  const collection = db.collection(COLLECTION_NAME);
+
+  const documents = await collection
+    .find(scopeFilter(householdId, userId, { trackId }))
+    .sort({ trackOrder: 1, createdAt: 1 })
+    .toArray();
+
+  return documents.map(stripScope);
+}
+
+/**
+ * Clear all track-related fields from goals in a given track.
+ * Used when a track is deleted — goals become standalone again.
+ */
+export async function clearTrackFromGoals(
+  trackId: string,
+  householdId: string,
+  userId: string
+): Promise<number> {
+  const db = await getDb();
+  const collection = db.collection(COLLECTION_NAME);
+
+  const result = await collection.updateMany(
+    scopeFilter(householdId, userId, { trackId }),
+    {
+      $unset: {
+        trackId: '',
+        trackOrder: '',
+        trackStatus: '',
+        activeWindowStart: '',
+        activeWindowEnd: '',
+      },
+    }
+  );
+
+  return result.modifiedCount;
+}

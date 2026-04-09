@@ -363,6 +363,9 @@ export function InfoModal({ isOpen, onClose }: InfoModalProps) {
                 <p className="text-xs text-neutral-500 mt-2">
                   The Goals page has three views: <span className="text-neutral-400">All</span> (active goals), <span className="text-neutral-400">Schedule</span> (calendar with deadlines, forecasts, and milestones), and <span className="text-neutral-400">Achievements</span> (completed goals gallery).
                 </p>
+                <p className="text-xs text-neutral-500 mt-2">
+                  <span className="font-semibold text-emerald-400">Goal Tracks</span> — Create ordered sequences of goals within a category (e.g., Exam 1 → Exam 2 → Exam 3). Only one goal per track is active at a time. When you complete the active goal, the next one unlocks automatically. Progress for each goal only counts from when it became active, so shared habits won't leak progress forward.
+                </p>
               </div>
             </div>
           )}

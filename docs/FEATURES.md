@@ -53,6 +53,11 @@ Canonical inventory of all user-facing features. Keep this document in sync with
 - **Mark Complete** — Manually mark goals as achieved
 - **Goal Ordering** — Drag-and-drop reorder within category groups
 - **Inactivity Coaching** — Rule-based popup suggestions when a goal is stagnant
+- **Goal Tracks** — Create ordered sequences of goals within a category (e.g., Exam 1 → Exam 2 → Exam 3)
+- **Track Progress Isolation** — Progress only counts from when a goal becomes active in a track; shared habits don't leak progress forward
+- **Track Advancement** — Completing the active goal automatically activates the next goal in the sequence
+- **Track Detail View** — Dedicated page showing track progress, goal states (completed/active/locked), and drag-and-drop reordering
+- **Track Achievements** — Earn achievements for completing goal tracks (Journey Complete, Triple Step, Grand Journey)
 
 ## Tasks
 
