@@ -149,6 +149,10 @@ Any change to features, goal types, bundle behavior, AI capabilities, Apple Heal
 
 - When explaining bugs, audit findings, or architectural decisions, **include concrete impact examples**. Show the user exactly what goes wrong with specific numbers and scenarios (e.g., "A weekly habit previously showed ~14% completion rate (1/7 days). Now correctly shows 100% (1/1 week)."). Abstract descriptions are less actionable than concrete before/after examples.
 
+## Pre-Push Verification
+
+**Always run `npm run build` before pushing.** This runs `tsc -b && vite build`, which is what Vercel uses for deployment. Do NOT substitute `tsc --noEmit` — it uses different settings and may miss errors that `tsc -b` catches (e.g., unused variables from removed UI elements). A green `npm run build` is the only acceptable gate before pushing.
+
 ## Workflow
 
 - Enter plan mode for non-trivial tasks (3+ steps or architectural decisions)
