@@ -10,6 +10,7 @@ import { JournalCard } from './dashboard/JournalCard';
 import { TasksCard } from './dashboard/TasksCard';
 import { PinnedRoutinesCard } from './dashboard/PinnedRoutinesCard';
 import { WeeklySummaryCard } from './dashboard/WeeklySummaryCard';
+import { JournalSummaryCard } from './Journal/JournalSummaryCard';
 import { SetupDashboard } from './dashboard/SetupDashboard';
 import { useSetupProgress } from '../hooks/useSetupProgress';
 import type { Routine } from '../models/persistenceTypes';
@@ -161,6 +162,9 @@ export const ProgressDashboard: React.FC<ProgressDashboardProps> = ({
 
             {/* AI Weekly Summary */}
             <WeeklySummaryCard />
+
+            {/* AI Journal Summary */}
+            <JournalSummaryCard compact />
 
             {/* Goals at a glance */}
             <div className="bg-neutral-900/50 rounded-2xl border border-white/5 p-6 backdrop-blur-sm">

@@ -36,6 +36,40 @@ export interface WeeklySummaryResponse {
   journalEntriesCount: number;
 }
 
+export interface JournalSummaryResponse {
+  summary: string;
+  period: { start: string; end: string };
+  journalEntriesCount: number;
+  templatesUsed: string[];
+}
+
+export async function fetchJournalSummary(): Promise<JournalSummaryResponse> {
+  const geminiApiKey = getGeminiApiKey();
+  if (!geminiApiKey) {
+    throw new Error('No Gemini API key configured. Add your key in Settings.');
+  }
+
+  const url = `${API_BASE_URL}/ai/journal-summary`;
+  const response = await fetch(url, {
+    method: 'POST',
+    credentials: 'include',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getIdentityHeaders(),
+    },
+    body: JSON.stringify({ geminiApiKey }),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(
+      errorData?.error?.message || `Failed to generate journal summary (${response.status})`,
+    );
+  }
+
+  return response.json();
+}
+
 export async function fetchWeeklySummary(): Promise<WeeklySummaryResponse> {
   const geminiApiKey = getGeminiApiKey();
   if (!geminiApiKey) {

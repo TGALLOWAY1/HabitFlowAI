@@ -64,6 +64,7 @@ import { requireHealthFeature } from './middleware/requireHealthFeature';
 import { deleteUserData } from './routes/userData';
 import { postWeeklySummary } from './routes/aiSummary';
 import { postSuggestVariants } from './routes/aiVariantSuggestion';
+import { postJournalSummary } from './routes/aiJournalSummary';
 import {
   getHabitAnalyticsSummary,
   getHabitAnalyticsHeatmap,
@@ -213,6 +214,7 @@ export function createApp(): Express {
   app.use('/api/evidence', habitPotentialEvidenceRoutes);
   app.post('/api/ai/weekly-summary', postWeeklySummary);
   app.post('/api/ai/suggest-variants', postSuggestVariants);
+  app.post('/api/ai/journal-summary', postJournalSummary);
   app.get('/api/analytics/habits/all', getAllHabitAnalytics);
   app.get('/api/analytics/habits/summary', getHabitAnalyticsSummary);
   app.get('/api/analytics/habits/heatmap', getHabitAnalyticsHeatmap);

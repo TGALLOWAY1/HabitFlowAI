@@ -129,7 +129,11 @@ Full documentation index at `docs/DOC_INDEX.md`. Key references:
 - `docs/DOMAIN_CANON.md` — Minimal invariants & canonical references
 - `docs/API.md` — REST endpoint inventory
 - `docs/DATA_MODEL.md` — Collections & ownership boundaries
+- `docs/FEATURES.md` — Canonical feature list organized by domain (habits, routines, goals, etc.)
 - `docs/product/HABITFLOW_UI_ARCHITECTURE.md` — UI screens, navigation, and user flows
+
+Any PR that adds, removes, or significantly changes a user-facing feature must update `docs/FEATURES.md`.
+Feature changes are not complete until the feature list document is updated.
 
 Any PR that changes screens, navigation, modals, or major user flows must update `docs/product/HABITFLOW_UI_ARCHITECTURE.md`.
 UI changes are not complete until the UI architecture document is updated.
