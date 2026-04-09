@@ -69,7 +69,7 @@ Canonical inventory of all user-facing features. Keep this document in sync with
 - **Persona-Driven Prompts** — Each template has a persona and tone (e.g., "The Strategic Coach", "The Compassionate Therapist")
 - **Entry History** — Browse, edit, and delete past journal entries (last 90 days)
 - **Upsert by Key** — Same template + same day = updates existing entry (idempotent daily check-ins)
-- **AI Journal Summary** — Weekly AI-powered summary with themes, highlights, actionable feedback, and follow-up reminders (Gemini BYOK)
+- **AI Journal Summary Banner** — Auto-generated weekly summary (when Gemini API key is configured) shown as a dismissible banner on the journal page; always saved as a journal entry in history
 
 ## Wellbeing
 
@@ -97,7 +97,7 @@ Canonical inventory of all user-facing features. Keep this document in sync with
 
 - **API Key Management** — Store Gemini API key in localStorage (never persisted server-side); configure via Settings
 - **AI Weekly Summary** — General recap of habits and journal entries from the past week (Dashboard)
-- **AI Journal Summary** — Journal-specific weekly summary with themes, highlights, feedback, and reminders (Dashboard + Journal page)
+- **AI Journal Summary** — Auto-generated weekly journal summary shown as a dismissible banner; persisted as a journal entry in history
 - **AI Variant Suggestions** — Generate routine variants based on routine title and steps
 - **Persona-Driven Journaling** — Template personas guide journaling prompts
 
@@ -116,7 +116,6 @@ Canonical inventory of all user-facing features. Keep this document in sync with
 - **Goals at a Glance** — Pinned goals with progress bars (configurable which goals to pin)
 - **Pinned Routines Card** — Quick-start buttons for favorite routines
 - **AI Weekly Summary Card** — Generate AI recap of the week
-- **AI Journal Summary Card** — Generate AI journal insights
 - **Journal Card** — Recent entries and shortcuts to Free Write / Templates / History
 - **Tasks Card** — Today's task completion status
 - **Setup Guide** — Onboarding walkthrough for new users (dismissible, re-openable from Settings)

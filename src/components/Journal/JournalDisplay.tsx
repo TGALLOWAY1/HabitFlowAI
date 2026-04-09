@@ -3,7 +3,7 @@ import { format, subDays } from 'date-fns';
 import { fetchEntries, deleteEntry } from '../../api/journal';
 import type { JournalEntry } from '../../models/persistenceTypes';
 import { JOURNAL_TEMPLATES } from '../../data/journalTemplates';
-import { Trash2, Edit2, BookOpen } from 'lucide-react';
+import { Trash2, Edit2, BookOpen, Sparkles } from 'lucide-react';
 
 interface JournalDisplayProps {
     onEdit: (entry: JournalEntry) => void;
@@ -56,6 +56,7 @@ export function JournalDisplay({ onEdit, lastSavedEntry }: JournalDisplayProps) 
 
     const getTemplateTitle = (id: string) => {
         if (id === 'free-write') return 'Free Write';
+        if (id === 'ai-weekly-summary') return 'AI Weekly Summary';
         const template = JOURNAL_TEMPLATES.find(t => t.id === id);
         return template ? template.title : id;
     };
@@ -101,6 +102,12 @@ export function JournalDisplay({ onEdit, lastSavedEntry }: JournalDisplayProps) 
                                 {entry.mode === 'deep' && (
                                     <span className="text-xs font-semibold uppercase tracking-wider text-purple-400 bg-purple-400/10 px-2 py-0.5 rounded-full">
                                         Deep
+                                    </span>
+                                )}
+                                {entry.templateId === 'ai-weekly-summary' && (
+                                    <span className="flex items-center gap-1 text-xs font-semibold uppercase tracking-wider text-purple-400 bg-purple-400/10 px-2 py-0.5 rounded-full">
+                                        <Sparkles size={10} />
+                                        AI
                                     </span>
                                 )}
                             </div>

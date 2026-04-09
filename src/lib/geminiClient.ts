@@ -7,6 +7,8 @@
 
 import { API_BASE_URL } from './persistenceConfig';
 import { getIdentityHeaders } from './persistenceClient';
+import { fetchEntries } from '../api/journal';
+import type { JournalEntry } from '../models/persistenceTypes';
 
 const GEMINI_KEY_STORAGE = 'habitflow_gemini_api_key';
 
@@ -41,6 +43,7 @@ export interface JournalSummaryResponse {
   period: { start: string; end: string };
   journalEntriesCount: number;
   templatesUsed: string[];
+  entryId: string;
 }
 
 export async function fetchJournalSummary(): Promise<JournalSummaryResponse> {
@@ -68,6 +71,17 @@ export async function fetchJournalSummary(): Promise<JournalSummaryResponse> {
   }
 
   return response.json();
+}
+
+/**
+ * Check for a recent AI weekly summary journal entry (within the last 7 days).
+ */
+export async function fetchLatestJournalSummaryEntry(): Promise<JournalEntry | null> {
+  const sevenDaysAgo = new Date();
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+  const startDate = sevenDaysAgo.toISOString().slice(0, 10);
+  const entries = await fetchEntries({ startDate });
+  return entries.find(e => e.templateId === 'ai-weekly-summary') ?? null;
 }
 
 export async function fetchWeeklySummary(): Promise<WeeklySummaryResponse> {

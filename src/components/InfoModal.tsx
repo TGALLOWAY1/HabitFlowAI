@@ -382,7 +382,7 @@ export function InfoModal({ isOpen, onClose }: InfoModalProps) {
                   </li>
                   <li className="text-xs text-neutral-400 pl-2">
                     <span className="font-semibold text-neutral-300">Journal Summaries</span>
-                    <p className="mt-0.5">Get a weekly AI-powered summary of your journal entries with themes, highlights, actionable feedback, and follow-up reminders. Available on the Dashboard and the Journal page's Summary tab.</p>
+                    <p className="mt-0.5">Auto-generated weekly summary of your journal entries with themes, highlights, actionable feedback, and follow-up reminders. Appears as a dismissible banner on the Journal page and is saved to your journal history.</p>
                   </li>
                   <li className="text-xs text-neutral-400 pl-2">
                     <span className="font-semibold text-neutral-300">Persona-Driven Insights</span>
