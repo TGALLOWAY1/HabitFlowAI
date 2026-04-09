@@ -654,6 +654,9 @@ export interface DashboardPrefs {
      */
     checkinExtraMetricKeys?: WellbeingMetricKey[];
 
+    /** Pinned journal template IDs for quick access */
+    pinnedJournalTemplateIds?: string[];
+
     /** When true, streak/flame indicators are hidden across the UI */
     hideStreaks?: boolean;
 

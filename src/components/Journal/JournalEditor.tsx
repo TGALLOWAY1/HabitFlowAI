@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react';
 import type { JournalEntry } from '../../models/persistenceTypes';
 import { JOURNAL_TEMPLATES, FREE_WRITE_TEMPLATE, JOURNAL_CATEGORIES } from '../../data/journalTemplates';
+import type { JournalTemplate } from '../../data/journalTemplates';
 import { createEntry, updateEntry } from '../../api/journal';
 import {
-    ChevronDown, ChevronUp, Save, X, Sparkles, ChevronLeft,
+    ChevronDown, ChevronUp, ChevronRight, Save, Sparkles, ChevronLeft, Star,
     Sunrise, Moon, Heart, Wind, Brain, Microscope, Dumbbell,
     Utensils, Target, Sprout, Users, PenLine, type LucideIcon
 } from 'lucide-react';
+import { usePinnedJournalTemplates } from './usePinnedJournalTemplates';
 
 interface JournalEditorProps {
     existingEntry?: JournalEntry;
@@ -40,55 +42,37 @@ const ICONS: Record<string, LucideIcon> = {
 };
 
 /**
- * JournalEditor with Query Parameter Navigation support.
- * Uses 'jView', 'jCat', 'jTmp' query params to persist state.
+ * JournalEditor — gallery-style template selection with collapsible categories and pinning.
+ * Uses 'jStep', 'jTmp' query params to persist writing-phase state.
  */
 export function JournalEditor({ existingEntry, onSave, onCancel, initialTemplateId, minimal }: JournalEditorProps) {
-    // --- State Initialization ---
-    // We read from URL params on mount/render to determine state, but also keep local state for instant UI updates.
-
     const getParams = () => new URLSearchParams(window.location.search);
 
     const [step, setStep] = useState<'selection' | 'writing'>(() => {
         if (existingEntry) return 'writing';
         if (initialTemplateId) return 'writing';
-        const params = getParams();
-        return params.get('jStep') === 'writing' ? 'writing' : 'selection';
+        return getParams().get('jStep') === 'writing' ? 'writing' : 'selection';
     });
 
-    // Selection View
-    const [selectionView, setSelectionView] = useState<'categories' | 'templates'>(() => {
-        const params = getParams();
-        return (params.get('jView') === 'templates' || params.get('jCat')) ? 'templates' : 'categories';
-    });
-
-    const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(() => {
-        return getParams().get('jCat');
-    });
-
-    // Editor State
     const [selectedTemplateId, setSelectedTemplateId] = useState<string>(() => {
         return existingEntry?.templateId || initialTemplateId || getParams().get('jTmp') || '';
     });
 
-    // Mode, Content, Date are local ephemeral state (lost on refresh unless saved, or we could persist content to localStorage)
+    const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
+
     const [mode, setMode] = useState<'standard' | 'deep' | 'free'>(existingEntry?.mode || (initialTemplateId === 'free-write' ? 'free' : 'standard'));
     const [content, setContent] = useState<Record<string, string>>(existingEntry?.content || {});
     const [date, setDate] = useState<string>(existingEntry?.date || new Date().toLocaleDateString('en-CA'));
-
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    // --- Synchronization ---
+    const { pinnedIds, togglePin, isPinned } = usePinnedJournalTemplates();
 
-    // Listen for PopState to detect Browser Back interactions or URL changes via App.tsx
+    // Listen for PopState to detect Browser Back interactions
     useEffect(() => {
         const handlePopState = () => {
             if (existingEntry) return;
-
             const params = new URLSearchParams(window.location.search);
             const jStep = params.get('jStep');
-            const jView = params.get('jView');
-            const jCat = params.get('jCat');
             const jTmp = params.get('jTmp');
 
             if (jStep === 'writing') {
@@ -96,16 +80,8 @@ export function JournalEditor({ existingEntry, onSave, onCancel, initialTemplate
                 if (jTmp) setSelectedTemplateId(jTmp);
             } else {
                 setStep('selection');
-                if (jView === 'templates' || jCat) {
-                    setSelectionView('templates');
-                    setSelectedCategoryId(jCat);
-                } else {
-                    setSelectionView('categories');
-                    setSelectedCategoryId(null);
-                }
             }
         };
-
         window.addEventListener('popstate', handlePopState);
         return () => window.removeEventListener('popstate', handlePopState);
     }, [existingEntry]);
@@ -113,58 +89,27 @@ export function JournalEditor({ existingEntry, onSave, onCancel, initialTemplate
     // --- Helpers to update URL ---
     const updateUrl = (updates: Record<string, string | null>) => {
         const params = new URLSearchParams(window.location.search);
-
         Object.entries(updates).forEach(([key, value]) => {
-            if (value === null) {
-                params.delete(key);
-            } else {
-                params.set(key, value);
-            }
+            if (value === null) params.delete(key);
+            else params.set(key, value);
         });
-
-        const newUrl = `${window.location.pathname}?${params.toString()}`;
-        // Push state so we can go "Forward" if we went back, or just add history
-        window.history.pushState({}, '', newUrl);
+        window.history.pushState({}, '', `${window.location.pathname}?${params.toString()}`);
     };
 
     // --- Handlers ---
 
-    const handleSelectCategory = (categoryId: string) => {
-        updateUrl({
-            jView: 'templates',
-            jCat: categoryId,
-            jStep: null,
-            jTmp: null
+    const toggleCategory = (categoryId: string) => {
+        setExpandedCategories(prev => {
+            const next = new Set(prev);
+            if (next.has(categoryId)) next.delete(categoryId);
+            else next.add(categoryId);
+            return next;
         });
-
-        setSelectedCategoryId(categoryId);
-        setSelectionView('templates');
-    };
-
-    const handleBackToCategories = () => {
-        // EXPLICIT NAVIGATION: Go to Categories View (Clear other params)
-        updateUrl({
-            jView: null,
-            jCat: null,
-            jStep: null,
-            jTmp: null
-            // Keep view=journal
-        });
-
-        setSelectionView('categories');
-        setSelectedCategoryId(null);
     };
 
     const handleSelectTemplate = (id: string) => {
-        updateUrl({
-            jStep: 'writing',
-            jTmp: id,
-        });
-
-        if (id !== selectedTemplateId) {
-            setContent({});
-        }
-
+        updateUrl({ jStep: 'writing', jTmp: id });
+        if (id !== selectedTemplateId) setContent({});
         setSelectedTemplateId(id);
         setStep('writing');
         setMode(id === 'free-write' ? 'free' : 'standard');
@@ -172,33 +117,15 @@ export function JournalEditor({ existingEntry, onSave, onCancel, initialTemplate
 
     const handleBackToSelection = () => {
         if (Object.keys(content).length > 0) {
-            if (!window.confirm('Going back will discard your current draft. Continue?')) {
-                return;
-            }
+            if (!window.confirm('Going back will discard your current draft. Continue?')) return;
         }
         setContent({});
-
-        if (selectedTemplateId === 'free-write' || !selectedCategoryId) {
-            // Free write or missing category -> Go to Categories
-            handleBackToCategories();
-        } else {
-            // Go back to Template List for current Category
-            updateUrl({
-                jStep: null,
-                jTmp: null,
-                jView: 'templates',
-                jCat: selectedCategoryId
-            });
-            setStep('selection');
-            setSelectionView('templates');
-        }
+        updateUrl({ jStep: null, jTmp: null });
+        setStep('selection');
     };
 
     const handleAnswerChange = (promptId: string, value: string) => {
-        setContent(prev => ({
-            ...prev,
-            [promptId]: value
-        }));
+        setContent(prev => ({ ...prev, [promptId]: value }));
     };
 
     const handleSave = async () => {
@@ -237,23 +164,12 @@ export function JournalEditor({ existingEntry, onSave, onCancel, initialTemplate
             onCancel();
         } else {
             setContent({});
-
-            // Go to Root (Categories)
-            updateUrl({
-                jStep: null,
-                jView: null,
-                jCat: null,
-                jTmp: null
-            });
-
+            updateUrl({ jStep: null, jTmp: null });
             setStep('selection');
-            setSelectionView('categories');
-            setSelectedCategoryId(null);
             setMode('standard');
             setSelectedTemplateId('');
         }
     };
-
 
     // --- VIEW LOGIC ---
     const effectiveStep = existingEntry ? 'writing' : step;
@@ -263,132 +179,94 @@ export function JournalEditor({ existingEntry, onSave, onCancel, initialTemplate
         ? FREE_WRITE_TEMPLATE
         : JOURNAL_TEMPLATES.find(t => t.id === selectedTemplateId);
 
-    const filteredTemplates = selectedCategoryId
-        ? JOURNAL_TEMPLATES.filter(t => t.categoryId === selectedCategoryId)
-        : [];
+    // --- Template Card ---
+    const renderTemplateCard = (template: JournalTemplate) => {
+        const Icon = ICONS[template.id] || ICONS[template.categoryId] || Brain;
+        const pinned = isPinned(template.id);
 
-    const selectedCategory = selectedCategoryId
-        ? JOURNAL_CATEGORIES.find(c => c.id === selectedCategoryId)
-        : null;
-
+        return (
+            <div key={template.id} className="relative group">
+                <button
+                    onClick={() => handleSelectTemplate(template.id)}
+                    className="w-full text-left p-3.5 bg-white/[0.03] hover:bg-white/[0.07] border border-white/5 hover:border-emerald-500/30 rounded-lg transition-all duration-200"
+                >
+                    <div className="flex items-start gap-2.5">
+                        <div className="p-1.5 bg-emerald-400/10 rounded-lg text-emerald-400 flex-shrink-0 mt-0.5">
+                            <Icon size={14} />
+                        </div>
+                        <div className="min-w-0 pr-5">
+                            <h4 className="text-sm font-semibold text-white leading-tight">{template.title}</h4>
+                            <p className="text-white/40 text-xs mt-1 line-clamp-1">{template.description}</p>
+                        </div>
+                    </div>
+                </button>
+                <button
+                    onClick={(e) => { e.stopPropagation(); togglePin(template.id); }}
+                    className={`absolute top-2.5 right-2.5 p-1 rounded-md hover:bg-white/10 transition-all ${pinned ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
+                    aria-label={pinned ? 'Unpin template' : 'Pin template'}
+                >
+                    <Star size={12} className={pinned ? 'text-amber-400 fill-amber-400' : 'text-white/30'} />
+                </button>
+            </div>
+        );
+    };
 
     // --- RENDER ---
 
-    if (effectiveStep === 'selection' && selectionView === 'categories') {
+    // Gallery view: collapsible categories with pinned section
+    if (effectiveStep === 'selection') {
+        const pinnedTemplates = JOURNAL_TEMPLATES.filter(t => pinnedIds.includes(t.id));
+
         return (
-            <div className="bg-zinc-900 border border-white/10 rounded-2xl p-6 md:p-8 shadow-2xl relative max-w-5xl mx-auto h-[80vh] flex flex-col">
-                <div className="flex justify-between items-start mb-8">
-                    <div>
-                        <h2 className="text-3xl font-bold text-white mb-2">Journaling</h2>
-                        <p className="text-white/40">Choose a journal type or start writing.</p>
-                    </div>
-                    {onCancel && (
-                        <button onClick={onCancel} className="p-2 hover:bg-white/10 rounded-lg text-white/50 transition-colors">
-                            <X size={24} />
-                        </button>
-                    )}
-                </div>
-
-                <div className="overflow-y-auto pr-2 custom-scrollbar flex-1">
-                    <div className="mb-8">
-                        <button
-                            onClick={() => handleSelectTemplate('free-write')}
-                            className="w-full text-left group flex items-center gap-6 p-6 bg-emerald-500/5 hover:bg-emerald-500/10 border border-emerald-500/20 hover:border-emerald-500/50 rounded-2xl transition-all duration-300"
-                        >
-                            <div className="p-4 bg-emerald-500/20 rounded-xl text-emerald-400 group-hover:scale-110 transition-transform">
-                                <PenLine size={32} />
-                            </div>
-                            <div>
-                                <h3 className="text-xl font-bold text-white mb-1">Quick Free Write</h3>
-                                <p className="text-emerald-200/60 text-sm">Just a blank page. No structure, no prompts.</p>
-                            </div>
-                        </button>
-                    </div>
-
-                    <h3 className="text-sm font-semibold text-white/30 uppercase tracking-widest mb-4">Categories</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {JOURNAL_CATEGORIES.map(category => {
-                            const Icon = ICONS[category.id] || Brain;
-                            const count = JOURNAL_TEMPLATES.filter(t => t.categoryId === category.id).length;
-                            return (
-                                <button
-                                    key={category.id}
-                                    onClick={() => handleSelectCategory(category.id)}
-                                    className="text-left group flex flex-col p-6 bg-white/5 hover:bg-white/10 border border-white/5 hover:border-white/20 rounded-2xl transition-all duration-300 relative overflow-hidden h-full"
-                                >
-                                    <div className="mb-4 text-white/60 p-3 bg-white/5 rounded-xl w-fit group-hover:text-emerald-400 group-hover:bg-emerald-400/10 group-hover:scale-110 transition-all">
-                                        <Icon size={28} />
-                                    </div>
-                                    <h3 className="text-xl font-bold text-white mb-2">{category.title}</h3>
-                                    <p className="text-white/50 text-sm leading-relaxed mb-4 flex-1">{category.description}</p>
-                                    <div className="flex items-center gap-2 text-xs font-medium text-white/30 group-hover:text-white/50 transition-colors pt-4 border-t border-white/5">
-                                        <span>{count} Templates</span>
-                                    </div>
-                                </button>
-                            );
-                        })}
-                    </div>
-                </div>
-            </div>
-        );
-    }
-
-    if (effectiveStep === 'selection' && selectionView === 'templates') {
-        return (
-            <div className="bg-zinc-900 border border-white/10 rounded-2xl p-6 md:p-8 shadow-2xl relative max-w-5xl mx-auto h-[80vh] flex flex-col">
-                <div className="flex justify-between items-start mb-6">
-                    <div className="flex items-center gap-4">
-                        <button
-                            onClick={handleBackToCategories}
-                            className="p-2 hover:bg-white/10 rounded-lg text-white/50 hover:text-white transition-colors"
-                        >
-                            <ChevronLeft size={24} />
-                        </button>
-                        <div>
-                            <h2 className="text-2xl font-bold text-white flex items-center gap-3">
-                                {(() => {
-                                    const Icon = selectedCategory ? (ICONS[selectedCategory.id] || Brain) : Brain;
-                                    return (
-                                        <>
-                                            <span className="text-emerald-400/80"><Icon size={24} /></span>
-                                            {selectedCategory?.title}
-                                        </>
-                                    );
-                                })()}
-                            </h2>
-                            <p className="text-white/40 text-sm mt-1">Select a template</p>
+            <div className="space-y-3">
+                {/* Pinned section */}
+                {pinnedTemplates.length > 0 && (
+                    <div className="mb-1">
+                        <h3 className="text-xs font-semibold text-white/30 uppercase tracking-widest mb-3 flex items-center gap-2">
+                            <Star size={12} className="text-amber-400 fill-amber-400" />
+                            Pinned
+                        </h3>
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-2.5">
+                            {pinnedTemplates.map(template => renderTemplateCard(template))}
                         </div>
                     </div>
-                    {onCancel && (
-                        <button onClick={onCancel} className="p-2 hover:bg-white/10 rounded-lg text-white/50 transition-colors">
-                            <X size={24} />
-                        </button>
-                    )}
-                </div>
+                )}
 
-                <div className="overflow-y-auto pr-2 custom-scrollbar flex-1">
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {filteredTemplates.map(template => {
-                            const Icon = ICONS[template.id] || Brain;
-                            return (
-                                <button
-                                    key={template.id}
-                                    onClick={() => handleSelectTemplate(template.id)}
-                                    className="text-left group flex flex-col p-6 bg-white/5 hover:bg-white/10 border border-white/5 hover:border-emerald-500/50 rounded-2xl transition-all duration-300 relative overflow-hidden min-h-[180px]"
-                                >
-                                    <div className="flex justify-between items-start mb-4">
-                                        <div className="text-emerald-400 p-3 bg-emerald-400/10 rounded-xl w-fit group-hover:scale-110 transition-transform">
-                                            <Icon size={28} />
-                                        </div>
+                {/* Category accordion sections */}
+                {JOURNAL_CATEGORIES.map(category => {
+                    const categoryTemplates = JOURNAL_TEMPLATES.filter(t => t.categoryId === category.id);
+                    const isExpanded = expandedCategories.has(category.id);
+                    const Icon = ICONS[category.id] || Brain;
+
+                    return (
+                        <div key={category.id}>
+                            <button
+                                onClick={() => toggleCategory(category.id)}
+                                className="w-full text-left flex items-center justify-between p-3.5 bg-white/[0.03] hover:bg-white/[0.06] border border-white/5 hover:border-white/10 rounded-xl transition-all group"
+                            >
+                                <div className="flex items-center gap-3">
+                                    <div className="p-2 bg-white/5 rounded-lg text-white/50 group-hover:text-emerald-400 group-hover:bg-emerald-400/10 transition-all">
+                                        <Icon size={18} />
                                     </div>
+                                    <div>
+                                        <h3 className="text-sm font-semibold text-white">{category.title}</h3>
+                                        <p className="text-white/40 text-xs">{category.description}</p>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-2 text-white/30">
+                                    <span className="text-xs">{categoryTemplates.length}</span>
+                                    {isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                                </div>
+                            </button>
 
-                                    <h3 className="text-lg font-bold text-white mb-2 text-balance leading-tight">{template.title}</h3>
-                                    <p className="text-white/50 text-sm leading-relaxed line-clamp-2">{template.description}</p>
-                                </button>
-                            );
-                        })}
-                    </div>
-                </div>
+                            {isExpanded && (
+                                <div className="grid grid-cols-2 md:grid-cols-3 gap-2.5 mt-2.5 pl-2 animate-in fade-in slide-in-from-top-2 duration-200">
+                                    {categoryTemplates.map(template => renderTemplateCard(template))}
+                                </div>
+                            )}
+                        </div>
+                    );
+                })}
             </div>
         );
     }
@@ -407,7 +285,7 @@ export function JournalEditor({ existingEntry, onSave, onCancel, initialTemplate
     if (minimal) {
         return (
             <div className="flex flex-col h-[calc(100vh-21rem)]">
-                <div className="flex-1 overflow-y-auto custom-scrollbar">
+                <div className="flex-1 overflow-y-auto modal-scroll">
                     {selectedTemplateId === 'free-write' ? (
                         <div className="relative h-full">
                             <textarea
@@ -488,7 +366,7 @@ export function JournalEditor({ existingEntry, onSave, onCancel, initialTemplate
                 </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto custom-scrollbar p-6 md:p-8 space-y-8 bg-[#0a0a0a]">
+            <div className="flex-1 overflow-y-auto modal-scroll p-6 md:p-8 space-y-8 bg-[#0a0a0a]">
                 {selectedTemplateId !== 'free-write' && (
                     <div className="bg-white/5 border border-white/5 rounded-xl p-4 flex items-start gap-4">
                         <div className="p-2 bg-emerald-500/10 rounded-lg">
