@@ -13,8 +13,10 @@ import { WeeklySummaryCard } from './dashboard/WeeklySummaryCard';
 import { JournalSummaryCard } from './Journal/JournalSummaryCard';
 import { SetupDashboard } from './dashboard/SetupDashboard';
 import { useSetupProgress } from '../hooks/useSetupProgress';
+import { useAuth } from '../store/AuthContext';
 import type { Routine } from '../models/persistenceTypes';
 
+const BETA_EMAIL = 'tj.galloway1@gmail.com';
 const PINNED_GOALS_KEY = 'hf_pinned_dashboard_goals';
 const SETUP_GUIDE_DISMISSED_KEY = 'hf_setup_guide_dismissed';
 
@@ -68,6 +70,8 @@ export const ProgressDashboard: React.FC<ProgressDashboardProps> = ({
     onNavigateToTasks,
     onNavigate,
 }) => {
+    const { user } = useAuth();
+    const isBetaUser = user?.email?.toLowerCase() === BETA_EMAIL;
     const { data: progressData, loading: progressLoading } = useProgressOverview();
     const goalsCount = progressData?.goalsWithProgress?.length ?? 0;
     const { setupPhase, hasHabits, hasTasks, loading: setupLoading } = useSetupProgress(goalsCount);
@@ -261,10 +265,10 @@ export const ProgressDashboard: React.FC<ProgressDashboardProps> = ({
             <DailyCheckInModal
                 isOpen={isCheckInOpen}
                 onClose={() => setIsCheckInOpen(false)}
-                onNavigateHistory={() => {
+                onNavigateHistory={isBetaUser ? () => {
                     setIsCheckInOpen(false);
                     onNavigateWellbeingHistory?.();
-                }}
+                } : undefined}
             />
         </div>
     );
