@@ -111,7 +111,7 @@ HabitFlow App
 | Routines List | Page | Bottom tab "Routines" | Card list of all routines | Routines | Routine Editor, Runner, Preview |
 | Goals — All | Page | Bottom tab "Goals", "All" toggle | Collapsible category stacks with progress bars. "New Track" button in header bar next to "+" | Goals, Categories | Create Goal Flow, Goal Detail, Edit Goal Modal, Create Track Modal |
 | Goals — Schedule | Page | "Schedule" toggle on Goals | Insight calendar with deadlines, forecasts, milestones | Goals, Categories | Goal Detail, Focus Mode |
-| Goals — Achievements | Page | Amber trophy icon in Goals tab bar | Gallery of completed goals (was Win Archive) | Goals | Goal Detail |
+| Goals — Achievements | Page | "Achievements" toggle on Goals (trophy icon) | Gallery of completed goals (was Win Archive) | Goals | Goal Detail |
 | Goal Detail | Page | Click goal card / pinned goal | Charts, entries, linked habits for one goal | Goals, Habits, Entries | Edit Goal Modal, Goal Completed |
 | Goal Completed | Page | Auto-shown on 100% or manual | Celebratory screen with next actions | Goals | Achievements, Goal Detail, Level Up |
 | Goal Track Detail | Page | Click track in Goals page | Track name, ordered goals with states, reorder, add/remove goals | Goal Tracks, Goals | Goal Detail, Goals List |
@@ -269,7 +269,7 @@ graph TB
 | **Track progress** | Goal Detail Page (cumulative chart, trend chart, entry list) |
 | **Complete** | Auto-triggered at 100% → Goal Completed Page |
 | **Archive / Level Up** | Goal Completed Page actions |
-| **View wins** | Goals page trophy icon → Win Archive |
+| **View wins** | Goals page "Achievements" tab → Win Archive |
 
 ### Habit Entry / Logging
 
@@ -473,7 +473,7 @@ graph TB
 
 1. **Journal and Tasks not in bottom tab bar** — Only accessible via Dashboard cards or direct URL. Users must know to look on the Dashboard or type the URL. Could be hard to discover.
 2. **Wellbeing History buried** — Only reachable from a Dashboard link. No tab bar entry, no header shortcut.
-3. **Win Archive discovery** — Accessed via a small trophy icon on Goals page or the Goal Completed flow. Easy to miss.
+3. **Win Archive discovery** — Accessed via the "Achievements" tab on Goals page or the Goal Completed flow.
 
 ### Modal vs Page Inconsistency
 
