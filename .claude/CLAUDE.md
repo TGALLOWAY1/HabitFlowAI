@@ -160,3 +160,11 @@ Any change to features, goal types, bundle behavior, AI capabilities, Apple Heal
 - After corrections from user: update `tasks/lessons.md` with the pattern
 - Track work in `tasks/todo.md` with checkable items
 - Never mark a task complete without verifying it works (run tests, check logs)
+
+## Commit Frequency
+
+- **Commit frequently.** Any coding task or plan must be broken into focused commits — one commit per meaningful subtask rather than a single large commit at the end.
+- **One subtask = one commit.** If a task or plan has 5 important subtasks, produce 5 commits (one per subtask), each with a clear, descriptive message scoped to that subtask.
+- **Exception — parallel resolution:** If multiple subtasks are genuinely resolved together (e.g. a single refactor that touches several call sites simultaneously, or changes that cannot be separated without breaking the build), they may share a commit. Prefer separate commits whenever the work can reasonably be split.
+- **Each commit should be coherent.** A commit should represent a complete, reviewable unit of work — ideally leaving the tree in a buildable state. Avoid mixing unrelated changes in a single commit.
+- **Plan commits up front.** When planning a task, explicitly identify the commit boundaries as part of the plan so the commit cadence is clear before coding begins.
