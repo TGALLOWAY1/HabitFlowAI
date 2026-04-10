@@ -93,6 +93,41 @@ describe('buildGoalStacks with tracks', () => {
     expect(stacks[0].tracks).toHaveLength(0);
   });
 
+  it('sorts tracks by sortOrder (not createdAt) within a category', () => {
+    const tracks: GoalTrack[] = [
+      // Intentionally out of sortOrder, and with createdAt timestamps that
+      // would produce a different order if we fell back to createdAt.
+      { id: 'track-a', name: 'Alpha', categoryId: 'cat-music', sortOrder: 2, createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z' },
+      { id: 'track-b', name: 'Beta', categoryId: 'cat-music', sortOrder: 0, createdAt: '2026-02-01T00:00:00Z', updatedAt: '2026-02-01T00:00:00Z' },
+      { id: 'track-c', name: 'Gamma', categoryId: 'cat-music', sortOrder: 1, createdAt: '2026-03-01T00:00:00Z', updatedAt: '2026-03-01T00:00:00Z' },
+    ];
+
+    const goals: Goal[] = [
+      makeGoal('g1', 'cat-music', { trackId: 'track-a', trackOrder: 0, trackStatus: 'active' }),
+      makeGoal('g2', 'cat-music', { trackId: 'track-b', trackOrder: 0, trackStatus: 'active' }),
+      makeGoal('g3', 'cat-music', { trackId: 'track-c', trackOrder: 0, trackStatus: 'active' }),
+    ];
+
+    const stacks = buildGoalStacks({ goals, categories, tracks });
+    expect(stacks).toHaveLength(1);
+    expect(stacks[0].tracks.map(tg => tg.track.id)).toEqual(['track-b', 'track-c', 'track-a']);
+  });
+
+  it('falls back to createdAt order for tracks without sortOrder', () => {
+    const tracks: GoalTrack[] = [
+      { id: 'track-new', name: 'New', categoryId: 'cat-music', createdAt: '2026-03-01T00:00:00Z', updatedAt: '2026-03-01T00:00:00Z' },
+      { id: 'track-old', name: 'Old', categoryId: 'cat-music', createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z' },
+    ];
+
+    const goals: Goal[] = [
+      makeGoal('g1', 'cat-music', { trackId: 'track-new', trackOrder: 0, trackStatus: 'active' }),
+      makeGoal('g2', 'cat-music', { trackId: 'track-old', trackOrder: 0, trackStatus: 'active' }),
+    ];
+
+    const stacks = buildGoalStacks({ goals, categories, tracks });
+    expect(stacks[0].tracks.map(tg => tg.track.id)).toEqual(['track-old', 'track-new']);
+  });
+
   it('skips completed tracks', () => {
     const tracks: GoalTrack[] = [
       { id: 'track-1', name: 'Done Track', categoryId: 'cat-music', createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z', completedAt: '2026-03-01T00:00:00Z' },

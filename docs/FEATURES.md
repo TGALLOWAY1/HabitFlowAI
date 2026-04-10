@@ -57,6 +57,7 @@ Canonical inventory of all user-facing features. Keep this document in sync with
 - **Track Progress Isolation** — Progress only counts from when a goal becomes active in a track; shared habits don't leak progress forward
 - **Track Advancement** — Completing the active goal automatically activates the next goal in the sequence
 - **Track Detail View** — Dedicated page showing track progress, goal states (completed/active/locked), and drag-and-drop reordering
+- **Track Ordering** — Drag-and-drop reorder of goal tracks within a category group on the Goals page
 - **Track Achievements** — Earn achievements for completing goal tracks (Journey Complete, Triple Step, Grand Journey)
 
 ## Tasks

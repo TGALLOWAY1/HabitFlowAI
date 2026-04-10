@@ -5,7 +5,7 @@
  * Shows track name, progress summary, and ordered goals with visual state indicators.
  */
 import React from 'react';
-import { Route, Lock, Check, ChevronRight } from 'lucide-react';
+import { Route, Lock, Check, ChevronRight, GripVertical } from 'lucide-react';
 import type { GoalWithProgress, GoalTrack, Goal } from '../../types';
 
 interface GoalTrackSectionProps {
@@ -14,6 +14,8 @@ interface GoalTrackSectionProps {
     getGoalWithProgress: (goalId: string) => GoalWithProgress | undefined;
     onViewGoal?: (goalId: string) => void;
     onViewTrack?: (trackId: string) => void;
+    dragHandleProps?: Record<string, unknown>;
+    isDragging?: boolean;
 }
 
 export const GoalTrackSection: React.FC<GoalTrackSectionProps> = ({
@@ -22,18 +24,35 @@ export const GoalTrackSection: React.FC<GoalTrackSectionProps> = ({
     getGoalWithProgress,
     onViewGoal,
     onViewTrack,
+    dragHandleProps,
+    isDragging,
 }) => {
     const completedCount = goals.filter(g => g.trackStatus === 'completed').length;
     const totalCount = goals.length;
     const progressPercent = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
 
     return (
-        <div className="bg-neutral-800/30 border border-white/5 rounded-lg overflow-hidden mb-2">
+        <div
+            className={`bg-neutral-800/30 border border-white/5 rounded-lg overflow-hidden mb-2 ${
+                isDragging ? 'opacity-50 shadow-2xl' : ''
+            }`}
+        >
             {/* Track Header */}
-            <button
-                onClick={() => onViewTrack?.(track.id)}
-                className="w-full flex items-center gap-2.5 px-3.5 py-2.5 hover:bg-neutral-800/50 transition-colors text-left"
-            >
+            <div className="flex items-center gap-1 pl-2 pr-0 hover:bg-neutral-800/50 transition-colors">
+                {/* Drag handle */}
+                {dragHandleProps && (
+                    <div
+                        {...dragHandleProps}
+                        className="flex-shrink-0 text-neutral-600 hover:text-neutral-400 cursor-grab active:cursor-grabbing touch-none py-2.5"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <GripVertical size={16} />
+                    </div>
+                )}
+                <button
+                    onClick={() => onViewTrack?.(track.id)}
+                    className="flex-1 flex items-center gap-2.5 px-2 py-2.5 text-left"
+                >
                 <Route size={15} className="text-emerald-400 flex-shrink-0" />
                 <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
@@ -51,7 +70,8 @@ export const GoalTrackSection: React.FC<GoalTrackSectionProps> = ({
                     </div>
                 </div>
                 <ChevronRight size={14} className="text-neutral-500 flex-shrink-0" />
-            </button>
+                </button>
+            </div>
 
             {/* Track Goals */}
             <div className="px-2 pb-2 space-y-1">

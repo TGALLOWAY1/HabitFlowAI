@@ -25,7 +25,7 @@ import { Loader2, AlertCircle } from 'lucide-react';
 import { EditGoalModal } from '../../components/goals/EditGoalModal';
 import { useHabitStore } from '../../store/HabitContext';
 import { buildGoalStacks } from '../../utils/goalUtils';
-import { reorderGoals } from '../../lib/persistenceClient';
+import { reorderGoals, reorderGoalTracks } from '../../lib/persistenceClient';
 import type { GoalWithProgress } from '../../types';
 
 interface GoalsPageProps {
@@ -73,6 +73,45 @@ const SortableGoalCard: React.FC<{
     );
 };
 
+// Sortable wrapper for a track section
+const SortableTrackSection: React.FC<{
+    // Use the same shape as StackProps.stack.tracks items below.
+    trackGroup: { track: { id: string; name: string; categoryId: string; description?: string; createdAt: string; updatedAt: string; completedAt?: string | null }; goals: Array<{ id: string; trackStatus?: string; trackOrder?: number; type?: string; title: string; completedAt?: string | null; activeWindowStart?: string }> };
+    getGoalWithProgress: (goalId: string) => GoalWithProgress | undefined;
+    onViewGoal?: (goalId: string) => void;
+    onViewTrack?: (trackId: string) => void;
+}> = ({ trackGroup, getGoalWithProgress, onViewGoal, onViewTrack }) => {
+    const {
+        attributes,
+        listeners,
+        setNodeRef,
+        transform,
+        transition,
+        isDragging,
+    } = useSortable({ id: trackGroup.track.id });
+
+    const style = {
+        transform: CSS.Transform.toString(transform),
+        transition,
+        zIndex: isDragging ? 50 : undefined,
+        position: isDragging ? 'relative' as const : undefined,
+    };
+
+    return (
+        <div ref={setNodeRef} style={style} {...attributes}>
+            <GoalTrackSection
+                track={trackGroup.track as any}
+                goals={trackGroup.goals as any}
+                getGoalWithProgress={getGoalWithProgress}
+                onViewGoal={onViewGoal}
+                onViewTrack={onViewTrack}
+                dragHandleProps={listeners}
+                isDragging={isDragging}
+            />
+        </div>
+    );
+};
+
 interface StackProps {
     stack: { category: { id: string; name: string; color: string }; goals: Array<{ id: string; type?: string }>; tracks: Array<{ track: { id: string; name: string; categoryId: string; description?: string; createdAt: string; updatedAt: string; completedAt?: string | null }; goals: Array<{ id: string; trackStatus?: string; trackOrder?: number; type?: string; title: string; completedAt?: string | null; activeWindowStart?: string }> }> };
     isExpanded: boolean;
@@ -84,6 +123,7 @@ interface StackProps {
     onEdit: (goalId: string) => void;
     onNavigateToCompleted?: (goalId: string) => void;
     onDragEnd: (event: DragEndEvent, categoryId: string) => void;
+    onTrackDragEnd: (event: DragEndEvent, categoryId: string) => void;
     sensors: ReturnType<typeof useSensors>;
     /** Whether any goals in this stack are cumulative (need grid layout) */
     hasCumulativeGoals: boolean;
@@ -100,6 +140,7 @@ const Stack: React.FC<StackProps> = ({
     onEdit,
     onNavigateToCompleted,
     onDragEnd,
+    onTrackDragEnd,
     sensors,
     hasCumulativeGoals,
 }) => {
@@ -180,18 +221,28 @@ const Stack: React.FC<StackProps> = ({
 
                     {/* Track sections */}
                     {stack.tracks && stack.tracks.length > 0 && (
-                        <div className={stack.goals.length > 0 ? 'mt-3 space-y-2' : 'space-y-2'}>
-                            {stack.tracks.map((tg) => (
-                                <GoalTrackSection
-                                    key={tg.track.id}
-                                    track={tg.track as any}
-                                    goals={tg.goals as any}
-                                    getGoalWithProgress={getGoalWithProgress}
-                                    onViewGoal={onViewGoal}
-                                    onViewTrack={onViewTrack}
-                                />
-                            ))}
-                        </div>
+                        <DndContext
+                            sensors={sensors}
+                            collisionDetection={closestCenter}
+                            onDragEnd={(event) => onTrackDragEnd(event, stack.category.id)}
+                        >
+                            <SortableContext
+                                items={stack.tracks.map(tg => tg.track.id)}
+                                strategy={verticalListSortingStrategy}
+                            >
+                                <div className={stack.goals.length > 0 ? 'mt-3 space-y-2' : 'space-y-2'}>
+                                    {stack.tracks.map((tg) => (
+                                        <SortableTrackSection
+                                            key={tg.track.id}
+                                            trackGroup={tg}
+                                            getGoalWithProgress={getGoalWithProgress}
+                                            onViewGoal={onViewGoal}
+                                            onViewTrack={onViewTrack}
+                                        />
+                                    ))}
+                                </div>
+                            </SortableContext>
+                        </DndContext>
                     )}
                 </div>
             )}
@@ -287,6 +338,39 @@ export const GoalsPage: React.FC<GoalsPageProps> = ({
         });
     }, [goalStacks, refetch]);
 
+    // Handle drag end for tracks within a category stack
+    const handleTrackDragEnd = useCallback((event: DragEndEvent, categoryId: string) => {
+        const { active, over } = event;
+        if (!over || active.id === over.id) return;
+
+        const stack = goalStacks.find(s => s.category.id === categoryId);
+        if (!stack) return;
+
+        const oldIndex = stack.tracks.findIndex(tg => tg.track.id === active.id);
+        const newIndex = stack.tracks.findIndex(tg => tg.track.id === over.id);
+        if (oldIndex === -1 || newIndex === -1) return;
+
+        const reorderedTracks = arrayMove(stack.tracks, oldIndex, newIndex);
+
+        // Build the full ordered list of all track IDs across all stacks so the
+        // server's sortOrder assignment remains globally consistent.
+        const allTrackIds: string[] = [];
+        for (const s of goalStacks) {
+            if (s.category.id === categoryId) {
+                allTrackIds.push(...reorderedTracks.map(tg => tg.track.id));
+            } else {
+                allTrackIds.push(...s.tracks.map(tg => tg.track.id));
+            }
+        }
+
+        reorderGoalTracks(allTrackIds).then(() => {
+            refetch();
+        }).catch((err) => {
+            console.error('Failed to reorder goal tracks:', err);
+            refetch(); // Revert on error
+        });
+    }, [goalStacks, refetch]);
+
     if (loading) {
         return (
             <div className="w-full max-w-2xl mx-auto px-4 sm:px-6 py-12">
@@ -359,6 +443,7 @@ export const GoalsPage: React.FC<GoalsPageProps> = ({
                                 onEdit={(goalId) => setEditingGoalId(goalId)}
                                 onNavigateToCompleted={onNavigateToCompleted}
                                 onDragEnd={handleDragEnd}
+                                onTrackDragEnd={handleTrackDragEnd}
                                 sensors={sensors}
                                 hasCumulativeGoals={hasCumulativeGoals}
                             />
