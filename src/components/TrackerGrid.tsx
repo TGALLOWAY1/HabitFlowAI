@@ -9,10 +9,12 @@ import { BundlePickerModal } from './BundlePickerModal';
 import { NumericInputPopover } from './NumericInputPopover';
 import { HabitHistoryModal } from './HabitHistoryModal';
 import { HabitLogModal } from './HabitLogModal';
+import { DeleteHabitConfirmModal } from './DeleteHabitConfirmModal';
 import { useToast } from './Toast';
 import { useHabitStore } from '../store/HabitContext';
 import { useRoutineStore } from '../store/RoutineContext';
 import { useProgressOverview } from '../lib/useProgressOverview';
+import { useGoalsWithProgress } from '../lib/useGoalsWithProgress';
 import { useDashboardPrefs } from '../store/DashboardPrefsContext';
 
 
@@ -812,6 +814,7 @@ export const TrackerGrid = ({
     } = useHabitStore();
     const { routines } = useRoutineStore(); // Ensure we have routines for context menu
     const { data: progressData, refresh: refreshProgress } = useProgressOverview();
+    const { data: goalsWithProgress } = useGoalsWithProgress();
     const { showToast } = useToast();
 
     // Debounce refreshProgress to coalesce rapid mutations (e.g., toggling multiple cells)
@@ -882,6 +885,44 @@ export const TrackerGrid = ({
 
     const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
     const [deleteMode, setDeleteMode] = useState(false);
+    // Pending confirmation for deleting a habit that is linked to one or more
+    // goals. Shown via DeleteHabitConfirmModal after the user clicks trash twice
+    // — the modal surfaces affected goals so the user understands what gets
+    // disconnected (historical progress is still preserved by design).
+    const [pendingDeleteHabit, setPendingDeleteHabit] = useState<{
+        habit: Habit;
+        linkedGoalTitles: string[];
+    } | null>(null);
+
+    /**
+     * Wrapper around deleteHabit that surfaces a confirmation modal when the
+     * habit is linked to any goal. Used in place of the raw deleteHabit when
+     * passing down to child rows.
+     *
+     * - Unlinked habit → delete immediately (existing "click-twice" flow in
+     *   HabitActionButtons still protects against accidental clicks).
+     * - Linked habit → open DeleteHabitConfirmModal listing affected goals.
+     *   Returns a resolved Promise so the child's click-twice state resets.
+     */
+    const handleDeleteHabitRequest = useCallback(async (id: string): Promise<void> => {
+        const habit = habits.find(h => h.id === id);
+        if (!habit) {
+            await deleteHabit(id);
+            return;
+        }
+        const linkedGoals = (goalsWithProgress || []).filter(gwp =>
+            gwp.goal.linkedHabitIds?.includes(id)
+        );
+        if (linkedGoals.length === 0) {
+            await deleteHabit(id);
+            return;
+        }
+        setPendingDeleteHabit({
+            habit,
+            linkedGoalTitles: linkedGoals.map(gwp => gwp.goal.title),
+        });
+    }, [habits, goalsWithProgress, deleteHabit]);
+
     const [historyModalHabitId, setHistoryModalHabitId] = useState<string | null>(null);
     const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
     const [choiceLogState, setChoiceLogState] = useState<{ habit: Habit; date: string } | null>(null);
@@ -1264,7 +1305,7 @@ export const TrackerGrid = ({
                                                 logs={logs}
                                                 dates={dates}
                                                 handleCellClick={handleCellClickDirect}
-                                                deleteHabit={deleteHabit}
+                                                deleteHabit={handleDeleteHabitRequest}
                                                 deleteConfirmId={deleteConfirmId}
                                                 setDeleteConfirmId={setDeleteConfirmId}
                                                 onEditHabit={onEditHabit}
@@ -1547,6 +1588,19 @@ export const TrackerGrid = ({
                 onClose={() => setBundlePickerHabit(null)}
                 habitId={bundlePickerHabit?.id ?? ''}
                 habitName={bundlePickerHabit?.name ?? ''}
+            />
+
+            {/* Delete Habit Confirmation Modal (shown only for habits linked to goals) */}
+            <DeleteHabitConfirmModal
+                isOpen={!!pendingDeleteHabit}
+                onClose={() => setPendingDeleteHabit(null)}
+                onConfirm={async () => {
+                    if (!pendingDeleteHabit) return;
+                    await deleteHabit(pendingDeleteHabit.habit.id);
+                    setPendingDeleteHabit(null);
+                }}
+                habitName={pendingDeleteHabit?.habit.name ?? ''}
+                linkedGoalTitles={pendingDeleteHabit?.linkedGoalTitles ?? []}
             />
         </div>
     );

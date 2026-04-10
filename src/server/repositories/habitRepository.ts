@@ -8,9 +8,10 @@
 import type { ClientSession } from 'mongodb';
 import { getDb } from '../lib/mongoClient';
 import { scopeFilter, requireScope } from '../lib/scoping';
-import type { Habit } from '../../models/persistenceTypes';
+import { MONGO_COLLECTIONS, type Habit, type Goal } from '../../models/persistenceTypes';
 
 const COLLECTION_NAME = 'habits';
+const GOALS_COLLECTION = MONGO_COLLECTIONS.GOALS;
 
 function stripScope(doc: any): Habit {
   const { _id, userId: _, householdId: __, ...habit } = doc;
@@ -241,8 +242,17 @@ export async function recoverCategoryDeletedHabits(
 }
 
 /**
- * Set linkedGoalId on all specified habits.
- * Called when a goal is created or updated to keep the bidirectional link in sync.
+ * Set linkedGoalId on specified habits as a "primary goal" UI hint — but
+ * ONLY on habits that don't already point at another goal that still
+ * references them. This preserves the multi-goal case: one habit linked
+ * to multiple goals keeps a stable, valid primary-goal badge instead of
+ * flipping every time any of those goals is edited.
+ *
+ * Note: `linkedGoalId` is purely UI metadata. Progress computation uses
+ * `Goal.linkedHabitIds` (the authoritative many-to-many side). This helper
+ * just keeps the UI hint from going stale.
+ *
+ * Called when a goal is created or updated.
  */
 export async function linkHabitsToGoal(
   habitIds: string[],
@@ -253,10 +263,56 @@ export async function linkHabitsToGoal(
   if (habitIds.length === 0) return 0;
 
   const db = await getDb();
-  const collection = db.collection(COLLECTION_NAME);
+  const habitsCollection = db.collection(COLLECTION_NAME);
+  const goalsCollection = db.collection(GOALS_COLLECTION);
 
-  const result = await collection.updateMany(
-    scopeFilter(householdId, userId, { id: { $in: habitIds } }),
+  // Fetch the habits we're linking and their existing linkedGoalId values.
+  const habits = await habitsCollection
+    .find(scopeFilter(householdId, userId, { id: { $in: habitIds } }))
+    .project({ id: 1, linkedGoalId: 1 })
+    .toArray();
+
+  // Collect existing linkedGoalIds that are NOT the goal we're now linking to.
+  const existingLinkedGoalIds = Array.from(
+    new Set(
+      habits
+        .map((h: any) => h.linkedGoalId as string | undefined)
+        .filter((gid): gid is string => !!gid && gid !== goalId)
+    )
+  );
+
+  // Fetch those goals so we can check whether they still reference the habit.
+  const existingGoals = existingLinkedGoalIds.length > 0
+    ? await goalsCollection
+        .find(scopeFilter(householdId, userId, { id: { $in: existingLinkedGoalIds } }))
+        .project({ id: 1, linkedHabitIds: 1 })
+        .toArray()
+    : [];
+  const goalsById = new Map<string, { linkedHabitIds?: string[] }>(
+    existingGoals.map((g: any) => [g.id, { linkedHabitIds: g.linkedHabitIds }])
+  );
+
+  // Decide which habits should receive linkedGoalId = goalId.
+  // Update only habits whose current linkedGoalId is missing OR points to a
+  // goal that no longer contains this habit in linkedHabitIds.
+  const habitIdsToUpdate: string[] = [];
+  for (const h of habits) {
+    const current = (h as any).linkedGoalId as string | undefined;
+    if (!current || current === goalId) {
+      habitIdsToUpdate.push((h as any).id);
+      continue;
+    }
+    const otherGoal = goalsById.get(current);
+    const stillLinked = otherGoal?.linkedHabitIds?.includes((h as any).id) ?? false;
+    if (!stillLinked) {
+      habitIdsToUpdate.push((h as any).id);
+    }
+  }
+
+  if (habitIdsToUpdate.length === 0) return 0;
+
+  const result = await habitsCollection.updateMany(
+    scopeFilter(householdId, userId, { id: { $in: habitIdsToUpdate } }),
     { $set: { linkedGoalId: goalId } }
   );
 
@@ -264,8 +320,13 @@ export async function linkHabitsToGoal(
 }
 
 /**
- * Clear linkedGoalId from all habits that reference a given goal.
- * Called when a goal is deleted to prevent orphaned references.
+ * Clear linkedGoalId from habits that currently point at the given goal —
+ * but only if no OTHER goal still references the habit. If another goal does
+ * reference it, switch linkedGoalId to that other goal instead of clearing
+ * it, so the "primary goal" UI hint stays valid for multi-goal habits.
+ *
+ * Called when a goal is deleted, or when a habit is removed from a goal's
+ * linkedHabitIds list.
  */
 export async function unlinkHabitsFromGoal(
   goalId: string,
@@ -273,12 +334,57 @@ export async function unlinkHabitsFromGoal(
   userId: string
 ): Promise<number> {
   const db = await getDb();
-  const collection = db.collection(COLLECTION_NAME);
+  const habitsCollection = db.collection(COLLECTION_NAME);
+  const goalsCollection = db.collection(GOALS_COLLECTION);
 
-  const result = await collection.updateMany(
-    scopeFilter(householdId, userId, { linkedGoalId: goalId }),
-    { $unset: { linkedGoalId: '' } }
-  );
+  // Find habits currently pointing at this goal.
+  const habitsPointingHere = await habitsCollection
+    .find(scopeFilter(householdId, userId, { linkedGoalId: goalId }))
+    .project({ id: 1 })
+    .toArray();
 
-  return result.modifiedCount;
+  if (habitsPointingHere.length === 0) return 0;
+
+  const affectedHabitIds = habitsPointingHere.map((h: any) => h.id as string);
+
+  // Find other goals that still reference any of these habits.
+  const otherGoals = (await goalsCollection
+    .find(
+      scopeFilter(householdId, userId, {
+        id: { $ne: goalId },
+        linkedHabitIds: { $in: affectedHabitIds },
+      })
+    )
+    .project({ id: 1, linkedHabitIds: 1 })
+    .toArray()) as unknown as Array<Pick<Goal, 'id' | 'linkedHabitIds'>>;
+
+  // For each affected habit, pick a replacement goal (deterministically: the
+  // first other goal that references it) or clear linkedGoalId if none found.
+  const bulkOps: any[] = [];
+  let modified = 0;
+  for (const habitId of affectedHabitIds) {
+    const replacement = otherGoals.find(g => g.linkedHabitIds?.includes(habitId));
+    if (replacement) {
+      bulkOps.push({
+        updateOne: {
+          filter: scopeFilter(householdId, userId, { id: habitId }),
+          update: { $set: { linkedGoalId: replacement.id } },
+        },
+      });
+    } else {
+      bulkOps.push({
+        updateOne: {
+          filter: scopeFilter(householdId, userId, { id: habitId }),
+          update: { $unset: { linkedGoalId: '' } },
+        },
+      });
+    }
+    modified += 1;
+  }
+
+  if (bulkOps.length > 0) {
+    await habitsCollection.bulkWrite(bulkOps);
+  }
+
+  return modified;
 }

@@ -138,6 +138,7 @@ HabitFlow App
 | Daily Check-in | Modal | Dashboard check-in card | Wellbeing metrics entry (sleep, mood, stress) | Wellbeing Entries |
 | Edit Goal | Modal | Goal context menu "Edit" | Modify goal title, target, deadline | Goals |
 | Delete Goal Confirm | Modal | Goal context menu "Delete" | Deletion confirmation dialog | Goals |
+| Delete Habit Confirm | Modal | Trash button on a habit that is linked to one or more goals (shown after the click-twice confirm so the user sees which goals are affected) | Lists the affected goals and explains historical progress on them is preserved before allowing deletion | Habits, Goals |
 | Completed Habits | Modal | Routine runner completion | Summary of habits logged during routine | Habits, Entries |
 | Settings | Modal | Header settings icon | Preferences, API keys, data management | User config |
 | Info / Tutorial | Modal | Header info icon | App tutorial and feature explanations | — |

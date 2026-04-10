@@ -222,7 +222,7 @@ export const GoalCard: React.FC<GoalCardProps> = ({
                                         {progress.percent}%
                                     </span>
                                     <span className={goalMetadataClasses}>
-                                        {goal.linkedHabitIds.length} {goal.linkedHabitIds.length === 1 ? 'habit' : 'habits'}
+                                        {linkedHabits.length} {linkedHabits.length === 1 ? 'habit' : 'habits'}
                                     </span>
                                     {goal.deadline && (
                                         <span className="px-2 py-0.5 bg-neutral-700/50 text-neutral-300 rounded text-xs">
