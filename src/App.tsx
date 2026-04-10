@@ -352,37 +352,26 @@ const HabitTrackerContent: React.FC = () => {
 
           {/* Goals View Toggle — centered below title */}
           {view === 'goals' && !selectedGoalId && !completedGoalId && (
-            <div className="flex items-center border-b border-white/5">
-              <div className="flex gap-4 flex-1">
-                {([
-                  { id: 'all' as const, label: 'All', icon: List },
-                  { id: 'schedule' as const, label: 'Schedule', icon: CalendarClock },
-                ]).map(({ id, label, icon: Icon }) => (
-                  <button
-                    key={id}
-                    onClick={() => setGoalsViewMode(id)}
-                    className={`pb-3 px-3 text-sm font-medium transition-colors relative ${goalsViewMode === id ? 'text-emerald-400' : 'text-white/40 hover:text-white/60'}`}
-                  >
-                    <div className="flex items-center gap-2">
-                      <Icon size={16} />
-                      {label}
-                    </div>
-                    {goalsViewMode === id && (
-                      <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-emerald-400 rounded-t-full" />
-                    )}
-                  </button>
-                ))}
-              </div>
-              <button
-                onClick={() => setGoalsViewMode('achievements')}
-                className={`pb-3 px-3 transition-colors relative ${goalsViewMode === 'achievements' ? 'text-amber-400' : 'text-amber-400/40 hover:text-amber-400/70'}`}
-                title="Achievements"
-              >
-                <Trophy size={18} />
-                {goalsViewMode === 'achievements' && (
-                  <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-amber-400 rounded-t-full" />
-                )}
-              </button>
+            <div className="flex gap-4 border-b border-white/5">
+              {([
+                { id: 'all' as const, label: 'All', icon: List },
+                { id: 'schedule' as const, label: 'Schedule', icon: CalendarClock },
+                { id: 'achievements' as const, label: 'Achievements', icon: Trophy },
+              ]).map(({ id, label, icon: Icon }) => (
+                <button
+                  key={id}
+                  onClick={() => setGoalsViewMode(id)}
+                  className={`pb-3 px-3 text-sm font-medium transition-colors relative ${goalsViewMode === id ? 'text-emerald-400' : 'text-white/40 hover:text-white/60'}`}
+                >
+                  <div className="flex items-center gap-2">
+                    <Icon size={16} />
+                    {label}
+                  </div>
+                  {goalsViewMode === id && (
+                    <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-emerald-400 rounded-t-full" />
+                  )}
+                </button>
+              ))}
             </div>
           )}
 
