@@ -41,6 +41,67 @@ const ICONS: Record<string, LucideIcon> = {
     'free-write': PenLine
 };
 
+// Per-category color palette. Each category gets a distinct hue; expanded = brighter.
+// Classes are written as complete string literals so Tailwind's content scanner picks them up.
+type CategoryColor = {
+    idleIcon: string;      // icon text color when collapsed
+    idleBg: string;        // icon tile background when collapsed
+    activeIcon: string;    // icon text color when expanded (brighter)
+    activeBg: string;      // icon tile background when expanded (brighter)
+    border: string;        // template-card hover border accent
+};
+const CATEGORY_COLORS: Record<string, CategoryColor> = {
+    'daily-structure': {
+        idleIcon: 'text-amber-400/80',
+        idleBg: 'bg-amber-400/10',
+        activeIcon: 'text-amber-300',
+        activeBg: 'bg-amber-400/20',
+        border: 'hover:border-amber-400/30',
+    },
+    'mental-health': {
+        idleIcon: 'text-violet-400/80',
+        idleBg: 'bg-violet-400/10',
+        activeIcon: 'text-violet-300',
+        activeBg: 'bg-violet-400/20',
+        border: 'hover:border-violet-400/30',
+    },
+    'physical-health': {
+        idleIcon: 'text-rose-400/80',
+        idleBg: 'bg-rose-400/10',
+        activeIcon: 'text-rose-300',
+        activeBg: 'bg-rose-400/20',
+        border: 'hover:border-rose-400/30',
+    },
+    'habits': {
+        idleIcon: 'text-cyan-400/80',
+        idleBg: 'bg-cyan-400/10',
+        activeIcon: 'text-cyan-300',
+        activeBg: 'bg-cyan-400/20',
+        border: 'hover:border-cyan-400/30',
+    },
+    'personal-growth': {
+        idleIcon: 'text-emerald-400/80',
+        idleBg: 'bg-emerald-400/10',
+        activeIcon: 'text-emerald-300',
+        activeBg: 'bg-emerald-400/20',
+        border: 'hover:border-emerald-400/30',
+    },
+    'relationships': {
+        idleIcon: 'text-fuchsia-400/80',
+        idleBg: 'bg-fuchsia-400/10',
+        activeIcon: 'text-fuchsia-300',
+        activeBg: 'bg-fuchsia-400/20',
+        border: 'hover:border-fuchsia-400/30',
+    },
+};
+const DEFAULT_CATEGORY_COLOR: CategoryColor = {
+    idleIcon: 'text-white/50',
+    idleBg: 'bg-white/5',
+    activeIcon: 'text-white',
+    activeBg: 'bg-white/10',
+    border: 'hover:border-white/20',
+};
+
 /**
  * JournalEditor — gallery-style template selection with collapsible categories and pinning.
  * Uses 'jStep', 'jTmp' query params to persist writing-phase state.
@@ -183,15 +244,16 @@ export function JournalEditor({ existingEntry, onSave, onCancel, initialTemplate
     const renderTemplateCard = (template: JournalTemplate) => {
         const Icon = ICONS[template.id] || ICONS[template.categoryId] || Brain;
         const pinned = isPinned(template.id);
+        const colors = CATEGORY_COLORS[template.categoryId] || DEFAULT_CATEGORY_COLOR;
 
         return (
             <div key={template.id} className="relative group">
                 <button
                     onClick={() => handleSelectTemplate(template.id)}
-                    className="w-full text-left p-3.5 bg-white/[0.03] hover:bg-white/[0.07] border border-white/5 hover:border-emerald-500/30 rounded-lg transition-all duration-200"
+                    className={`w-full text-left p-3.5 bg-white/[0.03] hover:bg-white/[0.07] border border-white/5 ${colors.border} rounded-lg transition-all duration-200`}
                 >
                     <div className="flex items-start gap-2.5">
-                        <div className="p-1.5 bg-emerald-400/10 rounded-lg text-emerald-400 flex-shrink-0 mt-0.5">
+                        <div className={`p-1.5 ${colors.idleBg} rounded-lg ${colors.idleIcon} flex-shrink-0 mt-0.5 transition-colors`}>
                             <Icon size={14} />
                         </div>
                         <div className="min-w-0 pr-5">
@@ -237,15 +299,18 @@ export function JournalEditor({ existingEntry, onSave, onCancel, initialTemplate
                     const categoryTemplates = JOURNAL_TEMPLATES.filter(t => t.categoryId === category.id);
                     const isExpanded = expandedCategories.has(category.id);
                     const Icon = ICONS[category.id] || Brain;
+                    const colors = CATEGORY_COLORS[category.id] || DEFAULT_CATEGORY_COLOR;
+                    const iconTextClass = isExpanded ? colors.activeIcon : colors.idleIcon;
+                    const iconBgClass = isExpanded ? colors.activeBg : colors.idleBg;
 
                     return (
                         <div key={category.id}>
                             <button
                                 onClick={() => toggleCategory(category.id)}
-                                className="w-full text-left flex items-center justify-between p-3.5 bg-white/[0.03] hover:bg-white/[0.06] border border-white/5 hover:border-white/10 rounded-xl transition-all group"
+                                className="w-full text-left flex items-center justify-between p-3.5 bg-white/[0.03] hover:bg-white/[0.06] border border-white/5 hover:border-white/10 rounded-xl transition-all"
                             >
                                 <div className="flex items-center gap-3">
-                                    <div className="p-2 bg-white/5 rounded-lg text-white/50 group-hover:text-emerald-400 group-hover:bg-emerald-400/10 transition-all">
+                                    <div className={`p-2 ${iconBgClass} ${iconTextClass} rounded-lg transition-colors`}>
                                         <Icon size={18} />
                                     </div>
                                     <div>
