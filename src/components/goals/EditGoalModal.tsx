@@ -123,17 +123,15 @@ export const EditGoalModal: React.FC<EditGoalModalProps> = ({
         // Event date is optional for one-time goals
         // No validation needed
 
-        // --- FIX FOR GHOST HABIT IDs ---
-        // Filter out any IDs that don't exist in the current habits list.
-        // This removes deleted/stale habits that cause backend validation errors.
-        // We only filter if we have loaded habits to avoid accidental clearing.
-        let validSelectedIds = selectedHabitIds;
-        if (habits.length > 0) {
-            validSelectedIds = selectedHabitIds.filter(id => habits.some(h => h.id === id));
-        }
-
-        if (validSelectedIds.length === 0) {
-            setError('At least one valid habit must be linked');
+        // Require at least one ACTIVE (non-deleted) habit linked. Deleted-habit
+        // IDs that were already in linkedHabitIds are allowed to persist on save
+        // — the backend accepts pre-existing stale IDs so that deleted habits'
+        // historical entries continue to contribute to goal progress. Stripping
+        // them here previously silently erased historical progress on every edit.
+        const hasActiveLinkedHabit = habits.length === 0
+            || selectedHabitIds.some(id => habits.some(h => h.id === id));
+        if (!hasActiveLinkedHabit) {
+            setError('At least one active habit must be linked');
             return;
         }
 
@@ -145,7 +143,7 @@ export const EditGoalModal: React.FC<EditGoalModalProps> = ({
                 notes: description,
                 targetValue: goal.type === 'onetime' ? undefined : numTarget,
                 unit: goal.type === 'onetime' ? undefined : unit,
-                linkedHabitIds: validSelectedIds, // Use sanitized IDs
+                linkedHabitIds: selectedHabitIds,
                 deadline: deadline || undefined,
                 categoryId: categoryId || undefined,
             });

@@ -16,9 +16,10 @@ Canonical inventory of all user-facing features. Keep this document in sync with
 - **Habit Bundles (Checklist)** — Group habits together; configure success rule (all, any, count, or percentage)
 - **Habit Bundles (Choice)** — Pick one from a set of alternatives each day
 - **Bundle Membership Management** — Move habits into/out of bundles; end or archive memberships
-- **Habit-Goal Linking** — Link habits to goals so completions count as goal progress
+- **Habit-Goal Linking** — Link habits to goals so completions count as goal progress. A single habit can be linked to multiple goals simultaneously (e.g., one "study session" habit contributing to a sequence of exam goals in a track).
 - **Habit-Routine Linking** — Link habits to routine steps so routine completion auto-logs habits
 - **Archiving** — Archive habits instead of deleting; soft-delete pattern
+- **Deletion with Goal Warning** — Deleting a habit linked to one or more goals surfaces a confirmation modal listing the affected goals. Historical progress on those goals is preserved — past entries continue to count — but the habit is removed from the goal's linked-habits list and can no longer be logged
 - **Reordering** — Drag-and-drop to reorder habits within categories
 
 ## Routines
@@ -54,7 +55,7 @@ Canonical inventory of all user-facing features. Keep this document in sync with
 - **Goal Ordering** — Drag-and-drop reorder within category groups
 - **Inactivity Coaching** — Rule-based popup suggestions when a goal is stagnant
 - **Goal Tracks** — Create ordered sequences of goals within a category (e.g., Exam 1 → Exam 2 → Exam 3)
-- **Track Progress Isolation** — Progress only counts from when a goal becomes active in a track; shared habits don't leak progress forward
+- **Track Progress Isolation** — Progress only counts from when a goal becomes active in a track; shared habits don't leak progress forward. The same habit can be linked to every goal in a track and each goal computes its own date-windowed contribution using the goal's `activeWindowStart` / `activeWindowEnd`
 - **Track Advancement** — Completing the active goal automatically activates the next goal in the sequence
 - **Track Detail View** — Dedicated page showing track progress, goal states (completed/active/locked), and drag-and-drop reordering
 - **Track Achievements** — Earn achievements for completing goal tracks (Journey Complete, Triple Step, Grand Journey)

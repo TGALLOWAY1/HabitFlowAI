@@ -642,11 +642,16 @@ export async function updateGoalRoute(req: Request, res: Response): Promise<void
       patch.categoryId = req.body.categoryId || undefined;
     }
 
-    // Block category changes for tracked goals (must match track category)
+    // Block category changes for tracked goals (must match track category).
+    // Only reject when the category is ACTUALLY changing — the Edit Goal modal
+    // re-sends the existing categoryId on every save, so checking presence alone
+    // produces false-positive errors on ordinary edits (title, habits, deadline).
     if (patch.categoryId !== undefined) {
       const { householdId: hid, userId: uid } = getRequestIdentity(req);
       const existingForCategoryCheck = await getGoalById(id, hid, uid);
-      if (existingForCategoryCheck?.trackId) {
+      const currentCat = existingForCategoryCheck?.categoryId ?? undefined;
+      const newCat = patch.categoryId ?? undefined;
+      if (existingForCategoryCheck?.trackId && newCat !== currentCat) {
         res.status(400).json({
           error: {
             code: 'VALIDATION_ERROR',
@@ -707,9 +712,21 @@ export async function updateGoalRoute(req: Request, res: Response): Promise<void
       }
     }
 
-    // If linkedHabitIds is being updated, validate that all IDs exist
+    // If linkedHabitIds is being updated, validate only the NEWLY-ADDED IDs.
+    // Pre-existing IDs are allowed through even if they now reference a deleted
+    // habit: deleted habits' entries are intentionally preserved as historical
+    // contributions to goal progress (see `computeGoalProgressV2` and the comment
+    // in `deleteHabitRoute`). Stripping those refs on every edit would silently
+    // erase historical progress, which was the cause of the previous "GHOST HABIT
+    // IDs" frontend workaround.
+    let previousLinkedHabitIds: string[] | null = null;
     if (patch.linkedHabitIds) {
-      const invalidHabitIds = await validateHabitIdsExist(patch.linkedHabitIds, householdId, userId);
+      const existing = existingGoal || await getGoalById(id, householdId, userId);
+      previousLinkedHabitIds = existing?.linkedHabitIds || [];
+
+      const priorSet = new Set(previousLinkedHabitIds);
+      const newlyAddedIds = patch.linkedHabitIds.filter((hid) => !priorSet.has(hid));
+      const invalidHabitIds = await validateHabitIdsExist(newlyAddedIds, householdId, userId);
       if (invalidHabitIds.length > 0) {
         res.status(400).json({
           error: {
@@ -719,13 +736,6 @@ export async function updateGoalRoute(req: Request, res: Response): Promise<void
         });
         return;
       }
-    }
-
-    // Fetch existing goal to diff linkedHabitIds if they're changing
-    let previousLinkedHabitIds: string[] | null = null;
-    if (patch.linkedHabitIds) {
-      const existing = existingGoal || await getGoalById(id, householdId, userId);
-      previousLinkedHabitIds = existing?.linkedHabitIds || [];
     }
 
     let goal = await updateGoal(id, householdId, userId, patch);
