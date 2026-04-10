@@ -26,10 +26,25 @@ export async function createGoalTrack(
   const db = await getDb();
   const collection = db.collection(COLLECTION_NAME);
 
+  // If sortOrder was not provided, append the new track to the end of its
+  // category by using (max existing sortOrder in that category) + 1.
+  let sortOrder = data.sortOrder;
+  if (sortOrder === undefined) {
+    const existing = await collection
+      .find(scopeFilter(householdId, userId, { categoryId: data.categoryId }))
+      .toArray();
+    const maxOrder = existing.reduce((max, doc: any) => {
+      const o = typeof doc.sortOrder === 'number' ? doc.sortOrder : -1;
+      return o > max ? o : max;
+    }, -1);
+    sortOrder = maxOrder + 1;
+  }
+
   const now = new Date().toISOString();
   const document = {
     id: randomUUID(),
     ...data,
+    sortOrder,
     createdAt: now,
     updatedAt: now,
     householdId: scope.householdId,
@@ -49,7 +64,7 @@ export async function getGoalTracksByUser(
 
   const documents = await collection
     .find(scopeFilter(householdId, userId))
-    .sort({ createdAt: 1 })
+    .sort({ sortOrder: 1, createdAt: 1 })
     .toArray();
 
   return documents.map(stripScope);
@@ -110,8 +125,40 @@ export async function getGoalTracksByCategory(
 
   const documents = await collection
     .find(scopeFilter(householdId, userId, { categoryId }))
-    .sort({ createdAt: 1 })
+    .sort({ sortOrder: 1, createdAt: 1 })
     .toArray();
 
   return documents.map(stripScope);
+}
+
+/**
+ * Reorder goal tracks by assigning each provided track a new sortOrder equal
+ * to its position in the list. Tracks can span multiple categories — the
+ * caller is responsible for passing a complete ordering.
+ */
+export async function reorderGoalTracks(
+  householdId: string,
+  userId: string,
+  trackIds: string[]
+): Promise<boolean> {
+  if (trackIds.length === 0) return true;
+
+  const db = await getDb();
+  const collection = db.collection(COLLECTION_NAME);
+  const now = new Date().toISOString();
+
+  const operations = trackIds.map((id, index) => ({
+    updateOne: {
+      filter: scopeFilter(householdId, userId, { id }),
+      update: { $set: { sortOrder: index, updatedAt: now } },
+    },
+  }));
+
+  try {
+    await collection.bulkWrite(operations);
+    return true;
+  } catch (error) {
+    console.error('Failed to reorder goal tracks:', error);
+    return false;
+  }
 }

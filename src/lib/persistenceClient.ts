@@ -1117,6 +1117,18 @@ export async function reorderTrackGoals(trackId: string, goalIds: string[]): Pro
 }
 
 /**
+ * Reorder goal tracks. Pass the full list of track IDs in the new order;
+ * each track's sortOrder is set to its index in the array.
+ */
+export async function reorderGoalTracks(trackIds: string[]): Promise<void> {
+  await apiRequest<{ message: string }>('/goal-tracks/reorder', {
+    method: 'PATCH',
+    body: JSON.stringify({ trackIds }),
+  });
+  invalidateGoalDataCache();
+}
+
+/**
  * Habit Entry (History) Persistence Functions
  */
 

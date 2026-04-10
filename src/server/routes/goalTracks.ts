@@ -14,6 +14,7 @@ import {
   getGoalTrackById,
   updateGoalTrack,
   deleteGoalTrack,
+  reorderGoalTracks,
 } from '../repositories/goalTrackRepository';
 import {
   getGoalById,
@@ -110,6 +111,45 @@ export async function createGoalTrackRoute(req: Request, res: Response): Promise
   } catch (error) {
     console.error('Error creating goal track:', error);
     res.status(500).json({ error: { code: 'INTERNAL_SERVER_ERROR', message: 'Failed to create goal track' } });
+  }
+}
+
+/**
+ * PATCH /api/goal-tracks/reorder
+ * Reorder goal tracks. Body: { trackIds: string[] }
+ * Each track's sortOrder is set to its index in the provided list.
+ */
+export async function reorderGoalTracksRoute(req: Request, res: Response): Promise<void> {
+  try {
+    const { trackIds } = req.body;
+
+    if (!Array.isArray(trackIds) || !trackIds.every(id => typeof id === 'string')) {
+      res.status(400).json({
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'trackIds must be an array of track IDs',
+        },
+      });
+      return;
+    }
+
+    const { householdId, userId } = getRequestIdentity(req);
+    const success = await reorderGoalTracks(householdId, userId, trackIds);
+
+    if (!success) {
+      res.status(500).json({
+        error: { code: 'INTERNAL_SERVER_ERROR', message: 'Failed to reorder goal tracks' },
+      });
+      return;
+    }
+
+    invalidateUserCaches(userId);
+    res.status(200).json({ message: 'Goal tracks reordered successfully' });
+  } catch (error) {
+    console.error('Error reordering goal tracks:', error);
+    res.status(500).json({
+      error: { code: 'INTERNAL_SERVER_ERROR', message: 'Failed to reorder goal tracks' },
+    });
   }
 }
 

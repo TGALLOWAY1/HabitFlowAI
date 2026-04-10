@@ -179,7 +179,12 @@ export function buildGoalStacks({
         stacks.push({
             category,
             goals: sortGoalsByOrder(catStandalone),
-            tracks: catTracks.sort((a, b) => a.track.createdAt.localeCompare(b.track.createdAt)),
+            tracks: catTracks.sort((a, b) => {
+                const orderA = a.track.sortOrder ?? Infinity;
+                const orderB = b.track.sortOrder ?? Infinity;
+                if (orderA !== orderB) return orderA - orderB;
+                return a.track.createdAt.localeCompare(b.track.createdAt);
+            }),
         });
     }
 

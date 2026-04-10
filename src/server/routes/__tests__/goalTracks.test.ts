@@ -17,6 +17,7 @@ import {
   addGoalToTrack,
   removeGoalFromTrack,
   reorderTrackGoals,
+  reorderGoalTracksRoute,
 } from '../goalTracks';
 import { getGoals, createGoalRoute, updateGoalRoute } from '../goals';
 import { createGoal, getGoalById } from '../../repositories/goalRepository';
@@ -43,6 +44,7 @@ describe('Goal Tracks Routes', () => {
 
     app.get('/api/goal-tracks', getGoalTracks);
     app.post('/api/goal-tracks', createGoalTrackRoute);
+    app.patch('/api/goal-tracks/reorder', reorderGoalTracksRoute);
     app.get('/api/goal-tracks/:id', getGoalTrackRoute);
     app.delete('/api/goal-tracks/:id', deleteGoalTrackRoute);
     app.post('/api/goal-tracks/:id/goals', addGoalToTrack);
@@ -108,6 +110,53 @@ describe('Goal Tracks Routes', () => {
       expect(res.status).toBe(200);
       expect(res.body.track.name).toBe('My Track');
       expect(res.body.goals).toEqual([]);
+    });
+
+    it('should assign sortOrder when creating tracks in the same category', async () => {
+      const res1 = await request(app)
+        .post('/api/goal-tracks')
+        .send({ name: 'First', categoryId: TEST_CATEGORY_ID });
+      const res2 = await request(app)
+        .post('/api/goal-tracks')
+        .send({ name: 'Second', categoryId: TEST_CATEGORY_ID });
+      const res3 = await request(app)
+        .post('/api/goal-tracks')
+        .send({ name: 'Third', categoryId: TEST_CATEGORY_ID });
+
+      expect(res1.body.sortOrder).toBe(0);
+      expect(res2.body.sortOrder).toBe(1);
+      expect(res3.body.sortOrder).toBe(2);
+
+      const listRes = await request(app).get('/api/goal-tracks');
+      expect(listRes.body.map((t: { name: string }) => t.name)).toEqual([
+        'First',
+        'Second',
+        'Third',
+      ]);
+    });
+
+    it('should reorder goal tracks within a category', async () => {
+      const t1 = await createGoalTrack({ name: 'Alpha', categoryId: TEST_CATEGORY_ID }, TEST_HOUSEHOLD_ID, TEST_USER_ID);
+      const t2 = await createGoalTrack({ name: 'Beta', categoryId: TEST_CATEGORY_ID }, TEST_HOUSEHOLD_ID, TEST_USER_ID);
+      const t3 = await createGoalTrack({ name: 'Gamma', categoryId: TEST_CATEGORY_ID }, TEST_HOUSEHOLD_ID, TEST_USER_ID);
+
+      const res = await request(app)
+        .patch('/api/goal-tracks/reorder')
+        .send({ trackIds: [t3.id, t1.id, t2.id] });
+
+      expect(res.status).toBe(200);
+
+      const listRes = await request(app).get('/api/goal-tracks');
+      expect(listRes.body.map((t: { id: string }) => t.id)).toEqual([t3.id, t1.id, t2.id]);
+      expect(listRes.body.map((t: { sortOrder: number }) => t.sortOrder)).toEqual([0, 1, 2]);
+    });
+
+    it('should reject reorder request with non-array trackIds', async () => {
+      const res = await request(app)
+        .patch('/api/goal-tracks/reorder')
+        .send({ trackIds: 'not-an-array' });
+
+      expect(res.status).toBe(400);
     });
 
     it('should delete a track and release goals', async () => {

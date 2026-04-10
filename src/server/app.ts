@@ -16,7 +16,7 @@ import { seedDemoEmotionalWellbeingRoute, resetDemoEmotionalWellbeingRoute } fro
 import { getRoutinesRoute, getRoutineRoute, createRoutineRoute, updateRoutineRoute, deleteRoutineRoute, submitRoutineRoute, uploadRoutineImageRoute, uploadRoutineImageMiddleware, getRoutineImageRoute, deleteRoutineImageRoute } from './routes/routines';
 import { getRoutineLogs } from './routes/routineLogs';
 import { getGoals, getGoal, getGoalProgress, getGoalsWithProgress, getCompletedGoals, createGoalRoute, updateGoalRoute, deleteGoalRoute, reorderGoalsRoute, getGoalDetailRoute } from './routes/goals';
-import { getGoalTracks, createGoalTrackRoute, getGoalTrackRoute, updateGoalTrackRoute, deleteGoalTrackRoute, addGoalToTrack, removeGoalFromTrack, reorderTrackGoals } from './routes/goalTracks';
+import { getGoalTracks, createGoalTrackRoute, getGoalTrackRoute, updateGoalTrackRoute, deleteGoalTrackRoute, addGoalToTrack, removeGoalFromTrack, reorderTrackGoals, reorderGoalTracksRoute } from './routes/goalTracks';
 import { getProgressOverview } from './routes/progress';
 import { getIntegrityReport, dedupHabits, recoverHabits, remapOrphanedCategories } from './routes/admin';
 import { getEntriesRoute, createEntryRoute, upsertEntryByKeyRoute, getEntryRoute, updateEntryRoute, deleteEntryRoute } from './routes/journal';
@@ -195,6 +195,7 @@ export function createApp(): Express {
   app.delete('/api/goals/:id', deleteGoalRoute);
   app.get('/api/goal-tracks', getGoalTracks);
   app.post('/api/goal-tracks', createGoalTrackRoute);
+  app.patch('/api/goal-tracks/reorder', reorderGoalTracksRoute);
   app.get('/api/goal-tracks/:id', getGoalTrackRoute);
   app.put('/api/goal-tracks/:id', updateGoalTrackRoute);
   app.delete('/api/goal-tracks/:id', deleteGoalTrackRoute);

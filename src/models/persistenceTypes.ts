@@ -1101,6 +1101,13 @@ export interface GoalTrack {
     /** Optional description of the track */
     description?: string;
 
+    /**
+     * Display order within the parent category (lower = earlier).
+     * Assigned when the track is created and updated via the reorder endpoint.
+     * Optional for backward compatibility with tracks created before this field existed.
+     */
+    sortOrder?: number;
+
     /** ISO 8601 timestamp of when the track was created */
     createdAt: string;
 
