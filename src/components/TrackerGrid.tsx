@@ -291,11 +291,6 @@ const HabitRowContent = ({
                 {/* Bottom row: target/streak/evidence + action icons */}
                 <div className="flex items-center justify-between gap-2 min-w-0">
                     <div className="flex items-center gap-3 min-w-0 flex-wrap">
-                        {habit.goal.type === 'number' && habit.goal.target && (
-                            <span className="text-xs text-neutral-500 truncate">
-                                Target: {habit.goal.target} {habit.goal.unit}
-                            </span>
-                        )}
                         {!hideStreaks && streak !== undefined && streak > 0 && (
                             <div className="flex items-center gap-1 text-[10px] text-orange-400 bg-orange-400/10 px-1.5 py-0.5 rounded-full border border-orange-400/20 flex-shrink-0">
                                 <Flame size={10} className="fill-orange-400" />
