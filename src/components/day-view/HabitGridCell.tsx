@@ -115,7 +115,7 @@ export const HabitGridCell = ({
                 </button>
             );
         }
-        if (habit.goal) return <Target size={12} className="text-emerald-500" />;
+        if (habit.goal) return <Repeat size={12} className="text-emerald-500" />;
         if (habit.timeEstimate) return <span className="text-[10px] text-neutral-500 font-medium">{habit.timeEstimate}m</span>;
         return null;
     };
