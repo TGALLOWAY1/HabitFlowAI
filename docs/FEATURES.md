@@ -113,6 +113,7 @@ Canonical inventory of all user-facing features. Keep this document in sync with
 - **Health Metric Syncing** — Import steps, active calories, sleep hours, workout minutes, weight
 - **Health Rules** — Auto-log habits when health data meets a threshold
 - **Health Suggestions** — Receive suggestions to log habits based on health data
+- **Bounded Backfill** — Create entries from already-synced Apple Health data over a selectable lookback window: 7 / 30 (default) / 90 days, capped server-side at 365 days. Backfill never overwrites existing entries and only creates entries for days where the rule's condition is met.
 - **Auto-Logged Entry Indicators** — Health-sourced entries marked with icon in tracker
 - **Feature Gate** — Available to authorized users only (email allowlist)
 
