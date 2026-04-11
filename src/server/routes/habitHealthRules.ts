@@ -25,6 +25,21 @@ const VALID_METRIC_TYPES: HealthMetricType[] = ['steps', 'sleep_hours', 'workout
 const VALID_OPERATORS: HealthRuleOperator[] = ['>=', '<=', '>', '<', 'exists'];
 const VALID_BEHAVIORS: HealthRuleBehavior[] = ['auto_log', 'suggest'];
 
+// Backfill window bounds (in days). Guards against accidentally importing years of data.
+const MIN_BACKFILL_DAYS = 1;
+const MAX_BACKFILL_DAYS = 365;
+const DEFAULT_BACKFILL_DAYS = 30;
+
+/**
+ * Subtract N calendar days from a dayKey (YYYY-MM-DD). Calendar arithmetic only —
+ * dayKey is a label, not a timestamp, so UTC math is safe here.
+ */
+function subtractDaysFromDayKey(dayKey: string, days: number): string {
+  const d = new Date(dayKey + 'T00:00:00Z');
+  d.setUTCDate(d.getUTCDate() - days);
+  return d.toISOString().slice(0, 10);
+}
+
 /**
  * POST /api/habits/:habitId/health-rule
  * Create a health rule for a habit.
@@ -196,12 +211,38 @@ router.delete('/', async (req: Request, res: Response) => {
 /**
  * POST /api/habits/:habitId/health-rule/backfill
  * Trigger backfill for a habit based on its health rule.
+ *
+ * Body: { days?: number, timeZone?: string }
+ * - days: size of the lookback window in calendar days. Range [1, 365]. Default 30.
+ *   The window is [today - (days-1), today] inclusive in the user's timezone.
+ * - timeZone: IANA timezone for computing "today". Defaults to America/New_York if omitted/invalid.
  */
 router.post('/backfill', async (req: Request, res: Response) => {
   try {
     const { householdId, userId } = getRequestIdentity(req);
     const { habitId } = req.params;
-    const { startDayKey: customStartDayKey, timeZone } = req.body;
+    const { days: rawDays, timeZone } = req.body;
+
+    // Validate window size up front so we never pass through to the service with a bad range.
+    let days: number;
+    if (rawDays === undefined || rawDays === null) {
+      days = DEFAULT_BACKFILL_DAYS;
+    } else if (
+      typeof rawDays !== 'number' ||
+      !Number.isInteger(rawDays) ||
+      rawDays < MIN_BACKFILL_DAYS ||
+      rawDays > MAX_BACKFILL_DAYS
+    ) {
+      res.status(400).json({
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: `days must be an integer between ${MIN_BACKFILL_DAYS} and ${MAX_BACKFILL_DAYS}.`,
+        },
+      });
+      return;
+    } else {
+      days = rawDays;
+    }
 
     // Resolve user timezone for accurate dayKey boundaries
     const userTimeZone = resolveTimeZone(typeof timeZone === 'string' ? timeZone : undefined);
@@ -220,13 +261,13 @@ router.post('/backfill', async (req: Request, res: Response) => {
       return;
     }
 
-    // Determine start date: custom, or habit creation date
-    const startDayKey = customStartDayKey || habit.createdAt.slice(0, 10);
+    // Bounded range: [today - (days-1), today] inclusive in the user's timezone.
     const endDayKey = getNowDayKey(userTimeZone);
+    const startDayKey = subtractDaysFromDayKey(endDayKey, days - 1);
 
     const result = await runBackfill(habit, rule, startDayKey, endDayKey, householdId, userId);
 
-    res.status(200).json(result);
+    res.status(200).json({ ...result, days });
   } catch (error) {
     console.error('[Health Backfill] Error:', error);
     const message = error instanceof Error ? error.message : 'Internal server error';
