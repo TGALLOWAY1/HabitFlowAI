@@ -108,7 +108,7 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
 
                 setSubHabitIds(initialData.subHabitIds || []);
                 setPendingSubHabits([]); // Clear pending on open
-                setShowSubHabitSelect(initialData.type === 'bundle'); // Auto-expand children when editing bundle
+                setShowSubHabitSelect(false); // Collapsed by default when editing a bundle
 
                 setGoalType(initialData.goal.type || 'boolean');
                 setTarget(initialData.goal.target ? String(initialData.goal.target) : '');
@@ -140,6 +140,7 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
 
                 setSubHabitIds([]);
                 setPendingSubHabits([]);
+                setShowSubHabitSelect(false);
                 setGoalType('boolean');
                 setTarget('');
                 setUnit('');
