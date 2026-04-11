@@ -1,4 +1,4 @@
-import { Check, Target, Hash, Pin, PinOff, ListTodo, Layers, FolderInput, Trophy, Clock, Calendar, Shield, Repeat, Activity, History, Pencil, Trash2 } from 'lucide-react';
+import { Check, CheckCheck, Target, Hash, Pin, PinOff, ListTodo, Layers, FolderInput, Trophy, Clock, Calendar, Shield, Repeat, Activity, History, Pencil, Trash2 } from 'lucide-react';
 import type { Habit, DayLog } from '../../types';
 import { cn } from '../../utils/cn';
 
@@ -115,7 +115,7 @@ export const HabitGridCell = ({
                 </button>
             );
         }
-        if (habit.goal) return <Repeat size={12} className="text-emerald-500" />;
+        if (habit.goal) return <CheckCheck size={12} className="text-emerald-500" />;
         if (habit.timeEstimate) return <span className="text-[10px] text-neutral-500 font-medium">{habit.timeEstimate}m</span>;
         return null;
     };
