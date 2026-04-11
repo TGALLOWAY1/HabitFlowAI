@@ -224,6 +224,50 @@ describe('streakService', () => {
       expect(metrics.weekSatisfied).toBe(false);
     });
 
+    it('counts distinct days for numeric habits (Gym 3x/week with value=1 per session)', () => {
+      // Gym: numeric habit with goal.target=3, required 3 days per week.
+      // Each gym session logs value=1. The streak should count DISTINCT DAYS
+      // (not summed values) so that 3 sessions on 3 days satisfies the week.
+      const habit = createHabit({
+        goal: { type: 'number', frequency: 'daily', target: 3, unit: 'sessions' },
+        assignedDays: [0, 1, 2, 3, 4, 5, 6],
+        requiredDaysPerWeek: 3,
+      });
+      const dayStates: HabitDayState[] = [
+        // Week of 2026-02-16 (Mon): 3 distinct days, value=1 each
+        { dayKey: '2026-02-17', value: 1, completed: true },
+        { dayKey: '2026-02-19', value: 1, completed: true },
+        { dayKey: '2026-02-20', value: 1, completed: true },
+      ];
+
+      const metrics = calculateHabitStreakMetrics(habit, dayStates, parseISO('2026-02-20'));
+
+      expect(metrics.currentStreak).toBe(1);
+      expect(metrics.weekSatisfied).toBe(true);
+      expect(metrics.weekProgress).toBe(3);
+      expect(metrics.weekTarget).toBe(3);
+    });
+
+    it('does not satisfy weekly quota from one high-value day (numeric habit)', () => {
+      // A single gym session logged with value=5 should NOT satisfy a
+      // 3-days-per-week quota — we count distinct days, not summed values.
+      const habit = createHabit({
+        goal: { type: 'number', frequency: 'daily', target: 1, unit: 'sessions' },
+        assignedDays: [0, 1, 2, 3, 4, 5, 6],
+        requiredDaysPerWeek: 3,
+      });
+      const dayStates: HabitDayState[] = [
+        { dayKey: '2026-02-17', value: 5, completed: true },
+      ];
+
+      const metrics = calculateHabitStreakMetrics(habit, dayStates, parseISO('2026-02-20'));
+
+      expect(metrics.currentStreak).toBe(0);
+      expect(metrics.weekSatisfied).toBe(false);
+      expect(metrics.weekProgress).toBe(1);
+      expect(metrics.weekTarget).toBe(3);
+    });
+
     it('populates weekSatisfied, weekProgress, and weekTarget correctly', () => {
       const habit = createHabit({
         goal: { type: 'boolean', frequency: 'daily', target: 1 },

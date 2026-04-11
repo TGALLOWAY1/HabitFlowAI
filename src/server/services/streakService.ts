@@ -107,7 +107,12 @@ function buildWeeklyProgressMap(
   habit: Habit,
   targetOverride?: number
 ): Map<string, WeeklyProgress> {
-  const isQuantity = habit.goal.type === 'number';
+  // Scheduled-daily habits (requiredDaysPerWeek) always count distinct days,
+  // never sum values — the user's metric is "how many days did I show up",
+  // not "how many reps/sets did I log". Without this, a numeric habit with
+  // a single large-value day would satisfy a 3-days-per-week quota.
+  const forceDistinctDays = habit.requiredDaysPerWeek != null;
+  const isQuantity = habit.goal.type === 'number' && !forceDistinctDays;
   const target = targetOverride ?? habit.timesPerWeek ?? habit.goal.target ?? 1;
 
   const rawWeekMap = new Map<string, { total: number; distinctDays: Set<string> }>();
