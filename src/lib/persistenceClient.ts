@@ -338,7 +338,7 @@ export async function fetchDashboardPrefs(): Promise<DashboardPrefs> {
   return response.dashboardPrefs;
 }
 
-export async function updateDashboardPrefs(patch: Partial<Pick<DashboardPrefs, 'pinnedRoutineIds' | 'pinnedJournalTemplateIds' | 'checkinExtraMetricKeys' | 'hideStreaks'>>): Promise<DashboardPrefs> {
+export async function updateDashboardPrefs(patch: Partial<Pick<DashboardPrefs, 'pinnedRoutineIds' | 'pinnedGoalIds' | 'pinnedJournalTemplateIds' | 'checkinExtraMetricKeys' | 'hideStreaks'>>): Promise<DashboardPrefs> {
   const response = await apiRequest<{ dashboardPrefs: DashboardPrefs }>('/dashboardPrefs', {
     method: 'PUT',
     body: JSON.stringify(patch),

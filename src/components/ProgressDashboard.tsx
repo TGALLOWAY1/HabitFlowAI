@@ -14,28 +14,74 @@ import { JournalSummaryCard } from './Journal/JournalSummaryCard';
 import { SetupDashboard } from './dashboard/SetupDashboard';
 import { useSetupProgress } from '../hooks/useSetupProgress';
 import { useAuth } from '../store/AuthContext';
+import { fetchDashboardPrefs, updateDashboardPrefs } from '../lib/persistenceClient';
 import type { Routine } from '../models/persistenceTypes';
 
 const BETA_EMAIL = 'tj.galloway1@gmail.com';
-const PINNED_GOALS_KEY = 'hf_pinned_dashboard_goals';
+export const PINNED_GOALS_STORAGE_KEY = 'hf_pinned_dashboard_goals';
 const SETUP_GUIDE_DISMISSED_KEY = 'hf_setup_guide_dismissed';
+
+// Module-level cache so pinned IDs survive component unmounts (mirrors usePinnedRoutines)
+let _cachedPinnedGoalIds: string[] | null = null;
+
+function readLocalStoragePinnedGoalIds(): string[] {
+    try {
+        const stored = localStorage.getItem(PINNED_GOALS_STORAGE_KEY);
+        return stored ? JSON.parse(stored) : [];
+    } catch {
+        return [];
+    }
+}
+
+export function __resetPinnedGoalsCacheForTests() {
+    _cachedPinnedGoalIds = null;
+}
 
 function usePinnedGoals() {
     const [pinnedIds, setPinnedIds] = useState<string[]>(() => {
-        try {
-            const stored = localStorage.getItem(PINNED_GOALS_KEY);
-            return stored ? JSON.parse(stored) : [];
-        } catch {
-            return [];
-        }
+        // Use module-level cache first (survives unmount), then localStorage
+        if (_cachedPinnedGoalIds !== null) return _cachedPinnedGoalIds;
+        const fromStorage = readLocalStoragePinnedGoalIds();
+        _cachedPinnedGoalIds = fromStorage;
+        return fromStorage;
     });
+
+    // Keep module cache in sync with state
+    useEffect(() => {
+        _cachedPinnedGoalIds = pinnedIds;
+    }, [pinnedIds]);
+
+    // Hydrate from backend on mount — but don't clobber local data with empty backend
+    useEffect(() => {
+        let cancelled = false;
+        fetchDashboardPrefs()
+            .then(prefs => {
+                if (cancelled) return;
+                const backendIds = prefs.pinnedGoalIds ?? [];
+                // Only overwrite local state if backend actually has data,
+                // or if local cache is empty (first load)
+                if (backendIds.length > 0 || _cachedPinnedGoalIds === null || _cachedPinnedGoalIds.length === 0) {
+                    setPinnedIds(backendIds);
+                    _cachedPinnedGoalIds = backendIds;
+                    localStorage.setItem(PINNED_GOALS_STORAGE_KEY, JSON.stringify(backendIds));
+                }
+            })
+            .catch(() => {
+                // Keep localStorage/cache fallback on network failure
+            });
+        return () => { cancelled = true; };
+    }, []);
 
     const togglePin = useCallback((id: string) => {
         setPinnedIds(prev => {
             const next = prev.includes(id)
                 ? prev.filter(x => x !== id)
                 : [...prev, id];
-            localStorage.setItem(PINNED_GOALS_KEY, JSON.stringify(next));
+            // Update all caches immediately for responsiveness
+            _cachedPinnedGoalIds = next;
+            localStorage.setItem(PINNED_GOALS_STORAGE_KEY, JSON.stringify(next));
+            // Persist to backend (fire-and-forget; localStorage is fallback)
+            updateDashboardPrefs({ pinnedGoalIds: next }).catch(() => {});
             return next;
         });
     }, []);

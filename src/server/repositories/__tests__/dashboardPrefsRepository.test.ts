@@ -26,6 +26,7 @@ describe('DashboardPrefsRepository', () => {
     const db = await getTestDb();
     await db.collection('dashboardPrefs').deleteMany({});
     await db.collection('routines').deleteMany({});
+    await db.collection('goals').deleteMany({});
   });
 
   it('should return defaults when none exist', async () => {
@@ -46,6 +47,37 @@ describe('DashboardPrefsRepository', () => {
 
     const roundTrip = await getDashboardPrefs(TEST_HOUSEHOLD_ID, TEST_USER_ID);
     expect(roundTrip.pinnedRoutineIds).toEqual(['r1', 'r2']);
+  });
+
+  it('should save and retrieve pinnedGoalIds (and validate against existing goals)', async () => {
+    const db = await getTestDb();
+    await db.collection('goals').insertMany([
+      { id: 'g1', householdId: TEST_HOUSEHOLD_ID, userId: TEST_USER_ID, title: 'G1', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+      { id: 'g2', householdId: TEST_HOUSEHOLD_ID, userId: TEST_USER_ID, title: 'G2', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+    ]);
+
+    const saved = await updateDashboardPrefs(TEST_HOUSEHOLD_ID, TEST_USER_ID, { pinnedGoalIds: ['g1', 'g2', 'missing'] });
+    expect(saved.pinnedGoalIds).toEqual(['g1', 'g2']); // missing filtered
+
+    const roundTrip = await getDashboardPrefs(TEST_HOUSEHOLD_ID, TEST_USER_ID);
+    expect(roundTrip.pinnedGoalIds).toEqual(['g1', 'g2']);
+  });
+
+  it('pinnedGoalIds and pinnedRoutineIds coexist without overwriting each other', async () => {
+    const db = await getTestDb();
+    await db.collection('routines').insertOne(
+      { id: 'r1', householdId: TEST_HOUSEHOLD_ID, userId: TEST_USER_ID, title: 'R1', linkedHabitIds: [], steps: [], createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+    );
+    await db.collection('goals').insertOne(
+      { id: 'g1', householdId: TEST_HOUSEHOLD_ID, userId: TEST_USER_ID, title: 'G1', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+    );
+
+    await updateDashboardPrefs(TEST_HOUSEHOLD_ID, TEST_USER_ID, { pinnedRoutineIds: ['r1'] });
+    await updateDashboardPrefs(TEST_HOUSEHOLD_ID, TEST_USER_ID, { pinnedGoalIds: ['g1'] });
+
+    const roundTrip = await getDashboardPrefs(TEST_HOUSEHOLD_ID, TEST_USER_ID);
+    expect(roundTrip.pinnedRoutineIds).toEqual(['r1']);
+    expect(roundTrip.pinnedGoalIds).toEqual(['g1']);
   });
 
   it('should save and retrieve checkinExtraMetricKeys (filtering invalid keys and notes)', async () => {

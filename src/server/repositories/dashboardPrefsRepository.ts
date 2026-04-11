@@ -9,6 +9,7 @@ import { getDb } from '../lib/mongoClient';
 import { MONGO_COLLECTIONS, WELLBEING_METRIC_KEYS, isWellbeingMetricKey, type DashboardPrefs } from '../../models/persistenceTypes';
 import { JOURNAL_TEMPLATES } from '../../data/journalTemplates';
 import { getRoutines } from './routineRepository';
+import { getGoalsByUser } from './goalRepository';
 import { requireScope, scopeFilter } from '../lib/scoping';
 
 const COLLECTION = MONGO_COLLECTIONS.DASHBOARD_PREFS;
@@ -41,7 +42,7 @@ export async function getDashboardPrefs(householdId: string, userId: string): Pr
 export async function updateDashboardPrefs(
   householdId: string,
   userId: string,
-  patch: { pinnedRoutineIds?: string[]; pinnedJournalTemplateIds?: string[]; checkinExtraMetricKeys?: string[]; hideStreaks?: boolean }
+  patch: { pinnedRoutineIds?: string[]; pinnedGoalIds?: string[]; pinnedJournalTemplateIds?: string[]; checkinExtraMetricKeys?: string[]; hideStreaks?: boolean }
 ): Promise<DashboardPrefs> {
   const scope = requireScope(householdId, userId);
   await ensureIndexes();
@@ -66,6 +67,22 @@ export async function updateDashboardPrefs(
     const filtered = ids.filter((id) => validIdSet.has(id));
 
     update.pinnedRoutineIds = filtered;
+  }
+
+  if (patch.pinnedGoalIds !== undefined) {
+    if (!Array.isArray(patch.pinnedGoalIds)) {
+      throw new Error('pinnedGoalIds must be an array of goal IDs');
+    }
+    const ids = patch.pinnedGoalIds
+      .filter((x) => typeof x === 'string')
+      .map((x) => x.trim())
+      .filter((x) => x.length > 0);
+
+    const goals = await getGoalsByUser(scope.householdId, scope.userId);
+    const validIdSet = new Set(goals.map((g) => g.id));
+    const filtered = ids.filter((id) => validIdSet.has(id));
+
+    update.pinnedGoalIds = filtered;
   }
 
   if (patch.pinnedJournalTemplateIds !== undefined) {
