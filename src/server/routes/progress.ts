@@ -118,9 +118,22 @@ export async function getProgressOverview(req: Request, res: Response): Promise<
 
     // Fix completed flag for numeric habits: respect goal target.
     // The entry aggregation loop sets completed=true for any non-freeze entry,
-    // but numeric habits require value >= target to be truly complete.
+    // but pure-daily numeric habits require value >= target to be truly complete.
+    //
+    // Weekly-quota habits (timesPerWeek or requiredDaysPerWeek) are exempt:
+    // for these, a log entry means "I did it today" regardless of value, and
+    // weekly satisfaction is evaluated by streakService.buildWeeklyProgressMap
+    // from distinct completed days.
     for (const habit of activeHabits) {
-      if (habit.goal.type === 'number' && habit.goal.target != null && habit.goal.target > 0) {
+      const hasWeeklyQuota =
+        habit.requiredDaysPerWeek != null ||
+        (habit.timesPerWeek != null && habit.timesPerWeek > 0);
+      if (
+        habit.goal.type === 'number' &&
+        habit.goal.target != null &&
+        habit.goal.target > 0 &&
+        !hasWeeklyQuota
+      ) {
         const dayMap = dayStatesByHabit.get(habit.id);
         if (!dayMap) continue;
         for (const state of dayMap.values()) {
