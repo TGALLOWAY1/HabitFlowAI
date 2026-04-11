@@ -243,25 +243,12 @@ const HabitRowContent = ({
 
     const { hideStreaks } = useDashboardPrefs();
 
-    // Non-Negotiable Logic
     const today = new Date();
     const todayStr = format(today, 'yyyy-MM-dd');
     const todayLog = logs[`${habit.id}-${todayStr}`];
 
     // For bundles, we use the computed status if provided, otherwise the log status
     const isCompletedToday = bundleStatus ? bundleStatus.completed : todayLog?.completed;
-
-    const isNonNegotiableToday = useMemo(() => {
-        if (!habit.nonNegotiable) return false;
-        if (!habit.nonNegotiableDays || habit.nonNegotiableDays.length === 0) return true; // All days if not specified
-        return habit.nonNegotiableDays.includes(today.getDay());
-    }, [habit.nonNegotiable, habit.nonNegotiableDays, today]); // eslint-disable-line react-hooks/exhaustive-deps
-
-    const priorityRingClass = isNonNegotiableToday
-        ? isCompletedToday
-            ? "ring-1 ring-yellow-500 shadow-[0_0_10px_rgba(234,179,8,0.2)]" // Completed: Solid Gold
-            : "ring-1 ring-yellow-500 shadow-[0_0_15px_rgba(234,179,8,0.4)] animate-pulse" // Active: Pulsing
-        : "";
 
     return (
         <div
@@ -271,7 +258,6 @@ const HabitRowContent = ({
                 "flex border-b border-white/5 transition-colors group",
                 habit.isVirtual ? "bg-neutral-800/30" : "bg-neutral-900/50", // Difference for virtual
                 isDragging && "relative shadow-xl ring-1 ring-emerald-500/50 z-50 bg-neutral-900",
-                priorityRingClass
             )}
             onContextMenu={(e) => onContextMenu(e, habit)}
         >
@@ -432,9 +418,7 @@ const HabitRowContent = ({
                                         : isFrozen
                                             ? "bg-sky-500/20 text-sky-400 border border-sky-500/30" // Frozen visual
                                             : isCompleted
-                                                ? habit.nonNegotiable
-                                                    ? "bg-yellow-500 text-neutral-900 shadow-[0_0_15px_rgba(234,179,8,0.4)] animate-gold-burst"
-                                                    : "bg-emerald-500 text-neutral-900 shadow-[0_0_15px_rgba(16,185,129,0.4)] scale-90"
+                                                ? "bg-emerald-500 text-neutral-900 shadow-[0_0_15px_rgba(16,185,129,0.4)] scale-90"
                                                 : isPartial
                                                     ? "bg-blue-500 text-neutral-900 shadow-[0_0_15px_rgba(59,130,246,0.4)] scale-95" // Partial
                                                     : "bg-neutral-800/50 text-transparent hover:bg-neutral-800 hover:text-neutral-600 border border-white/5 hover:border-white/10",
