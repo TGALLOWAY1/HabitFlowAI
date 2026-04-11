@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { ComposedChart, Line, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { format, parseISO, isValid, eachDayOfInterval, isAfter } from 'date-fns';
+import { format, parseISO, isValid, eachDayOfInterval, isAfter, subDays } from 'date-fns';
 
 interface GoalTrendChartProps {
     data: Array<{
@@ -10,6 +10,12 @@ interface GoalTrendChartProps {
     startDate: string;
     deadline: string;
     targetValue: number;
+    /**
+     * Date of the first real entry (YYYY-MM-DD). When provided, the chart's
+     * x-axis starts 2 days before this date instead of the goal creation date,
+     * and the ideal-pace line is recomputed from this start to the deadline.
+     */
+    firstEntryDate?: string;
     color?: string;
     unit?: string;
 }
@@ -19,48 +25,46 @@ export const GoalTrendChart: React.FC<GoalTrendChartProps> = ({
     startDate,
     deadline,
     targetValue,
+    firstEntryDate,
     color = "#10b981", // emerald-500
     unit = ""
 }) => {
     const chartData = useMemo(() => {
-        // 1. Generate the full date range from Start -> Deadline
+        // 1. Determine the effective chart start: first entry minus a 2-day
+        // buffer if we have one, else fall back to the goal's startDate.
         const today = new Date();
-        const start = parseISO(startDate);
+        const fallbackStart = parseISO(startDate);
+        const firstEntry = firstEntryDate ? parseISO(firstEntryDate) : null;
+        const effectiveStart = (firstEntry && isValid(firstEntry))
+            ? subDays(firstEntry, 2)
+            : fallbackStart;
         const end = parseISO(deadline);
 
-        if (!isValid(start) || !isValid(end)) return [];
+        if (!isValid(effectiveStart) || !isValid(end)) return [];
 
-        // Generate all days between start and deadline
-        const allDays = eachDayOfInterval({ start, end });
+        // Generate all days between effectiveStart and deadline
+        const allDays = eachDayOfInterval({ start: effectiveStart, end });
 
-        // Calculate the ideal pace (linear growth)
+        // Calculate the ideal pace (linear growth) from effectiveStart -> deadline.
+        // The ideal line starts at 0 on the chart's leftmost day and rises
+        // linearly to targetValue on the deadline.
         const totalDuration = allDays.length;
-        const dailyPace = targetValue / (totalDuration - 1); // -1 because day 1 is 0 progress
+        const dailyPace = totalDuration > 1 ? targetValue / (totalDuration - 1) : targetValue;
 
         // Create a map of actual data for O(1) lookup
         const dataMap = new Map(data.map(d => [d.date, d.value]));
 
-        // Fill data points
-        // We only want to show "Actual" up to today (or the last log date if future)
-        // But we want "Ideal" for the whole range
-
-        // Note: The passed 'data' prop is already cumulative from GoalDetailPage.
-        // However, if there are gaps in 'data' (days with no logs), the cumulative value stays the same.
-        // We need to carry forward the last known actual value to fill gaps in the chart
-        // until we reach "today".
-
+        // Fill data points. The passed 'data' prop is already cumulative.
+        // Carry forward the last known actual value to fill gaps on days
+        // with no log, up to today. Future days keep actual = null.
         let lastKnownActual = 0;
 
         return allDays.map((dateObj, index) => {
             const dateStr = format(dateObj, 'yyyy-MM-dd');
 
-            // Ideal Value: Linear projection
             const idealValue = Math.min(targetValue, index * dailyPace);
 
-            // Actual Value:
-            // Only populate if date <= today
             let actualValue: number | null = null;
-
             if (!isAfter(dateObj, today)) {
                 if (dataMap.has(dateStr)) {
                     lastKnownActual = dataMap.get(dateStr)!;
@@ -74,7 +78,7 @@ export const GoalTrendChart: React.FC<GoalTrendChartProps> = ({
                 ideal: idealValue
             };
         });
-    }, [data, startDate, deadline, targetValue]);
+    }, [data, startDate, deadline, targetValue, firstEntryDate]);
 
     const formatXAxis = (tickItem: string) => {
         try {
