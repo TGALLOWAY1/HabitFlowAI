@@ -648,6 +648,9 @@ export interface DashboardPrefs {
     /** Global pinned routine IDs (not persona-specific yet) */
     pinnedRoutineIds: string[];
 
+    /** Global pinned goal IDs used by the dashboard "Goals at a glance" card */
+    pinnedGoalIds?: string[];
+
     /**
      * Extra wellbeing metric keys to show in Daily Check-in (user-controlled).
      * Persona-agnostic (applies across personas) by design.
