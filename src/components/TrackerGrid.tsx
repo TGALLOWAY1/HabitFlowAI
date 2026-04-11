@@ -998,16 +998,14 @@ export const TrackerGrid = ({
         });
     };
 
-    // Filter Roots: Habits that are not children of any bundle
-    const rootHabits = useMemo(() => {
-        const childIds = new Set<string>();
-        habits.forEach(h => {
-            if (h.type === 'bundle' && h.subHabitIds) {
-                h.subHabitIds.forEach(id => childIds.add(id));
-            }
-        });
-        return habits.filter(h => !childIds.has(h.id));
-    }, [habits]);
+    // Filter Roots: Habits that are not children of any bundle.
+    // Use the child's own bundleParentId rather than the parent's subHabitIds array,
+    // so that children never slip through as top-level rows when the parent's
+    // subHabitIds is momentarily stale (e.g. mid-sync or before a refetch).
+    const rootHabits = useMemo(
+        () => habits.filter(h => !h.bundleParentId),
+        [habits]
+    );
 
     // Initial Split based on Roots
     const dailyHabits = useMemo(() => rootHabits.filter(h => !h.goal?.frequency || h.goal.frequency === 'daily' || h.goal.frequency === 'total'), [rootHabits]);
