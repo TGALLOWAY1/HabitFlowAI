@@ -1559,14 +1559,21 @@ export async function deleteHealthRule(habitId: string): Promise<{ success: bool
 
 /**
  * Trigger backfill for a habit based on its health rule.
+ *
+ * @param habitId - The habit to backfill entries for.
+ * @param options.days - Lookback window in calendar days, [1, 365]. Defaults to server-side 30.
+ *
+ * Always includes the browser's IANA timezone so the server computes "today" against
+ * the user's local midnight rather than falling back to America/New_York.
  */
 export async function triggerBackfill(
   habitId: string,
-  startDayKey?: string
-): Promise<{ created: number; skipped: number; evaluated: number }> {
+  options: { days?: number } = {}
+): Promise<{ created: number; skipped: number; evaluated: number; days: number }> {
+  const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
   return apiRequest(`/habits/${habitId}/health-rule/backfill`, {
     method: 'POST',
-    body: JSON.stringify({ startDayKey }),
+    body: JSON.stringify({ days: options.days, timeZone }),
   });
 }
 

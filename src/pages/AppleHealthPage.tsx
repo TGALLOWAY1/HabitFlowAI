@@ -42,9 +42,12 @@ export function AppleHealthPage({ onBack }: Props) {
   const [operator, setOperator] = useState<HealthRuleOperator>('>=');
   const [threshold, setThreshold] = useState('');
   const [behavior, setBehavior] = useState<HealthRuleBehavior>('auto_log');
-  const [backfillOption, setBackfillOption] = useState<'habit_start' | 'none'>('habit_start');
+  // 0 = no backfill, otherwise the size of the lookback window in days.
+  // Backfill reads Apple Health data that has already been synced into HabitFlow
+  // and creates HabitEntries for qualifying days inside this window.
+  const [backfillDays, setBackfillDays] = useState<0 | 7 | 30 | 90>(30);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submitMessage, setSubmitMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [submitMessage, setSubmitMessage] = useState<{ type: 'success' | 'error' | 'info'; text: string } | null>(null);
 
   // Connected habits
   const [connectedHabits, setConnectedHabits] = useState<ConnectedHabit[]>([]);
@@ -87,7 +90,7 @@ export function AppleHealthPage({ onBack }: Props) {
     setThreshold(metric.defaultThreshold);
     setOperator('>=');
     setBehavior('auto_log');
-    setBackfillOption('habit_start');
+    setBackfillDays(30);
     setSubmitMessage(null);
     if (categories.length > 0 && !selectedCategoryId) {
       setSelectedCategoryId(categories[0].id);
@@ -117,12 +120,21 @@ export function AppleHealthPage({ onBack }: Props) {
         behavior,
       });
 
-      // Trigger backfill if requested
-      if (backfillOption === 'habit_start') {
-        await triggerBackfill(newHabit.id);
+      // Trigger backfill if a non-zero window was selected
+      let backfillText = '';
+      if (backfillDays > 0) {
+        const result = await triggerBackfill(newHabit.id, { days: backfillDays });
+        if (result.created > 0) {
+          backfillText = ` Backfilled ${result.created} ${result.created === 1 ? 'entry' : 'entries'} from the last ${backfillDays} days.`;
+        } else if (result.evaluated > 0) {
+          backfillText = ` Backfill ran but found no Apple Health data in the last ${backfillDays} days — sync data into HabitFlow first.`;
+        }
       }
 
-      setSubmitMessage({ type: 'success', text: `Created "${habitName.trim()}" with ${metricKey} tracking` });
+      setSubmitMessage({
+        type: 'success',
+        text: `Created "${habitName.trim()}" with ${metricKey} tracking.${backfillText}`,
+      });
       setExpandedMetric(null);
       await loadConnectedHabits();
     } catch (e) {
@@ -144,10 +156,25 @@ export function AppleHealthPage({ onBack }: Props) {
 
   const handleBackfill = async (habitId: string) => {
     try {
-      const result = await triggerBackfill(habitId);
-      alert(`Backfill complete: ${result.created} entries created, ${result.skipped} skipped.`);
+      const result = await triggerBackfill(habitId, { days: 30 });
+      if (result.created > 0) {
+        setSubmitMessage({
+          type: 'success',
+          text: `Backfill created ${result.created} ${result.created === 1 ? 'entry' : 'entries'} from the last 30 days.`,
+        });
+      } else if (result.evaluated > 0) {
+        setSubmitMessage({
+          type: 'info',
+          text: 'Backfill ran but found no Apple Health data in the last 30 days. Apple Health data needs to be synced into HabitFlow before backfill can populate entries.',
+        });
+      } else {
+        setSubmitMessage({
+          type: 'info',
+          text: 'Backfill completed with no changes.',
+        });
+      }
     } catch {
-      alert('Backfill failed.');
+      setSubmitMessage({ type: 'error', text: 'Backfill failed. Please try again.' });
     }
   };
 
@@ -185,13 +212,15 @@ export function AppleHealthPage({ onBack }: Props) {
         Create habits that automatically track using your Apple Health data. Choose a metric below to get started.
       </p>
 
-      {/* Success/Error Message */}
+      {/* Success/Error/Info Message */}
       {submitMessage && (
         <div className={cn(
           "px-4 py-3 rounded-lg text-sm",
           submitMessage.type === 'success'
             ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
-            : "bg-red-500/10 text-red-400 border border-red-500/20"
+            : submitMessage.type === 'info'
+              ? "bg-sky-500/10 text-sky-400 border border-sky-500/20"
+              : "bg-red-500/10 text-red-400 border border-red-500/20"
         )}>
           {submitMessage.text}
         </div>
@@ -323,35 +352,36 @@ export function AppleHealthPage({ onBack }: Props) {
                       </div>
                     </div>
 
-                    {/* Backfill */}
+                    {/* Backfill window */}
                     <div className="space-y-1">
                       <label className="text-xs text-neutral-500">Backfill past data</label>
-                      <div className="grid grid-cols-2 gap-1.5">
-                        <button
-                          type="button"
-                          onClick={() => setBackfillOption('habit_start')}
-                          className={cn(
-                            "px-2 py-1.5 rounded-lg text-xs font-medium border transition-colors",
-                            backfillOption === 'habit_start'
-                              ? "bg-amber-500/20 text-amber-400 border-amber-500/50"
-                              : "bg-neutral-800 text-neutral-400 border-white/5"
-                          )}
-                        >
-                          From start
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setBackfillOption('none')}
-                          className={cn(
-                            "px-2 py-1.5 rounded-lg text-xs font-medium border transition-colors",
-                            backfillOption === 'none'
-                              ? "bg-neutral-700/50 text-neutral-300 border-white/10"
-                              : "bg-neutral-800 text-neutral-400 border-white/5"
-                          )}
-                        >
-                          No backfill
-                        </button>
+                      <div className="grid grid-cols-4 gap-1.5">
+                        {([
+                          { value: 7, label: '7 days' },
+                          { value: 30, label: '30 days' },
+                          { value: 90, label: '90 days' },
+                          { value: 0, label: 'None' },
+                        ] as const).map((opt) => (
+                          <button
+                            key={opt.value}
+                            type="button"
+                            onClick={() => setBackfillDays(opt.value)}
+                            className={cn(
+                              "px-2 py-1.5 rounded-lg text-xs font-medium border transition-colors",
+                              backfillDays === opt.value
+                                ? opt.value === 0
+                                  ? "bg-neutral-700/50 text-neutral-300 border-white/10"
+                                  : "bg-amber-500/20 text-amber-400 border-amber-500/50"
+                                : "bg-neutral-800 text-neutral-400 border-white/5"
+                            )}
+                          >
+                            {opt.label}
+                          </button>
+                        ))}
                       </div>
+                      <p className="text-[11px] text-neutral-500 pt-1">
+                        Reads Apple Health data already synced into HabitFlow and creates entries for qualifying days in the window.
+                      </p>
                     </div>
 
                     {/* Submit */}

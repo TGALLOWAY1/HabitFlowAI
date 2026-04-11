@@ -428,6 +428,10 @@ export function InfoModal({ isOpen, onClose }: InfoModalProps) {
                     <p className="mt-0.5">Receive suggestions to log habits based on your health data. Accept or dismiss each suggestion.</p>
                   </li>
                   <li className="text-xs text-neutral-400 pl-2">
+                    <span className="font-semibold text-neutral-300">Backfill</span>
+                    <p className="mt-0.5">When creating a health-tracked habit, pick a backfill window of 7, 30, or 90 days (or none). Backfill reads Apple Health data already synced into HabitFlow and creates entries for qualifying days in the window. It never overwrites existing entries and is capped at 365 days.</p>
+                  </li>
+                  <li className="text-xs text-neutral-400 pl-2">
                     <span className="font-semibold text-neutral-300">Auto-Logged Entries</span>
                     <div className="flex items-center gap-1.5 mt-0.5">
                       <Activity size={11} className="text-emerald-500/70 shrink-0" />
