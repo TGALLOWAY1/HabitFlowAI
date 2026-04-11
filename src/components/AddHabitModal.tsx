@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, Shield, CheckCircle2, Calculator, Layers, CheckSquare, ChevronDown, ChevronRight, Search, Trophy, Calendar } from 'lucide-react';
+import { X, Shield, CheckCircle2, Calculator, Layers, CheckSquare, ChevronDown, ChevronRight, ChevronUp, Search, Trophy, Calendar } from 'lucide-react';
 import { DayChipSelector } from './DayChipSelector';
 import { NumberChipSelector } from './NumberChipSelector';
 import { useHabitStore } from '../store/HabitContext';
@@ -480,6 +480,30 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
         setPendingSubHabits(prev => prev.filter(p => p.tempId !== tempId));
     };
 
+    const movePendingSubHabit = (tempId: string, direction: 'up' | 'down') => {
+        setPendingSubHabits(prev => {
+            const idx = prev.findIndex(p => p.tempId === tempId);
+            if (idx === -1) return prev;
+            const swapWith = direction === 'up' ? idx - 1 : idx + 1;
+            if (swapWith < 0 || swapWith >= prev.length) return prev;
+            const next = [...prev];
+            [next[idx], next[swapWith]] = [next[swapWith], next[idx]];
+            return next;
+        });
+    };
+
+    const moveLinkedSubHabit = (id: string, direction: 'up' | 'down') => {
+        setSubHabitIds(prev => {
+            const idx = prev.indexOf(id);
+            if (idx === -1) return prev;
+            const swapWith = direction === 'up' ? idx - 1 : idx + 1;
+            if (swapWith < 0 || swapWith >= prev.length) return prev;
+            const next = [...prev];
+            [next[idx], next[swapWith]] = [next[swapWith], next[idx]];
+            return next;
+        });
+    };
+
     // Filter available habits for bundling
     const availableHabits = habits.filter(h =>
         // Must not be the habit we are editing
@@ -906,7 +930,7 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                                      */}
                                     <div className="p-2 space-y-1">
                                         {/* Pending List */}
-                                        {pendingSubHabits.map(p => (
+                                        {pendingSubHabits.map((p, idx) => (
                                             <div key={p.tempId} className={`flex justify-between items-center p-2 rounded border transition-colors ${editingPendingId === p.tempId
                                                 ? 'bg-amber-500/10 border-amber-500/30'
                                                 : 'bg-neutral-800 border-white/5'
@@ -927,22 +951,50 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                                                         </span>
                                                     )}
                                                 </div>
-                                                <button
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        removePendingSubHabit(p.tempId);
-                                                    }}
-                                                    className="text-neutral-500 hover:text-red-400 p-1"
-                                                >
-                                                    <X size={14} />
-                                                </button>
+                                                <div className="flex items-center">
+                                                    <button
+                                                        type="button"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            movePendingSubHabit(p.tempId, 'up');
+                                                        }}
+                                                        disabled={idx === 0}
+                                                        aria-label="Move up"
+                                                        className="text-neutral-500 hover:text-white p-1 disabled:opacity-30 disabled:hover:text-neutral-500"
+                                                    >
+                                                        <ChevronUp size={14} />
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            movePendingSubHabit(p.tempId, 'down');
+                                                        }}
+                                                        disabled={idx === pendingSubHabits.length - 1}
+                                                        aria-label="Move down"
+                                                        className="text-neutral-500 hover:text-white p-1 disabled:opacity-30 disabled:hover:text-neutral-500"
+                                                    >
+                                                        <ChevronDown size={14} />
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            removePendingSubHabit(p.tempId);
+                                                        }}
+                                                        aria-label="Remove"
+                                                        className="text-neutral-500 hover:text-red-400 p-1"
+                                                    >
+                                                        <X size={14} />
+                                                    </button>
+                                                </div>
                                             </div>
                                         ))}
                                         {/* Linked List (Summary) */}
                                         {subHabitIds.length > 0 && (
                                             <div className="mt-2 space-y-1">
                                                 {/* We render simple list of linked IDs (names fetched if possible, else summary) */}
-                                                {subHabitIds.map(id => {
+                                                {subHabitIds.map((id, idx) => {
                                                     const h = habits.find(h => h.id === id);
                                                     // Check for local modifications to display
                                                     const mod = modifiedLinkedHabits[id] || {};
@@ -974,15 +1026,43 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                                                                     </span>
                                                                 )}
                                                             </div>
-                                                            <button
-                                                                onClick={(e) => {
-                                                                    e.stopPropagation();
-                                                                    toggleSubHabit(id);
-                                                                }}
-                                                                className="text-indigo-400 hover:text-indigo-200"
-                                                            >
-                                                                <X size={14} />
-                                                            </button>
+                                                            <div className="flex items-center">
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        moveLinkedSubHabit(id, 'up');
+                                                                    }}
+                                                                    disabled={idx === 0}
+                                                                    aria-label="Move up"
+                                                                    className="text-indigo-400/70 hover:text-indigo-200 p-1 disabled:opacity-30 disabled:hover:text-indigo-400/70"
+                                                                >
+                                                                    <ChevronUp size={14} />
+                                                                </button>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        moveLinkedSubHabit(id, 'down');
+                                                                    }}
+                                                                    disabled={idx === subHabitIds.length - 1}
+                                                                    aria-label="Move down"
+                                                                    className="text-indigo-400/70 hover:text-indigo-200 p-1 disabled:opacity-30 disabled:hover:text-indigo-400/70"
+                                                                >
+                                                                    <ChevronDown size={14} />
+                                                                </button>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        toggleSubHabit(id);
+                                                                    }}
+                                                                    aria-label="Remove"
+                                                                    className="text-indigo-400 hover:text-indigo-200 p-1"
+                                                                >
+                                                                    <X size={14} />
+                                                                </button>
+                                                            </div>
                                                         </div>
                                                     );
                                                 })}
