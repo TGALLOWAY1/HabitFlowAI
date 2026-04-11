@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
-import { ComposedChart, Line, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { format, parseISO, isValid, eachDayOfInterval, isAfter } from 'date-fns';
+import { ComposedChart, Line, Area, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine, ResponsiveContainer } from 'recharts';
+import { format, parseISO, isValid, eachDayOfInterval, isAfter, subDays, addDays, differenceInDays } from 'date-fns';
 
 interface GoalTrendChartProps {
     data: Array<{
@@ -10,6 +10,12 @@ interface GoalTrendChartProps {
     startDate: string;
     deadline: string;
     targetValue: number;
+    /**
+     * Date of the first real entry (YYYY-MM-DD). When provided, the chart's
+     * x-axis starts 2 days before this date instead of the goal creation date,
+     * and the ideal-pace line is recomputed from this start to the deadline.
+     */
+    firstEntryDate?: string;
     color?: string;
     unit?: string;
 }
@@ -19,48 +25,72 @@ export const GoalTrendChart: React.FC<GoalTrendChartProps> = ({
     startDate,
     deadline,
     targetValue,
+    firstEntryDate,
     color = "#10b981", // emerald-500
     unit = ""
 }) => {
-    const chartData = useMemo(() => {
-        // 1. Generate the full date range from Start -> Deadline
+    const { chartData, currentActual, forecastDateStr } = useMemo(() => {
+        // 1. Determine the effective chart start: first entry minus a 2-day
+        // buffer if we have one, else fall back to the goal's startDate.
         const today = new Date();
-        const start = parseISO(startDate);
+        const fallbackStart = parseISO(startDate);
+        const firstEntry = firstEntryDate ? parseISO(firstEntryDate) : null;
+        const effectiveStart = (firstEntry && isValid(firstEntry))
+            ? subDays(firstEntry, 2)
+            : fallbackStart;
         const end = parseISO(deadline);
 
-        if (!isValid(start) || !isValid(end)) return [];
+        if (!isValid(effectiveStart) || !isValid(end)) {
+            return { chartData: [], currentActual: 0, forecastDateStr: null };
+        }
 
-        // Generate all days between start and deadline
-        const allDays = eachDayOfInterval({ start, end });
+        // 2. Compute the forecasted finish date from the current run-rate.
+        // Require at least 3 entries to avoid wildly volatile early forecasts.
+        // Rate = currentValue / days since first entry. Finish = firstEntry +
+        // (target / rate).
+        const sortedData = [...data].sort((a, b) => a.date.localeCompare(b.date));
+        const latestActual = sortedData.length > 0 ? sortedData[sortedData.length - 1].value : 0;
 
-        // Calculate the ideal pace (linear growth)
-        const totalDuration = allDays.length;
-        const dailyPace = targetValue / (totalDuration - 1); // -1 because day 1 is 0 progress
+        let forecastDate: Date | null = null;
+        if (sortedData.length >= 3 && firstEntry && isValid(firstEntry)) {
+            const daysElapsed = Math.max(1, differenceInDays(today, firstEntry));
+            const dailyRate = latestActual / daysElapsed;
+            if (dailyRate > 0) {
+                const daysToFinish = Math.ceil(targetValue / dailyRate);
+                forecastDate = addDays(firstEntry, daysToFinish);
+            }
+        }
+
+        // 3. Determine the chart's right edge. Normally it's the deadline, but
+        // if the forecast is past the deadline we extend the x-axis out so
+        // both vertical markers stay visible.
+        const chartEnd = (forecastDate && isAfter(forecastDate, end)) ? forecastDate : end;
+
+        // Generate all days between effectiveStart and chartEnd
+        const allDays = eachDayOfInterval({ start: effectiveStart, end: chartEnd });
+
+        // Calculate the ideal pace (linear growth) from effectiveStart -> deadline.
+        // The ideal line starts at 0 on the chart's leftmost day and rises
+        // linearly to targetValue on the deadline. After the deadline it
+        // stays at targetValue.
+        const deadlineIndex = differenceInDays(end, effectiveStart);
+        const dailyPace = deadlineIndex > 0 ? targetValue / deadlineIndex : targetValue;
 
         // Create a map of actual data for O(1) lookup
-        const dataMap = new Map(data.map(d => [d.date, d.value]));
+        const dataMap = new Map(sortedData.map(d => [d.date, d.value]));
 
-        // Fill data points
-        // We only want to show "Actual" up to today (or the last log date if future)
-        // But we want "Ideal" for the whole range
-
-        // Note: The passed 'data' prop is already cumulative from GoalDetailPage.
-        // However, if there are gaps in 'data' (days with no logs), the cumulative value stays the same.
-        // We need to carry forward the last known actual value to fill gaps in the chart
-        // until we reach "today".
-
+        // Fill data points. The passed 'data' prop is already cumulative.
+        // Carry forward the last known actual value to fill gaps on days
+        // with no log, up to today. Future days keep actual = null.
         let lastKnownActual = 0;
 
-        return allDays.map((dateObj, index) => {
+        const points = allDays.map((dateObj, index) => {
             const dateStr = format(dateObj, 'yyyy-MM-dd');
 
-            // Ideal Value: Linear projection
+            // Ideal caps at targetValue once we pass the deadline.
             const idealValue = Math.min(targetValue, index * dailyPace);
 
-            // Actual Value:
-            // Only populate if date <= today
             let actualValue: number | null = null;
-
             if (!isAfter(dateObj, today)) {
                 if (dataMap.has(dateStr)) {
                     lastKnownActual = dataMap.get(dateStr)!;
@@ -74,7 +104,27 @@ export const GoalTrendChart: React.FC<GoalTrendChartProps> = ({
                 ideal: idealValue
             };
         });
-    }, [data, startDate, deadline, targetValue]);
+
+        return {
+            chartData: points,
+            currentActual: lastKnownActual,
+            forecastDateStr: forecastDate ? format(forecastDate, 'yyyy-MM-dd') : null,
+        };
+    }, [data, startDate, deadline, targetValue, firstEntryDate]);
+
+    // Required pace: how much per week do they still need to average to hit
+    // the target by the deadline? Only shown if there's remaining progress
+    // and the deadline is still in the future.
+    const requiredPace = useMemo(() => {
+        const end = parseISO(deadline);
+        if (!isValid(end)) return null;
+        const remaining = Math.max(0, targetValue - currentActual);
+        if (remaining <= 0) return null;
+        const daysRemaining = differenceInDays(end, new Date());
+        if (daysRemaining <= 0) return null;
+        const weekly = (remaining / daysRemaining) * 7;
+        return weekly;
+    }, [deadline, targetValue, currentActual]);
 
     const formatXAxis = (tickItem: string) => {
         try {
@@ -94,7 +144,17 @@ export const GoalTrendChart: React.FC<GoalTrendChartProps> = ({
     }
 
     return (
-        <div className="w-full h-80 bg-neutral-900/30 rounded-lg border border-white/5 p-4">
+        <div className="w-full space-y-3">
+            {requiredPace !== null && (
+                <div className="text-sm text-neutral-400">
+                    Required pace:{' '}
+                    <span className="text-white font-medium">
+                        {requiredPace.toFixed(1)} {unit}
+                    </span>{' '}
+                    / week
+                </div>
+            )}
+            <div className="w-full h-80 bg-neutral-900/30 rounded-lg border border-white/5 p-4">
             <ResponsiveContainer width="100%" height="100%">
                 <ComposedChart
                     data={chartData}
@@ -161,8 +221,38 @@ export const GoalTrendChart: React.FC<GoalTrendChartProps> = ({
                         name="actual"
                         connectNulls // In case of gaps, though we fill them logic-side
                     />
+
+                    {/* Deadline vertical marker */}
+                    <ReferenceLine
+                        x={deadline}
+                        stroke="#737373" // neutral-500
+                        strokeWidth={1}
+                        label={{
+                            value: `Deadline ${format(parseISO(deadline), 'MMM d')}`,
+                            position: 'insideTopRight',
+                            fill: '#a3a3a3', // neutral-400
+                            fontSize: 11,
+                        }}
+                    />
+
+                    {/* Forecasted finish vertical marker */}
+                    {forecastDateStr && (
+                        <ReferenceLine
+                            x={forecastDateStr}
+                            stroke="#10b981" // emerald-500
+                            strokeWidth={1.5}
+                            strokeDasharray="4 4"
+                            label={{
+                                value: `Forecast ${format(parseISO(forecastDateStr), 'MMM d')}`,
+                                position: 'insideTopLeft',
+                                fill: '#10b981',
+                                fontSize: 11,
+                            }}
+                        />
+                    )}
                 </ComposedChart>
             </ResponsiveContainer>
+            </div>
         </div>
     );
 };

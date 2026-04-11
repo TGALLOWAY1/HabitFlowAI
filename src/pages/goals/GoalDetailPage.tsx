@@ -632,6 +632,7 @@ export const GoalDetailPage: React.FC<GoalDetailPageProps> = ({ goalId, onBack, 
                             <GoalTrendChart
                                 data={cumulativeData}
                                 startDate={goal.createdAt}
+                                firstEntryDate={cumulativeData[0]?.date}
                                 deadline={goal.deadline!}
                                 targetValue={goal.targetValue!}
                                 color="#10b981"
