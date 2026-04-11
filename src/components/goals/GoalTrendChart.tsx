@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { ComposedChart, Line, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { format, parseISO, isValid, eachDayOfInterval, isAfter, subDays } from 'date-fns';
+import { format, parseISO, isValid, eachDayOfInterval, isAfter, subDays, differenceInDays } from 'date-fns';
 
 interface GoalTrendChartProps {
     data: Array<{
@@ -29,7 +29,7 @@ export const GoalTrendChart: React.FC<GoalTrendChartProps> = ({
     color = "#10b981", // emerald-500
     unit = ""
 }) => {
-    const chartData = useMemo(() => {
+    const { chartData, currentActual } = useMemo(() => {
         // 1. Determine the effective chart start: first entry minus a 2-day
         // buffer if we have one, else fall back to the goal's startDate.
         const today = new Date();
@@ -40,7 +40,9 @@ export const GoalTrendChart: React.FC<GoalTrendChartProps> = ({
             : fallbackStart;
         const end = parseISO(deadline);
 
-        if (!isValid(effectiveStart) || !isValid(end)) return [];
+        if (!isValid(effectiveStart) || !isValid(end)) {
+            return { chartData: [], currentActual: 0 };
+        }
 
         // Generate all days between effectiveStart and deadline
         const allDays = eachDayOfInterval({ start: effectiveStart, end });
@@ -59,7 +61,7 @@ export const GoalTrendChart: React.FC<GoalTrendChartProps> = ({
         // with no log, up to today. Future days keep actual = null.
         let lastKnownActual = 0;
 
-        return allDays.map((dateObj, index) => {
+        const points = allDays.map((dateObj, index) => {
             const dateStr = format(dateObj, 'yyyy-MM-dd');
 
             const idealValue = Math.min(targetValue, index * dailyPace);
@@ -78,7 +80,23 @@ export const GoalTrendChart: React.FC<GoalTrendChartProps> = ({
                 ideal: idealValue
             };
         });
+
+        return { chartData: points, currentActual: lastKnownActual };
     }, [data, startDate, deadline, targetValue, firstEntryDate]);
+
+    // Required pace: how much per week do they still need to average to hit
+    // the target by the deadline? Only shown if there's remaining progress
+    // and the deadline is still in the future.
+    const requiredPace = useMemo(() => {
+        const end = parseISO(deadline);
+        if (!isValid(end)) return null;
+        const remaining = Math.max(0, targetValue - currentActual);
+        if (remaining <= 0) return null;
+        const daysRemaining = differenceInDays(end, new Date());
+        if (daysRemaining <= 0) return null;
+        const weekly = (remaining / daysRemaining) * 7;
+        return weekly;
+    }, [deadline, targetValue, currentActual]);
 
     const formatXAxis = (tickItem: string) => {
         try {
@@ -98,7 +116,17 @@ export const GoalTrendChart: React.FC<GoalTrendChartProps> = ({
     }
 
     return (
-        <div className="w-full h-80 bg-neutral-900/30 rounded-lg border border-white/5 p-4">
+        <div className="w-full space-y-3">
+            {requiredPace !== null && (
+                <div className="text-sm text-neutral-400">
+                    Required pace:{' '}
+                    <span className="text-white font-medium">
+                        {requiredPace.toFixed(1)} {unit}
+                    </span>{' '}
+                    / week
+                </div>
+            )}
+            <div className="w-full h-80 bg-neutral-900/30 rounded-lg border border-white/5 p-4">
             <ResponsiveContainer width="100%" height="100%">
                 <ComposedChart
                     data={chartData}
@@ -167,6 +195,7 @@ export const GoalTrendChart: React.FC<GoalTrendChartProps> = ({
                     />
                 </ComposedChart>
             </ResponsiveContainer>
+            </div>
         </div>
     );
 };
