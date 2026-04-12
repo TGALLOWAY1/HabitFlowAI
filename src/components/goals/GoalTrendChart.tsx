@@ -154,6 +154,18 @@ export const GoalTrendChart: React.FC<GoalTrendChartProps> = ({
                     / week
                 </div>
             )}
+            <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs">
+                <div className="flex items-center gap-1.5">
+                    <span className="inline-block w-4 border-t border-neutral-500" />
+                    <span className="text-neutral-400">Deadline {format(parseISO(deadline), 'MMM d')}</span>
+                </div>
+                {forecastDateStr && (
+                    <div className="flex items-center gap-1.5">
+                        <span className="inline-block w-4 border-t border-dashed border-emerald-500" />
+                        <span className="text-emerald-500">Forecast {format(parseISO(forecastDateStr), 'MMM d')}</span>
+                    </div>
+                )}
+            </div>
             <div className="w-full h-80 bg-neutral-900/30 rounded-lg border border-white/5 p-4">
             <ResponsiveContainer width="100%" height="100%">
                 <ComposedChart
@@ -227,12 +239,6 @@ export const GoalTrendChart: React.FC<GoalTrendChartProps> = ({
                         x={deadline}
                         stroke="#737373" // neutral-500
                         strokeWidth={1}
-                        label={{
-                            value: `Deadline ${format(parseISO(deadline), 'MMM d')}`,
-                            position: 'insideTopRight',
-                            fill: '#a3a3a3', // neutral-400
-                            fontSize: 11,
-                        }}
                     />
 
                     {/* Forecasted finish vertical marker */}
@@ -242,12 +248,6 @@ export const GoalTrendChart: React.FC<GoalTrendChartProps> = ({
                             stroke="#10b981" // emerald-500
                             strokeWidth={1.5}
                             strokeDasharray="4 4"
-                            label={{
-                                value: `Forecast ${format(parseISO(forecastDateStr), 'MMM d')}`,
-                                position: 'insideTopLeft',
-                                fill: '#10b981',
-                                fontSize: 11,
-                            }}
                         />
                     )}
                 </ComposedChart>
