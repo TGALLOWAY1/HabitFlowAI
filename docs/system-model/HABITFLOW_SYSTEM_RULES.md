@@ -65,11 +65,29 @@ This document defines the invariant rules that govern HabitFlowAI's behavior. An
 ### R8: Weekly Habit Completion
 
 - Week window: Monday to Sunday (`weekStartsOn: 1`).
+- **"Is this habit weekly?" MUST be computed as:**
+  ```
+  isWeekly = (timesPerWeek != null && timesPerWeek > 0)
+          || (requiredDaysPerWeek != null && requiredDaysPerWeek > 0)
+  ```
+  See **R8a** below for why both fields must be checked.
 - Three sub-types determined by `deriveWeeklyProgress()`:
-  - **Quantity weekly** (`habit.goal.type === 'number'`): sum of entry values in week >= `timesPerWeek` / `goal.target`.
+  - **Quantity weekly** (`habit.goal.type === 'number'`): sum of entry values in week >= weekly target.
   - **Frequency weekly** (`!isQuantity && target > 1`): count of distinct `dayKeys` with entries in week >= target.
   - **Binary weekly** (single entry suffices): any non-deleted entry in week = complete.
+- The weekly target value MUST be resolved as `timesPerWeek ?? requiredDaysPerWeek ?? goal.target ?? 1`.
 - **Source:** `dayViewService.ts:deriveWeeklyProgress()`
+
+### R8a: Weekly target canonical field
+
+- `Habit` currently has two duplicative fields: `timesPerWeek` and `requiredDaysPerWeek`. Both express "weekly target count" and are written from separate controls in `AddHabitModal`.
+- Until a migration collapses them, **every reader must check both** (see R8 formula above).
+- Known violators:
+  - `src/server/services/dayViewService.ts:366` — checks only `timesPerWeek`. This causes **BUG-4**: a quantity habit with `requiredDaysPerWeek=3, timesPerWeek=undefined` is misclassified as daily, and the Today view shows today-only progress instead of weekly progress.
+  - `src/server/services/dayViewService.ts:138` (`deriveWeeklyProgress` target resolution) — same issue.
+- Known correct readers:
+  - `src/server/routes/progress.ts:158-159`.
+- **Long-term fix (root cause):** add a migration following `002_migrate_weekly_frequency.ts` that folds `requiredDaysPerWeek` → `timesPerWeek`, delete the duplicated UI control in `AddHabitModal`, and remove `requiredDaysPerWeek` from the type. Having two fields for the same concept is the defect; the short-term "check both" fix is a patch, not a cure.
 
 ### R9: Checklist Bundle Completion
 

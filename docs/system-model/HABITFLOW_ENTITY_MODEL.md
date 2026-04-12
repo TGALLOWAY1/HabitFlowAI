@@ -93,8 +93,8 @@
 | `nonNegotiableDays` | number[] | No | Specific non-negotiable days |
 | `deadline` | string | No | Deadline time (HH:mm) |
 | `freezeCount` | number | No | Freeze inventory (max 3) |
-| `timesPerWeek` | number | No | Weekly target count |
-| `requiredDaysPerWeek` | number | No | Required completions per week |
+| `timesPerWeek` | number | No | Weekly target count. **See note below — duplicative with `requiredDaysPerWeek`.** |
+| `requiredDaysPerWeek` | number | No | Required completions per week. **Duplicative with `timesPerWeek` — see note below.** |
 | `bundleType` | `'checklist'\|'choice'` | No | Bundle mode |
 | `bundleOptions` | Array | No | **DEPRECATED** Choice options (use subHabitIds) |
 | `checklistSuccessRule` | object | No | Checklist success criteria |
@@ -125,6 +125,17 @@
 **Deleted:** Soft delete via `archived: true`
 **UI:** Tracker Grid, Day View, Schedule View, Goal Detail, Analytics
 **Related to:** Category, HabitEntry, Goal, Routine, BundleMembership
+
+> **⚠ Duplicative fields: `timesPerWeek` vs `requiredDaysPerWeek`**
+>
+> Both fields express "weekly target count" but are written from separate UI controls in `AddHabitModal` (`timesPerWeek` from a standalone input, `requiredDaysPerWeek` from the scheduling section). A habit can have either one set, both, or neither.
+>
+> Readers disagree on how to detect "is this habit weekly?":
+> - `src/server/routes/progress.ts:158` checks **both** fields.
+> - `src/server/services/dayViewService.ts:366` checks **only** `timesPerWeek` → causes BUG-4.
+> - `src/server/services/scheduleEngine.ts` has its own third path.
+>
+> These should be collapsed into one canonical field (follow the pattern of migration `002_migrate_weekly_frequency`). See `HABITFLOW_BUG_ANALYSIS.md` BUG-4 and `HABITFLOW_SYSTEM_RULES.md` "Weekly target canonical field".
 
 ---
 

@@ -112,6 +112,70 @@ A legitimate entry with `value: 0` (e.g., user logs "0 glasses of water") gets `
 
 ---
 
+### BUG-4: Day view ignores `requiredDaysPerWeek`, misreports weekly progress
+
+**Severity:** High (user-visible, silently wrong)
+
+**Files:**
+- `src/server/services/dayViewService.ts` lines 366, 138
+- `src/server/routes/progress.ts` lines 158-159 (correct comparison for reference)
+- `src/components/AddHabitModal.tsx` lines 246, 253 (where both fields are written)
+
+**Reported symptom:** "I've gone to the gym 2 days and have a 3 days per week goal, and the Today view only shows I've made 1 contribution."
+
+**Root cause:** `Habit` has two fields that both express "weekly target count":
+- `timesPerWeek` — top-level weekly target
+- `requiredDaysPerWeek` — required days per week, written alongside `assignedDays`
+
+`AddHabitModal` writes these from two independent UI controls. A user who uses the scheduling section ("3 days per week") but leaves the separate `timesPerWeek` input blank ends up with `requiredDaysPerWeek=3, timesPerWeek=undefined`.
+
+Different readers then disagree on whether this habit is "weekly":
+
+**`src/server/routes/progress.ts:158-159` (correct — considers both):**
+```typescript
+const isWeeklyStreak = (habit.timesPerWeek != null && habit.timesPerWeek > 0) ||
+  (habit.assignedDays?.length && habit.requiredDaysPerWeek);
+```
+
+**`src/server/services/dayViewService.ts:366` (wrong — only checks `timesPerWeek`):**
+```typescript
+} else if (habit.timesPerWeek != null && habit.timesPerWeek > 0) {
+  // Weekly habit: derive week progress
+  const weekProgress = deriveWeeklyProgress(...)
+```
+
+A habit with only `requiredDaysPerWeek` set falls through to the daily branches below. For a quantity habit (`goal.type === 'number'`), it hits line 386–400 which filters entries to **today's dayKey only**, sums them, and renders `currentValue/goal.target`.
+
+Additionally, inside `deriveWeeklyProgress` at line 138:
+```typescript
+const target = habit.timesPerWeek ?? habit.goal.target ?? 1;
+```
+This also ignores `requiredDaysPerWeek`, so even if the outer branch were fixed, the target would still be wrong when only `requiredDaysPerWeek` is set.
+
+**Impact:**
+
+| Scenario | What Today view shows | What user expects | What other views show |
+|---|---|---|---|
+| Gym habit with `requiredDaysPerWeek=3, timesPerWeek=undefined`, 2 days logged Mon+Wed, viewing Wed | 1 of `goal.target` (today's single entry) | 2 of 3 | Progress/streak view uses weekly logic (`progress.ts` correctly detects it as weekly), `scheduleEngine` has yet another code path → three views disagree |
+
+The three views disagreeing is the real red flag — `dayViewService`, `progress.ts`, and `scheduleEngine` each implement their own "is this habit weekly?" check, and they do not match.
+
+**Fix (recommended, two parts):**
+
+1. **Immediate fix** — `dayViewService.ts:366` should use the same check as `progress.ts:158`:
+   ```typescript
+   const isWeekly =
+     (habit.timesPerWeek != null && habit.timesPerWeek > 0) ||
+     (habit.requiredDaysPerWeek != null && habit.requiredDaysPerWeek > 0);
+   ```
+   And `deriveWeeklyProgress` line 138 should fall back: `habit.timesPerWeek ?? habit.requiredDaysPerWeek ?? habit.goal.target ?? 1`.
+
+2. **Root-cause fix** — migrate `requiredDaysPerWeek` into `timesPerWeek` (collapse the duplicated field). Migration 002 already normalized legacy `frequency: 'weekly'` → `timesPerWeek`; a similar migration should fold `requiredDaysPerWeek` → `timesPerWeek` and delete the duplicated control in `AddHabitModal`. Having two fields with the same meaning is what created this bug and will create more.
+
+**Status:** Unresolved as of 2026-04-11. Confirmed via code read — not yet reproduced in a running environment.
+
+---
+
 ## Inconsistencies
 
 ### INCONSISTENCY-1: Dual Habit-Goal link sync
