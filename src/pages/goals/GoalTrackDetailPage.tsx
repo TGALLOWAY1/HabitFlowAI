@@ -71,7 +71,7 @@ const SortableTrackGoal: React.FC<{
                 isDragging ? 'bg-neutral-700/50 shadow-lg' :
                 isActive ? 'bg-emerald-500/5 border border-emerald-500/20' :
                 'bg-neutral-800/30 border border-white/5'
-            } ${isLocked ? 'opacity-40' : ''}`}
+            } ${isLocked ? 'opacity-60' : ''}`}
         >
             {/* Drag handle */}
             <div {...listeners} className="cursor-grab active:cursor-grabbing flex-shrink-0 touch-none">
@@ -93,9 +93,8 @@ const SortableTrackGoal: React.FC<{
 
             {/* Goal info */}
             <button
-                onClick={() => !isLocked && onViewGoal?.(goal.id)}
-                disabled={isLocked}
-                className={`flex-1 min-w-0 text-left ${isLocked ? 'cursor-default' : ''}`}
+                onClick={() => onViewGoal?.(goal.id)}
+                className="flex-1 min-w-0 text-left"
             >
                 <div className={`text-sm ${
                     isCompleted ? 'text-neutral-500 line-through' :

@@ -84,11 +84,10 @@ export const GoalTrackSection: React.FC<GoalTrackSectionProps> = ({
                     return (
                         <button
                             key={goal.id}
-                            onClick={() => !isLocked && onViewGoal?.(goal.id)}
-                            disabled={isLocked}
+                            onClick={() => onViewGoal?.(goal.id)}
                             className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-left transition-colors ${
                                 isLocked
-                                    ? 'opacity-40 cursor-default'
+                                    ? 'opacity-60 hover:bg-neutral-800/50 hover:opacity-100'
                                     : isActive
                                     ? 'bg-emerald-500/5 border border-emerald-500/20 hover:bg-emerald-500/10'
                                     : isCompleted
