@@ -258,7 +258,7 @@ export const GoalsPage: React.FC<GoalsPageProps> = ({
     onViewTrack,
 }) => {
     const { data, loading, error, refetch } = useGoalsWithProgress();
-    const { data: tracks } = useGoalTracks();
+    const { data: tracks, refetch: refetchTracks } = useGoalTracks();
     const { categories } = useHabitStore();
     const [editingGoalId, setEditingGoalId] = useState<string | null>(null);
     const [expandedStacks, setExpandedStacks] = useState<Set<string>>(new Set());
@@ -364,12 +364,16 @@ export const GoalsPage: React.FC<GoalsPageProps> = ({
         }
 
         reorderGoalTracks(allTrackIds).then(() => {
+            // Tracks hold their own sortOrder state, so we must refetch the
+            // tracks list — not just goals — for the reordered view to render.
+            refetchTracks();
             refetch();
         }).catch((err) => {
             console.error('Failed to reorder goal tracks:', err);
-            refetch(); // Revert on error
+            refetchTracks(); // Revert on error
+            refetch();
         });
-    }, [goalStacks, refetch]);
+    }, [goalStacks, refetch, refetchTracks]);
 
     if (loading) {
         return (
