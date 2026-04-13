@@ -395,7 +395,12 @@ export async function removeGoalFromTrack(req: Request, res: Response): Promise<
  * PATCH /api/goal-tracks/:id/goals/reorder
  * Reorder goals within a track.
  * Body: { goalIds: string[] }
- * Does NOT change trackStatus, activeWindowStart, or activeWindowEnd (preserves history).
+ *
+ * After reordering, recomputes which goal is active so that the invariant
+ * "active goal == first non-completed goal by trackOrder" holds. Completed
+ * goals retain their status. A previously-active goal that gets demoted to
+ * 'locked' keeps its activeWindowStart untouched (history is preserved);
+ * activeWindowEnd is never set here — that field is reserved for completion.
  */
 export async function reorderTrackGoals(req: Request, res: Response): Promise<void> {
   try {
@@ -420,6 +425,35 @@ export async function reorderTrackGoals(req: Request, res: Response): Promise<vo
       await updateGoal(goalIds[i], householdId, userId, {
         trackOrder: i,
       } as Partial<Goal>);
+    }
+
+    // Recompute active goal based on the new order. The active goal must be
+    // the first non-completed goal by trackOrder. Reordering can shift that
+    // position, so promote/demote to keep the invariant.
+    const trackGoalsSorted = await getGoalsByTrack(trackId, householdId, userId);
+    const firstIncomplete = trackGoalsSorted.find(g => g.trackStatus !== 'completed');
+
+    if (firstIncomplete && firstIncomplete.trackStatus !== 'active') {
+      // Promote this goal. Preserve activeWindowStart if it already has one
+      // (e.g. from a prior activation that was demoted); otherwise start a
+      // fresh window today.
+      const promotion: Partial<Goal> = { trackStatus: 'active' };
+      if (!firstIncomplete.activeWindowStart) {
+        promotion.activeWindowStart = todayDayKey();
+      }
+      await updateGoal(firstIncomplete.id, householdId, userId, promotion as Partial<Goal>);
+
+      // Demote any other goal that was previously active (there should be at
+      // most one). Leave activeWindowStart/activeWindowEnd untouched — we
+      // never set activeWindowEnd on demotion because that field's semantics
+      // mean "completed".
+      for (const g of trackGoalsSorted) {
+        if (g.id !== firstIncomplete.id && g.trackStatus === 'active') {
+          await updateGoal(g.id, householdId, userId, {
+            trackStatus: 'locked',
+          } as Partial<Goal>);
+        }
+      }
     }
 
     invalidateUserCaches(userId);

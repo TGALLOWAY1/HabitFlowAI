@@ -252,7 +252,7 @@ describe('Goal Tracks Routes', () => {
       expect(res.body.trackStatus).toBe('locked');
     });
 
-    it('should reorder goals in a track', async () => {
+    it('should reorder goals in a track and promote the new first goal to active', async () => {
       const track = await createGoalTrack({ name: 'Reorder Test', categoryId: TEST_CATEGORY_ID }, TEST_HOUSEHOLD_ID, TEST_USER_ID);
       const g1 = await createGoal({ title: 'A', type: 'onetime', linkedHabitIds: [], categoryId: TEST_CATEGORY_ID }, TEST_HOUSEHOLD_ID, TEST_USER_ID);
       const g2 = await createGoal({ title: 'B', type: 'onetime', linkedHabitIds: [], categoryId: TEST_CATEGORY_ID }, TEST_HOUSEHOLD_ID, TEST_USER_ID);
@@ -260,7 +260,7 @@ describe('Goal Tracks Routes', () => {
       await request(app).post(`/api/goal-tracks/${track.id}/goals`).send({ goalId: g1.id });
       await request(app).post(`/api/goal-tracks/${track.id}/goals`).send({ goalId: g2.id });
 
-      // Reverse order
+      // Reverse order — g2 moves to the front and should become active
       const res = await request(app)
         .patch(`/api/goal-tracks/${track.id}/goals/reorder`)
         .send({ goalIds: [g2.id, g1.id] });
@@ -271,6 +271,93 @@ describe('Goal Tracks Routes', () => {
       const updated2 = await getGoalById(g2.id, TEST_HOUSEHOLD_ID, TEST_USER_ID);
       expect(updated2?.trackOrder).toBe(0);
       expect(updated1?.trackOrder).toBe(1);
+
+      // Active goal should follow the new ordering
+      expect(updated2?.trackStatus).toBe('active');
+      expect(updated2?.activeWindowStart).toBeTruthy();
+      expect(updated1?.trackStatus).toBe('locked');
+    });
+
+    it('should promote a previously-locked goal to active when moved ahead of the active goal', async () => {
+      const track = await createGoalTrack({ name: 'Promote Locked', categoryId: TEST_CATEGORY_ID }, TEST_HOUSEHOLD_ID, TEST_USER_ID);
+      const g1 = await createGoal({ title: 'First', type: 'onetime', linkedHabitIds: [], categoryId: TEST_CATEGORY_ID }, TEST_HOUSEHOLD_ID, TEST_USER_ID);
+      const g2 = await createGoal({ title: 'Second', type: 'onetime', linkedHabitIds: [], categoryId: TEST_CATEGORY_ID }, TEST_HOUSEHOLD_ID, TEST_USER_ID);
+      const g3 = await createGoal({ title: 'Third', type: 'onetime', linkedHabitIds: [], categoryId: TEST_CATEGORY_ID }, TEST_HOUSEHOLD_ID, TEST_USER_ID);
+
+      await request(app).post(`/api/goal-tracks/${track.id}/goals`).send({ goalId: g1.id });
+      await request(app).post(`/api/goal-tracks/${track.id}/goals`).send({ goalId: g2.id });
+      await request(app).post(`/api/goal-tracks/${track.id}/goals`).send({ goalId: g3.id });
+
+      // Complete g1 — g2 becomes active via advancement
+      await request(app).put(`/api/goals/${g1.id}`).send({ completedAt: new Date().toISOString() });
+
+      // Reorder: move g3 (locked) to the front, behind the completed g1
+      const res = await request(app)
+        .patch(`/api/goal-tracks/${track.id}/goals/reorder`)
+        .send({ goalIds: [g1.id, g3.id, g2.id] });
+
+      expect(res.status).toBe(200);
+
+      const u1 = await getGoalById(g1.id, TEST_HOUSEHOLD_ID, TEST_USER_ID);
+      const u2 = await getGoalById(g2.id, TEST_HOUSEHOLD_ID, TEST_USER_ID);
+      const u3 = await getGoalById(g3.id, TEST_HOUSEHOLD_ID, TEST_USER_ID);
+
+      expect(u1?.trackStatus).toBe('completed');
+      expect(u3?.trackStatus).toBe('active');
+      expect(u3?.activeWindowStart).toBeTruthy();
+      expect(u2?.trackStatus).toBe('locked');
+    });
+
+    it('should preserve completed status when a completed goal is reordered', async () => {
+      const track = await createGoalTrack({ name: 'Completed Preserve', categoryId: TEST_CATEGORY_ID }, TEST_HOUSEHOLD_ID, TEST_USER_ID);
+      const g1 = await createGoal({ title: 'Done', type: 'onetime', linkedHabitIds: [], categoryId: TEST_CATEGORY_ID }, TEST_HOUSEHOLD_ID, TEST_USER_ID);
+      const g2 = await createGoal({ title: 'Working', type: 'onetime', linkedHabitIds: [], categoryId: TEST_CATEGORY_ID }, TEST_HOUSEHOLD_ID, TEST_USER_ID);
+
+      await request(app).post(`/api/goal-tracks/${track.id}/goals`).send({ goalId: g1.id });
+      await request(app).post(`/api/goal-tracks/${track.id}/goals`).send({ goalId: g2.id });
+
+      // Complete g1 — g2 becomes active
+      await request(app).put(`/api/goals/${g1.id}`).send({ completedAt: new Date().toISOString() });
+
+      // Move completed g1 after the active g2
+      const res = await request(app)
+        .patch(`/api/goal-tracks/${track.id}/goals/reorder`)
+        .send({ goalIds: [g2.id, g1.id] });
+
+      expect(res.status).toBe(200);
+
+      const u1 = await getGoalById(g1.id, TEST_HOUSEHOLD_ID, TEST_USER_ID);
+      const u2 = await getGoalById(g2.id, TEST_HOUSEHOLD_ID, TEST_USER_ID);
+
+      // Completed goal stays completed; active goal stays active
+      expect(u1?.trackStatus).toBe('completed');
+      expect(u2?.trackStatus).toBe('active');
+    });
+
+    it('should preserve activeWindowStart when a previously-active goal is re-promoted', async () => {
+      const track = await createGoalTrack({ name: 'Preserve Window', categoryId: TEST_CATEGORY_ID }, TEST_HOUSEHOLD_ID, TEST_USER_ID);
+      const g1 = await createGoal({ title: 'Originally Active', type: 'onetime', linkedHabitIds: [], categoryId: TEST_CATEGORY_ID }, TEST_HOUSEHOLD_ID, TEST_USER_ID);
+      const g2 = await createGoal({ title: 'Other', type: 'onetime', linkedHabitIds: [], categoryId: TEST_CATEGORY_ID }, TEST_HOUSEHOLD_ID, TEST_USER_ID);
+
+      await request(app).post(`/api/goal-tracks/${track.id}/goals`).send({ goalId: g1.id });
+      await request(app).post(`/api/goal-tracks/${track.id}/goals`).send({ goalId: g2.id });
+
+      const originalWindowStart = (await getGoalById(g1.id, TEST_HOUSEHOLD_ID, TEST_USER_ID))?.activeWindowStart;
+      expect(originalWindowStart).toBeTruthy();
+
+      // Demote g1 by moving g2 to the front
+      await request(app)
+        .patch(`/api/goal-tracks/${track.id}/goals/reorder`)
+        .send({ goalIds: [g2.id, g1.id] });
+
+      // Re-promote g1 by moving it back to the front
+      await request(app)
+        .patch(`/api/goal-tracks/${track.id}/goals/reorder`)
+        .send({ goalIds: [g1.id, g2.id] });
+
+      const u1 = await getGoalById(g1.id, TEST_HOUSEHOLD_ID, TEST_USER_ID);
+      expect(u1?.trackStatus).toBe('active');
+      expect(u1?.activeWindowStart).toBe(originalWindowStart);
     });
 
     it('should remove a goal from a track', async () => {
