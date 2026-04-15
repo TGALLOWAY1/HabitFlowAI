@@ -521,6 +521,7 @@ const HabitTrackerContent: React.FC = () => {
           trackerViewMode === 'all' ? (
             <TrackerGrid
               habits={filteredHabits}
+              allHabits={habits}
               logs={logs}
               onToggle={toggleHabit}
               onUpdateValue={updateLog}

@@ -40,6 +40,12 @@ import { CSS } from '@dnd-kit/utilities';
 
 interface TrackerGridProps {
     habits: Habit[];
+    // Full unfiltered habit set, used for resolving bundle children by id.
+    // Children can live in a different category than their parent bundle, so
+    // they must be resolved against the full set (not the category-filtered
+    // `habits`), otherwise cross-category children disappear from the drawer
+    // and `hasChildren` can collapse to false — hiding the expand handle.
+    allHabits?: Habit[];
     logs: Record<string, DayLog>;
     onToggle: (habitId: string, date: string) => Promise<void>;
     onUpdateValue: (habitId: string, date: string, value: number) => Promise<void>;
@@ -775,6 +781,7 @@ const SortableWeeklyHabitRow = ({
 // [REPLACED TRACKER GRID DEFINITION]
 export const TrackerGrid = ({
     habits,
+    allHabits,
     logs,
     onAddHabit,
     onEditHabit,
@@ -784,6 +791,9 @@ export const TrackerGrid = ({
     onViewHistory,
     loading
 }: TrackerGridProps) => {
+    // Fall back to `habits` when no unfiltered set is provided, preserving
+    // prior behavior for callers that don't pass `allHabits`.
+    const childLookupHabits = allHabits ?? habits;
     const {
         deleteHabit,
         reorderHabits,
@@ -1276,7 +1286,7 @@ export const TrackerGrid = ({
                                             <SortableHabitRow
                                                 key={habit.id}
                                                 habit={habit}
-                                                allHabits={habits}
+                                                allHabits={childLookupHabits}
                                                 expandedIds={expandedIds}
                                                 onToggleExpand={toggleExpand}
                                                 logs={logs}
