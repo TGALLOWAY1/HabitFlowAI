@@ -321,9 +321,14 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                     } catch (_e) { /* membership may not exist for pre-migration bundles */ }
                 }
 
-                // Link new existing children — update bundleParentId and create membership
+                // Link new existing children — update bundleParentId, inherit the
+                // bundle's category so children stay grouped with their parent,
+                // and create membership
                 for (const childId of newlyLinkedExistingIds) {
-                    await updateHabit(childId, { bundleParentId: savedHabit.id });
+                    await updateHabit(childId, {
+                        bundleParentId: savedHabit.id,
+                        categoryId: selectedCategoryId,
+                    });
                     try {
                         await createBundleMembership({
                             parentHabitId: savedHabit.id,

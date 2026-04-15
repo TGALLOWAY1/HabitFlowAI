@@ -40,8 +40,12 @@ export const BundlePickerModal = ({
         try {
             const todayDayKey = format(new Date(), 'yyyy-MM-dd');
 
-            // 1. Set child's bundleParentId
-            await updateHabit(habitId, { bundleParentId: bundle.id });
+            // 1. Set child's bundleParentId and inherit the bundle's category
+            //    so every habit inside a bundle shares that bundle's grouping.
+            await updateHabit(habitId, {
+                bundleParentId: bundle.id,
+                categoryId: bundle.categoryId,
+            });
 
             // 2. Update parent's subHabitIds
             const existingIds = bundle.subHabitIds || [];
