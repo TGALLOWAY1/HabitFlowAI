@@ -663,6 +663,15 @@ export interface DashboardPrefs {
     /** When true, streak/flame indicators are hidden across the UI */
     hideStreaks?: boolean;
 
+    /**
+     * Appearance: user's chosen theme mode.
+     * - 'light' / 'dark': explicit choice, persists across devices.
+     * - 'system': follow the device's prefers-color-scheme at runtime.
+     * Undefined means the user has never set a preference; the client
+     * falls back to the product default (currently 'dark').
+     */
+    themeMode?: 'light' | 'dark' | 'system';
+
     /** ISO 8601 timestamp */
     updatedAt: string;
 }

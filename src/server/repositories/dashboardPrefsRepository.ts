@@ -39,10 +39,12 @@ export async function getDashboardPrefs(householdId: string, userId: string): Pr
   return prefs as DashboardPrefs;
 }
 
+const THEME_MODE_VALUES = new Set<'light' | 'dark' | 'system'>(['light', 'dark', 'system']);
+
 export async function updateDashboardPrefs(
   householdId: string,
   userId: string,
-  patch: { pinnedRoutineIds?: string[]; pinnedGoalIds?: string[]; pinnedJournalTemplateIds?: string[]; checkinExtraMetricKeys?: string[]; hideStreaks?: boolean }
+  patch: { pinnedRoutineIds?: string[]; pinnedGoalIds?: string[]; pinnedJournalTemplateIds?: string[]; checkinExtraMetricKeys?: string[]; hideStreaks?: boolean; themeMode?: 'light' | 'dark' | 'system' }
 ): Promise<DashboardPrefs> {
   const scope = requireScope(householdId, userId);
   await ensureIndexes();
@@ -119,6 +121,13 @@ export async function updateDashboardPrefs(
 
   if (patch.hideStreaks !== undefined) {
     update.hideStreaks = !!patch.hideStreaks;
+  }
+
+  if (patch.themeMode !== undefined) {
+    if (!THEME_MODE_VALUES.has(patch.themeMode)) {
+      throw new Error(`themeMode must be one of 'light' | 'dark' | 'system'`);
+    }
+    update.themeMode = patch.themeMode;
   }
 
   // Fix: Use full document replace approach to avoid MongoDB update conflicts
