@@ -71,8 +71,8 @@ export const DayHabitRow = ({
                     className={cn(
                         "flex-shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all duration-300",
                         isCompleted
-                            ? "bg-emerald-500 border-emerald-500 text-neutral-900 scale-100"
-                            : "border-line-strong text-transparent hover:border-emerald-500/50 scale-95 hover:scale-100"
+                            ? "bg-accent border-accent text-content-on-accent scale-100"
+                            : "border-line-strong text-transparent hover:border-accent/50 scale-95 hover:scale-100"
                     )}
                 >
                     <Check size={14} strokeWidth={3} />

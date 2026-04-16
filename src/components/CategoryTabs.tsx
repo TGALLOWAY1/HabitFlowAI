@@ -316,8 +316,8 @@ export const CategoryTabs: React.FC<CategoryTabsProps> = ({
                     onClick={() => onSelectCategory(uncategorized.id)}
                     className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap flex-shrink-0 transition-all ${
                         activeCategoryId === uncategorized.id
-                            ? 'bg-amber-500 text-neutral-900 shadow-lg shadow-amber-500/20'
-                            : 'bg-surface-1 text-amber-400 hover:bg-surface-2 border border-amber-500/30'
+                            ? 'bg-warning text-content-on-accent shadow-lg shadow-warning/20'
+                            : 'bg-surface-1 text-warning-contrast hover:bg-surface-2 border border-warning/30'
                     }`}
                 >
                     Uncategorized
@@ -327,7 +327,7 @@ export const CategoryTabs: React.FC<CategoryTabsProps> = ({
             {reorderMode ? (
                 <button
                     onClick={() => setReorderMode(false)}
-                    className="px-3 py-2 rounded-full bg-emerald-500 text-neutral-900 text-sm font-medium hover:bg-accent-strong transition-colors flex items-center gap-1 whitespace-nowrap flex-shrink-0"
+                    className="px-3 py-2 rounded-full bg-accent text-content-on-accent text-sm font-medium hover:bg-accent-strong transition-colors flex items-center gap-1 whitespace-nowrap flex-shrink-0"
                 >
                     <Check size={14} strokeWidth={3} /> Done
                 </button>
@@ -345,7 +345,7 @@ export const CategoryTabs: React.FC<CategoryTabsProps> = ({
                             aria-invalid={!!addCategoryError}
                             aria-describedby={addCategoryError ? 'add-category-error' : undefined}
                         />
-                        <button type="submit" className="p-2 rounded-full bg-emerald-500 text-content-primary hover:bg-emerald-600">
+                        <button type="submit" className="p-2 rounded-full bg-accent text-content-on-accent hover:bg-accent-strong">
                             <Plus size={14} />
                         </button>
                     </div>
