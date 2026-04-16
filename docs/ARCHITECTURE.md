@@ -45,6 +45,22 @@ Key areas:
 
 Routing is query-string based (`?view=...`) plus path-based routes for dedicated pages.
 
+### Theming
+
+Semantic-token design system in `src/theme/`:
+
+- `palette.ts` — Single source of truth for light/dark color palettes (hex). Both themes share the same token keys.
+- `cssVars.ts` — Emits CSS variables (as space-separated RGB triplets) from the palette at runtime. The Tailwind config consumes these via `rgb(var(--token) / <alpha-value>)` aliases (`bg-surface-1`, `text-content-muted`, `border-line-subtle`, `bg-accent`, etc.), so opacity modifiers keep working (`bg-surface-1/80`).
+- `ThemeContext.tsx` — Provides `mode` (`'light' | 'dark' | 'system'`), `resolvedMode` (`'light' | 'dark'`), and `setMode`. Listens to `prefers-color-scheme` when `mode === 'system'`, applies `class="dark"` / `class="light"` to `<html>`, and updates `color-scheme`.
+- `useThemeColors.ts` — Hook returning the active palette as hex; used by chart/SVG consumers (recharts, gradients) that need hex rather than Tailwind classes.
+- `heatmap.ts` — Theme-aware `getHeatmapColor(intensity, mode)` replaces the old dark-only class-returning form.
+
+A pre-hydration script in `index.html` applies the correct theme class to `<html>` before React boots, reading `localStorage['hf_theme_mode']` and falling back to `prefers-color-scheme` if the stored value is `'system'` (or to dark on any failure). The user's choice also persists on the server in `DashboardPrefs.themeMode` so it syncs across devices.
+
+`scripts/check-theme-tokens.sh` is a lint guard that fails if raw `bg-neutral-600/700/800/900`, `bg-white/*`, or `border-white/*` classes appear in an allowlisted set of migrated directories. Expand the allowlist as more surfaces migrate.
+
+Category colors (`bg-emerald-500`, `bg-blue-500`, ...) in `src/utils/categoryColors.ts` are data-encoding colors, NOT theme tokens — they stay visually distinct across modes.
+
 ## Backend
 
 - **Entry point:** `src/server/index.ts` (uses `createApp()` from `src/server/app.ts`).

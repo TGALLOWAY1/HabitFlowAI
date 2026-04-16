@@ -136,6 +136,7 @@ Canonical inventory of all user-facing features. Keep this document in sync with
 
 ## Settings & Account
 
+- **Appearance (Theme)** — Light / Dark / System. User-menu quick toggle + labeled Settings section. Preference syncs across devices via `DashboardPrefs.themeMode`; `system` mode tracks `prefers-color-scheme` at runtime. Default is Dark.
 - **Gemini API Key** — Add, view, or remove AI integration key
 - **Apple Health Link** — Connect health integration (beta users)
 - **Setup Guide Reopen** — Re-trigger onboarding walkthrough
