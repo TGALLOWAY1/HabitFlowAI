@@ -164,17 +164,17 @@ export const HabitHistoryModal: React.FC<HabitHistoryModalProps> = ({ habitId, o
     return (
         <div className="modal-overlay fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" onClick={onClose}>
             <div
-                className="bg-neutral-900 border border-white/10 rounded-xl shadow-2xl w-full max-w-lg max-h-[85dvh] flex flex-col"
+                className="bg-surface-0 border border-line-subtle rounded-xl shadow-2xl w-full max-w-lg max-h-[85dvh] flex flex-col"
                 onClick={e => e.stopPropagation()}
             >
                 {/* Header */}
-                <div className="flex justify-between items-center px-5 py-4 border-b border-white/5">
-                    <h2 className="text-lg font-bold text-neutral-100">
+                <div className="flex justify-between items-center px-5 py-4 border-b border-line-subtle">
+                    <h2 className="text-lg font-bold text-content-primary">
                         {habit.name}
                     </h2>
                     <button
                         onClick={onClose}
-                        className="min-h-[44px] min-w-[44px] flex items-center justify-center text-neutral-500 hover:text-neutral-300 -mr-2"
+                        className="min-h-[44px] min-w-[44px] flex items-center justify-center text-content-muted hover:text-content-secondary -mr-2"
                         aria-label="Close"
                     >
                         <X size={20} />
@@ -183,7 +183,7 @@ export const HabitHistoryModal: React.FC<HabitHistoryModalProps> = ({ habitId, o
 
                 <div className="flex-1 overflow-y-auto modal-scroll">
                     {loading ? (
-                        <div className="text-center py-12 text-neutral-500">Loading history...</div>
+                        <div className="text-center py-12 text-content-muted">Loading history...</div>
                     ) : (
                         <>
                             {/* Calendar Section */}
@@ -192,16 +192,16 @@ export const HabitHistoryModal: React.FC<HabitHistoryModalProps> = ({ habitId, o
                                 <div className="flex items-center justify-between mb-3">
                                     <button
                                         onClick={() => setCurrentMonth(prev => subMonths(prev, 1))}
-                                        className="p-1.5 rounded-lg hover:bg-white/5 text-neutral-400 hover:text-white transition-colors"
+                                        className="p-1.5 rounded-lg hover:bg-surface-2 text-content-secondary hover:text-content-primary transition-colors"
                                     >
                                         <ChevronLeft size={18} />
                                     </button>
-                                    <span className="text-sm font-semibold text-neutral-200">
+                                    <span className="text-sm font-semibold text-content-primary">
                                         {format(currentMonth, 'MMMM yyyy')}
                                     </span>
                                     <button
                                         onClick={() => setCurrentMonth(prev => addMonths(prev, 1))}
-                                        className="p-1.5 rounded-lg hover:bg-white/5 text-neutral-400 hover:text-white transition-colors"
+                                        className="p-1.5 rounded-lg hover:bg-surface-2 text-content-secondary hover:text-content-primary transition-colors"
                                         disabled={isSameMonth(currentMonth, today)}
                                     >
                                         <ChevronRight size={18} className={isSameMonth(currentMonth, today) ? 'opacity-30' : ''} />
@@ -211,7 +211,7 @@ export const HabitHistoryModal: React.FC<HabitHistoryModalProps> = ({ habitId, o
                                 {/* Weekday Headers */}
                                 <div className="grid grid-cols-7 gap-1 mb-1">
                                     {WEEKDAY_LABELS.map(d => (
-                                        <div key={d} className="text-center text-[10px] font-medium text-neutral-600 py-1">
+                                        <div key={d} className="text-center text-[10px] font-medium text-content-muted py-1">
                                             {d}
                                         </div>
                                     ))}
@@ -239,10 +239,10 @@ export const HabitHistoryModal: React.FC<HabitHistoryModalProps> = ({ habitId, o
                                                     !inMonth && "opacity-30",
                                                     isFuture && "opacity-20 cursor-not-allowed",
                                                     isSelected
-                                                        ? "bg-emerald-500/20 border border-emerald-500/50 text-emerald-400"
+                                                        ? "bg-accent-soft border border-emerald-500/50 text-accent-contrast"
                                                         : isToday
-                                                            ? "bg-white/5 border border-white/10 text-white font-bold"
-                                                            : "hover:bg-white/5 text-neutral-400",
+                                                            ? "bg-white/5 border border-line-subtle text-content-primary font-bold"
+                                                            : "hover:bg-surface-2 text-content-secondary",
                                                     !isFuture && !isSelected && "cursor-pointer"
                                                 )}
                                             >
@@ -250,7 +250,7 @@ export const HabitHistoryModal: React.FC<HabitHistoryModalProps> = ({ habitId, o
                                                 {hasEntries && (
                                                     <span className={cn(
                                                         "mt-0.5 text-[8px] font-bold leading-none",
-                                                        isSelected ? "text-emerald-400" : "text-emerald-500"
+                                                        isSelected ? "text-accent-contrast" : "text-emerald-500"
                                                     )}>
                                                         {isQuantity ? dayTotal : '●'}
                                                     </span>
@@ -269,12 +269,12 @@ export const HabitHistoryModal: React.FC<HabitHistoryModalProps> = ({ habitId, o
                                 {selectedDate ? (
                                     <div>
                                         <div className="flex items-center justify-between mb-3">
-                                            <h3 className="text-sm font-semibold text-neutral-200">
+                                            <h3 className="text-sm font-semibold text-content-primary">
                                                 {format(new Date(selectedDate + 'T12:00:00'), 'EEEE, MMM d, yyyy')}
                                             </h3>
                                             <button
                                                 onClick={() => { setShowNewEntry(true); setEditingId(null); }}
-                                                className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10 rounded-md transition-colors"
+                                                className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-accent-contrast hover:text-accent-contrast hover:bg-accent-strong/10 rounded-md transition-colors"
                                             >
                                                 <Plus size={14} />
                                                 Add Entry
@@ -283,28 +283,28 @@ export const HabitHistoryModal: React.FC<HabitHistoryModalProps> = ({ habitId, o
 
                                         {/* New Entry Form */}
                                         {showNewEntry && (
-                                            <div className="flex items-center gap-2 mb-3 p-3 bg-emerald-500/5 border border-emerald-500/20 rounded-lg">
+                                            <div className="flex items-center gap-2 mb-3 p-3 bg-emerald-500/5 border border-accent/20 rounded-lg">
                                                 <input
                                                     type="number"
                                                     value={newEntryValue}
                                                     onChange={e => setNewEntryValue(Number(e.target.value))}
-                                                    className="w-20 px-2 py-1.5 text-sm bg-neutral-800 border border-white/10 rounded-md text-neutral-200 focus:outline-none focus:border-emerald-500/50"
+                                                    className="w-20 px-2 py-1.5 text-sm bg-surface-1 border border-line-subtle rounded-md text-content-primary focus:outline-none focus:border-emerald-500/50"
                                                     autoFocus
                                                 />
                                                 {habit.goal?.unit && (
-                                                    <span className="text-xs text-neutral-500">{habit.goal.unit}</span>
+                                                    <span className="text-xs text-content-muted">{habit.goal.unit}</span>
                                                 )}
                                                 <div className="ml-auto flex gap-2">
                                                     <button
                                                         onClick={handleCreateEntry}
                                                         disabled={saving}
-                                                        className="px-3 py-1.5 text-xs font-medium bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 rounded-md transition-colors disabled:opacity-50"
+                                                        className="px-3 py-1.5 text-xs font-medium bg-accent-soft text-accent-contrast hover:bg-accent-strong/30 rounded-md transition-colors disabled:opacity-50"
                                                     >
                                                         {saving ? 'Saving...' : 'Save'}
                                                     </button>
                                                     <button
                                                         onClick={() => setShowNewEntry(false)}
-                                                        className="px-3 py-1.5 text-xs text-neutral-500 hover:text-neutral-300 rounded-md transition-colors"
+                                                        className="px-3 py-1.5 text-xs text-content-muted hover:text-content-secondary rounded-md transition-colors"
                                                     >
                                                         Cancel
                                                     </button>
@@ -314,34 +314,34 @@ export const HabitHistoryModal: React.FC<HabitHistoryModalProps> = ({ habitId, o
 
                                         {/* Existing Entries for Selected Date */}
                                         {selectedEntries.length === 0 && !showNewEntry ? (
-                                            <p className="text-sm text-neutral-600 py-4 text-center">No entries for this date.</p>
+                                            <p className="text-sm text-content-muted py-4 text-center">No entries for this date.</p>
                                         ) : (
                                             <div className="space-y-2">
                                                 {selectedEntries.map(entry => (
-                                                    <div key={entry.id} className="flex items-center gap-3 p-3 bg-neutral-800/50 border border-white/5 rounded-lg">
+                                                    <div key={entry.id} className="flex items-center gap-3 p-3 bg-surface-1/50 border border-line-subtle rounded-lg">
                                                         {editingId === entry.id ? (
                                                             <div className="flex items-center gap-2 flex-1">
                                                                 <input
                                                                     type="number"
                                                                     value={editValue}
                                                                     onChange={e => setEditValue(Number(e.target.value))}
-                                                                    className="w-20 px-2 py-1.5 text-sm bg-neutral-800 border border-white/10 rounded-md text-neutral-200 focus:outline-none focus:border-emerald-500/50"
+                                                                    className="w-20 px-2 py-1.5 text-sm bg-surface-1 border border-line-subtle rounded-md text-content-primary focus:outline-none focus:border-emerald-500/50"
                                                                     autoFocus
                                                                 />
                                                                 {habit.goal?.unit && (
-                                                                    <span className="text-xs text-neutral-500">{habit.goal.unit}</span>
+                                                                    <span className="text-xs text-content-muted">{habit.goal.unit}</span>
                                                                 )}
                                                                 <div className="ml-auto flex gap-2">
                                                                     <button
                                                                         onClick={() => handleSaveEdit(entry)}
                                                                         disabled={saving}
-                                                                        className="px-3 py-1.5 text-xs font-medium text-emerald-400 hover:text-emerald-300 transition-colors disabled:opacity-50"
+                                                                        className="px-3 py-1.5 text-xs font-medium text-accent-contrast hover:text-accent-contrast transition-colors disabled:opacity-50"
                                                                     >
                                                                         {saving ? 'Saving...' : 'Save'}
                                                                     </button>
                                                                     <button
                                                                         onClick={() => setEditingId(null)}
-                                                                        className="px-3 py-1.5 text-xs text-neutral-500 hover:text-neutral-300 transition-colors"
+                                                                        className="px-3 py-1.5 text-xs text-content-muted hover:text-content-secondary transition-colors"
                                                                     >
                                                                         Cancel
                                                                     </button>
@@ -351,14 +351,14 @@ export const HabitHistoryModal: React.FC<HabitHistoryModalProps> = ({ habitId, o
                                                             <>
                                                                 <div className="flex-1 min-w-0">
                                                                     <div className="flex items-center gap-2">
-                                                                        <span className="font-mono font-bold text-neutral-200 text-sm">
+                                                                        <span className="font-mono font-bold text-content-primary text-sm">
                                                                             {entry.value ?? '—'}
                                                                         </span>
                                                                         {habit.goal?.unit && (
-                                                                            <span className="text-xs text-neutral-500">{habit.goal.unit}</span>
+                                                                            <span className="text-xs text-content-muted">{habit.goal.unit}</span>
                                                                         )}
                                                                     </div>
-                                                                    <div className="text-[10px] text-neutral-600 mt-0.5">
+                                                                    <div className="text-[10px] text-content-muted mt-0.5">
                                                                         {entry.source}
                                                                         {(() => {
                                                                             const d = new Date(entry.timestamp);
@@ -374,14 +374,14 @@ export const HabitHistoryModal: React.FC<HabitHistoryModalProps> = ({ habitId, o
                                                                 <div className="flex items-center gap-1">
                                                                     <button
                                                                         onClick={() => handleStartEdit(entry)}
-                                                                        className="p-1.5 rounded-md text-neutral-500 hover:text-neutral-300 hover:bg-white/5 transition-colors"
+                                                                        className="p-1.5 rounded-md text-content-muted hover:text-content-secondary hover:bg-surface-2 transition-colors"
                                                                         title="Edit"
                                                                     >
                                                                         <Pencil size={14} />
                                                                     </button>
                                                                     <button
                                                                         onClick={() => handleDelete(entry.id)}
-                                                                        className="p-1.5 rounded-md text-neutral-500 hover:text-red-400 hover:bg-white/5 transition-colors"
+                                                                        className="p-1.5 rounded-md text-content-muted hover:text-red-400 hover:bg-surface-2 transition-colors"
                                                                         title="Delete"
                                                                     >
                                                                         <Trash2 size={14} />
@@ -397,11 +397,11 @@ export const HabitHistoryModal: React.FC<HabitHistoryModalProps> = ({ habitId, o
                                 ) : (
                                     /* Date List - show all dates with entries */
                                     <div>
-                                        <h3 className="text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-2">
+                                        <h3 className="text-xs font-semibold text-content-muted uppercase tracking-wider mb-2">
                                             Entry History ({entryDates.length} {entryDates.length === 1 ? 'day' : 'days'})
                                         </h3>
                                         {entryDates.length === 0 ? (
-                                            <p className="text-sm text-neutral-600 py-4 text-center">No entries yet. Select a date on the calendar to add one.</p>
+                                            <p className="text-sm text-content-muted py-4 text-center">No entries yet. Select a date on the calendar to add one.</p>
                                         ) : (
                                             <div className="space-y-1">
                                                 {entryDates.map(dayKey => {
@@ -412,24 +412,24 @@ export const HabitHistoryModal: React.FC<HabitHistoryModalProps> = ({ habitId, o
                                                         <button
                                                             key={dayKey}
                                                             onClick={() => { setSelectedDate(dayKey); setEditingId(null); setShowNewEntry(false); }}
-                                                            className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg hover:bg-white/5 transition-colors text-left"
+                                                            className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg hover:bg-surface-2 transition-colors text-left"
                                                         >
-                                                            <span className="text-sm text-neutral-300">
+                                                            <span className="text-sm text-content-secondary">
                                                                 {format(new Date(dayKey + 'T12:00:00'), 'EEE, MMM d, yyyy')}
                                                             </span>
                                                             <div className="flex items-center gap-2">
                                                                 {isQuantity && (
-                                                                    <span className="font-mono text-sm font-bold text-neutral-200">
+                                                                    <span className="font-mono text-sm font-bold text-content-primary">
                                                                         {total}
-                                                                        {habit.goal?.unit && <span className="text-xs text-neutral-500 ml-0.5">{habit.goal.unit}</span>}
+                                                                        {habit.goal?.unit && <span className="text-xs text-content-muted ml-0.5">{habit.goal.unit}</span>}
                                                                     </span>
                                                                 )}
                                                                 {count > 1 && (
-                                                                    <span className="text-[10px] text-neutral-600 bg-white/5 px-1.5 py-0.5 rounded">
+                                                                    <span className="text-[10px] text-content-muted bg-white/5 px-1.5 py-0.5 rounded">
                                                                         {count}x
                                                                     </span>
                                                                 )}
-                                                                <ChevronRight size={14} className="text-neutral-600" />
+                                                                <ChevronRight size={14} className="text-content-muted" />
                                                             </div>
                                                         </button>
                                                     );

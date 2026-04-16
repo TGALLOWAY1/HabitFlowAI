@@ -65,7 +65,7 @@ export const MiniHeatmap: React.FC<MiniHeatmapProps> = ({ data }) => {
                             title={tooltipText}
                         >
                             {!String(day.date).startsWith('empty') && (
-                                <div className="hidden group-hover/cell:block absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 bg-neutral-900 border border-white/10 text-[10px] text-white rounded whitespace-nowrap z-10 pointer-events-none shadow-xl">
+                                <div className="hidden group-hover/cell:block absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 bg-surface-0 border border-line-subtle text-[10px] text-content-primary rounded whitespace-nowrap z-10 pointer-events-none shadow-xl">
                                     {day.date} • {day.value}
                                 </div>
                             )}

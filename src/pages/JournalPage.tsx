@@ -50,12 +50,12 @@ export function JournalPage() {
 
             {/* Tab Navigation (Hidden when editing an existing entry to focus) */}
             {!isEditingExisting && (
-                <div className="flex gap-4 border-b border-white/5 mb-4">
+                <div className="flex gap-4 border-b border-line-subtle mb-4">
                     {tabs.map(({ id, label, icon: Icon }) => (
                         <button
                             key={id}
                             onClick={() => setActiveTab(id)}
-                            className={`pb-3 px-3 text-sm font-medium transition-colors relative ${activeTab === id ? 'text-emerald-400' : 'text-white/40 hover:text-white/60'}`}
+                            className={`pb-3 px-3 text-sm font-medium transition-colors relative ${activeTab === id ? 'text-accent-contrast' : 'text-content-primary/40 hover:text-content-primary/60'}`}
                         >
                             <div className="flex items-center gap-2">
                                 <Icon size={16} />

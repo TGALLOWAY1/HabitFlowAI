@@ -83,8 +83,8 @@ export const WeeklyHabitCard: React.FC<WeeklyHabitCardProps> = ({
                     <div className={cn(
                         "w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all",
                         isCompleted
-                            ? "bg-emerald-500 border-emerald-500 text-neutral-900"
-                            : "border-line-strong hover:border-emerald-500/50"
+                            ? "bg-accent border-accent text-content-on-accent"
+                            : "border-line-strong hover:border-accent/50"
                     )}>
                         {isCompleted && <Check size={14} strokeWidth={3} />}
                     </div>
@@ -98,7 +98,7 @@ export const WeeklyHabitCard: React.FC<WeeklyHabitCardProps> = ({
                                 className={cn(
                                     "w-3 h-8 rounded-full transition-all",
                                     i < currentCount
-                                        ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]"
+                                        ? "bg-accent shadow-[0_0_8px_rgba(16,185,129,0.4)]"
                                         : "bg-surface-1 border border-line-subtle"
                                 )}
                             />
@@ -144,7 +144,7 @@ export const WeeklyHabitCard: React.FC<WeeklyHabitCardProps> = ({
             className={cn(
                 "group relative flex flex-col gap-4 p-5 rounded-2xl border transition-all cursor-pointer select-none min-h-[160px]",
                 isCompleted
-                    ? "bg-surface-0/80 border-accent/30 hover:border-emerald-500/50"
+                    ? "bg-surface-0/80 border-accent/30 hover:border-accent/50"
                     : "bg-surface-0 border-line-subtle hover:bg-surface-1 hover:border-line-subtle"
             )}
         >
@@ -181,7 +181,7 @@ export const WeeklyHabitCard: React.FC<WeeklyHabitCardProps> = ({
                     </button>
                     <button
                         onClick={(e) => { e.stopPropagation(); onDelete(habit); }}
-                        className="p-1.5 hover:bg-red-500/10 rounded-lg text-content-secondary hover:text-red-400"
+                        className="p-1.5 hover:bg-danger-soft rounded-lg text-content-secondary hover:text-danger-contrast"
                         title="Delete"
                     >
                         <Trash2 size={14} />

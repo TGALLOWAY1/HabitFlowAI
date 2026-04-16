@@ -304,7 +304,7 @@ export const DayView = ({ onAddHabit, onEditHabit, onViewHistory, onDeleteHabit 
 
                 {/* Definitions — matching InfoModal structure */}
                 <div className="w-full max-w-sm space-y-4 mb-6 text-left">
-                    <div className="pl-3 border-l-2 border-emerald-500/40">
+                    <div className="pl-3 border-l-2 border-accent/40">
                         <p className="text-sm text-content-primary">
                             <span className="font-bold text-accent-contrast">Habit</span>
                         </p>
@@ -315,14 +315,14 @@ export const DayView = ({ onAddHabit, onEditHabit, onViewHistory, onDeleteHabit 
                             ))}
                         </div>
                     </div>
-                    <div className="pl-3 border-l-2 border-emerald-500/40">
+                    <div className="pl-3 border-l-2 border-accent/40">
                         <p className="text-sm text-content-primary">
                             <span className="font-bold text-accent-contrast">Routine</span>
                         </p>
                         <p className="text-sm text-content-secondary mt-1">A group of habits performed together in a sequence.</p>
                         <p className="text-xs text-content-muted italic mt-1.5 pl-2">— "Morning Reset" — Stretch + Meditate + Review goals</p>
                     </div>
-                    <div className="pl-3 border-l-2 border-emerald-500/40">
+                    <div className="pl-3 border-l-2 border-accent/40">
                         <p className="text-sm text-content-primary">
                             <span className="font-bold text-accent-contrast">Goal</span>
                         </p>
@@ -334,7 +334,7 @@ export const DayView = ({ onAddHabit, onEditHabit, onViewHistory, onDeleteHabit 
                 {onAddHabit && (
                     <button
                         onClick={onAddHabit}
-                        className="flex items-center gap-2 px-5 py-2.5 bg-emerald-500 hover:bg-accent-strong text-content-primary font-medium rounded-lg transition-colors"
+                        className="flex items-center gap-2 px-5 py-2.5 bg-accent hover:bg-accent-strong text-content-primary font-medium rounded-lg transition-colors"
                     >
                         <Plus size={18} />
                         Create Your First Habit

@@ -34,19 +34,19 @@ const CompactGoalCard: React.FC<GoalGridCardProps> = ({
 
     return (
         <div
-            className={`group flex items-center gap-2 bg-neutral-900/50 hover:bg-neutral-800/80 border rounded-xl px-3 py-2.5 transition-all cursor-pointer ${
+            className={`group flex items-center gap-2 bg-surface-0/50 hover:bg-surface-1/80 border rounded-xl px-3 py-2.5 transition-all cursor-pointer ${
                 isCompleted
-                    ? 'border-emerald-500/30'
+                    ? 'border-accent/30'
                     : progress.inactivityWarning
                         ? 'border-amber-500/40'
-                        : 'border-white/5 hover:border-white/10'
+                        : 'border-line-subtle hover:border-line-subtle'
             } ${isDragging ? 'opacity-50 shadow-2xl' : ''}`}
             onClick={() => onViewDetails(goal.id)}
         >
             {/* Drag handle */}
             <div
                 {...dragHandleProps}
-                className="flex-shrink-0 text-neutral-600 hover:text-neutral-400 cursor-grab active:cursor-grabbing touch-none"
+                className="flex-shrink-0 text-content-muted hover:text-content-secondary cursor-grab active:cursor-grabbing touch-none"
                 onClick={(e) => e.stopPropagation()}
             >
                 <GripVertical size={16} />
@@ -55,15 +55,15 @@ const CompactGoalCard: React.FC<GoalGridCardProps> = ({
             {/* Status icon */}
             <div className="flex-shrink-0">
                 {isCompleted ? (
-                    <div className="w-5 h-5 rounded-full bg-emerald-500/20 flex items-center justify-center">
-                        <Check size={12} className="text-emerald-400" />
+                    <div className="w-5 h-5 rounded-full bg-accent-soft flex items-center justify-center">
+                        <Check size={12} className="text-accent-contrast" />
                     </div>
                 ) : goal.type === 'onetime' ? (
-                    <div className="w-5 h-5 rounded-full border border-neutral-600 flex items-center justify-center">
-                        <div className="w-2 h-2 rounded-full bg-neutral-600" />
+                    <div className="w-5 h-5 rounded-full border border-line-strong flex items-center justify-center">
+                        <div className="w-2 h-2 rounded-full bg-surface-2" />
                     </div>
                 ) : (
-                    <div className="w-5 h-5 rounded-full border border-emerald-500/40 flex items-center justify-center">
+                    <div className="w-5 h-5 rounded-full border border-accent/40 flex items-center justify-center">
                         <div className="w-2 h-2 rounded-full bg-emerald-500/60" />
                     </div>
                 )}
@@ -71,7 +71,7 @@ const CompactGoalCard: React.FC<GoalGridCardProps> = ({
 
             {/* Title */}
             <span className={`flex-1 text-sm font-medium truncate ${
-                isCompleted ? 'text-neutral-500 line-through' : 'text-neutral-100'
+                isCompleted ? 'text-content-muted line-through' : 'text-content-primary'
             }`}>
                 {goal.title}
             </span>
@@ -80,7 +80,7 @@ const CompactGoalCard: React.FC<GoalGridCardProps> = ({
             <div className="flex items-center gap-2 flex-shrink-0">
                 {/* Deadline */}
                 {deadlineLabel && !isCompleted && (
-                    <span className="flex items-center gap-1 text-xs text-neutral-500">
+                    <span className="flex items-center gap-1 text-xs text-content-muted">
                         <Clock size={11} />
                         {deadlineLabel}
                     </span>
@@ -100,7 +100,7 @@ const CompactGoalCard: React.FC<GoalGridCardProps> = ({
                         e.stopPropagation();
                         onEdit(goal.id);
                     }}
-                    className="p-1 text-neutral-600 hover:text-white hover:bg-white/10 rounded-md transition-colors opacity-0 group-hover:opacity-100"
+                    className="p-1 text-content-muted hover:text-content-primary hover:bg-surface-2 rounded-md transition-colors opacity-0 group-hover:opacity-100"
                     title="Edit Goal"
                 >
                     <Edit size={14} />
@@ -129,12 +129,12 @@ const CumulativeGoalCard: React.FC<GoalGridCardProps> = ({
 
     return (
         <div
-            className={`group relative flex flex-col bg-neutral-900/50 hover:bg-neutral-800/80 border rounded-xl transition-all overflow-hidden cursor-pointer ${
+            className={`group relative flex flex-col bg-surface-0/50 hover:bg-surface-1/80 border rounded-xl transition-all overflow-hidden cursor-pointer ${
                 isCompleted
-                    ? 'border-emerald-500/30'
+                    ? 'border-accent/30'
                     : progress.inactivityWarning
                         ? 'border-amber-500/40'
-                        : 'border-white/5 hover:border-white/10'
+                        : 'border-line-subtle hover:border-line-subtle'
             } ${isDragging ? 'opacity-50 shadow-2xl' : ''}`}
             onClick={() => onViewDetails(goal.id)}
         >
@@ -143,17 +143,17 @@ const CumulativeGoalCard: React.FC<GoalGridCardProps> = ({
                 {/* Drag handle */}
                 <div
                     {...dragHandleProps}
-                    className="flex-shrink-0 mt-0.5 text-neutral-600 hover:text-neutral-400 cursor-grab active:cursor-grabbing touch-none"
+                    className="flex-shrink-0 mt-0.5 text-content-muted hover:text-content-secondary cursor-grab active:cursor-grabbing touch-none"
                     onClick={(e) => e.stopPropagation()}
                 >
                     <GripVertical size={16} />
                 </div>
 
                 <div className="flex-1 min-w-0">
-                    <h3 className="font-semibold text-neutral-100 truncate text-sm leading-tight">
+                    <h3 className="font-semibold text-content-primary truncate text-sm leading-tight">
                         {goal.title}
                     </h3>
-                    <div className="text-xs text-neutral-500 mt-0.5">
+                    <div className="text-xs text-content-muted mt-0.5">
                         {goal.targetValue} {goal.unit} total
                         {goal.deadline && (
                             <span> · by {new Date(goal.deadline + 'T00:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
@@ -167,7 +167,7 @@ const CumulativeGoalCard: React.FC<GoalGridCardProps> = ({
                         e.stopPropagation();
                         onEdit(goal.id);
                     }}
-                    className="flex-shrink-0 p-1 text-neutral-600 hover:text-white hover:bg-white/10 rounded-md transition-colors opacity-0 group-hover:opacity-100"
+                    className="flex-shrink-0 p-1 text-content-muted hover:text-content-primary hover:bg-surface-2 rounded-md transition-colors opacity-0 group-hover:opacity-100"
                     title="Edit Goal"
                 >
                     <Edit size={14} />
@@ -178,11 +178,11 @@ const CumulativeGoalCard: React.FC<GoalGridCardProps> = ({
             <div className="px-3 pb-3">
                 {isLowTarget ? (
                     <div className="w-full py-1">
-                        <div className="relative h-2.5 w-full bg-neutral-800 rounded-full overflow-hidden">
+                        <div className="relative h-2.5 w-full bg-surface-1 rounded-full overflow-hidden">
                             <div
                                 className={`h-full rounded-full transition-all duration-500 ease-out ${
                                     progress.percent >= 100
-                                        ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.3)]'
+                                        ? 'bg-accent shadow-[0_0_10px_rgba(16,185,129,0.3)]'
                                         : 'bg-emerald-500'
                                 }`}
                                 style={{ width: `${Math.min(100, progress.percent)}%` }}
@@ -190,12 +190,12 @@ const CumulativeGoalCard: React.FC<GoalGridCardProps> = ({
                             {Array.from({ length: target - 1 }, (_, i) => (
                                 <div
                                     key={i}
-                                    className="absolute top-0 h-full w-px bg-neutral-700"
+                                    className="absolute top-0 h-full w-px bg-surface-2"
                                     style={{ left: `${((i + 1) / target) * 100}%` }}
                                 />
                             ))}
                         </div>
-                        <div className="mt-1 text-xs text-neutral-400 font-medium text-center tabular-nums">
+                        <div className="mt-1 text-xs text-content-secondary font-medium text-center tabular-nums">
                             {progress.currentValue} / {target} {goal.unit || ''}
                         </div>
                     </div>
@@ -207,17 +207,17 @@ const CumulativeGoalCard: React.FC<GoalGridCardProps> = ({
                             targetValue={target}
                         />
                         <div className="mt-1.5">
-                            <div className="h-1.5 w-full bg-neutral-800 rounded-full overflow-hidden">
+                            <div className="h-1.5 w-full bg-surface-1 rounded-full overflow-hidden">
                                 <div
                                     className={`h-full rounded-full transition-all duration-500 ease-out ${
                                         progress.percent >= 100
-                                            ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.3)]'
+                                            ? 'bg-accent shadow-[0_0_10px_rgba(16,185,129,0.3)]'
                                             : 'bg-emerald-500'
                                     }`}
                                     style={{ width: `${Math.min(100, progress.percent)}%` }}
                                 />
                             </div>
-                            <div className="mt-1 text-xs text-neutral-400 font-medium text-center tabular-nums">
+                            <div className="mt-1 text-xs text-content-secondary font-medium text-center tabular-nums">
                                 {progress.currentValue} / {target} {goal.unit || ''}
                             </div>
                         </div>

@@ -47,20 +47,20 @@ type MetricUiConfig = {
 const METRIC_UI: Record<WellbeingMetricKey, MetricUiConfig> = {
     depression: { key: 'depression', label: 'Depression (legacy)', icon: <Brain size={16} className="text-blue-400" />, colorClass: 'text-blue-400', min: 1, max: 5, step: 1, kind: 'number' },
     anxiety: { key: 'anxiety', label: 'Anxiety', icon: <Activity size={16} className="text-purple-400" />, colorClass: 'text-purple-400', min: 1, max: 5, step: 1, kind: 'number' },
-    energy: { key: 'energy', label: 'Energy', icon: <Battery size={16} className="text-emerald-400" />, colorClass: 'text-emerald-400', min: 1, max: 5, step: 1, kind: 'number' },
+    energy: { key: 'energy', label: 'Energy', icon: <Battery size={16} className="text-accent-contrast" />, colorClass: 'text-accent-contrast', min: 1, max: 5, step: 1, kind: 'number' },
     sleepScore: { key: 'sleepScore', label: 'Sleep score', icon: <Moon size={16} className="text-indigo-400" />, colorClass: 'text-indigo-400', min: 0, max: 100, step: 1, tab: 'morning', kind: 'number' },
     sleepQuality: { key: 'sleepQuality', label: 'Sleep quality (subjective)', icon: <Heart size={16} className="text-fuchsia-300" />, colorClass: 'text-fuchsia-300', min: 0, max: 4, step: 1, tab: 'morning', kind: 'number' },
     lowMood: { key: 'lowMood', label: 'Low Mood', icon: <Brain size={16} className="text-blue-400" />, colorClass: 'text-blue-400', min: 0, max: 4, step: 1, kind: 'number' },
-    calm: { key: 'calm', label: 'Calm', icon: <Wind size={16} className="text-emerald-400" />, colorClass: 'text-emerald-400', min: 0, max: 4, step: 1, kind: 'number' },
+    calm: { key: 'calm', label: 'Calm', icon: <Wind size={16} className="text-accent-contrast" />, colorClass: 'text-accent-contrast', min: 0, max: 4, step: 1, kind: 'number' },
     stress: { key: 'stress', label: 'Stress', icon: <Target size={16} className="text-orange-400" />, colorClass: 'text-orange-400', min: 0, max: 4, step: 1, kind: 'number' },
     focus: { key: 'focus', label: 'Focus', icon: <FocusIcon size={16} className="text-amber-300" />, colorClass: 'text-amber-300', min: 0, max: 4, step: 1, kind: 'number' },
     satisfaction: { key: 'satisfaction', label: 'Satisfaction', icon: <SmilePlus size={16} className="text-lime-400" />, colorClass: 'text-lime-400', min: 0, max: 4, step: 1, kind: 'number' },
-    notes: { key: 'notes', label: 'Notes (Optional)', icon: null, colorClass: 'text-neutral-300', min: 0, max: 0, step: 1, kind: 'text' },
-    readiness: { key: 'readiness', label: 'Readiness', icon: null, colorClass: 'text-neutral-400', min: 0, max: 4, step: 1, kind: 'number' },
-    soreness: { key: 'soreness', label: 'Soreness', icon: null, colorClass: 'text-neutral-400', min: 0, max: 4, step: 1, kind: 'number' },
-    hydration: { key: 'hydration', label: 'Hydration', icon: null, colorClass: 'text-neutral-400', min: 0, max: 4, step: 1, kind: 'number' },
-    fueling: { key: 'fueling', label: 'Fueling', icon: null, colorClass: 'text-neutral-400', min: 0, max: 4, step: 1, kind: 'number' },
-    recovery: { key: 'recovery', label: 'Recovery', icon: null, colorClass: 'text-neutral-400', min: 0, max: 4, step: 1, kind: 'number' },
+    notes: { key: 'notes', label: 'Notes (Optional)', icon: null, colorClass: 'text-content-secondary', min: 0, max: 0, step: 1, kind: 'text' },
+    readiness: { key: 'readiness', label: 'Readiness', icon: null, colorClass: 'text-content-secondary', min: 0, max: 4, step: 1, kind: 'number' },
+    soreness: { key: 'soreness', label: 'Soreness', icon: null, colorClass: 'text-content-secondary', min: 0, max: 4, step: 1, kind: 'number' },
+    hydration: { key: 'hydration', label: 'Hydration', icon: null, colorClass: 'text-content-secondary', min: 0, max: 4, step: 1, kind: 'number' },
+    fueling: { key: 'fueling', label: 'Fueling', icon: null, colorClass: 'text-content-secondary', min: 0, max: 4, step: 1, kind: 'number' },
+    recovery: { key: 'recovery', label: 'Recovery', icon: null, colorClass: 'text-content-secondary', min: 0, max: 4, step: 1, kind: 'number' },
 };
 
 export const DailyCheckInModal: React.FC<DailyCheckInModalProps> = ({ isOpen, onClose, onNavigateHistory }) => {
@@ -218,16 +218,16 @@ export const DailyCheckInModal: React.FC<DailyCheckInModalProps> = ({ isOpen, on
 
     return (
         <div className="modal-overlay fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-            <div className="bg-neutral-900 border border-white/10 rounded-2xl w-full max-w-md max-h-[90dvh] shadow-2xl overflow-hidden flex flex-col animate-in fade-in zoom-in duration-200">
+            <div className="bg-surface-0 border border-line-subtle rounded-2xl w-full max-w-md max-h-[90dvh] shadow-2xl overflow-hidden flex flex-col animate-in fade-in zoom-in duration-200">
                 {/* Header with Tabs */}
-                <div className="border-b border-white/5 bg-neutral-800/50">
+                <div className="border-b border-line-subtle bg-surface-1/50">
                     <div className="flex items-center justify-between p-4 pb-0">
-                        <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+                        <h2 className="text-lg font-semibold text-content-primary flex items-center gap-2">
                             Daily Check-in
                         </h2>
                         <button
                             onClick={onClose}
-                            className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-full hover:bg-white/10 text-neutral-400 hover:text-white transition-colors -mr-1"
+                            className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-full hover:bg-surface-2 text-content-secondary hover:text-content-primary transition-colors -mr-1"
                             aria-label="Close"
                         >
                             <X size={20} />
@@ -238,8 +238,8 @@ export const DailyCheckInModal: React.FC<DailyCheckInModalProps> = ({ isOpen, on
                         <button
                             onClick={() => setActiveTab('morning')}
                             className={`flex items-center gap-2 pb-3 text-sm font-medium border-b-2 transition-colors ${activeTab === 'morning'
-                                ? 'border-amber-400 text-white'
-                                : 'border-transparent text-neutral-400 hover:text-white'
+                                ? 'border-amber-400 text-content-primary'
+                                : 'border-transparent text-content-secondary hover:text-content-primary'
                                 }`}
                         >
                             <Sun size={16} className={activeTab === 'morning' ? 'text-amber-400' : ''} />
@@ -248,8 +248,8 @@ export const DailyCheckInModal: React.FC<DailyCheckInModalProps> = ({ isOpen, on
                         <button
                             onClick={() => setActiveTab('evening')}
                             className={`flex items-center gap-2 pb-3 text-sm font-medium border-b-2 transition-colors ${activeTab === 'evening'
-                                ? 'border-indigo-400 text-white'
-                                : 'border-transparent text-neutral-400 hover:text-white'
+                                ? 'border-indigo-400 text-content-primary'
+                                : 'border-transparent text-content-secondary hover:text-content-primary'
                                 }`}
                         >
                             <Moon size={16} className={activeTab === 'evening' ? 'text-indigo-400' : ''} />
@@ -258,7 +258,7 @@ export const DailyCheckInModal: React.FC<DailyCheckInModalProps> = ({ isOpen, on
                         {onNavigateHistory && (
                             <button
                                 onClick={onNavigateHistory}
-                                className="flex items-center gap-2 pb-3 text-sm font-medium border-b-2 border-transparent text-neutral-400 hover:text-white transition-colors ml-auto"
+                                className="flex items-center gap-2 pb-3 text-sm font-medium border-b-2 border-transparent text-content-secondary hover:text-content-primary transition-colors ml-auto"
                             >
                                 <History size={16} />
                                 History
@@ -284,7 +284,7 @@ export const DailyCheckInModal: React.FC<DailyCheckInModalProps> = ({ isOpen, on
                             return (
                                 <div key={k} className="space-y-3">
                         <div className="flex justify-between text-sm">
-                            <label className="text-neutral-300 font-medium flex items-center gap-2">
+                            <label className="text-content-secondary font-medium flex items-center gap-2">
                                             {cfg.icon}
                                             {cfg.label}
                             </label>
@@ -299,10 +299,10 @@ export const DailyCheckInModal: React.FC<DailyCheckInModalProps> = ({ isOpen, on
                                         step={cfg.step}
                                         value={value}
                                         onChange={(e) => updateCurrentSession(k as any, Number(e.target.value))}
-                                        className="w-full h-2 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-emerald-500"
+                                        className="w-full h-2 bg-surface-1 rounded-lg appearance-none cursor-pointer accent-emerald-500"
                         />
                                     {(cfg.max <= 5) && (
-                        <div className="flex justify-between text-xs text-neutral-500 px-1">
+                        <div className="flex justify-between text-xs text-content-muted px-1">
                             <span>Low</span>
                             <span>High</span>
                         </div>
@@ -330,10 +330,10 @@ export const DailyCheckInModal: React.FC<DailyCheckInModalProps> = ({ isOpen, on
                             return (
                                 <div key={`extra-${k}`} className="space-y-3">
                                     <div className="flex justify-between items-center text-sm">
-                            <label className="text-neutral-300 font-medium flex items-center gap-2">
+                            <label className="text-content-secondary font-medium flex items-center gap-2">
                                             {cfg.icon}
                                             {cfg.label}
-                                            <span className="text-[10px] text-neutral-500 font-semibold">(added)</span>
+                                            <span className="text-[10px] text-content-muted font-semibold">(added)</span>
                             </label>
                                         <div className="flex items-center gap-3">
                                             <span className={`${cfg.colorClass} font-bold`}>
@@ -341,7 +341,7 @@ export const DailyCheckInModal: React.FC<DailyCheckInModalProps> = ({ isOpen, on
                                             </span>
                                             <button
                                                 onClick={() => handleRemoveExtraMetric(k)}
-                                                className="text-xs text-neutral-500 hover:text-white"
+                                                className="text-xs text-content-muted hover:text-content-primary"
                                                 title="Remove metric"
                                             >
                                                 Remove
@@ -355,10 +355,10 @@ export const DailyCheckInModal: React.FC<DailyCheckInModalProps> = ({ isOpen, on
                                         step={cfg.step}
                                         value={value}
                                         onChange={(e) => updateCurrentSession(k as any, Number(e.target.value))}
-                                        className="w-full h-2 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-emerald-500"
+                                        className="w-full h-2 bg-surface-1 rounded-lg appearance-none cursor-pointer accent-emerald-500"
                         />
                                     {(cfg.max <= 5) && (
-                        <div className="flex justify-between text-xs text-neutral-500 px-1">
+                        <div className="flex justify-between text-xs text-content-muted px-1">
                             <span>Low</span>
                             <span>High</span>
                         </div>
@@ -370,7 +370,7 @@ export const DailyCheckInModal: React.FC<DailyCheckInModalProps> = ({ isOpen, on
                     {/* Add another metric */}
                     {addableMetrics.length > 0 && (
                         <div className="pt-2">
-                            <div className="text-xs font-semibold text-neutral-400 mb-2">Add another metric</div>
+                            <div className="text-xs font-semibold text-content-secondary mb-2">Add another metric</div>
                             <select
                                 value=""
                                 onChange={(e) => {
@@ -378,7 +378,7 @@ export const DailyCheckInModal: React.FC<DailyCheckInModalProps> = ({ isOpen, on
                                     if (!key) return;
                                     handleAddMetric(key);
                                 }}
-                                className="w-full bg-neutral-800 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-emerald-500 outline-none"
+                                className="w-full bg-surface-1 border border-line-subtle rounded-lg px-3 py-2 text-sm text-content-primary focus:border-focus outline-none"
                             >
                                 <option value="" disabled>
                                     Select a metric…
@@ -389,7 +389,7 @@ export const DailyCheckInModal: React.FC<DailyCheckInModalProps> = ({ isOpen, on
                                     </option>
                                 ))}
                             </select>
-                            <div className="text-[11px] text-neutral-500 mt-2">
+                            <div className="text-[11px] text-content-muted mt-2">
                                 Added metrics will appear in future check-ins too.
                             </div>
                         </div>
@@ -400,20 +400,20 @@ export const DailyCheckInModal: React.FC<DailyCheckInModalProps> = ({ isOpen, on
                         {!notesOpen ? (
                             <button
                                 onClick={() => setNotesOpen(true)}
-                                className="text-sm text-neutral-300 hover:text-white transition-colors"
+                                className="text-sm text-content-secondary hover:text-content-primary transition-colors"
                             >
                                 + Add a note
                             </button>
                         ) : (
                             <div className="space-y-2">
                                 <div className="flex items-center justify-between">
-                                    <label className="text-sm text-neutral-300 font-medium">Note</label>
+                                    <label className="text-sm text-content-secondary font-medium">Note</label>
                                     <button
                                         onClick={() => {
                                             setNotesOpen(false);
                                             updateCurrentSession('notes', '');
                                         }}
-                                        className="text-xs text-neutral-500 hover:text-white"
+                                        className="text-xs text-content-muted hover:text-content-primary"
                                     >
                                         Hide
                                     </button>
@@ -422,7 +422,7 @@ export const DailyCheckInModal: React.FC<DailyCheckInModalProps> = ({ isOpen, on
                                     value={currentData.notes || ''}
                             onChange={(e) => updateCurrentSession('notes', e.target.value)}
                             placeholder={`How are you feeling this ${activeTab}?`}
-                            className="w-full bg-neutral-800 border border-white/10 rounded-lg p-3 text-sm text-white focus:border-emerald-500 outline-none resize-none h-20"
+                            className="w-full bg-surface-1 border border-line-subtle rounded-lg p-3 text-sm text-content-primary focus:border-focus outline-none resize-none h-20"
                         />
                             </div>
                         )}
@@ -430,7 +430,7 @@ export const DailyCheckInModal: React.FC<DailyCheckInModalProps> = ({ isOpen, on
                 </div>
 
                 {/* Footer */}
-                <div className="p-4 border-t border-white/5 bg-neutral-800/50 flex justify-end">
+                <div className="p-4 border-t border-line-subtle bg-surface-1/50 flex justify-end">
                     <button
                         onClick={(e) => {
                             console.log('[DailyCheckInModal] BUTTON CLICKED');
@@ -438,7 +438,7 @@ export const DailyCheckInModal: React.FC<DailyCheckInModalProps> = ({ isOpen, on
                             handleSave();
                         }}
                         type="button"
-                        className="flex items-center gap-2 px-6 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg font-medium transition-colors"
+                        className="flex items-center gap-2 px-6 py-2 bg-emerald-500 hover:bg-accent-strong text-content-primary rounded-lg font-medium transition-colors"
                     >
                         <Save size={18} />
                         Save {activeTab.charAt(0).toUpperCase() + activeTab.slice(1)} Check-in

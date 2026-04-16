@@ -215,17 +215,17 @@ export const GoalCard: React.FC<GoalCardProps> = ({
 
                                 {/* Numerical Progress and Metadata Row */}
                                 <div className="flex items-center gap-3 flex-wrap text-sm">
-                                    <span className="text-neutral-300 font-medium">
+                                    <span className="text-content-secondary font-medium">
                                         {progressText}
                                     </span>
-                                    <span className="text-emerald-400 font-medium">
+                                    <span className="text-accent-contrast font-medium">
                                         {progress.percent}%
                                     </span>
                                     <span className={goalMetadataClasses}>
                                         {linkedHabits.length} {linkedHabits.length === 1 ? 'habit' : 'habits'}
                                     </span>
                                     {goal.deadline && (
-                                        <span className="px-2 py-0.5 bg-neutral-700/50 text-neutral-300 rounded text-xs">
+                                        <span className="px-2 py-0.5 bg-surface-2/50 text-content-secondary rounded text-xs">
                                             Due {formatDeadline(goal.deadline)}
                                         </span>
                                     )}
@@ -240,7 +240,7 @@ export const GoalCard: React.FC<GoalCardProps> = ({
                             </div>
 
                             {/* Chevron Icon */}
-                            <ChevronRight className="text-neutral-400 flex-shrink-0 mt-1" size={20} />
+                            <ChevronRight className="text-content-secondary flex-shrink-0 mt-1" size={20} />
                         </div>
                     </div>
                 )}
@@ -249,7 +249,7 @@ export const GoalCard: React.FC<GoalCardProps> = ({
                 {isExpanded && (
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3 flex-1 min-w-0">
-                            <ChevronDown className="text-neutral-400 flex-shrink-0" size={20} />
+                            <ChevronDown className="text-content-secondary flex-shrink-0" size={20} />
                             <div className="flex-1 min-w-0">
                                 <h3 className={`${goalTitleClasses} truncate`}>
                                     {goal.title}
@@ -261,11 +261,11 @@ export const GoalCard: React.FC<GoalCardProps> = ({
             </button>
 
             {isExpanded && (
-                <div className="px-4 pb-4 pt-4 border-t border-white/5 bg-neutral-900/30 animate-in fade-in slide-in-from-top-2 duration-200">
+                <div className="px-4 pb-4 pt-4 border-t border-line-subtle bg-surface-0/30 animate-in fade-in slide-in-from-top-2 duration-200">
                     <div className="space-y-6">
                         {/* Linked Habits List */}
                         <div>
-                            <div className="text-neutral-400 text-sm font-medium mb-2">Linked Habits</div>
+                            <div className="text-content-secondary text-sm font-medium mb-2">Linked Habits</div>
                             {linkedHabits.length === 0 ? (
                                 <div className={goalSubtitleClasses}>No habits linked</div>
                             ) : (
@@ -273,22 +273,22 @@ export const GoalCard: React.FC<GoalCardProps> = ({
                                     {linkedHabits.map((habit) => (
                                         <div
                                             key={habit.id}
-                                            className="flex items-center gap-3 p-2 bg-neutral-800/50 rounded-lg"
+                                            className="flex items-center gap-3 p-2 bg-surface-1/50 rounded-lg"
                                         >
                                             {/* Habit Icon Placeholder */}
                                             {habit.goal.unit && (
-                                                <div className="w-8 h-8 bg-emerald-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
-                                                    <span className="text-emerald-400 text-xs font-medium">
+                                                <div className="w-8 h-8 bg-accent-soft rounded-lg flex items-center justify-center flex-shrink-0">
+                                                    <span className="text-accent-contrast text-xs font-medium">
                                                         {habit.goal.unit.charAt(0).toUpperCase()}
                                                     </span>
                                                 </div>
                                             )}
                                             <div className="flex-1 min-w-0">
-                                                <div className="text-white text-sm font-medium truncate">
+                                                <div className="text-content-primary text-sm font-medium truncate">
                                                     {habit.name}
                                                 </div>
                                                 {habit.goal.unit && (
-                                                    <div className="text-neutral-400 text-xs">
+                                                    <div className="text-content-secondary text-xs">
                                                         {habit.goal.type === 'number' ? 'Quantified' : 'Binary'} • {habit.goal.unit}
                                                     </div>
                                                 )}
@@ -311,21 +311,21 @@ export const GoalCard: React.FC<GoalCardProps> = ({
                                             <div
                                                 key={milestone.percent}
                                                 className={`flex items-center justify-between p-2 rounded-lg transition-colors ${milestone.reached
-                                                    ? 'bg-emerald-500/10 border border-emerald-500/30'
-                                                    : 'bg-neutral-800/50 border border-white/10'
+                                                    ? 'bg-accent-soft border border-accent/30'
+                                                    : 'bg-surface-1/50 border border-line-subtle'
                                                     }`}
                                             >
                                                 <div className="flex items-center gap-3">
                                                     {milestone.reached ? (
-                                                        <Check className="text-emerald-400 flex-shrink-0" size={16} />
+                                                        <Check className="text-accent-contrast flex-shrink-0" size={16} />
                                                     ) : (
-                                                        <div className="w-4 h-4 rounded-full border-2 border-neutral-600 flex-shrink-0" />
+                                                        <div className="w-4 h-4 rounded-full border-2 border-line-strong flex-shrink-0" />
                                                     )}
                                                     <div>
-                                                        <div className="text-white text-sm font-medium">
+                                                        <div className="text-content-primary text-sm font-medium">
                                                             {milestone.percent}% • {milestone.label}
                                                         </div>
-                                                        <div className="text-neutral-400 text-xs">
+                                                        <div className="text-content-secondary text-xs">
                                                             {milestoneValue}
                                                         </div>
                                                     </div>
@@ -340,7 +340,7 @@ export const GoalCard: React.FC<GoalCardProps> = ({
                         {/* Sparkline Placeholder */}
                         <div>
                             <div className={`${goalSubtitleClasses} font-medium mb-2`}>Last 7 Days</div>
-                            <div className="flex items-end gap-1 h-16 bg-neutral-800/50 rounded-lg p-2">
+                            <div className="flex items-end gap-1 h-16 bg-surface-1/50 rounded-lg p-2">
                                 {progress.lastSevenDays.map((day) => {
                                     const heightPercent = (day.value / maxSparklineValue) * 100;
                                     return (
@@ -352,11 +352,11 @@ export const GoalCard: React.FC<GoalCardProps> = ({
                                             <div
                                                 className={`w-full rounded-t transition-all ${day.hasProgress
                                                     ? 'bg-emerald-500'
-                                                    : 'bg-neutral-600'
+                                                    : 'bg-surface-2'
                                                     }`}
                                                 style={{ height: `${Math.max(4, heightPercent)}%` }}
                                             />
-                                            <div className="text-[8px] text-neutral-500 leading-tight">
+                                            <div className="text-[8px] text-content-muted leading-tight">
                                                 {(() => {
                                                     try {
                                                         return format(parseISO(day.date), 'd');
@@ -372,14 +372,14 @@ export const GoalCard: React.FC<GoalCardProps> = ({
                         </div>
 
                         {/* Actions */}
-                        <div className="flex flex-wrap gap-2 pt-2 border-t border-white/5">
+                        <div className="flex flex-wrap gap-2 pt-2 border-t border-line-subtle">
                             {onViewDetails && (
                                 <button
                                     onClick={(e) => {
                                         e.stopPropagation();
                                         onViewDetails(goal.id);
                                     }}
-                                    className="flex items-center gap-2 px-3 py-1.5 bg-neutral-700 hover:bg-neutral-600 text-white text-sm rounded-lg transition-colors"
+                                    className="flex items-center gap-2 px-3 py-1.5 bg-surface-2 hover:bg-surface-2 text-content-primary text-sm rounded-lg transition-colors"
                                 >
                                     <ExternalLink size={14} />
                                     View full goal details
@@ -391,7 +391,7 @@ export const GoalCard: React.FC<GoalCardProps> = ({
                                         e.stopPropagation();
                                         onEdit(goal.id);
                                     }}
-                                    className="flex items-center gap-2 px-3 py-1.5 bg-neutral-700 hover:bg-neutral-600 text-white text-sm rounded-lg transition-colors"
+                                    className="flex items-center gap-2 px-3 py-1.5 bg-surface-2 hover:bg-surface-2 text-content-primary text-sm rounded-lg transition-colors"
                                 >
                                     <Edit size={14} />
                                     Edit goal
@@ -401,9 +401,9 @@ export const GoalCard: React.FC<GoalCardProps> = ({
 
                         {/* Notes */}
                         {goal.notes && (
-                            <div className="pt-2 border-t border-white/5">
-                                <div className="text-neutral-400 text-sm font-medium mb-1">Notes</div>
-                                <div className="text-white text-sm">{goal.notes}</div>
+                            <div className="pt-2 border-t border-line-subtle">
+                                <div className="text-content-secondary text-sm font-medium mb-1">Notes</div>
+                                <div className="text-content-primary text-sm">{goal.notes}</div>
                             </div>
                         )}
                     </div>

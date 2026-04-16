@@ -17,7 +17,7 @@ import { AlertTriangle } from 'lucide-react';
  * Consistent styling:
  * - Height: 2 (8px) for compact views, 4 (16px) for detail views
  * - Border radius: rounded-full
- * - Background: bg-neutral-700
+ * - Background: bg-surface-2
  * - Fill: bg-emerald-500
  */
 interface ProgressBarProps {
@@ -40,7 +40,7 @@ export const GoalProgressBar: React.FC<ProgressBarProps> = ({
     const cappedPercent = Math.min(100, Math.max(0, percent));
 
     return (
-        <div className={`w-full ${heightClass} bg-neutral-700 rounded-full overflow-hidden ${className}`}>
+        <div className={`w-full ${heightClass} bg-surface-2 rounded-full overflow-hidden ${className}`}>
             <div
                 className={`h-full bg-emerald-500 transition-all duration-300`}
                 style={{ width: `${cappedPercent}%` }}
@@ -69,7 +69,7 @@ export const GoalStatusChip: React.FC<StatusChipProps> = ({
 
     const statusClasses = {
         active: 'bg-blue-500/20 text-blue-400 border border-blue-500/30',
-        completed: 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30',
+        completed: 'bg-accent-soft text-accent-contrast border border-accent/30',
         warning: 'bg-amber-500/20 text-amber-400 border border-amber-500/30',
     }[status];
 
@@ -105,7 +105,7 @@ export const GoalMilestoneDots: React.FC<MilestoneDotsProps> = ({
                         key={threshold}
                         className={`w-1.5 h-1.5 rounded-full transition-colors ${isFilled
                                 ? 'bg-emerald-500'
-                                : 'bg-neutral-600'
+                                : 'bg-surface-2'
                             }`}
                         title={`${threshold}%`}
                     />
@@ -144,18 +144,18 @@ export const GoalInactivityWarningBadge: React.FC<InactivityWarningBadgeProps> =
  * 
  * Consistent border radius, shadows, and spacing.
  */
-export const goalCardBaseClasses = 'bg-neutral-800/50 border border-white/10 rounded-lg overflow-hidden transition-all';
+export const goalCardBaseClasses = 'bg-surface-1/50 border border-line-subtle rounded-lg overflow-hidden transition-all';
 export const goalCardPaddingClasses = 'p-4 sm:p-5';
-export const goalCardHoverClasses = 'hover:bg-neutral-800/70';
+export const goalCardHoverClasses = 'hover:bg-surface-1/70';
 
 /**
  * Shared goal title styling.
  */
-export const goalTitleClasses = 'text-lg font-semibold text-white';
-export const goalTitleCompactClasses = 'font-semibold text-white';
+export const goalTitleClasses = 'text-lg font-semibold text-content-primary';
+export const goalTitleCompactClasses = 'font-semibold text-content-primary';
 
 /**
  * Shared goal subtitle/metadata styling.
  */
-export const goalSubtitleClasses = 'text-sm text-neutral-400';
-export const goalMetadataClasses = 'text-xs text-neutral-500';
+export const goalSubtitleClasses = 'text-sm text-content-secondary';
+export const goalMetadataClasses = 'text-xs text-content-muted';

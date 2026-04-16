@@ -41,8 +41,8 @@ export const TaskItem: React.FC<TaskItemProps> = ({ task }) => {
                 className={`
           flex-shrink-0 w-5 h-5 rounded border flex items-center justify-center transition-colors
           ${isCompleted
-                        ? 'bg-emerald-500/20 border-emerald-500 text-emerald-500'
-                        : 'border-neutral-700 hover:border-neutral-500 text-transparent'
+                        ? 'bg-accent-soft border-emerald-500 text-emerald-500'
+                        : 'border-line-strong hover:border-neutral-500 text-transparent'
                     }
         `}
             >
@@ -51,7 +51,7 @@ export const TaskItem: React.FC<TaskItemProps> = ({ task }) => {
 
             {/* Title */}
             <span
-                className={`flex-grow text-sm font-light text-neutral-200 transition-all ${isCompleted ? 'line-through text-neutral-500' : ''}`}
+                className={`flex-grow text-sm font-light text-content-primary transition-all ${isCompleted ? 'line-through text-content-muted' : ''}`}
             >
                 {task.title}
             </span>
@@ -61,7 +61,7 @@ export const TaskItem: React.FC<TaskItemProps> = ({ task }) => {
                 {task.listPlacement === 'inbox' && !isCompleted && (
                     <button
                         onClick={handleMoveToToday}
-                        className="p-1.5 text-neutral-500 hover:text-emerald-400 hover:bg-emerald-500/10 rounded transition-colors"
+                        className="p-1.5 text-content-muted hover:text-accent-contrast hover:bg-accent-strong/10 rounded transition-colors"
                         title="Move to Today"
                     >
                         <ArrowRight size={14} />
@@ -71,7 +71,7 @@ export const TaskItem: React.FC<TaskItemProps> = ({ task }) => {
                 {task.listPlacement === 'today' && !isCompleted && (
                     <button
                         onClick={handleMoveToInbox}
-                        className="p-1.5 text-neutral-500 hover:text-amber-400 hover:bg-amber-500/10 rounded transition-colors"
+                        className="p-1.5 text-content-muted hover:text-amber-400 hover:bg-amber-500/10 rounded transition-colors"
                         title="Move to Inbox"
                     >
                         <ArrowLeft size={14} />
@@ -80,7 +80,7 @@ export const TaskItem: React.FC<TaskItemProps> = ({ task }) => {
 
                 <button
                     onClick={handleDetail}
-                    className="p-1.5 text-neutral-500 hover:text-red-400 hover:bg-red-500/10 rounded transition-colors"
+                    className="p-1.5 text-content-muted hover:text-danger-contrast hover:bg-danger-soft rounded transition-colors"
                     title="Delete"
                     disabled={isDeleting}
                 >

@@ -32,8 +32,8 @@ const RoutineCard: React.FC<{
             className={cn(
                 "relative flex flex-col rounded-lg border transition-all duration-300 overflow-hidden",
                 isExpanded
-                    ? "bg-neutral-800 border-white/10 shadow-lg scale-[1.02] z-10"
-                    : "bg-neutral-900/40 border-white/5 hover:bg-neutral-800/60 hover:border-white/10"
+                    ? "bg-surface-1 border-line-subtle shadow-lg scale-[1.02] z-10"
+                    : "bg-surface-0/40 border-line-subtle hover:bg-surface-1/60 hover:border-line-subtle"
             )}
         >
             {/* Routine Image (if available) */}
@@ -53,13 +53,13 @@ const RoutineCard: React.FC<{
                 onClick={onExpand}
             >
                 {/* Title */}
-                <span className="flex-1 text-sm font-medium truncate select-none text-neutral-300">
+                <span className="flex-1 text-sm font-medium truncate select-none text-content-secondary">
                     {routine.title}
                 </span>
 
                 {/* Metadata */}
                 <div className="flex items-center gap-2 flex-shrink-0">
-                    <span className="text-[11px] text-neutral-600">
+                    <span className="text-[11px] text-content-muted">
                         {totalSteps} steps
                     </span>
                     {hasMultipleVariants && (
@@ -69,7 +69,7 @@ const RoutineCard: React.FC<{
                         </span>
                     )}
                     <ChevronRight size={14} className={cn(
-                        "text-neutral-600 transition-transform duration-200",
+                        "text-content-muted transition-transform duration-200",
                         isExpanded && "rotate-90"
                     )} />
                 </div>
@@ -87,16 +87,16 @@ const RoutineCard: React.FC<{
                                 <button
                                     key={variant.id}
                                     onClick={() => onPreview(routine)}
-                                    className="w-full text-left p-3 rounded-lg border border-white/5 bg-neutral-800/50 hover:border-white/15 hover:bg-neutral-800 transition-all"
+                                    className="w-full text-left p-3 rounded-lg border border-line-subtle bg-surface-1/50 hover:border-white/15 hover:bg-surface-1 transition-all"
                                 >
                                     <div className="flex items-center justify-between gap-2">
                                         <div className="flex items-center gap-2 min-w-0">
-                                            <span className="text-xs font-medium text-white truncate">{variant.name}</span>
+                                            <span className="text-xs font-medium text-content-primary truncate">{variant.name}</span>
                                             {variant.isAiGenerated && (
                                                 <Sparkles size={10} className="text-purple-400 flex-shrink-0" />
                                             )}
                                         </div>
-                                        <div className="flex items-center gap-3 text-[10px] text-neutral-500 flex-shrink-0">
+                                        <div className="flex items-center gap-3 text-[10px] text-content-muted flex-shrink-0">
                                             <span className="flex items-center gap-1">
                                                 <ListChecks size={10} />
                                                 {variant.steps.length}
@@ -110,7 +110,7 @@ const RoutineCard: React.FC<{
                                         </div>
                                     </div>
                                     {variant.description && (
-                                        <p className="text-[10px] text-neutral-500 mt-1 line-clamp-1">{variant.description}</p>
+                                        <p className="text-[10px] text-content-muted mt-1 line-clamp-1">{variant.description}</p>
                                     )}
                                 </button>
                             ))}
@@ -121,7 +121,7 @@ const RoutineCard: React.FC<{
                     {!hasMultipleVariants && (
                         <button
                             onClick={() => onPreview(routine)}
-                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md transition-colors text-xs text-emerald-400 hover:bg-emerald-500/10 w-fit"
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md transition-colors text-xs text-accent-contrast hover:bg-accent-strong/10 w-fit"
                         >
                             <Play size={12} />
                             <span>Start Routine</span>
@@ -132,7 +132,7 @@ const RoutineCard: React.FC<{
                     <div className="flex items-center justify-end gap-1">
                         <button
                             onClick={() => onEdit(routine)}
-                            className="flex items-center gap-1.5 px-2 py-1 rounded-md transition-colors text-xs text-neutral-500 hover:text-neutral-300 hover:bg-white/5"
+                            className="flex items-center gap-1.5 px-2 py-1 rounded-md transition-colors text-xs text-content-muted hover:text-content-secondary hover:bg-surface-2"
                         >
                             <Edit size={12} />
                             <span>Edit</span>
@@ -175,16 +175,16 @@ const CategorySection: React.FC<{
                 onClick={onToggle}
                 className="flex items-center gap-2 px-1 w-full text-left group transition-opacity hover:opacity-80"
             >
-                <div className={`flex-shrink-0 ${textColorClass || 'text-neutral-500'}`} style={styleColor}>
+                <div className={`flex-shrink-0 ${textColorClass || 'text-content-muted'}`} style={styleColor}>
                     {isExpanded ? <ChevronDown size={20} /> : <ChevronRight size={20} />}
                 </div>
                 <h3
-                    className={`text-lg font-bold transition-colors ${textColorClass || 'text-neutral-300'}`}
+                    className={`text-lg font-bold transition-colors ${textColorClass || 'text-content-secondary'}`}
                     style={styleColor}
                 >
                     {category.name}
                 </h3>
-                <span className="text-xs text-neutral-500 font-medium ml-1">
+                <span className="text-xs text-content-muted font-medium ml-1">
                     {routines.length}
                 </span>
             </button>
@@ -274,7 +274,7 @@ export const RoutineList: React.FC<RoutineListProps> = ({ onCreate, onEdit, onPr
 
     if (loading) {
         return (
-            <div className="flex items-center justify-center h-full text-neutral-500">
+            <div className="flex items-center justify-center h-full text-content-muted">
                 Loading routines...
             </div>
         );
@@ -290,26 +290,26 @@ export const RoutineList: React.FC<RoutineListProps> = ({ onCreate, onEdit, onPr
 
     if (routines.length === 0) {
         return (
-            <div className="flex-1 flex flex-col items-center justify-center p-8 sm:p-12 text-center bg-neutral-900/50 rounded-2xl border border-white/5">
-                <div className="w-14 h-14 bg-neutral-800 rounded-full flex items-center justify-center mb-5">
-                    <ClipboardList size={28} className="text-neutral-500" />
+            <div className="flex-1 flex flex-col items-center justify-center p-8 sm:p-12 text-center bg-surface-0/50 rounded-2xl border border-line-subtle">
+                <div className="w-14 h-14 bg-surface-1 rounded-full flex items-center justify-center mb-5">
+                    <ClipboardList size={28} className="text-content-muted" />
                 </div>
-                <h3 className="text-lg font-semibold text-white mb-2">
+                <h3 className="text-lg font-semibold text-content-primary mb-2">
                     Routines group actions into repeatable flows that reduce friction.
                 </h3>
-                <p className="text-sm text-neutral-400 mb-4 max-w-sm leading-relaxed">
+                <p className="text-sm text-content-secondary mb-4 max-w-sm leading-relaxed">
                     Use routines for things like a morning reset, gym prep, or an evening shutdown.
                 </p>
                 <div className="flex flex-wrap justify-center gap-2 mb-6 max-w-sm">
                     {['Morning reset', 'Workout prep', 'Evening shutdown'].map((ex) => (
-                        <span key={ex} className="px-3 py-1 text-xs text-neutral-400 bg-neutral-800/80 rounded-full border border-white/5">
+                        <span key={ex} className="px-3 py-1 text-xs text-content-secondary bg-surface-1/80 rounded-full border border-line-subtle">
                             {ex}
                         </span>
                     ))}
                 </div>
                 <button
                     onClick={onCreate}
-                    className="flex items-center gap-2 px-5 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-neutral-900 font-medium rounded-lg transition-colors text-sm"
+                    className="flex items-center gap-2 px-5 py-2.5 bg-accent hover:bg-accent-strong text-neutral-900 font-medium rounded-lg transition-colors text-sm"
                 >
                     <Plus size={18} />
                     Create Your First Routine
@@ -342,7 +342,7 @@ export const RoutineList: React.FC<RoutineListProps> = ({ onCreate, onEdit, onPr
                 {/* Uncategorized Section */}
                 {groupedRoutines['uncategorized']?.length > 0 && (
                     <CategorySection
-                        category={{ id: 'uncategorized', name: 'Uncategorized', color: 'bg-neutral-600', isUncategorized: true }}
+                        category={{ id: 'uncategorized', name: 'Uncategorized', color: 'bg-surface-2', isUncategorized: true }}
                         routines={groupedRoutines['uncategorized']}
                         isExpanded={!!expandedCategories['uncategorized']}
                         onToggle={() => toggleCategory('uncategorized')}

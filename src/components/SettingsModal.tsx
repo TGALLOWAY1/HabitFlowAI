@@ -42,19 +42,19 @@ export function SettingsModal({ isOpen, onClose, onNavigate }: SettingsModalProp
       {/* Scroll wrapper */}
       <div className="absolute inset-0 overflow-y-auto modal-scroll p-4">
         <div
-          className="relative bg-neutral-900 border border-white/10 rounded-xl shadow-xl max-w-sm w-full mx-auto my-8 sm:my-16"
+          className="relative bg-surface-0 border border-line-subtle rounded-xl shadow-xl max-w-sm w-full mx-auto my-8 sm:my-16"
           role="dialog"
           aria-labelledby="settings-title"
           onClick={(e) => e.stopPropagation()}
         >
-          <div className="p-4 border-b border-white/5 flex items-center justify-between">
-            <h2 id="settings-title" className="text-lg font-semibold text-white">
+          <div className="p-4 border-b border-line-subtle flex items-center justify-between">
+            <h2 id="settings-title" className="text-lg font-semibold text-content-primary">
               Settings
             </h2>
             <button
               type="button"
               onClick={onClose}
-              className="p-2 text-neutral-400 hover:text-white rounded-lg hover:bg-white/5"
+              className="p-2 text-content-secondary hover:text-content-primary rounded-lg hover:bg-surface-2"
               aria-label="Close"
             >
               ✕
@@ -65,10 +65,10 @@ export function SettingsModal({ isOpen, onClose, onNavigate }: SettingsModalProp
             {/* Account */}
             {user?.displayName && (
               <section>
-                <h3 className="text-xs font-medium text-neutral-500 uppercase tracking-wider mb-2">
+                <h3 className="text-xs font-medium text-content-muted uppercase tracking-wider mb-2">
                   Account
                 </h3>
-                <div className="text-sm text-neutral-200">
+                <div className="text-sm text-content-primary">
                   {user.displayName}
                 </div>
               </section>
@@ -79,9 +79,9 @@ export function SettingsModal({ isOpen, onClose, onNavigate }: SettingsModalProp
               <button
                 type="button"
                 onClick={handleReopenGuide}
-                className="w-full px-4 py-2.5 rounded-lg bg-neutral-800 text-neutral-200 border border-white/10 hover:bg-neutral-700 text-sm text-left flex items-center gap-2"
+                className="w-full px-4 py-2.5 rounded-lg bg-surface-1 text-content-primary border border-line-subtle hover:bg-surface-2 text-sm text-left flex items-center gap-2"
               >
-                <Sparkles size={16} className="text-emerald-400 flex-shrink-0" />
+                <Sparkles size={16} className="text-accent-contrast flex-shrink-0" />
                 Reopen setup guide
               </button>
             </section>
@@ -89,17 +89,17 @@ export function SettingsModal({ isOpen, onClose, onNavigate }: SettingsModalProp
             {/* Apple Health Integration */}
             {isHealthFeatureEnabled(user?.email) && (
               <section>
-                <h3 className="text-xs font-medium text-neutral-500 uppercase tracking-wider mb-2">
+                <h3 className="text-xs font-medium text-content-muted uppercase tracking-wider mb-2">
                   Integrations
                 </h3>
                 <button
                   type="button"
                   onClick={() => { onNavigate?.('health'); onClose(); }}
-                  className="w-full px-4 py-2.5 rounded-lg bg-neutral-800 text-neutral-200 border border-white/10 hover:bg-neutral-700 text-sm text-left flex items-center gap-2"
+                  className="w-full px-4 py-2.5 rounded-lg bg-surface-1 text-content-primary border border-line-subtle hover:bg-surface-2 text-sm text-left flex items-center gap-2"
                 >
-                  <Activity size={16} className="text-emerald-400 flex-shrink-0" />
+                  <Activity size={16} className="text-accent-contrast flex-shrink-0" />
                   <span className="flex-1">Apple Health</span>
-                  <ChevronRight size={16} className="text-neutral-500" />
+                  <ChevronRight size={16} className="text-content-muted" />
                 </button>
               </section>
             )}
@@ -107,33 +107,33 @@ export function SettingsModal({ isOpen, onClose, onNavigate }: SettingsModalProp
             {/* AI Integration */}
             <section>
               <div className="flex items-center gap-2 mb-3">
-                <h3 className="text-xs font-medium text-neutral-500 uppercase tracking-wider">
+                <h3 className="text-xs font-medium text-content-muted uppercase tracking-wider">
                   AI Integration
                 </h3>
-                <span className="text-[10px] text-neutral-600 font-medium">(~3 mins to set up)</span>
+                <span className="text-[10px] text-content-muted font-medium">(~3 mins to set up)</span>
               </div>
               <div className="space-y-3">
                 <div>
-                  <label htmlFor="gemini-key" className="block text-sm text-neutral-300 mb-1.5">
+                  <label htmlFor="gemini-key" className="block text-sm text-content-secondary mb-1.5">
                     Gemini API Key
                   </label>
-                  <p className="text-[11px] text-neutral-500 mb-2">
+                  <p className="text-[11px] text-content-muted mb-2">
                     Add your Google Gemini API key to enable AI-powered weekly summaries.
                     Your key is stored locally and never saved on the server.
                   </p>
-                  <ol className="text-[11px] text-neutral-500 mb-3 space-y-1 pl-4 list-decimal">
+                  <ol className="text-[11px] text-content-muted mb-3 space-y-1 pl-4 list-decimal">
                     <li>Go to{' '}
                       <a
                         href="https://aistudio.google.com/apikey"
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-emerald-400 hover:text-emerald-300 underline underline-offset-2"
+                        className="text-accent-contrast hover:text-accent-contrast underline underline-offset-2"
                       >
                         Google AI Studio
                       </a>
                     </li>
                     <li>Sign in with your Google account</li>
-                    <li>Click <span className="text-neutral-400 font-medium">Create API Key</span></li>
+                    <li>Click <span className="text-content-secondary font-medium">Create API Key</span></li>
                     <li>Copy the key and paste it below</li>
                   </ol>
                   <div className="flex gap-2">
@@ -144,12 +144,12 @@ export function SettingsModal({ isOpen, onClose, onNavigate }: SettingsModalProp
                         value={geminiKey}
                         onChange={(e) => setGeminiKey(e.target.value)}
                         placeholder="AIza..."
-                        className="w-full px-3 py-2 pr-9 rounded-lg bg-neutral-800 text-neutral-200 border border-white/10 text-sm placeholder:text-neutral-600 focus:outline-none focus:ring-1 focus:ring-emerald-500/50"
+                        className="w-full px-3 py-2 pr-9 rounded-lg bg-surface-1 text-content-primary border border-line-subtle text-sm placeholder:text-content-muted focus:outline-none focus:ring-1 focus:ring-focus/50"
                       />
                       <button
                         type="button"
                         onClick={() => setShowGeminiKey(!showGeminiKey)}
-                        className="absolute right-2 top-1/2 -translate-y-1/2 text-neutral-500 hover:text-neutral-300"
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-content-muted hover:text-content-secondary"
                         aria-label={showGeminiKey ? 'Hide key' : 'Show key'}
                       >
                         {showGeminiKey ? <EyeOff size={14} /> : <Eye size={14} />}
@@ -158,7 +158,7 @@ export function SettingsModal({ isOpen, onClose, onNavigate }: SettingsModalProp
                     <button
                       type="button"
                       onClick={handleSaveGeminiKey}
-                      className="px-3 py-2 rounded-lg bg-emerald-600/80 text-white hover:bg-emerald-600 text-sm whitespace-nowrap"
+                      className="px-3 py-2 rounded-lg bg-emerald-600/80 text-content-primary hover:bg-emerald-600 text-sm whitespace-nowrap"
                     >
                       {geminiKeySaved ? 'Saved!' : 'Save'}
                     </button>
@@ -181,7 +181,7 @@ export function SettingsModal({ isOpen, onClose, onNavigate }: SettingsModalProp
 
             {/* Data */}
             <section>
-              <h3 className="text-xs font-medium text-neutral-500 uppercase tracking-wider mb-3">
+              <h3 className="text-xs font-medium text-content-muted uppercase tracking-wider mb-3">
                 Data
               </h3>
               <div className="space-y-3">
@@ -190,20 +190,20 @@ export function SettingsModal({ isOpen, onClose, onNavigate }: SettingsModalProp
                   <button
                     type="button"
                     onClick={() => setShowDeleteConfirm(true)}
-                    className="w-full px-4 py-2.5 rounded-lg bg-neutral-800 text-red-400 border border-white/10 hover:bg-neutral-700 text-sm text-left"
+                    className="w-full px-4 py-2.5 rounded-lg bg-surface-1 text-red-400 border border-line-subtle hover:bg-surface-2 text-sm text-left"
                   >
                     Delete my data
                   </button>
                 ) : (
-                  <div className="rounded-lg bg-neutral-800/50 border border-red-500/30 p-3 space-y-3">
-                    <p className="text-sm text-neutral-300">
+                  <div className="rounded-lg bg-surface-1/50 border border-red-500/30 p-3 space-y-3">
+                    <p className="text-sm text-content-secondary">
                       This will permanently delete all your habits, logs, and settings. This action cannot be undone.
                     </p>
                     <div className="flex gap-2">
                       <button
                         type="button"
                         onClick={() => setShowDeleteConfirm(false)}
-                        className="px-3 py-1.5 rounded-lg bg-neutral-700 text-neutral-200 border border-white/10 hover:bg-neutral-600 text-sm"
+                        className="px-3 py-1.5 rounded-lg bg-surface-2 text-content-primary border border-line-subtle hover:bg-surface-2 text-sm"
                       >
                         Cancel
                       </button>
@@ -224,7 +224,7 @@ export function SettingsModal({ isOpen, onClose, onNavigate }: SettingsModalProp
                             setIsDeleting(false);
                           }
                         }}
-                        className="px-3 py-1.5 rounded-lg bg-red-600 text-white hover:bg-red-500 disabled:opacity-50 text-sm"
+                        className="px-3 py-1.5 rounded-lg bg-red-600 text-content-primary hover:bg-red-500 disabled:opacity-50 text-sm"
                       >
                         {isDeleting ? 'Deleting...' : 'Yes, delete everything'}
                       </button>

@@ -61,17 +61,17 @@ export const InactivityCoachingPopup: React.FC<InactivityCoachingPopupProps> = (
             style={{ top: position.top, left: position.left }}
         >
             <div className="fixed inset-0" onClick={onClose} />
-            <div className="relative bg-neutral-800 border border-amber-500/30 rounded-xl p-4 shadow-xl w-80 animate-in fade-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
+            <div className="relative bg-surface-1 border border-amber-500/30 rounded-xl p-4 shadow-xl w-80 animate-in fade-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
                 <button
                     onClick={onClose}
-                    className="absolute top-3 right-3 text-neutral-400 hover:text-white transition-colors"
+                    className="absolute top-3 right-3 text-content-secondary hover:text-content-primary transition-colors"
                 >
                     <X size={16} />
                 </button>
 
                 <div className="space-y-3">
                     <div>
-                        <h3 className="text-white font-semibold text-sm mb-1">
+                        <h3 className="text-content-primary font-semibold text-sm mb-1">
                             Progress compounds — even a small action today moves you forward.
                         </h3>
                     </div>
@@ -80,7 +80,7 @@ export const InactivityCoachingPopup: React.FC<InactivityCoachingPopupProps> = (
                         <div className="text-amber-400 text-sm font-medium mb-1">
                             Try this:
                         </div>
-                        <div className="text-white text-sm">
+                        <div className="text-content-primary text-sm">
                             {suggestion}
                         </div>
                     </div>

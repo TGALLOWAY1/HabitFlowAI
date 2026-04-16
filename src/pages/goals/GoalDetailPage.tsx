@@ -278,7 +278,7 @@ export const GoalDetailPage: React.FC<GoalDetailPageProps> = ({ goalId, onBack, 
         return (
             <div className="flex flex-col items-center justify-center min-h-[50vh]">
                 <Loader2 className="text-emerald-500 animate-spin mb-4" size={32} />
-                <div className="text-neutral-400">Loading goal details...</div>
+                <div className="text-content-secondary">Loading goal details...</div>
             </div>
         );
     }
@@ -287,7 +287,7 @@ export const GoalDetailPage: React.FC<GoalDetailPageProps> = ({ goalId, onBack, 
         return (
             <div className="p-6 text-center">
                 <div className="text-red-400 mb-2">Error loading goal</div>
-                <button onClick={() => refetch()} className="text-white underline">Retry</button>
+                <button onClick={() => refetch()} className="text-content-primary underline">Retry</button>
             </div>
         );
     }
@@ -299,11 +299,11 @@ export const GoalDetailPage: React.FC<GoalDetailPageProps> = ({ goalId, onBack, 
     const canShowTrend = goal.type === 'cumulative' && goal.deadline;
 
     return (
-        <div className="w-full max-w-4xl mx-auto px-4 py-6 sm:px-6 lg:px-8 bg-[#0A0A0A] min-h-screen text-white">
+        <div className="w-full max-w-4xl mx-auto px-4 py-6 sm:px-6 lg:px-8 bg-[#0A0A0A] min-h-screen text-content-primary">
             {/* Top Navigation */}
             <div className="flex items-center justify-between mb-8">
                 {onBack && (
-                    <button onClick={onBack} className="flex items-center gap-2 text-neutral-400 hover:text-white transition-colors">
+                    <button onClick={onBack} className="flex items-center gap-2 text-content-secondary hover:text-content-primary transition-colors">
                         <ArrowLeft size={18} />
                         <span>Back</span>
                     </button>
@@ -324,28 +324,28 @@ export const GoalDetailPage: React.FC<GoalDetailPageProps> = ({ goalId, onBack, 
                                     } catch { /* ignore */ }
                                     setShowTrackMenu(true);
                                 }}
-                                className="min-h-[44px] min-w-[44px] flex items-center justify-center text-neutral-400 hover:text-emerald-400 hover:bg-emerald-500/10 rounded-lg transition-colors"
+                                className="min-h-[44px] min-w-[44px] flex items-center justify-center text-content-secondary hover:text-accent-contrast hover:bg-accent-strong/10 rounded-lg transition-colors"
                                 aria-label="Add to track"
                                 title="Add to track"
                             >
                                 <Route size={18} />
                             </button>
                             {showTrackMenu && (
-                                <div className="absolute right-0 top-full mt-1 w-56 bg-neutral-800 border border-white/10 rounded-lg shadow-xl z-50 py-1">
+                                <div className="absolute right-0 top-full mt-1 w-56 bg-surface-1 border border-line-subtle rounded-lg shadow-xl z-50 py-1">
                                     <button
                                         onClick={() => {
                                             setShowTrackMenu(false);
                                             setShowCreateTrackModal(true);
                                         }}
-                                        className="w-full text-left px-3 py-2 text-sm text-emerald-400 hover:bg-neutral-700/50 flex items-center gap-2"
+                                        className="w-full text-left px-3 py-2 text-sm text-accent-contrast hover:bg-surface-2/50 flex items-center gap-2"
                                     >
                                         <Plus size={14} />
                                         Create new track
                                     </button>
                                     {availableTracks.length > 0 && (
                                         <>
-                                            <div className="border-t border-white/5 my-1" />
-                                            <div className="px-3 py-1 text-[10px] text-neutral-500 uppercase tracking-wider">Add to existing track</div>
+                                            <div className="border-t border-line-subtle my-1" />
+                                            <div className="px-3 py-1 text-[10px] text-content-muted uppercase tracking-wider">Add to existing track</div>
                                             {availableTracks.map(track => (
                                                 <button
                                                     key={track.id}
@@ -358,7 +358,7 @@ export const GoalDetailPage: React.FC<GoalDetailPageProps> = ({ goalId, onBack, 
                                                             console.error('Failed to add goal to track:', err);
                                                         }
                                                     }}
-                                                    className="w-full text-left px-3 py-2 text-sm text-neutral-300 hover:bg-neutral-700/50"
+                                                    className="w-full text-left px-3 py-2 text-sm text-content-secondary hover:bg-surface-2/50"
                                                 >
                                                     {track.name}
                                                 </button>
@@ -380,17 +380,17 @@ export const GoalDetailPage: React.FC<GoalDetailPageProps> = ({ goalId, onBack, 
                                     console.error('Failed to remove from track:', err);
                                 }
                             }}
-                            className="min-h-[44px] flex items-center gap-1.5 px-3 text-xs text-neutral-500 hover:text-neutral-300 hover:bg-white/5 rounded-lg transition-colors"
+                            className="min-h-[44px] flex items-center gap-1.5 px-3 text-xs text-content-muted hover:text-content-secondary hover:bg-surface-2 rounded-lg transition-colors"
                             title="Remove from track"
                         >
                             <Route size={14} />
                             <span>Remove from track</span>
                         </button>
                     )}
-                    <button onClick={() => setShowEditModal(true)} className="min-h-[44px] min-w-[44px] flex items-center justify-center text-neutral-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors" aria-label="Edit goal">
+                    <button onClick={() => setShowEditModal(true)} className="min-h-[44px] min-w-[44px] flex items-center justify-center text-content-secondary hover:text-content-primary hover:bg-surface-2 rounded-lg transition-colors" aria-label="Edit goal">
                         <Edit size={18} />
                     </button>
-                    <button onClick={() => setShowDeleteConfirm(true)} className="min-h-[44px] min-w-[44px] flex items-center justify-center text-neutral-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors" aria-label="Delete goal">
+                    <button onClick={() => setShowDeleteConfirm(true)} className="min-h-[44px] min-w-[44px] flex items-center justify-center text-content-secondary hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors" aria-label="Delete goal">
                         <Trash2 size={18} />
                     </button>
                 </div>
@@ -403,14 +403,14 @@ export const GoalDetailPage: React.FC<GoalDetailPageProps> = ({ goalId, onBack, 
                     <div className="flex items-start justify-between">
                         <div>
                             <div className="flex items-center gap-3 mb-2">
-                                <h1 className="text-3xl font-bold text-white tracking-tight">{goal.title}</h1>
+                                <h1 className="text-3xl font-bold text-content-primary tracking-tight">{goal.title}</h1>
                                 <GoalStatusChip status={goal.completedAt ? 'completed' : 'active'}>
                                     {goal.completedAt ? 'Completed' : 'Active'}
                                 </GoalStatusChip>
                             </div>
                             {/* Mantra / Notes (Read Only) */}
                             {goal.notes && (
-                                <p className="text-neutral-400 text-sm leading-relaxed max-w-2xl">
+                                <p className="text-content-secondary text-sm leading-relaxed max-w-2xl">
                                     “{goal.notes}”
                                 </p>
                             )}
@@ -420,7 +420,7 @@ export const GoalDetailPage: React.FC<GoalDetailPageProps> = ({ goalId, onBack, 
                     {/* Track context info */}
                     {goal.trackId && goal.activeWindowStart && (
                         <div className="mt-2 px-3 py-2 bg-emerald-500/5 border border-emerald-500/10 rounded-lg">
-                            <p className="text-xs text-emerald-400/80">
+                            <p className="text-xs text-accent-contrast/80">
                                 {goal.trackStatus === 'active'
                                     ? `Progress tracked since ${format(parseISO(goal.activeWindowStart), 'MMM d, yyyy')}. Only habit entries from this date onward count toward this goal.`
                                     : goal.trackStatus === 'completed' && goal.activeWindowEnd
@@ -434,7 +434,7 @@ export const GoalDetailPage: React.FC<GoalDetailPageProps> = ({ goalId, onBack, 
 
                     {/* Progress Bar with Inline Milestones */}
                     <div className="relative pt-6 pb-2">
-                        <div className="h-4 bg-neutral-800 rounded-full overflow-hidden relative">
+                        <div className="h-4 bg-surface-1 rounded-full overflow-hidden relative">
                             <div
                                 className="h-full bg-emerald-500 transition-all duration-1000 ease-out"
                                 style={{ width: `${progressPercent}%` }}
@@ -448,7 +448,7 @@ export const GoalDetailPage: React.FC<GoalDetailPageProps> = ({ goalId, onBack, 
                                 />
                             ))}
                         </div>
-                        <div className="flex justify-between mt-2 text-xs font-medium text-neutral-500">
+                        <div className="flex justify-between mt-2 text-xs font-medium text-content-muted">
                             <span>Start</span>
                             {goal.targetValue && (
                                 <span>{goal.targetValue} {goal.unit}</span>
@@ -456,9 +456,9 @@ export const GoalDetailPage: React.FC<GoalDetailPageProps> = ({ goalId, onBack, 
                         </div>
 
                         {/* Current Value Display */}
-                        <div className="mt-2 text-2xl font-semibold text-white">
+                        <div className="mt-2 text-2xl font-semibold text-content-primary">
                             {goal.type === 'cumulative'
-                                ? <span>{progress.currentValue} <span className="text-neutral-500 text-lg font-normal">/ {goal.targetValue} {goal.unit}</span></span>
+                                ? <span>{progress.currentValue} <span className="text-content-muted text-lg font-normal">/ {goal.targetValue} {goal.unit}</span></span>
                                 : <span>{progressPercent}% Complete</span>
                             }
                         </div>
@@ -466,8 +466,8 @@ export const GoalDetailPage: React.FC<GoalDetailPageProps> = ({ goalId, onBack, 
 
                     {/* Target Date */}
                     {goal.deadline && (
-                        <div className="flex items-center gap-2 text-neutral-500 text-sm">
-                            <span className=" px-2 py-0.5 bg-neutral-900 rounded border border-white/5">
+                        <div className="flex items-center gap-2 text-content-muted text-sm">
+                            <span className=" px-2 py-0.5 bg-surface-0 rounded border border-line-subtle">
                                 Target: {format(parseISO(goal.deadline), 'MMM d, yyyy')}
                             </span>
                         </div>
@@ -481,24 +481,24 @@ export const GoalDetailPage: React.FC<GoalDetailPageProps> = ({ goalId, onBack, 
                     {!showCompleteConfirm ? (
                         <button
                             onClick={() => setShowCompleteConfirm(true)}
-                            className="flex items-center gap-2 px-5 py-2.5 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 rounded-lg hover:bg-emerald-500/20 transition-colors font-medium text-sm"
+                            className="flex items-center gap-2 px-5 py-2.5 bg-accent-soft border border-accent/30 text-accent-contrast rounded-lg hover:bg-accent-strong/20 transition-colors font-medium text-sm"
                         >
                             <Trophy size={16} />
                             Mark as Complete
                         </button>
                     ) : (
-                        <div className="flex items-center gap-3 p-4 bg-emerald-500/10 border border-emerald-500/30 rounded-lg">
-                            <span className="text-sm text-emerald-300">Mark this goal as achieved?</span>
+                        <div className="flex items-center gap-3 p-4 bg-accent-soft border border-accent/30 rounded-lg">
+                            <span className="text-sm text-accent-contrast">Mark this goal as achieved?</span>
                             <button
                                 onClick={handleMarkComplete}
                                 disabled={isMarkingComplete}
-                                className="px-4 py-1.5 bg-emerald-500 text-neutral-900 font-medium text-sm rounded-lg hover:bg-emerald-400 transition-colors disabled:opacity-50"
+                                className="px-4 py-1.5 bg-emerald-500 text-neutral-900 font-medium text-sm rounded-lg hover:bg-accent-strong transition-colors disabled:opacity-50"
                             >
                                 {isMarkingComplete ? 'Completing...' : 'Yes, I did it!'}
                             </button>
                             <button
                                 onClick={() => setShowCompleteConfirm(false)}
-                                className="px-3 py-1.5 text-neutral-400 hover:text-white text-sm transition-colors"
+                                className="px-3 py-1.5 text-content-secondary hover:text-content-primary text-sm transition-colors"
                             >
                                 Cancel
                             </button>
@@ -523,14 +523,14 @@ export const GoalDetailPage: React.FC<GoalDetailPageProps> = ({ goalId, onBack, 
                                 <TrendingUp size={16} />
                                 Extend Goal
                             </button>
-                            <p className="text-neutral-500 text-xs mt-2">
+                            <p className="text-content-muted text-xs mt-2">
                                 Create a new goal with a higher target. This goal stays in your Win Archive.
                             </p>
                         </div>
                     ) : (
                         <div className="p-4 bg-blue-500/5 border border-blue-500/20 rounded-lg space-y-3">
                             <div className="text-sm text-blue-300 font-medium">Set your new target</div>
-                            <div className="text-xs text-neutral-500">
+                            <div className="text-xs text-content-muted">
                                 Original target: {goal.targetValue} {goal.unit} (completed). Your progress carries over to the new goal.
                             </div>
                             <div className="flex items-center gap-3">
@@ -539,11 +539,11 @@ export const GoalDetailPage: React.FC<GoalDetailPageProps> = ({ goalId, onBack, 
                                     value={extendTarget}
                                     onChange={(e) => setExtendTarget(e.target.value)}
                                     min={(goal.targetValue ?? 0) + 1}
-                                    className="w-32 bg-neutral-800 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500"
+                                    className="w-32 bg-surface-1 border border-line-subtle rounded-lg px-3 py-2 text-content-primary text-sm focus:outline-none focus:border-blue-500"
                                     placeholder="New target"
                                     autoFocus
                                 />
-                                {goal.unit && <span className="text-neutral-400 text-sm">{goal.unit}</span>}
+                                {goal.unit && <span className="text-content-secondary text-sm">{goal.unit}</span>}
                             </div>
                             {extendError && (
                                 <div className="text-red-400 text-xs">{extendError}</div>
@@ -552,14 +552,14 @@ export const GoalDetailPage: React.FC<GoalDetailPageProps> = ({ goalId, onBack, 
                                 <button
                                     onClick={handleExtendGoal}
                                     disabled={isExtending}
-                                    className="px-4 py-1.5 bg-blue-500 text-white font-medium text-sm rounded-lg hover:bg-blue-400 transition-colors disabled:opacity-50"
+                                    className="px-4 py-1.5 bg-blue-500 text-content-primary font-medium text-sm rounded-lg hover:bg-blue-400 transition-colors disabled:opacity-50"
                                 >
                                     {isExtending ? 'Creating...' : 'Create Extended Goal'}
                                 </button>
                                 <button
                                     onClick={() => setShowExtendForm(false)}
                                     disabled={isExtending}
-                                    className="px-3 py-1.5 text-neutral-400 hover:text-white text-sm transition-colors"
+                                    className="px-3 py-1.5 text-content-secondary hover:text-content-primary text-sm transition-colors"
                                 >
                                     Cancel
                                 </button>
@@ -570,12 +570,12 @@ export const GoalDetailPage: React.FC<GoalDetailPageProps> = ({ goalId, onBack, 
             )}
 
             {/* Tabs */}
-            <div className="flex border-b border-white/10 mb-8">
+            <div className="flex border-b border-line-subtle mb-8">
                 <button
                     onClick={() => setActiveTab('cumulative')}
                     className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === 'cumulative'
-                        ? 'border-emerald-500 text-emerald-400'
-                        : 'border-transparent text-neutral-400 hover:text-white'
+                        ? 'border-emerald-500 text-accent-contrast'
+                        : 'border-transparent text-content-secondary hover:text-content-primary'
                         }`}
                 >
                     Cumulative
@@ -584,8 +584,8 @@ export const GoalDetailPage: React.FC<GoalDetailPageProps> = ({ goalId, onBack, 
                     <button
                         onClick={() => setActiveTab('trend')}
                         className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === 'trend'
-                            ? 'border-emerald-500 text-emerald-400'
-                            : 'border-transparent text-neutral-400 hover:text-white'
+                            ? 'border-emerald-500 text-accent-contrast'
+                            : 'border-transparent text-content-secondary hover:text-content-primary'
                             }`}
                     >
                         Trend
@@ -594,8 +594,8 @@ export const GoalDetailPage: React.FC<GoalDetailPageProps> = ({ goalId, onBack, 
                 <button
                     onClick={() => setActiveTab('dayByDay')}
                     className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === 'dayByDay'
-                        ? 'border-emerald-500 text-emerald-400'
-                        : 'border-transparent text-neutral-400 hover:text-white'
+                        ? 'border-emerald-500 text-accent-contrast'
+                        : 'border-transparent text-content-secondary hover:text-content-primary'
                         }`}
                 >
                     Day by Day
@@ -608,7 +608,7 @@ export const GoalDetailPage: React.FC<GoalDetailPageProps> = ({ goalId, onBack, 
                     <div className="space-y-8 h-full">
                         {/* Cumulative Chart */}
                         <div>
-                            <h3 className="text-neutral-400 text-sm font-medium mb-4 uppercase tracking-wider">Total Progress</h3>
+                            <h3 className="text-content-secondary text-sm font-medium mb-4 uppercase tracking-wider">Total Progress</h3>
                             <GoalCumulativeChart
                                 data={cumulativeData}
                                 color="#10b981"
@@ -625,8 +625,8 @@ export const GoalDetailPage: React.FC<GoalDetailPageProps> = ({ goalId, onBack, 
                 {activeTab === 'trend' && canShowTrend && (
                     <div className="space-y-8 h-full">
                         <div>
-                            <h3 className="text-neutral-400 text-sm font-medium mb-4 uppercase tracking-wider">Progress Trend</h3>
-                            <p className="text-neutral-500 text-sm mb-4">
+                            <h3 className="text-content-secondary text-sm font-medium mb-4 uppercase tracking-wider">Progress Trend</h3>
+                            <p className="text-content-muted text-sm mb-4">
                                 Solid line is your actual progress. Dashed line is the pace needed to reach your target by the deadline.
                             </p>
                             <GoalTrendChart
@@ -651,10 +651,10 @@ export const GoalDetailPage: React.FC<GoalDetailPageProps> = ({ goalId, onBack, 
 
 
             {/* Linked Habits Section */}
-            <div className="mt-12 pt-8 border-t border-white/10">
+            <div className="mt-12 pt-8 border-t border-line-subtle">
                 <div className="mb-6">
-                    <p className="text-emerald-400 font-medium mb-1">Habits are how goals are achieved.</p>
-                    <p className="text-neutral-500 text-sm">Consistent daily action drives your progress.</p>
+                    <p className="text-accent-contrast font-medium mb-1">Habits are how goals are achieved.</p>
+                    <p className="text-content-muted text-sm">Consistent daily action drives your progress.</p>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -664,24 +664,24 @@ export const GoalDetailPage: React.FC<GoalDetailPageProps> = ({ goalId, onBack, 
                             onClick={() => {
                                 if (onViewHabit) onViewHabit(habit.id);
                             }}
-                            className="flex items-center gap-4 p-4 bg-neutral-900/50 border border-white/5 rounded-xl hover:bg-neutral-800 hover:border-white/10 transition-all text-left group"
+                            className="flex items-center gap-4 p-4 bg-surface-0/50 border border-line-subtle rounded-xl hover:bg-surface-1 hover:border-line-subtle transition-all text-left group"
                         >
-                            <div className="w-10 h-10 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-500 group-hover:bg-emerald-500/20 transition-colors">
+                            <div className="w-10 h-10 rounded-lg bg-accent-soft flex items-center justify-center text-emerald-500 group-hover:bg-accent-strong/20 transition-colors">
                                 {habit.goal.type === 'boolean' ? <Check size={20} /> : <span className="font-bold text-xs">{habit.goal.unit}</span>}
                             </div>
                             <div>
-                                <div className="font-medium text-white group-hover:text-emerald-400 transition-colors">{habit.name}</div>
-                                <div className="text-xs text-neutral-500 mt-0.5">
+                                <div className="font-medium text-content-primary group-hover:text-accent-contrast transition-colors">{habit.name}</div>
+                                <div className="text-xs text-content-muted mt-0.5">
                                     {habit.goal.type === 'number' ? `Daily Target: ${habit.goal.target} ${habit.goal.unit}` : 'Daily Completion'}
                                 </div>
                             </div>
                         </button>
                     )) : (
-                        <div className="col-span-full p-6 border border-dashed border-neutral-800 rounded-xl text-center">
-                            <p className="text-neutral-500 text-sm mb-3">No habits linked to this goal yet.</p>
+                        <div className="col-span-full p-6 border border-dashed border-line-subtle rounded-xl text-center">
+                            <p className="text-content-muted text-sm mb-3">No habits linked to this goal yet.</p>
                             <button
                                 onClick={() => setShowEditModal(true)} // Edit modal allows linking/creating habits
-                                className="text-emerald-400 text-sm font-medium hover:underline"
+                                className="text-accent-contrast text-sm font-medium hover:underline"
                             >
                                 Link a habit
                             </button>

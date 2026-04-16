@@ -40,21 +40,21 @@ export const DailyBundleRow: React.FC<BundleRowProps> = ({
     const isChoice = habit.bundleType === 'choice';
 
     return (
-        <div className="flex flex-col border-b border-white/5 bg-neutral-900/30">
+        <div className="flex flex-col border-b border-line-subtle bg-surface-0/30">
             {/* Parent Row */}
             <div className="flex">
                 <div
-                    className="w-64 flex-shrink-0 p-4 border-r border-white/5 flex items-center justify-between cursor-pointer hover:bg-white/[0.02] group relative"
+                    className="w-64 flex-shrink-0 p-4 border-r border-line-subtle flex items-center justify-between cursor-pointer hover:bg-white/[0.02] group relative"
                     onClick={isChoice ? undefined : onToggleExpand} // Disable expand for choice
                 >
                     <div className="flex items-center gap-3">
                         <div className="flex flex-col">
-                            <span className="font-medium text-neutral-200 flex items-center gap-2">
+                            <span className="font-medium text-content-primary flex items-center gap-2">
                                 {habit.name}
                                 {isChoice ? <Layers size={14} className="text-amber-400" /> : <ListTodo size={14} className="text-indigo-400" />}
                                 {habit.linkedGoalId && <Trophy size={12} className="text-amber-500" />}
                             </span>
-                            <span className="text-xs text-neutral-500">
+                            <span className="text-xs text-content-muted">
                                 {isChoice ? (habit.bundleOptions?.length || 0) + ' Options' : (subHabits.length || 0) + ' items'}
                             </span>
                         </div>
@@ -65,8 +65,8 @@ export const DailyBundleRow: React.FC<BundleRowProps> = ({
                     )}
 
                     {/* Actions Context Menu */}
-                    <div className="absolute right-2 opacity-0 group-hover:opacity-100 flex gap-2 bg-neutral-900/80 p-1 rounded">
-                        <button onClick={(e) => { e.stopPropagation(); onEditHabit(habit); }} className="text-xs text-neutral-500 hover:text-white">Edit</button>
+                    <div className="absolute right-2 opacity-0 group-hover:opacity-100 flex gap-2 bg-surface-0/80 p-1 rounded">
+                        <button onClick={(e) => { e.stopPropagation(); onEditHabit(habit); }} className="text-xs text-content-muted hover:text-content-primary">Edit</button>
                     </div>
                 </div>
 
@@ -104,9 +104,9 @@ export const DailyBundleRow: React.FC<BundleRowProps> = ({
                         else if (ruleType === 'percent') meetsSuccess = totalChildren > 0 && (completedChildren / totalChildren) * 100 >= (rule?.percent ?? 100);
 
                         return (
-                            <div key={dateStr} className="w-16 flex-shrink-0 border-r border-white/5 flex items-center justify-center p-2">
+                            <div key={dateStr} className="w-16 flex-shrink-0 border-r border-line-subtle flex items-center justify-center p-2">
                                 <div
-                                    className="relative w-full h-full flex flex-col items-center justify-center cursor-pointer hover:bg-white/5 transition-colors p-1"
+                                    className="relative w-full h-full flex flex-col items-center justify-center cursor-pointer hover:bg-surface-2 transition-colors p-1"
                                     onClick={() => {
                                         const targetState = !isFullyComplete;
                                         subHabits.forEach(sub => {
@@ -119,12 +119,12 @@ export const DailyBundleRow: React.FC<BundleRowProps> = ({
                                 >
                                     <div className={cn(
                                         "text-[10px] font-medium mb-1",
-                                        isFullyComplete ? "text-emerald-400" : meetsSuccess ? "text-indigo-400" : "text-neutral-400"
+                                        isFullyComplete ? "text-accent-contrast" : meetsSuccess ? "text-indigo-400" : "text-content-secondary"
                                     )}>
                                         {completedChildren}/{totalChildren}
                                         {meetsSuccess && !isFullyComplete && <span className="ml-0.5 text-[8px]">&#10003;</span>}
                                     </div>
-                                    <div className="w-full h-1 bg-neutral-800 rounded-full overflow-hidden">
+                                    <div className="w-full h-1 bg-surface-1 rounded-full overflow-hidden">
                                         <div
                                             className={cn(
                                                 "h-full transition-all duration-300",
@@ -144,21 +144,21 @@ export const DailyBundleRow: React.FC<BundleRowProps> = ({
             {isExpanded && !isChoice && (
                 <div className="flex flex-col">
                     {subHabits.map((child: Habit) => (
-                        <div key={child.id} className="flex border-b border-white/5 last:border-0 bg-neutral-900/50">
+                        <div key={child.id} className="flex border-b border-line-subtle last:border-0 bg-surface-0/50">
                             {/* Child Name Cell */}
                             <div
-                                className="w-64 flex-shrink-0 p-4 pl-12 border-r border-white/5 flex items-center justify-between cursor-pointer hover:bg-white/[0.02] group relative"
+                                className="w-64 flex-shrink-0 p-4 pl-12 border-r border-line-subtle flex items-center justify-between cursor-pointer hover:bg-white/[0.02] group relative"
                                 onClick={(e) => {
                                     handleCellClick(e, child, format(new Date(), 'yyyy-MM-dd'));
                                 }}
                             >
-                                <span className="text-sm text-neutral-400 truncate flex items-center gap-1.5">
+                                <span className="text-sm text-content-secondary truncate flex items-center gap-1.5">
                                     {child.name}
                                     {child.linkedGoalId && <Trophy size={10} className="flex-shrink-0 text-amber-500" />}
                                 </span>
                                 {/* Child Actions */}
-                                <div className="absolute right-2 opacity-0 group-hover:opacity-100 flex gap-2 bg-neutral-900/80 p-1 rounded">
-                                    <button onClick={(e) => { e.stopPropagation(); onEditHabit(child); }} className="text-[10px] text-neutral-500 hover:text-white uppercase tracking-wider font-semibold">Edit</button>
+                                <div className="absolute right-2 opacity-0 group-hover:opacity-100 flex gap-2 bg-surface-0/80 p-1 rounded">
+                                    <button onClick={(e) => { e.stopPropagation(); onEditHabit(child); }} className="text-[10px] text-content-muted hover:text-content-primary uppercase tracking-wider font-semibold">Edit</button>
                                     <button onClick={(e) => { e.stopPropagation(); if (deleteConfirmId === child.id) deleteHabit(child.id); else setDeleteConfirmId(child.id); }} className="text-[10px] text-red-500 hover:text-red-400 uppercase tracking-wider font-semibold">
                                         {deleteConfirmId === child.id ? 'Sure?' : 'Del'}
                                     </button>
@@ -171,10 +171,10 @@ export const DailyBundleRow: React.FC<BundleRowProps> = ({
                                     const log = logs[`${child.id}-${dateStr}`];
                                     const isDone = log?.completed;
                                     return (
-                                        <div key={dateStr} className="w-16 flex-shrink-0 border-r border-white/5 flex items-center justify-center p-2">
+                                        <div key={dateStr} className="w-16 flex-shrink-0 border-r border-line-subtle flex items-center justify-center p-2">
                                             <button
                                                 onClick={(e) => { e.stopPropagation(); onToggle(child.id, dateStr); }}
-                                                className={cn("w-6 h-6 rounded flex items-center justify-center transition-colors", isDone ? "bg-indigo-500/20 text-indigo-400" : "bg-neutral-800 text-neutral-700 hover:bg-neutral-700")}
+                                                className={cn("w-6 h-6 rounded flex items-center justify-center transition-colors", isDone ? "bg-indigo-500/20 text-indigo-400" : "bg-surface-1 text-neutral-700 hover:bg-surface-2")}
                                             >
                                                 <Check size={14} className={isDone ? 'opacity-100' : 'opacity-0'} />
                                             </button>
@@ -241,15 +241,15 @@ const ChoiceCell: React.FC<{
     }, [showMenu]);
 
     return (
-        <div className="w-16 flex-shrink-0 border-r border-white/5 relative flex items-center justify-center p-2">
+        <div className="w-16 flex-shrink-0 border-r border-line-subtle relative flex items-center justify-center p-2">
             <button
                 ref={triggerRef}
                 onClick={handleGenericToggle}
                 className={cn(
                     "w-10 h-10 rounded-lg flex items-center justify-center transition-all relative group/btn",
                     isCompleted
-                        ? (currentOption ? "bg-amber-500 text-neutral-900" : "bg-emerald-500 text-neutral-900")
-                        : "bg-neutral-800 text-neutral-600 hover:bg-neutral-700"
+                        ? (currentOption ? "bg-amber-500 text-neutral-900" : "bg-accent text-content-on-accent")
+                        : "bg-surface-1 text-content-muted hover:bg-surface-2"
                 )}
             >
                 {isCompleted && (
@@ -263,7 +263,7 @@ const ChoiceCell: React.FC<{
                 )}
                 {/* Hover Hint if Completed */}
                 {isCompleted && !showMenu && (
-                    <div className="absolute -bottom-6 left-1/2 -translate-x-1/2 bg-black/90 text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover/btn:opacity-100 pointer-events-none whitespace-nowrap z-20">
+                    <div className="absolute -bottom-6 left-1/2 -translate-x-1/2 bg-black/90 text-content-primary text-[10px] px-2 py-1 rounded opacity-0 group-hover/btn:opacity-100 pointer-events-none whitespace-nowrap z-20">
                         {currentOption ? currentOption.label : 'Generic Complete'}
                     </div>
                 )}
@@ -272,7 +272,7 @@ const ChoiceCell: React.FC<{
             {/* Portal Menu */}
             {showMenu && createPortal(
                 <div
-                    className="fixed w-32 bg-neutral-800 border border-white/10 rounded-lg shadow-xl z-[9999] overflow-hidden flex flex-col p-1"
+                    className="fixed w-32 bg-surface-1 border border-line-subtle rounded-lg shadow-xl z-[9999] overflow-hidden flex flex-col p-1"
                     style={{
                         top: menuPos.top,
                         left: menuPos.left,
@@ -280,7 +280,7 @@ const ChoiceCell: React.FC<{
                     }}
                     onClick={(e) => e.stopPropagation()}
                 >
-                    <div className="text-[10px] uppercase text-neutral-500 px-2 py-1 font-semibold">Select Option</div>
+                    <div className="text-[10px] uppercase text-content-muted px-2 py-1 font-semibold">Select Option</div>
                     {habit.bundleOptions?.map(opt => (
                         <button
                             key={opt.key}
@@ -289,8 +289,8 @@ const ChoiceCell: React.FC<{
                                 setShowMenu(false);
                             }}
                             className={cn(
-                                "text-left px-2 py-1.5 text-xs rounded hover:bg-white/10 transition-colors flex items-center gap-2",
-                                currentOptionKey === opt.key ? "text-amber-400" : "text-neutral-300"
+                                "text-left px-2 py-1.5 text-xs rounded hover:bg-surface-2 transition-colors flex items-center gap-2",
+                                currentOptionKey === opt.key ? "text-amber-400" : "text-content-secondary"
                             )}
                         >
                             {currentOptionKey === opt.key && <div className="w-1 h-1 rounded-full bg-amber-400" />}

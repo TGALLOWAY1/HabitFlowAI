@@ -100,7 +100,7 @@ export const WeeklyHabitEditModal: React.FC<WeeklyHabitEditModalProps> = ({ habi
                                 type="time"
                                 value={time}
                                 onChange={(e) => setTime(e.target.value)}
-                                className="w-full bg-neutral-800 border border-white/10 rounded-lg px-3 py-2 text-white focus:border-emerald-500 focus:outline-none transition-colors"
+                                className="w-full bg-neutral-800 border border-white/10 rounded-lg px-3 py-2 text-white focus:border-focus focus:outline-none transition-colors"
                             />
                         </div>
                         <div className="space-y-2">
@@ -113,7 +113,7 @@ export const WeeklyHabitEditModal: React.FC<WeeklyHabitEditModalProps> = ({ habi
                                 onChange={(e) => setDuration(Number(e.target.value))}
                                 min="5"
                                 step="5"
-                                className="w-full bg-neutral-800 border border-white/10 rounded-lg px-3 py-2 text-white focus:border-emerald-500 focus:outline-none transition-colors"
+                                className="w-full bg-neutral-800 border border-white/10 rounded-lg px-3 py-2 text-white focus:border-focus focus:outline-none transition-colors"
                             />
                         </div>
                     </div>
@@ -160,7 +160,7 @@ export const WeeklyHabitEditModal: React.FC<WeeklyHabitEditModalProps> = ({ habi
                     <button
                         onClick={handleSave}
                         disabled={isSaving}
-                        className="bg-emerald-500 hover:bg-emerald-400 text-neutral-900 font-bold py-2 px-6 rounded-xl transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="bg-emerald-500 hover:bg-accent-strong text-content-on-accent font-bold py-2 px-6 rounded-xl transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         {isSaving ? 'Saving...' : (
                             <>

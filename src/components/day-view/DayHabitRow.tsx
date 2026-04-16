@@ -112,7 +112,7 @@ export const DayHabitRow = ({
                                 <input
                                     autoFocus
                                     type="number"
-                                    className="w-12 bg-surface-1 text-content-primary rounded px-1 py-0.5 text-xs border border-line-subtle focus:outline-none focus:border-emerald-500"
+                                    className="w-12 bg-surface-1 text-content-primary rounded px-1 py-0.5 text-xs border border-line-subtle focus:outline-none focus:border-focus"
                                     value={timeInput}
                                     onChange={(e) => setTimeInput(e.target.value)}
                                     onBlur={handleTimeSubmit}
@@ -179,7 +179,7 @@ export const DayHabitRow = ({
                             className={cn(
                                 "px-3 py-1.5 rounded-md text-xs font-medium border transition-all",
                                 selectedChoice === option.key
-                                    ? "bg-accent-soft text-accent-contrast border-emerald-500/50"
+                                    ? "bg-accent-soft text-accent-contrast border-accent/50"
                                     : "bg-surface-1 text-content-secondary border-line-subtle hover:border-line-strong hover:text-content-primary"
                             )}
                         >

@@ -527,23 +527,23 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
 
     return (
         <div className="modal-overlay fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-            <div className="w-full max-w-md bg-neutral-900 border border-white/10 rounded-2xl p-6 shadow-2xl max-h-[90dvh] overflow-y-auto modal-scroll">
+            <div className="w-full max-w-md bg-surface-0 border border-line-subtle rounded-2xl p-6 shadow-2xl max-h-[90dvh] overflow-y-auto modal-scroll">
                 <div className="flex items-center justify-between mb-6">
-                    <h3 className="text-xl font-bold text-white">
+                    <h3 className="text-xl font-bold text-content-primary">
                         {isEditMode
                             ? (initialData?.type !== 'bundle' && habitType === 'bundle')
                                 ? 'Convert to Bundle'
                                 : 'Edit Habit'
                             : 'Add New Habit'}
                     </h3>
-                    <button onClick={onClose} className="min-h-[44px] min-w-[44px] flex items-center justify-center text-neutral-400 hover:text-white -mr-2" aria-label="Close">
+                    <button onClick={onClose} className="min-h-[44px] min-w-[44px] flex items-center justify-center text-content-secondary hover:text-content-primary -mr-2" aria-label="Close">
                         <X size={20} />
                     </button>
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-5">
                     {/* 1. Type Selection (Step 1) */}
-                    <div className="bg-neutral-800/50 p-1 rounded-lg flex space-x-1">
+                    <div className="bg-surface-1/50 p-1 rounded-lg flex space-x-1">
                         <button
                             type="button"
                             onClick={() => {
@@ -551,8 +551,8 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                                 setBundleMode(null);
                             }}
                             className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-md text-sm font-medium transition-all ${habitType === 'regular'
-                                ? 'bg-emerald-500 text-neutral-900 shadow-lg'
-                                : 'text-neutral-400 hover:text-white hover:bg-white/5'
+                                ? 'bg-accent text-content-on-accent shadow-lg'
+                                : 'text-content-secondary hover:text-content-primary hover:bg-surface-2'
                                 }`}
                         >
                             <CheckSquare size={16} />
@@ -564,8 +564,8 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                                 setHabitType('bundle');
                             }}
                             className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-md text-sm font-medium transition-all ${habitType === 'bundle'
-                                ? 'bg-indigo-500 text-white shadow-lg'
-                                : 'text-neutral-400 hover:text-white hover:bg-white/5'
+                                ? 'bg-indigo-500 text-content-primary shadow-lg'
+                                : 'text-content-secondary hover:text-content-primary hover:bg-surface-2'
                                 }`}
                         >
                             <Layers size={16} />
@@ -581,16 +581,16 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                                 onClick={() => setBundleMode('checklist')}
                                 className={`relative p-3 rounded-xl border text-left transition-all ${bundleMode === 'checklist'
                                     ? 'bg-indigo-500/20 border-indigo-500 ring-1 ring-indigo-500/50'
-                                    : 'bg-neutral-800 border-white/5 hover:bg-neutral-700/50'
+                                    : 'bg-surface-1 border-line-subtle hover:bg-surface-2/50'
                                     }`}
                             >
                                 <div className="flex items-center gap-2 mb-2">
-                                    <div className={`p-1.5 rounded-lg ${bundleMode === 'checklist' ? 'bg-indigo-500 text-white' : 'bg-neutral-700 text-neutral-400'}`}>
+                                    <div className={`p-1.5 rounded-lg ${bundleMode === 'checklist' ? 'bg-indigo-500 text-content-primary' : 'bg-surface-2 text-content-secondary'}`}>
                                         <CheckSquare size={16} />
                                     </div>
-                                    <span className={`text-sm font-semibold ${bundleMode === 'checklist' ? 'text-white' : 'text-neutral-300'}`}>Checklist</span>
+                                    <span className={`text-sm font-semibold ${bundleMode === 'checklist' ? 'text-content-primary' : 'text-content-secondary'}`}>Checklist</span>
                                 </div>
-                                <p className="text-xs text-neutral-500 leading-relaxed">
+                                <p className="text-xs text-content-muted leading-relaxed">
                                     "I want to do multiple items."
                                     <br />
                                     <span className="opacity-75 italic block mt-1">Example: Morning Routine (Bed, Teeth, Water)</span>
@@ -607,16 +607,16 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                                 onClick={() => setBundleMode('choice')}
                                 className={`relative p-3 rounded-xl border text-left transition-all ${bundleMode === 'choice'
                                     ? 'bg-amber-500/20 border-amber-500 ring-1 ring-amber-500/50'
-                                    : 'bg-neutral-800 border-white/5 hover:bg-neutral-700/50'
+                                    : 'bg-surface-1 border-line-subtle hover:bg-surface-2/50'
                                     }`}
                             >
                                 <div className="flex items-center gap-2 mb-2">
-                                    <div className={`p-1.5 rounded-lg ${bundleMode === 'choice' ? 'bg-amber-500 text-neutral-900' : 'bg-neutral-700 text-neutral-400'}`}>
+                                    <div className={`p-1.5 rounded-lg ${bundleMode === 'choice' ? 'bg-amber-500 text-neutral-900' : 'bg-surface-2 text-content-secondary'}`}>
                                         <ChevronRight size={16} />
                                     </div>
-                                    <span className={`text-sm font-semibold ${bundleMode === 'choice' ? 'text-white' : 'text-neutral-300'}`}>Choice</span>
+                                    <span className={`text-sm font-semibold ${bundleMode === 'choice' ? 'text-content-primary' : 'text-content-secondary'}`}>Choice</span>
                                 </div>
-                                <p className="text-xs text-neutral-500 leading-relaxed">
+                                <p className="text-xs text-content-muted leading-relaxed">
                                     "Any one option satisfies the habit."
                                     <br />
                                     <span className="opacity-75 italic block mt-1">Example: Read OR Podcast OR YouTube</span>
@@ -633,19 +633,19 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                     {/* 1. Basic Info */}
                     <div className="space-y-4">
                         <div>
-                            <label className="block text-sm font-medium text-neutral-400 mb-1">Habit Name</label>
+                            <label className="block text-sm font-medium text-content-secondary mb-1">Habit Name</label>
                             <input
                                 type="text"
                                 value={name}
                                 onChange={(e) => setName(e.target.value)}
-                                className="w-full bg-neutral-800 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-emerald-500"
+                                className="w-full bg-surface-1 border border-line-subtle rounded-lg px-4 py-2 text-content-primary focus:outline-none focus:border-focus"
                                 placeholder="e.g., Morning Jog"
                                 required
                             />
                         </div>
 
                         <div>
-                                <label className="block text-sm font-medium text-neutral-400 mb-1">Category</label>
+                                <label className="block text-sm font-medium text-content-secondary mb-1">Category</label>
                                 {categories.length > 0 && !isCreatingCategory && (
                                     <select
                                         value={selectedCategoryId}
@@ -656,7 +656,7 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                                                 setSelectedCategoryId(e.target.value);
                                             }
                                         }}
-                                        className="w-full bg-neutral-800 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-emerald-500 appearance-none"
+                                        className="w-full bg-surface-1 border border-line-subtle rounded-lg px-4 py-2 text-content-primary focus:outline-none focus:border-focus appearance-none"
                                     >
                                         <option value="__new__">+ New Category</option>
                                         {categories.map(cat => (
@@ -690,7 +690,7 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                                                     }
                                                 }
                                             }}
-                                            className="flex-1 bg-neutral-800 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-emerald-500"
+                                            className="flex-1 bg-surface-1 border border-line-subtle rounded-lg px-4 py-2 text-content-primary focus:outline-none focus:border-focus"
                                             placeholder="Category name"
                                             autoFocus
                                             disabled={isSubmittingCategory}
@@ -712,7 +712,7 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                                                     setIsSubmittingCategory(false);
                                                 }
                                             }}
-                                            className="px-3 py-2 bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 text-white text-sm font-medium rounded-lg transition-colors"
+                                            className="px-3 py-2 bg-accent hover:bg-accent-strong disabled:opacity-50 text-content-primary text-sm font-medium rounded-lg transition-colors"
                                         >
                                             {isSubmittingCategory ? '...' : 'Save'}
                                         </button>
@@ -720,20 +720,20 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                                             <button
                                                 type="button"
                                                 onClick={() => { setIsCreatingCategory(false); setNewCategoryName(''); }}
-                                                className="px-3 py-2 bg-neutral-700 hover:bg-neutral-600 text-white text-sm rounded-lg transition-colors"
+                                                className="px-3 py-2 bg-surface-2 hover:bg-surface-2 text-content-primary text-sm rounded-lg transition-colors"
                                             >
                                                 Cancel
                                             </button>
                                         )}
                                     </div>
                                 ) : categories.length === 0 ? (
-                                    <p className="text-sm text-neutral-500 mb-2">No categories yet. Create one to get started.</p>
+                                    <p className="text-sm text-content-muted mb-2">No categories yet. Create one to get started.</p>
                                 ) : null}
                                 {!isCreatingCategory && categories.length === 0 && (
                                     <button
                                         type="button"
                                         onClick={() => setIsCreatingCategory(true)}
-                                        className="text-sm text-emerald-400 hover:text-emerald-300 transition-colors mt-1"
+                                        className="text-sm text-accent-contrast hover:text-accent-contrast transition-colors mt-1"
                                     >
                                         + New Category
                                     </button>
@@ -744,7 +744,7 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                     {/* 2. Tracking Style (Only for Regular) */}
                     {habitType === 'regular' && (
                         <div className="space-y-3">
-                            <label className="block text-sm font-medium text-neutral-400">Tracking Style</label>
+                            <label className="block text-sm font-medium text-content-secondary">Tracking Style</label>
 
                             {/* Goal Type Toggle */}
                             <div className="grid grid-cols-2 gap-2">
@@ -753,7 +753,7 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                                     onClick={() => setGoalType('boolean')}
                                     className={`flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors border ${goalType === 'boolean'
                                         ? 'bg-blue-500/20 text-blue-400 border-blue-500/50'
-                                        : 'bg-neutral-800 text-neutral-400 border-white/5 hover:bg-neutral-700'
+                                        : 'bg-surface-1 text-content-secondary border-line-subtle hover:bg-surface-2'
                                         }`}
                                 >
                                     <CheckCircle2 size={16} />
@@ -764,7 +764,7 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                                     onClick={() => setGoalType('number')}
                                     className={`flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors border ${goalType === 'number'
                                         ? 'bg-amber-500/20 text-amber-400 border-amber-500/50'
-                                        : 'bg-neutral-800 text-neutral-400 border-white/5 hover:bg-neutral-700'
+                                        : 'bg-surface-1 text-content-secondary border-line-subtle hover:bg-surface-2'
                                         }`}
                                 >
                                     <Calculator size={16} />
@@ -788,7 +788,7 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                                         setLinkedGoalId(e.target.value || null);
                                     }
                                 }}
-                                className="w-full bg-neutral-800 border border-white/10 rounded-lg pl-10 pr-4 py-2 text-white focus:outline-none focus:border-emerald-500 appearance-none"
+                                className="w-full bg-surface-1 border border-line-subtle rounded-lg pl-10 pr-4 py-2 text-content-primary focus:outline-none focus:border-focus appearance-none"
                             >
                                 <option value="">Connect to a Goal (Optional)</option>
                                 <option value="__new__">+ Create New Goal</option>
@@ -797,19 +797,19 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                                     <option key={g.id} value={g.id}>{g.title}</option>
                                 ))}
                             </select>
-                            <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-500 pointer-events-none" />
+                            <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-content-muted pointer-events-none" />
                         </div>
                     </div>
 
 
                     {/* Bundle Configuration - UNIFIED (Checklist + Choice) */}
                     {habitType === 'bundle' && (bundleMode === 'checklist' || bundleMode === 'choice') && (
-                        <div className="space-y-4 border-t border-white/5 pt-4 animate-in fade-in slide-in-from-top-2">
+                        <div className="space-y-4 border-t border-line-subtle pt-4 animate-in fade-in slide-in-from-top-2">
                             <div className="flex items-center justify-between">
-                                <label className="text-sm font-bold text-white">
+                                <label className="text-sm font-bold text-content-primary">
                                     {bundleMode === 'checklist' ? 'Checklist Items' : 'Choices'}
                                 </label>
-                                <span className="text-xs text-neutral-500">
+                                <span className="text-xs text-content-muted">
                                     {bundleMode === 'checklist' ? 'Checking parent completes all children.' : 'Select one valid option.'}
                                 </span>
                             </div>
@@ -819,11 +819,11 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                                 <button
                                     type="button"
                                     onClick={() => setShowSubHabitSelect(!showSubHabitSelect)}
-                                    className="flex items-center justify-between w-full text-left bg-neutral-800/50 p-3 rounded-lg border border-white/5 hover:bg-neutral-800 transition-colors"
+                                    className="flex items-center justify-between w-full text-left bg-surface-1/50 p-3 rounded-lg border border-line-subtle hover:bg-surface-1 transition-colors"
                                 >
                                     <div className="flex items-center gap-2">
-                                        {showSubHabitSelect ? <ChevronDown size={18} className="text-neutral-400" /> : <Search size={18} className="text-neutral-400" />}
-                                        <span className="text-sm font-medium text-neutral-300">
+                                        {showSubHabitSelect ? <ChevronDown size={18} className="text-content-secondary" /> : <Search size={18} className="text-content-secondary" />}
+                                        <span className="text-sm font-medium text-content-secondary">
                                             Add Existing Habits
                                         </span>
                                     </div>
@@ -833,15 +833,15 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                                 </button>
 
                                 {showSubHabitSelect && (
-                                    <div className="space-y-3 p-3 bg-neutral-900 rounded-lg border border-white/10 animate-in fade-in zoom-in-95 duration-200">
+                                    <div className="space-y-3 p-3 bg-surface-0 rounded-lg border border-line-subtle animate-in fade-in zoom-in-95 duration-200">
                                         <div className="relative">
-                                            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500" />
+                                            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-content-muted" />
                                             <input
                                                 type="text"
                                                 value={searchTerm}
                                                 onChange={(e) => setSearchTerm(e.target.value)}
                                                 placeholder="Search habits..."
-                                                className="w-full bg-neutral-800 border border-white/10 rounded-lg pl-9 pr-4 py-2 text-xs text-white focus:outline-none focus:border-indigo-500"
+                                                className="w-full bg-surface-1 border border-line-subtle rounded-lg pl-9 pr-4 py-2 text-xs text-content-primary focus:outline-none focus:border-indigo-500"
                                             />
                                         </div>
                                         <div className="max-h-40 overflow-y-auto space-y-1 custom-scrollbar">
@@ -849,13 +849,13 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                                                 <div
                                                     key={h.id}
                                                     onClick={() => toggleSubHabit(h.id)}
-                                                    className={`flex items-center justify-between p-2 rounded cursor-pointer transition-colors ${subHabitIds.includes(h.id) ? 'bg-indigo-500/20 text-indigo-300' : 'hover:bg-neutral-800 text-neutral-400'}`}
+                                                    className={`flex items-center justify-between p-2 rounded cursor-pointer transition-colors ${subHabitIds.includes(h.id) ? 'bg-indigo-500/20 text-indigo-300' : 'hover:bg-surface-1 text-content-secondary'}`}
                                                 >
                                                     <span className="text-xs">{h.name}</span>
                                                     {subHabitIds.includes(h.id) && <CheckCircle2 size={12} />}
                                                 </div>
                                             )) : (
-                                                <p className="text-center text-xs text-neutral-500 py-2">No matching habits.</p>
+                                                <p className="text-center text-xs text-content-muted py-2">No matching habits.</p>
                                             )}
                                         </div>
                                     </div>
@@ -864,14 +864,14 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
 
                             {/* Create New Item */}
                             <div className="space-y-2">
-                                <label className="text-xs font-semibold text-neutral-500 uppercase tracking-wider">New Child Habit</label>
+                                <label className="text-xs font-semibold text-content-muted uppercase tracking-wider">New Child Habit</label>
                                 <div className="flex flex-col gap-2">
                                     <div className="flex gap-2">
                                         <input
                                             type="text"
                                             value={newHabitName}
                                             onChange={(e) => setNewHabitName(e.target.value)}
-                                            className="flex-1 bg-neutral-800 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500"
+                                            className="flex-1 bg-surface-1 border border-line-subtle rounded-lg px-3 py-2 text-sm text-content-primary focus:outline-none focus:border-indigo-500"
                                             placeholder="Item name (e.g. Floss)..."
                                         />
                                         <button
@@ -890,13 +890,13 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                                     {/* Choice Mode: Optional Metric Config for New Items */}
                                     {bundleMode === 'choice' && newHabitName.trim() && (
                                         <div className="flex items-center gap-2 pl-1 animate-in fade-in pt-1">
-                                            <div className="flex bg-neutral-800 rounded-lg p-1 border border-white/5">
+                                            <div className="flex bg-surface-1 rounded-lg p-1 border border-line-subtle">
                                                 <button
                                                     type="button"
                                                     onClick={() => setNewHabitGoalType('boolean')}
                                                     className={`text-xs px-3 py-1.5 rounded-md transition-all ${newHabitGoalType === 'boolean'
-                                                        ? 'bg-neutral-700 text-white shadow-sm'
-                                                        : 'text-neutral-500 hover:text-neutral-300'
+                                                        ? 'bg-surface-2 text-content-primary shadow-sm'
+                                                        : 'text-content-muted hover:text-content-secondary'
                                                         }`}
                                                 >
                                                     Simple (Done/Not)
@@ -905,8 +905,8 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                                                     type="button"
                                                     onClick={() => setNewHabitGoalType('number')}
                                                     className={`text-xs px-3 py-1.5 rounded-md transition-all ${newHabitGoalType === 'number'
-                                                        ? 'bg-neutral-700 text-white shadow-sm'
-                                                        : 'text-neutral-500 hover:text-neutral-300'
+                                                        ? 'bg-surface-2 text-content-primary shadow-sm'
+                                                        : 'text-content-muted hover:text-content-secondary'
                                                         }`}
                                                 >
                                                     Tracked Amount
@@ -919,7 +919,7 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                                                     value={newHabitUnit}
                                                     onChange={(e) => setNewHabitUnit(e.target.value)}
                                                     placeholder="Unit (e.g. miles)"
-                                                    className="bg-neutral-900 border border-white/10 rounded px-2 py-1.5 text-xs text-white w-24 animate-in fade-in slide-in-from-left-2"
+                                                    className="bg-surface-0 border border-line-subtle rounded px-2 py-1.5 text-xs text-content-primary w-24 animate-in fade-in slide-in-from-left-2"
                                                 />
                                             )}
                                         </div>
@@ -929,7 +929,7 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
 
                             {/* List of Items (Linked + Pending) */}
                             {(subHabitIds.length > 0 || pendingSubHabits.length > 0) && (
-                                <div className="bg-neutral-800/20 rounded-lg border border-white/5 overflow-hidden">
+                                <div className="bg-surface-1/20 rounded-lg border border-line-subtle overflow-hidden">
                                     {/* We can't easily show linked habits names without finding them, so just show pending + count logic? 
                                         Actually, let's just list them simply.
                                      */}
@@ -938,15 +938,15 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                                         {pendingSubHabits.map((p, idx) => (
                                             <div key={p.tempId} className={`flex justify-between items-center p-2 rounded border transition-colors ${editingPendingId === p.tempId
                                                 ? 'bg-amber-500/10 border-amber-500/30'
-                                                : 'bg-neutral-800 border-white/5'
+                                                : 'bg-surface-1 border-line-subtle'
                                                 }`}>
                                                 <div
                                                     className="flex items-center gap-2 flex-1 cursor-pointer"
                                                     onClick={() => handleEditPendingSubHabit(p.tempId)}
                                                 >
-                                                    <span className={`text-sm ${editingPendingId === p.tempId ? 'text-amber-200' : 'text-white'}`}>{p.name}</span>
+                                                    <span className={`text-sm ${editingPendingId === p.tempId ? 'text-amber-200' : 'text-content-primary'}`}>{p.name}</span>
                                                     {p.goalType === 'number' && (
-                                                        <span className="text-xs text-emerald-400 bg-emerald-500/10 px-1 rounded">
+                                                        <span className="text-xs text-accent-contrast bg-accent-soft px-1 rounded">
                                                             {p.unit || 'units'}
                                                         </span>
                                                     )}
@@ -965,7 +965,7 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                                                         }}
                                                         disabled={idx === 0}
                                                         aria-label="Move up"
-                                                        className="text-neutral-500 hover:text-white p-1 disabled:opacity-30 disabled:hover:text-neutral-500"
+                                                        className="text-content-muted hover:text-content-primary p-1 disabled:opacity-30 disabled:hover:text-content-muted"
                                                     >
                                                         <ChevronUp size={14} />
                                                     </button>
@@ -977,7 +977,7 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                                                         }}
                                                         disabled={idx === pendingSubHabits.length - 1}
                                                         aria-label="Move down"
-                                                        className="text-neutral-500 hover:text-white p-1 disabled:opacity-30 disabled:hover:text-neutral-500"
+                                                        className="text-content-muted hover:text-content-primary p-1 disabled:opacity-30 disabled:hover:text-content-muted"
                                                     >
                                                         <ChevronDown size={14} />
                                                     </button>
@@ -988,7 +988,7 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                                                             removePendingSubHabit(p.tempId);
                                                         }}
                                                         aria-label="Remove"
-                                                        className="text-neutral-500 hover:text-red-400 p-1"
+                                                        className="text-content-muted hover:text-red-400 p-1"
                                                     >
                                                         <X size={14} />
                                                     </button>
@@ -1093,27 +1093,27 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                     {/* 4. Numeric Target Configuration */}
                     {
                         habitType === 'regular' && goalType === 'number' && (
-                            <div className="grid grid-cols-2 gap-4 pt-2 border-t border-white/5">
+                            <div className="grid grid-cols-2 gap-4 pt-2 border-t border-line-subtle">
                                 <div>
-                                    <label className="block text-sm font-medium text-neutral-400 mb-1">
+                                    <label className="block text-sm font-medium text-content-secondary mb-1">
                                         Target Amount <span className="text-xs opacity-50 font-normal">(Optional)</span>
                                     </label>
                                     <input
                                         type="number"
                                         value={target}
                                         onChange={(e) => setTarget(e.target.value)}
-                                        className="w-full bg-neutral-800 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-emerald-500"
+                                        className="w-full bg-surface-1 border border-line-subtle rounded-lg px-4 py-2 text-content-primary focus:outline-none focus:border-focus"
                                         placeholder="e.g. 10"
                                     />
                                 </div>
                                 {goalType === 'number' && (
                                     <div>
-                                        <label className="block text-sm font-medium text-neutral-400 mb-1">Unit</label>
+                                        <label className="block text-sm font-medium text-content-secondary mb-1">Unit</label>
                                         <input
                                             type="text"
                                             value={unit}
                                             onChange={(e) => setUnit(e.target.value)}
-                                            className="w-full bg-neutral-800 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-emerald-500"
+                                            className="w-full bg-surface-1 border border-line-subtle rounded-lg px-4 py-2 text-content-primary focus:outline-none focus:border-focus"
                                             placeholder="e.g. pages"
                                         />
                                     </div>
@@ -1123,9 +1123,9 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                     }
 
                     {/* 5. Schedule & Streak */}
-                    <div className="space-y-4 pt-2 border-t border-white/5">
+                    <div className="space-y-4 pt-2 border-t border-line-subtle">
                         <div className="space-y-2">
-                            <label className="text-xs font-medium text-neutral-400 uppercase flex items-center gap-1">
+                            <label className="text-xs font-medium text-content-secondary uppercase flex items-center gap-1">
                                 <Calendar size={12} /> Scheduled Days
                             </label>
                             <DayChipSelector
@@ -1136,7 +1136,7 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                         </div>
 
                         <div className="space-y-2">
-                            <label className="text-xs font-medium text-neutral-400 uppercase flex items-center gap-1">
+                            <label className="text-xs font-medium text-content-secondary uppercase flex items-center gap-1">
                                 <Shield size={12} /> Days Per Week Required
                             </label>
                             <NumberChipSelector
@@ -1151,7 +1151,7 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                                 </p>
                             )}
                             {requiredDaysPerWeek < scheduledDays.length && (
-                                <p className="text-xs text-emerald-400 mt-1">
+                                <p className="text-xs text-accent-contrast mt-1">
                                     {scheduledDays.length - requiredDaysPerWeek} grace day{scheduledDays.length - requiredDaysPerWeek !== 1 ? 's' : ''} per week
                                 </p>
                             )}
@@ -1160,11 +1160,11 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
 
                     {/* Add to Bundle action — for regular habits not already in a bundle */}
                     {isEditMode && initialData && habitType === 'regular' && !initialData.bundleParentId && initialData.type !== 'bundle' && (
-                        <div className="border-t border-white/5 pt-3">
+                        <div className="border-t border-line-subtle pt-3">
                             <button
                                 type="button"
                                 onClick={() => setShowBundlePicker(true)}
-                                className="flex items-center gap-2 w-full px-3 py-2.5 rounded-lg text-left transition-colors hover:bg-white/5 active:bg-white/10 text-neutral-400 hover:text-neutral-200"
+                                className="flex items-center gap-2 w-full px-3 py-2.5 rounded-lg text-left transition-colors hover:bg-surface-2 active:bg-white/10 text-content-secondary hover:text-content-primary"
                             >
                                 <Layers size={16} className="text-indigo-400" />
                                 <span className="text-sm font-medium">Add to Bundle...</span>
@@ -1173,11 +1173,11 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                     )}
 
                     {/* Actions */}
-                    <div className="sticky bottom-0 pt-2 pb-1 bg-neutral-900 flex justify-end gap-3">
+                    <div className="sticky bottom-0 pt-2 pb-1 bg-surface-0 flex justify-end gap-3">
                         <button
                             type="button"
                             onClick={onClose}
-                            className="px-4 py-2 text-neutral-400 hover:text-white transition-colors"
+                            className="px-4 py-2 text-content-secondary hover:text-content-primary transition-colors"
                         >
                             Cancel
                         </button>
@@ -1189,7 +1189,7 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                                 (habitType === 'bundle' && bundleMode === 'checklist' && subHabitIds.length === 0 && pendingSubHabits.length === 0) ||
                                 (habitType === 'bundle' && bundleMode === 'choice' && (subHabitIds.length + pendingSubHabits.length) < 1)
                             }
-                            className="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-3 rounded-lg transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="w-full bg-emerald-500 hover:bg-accent-strong text-content-primary font-bold py-3 rounded-lg transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             {isEditMode ? 'Save Changes' : 'Create Habit'}
                         </button>

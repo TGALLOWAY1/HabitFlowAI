@@ -331,15 +331,15 @@ export const RoutineEditorModal: React.FC<RoutineEditorModalProps> = ({
 
     return (
         <div className="modal-overlay fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-            <div className="w-full max-w-4xl max-h-[90dvh] h-[85vh] bg-neutral-900 border border-white/10 rounded-2xl shadow-2xl flex flex-col overflow-hidden">
+            <div className="w-full max-w-4xl max-h-[90dvh] h-[85vh] bg-surface-0 border border-line-subtle rounded-2xl shadow-2xl flex flex-col overflow-hidden">
 
                 {/* Header — hidden when editing a step to maximize space */}
                 {!isEditingStep && (
-                <div className="flex items-center justify-between p-6 border-b border-white/10 bg-neutral-900 z-10">
-                    <h2 className="text-xl font-bold text-white">
+                <div className="flex items-center justify-between p-6 border-b border-line-subtle bg-surface-0 z-10">
+                    <h2 className="text-xl font-bold text-content-primary">
                         {mode === 'create' ? 'Create Routine' : 'Edit Routine'}
                     </h2>
-                    <button onClick={onClose} className="min-h-[44px] min-w-[44px] flex items-center justify-center text-neutral-400 hover:text-white -mr-2" aria-label="Close">
+                    <button onClick={onClose} className="min-h-[44px] min-w-[44px] flex items-center justify-center text-content-secondary hover:text-content-primary -mr-2" aria-label="Close">
                         <X size={24} />
                     </button>
                 </div>
@@ -352,22 +352,22 @@ export const RoutineEditorModal: React.FC<RoutineEditorModalProps> = ({
                         {/* Title & Category — hidden when editing a step */}
                         {!isEditingStep && <div className="space-y-4">
                             <div>
-                                <label className="block text-sm font-medium text-neutral-400 mb-2">Title</label>
+                                <label className="block text-sm font-medium text-content-secondary mb-2">Title</label>
                                 <input
                                     type="text"
                                     value={title}
                                     onChange={e => { setTitle(e.target.value); setValidationError(null); }}
-                                    className="w-full bg-neutral-800 border border-white/10 rounded-lg px-4 py-3 text-lg text-white focus:outline-none focus:border-emerald-500 placeholder-neutral-600"
+                                    className="w-full bg-surface-1 border border-line-subtle rounded-lg px-4 py-3 text-lg text-content-primary focus:outline-none focus:border-focus placeholder-neutral-600"
                                     placeholder="e.g., Morning Startup"
                                 />
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-neutral-400 mb-2">Category (Optional)</label>
+                                <label className="block text-sm font-medium text-content-secondary mb-2">Category (Optional)</label>
                                 <select
                                     value={categoryId || ''}
                                     onChange={e => setCategoryId(e.target.value || undefined)}
-                                    className="w-full bg-neutral-800 border border-white/10 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-emerald-500"
+                                    className="w-full bg-surface-1 border border-line-subtle rounded-lg px-4 py-3 text-content-primary focus:outline-none focus:border-focus"
                                 >
                                     <option value="">-- No Category --</option>
                                     {categories.map(cat => (
@@ -379,10 +379,10 @@ export const RoutineEditorModal: React.FC<RoutineEditorModalProps> = ({
                             {/* Routine Image Upload (edit mode only) */}
                             {mode === 'edit' && initialRoutine?.id && (
                                 <div>
-                                    <label className="block text-sm font-medium text-neutral-400 mb-2">Routine Image (Optional)</label>
+                                    <label className="block text-sm font-medium text-content-secondary mb-2">Routine Image (Optional)</label>
                                     <div className="space-y-2">
                                         {currentRoutineImageUrl && (
-                                            <div className="relative w-full aspect-video bg-neutral-800 rounded-lg overflow-hidden border border-white/5">
+                                            <div className="relative w-full aspect-video bg-surface-1 rounded-lg overflow-hidden border border-line-subtle">
                                                 <img src={currentRoutineImageUrl} alt={title} className="w-full h-full object-cover" />
                                                 <button
                                                     onClick={async () => {
@@ -396,7 +396,7 @@ export const RoutineEditorModal: React.FC<RoutineEditorModalProps> = ({
                                                             }
                                                         }
                                                     }}
-                                                    className="absolute top-2 right-2 p-1.5 bg-black/50 text-white rounded-full opacity-0 hover:opacity-100 transition-opacity hover:bg-black/70"
+                                                    className="absolute top-2 right-2 p-1.5 bg-black/50 text-content-primary rounded-full opacity-0 hover:opacity-100 transition-opacity hover:bg-black/70"
                                                     title="Remove Image"
                                                 >
                                                     <X size={14} />
@@ -417,7 +417,7 @@ export const RoutineEditorModal: React.FC<RoutineEditorModalProps> = ({
                                             />
                                             <label
                                                 htmlFor="routine-image-upload"
-                                                className={`flex items-center gap-2 px-4 py-2 bg-neutral-800 border border-white/10 rounded-lg text-sm text-neutral-300 hover:bg-neutral-700 transition-colors cursor-pointer ${uploadingRoutineImage ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                                className={`flex items-center gap-2 px-4 py-2 bg-surface-1 border border-line-subtle rounded-lg text-sm text-content-secondary hover:bg-surface-2 transition-colors cursor-pointer ${uploadingRoutineImage ? 'opacity-50 cursor-not-allowed' : ''}`}
                                             >
                                                 {uploadingRoutineImage ? (
                                                     <><Loader2 size={16} className="animate-spin" /> Uploading...</>
@@ -425,7 +425,7 @@ export const RoutineEditorModal: React.FC<RoutineEditorModalProps> = ({
                                                     <><ImageIcon size={16} /> {currentRoutineImageUrl ? 'Replace Image' : 'Upload Image'}</>
                                                 )}
                                             </label>
-                                            <span className="text-xs text-neutral-500">JPEG, PNG, or WebP (max 5MB)</span>
+                                            <span className="text-xs text-content-muted">JPEG, PNG, or WebP (max 5MB)</span>
                                         </div>
                                         {routineImageError && <p className="text-xs text-red-400">{routineImageError}</p>}
                                     </div>
@@ -436,7 +436,7 @@ export const RoutineEditorModal: React.FC<RoutineEditorModalProps> = ({
                         {/* Variant Tabs — header/tabs hidden when editing a step */}
                         <div className="space-y-4">
                             {!isEditingStep && <><div className="flex items-center justify-between">
-                                <label className="text-sm font-medium text-neutral-400">Variants</label>
+                                <label className="text-sm font-medium text-content-secondary">Variants</label>
                                 {hasGeminiApiKey() && (
                                     <button
                                         type="button"
@@ -456,27 +456,27 @@ export const RoutineEditorModal: React.FC<RoutineEditorModalProps> = ({
                             )}
 
                             {/* Tab Bar */}
-                            <div className="flex items-center gap-1 overflow-x-auto pb-1 border-b border-white/5">
+                            <div className="flex items-center gap-1 overflow-x-auto pb-1 border-b border-line-subtle">
                                 {variants.map((v, i) => (
                                     <button
                                         key={v.id}
                                         onClick={() => setActiveVariantIndex(i)}
                                         className={`px-4 py-2 text-sm font-medium rounded-t-lg whitespace-nowrap transition-colors ${
                                             i === activeVariantIndex
-                                                ? 'bg-neutral-800 text-white border-b-2 border-emerald-500'
-                                                : 'text-neutral-500 hover:text-neutral-300 hover:bg-neutral-800/50'
+                                                ? 'bg-surface-1 text-content-primary border-b-2 border-emerald-500'
+                                                : 'text-content-muted hover:text-content-secondary hover:bg-surface-1/50'
                                         } ${v.isAiGenerated ? 'italic' : ''}`}
                                     >
                                         {v.name || 'Untitled'}
                                         {v.isAiGenerated && <Sparkles size={10} className="inline ml-1 text-purple-400" />}
                                     </button>
                                 ))}
-                                <div className="flex items-center gap-1 border-l border-white/10 pl-2 ml-1 flex-shrink-0">
+                                <div className="flex items-center gap-1 border-l border-line-subtle pl-2 ml-1 flex-shrink-0">
                                     <button
                                         type="button"
                                         onClick={copyVariant}
                                         disabled={variants.length >= 10}
-                                        className="p-2 text-neutral-500 hover:text-white transition-colors disabled:opacity-40 rounded-lg hover:bg-neutral-800/50"
+                                        className="p-2 text-content-muted hover:text-content-primary transition-colors disabled:opacity-40 rounded-lg hover:bg-surface-1/50"
                                         title="Copy current variant"
                                     >
                                         <Copy size={14} />
@@ -485,7 +485,7 @@ export const RoutineEditorModal: React.FC<RoutineEditorModalProps> = ({
                                         type="button"
                                         onClick={addVariant}
                                         disabled={variants.length >= 10}
-                                        className="p-2 text-emerald-400 hover:text-emerald-300 transition-colors disabled:opacity-40 rounded-lg hover:bg-neutral-800/50"
+                                        className="p-2 text-accent-contrast hover:text-accent-contrast transition-colors disabled:opacity-40 rounded-lg hover:bg-surface-1/50"
                                         title="Add variant"
                                     >
                                         <Plus size={14} />
@@ -510,7 +510,7 @@ export const RoutineEditorModal: React.FC<RoutineEditorModalProps> = ({
                 </div>
 
                 {/* Footer — hidden when editing a step to maximize space */}
-                {!isEditingStep && <div className="px-6 py-3 border-t border-white/10 bg-neutral-900 flex justify-between items-center">
+                {!isEditingStep && <div className="px-6 py-3 border-t border-line-subtle bg-surface-0 flex justify-between items-center">
                     <div>
                         {validationError && (
                             <span className="text-red-400 text-sm">{validationError}</span>
@@ -519,13 +519,13 @@ export const RoutineEditorModal: React.FC<RoutineEditorModalProps> = ({
                     <div className="flex gap-3">
                         <button
                             onClick={onClose}
-                            className="px-4 py-2 text-neutral-400 hover:text-white transition-colors"
+                            className="px-4 py-2 text-content-secondary hover:text-content-primary transition-colors"
                         >
                             Cancel
                         </button>
                         <button
                             onClick={handleSubmit}
-                            className="px-6 py-2 bg-emerald-500 text-neutral-900 font-bold rounded-lg hover:bg-emerald-400 transition-colors shadow-lg shadow-emerald-500/20"
+                            className="px-6 py-2 bg-accent text-content-on-accent font-bold rounded-lg hover:bg-accent-strong transition-colors shadow-lg shadow-emerald-500/20"
                         >
                             {mode === 'create' ? 'Create Routine' : 'Save Changes'}
                         </button>

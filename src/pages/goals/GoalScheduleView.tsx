@@ -107,7 +107,7 @@ export const GoalScheduleView: React.FC<GoalScheduleViewProps> = ({ onViewGoal }
       <div className="w-full max-w-3xl mx-auto px-4 sm:px-6 py-12">
         <div className="flex flex-col items-center gap-4">
           <Loader2 className="text-emerald-500 animate-spin" size={32} />
-          <div className="text-neutral-400 text-sm">Loading schedule insights...</div>
+          <div className="text-content-secondary text-sm">Loading schedule insights...</div>
         </div>
       </div>
     );
@@ -133,11 +133,11 @@ export const GoalScheduleView: React.FC<GoalScheduleViewProps> = ({ onViewGoal }
     return (
       <div className="w-full max-w-3xl mx-auto px-4 sm:px-6 py-12">
         <div className="text-center">
-          <div className="w-16 h-16 mx-auto bg-neutral-800 rounded-full flex items-center justify-center mb-4">
-            <Calendar className="text-neutral-500" size={32} />
+          <div className="w-16 h-16 mx-auto bg-surface-1 rounded-full flex items-center justify-center mb-4">
+            <Calendar className="text-content-muted" size={32} />
           </div>
-          <h2 className="text-lg font-semibold text-white mb-2">No Goals Yet</h2>
-          <p className="text-neutral-400 text-sm">
+          <h2 className="text-lg font-semibold text-content-primary mb-2">No Goals Yet</h2>
+          <p className="text-content-secondary text-sm">
             Create your first goal to see scheduling insights, forecasts, and milestones.
           </p>
         </div>
@@ -149,13 +149,13 @@ export const GoalScheduleView: React.FC<GoalScheduleViewProps> = ({ onViewGoal }
     <div className="w-full max-w-3xl mx-auto px-4 sm:px-6 py-4">
       {/* Focus Mode Banner */}
       {focusedGoalId && focusedGoalTitle && (
-        <div className="mb-4 flex items-center gap-2 px-3 py-2 bg-emerald-500/10 border border-emerald-500/30 rounded-lg">
-          <span className="text-sm text-emerald-400 font-medium flex-1 truncate">
+        <div className="mb-4 flex items-center gap-2 px-3 py-2 bg-accent-soft border border-accent/30 rounded-lg">
+          <span className="text-sm text-accent-contrast font-medium flex-1 truncate">
             Focused: {focusedGoalTitle}
           </span>
           <button
             onClick={() => setFocusedGoalId(null)}
-            className="p-1 rounded hover:bg-neutral-800 text-neutral-400 hover:text-white transition-colors"
+            className="p-1 rounded hover:bg-surface-1 text-content-secondary hover:text-content-primary transition-colors"
             aria-label="Exit focus mode"
           >
             <X size={16} />
@@ -168,12 +168,12 @@ export const GoalScheduleView: React.FC<GoalScheduleViewProps> = ({ onViewGoal }
         <div className="mb-4">
           <button
             onClick={() => setShowFilters(!showFilters)}
-            className="flex items-center gap-1.5 text-sm text-neutral-400 hover:text-white transition-colors mb-2"
+            className="flex items-center gap-1.5 text-sm text-content-secondary hover:text-content-primary transition-colors mb-2"
           >
             <Filter size={14} />
             <span>Filter by category</span>
             {selectedCategoryIds.length > 0 && (
-              <span className="ml-1 text-xs bg-emerald-500/20 text-emerald-400 px-1.5 py-0.5 rounded-full">
+              <span className="ml-1 text-xs bg-accent-soft text-accent-contrast px-1.5 py-0.5 rounded-full">
                 {selectedCategoryIds.length}
               </span>
             )}
@@ -183,7 +183,7 @@ export const GoalScheduleView: React.FC<GoalScheduleViewProps> = ({ onViewGoal }
               {selectedCategoryIds.length > 0 && (
                 <button
                   onClick={clearFilters}
-                  className="px-2.5 py-1 text-xs font-medium rounded-full bg-neutral-800 text-neutral-400 hover:text-white transition-colors"
+                  className="px-2.5 py-1 text-xs font-medium rounded-full bg-surface-1 text-content-secondary hover:text-content-primary transition-colors"
                 >
                   Clear all
                 </button>
@@ -196,8 +196,8 @@ export const GoalScheduleView: React.FC<GoalScheduleViewProps> = ({ onViewGoal }
                     onClick={() => handleCategoryToggle(cat.id)}
                     className={`px-2.5 py-1 text-xs font-medium rounded-full transition-all ${
                       isActive
-                        ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'
-                        : 'bg-neutral-800 text-neutral-400 border border-transparent hover:text-white'
+                        ? 'bg-accent-soft text-accent-contrast border border-emerald-500/40'
+                        : 'bg-surface-1 text-content-secondary border border-transparent hover:text-content-primary'
                     }`}
                   >
                     {cat.name}
@@ -223,14 +223,14 @@ export const GoalScheduleView: React.FC<GoalScheduleViewProps> = ({ onViewGoal }
         {(['target', 'forecast', 'milestone', 'completed'] as ScheduleEventType[]).map(type => (
           <div key={type} className="flex items-center gap-1.5">
             <span className={`w-2 h-2 rounded-full ${getEventTypeColor(type)}`} />
-            <span className="text-xs text-neutral-500">{getEventTypeLabel(type)}</span>
+            <span className="text-xs text-content-muted">{getEventTypeLabel(type)}</span>
           </div>
         ))}
       </div>
 
       {/* No Events in View */}
       {filteredEvents.length === 0 && (
-        <div className="mt-6 text-center text-neutral-500 text-sm py-8">
+        <div className="mt-6 text-center text-content-muted text-sm py-8">
           {selectedCategoryIds.length > 0
             ? 'No goal events for the selected categories. Try clearing the filter.'
             : 'No goal events to display. Add deadlines or track more progress to see forecasts.'}
@@ -239,15 +239,15 @@ export const GoalScheduleView: React.FC<GoalScheduleViewProps> = ({ onViewGoal }
 
       {/* Selected Date Detail Panel */}
       {selectedDate && (
-        <div className="mt-4 bg-neutral-800/40 border border-white/[0.06] rounded-xl overflow-hidden">
+        <div className="mt-4 bg-surface-1/40 border border-white/[0.06] rounded-xl overflow-hidden">
           {/* Date Header */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.06]">
-            <h4 className="text-sm font-semibold text-white">
+            <h4 className="text-sm font-semibold text-content-primary">
               {format(new Date(selectedDate + 'T12:00:00'), 'EEEE, MMMM d, yyyy')}
             </h4>
             <button
               onClick={() => setSelectedDate(null)}
-              className="p-1 rounded hover:bg-neutral-700 text-neutral-400 hover:text-white transition-colors"
+              className="p-1 rounded hover:bg-surface-2 text-content-secondary hover:text-content-primary transition-colors"
               aria-label="Close date details"
             >
               <X size={14} />
@@ -256,7 +256,7 @@ export const GoalScheduleView: React.FC<GoalScheduleViewProps> = ({ onViewGoal }
 
           {/* Events */}
           {selectedDateEvents.length === 0 ? (
-            <div className="px-4 py-6 text-center text-neutral-500 text-sm">
+            <div className="px-4 py-6 text-center text-content-muted text-sm">
               No goal events on this date.
             </div>
           ) : (
@@ -268,10 +268,10 @@ export const GoalScheduleView: React.FC<GoalScheduleViewProps> = ({ onViewGoal }
                   <div key={type} className="px-4 py-3">
                     <div className="flex items-center gap-2 mb-2">
                       <span className={`w-2 h-2 rounded-full ${getEventTypeColor(type)}`} />
-                      <span className="text-xs font-medium text-neutral-400 uppercase tracking-wide">
+                      <span className="text-xs font-medium text-content-secondary uppercase tracking-wide">
                         {getEventTypeLabel(type)}s
                       </span>
-                      <span className="text-xs text-neutral-600">{typeEvents.length}</span>
+                      <span className="text-xs text-content-muted">{typeEvents.length}</span>
                     </div>
                     <div className="space-y-2">
                       {typeEvents.map((event, idx) => (
@@ -288,7 +288,7 @@ export const GoalScheduleView: React.FC<GoalScheduleViewProps> = ({ onViewGoal }
                                   setFocusedGoalId(event.goalId);
                                 }
                               }}
-                              className="text-sm font-medium text-neutral-200 hover:text-emerald-400 transition-colors text-left truncate block w-full"
+                              className="text-sm font-medium text-content-primary hover:text-accent-contrast transition-colors text-left truncate block w-full"
                               title={`Focus on ${event.goalTitle}`}
                             >
                               {event.goalTitle}
@@ -298,7 +298,7 @@ export const GoalScheduleView: React.FC<GoalScheduleViewProps> = ({ onViewGoal }
                                 {getStatusLabel(event.status)}
                               </span>
                               {event.trendExplanation && (
-                                <span className="text-xs text-neutral-600">
+                                <span className="text-xs text-content-muted">
                                   &middot; {event.trendExplanation}
                                 </span>
                               )}
@@ -306,13 +306,13 @@ export const GoalScheduleView: React.FC<GoalScheduleViewProps> = ({ onViewGoal }
                           </div>
                           {/* Progress indicator */}
                           <div className="flex items-center gap-2 flex-shrink-0">
-                            <div className="w-16 h-1.5 bg-neutral-700 rounded-full overflow-hidden">
+                            <div className="w-16 h-1.5 bg-surface-2 rounded-full overflow-hidden">
                               <div
                                 className="h-full bg-emerald-500 rounded-full transition-all"
                                 style={{ width: `${Math.min(100, event.progressPercent)}%` }}
                               />
                             </div>
-                            <span className="text-xs text-neutral-500 w-8 text-right">
+                            <span className="text-xs text-content-muted w-8 text-right">
                               {event.progressPercent}%
                             </span>
                           </div>
@@ -331,12 +331,12 @@ export const GoalScheduleView: React.FC<GoalScheduleViewProps> = ({ onViewGoal }
               {selectedDateEvents.length === 1 ? (
                 <button
                   onClick={() => onViewGoal(selectedDateEvents[0].goalId)}
-                  className="text-xs text-emerald-500 hover:text-emerald-400 transition-colors"
+                  className="text-xs text-emerald-500 hover:text-accent-contrast transition-colors"
                 >
                   View goal details
                 </button>
               ) : (
-                <span className="text-xs text-neutral-600">
+                <span className="text-xs text-content-muted">
                   Click a goal name to focus on it
                 </span>
               )}

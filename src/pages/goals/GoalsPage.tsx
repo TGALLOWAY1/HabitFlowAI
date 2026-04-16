@@ -166,7 +166,7 @@ const Stack: React.FC<StackProps> = ({
                 >
                     {stack.category.name}
                 </h2>
-                <span className="text-xs text-neutral-500 font-medium flex-shrink-0">
+                <span className="text-xs text-content-muted font-medium flex-shrink-0">
                     ({goalCount})
                 </span>
             </button>
@@ -380,7 +380,7 @@ export const GoalsPage: React.FC<GoalsPageProps> = ({
             <div className="w-full max-w-2xl mx-auto px-4 sm:px-6 py-12">
                 <div className="flex flex-col items-center gap-4">
                     <Loader2 className="text-emerald-500 animate-spin" size={32} />
-                    <div className="text-neutral-400 text-sm">Loading goals...</div>
+                    <div className="text-content-secondary text-sm">Loading goals...</div>
                 </div>
             </div>
         );
@@ -405,19 +405,19 @@ export const GoalsPage: React.FC<GoalsPageProps> = ({
             {goalStacks.length === 0 ? (
                 <div className="text-center py-12">
                     <div className="max-w-md mx-auto">
-                        <div className="w-14 h-14 mx-auto bg-neutral-800 rounded-full flex items-center justify-center mb-5">
-                            <Target className="text-neutral-500" size={28} />
+                        <div className="w-14 h-14 mx-auto bg-surface-1 rounded-full flex items-center justify-center mb-5">
+                            <Target className="text-content-muted" size={28} />
                         </div>
-                        <h2 className="text-lg font-semibold text-white mb-2">
+                        <h2 className="text-lg font-semibold text-content-primary mb-2">
                             Goals give your habits direction.
                         </h2>
-                        <p className="text-sm text-neutral-400 mb-5 leading-relaxed">
+                        <p className="text-sm text-content-secondary mb-5 leading-relaxed">
                             Track progress over time toward outcomes, milestones, or events.
                         </p>
                         {onCreateGoal && (
                             <button
                                 onClick={onCreateGoal}
-                                className="flex items-center gap-2 px-6 py-3 bg-emerald-500 hover:bg-emerald-400 text-neutral-900 font-medium rounded-lg transition-colors text-sm"
+                                className="flex items-center gap-2 px-6 py-3 bg-emerald-500 hover:bg-accent-strong text-neutral-900 font-medium rounded-lg transition-colors text-sm"
                             >
                                 <Plus size={18} />
                                 Create Your First Goal

@@ -39,13 +39,13 @@ export const ConvertBundleConfirmModal: React.FC<ConvertBundleConfirmModalProps>
 
     return (
         <div className="modal-overlay fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-            <div className="w-full max-w-md bg-neutral-900 border border-white/10 rounded-2xl p-6 shadow-2xl">
+            <div className="w-full max-w-md bg-surface-0 border border-line-subtle rounded-2xl p-6 shadow-2xl">
                 <div className="flex items-center justify-between mb-6">
-                    <h3 className="text-xl font-bold text-white">Convert to Bundle</h3>
+                    <h3 className="text-xl font-bold text-content-primary">Convert to Bundle</h3>
                     <button
                         onClick={onClose}
                         disabled={isConverting}
-                        className="min-h-[44px] min-w-[44px] flex items-center justify-center text-neutral-400 hover:text-white transition-colors disabled:opacity-50 -mr-2"
+                        className="min-h-[44px] min-w-[44px] flex items-center justify-center text-content-secondary hover:text-content-primary transition-colors disabled:opacity-50 -mr-2"
                         aria-label="Close"
                     >
                         <X size={20} />
@@ -58,13 +58,13 @@ export const ConvertBundleConfirmModal: React.FC<ConvertBundleConfirmModalProps>
                         <Info className="text-indigo-400 flex-shrink-0 mt-0.5" size={20} />
                         <div className="flex-1">
                             <div className="text-indigo-400 font-medium mb-1">Confirm Conversion</div>
-                            <div className="text-white text-sm space-y-1.5">
+                            <div className="text-content-primary text-sm space-y-1.5">
                                 <p>
                                     Convert <span className="font-medium">&ldquo;{habitName}&rdquo;</span> into
                                     a <span className="font-medium">{bundleType}</span> bundle
                                     with {childCount} child habit{childCount !== 1 ? 's' : ''}.
                                 </p>
-                                <p className="text-neutral-400 text-xs">
+                                <p className="text-content-secondary text-xs">
                                     Your historical entries will be preserved and accessible in habit history.
                                     This action is difficult to undo.
                                 </p>
@@ -74,7 +74,7 @@ export const ConvertBundleConfirmModal: React.FC<ConvertBundleConfirmModalProps>
 
                     {/* Error Display */}
                     {error && (
-                        <div className="p-3 bg-red-500/10 border border-red-500/50 rounded-lg text-red-400 text-sm">
+                        <div className="p-3 bg-danger-soft border border-danger/50 rounded-lg text-danger-contrast text-sm">
                             {error}
                         </div>
                     )}
@@ -85,7 +85,7 @@ export const ConvertBundleConfirmModal: React.FC<ConvertBundleConfirmModalProps>
                             type="button"
                             onClick={onClose}
                             disabled={isConverting}
-                            className="flex-1 px-4 py-2 bg-neutral-700 hover:bg-neutral-600 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="flex-1 px-4 py-2 bg-surface-2 hover:bg-surface-2 text-content-primary rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             Cancel
                         </button>
@@ -93,7 +93,7 @@ export const ConvertBundleConfirmModal: React.FC<ConvertBundleConfirmModalProps>
                             type="button"
                             onClick={handleConfirm}
                             disabled={isConverting}
-                            className="flex-1 px-4 py-2 bg-indigo-500 hover:bg-indigo-400 text-white font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                            className="flex-1 px-4 py-2 bg-indigo-500 hover:bg-indigo-400 text-content-primary font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                         >
                             {isConverting ? (
                                 <>

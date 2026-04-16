@@ -172,12 +172,12 @@ export const CreateGoalModal: React.FC<CreateGoalModalProps> = ({ isOpen, onClos
 
     return (
         <div className="modal-overlay fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-            <div className="w-full max-w-lg max-h-[90dvh] bg-neutral-900 border border-white/10 rounded-2xl shadow-2xl flex flex-col overflow-hidden">
+            <div className="w-full max-w-lg max-h-[90dvh] bg-surface-0 border border-line-subtle rounded-2xl shadow-2xl flex flex-col overflow-hidden">
 
                 {/* Header */}
-                <div className="flex items-center justify-between p-6 border-b border-white/10 bg-neutral-900 z-10">
+                <div className="flex items-center justify-between p-6 border-b border-line-subtle bg-surface-0 z-10">
                     <div>
-                        <h2 className="text-xl font-bold text-white">
+                        <h2 className="text-xl font-bold text-content-primary">
                             {step === 1 ? 'Create Goal' : 'Link Habits'}
                         </h2>
                         <div className="flex items-center gap-2 mt-2">
@@ -187,7 +187,7 @@ export const CreateGoalModal: React.FC<CreateGoalModalProps> = ({ isOpen, onClos
                     </div>
                     <button
                         onClick={onClose}
-                        className="min-h-[44px] min-w-[44px] flex items-center justify-center text-neutral-400 hover:text-white -mr-2"
+                        className="min-h-[44px] min-w-[44px] flex items-center justify-center text-content-secondary hover:text-content-primary -mr-2"
                         aria-label="Close"
                     >
                         <X size={24} />
@@ -201,42 +201,42 @@ export const CreateGoalModal: React.FC<CreateGoalModalProps> = ({ isOpen, onClos
                         <>
                             {/* Goal Title */}
                             <div className="space-y-2">
-                                <label className="block text-sm font-medium text-neutral-400">Title</label>
+                                <label className="block text-sm font-medium text-content-secondary">Title</label>
                                 <input
                                     type="text"
                                     value={title}
                                     onChange={(e) => setTitle(e.target.value)}
-                                    className="w-full bg-neutral-900/50 border border-white/10 rounded-xl px-4 py-3 text-white text-lg placeholder:text-neutral-600 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/50 transition-all"
+                                    className="w-full bg-surface-0/50 border border-line-subtle rounded-xl px-4 py-3 text-content-primary text-lg placeholder:text-content-muted focus:outline-none focus:border-accent/50 focus:ring-1 focus:ring-focus/50 transition-all"
                                     placeholder="e.g., Run a Marathon"
                                 />
                             </div>
 
                             {/* Goal Type */}
                             <div className="space-y-2">
-                                <label className="block text-sm font-medium text-neutral-400">Goal Type</label>
+                                <label className="block text-sm font-medium text-content-secondary">Goal Type</label>
                                 <div className="flex gap-2">
                                     <button
                                         type="button"
                                         onClick={() => setType('cumulative')}
                                         className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border transition-all ${type === 'cumulative'
-                                            ? 'bg-emerald-500/10 border-emerald-500/50 ring-1 ring-emerald-500/20'
-                                            : 'bg-neutral-900/50 border-white/5 hover:border-white/10 hover:bg-neutral-800/50'
+                                            ? 'bg-accent-soft border-accent/50 ring-1 ring-focus/20'
+                                            : 'bg-surface-0/50 border-line-subtle hover:border-line-subtle hover:bg-surface-1/50'
                                             }`}
                                     >
-                                        <Target size={18} className={type === 'cumulative' ? 'text-emerald-400' : 'text-neutral-400'} />
-                                        <span className="text-white font-medium">Cumulative</span>
+                                        <Target size={18} className={type === 'cumulative' ? 'text-accent-contrast' : 'text-content-secondary'} />
+                                        <span className="text-content-primary font-medium">Cumulative</span>
                                     </button>
 
                                     <button
                                         type="button"
                                         onClick={() => setType('onetime')}
                                         className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border transition-all ${type === 'onetime'
-                                            ? 'bg-emerald-500/10 border-emerald-500/50 ring-1 ring-emerald-500/20'
-                                            : 'bg-neutral-900/50 border-white/5 hover:border-white/10 hover:bg-neutral-800/50'
+                                            ? 'bg-accent-soft border-accent/50 ring-1 ring-focus/20'
+                                            : 'bg-surface-0/50 border-line-subtle hover:border-line-subtle hover:bg-surface-1/50'
                                             }`}
                                     >
-                                        <CalendarCheck size={18} className={type === 'onetime' ? 'text-emerald-400' : 'text-neutral-400'} />
-                                        <span className="text-white font-medium">One-Time</span>
+                                        <CalendarCheck size={18} className={type === 'onetime' ? 'text-accent-contrast' : 'text-content-secondary'} />
+                                        <span className="text-content-primary font-medium">One-Time</span>
                                     </button>
                                 </div>
                             </div>
@@ -245,26 +245,26 @@ export const CreateGoalModal: React.FC<CreateGoalModalProps> = ({ isOpen, onClos
                             {type !== 'onetime' ? (
                                 <div className="flex items-end gap-3">
                                     <div className="flex-1 space-y-2">
-                                        <label className="block text-sm font-medium text-neutral-400">Target Value</label>
+                                        <label className="block text-sm font-medium text-content-secondary">Target Value</label>
                                         <input
                                             type="number"
                                             value={targetValue}
                                             onChange={(e) => setTargetValue(e.target.value)}
-                                            className="w-full bg-neutral-900/50 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/50 transition-all"
+                                            className="w-full bg-surface-0/50 border border-line-subtle rounded-xl px-4 py-3 text-content-primary focus:outline-none focus:border-accent/50 focus:ring-1 focus:ring-focus/50 transition-all"
                                             placeholder="e.g., 100"
                                             min="0.01"
                                             step="0.01"
                                         />
                                     </div>
                                     <div className="flex-1 space-y-2">
-                                        <label className="block text-sm font-medium text-neutral-400">
-                                            Unit <span className="text-neutral-500 font-normal">(Optional)</span>
+                                        <label className="block text-sm font-medium text-content-secondary">
+                                            Unit <span className="text-content-muted font-normal">(Optional)</span>
                                         </label>
                                         <input
                                             type="text"
                                             value={unit}
                                             onChange={(e) => setUnit(e.target.value)}
-                                            className="w-full bg-neutral-900/50 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/50 transition-all"
+                                            className="w-full bg-surface-0/50 border border-line-subtle rounded-xl px-4 py-3 text-content-primary focus:outline-none focus:border-accent/50 focus:ring-1 focus:ring-focus/50 transition-all"
                                             placeholder="e.g., miles, sessions"
                                         />
                                     </div>
@@ -274,8 +274,8 @@ export const CreateGoalModal: React.FC<CreateGoalModalProps> = ({ isOpen, onClos
                                             onClick={() => deadlineInputRef.current?.showPicker()}
                                             className={`min-h-[48px] min-w-[48px] flex items-center justify-center rounded-xl border transition-all ${
                                                 deadline
-                                                    ? 'bg-emerald-500/10 border-emerald-500/50 text-emerald-400'
-                                                    : 'bg-neutral-900/50 border-white/10 text-neutral-400 hover:border-white/20 hover:text-white'
+                                                    ? 'bg-accent-soft border-accent/50 text-accent-contrast'
+                                                    : 'bg-surface-0/50 border-line-subtle text-content-secondary hover:border-line-strong hover:text-content-primary'
                                             }`}
                                             aria-label={deadline ? `Deadline: ${deadline}` : 'Set deadline'}
                                             title={deadline ? `Deadline: ${deadline}` : 'Set deadline'}
@@ -295,15 +295,15 @@ export const CreateGoalModal: React.FC<CreateGoalModalProps> = ({ isOpen, onClos
                                 </div>
                             ) : (
                                 <div className="flex items-center gap-3">
-                                    <span className="text-sm text-neutral-400">Event Date</span>
+                                    <span className="text-sm text-content-secondary">Event Date</span>
                                     <div className="relative">
                                         <button
                                             type="button"
                                             onClick={() => deadlineInputRef.current?.showPicker()}
                                             className={`min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl border transition-all ${
                                                 deadline
-                                                    ? 'bg-emerald-500/10 border-emerald-500/50 text-emerald-400'
-                                                    : 'bg-neutral-900/50 border-white/10 text-neutral-400 hover:border-white/20 hover:text-white'
+                                                    ? 'bg-accent-soft border-accent/50 text-accent-contrast'
+                                                    : 'bg-surface-0/50 border-line-subtle text-content-secondary hover:border-line-strong hover:text-content-primary'
                                             }`}
                                             aria-label={deadline ? `Event date: ${deadline}` : 'Set event date'}
                                             title={deadline ? `Event date: ${deadline}` : 'Set event date'}
@@ -321,15 +321,15 @@ export const CreateGoalModal: React.FC<CreateGoalModalProps> = ({ isOpen, onClos
                                         />
                                     </div>
                                     {deadline && (
-                                        <span className="text-sm text-emerald-400">{deadline}</span>
+                                        <span className="text-sm text-accent-contrast">{deadline}</span>
                                     )}
                                 </div>
                             )}
 
                             {/* Category (Optional) */}
                             <div className="space-y-2">
-                                <label className="block text-sm font-medium text-neutral-400">
-                                    Category <span className="text-neutral-500 font-normal">(Optional)</span>
+                                <label className="block text-sm font-medium text-content-secondary">
+                                    Category <span className="text-content-muted font-normal">(Optional)</span>
                                 </label>
 
                                 {isCreatingCategory ? (
@@ -339,7 +339,7 @@ export const CreateGoalModal: React.FC<CreateGoalModalProps> = ({ isOpen, onClos
                                             value={newCategoryName}
                                             onChange={(e) => setNewCategoryName(e.target.value)}
                                             placeholder="New category name..."
-                                            className="flex-1 bg-neutral-900 border border-emerald-500/50 rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-1 focus:ring-emerald-500/50"
+                                            className="flex-1 bg-surface-0 border border-accent/50 rounded-xl px-4 py-3 text-content-primary focus:outline-none focus:ring-1 focus:ring-focus/50"
                                             autoFocus
                                             onKeyDown={(e) => {
                                                 if (e.key === 'Enter') {
@@ -352,7 +352,7 @@ export const CreateGoalModal: React.FC<CreateGoalModalProps> = ({ isOpen, onClos
                                             type="button"
                                             onClick={handleCreateCategory}
                                             disabled={!newCategoryName.trim() || isSubmittingCategory}
-                                            className="bg-emerald-500 hover:bg-emerald-400 text-neutral-900 px-4 rounded-xl font-medium transition-colors disabled:opacity-50"
+                                            className="bg-accent hover:bg-accent-strong text-content-on-accent px-4 rounded-xl font-medium transition-colors disabled:opacity-50"
                                         >
                                             {isSubmittingCategory ? '...' : 'Save'}
                                         </button>
@@ -362,7 +362,7 @@ export const CreateGoalModal: React.FC<CreateGoalModalProps> = ({ isOpen, onClos
                                                 setIsCreatingCategory(false);
                                                 setNewCategoryName('');
                                             }}
-                                            className="bg-neutral-800 hover:bg-neutral-700 text-neutral-400 px-3 rounded-xl transition-colors"
+                                            className="bg-surface-1 hover:bg-surface-2 text-content-secondary px-3 rounded-xl transition-colors"
                                         >
                                             <X size={20} />
                                         </button>
@@ -377,7 +377,7 @@ export const CreateGoalModal: React.FC<CreateGoalModalProps> = ({ isOpen, onClos
                                                 setCategoryId(e.target.value);
                                             }
                                         }}
-                                        className="w-full bg-neutral-900/50 border border-white/10 rounded-xl px-4 py-3 text-white appearance-none focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/50 transition-all"
+                                        className="w-full bg-surface-0/50 border border-line-subtle rounded-xl px-4 py-3 text-content-primary appearance-none focus:outline-none focus:border-accent/50 focus:ring-1 focus:ring-focus/50 transition-all"
                                     >
                                         <option value="">-- No Category --</option>
                                         <option value="new">+ Create New Category</option>
@@ -394,19 +394,19 @@ export const CreateGoalModal: React.FC<CreateGoalModalProps> = ({ isOpen, onClos
                             {/* Step 2: Link Habits */}
                             <div className="space-y-4">
                                 <div>
-                                    <p className="text-sm text-neutral-400">
+                                    <p className="text-sm text-content-secondary">
                                         {type === 'onetime'
                                             ? 'Select preparation habits for this event'
                                             : 'Select habits that contribute to this goal'}
                                     </p>
                                     {categoryId && (
-                                        <p className="text-xs text-neutral-500 mt-1">
-                                            Showing habits in <span className="text-emerald-400">{categoryMap.get(categoryId)}</span>
+                                        <p className="text-xs text-content-muted mt-1">
+                                            Showing habits in <span className="text-accent-contrast">{categoryMap.get(categoryId)}</span>
                                             {' \u00B7 '}
                                             <button
                                                 type="button"
                                                 onClick={() => setCategoryId('')}
-                                                className="text-emerald-400 hover:text-emerald-300 underline"
+                                                className="text-accent-contrast hover:text-accent-contrast underline"
                                             >
                                                 Show all
                                             </button>
@@ -417,19 +417,19 @@ export const CreateGoalModal: React.FC<CreateGoalModalProps> = ({ isOpen, onClos
                                 {/* Search + New Habit */}
                                 <div className="flex gap-3">
                                     <div className="relative flex-1">
-                                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" size={18} />
+                                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-content-secondary" size={18} />
                                         <input
                                             type="text"
                                             value={searchQuery}
                                             onChange={(e) => setSearchQuery(e.target.value)}
-                                            className="w-full bg-neutral-800 border border-white/10 rounded-lg pl-10 pr-4 py-2 text-white focus:outline-none focus:border-emerald-500"
+                                            className="w-full bg-surface-1 border border-line-subtle rounded-lg pl-10 pr-4 py-2 text-content-primary focus:outline-none focus:border-focus"
                                             placeholder="Search habits..."
                                         />
                                     </div>
                                     <button
                                         type="button"
                                         onClick={() => setIsCreateHabitOpen(true)}
-                                        className="flex items-center gap-2 px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-neutral-900 font-medium rounded-lg transition-colors"
+                                        className="flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent-strong text-content-on-accent font-medium rounded-lg transition-colors"
                                     >
                                         <Plus size={18} />
                                         New Habit
@@ -439,7 +439,7 @@ export const CreateGoalModal: React.FC<CreateGoalModalProps> = ({ isOpen, onClos
                                 {/* Habit List */}
                                 <div>
                                     {availableHabits.length === 0 ? (
-                                        <div className="text-center py-12 text-neutral-500">
+                                        <div className="text-center py-12 text-content-muted">
                                             {searchQuery ? 'No habits found matching your search.' : 'No habits available.'}
                                         </div>
                                     ) : (
@@ -452,21 +452,21 @@ export const CreateGoalModal: React.FC<CreateGoalModalProps> = ({ isOpen, onClos
                                                 return (
                                                     <label
                                                         key={habit.id}
-                                                        className="flex items-center gap-3 p-4 bg-neutral-800/50 border border-white/5 rounded-lg hover:bg-neutral-800/70 transition-colors cursor-pointer"
+                                                        className="flex items-center gap-3 p-4 bg-surface-1/50 border border-line-subtle rounded-lg hover:bg-surface-1/70 transition-colors cursor-pointer"
                                                     >
                                                         <input
                                                             type="checkbox"
                                                             checked={selectedHabitIds.has(habit.id)}
                                                             onChange={() => toggleHabit(habit.id)}
-                                                            className="w-5 h-5 rounded border-neutral-700 bg-neutral-800 text-emerald-500 focus:ring-emerald-500 cursor-pointer"
+                                                            className="w-5 h-5 rounded border-line-strong bg-surface-1 text-emerald-500 focus:ring-focus cursor-pointer"
                                                         />
                                                         <div className="flex-1 min-w-0">
-                                                            <div className="text-white font-medium mb-1">{habit.name}</div>
-                                                            <div className="flex flex-wrap items-center gap-2 text-xs text-neutral-400">
-                                                                <span className="px-2 py-0.5 bg-neutral-700/50 rounded">{categoryName}</span>
-                                                                <span className="px-2 py-0.5 bg-neutral-700/50 rounded">{habitType}</span>
+                                                            <div className="text-content-primary font-medium mb-1">{habit.name}</div>
+                                                            <div className="flex flex-wrap items-center gap-2 text-xs text-content-secondary">
+                                                                <span className="px-2 py-0.5 bg-surface-2/50 rounded">{categoryName}</span>
+                                                                <span className="px-2 py-0.5 bg-surface-2/50 rounded">{habitType}</span>
                                                                 {habitUnit && (
-                                                                    <span className="px-2 py-0.5 bg-neutral-700/50 rounded">{habitUnit}</span>
+                                                                    <span className="px-2 py-0.5 bg-surface-2/50 rounded">{habitUnit}</span>
                                                                 )}
                                                             </div>
                                                         </div>
@@ -482,20 +482,20 @@ export const CreateGoalModal: React.FC<CreateGoalModalProps> = ({ isOpen, onClos
                 </div>
 
                 {/* Footer */}
-                <div className="p-6 border-t border-white/10 bg-neutral-900 flex justify-between items-center">
+                <div className="p-6 border-t border-line-subtle bg-surface-0 flex justify-between items-center">
                     <div>
                         {step === 2 && (
                             error ? (
-                                <span className="text-red-400 text-sm flex items-center gap-2">
+                                <span className="text-danger-contrast text-sm flex items-center gap-2">
                                     <AlertCircle size={16} />
                                     {error}
                                 </span>
                             ) : selectedHabitIds.size > 0 ? (
-                                <span className="text-sm text-neutral-400">
+                                <span className="text-sm text-content-secondary">
                                     {selectedHabitIds.size} {selectedHabitIds.size === 1 ? 'habit' : 'habits'} selected
                                 </span>
                             ) : (
-                                <span className="text-sm text-neutral-500">Select at least one habit</span>
+                                <span className="text-sm text-content-muted">Select at least one habit</span>
                             )
                         )}
                     </div>
@@ -504,7 +504,7 @@ export const CreateGoalModal: React.FC<CreateGoalModalProps> = ({ isOpen, onClos
                             <>
                                 <button
                                     onClick={onClose}
-                                    className="px-4 py-2 text-neutral-400 hover:text-white transition-colors"
+                                    className="px-4 py-2 text-content-secondary hover:text-content-primary transition-colors"
                                 >
                                     Cancel
                                 </button>
@@ -513,8 +513,8 @@ export const CreateGoalModal: React.FC<CreateGoalModalProps> = ({ isOpen, onClos
                                     disabled={!isStep1Valid}
                                     className={`px-6 py-2 rounded-lg font-bold transition-colors ${
                                         isStep1Valid
-                                            ? 'bg-emerald-500 text-neutral-900 hover:bg-emerald-400 shadow-lg shadow-emerald-500/20'
-                                            : 'bg-neutral-800 text-neutral-500 cursor-not-allowed'
+                                            ? 'bg-accent text-content-on-accent hover:bg-accent-strong shadow-lg shadow-emerald-500/20'
+                                            : 'bg-surface-1 text-content-muted cursor-not-allowed'
                                     }`}
                                 >
                                     Next
@@ -524,7 +524,7 @@ export const CreateGoalModal: React.FC<CreateGoalModalProps> = ({ isOpen, onClos
                             <>
                                 <button
                                     onClick={() => setStep(1)}
-                                    className="flex items-center gap-1 px-4 py-2 text-neutral-400 hover:text-white transition-colors"
+                                    className="flex items-center gap-1 px-4 py-2 text-content-secondary hover:text-content-primary transition-colors"
                                 >
                                     <ChevronLeft size={16} />
                                     Back
@@ -534,8 +534,8 @@ export const CreateGoalModal: React.FC<CreateGoalModalProps> = ({ isOpen, onClos
                                     disabled={!isFormValid || isSubmitting}
                                     className={`px-6 py-2 rounded-lg font-bold transition-colors shadow-lg shadow-emerald-500/20 ${
                                         isFormValid && !isSubmitting
-                                            ? 'bg-emerald-500 text-neutral-900 hover:bg-emerald-400'
-                                            : 'bg-neutral-800 text-neutral-500 cursor-not-allowed shadow-none'
+                                            ? 'bg-accent text-content-on-accent hover:bg-accent-strong'
+                                            : 'bg-surface-1 text-content-muted cursor-not-allowed shadow-none'
                                     }`}
                                 >
                                     {isSubmitting ? (

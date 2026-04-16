@@ -116,7 +116,7 @@ export const SetupDashboard: React.FC<SetupDashboardProps> = ({
       {firstIncomplete && (
         <button
           onClick={() => onNavigate(firstIncomplete.route)}
-          className="mx-auto px-8 py-3 bg-emerald-500 hover:bg-accent-strong text-neutral-900 font-semibold rounded-xl transition-colors text-sm shadow-lg shadow-emerald-500/20"
+          className="mx-auto px-8 py-3 bg-accent hover:bg-accent-strong text-neutral-900 font-semibold rounded-xl transition-colors text-sm shadow-lg shadow-emerald-500/20"
         >
           {completedCount === 0 ? 'Start Setup' : 'Continue Setup'}
         </button>

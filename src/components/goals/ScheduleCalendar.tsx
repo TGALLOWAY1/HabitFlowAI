@@ -47,17 +47,17 @@ export const ScheduleCalendar: React.FC<ScheduleCalendarProps> = ({
       <div className="flex items-center justify-between mb-4">
         <button
           onClick={() => onMonthChange(subMonths(currentMonth, 1))}
-          className="p-1.5 rounded-lg hover:bg-neutral-800 text-neutral-400 hover:text-white transition-colors"
+          className="p-1.5 rounded-lg hover:bg-surface-1 text-content-secondary hover:text-content-primary transition-colors"
           aria-label="Previous month"
         >
           <ChevronLeft size={20} />
         </button>
-        <h3 className="text-lg font-semibold text-white">
+        <h3 className="text-lg font-semibold text-content-primary">
           {format(currentMonth, 'MMMM yyyy')}
         </h3>
         <button
           onClick={() => onMonthChange(addMonths(currentMonth, 1))}
-          className="p-1.5 rounded-lg hover:bg-neutral-800 text-neutral-400 hover:text-white transition-colors"
+          className="p-1.5 rounded-lg hover:bg-surface-1 text-content-secondary hover:text-content-primary transition-colors"
           aria-label="Next month"
         >
           <ChevronRight size={20} />
@@ -67,14 +67,14 @@ export const ScheduleCalendar: React.FC<ScheduleCalendarProps> = ({
       {/* Day Names Header */}
       <div className="grid grid-cols-7 gap-px mb-1">
         {DAY_NAMES.map(name => (
-          <div key={name} className="text-center text-xs font-medium text-neutral-500 py-1.5">
+          <div key={name} className="text-center text-xs font-medium text-content-muted py-1.5">
             {name}
           </div>
         ))}
       </div>
 
       {/* Calendar Grid */}
-      <div className="grid grid-cols-7 gap-px bg-neutral-800/30 rounded-lg overflow-hidden">
+      <div className="grid grid-cols-7 gap-px bg-surface-1/30 rounded-lg overflow-hidden">
         {calendarDays.map(day => {
           const dateKey = format(day, 'yyyy-MM-dd');
           const dayEvents = events.get(dateKey) || [];
@@ -93,15 +93,15 @@ export const ScheduleCalendar: React.FC<ScheduleCalendarProps> = ({
               className={`
                 relative min-h-[3.25rem] sm:min-h-[3.75rem] p-1 sm:p-1.5 flex flex-col items-center
                 transition-colors
-                ${inMonth ? 'bg-neutral-900/60' : 'bg-neutral-900/20'}
+                ${inMonth ? 'bg-surface-0/60' : 'bg-surface-0/20'}
                 ${isSelected ? 'ring-2 ring-emerald-500/60 ring-inset' : ''}
-                ${dayEvents.length > 0 && inMonth ? 'hover:bg-neutral-800/80 cursor-pointer' : 'hover:bg-neutral-800/40'}
+                ${dayEvents.length > 0 && inMonth ? 'hover:bg-surface-1/80 cursor-pointer' : 'hover:bg-surface-1/40'}
               `}
             >
               {/* Day Number */}
               <span className={`
                 text-xs sm:text-sm font-medium leading-none
-                ${!inMonth ? 'text-neutral-700' : today ? 'text-emerald-400 font-bold' : 'text-neutral-300'}
+                ${!inMonth ? 'text-neutral-700' : today ? 'text-accent-contrast font-bold' : 'text-content-secondary'}
               `}>
                 {format(day, 'd')}
               </span>
@@ -110,7 +110,7 @@ export const ScheduleCalendar: React.FC<ScheduleCalendarProps> = ({
               {dayEvents.length > 0 && inMonth && (
                 <div className="flex items-center gap-0.5 mt-1 flex-wrap justify-center">
                   {showOverflow ? (
-                    <span className="text-[10px] font-semibold text-neutral-300 bg-neutral-700 rounded-full px-1.5 py-0.5 leading-none">
+                    <span className="text-[10px] font-semibold text-content-secondary bg-surface-2 rounded-full px-1.5 py-0.5 leading-none">
                       {dayEvents.length}
                     </span>
                   ) : (

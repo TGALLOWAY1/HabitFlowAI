@@ -56,21 +56,21 @@ export const CategoryPickerModal = ({
         <div className="modal-overlay fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm" onClick={onClose}>
             <div
                 className={cn(
-                    "bg-neutral-900 border border-white/10 rounded-t-2xl sm:rounded-2xl w-full sm:max-w-sm shadow-2xl",
+                    "bg-surface-0 border border-line-subtle rounded-t-2xl sm:rounded-2xl w-full sm:max-w-sm shadow-2xl",
                     "animate-in slide-in-from-bottom-4 fade-in duration-200",
                     "max-h-[80vh] flex flex-col"
                 )}
                 onClick={e => e.stopPropagation()}
             >
                 {/* Header */}
-                <div className="flex items-center justify-between p-4 border-b border-white/5">
+                <div className="flex items-center justify-between p-4 border-b border-line-subtle">
                     <div className="flex items-center gap-2">
-                        <FolderInput size={18} className="text-emerald-400" />
-                        <h3 className="text-base font-semibold text-white">Move to Category</h3>
+                        <FolderInput size={18} className="text-accent-contrast" />
+                        <h3 className="text-base font-semibold text-content-primary">Move to Category</h3>
                     </div>
                     <button
                         onClick={onClose}
-                        className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg hover:bg-white/10 text-neutral-400 hover:text-white transition-colors -m-1"
+                        className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg hover:bg-surface-2 text-content-secondary hover:text-content-primary transition-colors -m-1"
                         aria-label="Close"
                     >
                         <X size={18} />
@@ -79,10 +79,10 @@ export const CategoryPickerModal = ({
 
                 {/* Current location */}
                 <div className="px-4 pt-3 pb-2">
-                    <p className="text-xs text-neutral-500">
-                        Moving <span className="text-neutral-300 font-medium">{habit.name}</span>
+                    <p className="text-xs text-content-muted">
+                        Moving <span className="text-content-secondary font-medium">{habit.name}</span>
                         {currentCategory && (
-                            <> from <span className="text-neutral-300 font-medium">{currentCategory.name}</span></>
+                            <> from <span className="text-content-secondary font-medium">{currentCategory.name}</span></>
                         )}
                     </p>
                 </div>
@@ -91,13 +91,13 @@ export const CategoryPickerModal = ({
                 {categories.length >= 6 && (
                     <div className="px-4 pb-2">
                         <div className="relative">
-                            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500" />
+                            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-content-muted" />
                             <input
                                 type="text"
                                 placeholder="Search categories..."
                                 value={search}
                                 onChange={e => setSearch(e.target.value)}
-                                className="w-full pl-9 pr-3 py-2 bg-neutral-800 border border-white/5 rounded-lg text-sm text-white placeholder-neutral-500 focus:outline-none focus:border-emerald-500/50"
+                                className="w-full pl-9 pr-3 py-2 bg-surface-1 border border-line-subtle rounded-lg text-sm text-content-primary placeholder-neutral-500 focus:outline-none focus:border-emerald-500/50"
                                 autoFocus
                             />
                         </div>
@@ -107,7 +107,7 @@ export const CategoryPickerModal = ({
                 {/* Category list */}
                 <div className="flex-1 overflow-y-auto modal-scroll px-2 pb-4">
                     {filtered.length === 0 ? (
-                        <p className="text-center text-sm text-neutral-500 py-6">No categories found</p>
+                        <p className="text-center text-sm text-content-muted py-6">No categories found</p>
                     ) : (
                         <div className="flex flex-col gap-0.5">
                             {filtered.map(category => {
@@ -128,8 +128,8 @@ export const CategoryPickerModal = ({
                                         className={cn(
                                             "flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-left transition-colors",
                                             isCurrent
-                                                ? "bg-white/5 text-neutral-500 cursor-default"
-                                                : "hover:bg-white/5 text-neutral-200 active:bg-white/10"
+                                                ? "bg-white/5 text-content-muted cursor-default"
+                                                : "hover:bg-surface-2 text-content-primary active:bg-white/10"
                                         )}
                                     >
                                         <div
@@ -140,7 +140,7 @@ export const CategoryPickerModal = ({
                                             {category.name}
                                         </span>
                                         {isCurrent && (
-                                            <span className="flex items-center gap-1 text-xs text-neutral-500">
+                                            <span className="flex items-center gap-1 text-xs text-content-muted">
                                                 <Check size={12} /> Current
                                             </span>
                                         )}
