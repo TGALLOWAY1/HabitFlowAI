@@ -233,7 +233,7 @@ export const HabitGridCell = ({
                                         "flex-shrink-0 w-4 h-4 rounded border flex items-center justify-center transition-all duration-200",
                                         childDone
                                             ? "bg-indigo-500/20 border-indigo-500 text-indigo-400"
-                                            : "border-white/15 text-transparent hover:border-indigo-400/50"
+                                            : "border-line-strong text-transparent hover:border-indigo-400/50"
                                     )}
                                 >
                                     {childDone && <Check size={10} strokeWidth={3} />}
@@ -280,25 +280,25 @@ export const HabitGridCell = ({
             {/* EXPANDED CONTENT AREA */}
             {isExpanded && (
                 <div className="px-3 pb-3 pt-0 flex flex-col gap-3 animate-in fade-in slide-in-from-top-1 duration-200 cursor-default" onClick={e => e.stopPropagation()}>
-                    <div className="h-px w-full bg-white/5 mb-1" />
+                    <div className="h-px w-full bg-surface-1 mb-1" />
 
                     {/* Habit Metadata */}
                     {(habit.timeEstimate || habit.timesPerWeek || habit.nonNegotiable || (isQuantity && habitStatus) || habit.assignedDays) && (
                         <div className="flex flex-wrap gap-2">
                             {habit.timeEstimate && (
-                                <span className="flex items-center gap-1 text-[10px] text-content-muted bg-white/5 px-2 py-0.5 rounded-full">
+                                <span className="flex items-center gap-1 text-[10px] text-content-muted bg-surface-1 px-2 py-0.5 rounded-full">
                                     <Clock size={10} />
                                     {habit.timeEstimate}m
                                 </span>
                             )}
                             {isQuantity && habitStatus && (
-                                <span className="flex items-center gap-1 text-[10px] text-content-muted bg-white/5 px-2 py-0.5 rounded-full">
+                                <span className="flex items-center gap-1 text-[10px] text-content-muted bg-surface-1 px-2 py-0.5 rounded-full">
                                     <Target size={10} />
                                     {habitStatus.currentValue}/{habitStatus.targetValue} {habit.goal?.unit || ''}
                                 </span>
                             )}
                             {habit.timesPerWeek != null && habit.timesPerWeek > 0 && (
-                                <span className="flex items-center gap-1 text-[10px] text-content-muted bg-white/5 px-2 py-0.5 rounded-full">
+                                <span className="flex items-center gap-1 text-[10px] text-content-muted bg-surface-1 px-2 py-0.5 rounded-full">
                                     <Repeat size={10} />
                                     {habit.timesPerWeek}x/week
                                 </span>
@@ -310,7 +310,7 @@ export const HabitGridCell = ({
                                 </span>
                             )}
                             {habit.assignedDays && habit.assignedDays.length > 0 && habit.assignedDays.length < 7 && (
-                                <span className="flex items-center gap-1 text-[10px] text-content-muted bg-white/5 px-2 py-0.5 rounded-full">
+                                <span className="flex items-center gap-1 text-[10px] text-content-muted bg-surface-1 px-2 py-0.5 rounded-full">
                                     <Calendar size={10} />
                                     {habit.assignedDays.map(d => ['Su','Mo','Tu','We','Th','Fr','Sa'][d]).join(', ')}
                                 </span>

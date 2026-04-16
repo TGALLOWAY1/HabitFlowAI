@@ -31,7 +31,7 @@ export const CategoryMomentumBanner: React.FC<CategoryMomentumBannerProps> = ({ 
             <div className={`text-xs font-bold uppercase tracking-wider ${colorClass}`}>
                 Momentum: {state}
             </div>
-            <div className="hidden sm:block w-px h-3 bg-white/10" />
+            <div className="hidden sm:block w-px h-3 bg-surface-2" />
             <div className="text-sm text-content-secondary italic font-medium">
                 "{phrase}"
             </div>

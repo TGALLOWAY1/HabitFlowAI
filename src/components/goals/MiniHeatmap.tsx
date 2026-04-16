@@ -44,7 +44,7 @@ export const MiniHeatmap: React.FC<MiniHeatmapProps> = ({ data }) => {
         <div className="flex flex-col gap-1 w-full">
             <div className="grid grid-cols-7 gap-1 w-full relative">
                 {displayData.map((day, idx) => {
-                    let bgClass = "bg-white/5";
+                    let bgClass = "bg-surface-1";
                     if (day.hasProgress) {
                         bgClass = "bg-emerald-500";
                     }

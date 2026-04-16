@@ -78,7 +78,7 @@ export const SetupDashboard: React.FC<SetupDashboardProps> = ({
     <div className="flex flex-col gap-6 pb-8">
       {/* Welcome Header */}
       <div className="text-center pt-4">
-        <div className="w-12 h-12 mx-auto bg-gradient-to-br from-emerald-400 to-cyan-500 rounded-xl flex items-center justify-center mb-4 shadow-lg shadow-emerald-500/20">
+        <div className="w-12 h-12 mx-auto bg-gradient-to-br from-emerald-400 to-cyan-500 rounded-xl flex items-center justify-center mb-4 shadow-lg shadow-accent/20">
           <Sparkles size={24} className="text-content-primary" />
         </div>
         <h2 className="text-2xl font-bold text-content-primary mb-2">Welcome to HabitFlow</h2>
@@ -116,7 +116,7 @@ export const SetupDashboard: React.FC<SetupDashboardProps> = ({
       {firstIncomplete && (
         <button
           onClick={() => onNavigate(firstIncomplete.route)}
-          className="mx-auto px-8 py-3 bg-accent hover:bg-accent-strong text-neutral-900 font-semibold rounded-xl transition-colors text-sm shadow-lg shadow-emerald-500/20"
+          className="mx-auto px-8 py-3 bg-accent hover:bg-accent-strong text-content-on-accent font-semibold rounded-xl transition-colors text-sm shadow-lg shadow-accent/20"
         >
           {completedCount === 0 ? 'Start Setup' : 'Continue Setup'}
         </button>

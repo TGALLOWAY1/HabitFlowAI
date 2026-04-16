@@ -69,7 +69,7 @@ export const MomentumHeader: React.FC<MomentumHeaderProps> = ({ globalMomentum }
                 </p>
 
                 {activeDays > 0 && (
-                    <div className="mt-4 flex items-center gap-2 px-3 py-1 bg-white/5 rounded-full border border-line-subtle text-xs text-content-secondary">
+                    <div className="mt-4 flex items-center gap-2 px-3 py-1 bg-surface-1 rounded-full border border-line-subtle text-xs text-content-secondary">
                         <span>{activeDays} Active Days (Last 7)</span>
                         {trend === 'up' && <TrendingUp size={12} className="text-emerald-500" />}
                         {trend === 'down' && <TrendingDown size={12} className="text-rose-500" />}

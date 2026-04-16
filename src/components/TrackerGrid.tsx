@@ -268,7 +268,7 @@ const HabitRowContent = ({
             onContextMenu={(e) => onContextMenu(e, habit)}
         >
             <div
-                className="w-64 flex-shrink-0 p-4 border-r border-line-subtle flex flex-col gap-1.5 transition-colors relative sticky left-0 z-20 bg-surface-0 group-hover:bg-[#1a1a1a] after:pointer-events-none after:absolute after:right-[-1px] after:top-0 after:h-full after:w-px after:bg-white/10"
+                className="w-64 flex-shrink-0 p-4 border-r border-line-subtle flex flex-col gap-1.5 transition-colors relative sticky left-0 z-20 bg-surface-0 group-hover:bg-surface-1 after:pointer-events-none after:absolute after:right-[-1px] after:top-0 after:h-full after:w-px after:bg-surface-2"
                 style={{ paddingLeft: `${16 + (depth * 24)}px` }} // Dynamic Indentation
             >
                 {/* Top row: drag handle + full habit name (no icons) */}
@@ -456,7 +456,7 @@ const HabitRowContent = ({
                                                 getBundleStats(habit, logs, dateStr).completed > 0 ? (
                                                     <>
                                                         <span>{getBundleStats(habit, logs, dateStr).completed}</span>
-                                                        <span className="w-full h-[1px] bg-neutral-500/50 my-[1px]" />
+                                                        <span className="w-full h-[1px] bg-content-muted/50 my-[1px]" />
                                                         <span>{getBundleStats(habit, logs, dateStr).total}</span>
                                                     </>
                                                 ) : (
@@ -1225,12 +1225,12 @@ export const TrackerGrid = ({
                 collisionDetection={closestCenter}
                 onDragEnd={handleDragEnd}
             >
-                <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-neutral-700 scrollbar-track-transparent">
+                <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-line-strong scrollbar-track-transparent">
                     <div className="overflow-x-auto overscroll-x-contain [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
                         <div className="w-max min-w-full">
                             {/* Header */}
                             <div className="sticky top-0 z-30 flex border-b border-line-subtle bg-surface-0 shadow-md">
-                                <div className="w-64 flex-shrink-0 p-4 font-medium text-accent-contrast border-r border-line-subtle flex items-center justify-between bg-surface-0 sticky left-0 z-40 group after:pointer-events-none after:absolute after:right-[-1px] after:top-0 after:h-full after:w-px after:bg-white/10">
+                                <div className="w-64 flex-shrink-0 p-4 font-medium text-accent-contrast border-r border-line-subtle flex items-center justify-between bg-surface-0 sticky left-0 z-40 group after:pointer-events-none after:absolute after:right-[-1px] after:top-0 after:h-full after:w-px after:bg-surface-2">
                                     <span>Daily Habits</span>
                                     <div className="flex items-center gap-1">
                                         <button
