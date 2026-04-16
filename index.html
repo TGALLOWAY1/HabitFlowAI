@@ -10,6 +10,33 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>habit-flow-ai</title>
+    <!--
+      Theme pre-hydration: apply the user's saved theme class to <html>
+      before React boots so the first paint is never mismatched.
+      Must stay in sync with src/theme/ThemeContext.tsx (THEME_STORAGE_KEY
+      and the default-to-dark rule).
+    -->
+    <script>
+      (function () {
+        try {
+          var stored = localStorage.getItem('hf_theme_mode');
+          var mode = stored === 'light' || stored === 'dark' || stored === 'system' ? stored : 'dark';
+          var resolved = mode;
+          if (mode === 'system') {
+            resolved = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+          }
+          var root = document.documentElement;
+          if (resolved === 'dark') {
+            root.classList.add('dark');
+          } else {
+            root.classList.add('light');
+          }
+          root.style.colorScheme = resolved;
+        } catch (e) {
+          document.documentElement.classList.add('dark');
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

@@ -2,19 +2,117 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * Theme tokens — semantic design system.
+ *
+ * These CSS variables are the source of truth for Tailwind's semantic aliases
+ * (bg-surface-1, text-content-muted, etc.). The Tailwind config resolves those
+ * aliases via `rgb(var(--x) / <alpha-value>)`, so opacity modifiers work too:
+ * `bg-surface-1/80`, `border-line-subtle/50`.
+ *
+ * Values are kept in sync with src/theme/palette.ts. That TS module is the
+ * single canonical source; this block is the pre-hydration fallback so the
+ * first paint is never unstyled. If you edit these values, update palette.ts
+ * to match — a runtime check in cssVars.ts will overwrite these anyway.
+ *
+ * Values must be space-separated RGB triplets (e.g. `255 255 255`), NOT
+ * comma-separated or `rgb(...)` — otherwise the `<alpha-value>` pattern
+ * silently breaks.
+ */
+
+/* Light theme — default when no class is present. */
 :root {
+  --surface-0: 250 250 250;
+  --surface-1: 255 255 255;
+  --surface-2: 245 245 245;
+
+  --content-primary: 23 23 23;
+  --content-secondary: 82 82 82;
+  --content-muted: 115 115 115;
+  --content-on-accent: 255 255 255;
+
+  --line-subtle: 229 229 229;
+  --line-strong: 212 212 212;
+
+  --accent: 16 185 129;
+  --accent-strong: 5 150 105;
+  --accent-soft: 236 253 245;
+  --accent-contrast: 4 120 87;
+
+  --warning: 217 119 6;
+  --warning-soft: 254 243 199;
+  --warning-contrast: 180 83 9;
+
+  --danger: 220 38 38;
+  --danger-soft: 254 226 226;
+  --danger-contrast: 185 28 28;
+
+  --focus-ring: 37 99 235;
+
+  --chart-grid: 229 229 229;
+  --chart-axis: 115 115 115;
+  --chart-tooltip-bg: 255 255 255;
+
+  --heatmap-0: 245 245 245;
+  --heatmap-1: 209 250 229;
+  --heatmap-2: 110 231 183;
+  --heatmap-3: 16 185 129;
+  --heatmap-4: 4 120 87;
+
+  /* base typography — applied regardless of theme */
   font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;
-
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
-
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  color-scheme: light;
+
+  color: rgb(var(--content-primary));
+  background-color: rgb(var(--surface-0));
+}
+
+/* Dark theme — activated by class="dark" on <html>. */
+.dark {
+  --surface-0: 23 23 23;
+  --surface-1: 38 38 38;
+  --surface-2: 64 64 64;
+
+  --content-primary: 255 255 255;
+  --content-secondary: 212 212 212;
+  --content-muted: 163 163 163;
+  --content-on-accent: 10 10 10;
+
+  --line-subtle: 42 42 42;
+  --line-strong: 64 64 64;
+
+  --accent: 16 185 129;
+  --accent-strong: 52 211 153;
+  --accent-soft: 10 46 35;
+  --accent-contrast: 52 211 153;
+
+  --warning: 245 158 11;
+  --warning-soft: 58 42 10;
+  --warning-contrast: 251 191 36;
+
+  --danger: 251 113 133;
+  --danger-soft: 58 13 20;
+  --danger-contrast: 253 164 175;
+
+  --focus-ring: 16 185 129;
+
+  --chart-grid: 64 64 64;
+  --chart-axis: 163 163 163;
+  --chart-tooltip-bg: 38 38 38;
+
+  --heatmap-0: 38 38 38;
+  --heatmap-1: 6 78 59;
+  --heatmap-2: 4 120 87;
+  --heatmap-3: 16 185 129;
+  --heatmap-4: 110 231 183;
+
+  color-scheme: dark;
 }
 
 body {
@@ -22,6 +120,80 @@ body {
   min-width: 320px;
   min-height: 100vh;
   min-height: 100dvh;
+  color: rgb(var(--content-primary));
+  background-color: rgb(var(--surface-0));
+}
+
+/*
+ * Shared component helpers.
+ *
+ * These sit in @layer components so Tailwind utilities still override them
+ * (per the cascade). They exist to stop the same ~12-word Tailwind string
+ * from being duplicated across every card / button / input in the app.
+ *
+ * Use these as the default; use inline Tailwind when a component legitimately
+ * needs to deviate.
+ */
+@layer components {
+  .hf-card {
+    @apply rounded-xl border border-line-subtle bg-surface-1;
+  }
+  .hf-card-hover {
+    @apply hover:bg-surface-2 transition-colors;
+  }
+  .hf-modal-panel {
+    @apply rounded-xl border border-line-subtle bg-surface-1 shadow-xl;
+  }
+  .hf-divider {
+    @apply border-t border-line-subtle;
+  }
+  .hf-input {
+    @apply rounded-lg bg-surface-1 border border-line-strong
+           text-content-primary placeholder:text-content-muted
+           focus:outline-none focus:ring-2 focus:ring-focus/50 focus:border-focus;
+  }
+  .hf-btn-primary {
+    @apply inline-flex items-center justify-center gap-2
+           rounded-lg px-4 py-2 font-medium
+           bg-accent text-content-on-accent hover:bg-accent-strong
+           transition-colors focus:outline-none focus:ring-2 focus:ring-focus/50
+           disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  .hf-btn-secondary {
+    @apply inline-flex items-center justify-center gap-2
+           rounded-lg px-4 py-2 font-medium
+           bg-accent-soft text-accent-contrast border border-line-subtle
+           hover:bg-surface-2 transition-colors
+           focus:outline-none focus:ring-2 focus:ring-focus/50;
+  }
+  .hf-btn-ghost {
+    @apply inline-flex items-center justify-center
+           rounded-lg p-2
+           text-content-secondary hover:text-content-primary hover:bg-surface-2
+           transition-colors focus:outline-none focus:ring-2 focus:ring-focus/50;
+  }
+  .hf-btn-danger {
+    @apply inline-flex items-center justify-center gap-2
+           rounded-lg px-4 py-2 font-medium
+           bg-danger-soft text-danger-contrast border border-line-subtle
+           hover:bg-surface-2 transition-colors
+           focus:outline-none focus:ring-2 focus:ring-focus/50;
+  }
+  .hf-chip {
+    @apply inline-flex items-center gap-1.5
+           rounded-full px-3 py-1 text-xs
+           bg-surface-2 text-content-secondary border border-line-subtle;
+  }
+  .hf-tab {
+    @apply pb-3 px-3 text-sm font-medium transition-colors relative
+           text-content-muted hover:text-content-secondary;
+  }
+  .hf-tab-active {
+    @apply text-accent-contrast;
+  }
+  .hf-tab-underline {
+    @apply absolute bottom-0 left-0 right-0 h-0.5 bg-accent rounded-t-full;
+  }
 }
 
 @layer utilities {
@@ -46,7 +218,7 @@ body {
     -ms-overflow-style: none;
     scrollbar-width: none;
   }
-  
+
   @keyframes gold-burst {
     0% {
       transform: scale(0.95);
@@ -61,7 +233,7 @@ body {
       box-shadow: 0 0 0 0 rgba(234, 179, 8, 0);
     }
   }
-  
+
   .animate-gold-burst {
     animation: gold-burst 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
   }
@@ -73,5 +245,10 @@ body {
 
   .animate-wiggle {
     animation: wiggle 0.3s ease-in-out infinite;
+  }
+
+  /* Suppress transitions briefly during theme swap to avoid animation flashes */
+  [data-theme-switching] * {
+    transition: none !important;
   }
 }

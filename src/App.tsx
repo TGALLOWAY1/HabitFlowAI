@@ -28,6 +28,7 @@ import { DayView } from './components/day-view/DayView';
 import { ScheduleView } from './components/day-view/ScheduleView';
 import { DevIdentityPanel } from './components/DevIdentityPanel';
 import { DashboardPrefsProvider } from './store/DashboardPrefsContext';
+import { ThemeProvider } from './theme/ThemeContext';
 
 // Retry wrapper for lazy imports — handles stale chunk failures after deployments
 function lazyRetry<T extends React.ComponentType<any>>(
@@ -700,24 +701,26 @@ const HabitTrackerContent: React.FC = () => {
 function App() {
   return (
     <ErrorBoundary>
-      <AuthProvider>
-        <AuthGate>
-          <ToastProvider>
-            <HabitProvider>
-              <RoutineProvider>
-                <TaskProvider>
-                  <DashboardPrefsProvider>
-                    <Layout>
-                      <HabitTrackerContent />
-                    </Layout>
-                    {import.meta.env.DEV && <DevIdentityPanel />}
-                  </DashboardPrefsProvider>
-                </TaskProvider>
-              </RoutineProvider>
-            </HabitProvider>
-          </ToastProvider>
-        </AuthGate>
-      </AuthProvider>
+      <ThemeProvider>
+        <AuthProvider>
+          <AuthGate>
+            <ToastProvider>
+              <HabitProvider>
+                <RoutineProvider>
+                  <TaskProvider>
+                    <DashboardPrefsProvider>
+                      <Layout>
+                        <HabitTrackerContent />
+                      </Layout>
+                      {import.meta.env.DEV && <DevIdentityPanel />}
+                    </DashboardPrefsProvider>
+                  </TaskProvider>
+                </RoutineProvider>
+              </HabitProvider>
+            </ToastProvider>
+          </AuthGate>
+        </AuthProvider>
+      </ThemeProvider>
     </ErrorBoundary>
   );
 }
