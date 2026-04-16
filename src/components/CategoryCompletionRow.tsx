@@ -66,15 +66,15 @@ export const CategoryCompletionRow: React.FC<CategoryCompletionRowProps> = React
     return (
         <button
             onClick={onClick}
-            className="w-full group flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl bg-neutral-900/30 border border-white/5 hover:bg-neutral-800/50 hover:border-emerald-500/30 transition-all duration-200"
+            className="w-full group flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl bg-surface-0/30 border border-line-subtle hover:bg-surface-1/50 hover:border-accent/30 transition-all duration-200"
         >
             <div className="flex items-center gap-3">
                 <div className={`w-1 h-8 rounded-full ${category.color} opacity-80`} />
                 <div className="text-left">
-                    <h4 className={`font-bold text-sm ${textColorClass} group-hover:text-white transition-colors`}>
+                    <h4 className={`font-bold text-sm ${textColorClass} group-hover:text-content-primary transition-colors`}>
                         {category.name}
                     </h4>
-                    <div className="item-center flex gap-2 text-xs text-neutral-500">
+                    <div className="item-center flex gap-2 text-xs text-content-muted">
                         <span>{habits.length} habits</span>
                         <span>•</span>
                         <span>{totalCompletions} completions</span>
@@ -94,10 +94,10 @@ export const CategoryCompletionRow: React.FC<CategoryCompletionRowProps> = React
                         />
                     ))}
                 </div>
-                <ChevronRight size={16} className="text-neutral-600 group-hover:text-white transition-colors hidden sm:block" />
+                <ChevronRight size={16} className="text-content-muted group-hover:text-content-primary transition-colors hidden sm:block" />
             </div>
 
-            <Tooltip id={`cat-tooltip-${category.id}`} className="z-50 !bg-neutral-800 !text-white !opacity-100 !rounded-lg !px-3 !py-1 !text-xs" />
+            <Tooltip id={`cat-tooltip-${category.id}`} className="z-50 !bg-surface-1 !text-content-primary !opacity-100 !rounded-lg !px-3 !py-1 !text-xs" />
         </button>
     );
 });

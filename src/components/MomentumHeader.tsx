@@ -17,13 +17,13 @@ export const MomentumHeader: React.FC<MomentumHeaderProps> = ({ globalMomentum }
     const { hideStreaks } = useDashboardPrefs();
 
     const strongIcon = hideStreaks
-        ? <Sparkles className="text-emerald-400 animate-pulse" size={24} />
-        : <Flame className="text-emerald-400 animate-pulse" size={24} />;
+        ? <Sparkles className="text-accent-contrast animate-pulse" size={24} />
+        : <Flame className="text-accent-contrast animate-pulse" size={24} />;
 
     // Visual configurations for each state
     const stateConfig: Record<string, { color: string; icon: React.ReactNode; bgGradient: string }> = {
         'Strong': {
-            color: 'text-emerald-400',
+            color: 'text-accent-contrast',
             icon: strongIcon,
             bgGradient: 'from-emerald-500/20 to-transparent'
         },
@@ -43,8 +43,8 @@ export const MomentumHeader: React.FC<MomentumHeaderProps> = ({ globalMomentum }
             bgGradient: 'from-violet-500/20 to-transparent'
         },
         'Ready': {
-            color: 'text-neutral-400',
-            icon: <Sparkles className="text-neutral-400" size={24} />,
+            color: 'text-content-secondary',
+            icon: <Sparkles className="text-content-secondary" size={24} />,
             bgGradient: 'from-white/10 to-transparent'
         }
     };
@@ -52,7 +52,7 @@ export const MomentumHeader: React.FC<MomentumHeaderProps> = ({ globalMomentum }
     const config = stateConfig[state] || stateConfig['Ready'];
 
     return (
-        <div className={`relative overflow-hidden rounded-2xl border border-white/5 bg-neutral-900/50 p-6 backdrop-blur-sm mb-6 group`}>
+        <div className={`relative overflow-hidden rounded-2xl border border-line-subtle bg-surface-0/50 p-6 backdrop-blur-sm mb-6 group`}>
             {/* Ambient Gradient Background */}
             <div className={`absolute top-0 left-0 right-0 h-32 bg-gradient-to-b ${config.bgGradient} opacity-30 pointer-events-none transition-opacity duration-1000`} />
 
@@ -64,16 +64,16 @@ export const MomentumHeader: React.FC<MomentumHeaderProps> = ({ globalMomentum }
                     </h2>
                 </div>
 
-                <p className="text-neutral-300 text-base max-w-lg leading-relaxed font-medium">
+                <p className="text-content-secondary text-base max-w-lg leading-relaxed font-medium">
                     {copy}
                 </p>
 
                 {activeDays > 0 && (
-                    <div className="mt-4 flex items-center gap-2 px-3 py-1 bg-white/5 rounded-full border border-white/5 text-xs text-neutral-400">
+                    <div className="mt-4 flex items-center gap-2 px-3 py-1 bg-white/5 rounded-full border border-line-subtle text-xs text-content-secondary">
                         <span>{activeDays} Active Days (Last 7)</span>
                         {trend === 'up' && <TrendingUp size={12} className="text-emerald-500" />}
                         {trend === 'down' && <TrendingDown size={12} className="text-rose-500" />}
-                        {trend === 'neutral' && <Minus size={12} className="text-neutral-500" />}
+                        {trend === 'neutral' && <Minus size={12} className="text-content-muted" />}
                     </div>
                 )}
             </div>

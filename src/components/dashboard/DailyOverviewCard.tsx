@@ -25,7 +25,7 @@ const CompletionRing: React.FC<{ completed: number; total: number; size?: number
                 />
             </svg>
             <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <span className="text-lg font-bold text-white leading-none">{completed}/{total}</span>
+                <span className="text-lg font-bold text-content-primary leading-none">{completed}/{total}</span>
             </div>
         </div>
     );
@@ -42,9 +42,9 @@ export const DailyOverviewCard: React.FC = () => {
     );
 
     return (
-        <div className="bg-neutral-900/50 rounded-2xl border border-white/5 p-4 backdrop-blur-sm flex flex-col items-center justify-center">
+        <div className="bg-surface-0/50 rounded-2xl border border-line-subtle p-4 backdrop-blur-sm flex flex-col items-center justify-center">
             <CompletionRing completed={completedCount} total={totalCount} />
-            <span className="text-[11px] text-neutral-400 font-medium mt-1.5">Daily Habits</span>
+            <span className="text-[11px] text-content-secondary font-medium mt-1.5">Daily Habits</span>
         </div>
     );
 };

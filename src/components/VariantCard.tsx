@@ -18,8 +18,8 @@ export const VariantCard: React.FC<VariantCardProps> = ({ variant, isSelected, o
             onClick={onClick}
             className={`w-full text-left p-4 rounded-xl border transition-all ${
                 isSelected
-                    ? 'border-emerald-500 bg-emerald-500/10 ring-1 ring-emerald-500/30'
-                    : 'border-white/10 bg-neutral-800/50 hover:border-white/20 hover:bg-neutral-800'
+                    ? 'border-emerald-500 bg-accent-soft ring-1 ring-focus/30'
+                    : 'border-line-subtle bg-surface-1/50 hover:border-line-strong hover:bg-surface-1'
             }`}
             role="option"
             aria-selected={isSelected}
@@ -27,7 +27,7 @@ export const VariantCard: React.FC<VariantCardProps> = ({ variant, isSelected, o
             <div className="flex items-start justify-between gap-3">
                 <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                        <h4 className={`font-medium truncate ${isSelected ? 'text-emerald-400' : 'text-white'}`}>
+                        <h4 className={`font-medium truncate ${isSelected ? 'text-accent-contrast' : 'text-content-primary'}`}>
                             {variant.name}
                         </h4>
                         {variant.isAiGenerated && (
@@ -35,14 +35,14 @@ export const VariantCard: React.FC<VariantCardProps> = ({ variant, isSelected, o
                         )}
                     </div>
                     {variant.description && (
-                        <p className="text-xs text-neutral-500 mt-1 line-clamp-2">{variant.description}</p>
+                        <p className="text-xs text-content-muted mt-1 line-clamp-2">{variant.description}</p>
                     )}
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0 mt-0.5">
                     {onEdit && (
                         <button
                             onClick={(e) => { e.stopPropagation(); onEdit(); }}
-                            className="p-1 rounded text-neutral-500 hover:text-white hover:bg-neutral-700 transition-colors"
+                            className="p-1 rounded text-content-muted hover:text-content-primary hover:bg-surface-2 transition-colors"
                             aria-label={`Edit ${variant.name}`}
                             title="Edit variant"
                         >
@@ -50,7 +50,7 @@ export const VariantCard: React.FC<VariantCardProps> = ({ variant, isSelected, o
                         </button>
                     )}
                     <div className={`w-4 h-4 rounded-full border-2 ${
-                        isSelected ? 'border-emerald-500 bg-emerald-500' : 'border-neutral-600'
+                        isSelected ? 'border-emerald-500 bg-emerald-500' : 'border-line-strong'
                     }`}>
                         {isSelected && (
                             <div className="w-full h-full flex items-center justify-center">
@@ -60,7 +60,7 @@ export const VariantCard: React.FC<VariantCardProps> = ({ variant, isSelected, o
                     </div>
                 </div>
             </div>
-            <div className="flex items-center gap-3 mt-3 text-xs text-neutral-500">
+            <div className="flex items-center gap-3 mt-3 text-xs text-content-muted">
                 <span className="flex items-center gap-1">
                     <ListChecks size={12} />
                     {variant.steps.length} steps
