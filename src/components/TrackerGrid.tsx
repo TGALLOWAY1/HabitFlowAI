@@ -100,7 +100,7 @@ const HabitActionButtons = ({
                         e.stopPropagation();
                         onRunRoutine(linkedRoutines[0]);
                     }}
-                    className="p-1.5 rounded-lg hover:bg-neutral-800 text-emerald-500 hover:text-emerald-400 transition-colors"
+                    className="p-1.5 rounded-lg hover:bg-surface-1 text-emerald-500 hover:text-accent-contrast transition-colors"
                     title={`Run Routine: ${linkedRoutines[0].title}`}
                 >
                     <Play size={14} />
@@ -112,7 +112,7 @@ const HabitActionButtons = ({
                         e.stopPropagation();
                         onMoveToCategory();
                     }}
-                    className="p-1.5 rounded-lg hover:bg-neutral-800 text-neutral-500 hover:text-white transition-colors"
+                    className="p-1.5 rounded-lg hover:bg-surface-1 text-content-muted hover:text-content-primary transition-colors"
                     title="Move to Category"
                 >
                     <FolderInput size={14} />
@@ -124,7 +124,7 @@ const HabitActionButtons = ({
                         e.stopPropagation();
                         onAddToBundle();
                     }}
-                    className="p-1.5 rounded-lg hover:bg-neutral-800 text-neutral-500 hover:text-indigo-400 transition-colors"
+                    className="p-1.5 rounded-lg hover:bg-surface-1 text-content-muted hover:text-indigo-400 transition-colors"
                     title="Add to Bundle"
                 >
                     <Layers size={14} />
@@ -135,7 +135,7 @@ const HabitActionButtons = ({
                     e.stopPropagation();
                     onViewHistory();
                 }}
-                className="p-1.5 rounded-lg hover:bg-neutral-800 text-neutral-500 hover:text-white transition-colors"
+                className="p-1.5 rounded-lg hover:bg-surface-1 text-content-muted hover:text-content-primary transition-colors"
                 title="View History"
             >
                 <History size={14} />
@@ -145,7 +145,7 @@ const HabitActionButtons = ({
                     e.stopPropagation();
                     onEdit();
                 }}
-                className="p-1.5 rounded-lg hover:bg-neutral-800 text-neutral-500 hover:text-white transition-colors"
+                className="p-1.5 rounded-lg hover:bg-surface-1 text-content-muted hover:text-content-primary transition-colors"
                 title="Edit Habit"
             >
                 <Pencil size={14} />
@@ -169,7 +169,7 @@ const HabitActionButtons = ({
                     "p-1.5 rounded-lg transition-all",
                     deleteConfirmId === habit.id
                         ? "bg-red-500/20 text-red-400 opacity-100"
-                        : "hover:bg-neutral-800 text-neutral-500 hover:text-red-400"
+                        : "hover:bg-surface-1 text-content-muted hover:text-red-400"
                 )}
                 title={deleteConfirmId === habit.id ? "Click again to delete" : "Delete Habit"}
             >
@@ -261,14 +261,14 @@ const HabitRowContent = ({
             ref={setNodeRef}
             style={style}
             className={cn(
-                "flex border-b border-white/5 transition-colors group",
-                habit.isVirtual ? "bg-neutral-800/30" : "bg-neutral-900/50", // Difference for virtual
-                isDragging && "relative shadow-xl ring-1 ring-emerald-500/50 z-50 bg-neutral-900",
+                "flex border-b border-line-subtle transition-colors group",
+                habit.isVirtual ? "bg-surface-1/30" : "bg-surface-0/50", // Difference for virtual
+                isDragging && "relative shadow-xl ring-1 ring-focus/50 z-50 bg-surface-0",
             )}
             onContextMenu={(e) => onContextMenu(e, habit)}
         >
             <div
-                className="w-64 flex-shrink-0 p-4 border-r border-white/5 flex flex-col gap-1.5 transition-colors relative sticky left-0 z-20 bg-neutral-900 group-hover:bg-[#1a1a1a] after:pointer-events-none after:absolute after:right-[-1px] after:top-0 after:h-full after:w-px after:bg-white/10"
+                className="w-64 flex-shrink-0 p-4 border-r border-line-subtle flex flex-col gap-1.5 transition-colors relative sticky left-0 z-20 bg-surface-0 group-hover:bg-[#1a1a1a] after:pointer-events-none after:absolute after:right-[-1px] after:top-0 after:h-full after:w-px after:bg-white/10"
                 style={{ paddingLeft: `${16 + (depth * 24)}px` }} // Dynamic Indentation
             >
                 {/* Top row: drag handle + full habit name (no icons) */}
@@ -277,7 +277,7 @@ const HabitRowContent = ({
                         <button
                             {...attributes}
                             {...listeners}
-                            className="text-neutral-600 hover:text-neutral-400 cursor-grab active:cursor-grabbing p-1 -ml-2 mt-0.5 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
+                            className="text-content-muted hover:text-content-secondary cursor-grab active:cursor-grabbing p-1 -ml-2 mt-0.5 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
                             title="Drag to reorder"
                         >
                             <GripVertical size={16} />
@@ -286,7 +286,7 @@ const HabitRowContent = ({
                     <span
                         className={cn(
                             "font-medium transition-colors min-w-0 break-words line-clamp-2",
-                            (depth > 0 || habit.isVirtual) ? "text-neutral-400 italic text-sm" : "text-neutral-200"
+                            (depth > 0 || habit.isVirtual) ? "text-content-secondary italic text-sm" : "text-content-primary"
                         )}
                         title={habit.name}
                     >
@@ -338,7 +338,7 @@ const HabitRowContent = ({
                                 "w-12 h-1 rounded-full transition-all duration-300",
                                 isExpanded
                                     ? "bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)]"
-                                    : "bg-neutral-700 hover:bg-blue-400"
+                                    : "bg-surface-2 hover:bg-blue-400"
                             )}
                         />
                     </div>
@@ -402,7 +402,7 @@ const HabitRowContent = ({
                     return (
                         <div
                             key={dateStr}
-                            className="w-16 flex-shrink-0 border-r border-white/5 flex items-center justify-center p-2"
+                            className="w-16 flex-shrink-0 border-r border-line-subtle flex items-center justify-center p-2"
                         >
                             <button
                                 onClick={habit.type === 'bundle' && habit.bundleType !== 'choice' ? handleBundleClick : (isInteractive ? (e) => handleCellClick(e, habit, dateStr, log) : undefined)}
@@ -415,16 +415,16 @@ const HabitRowContent = ({
                                 className={cn(
                                     "w-10 h-10 rounded-lg flex items-center justify-center transition-all duration-200 relative touch-manipulation",
                                     habit.type === 'bundle'
-                                        ? "bg-neutral-800 border border-white/5 hover:bg-neutral-700 text-neutral-200"
+                                        ? "bg-surface-1 border border-line-subtle hover:bg-surface-2 text-content-primary"
                                         : isFrozen
                                             ? "bg-sky-500/20 text-sky-400 border border-sky-500/30" // Frozen visual
                                             : isCompleted
-                                                ? "bg-emerald-500 text-neutral-900 shadow-[0_0_15px_rgba(16,185,129,0.4)] scale-90"
+                                                ? "bg-accent text-content-on-accent shadow-[0_0_15px_rgba(16,185,129,0.4)] scale-90"
                                                 : isPartial
-                                                    ? "bg-blue-500 text-neutral-900 shadow-[0_0_15px_rgba(59,130,246,0.4)] scale-95" // Partial
-                                                    : "bg-neutral-800/50 text-transparent hover:bg-neutral-800 hover:text-neutral-600 border border-white/5 hover:border-white/10",
+                                                    ? "bg-blue-500 text-content-on-accent shadow-[0_0_15px_rgba(59,130,246,0.4)] scale-95" // Partial
+                                                    : "bg-surface-1/50 text-transparent hover:bg-surface-1 hover:text-content-muted border border-line-subtle hover:border-line-subtle",
                                     !isInteractive && isCompleted && "opacity-80 cursor-default",
-                                    !isInteractive && "cursor-default hover:bg-neutral-800/50 hover:text-transparent",
+                                    !isInteractive && "cursor-default hover:bg-surface-1/50 hover:text-transparent",
                                     isDeleteMode && hasExistingEntry && "ring-1 ring-red-500/60"
                                 )}
                                 title={
@@ -441,7 +441,7 @@ const HabitRowContent = ({
                                     <>
                                         {/* Bundle Progress Background */}
                                         <div
-                                            className="absolute inset-0 bg-emerald-500/20 transition-all duration-500 pointer-events-none"
+                                            className="absolute inset-0 bg-accent-soft transition-all duration-500 pointer-events-none"
                                             style={{
                                                 height: `${getBundleStats(habit, logs, dateStr).percent}%`,
                                                 bottom: 0,
@@ -460,7 +460,7 @@ const HabitRowContent = ({
                                                         <span>{getBundleStats(habit, logs, dateStr).total}</span>
                                                     </>
                                                 ) : (
-                                                    <span className="text-neutral-600 opacity-0 hover:opacity-100 transition-opacity text-xs">+</span>
+                                                    <span className="text-content-muted opacity-0 hover:opacity-100 transition-opacity text-xs">+</span>
                                                 )
                                             )}
                                         </span>
@@ -1229,8 +1229,8 @@ export const TrackerGrid = ({
                     <div className="overflow-x-auto overscroll-x-contain [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
                         <div className="w-max min-w-full">
                             {/* Header */}
-                            <div className="sticky top-0 z-30 flex border-b border-white/5 bg-neutral-900 shadow-md">
-                                <div className="w-64 flex-shrink-0 p-4 font-medium text-emerald-400 border-r border-white/5 flex items-center justify-between bg-neutral-900 sticky left-0 z-40 group after:pointer-events-none after:absolute after:right-[-1px] after:top-0 after:h-full after:w-px after:bg-white/10">
+                            <div className="sticky top-0 z-30 flex border-b border-line-subtle bg-surface-0 shadow-md">
+                                <div className="w-64 flex-shrink-0 p-4 font-medium text-accent-contrast border-r border-line-subtle flex items-center justify-between bg-surface-0 sticky left-0 z-40 group after:pointer-events-none after:absolute after:right-[-1px] after:top-0 after:h-full after:w-px after:bg-white/10">
                                     <span>Daily Habits</span>
                                     <div className="flex items-center gap-1">
                                         <button
@@ -1239,7 +1239,7 @@ export const TrackerGrid = ({
                                                 "p-1.5 rounded-lg transition-colors",
                                                 deleteMode
                                                     ? "bg-red-500/20 text-red-400"
-                                                    : "hover:bg-neutral-800 text-neutral-500 hover:text-red-400"
+                                                    : "hover:bg-surface-1 text-content-muted hover:text-red-400"
                                             )}
                                             title={deleteMode ? 'Exit Delete Mode' : 'Enter Delete Mode (mobile-friendly)'}
                                         >
@@ -1247,19 +1247,19 @@ export const TrackerGrid = ({
                                         </button>
                                     </div>
                                 </div>
-                                <div className="flex bg-neutral-900">
+                                <div className="flex bg-surface-0">
                                     {dates.map((date) => (
                                         <div
                                             key={date.toISOString()}
                                             className={cn(
-                                                "w-16 flex-shrink-0 flex flex-col items-center justify-center p-2 border-r border-white/5 transition-colors",
-                                                isToday(date) ? "bg-emerald-500/10 text-emerald-400" : "text-neutral-500"
+                                                "w-16 flex-shrink-0 flex flex-col items-center justify-center p-2 border-r border-line-subtle transition-colors",
+                                                isToday(date) ? "bg-accent-soft text-accent-contrast" : "text-content-muted"
                                             )}
                                         >
                                             <span className="text-xs font-medium uppercase">{format(date, 'EEE')}</span>
                                             <span className={cn(
                                                 "text-lg font-bold w-8 h-8 flex items-center justify-center rounded-full mt-1",
-                                                isToday(date) && "bg-emerald-500 text-neutral-900"
+                                                isToday(date) && "bg-accent text-content-on-accent"
                                             )}>
                                                 {format(date, 'd')}
                                             </span>
@@ -1276,7 +1276,7 @@ export const TrackerGrid = ({
                             )}
                             <div className="flex-col">
                                 {loading ? (
-                                    <div className="flex items-center justify-center p-12 text-neutral-500 text-sm">Loading habits…</div>
+                                    <div className="flex items-center justify-center p-12 text-content-muted text-sm">Loading habits…</div>
                                 ) : dailyHabits.length > 0 ? (
                                     <SortableContext
                                         items={dailyHabits.map(h => h.id)}
@@ -1315,47 +1315,47 @@ export const TrackerGrid = ({
                                     <div className="sticky left-0 w-screen max-w-full flex flex-col items-center justify-center p-6 sm:p-8 text-center">
                                         <div className="max-w-sm mx-auto flex flex-col items-center">
                                         {/* The Rules — matching InfoModal style */}
-                                        <div className="w-full bg-emerald-500/5 border border-emerald-500/20 rounded-lg px-3 py-2.5 mb-5">
-                                            <p className="text-xs text-emerald-400 uppercase tracking-wide font-semibold mb-1.5">The Rules</p>
-                                            <ul className="space-y-0.5 text-sm text-neutral-300">
-                                                <li>Habits are <span className="text-emerald-400 font-medium">performed</span></li>
-                                                <li>Routines are <span className="text-emerald-400 font-medium">completed</span></li>
-                                                <li>Goals are <span className="text-emerald-400 font-medium">achieved</span></li>
+                                        <div className="w-full bg-emerald-500/5 border border-accent/20 rounded-lg px-3 py-2.5 mb-5">
+                                            <p className="text-xs text-accent-contrast uppercase tracking-wide font-semibold mb-1.5">The Rules</p>
+                                            <ul className="space-y-0.5 text-sm text-content-secondary">
+                                                <li>Habits are <span className="text-accent-contrast font-medium">performed</span></li>
+                                                <li>Routines are <span className="text-accent-contrast font-medium">completed</span></li>
+                                                <li>Goals are <span className="text-accent-contrast font-medium">achieved</span></li>
                                             </ul>
                                         </div>
 
                                         {/* Definitions — matching InfoModal structure */}
                                         <div className="w-full space-y-4 mb-6 text-left">
                                             <div className="pl-3 border-l-2 border-emerald-500/40">
-                                                <p className="text-sm text-neutral-200">
-                                                    <span className="font-bold text-emerald-400">Habit</span>
+                                                <p className="text-sm text-content-primary">
+                                                    <span className="font-bold text-accent-contrast">Habit</span>
                                                 </p>
-                                                <p className="text-sm text-neutral-400 mt-1">A repeated behavior performed over time. Each day, a habit is simply performed or not.</p>
+                                                <p className="text-sm text-content-secondary mt-1">A repeated behavior performed over time. Each day, a habit is simply performed or not.</p>
                                                 <div className="flex flex-wrap gap-1.5 mt-2">
                                                     {['Drink water', '10-minute walk', 'Read 5 pages'].map((ex) => (
-                                                        <span key={ex} className="px-2.5 py-0.5 text-xs text-neutral-400 bg-neutral-800/80 rounded-full border border-white/5">{ex}</span>
+                                                        <span key={ex} className="px-2.5 py-0.5 text-xs text-content-secondary bg-surface-1/80 rounded-full border border-line-subtle">{ex}</span>
                                                     ))}
                                                 </div>
                                             </div>
                                             <div className="pl-3 border-l-2 border-emerald-500/40">
-                                                <p className="text-sm text-neutral-200">
-                                                    <span className="font-bold text-emerald-400">Routine</span>
+                                                <p className="text-sm text-content-primary">
+                                                    <span className="font-bold text-accent-contrast">Routine</span>
                                                 </p>
-                                                <p className="text-sm text-neutral-400 mt-1">A group of habits performed together in a sequence.</p>
-                                                <p className="text-xs text-neutral-500 italic mt-1.5 pl-2">— "Morning Reset" — Stretch + Meditate + Review goals</p>
+                                                <p className="text-sm text-content-secondary mt-1">A group of habits performed together in a sequence.</p>
+                                                <p className="text-xs text-content-muted italic mt-1.5 pl-2">— "Morning Reset" — Stretch + Meditate + Review goals</p>
                                             </div>
                                             <div className="pl-3 border-l-2 border-emerald-500/40">
-                                                <p className="text-sm text-neutral-200">
-                                                    <span className="font-bold text-emerald-400">Goal</span>
+                                                <p className="text-sm text-content-primary">
+                                                    <span className="font-bold text-accent-contrast">Goal</span>
                                                 </p>
-                                                <p className="text-sm text-neutral-400 mt-1">An outcome achieved by consistently performing the habits that support it.</p>
-                                                <p className="text-xs text-neutral-500 italic mt-1.5 pl-2">— "Run a 10K" — supported by: Running habit</p>
+                                                <p className="text-sm text-content-secondary mt-1">An outcome achieved by consistently performing the habits that support it.</p>
+                                                <p className="text-xs text-content-muted italic mt-1.5 pl-2">— "Run a 10K" — supported by: Running habit</p>
                                             </div>
                                         </div>
 
                                         <button
                                             onClick={onAddHabit}
-                                            className="flex items-center gap-2 px-5 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-neutral-900 font-medium rounded-lg transition-colors text-sm"
+                                            className="flex items-center gap-2 px-5 py-2.5 bg-accent hover:bg-accent-strong text-content-on-accent font-medium rounded-lg transition-colors text-sm"
                                         >
                                             Add Your First Habit
                                         </button>
@@ -1372,15 +1372,15 @@ export const TrackerGrid = ({
             {/* Delete Confirmation Modal */}
             {deleteConfirmId && (
                 <div className="modal-overlay fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-                    <div className="bg-neutral-900 border border-white/10 rounded-xl p-6 w-full max-w-sm shadow-xl">
-                        <h3 className="text-lg font-bold text-white mb-2">Delete Habit?</h3>
-                        <p className="text-neutral-400 mb-6 text-sm">
+                    <div className="bg-surface-0 border border-line-subtle rounded-xl p-6 w-full max-w-sm shadow-xl">
+                        <h3 className="text-lg font-bold text-content-primary mb-2">Delete Habit?</h3>
+                        <p className="text-content-secondary mb-6 text-sm">
                             Are you sure you want to delete this habit? This action cannot be undone and all history will be lost.
                         </p>
                         <div className="flex gap-3 justify-end">
                             <button
                                 onClick={() => setDeleteConfirmId(null)}
-                                className="px-4 py-2 text-sm font-medium text-neutral-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors"
+                                className="px-4 py-2 text-sm font-medium text-content-secondary hover:text-content-primary hover:bg-surface-2 rounded-lg transition-colors"
                             >
                                 Cancel
                             </button>
@@ -1391,7 +1391,7 @@ export const TrackerGrid = ({
                                         setDeleteConfirmId(null);
                                     }
                                 }}
-                                className="px-4 py-2 text-sm font-medium text-white bg-red-500/10 text-red-500 hover:bg-red-500/20 border border-red-500/20 rounded-lg transition-colors"
+                                className="px-4 py-2 text-sm font-medium text-content-primary bg-red-500/10 text-red-500 hover:bg-red-500/20 border border-red-500/20 rounded-lg transition-colors"
                             >
                                 Delete
                             </button>
@@ -1450,7 +1450,7 @@ export const TrackerGrid = ({
             {/* Context Menu */}
             {contextMenu && (
                 <div
-                    className="fixed z-50 bg-neutral-800 border border-white/10 rounded-lg shadow-xl p-1 min-w-[160px] animate-in fade-in zoom-in-95 duration-100"
+                    className="fixed z-50 bg-surface-1 border border-line-subtle rounded-lg shadow-xl p-1 min-w-[160px] animate-in fade-in zoom-in-95 duration-100"
                     style={{ top: contextMenu.y, left: contextMenu.x }}
                     onClick={(e) => e.stopPropagation()}
                 >
@@ -1461,7 +1461,7 @@ export const TrackerGrid = ({
 
                         return (
                             <div className="flex flex-col gap-1">
-                                <div className="px-2 py-1.5 text-xs font-semibold text-neutral-500 border-b border-white/5 mb-1">
+                                <div className="px-2 py-1.5 text-xs font-semibold text-content-muted border-b border-line-subtle mb-1">
                                     {habit.name}
                                 </div>
                                 {linked.map(routine => (
@@ -1471,7 +1471,7 @@ export const TrackerGrid = ({
                                             onRunRoutine?.(routine);
                                             setContextMenu(null);
                                         }}
-                                        className="flex items-center gap-2 px-2 py-1.5 text-sm text-emerald-400 hover:bg-neutral-700/50 rounded transition-colors text-left w-full"
+                                        className="flex items-center gap-2 px-2 py-1.5 text-sm text-accent-contrast hover:bg-surface-2/50 rounded transition-colors text-left w-full"
                                     >
                                         <Play size={14} /> Start {routine.title}
                                     </button>
@@ -1482,7 +1482,7 @@ export const TrackerGrid = ({
                                         onEditHabit(habit);
                                         setContextMenu(null);
                                     }}
-                                    className="flex items-center gap-2 px-2 py-1.5 text-sm text-neutral-300 hover:bg-neutral-700/50 rounded transition-colors text-left w-full"
+                                    className="flex items-center gap-2 px-2 py-1.5 text-sm text-content-secondary hover:bg-surface-2/50 rounded transition-colors text-left w-full"
                                 >
                                     <Link2 size={14} /> {linked.length > 0 ? 'Edit Links...' : 'Link Routine...'}
                                 </button>
@@ -1492,7 +1492,7 @@ export const TrackerGrid = ({
                                         setCategoryPickerHabit(habit);
                                         setContextMenu(null);
                                     }}
-                                    className="flex items-center gap-2 px-2 py-1.5 text-sm text-neutral-300 hover:bg-neutral-700/50 rounded transition-colors text-left w-full"
+                                    className="flex items-center gap-2 px-2 py-1.5 text-sm text-content-secondary hover:bg-surface-2/50 rounded transition-colors text-left w-full"
                                 >
                                     <FolderInput size={14} /> Move to Category…
                                 </button>
@@ -1503,7 +1503,7 @@ export const TrackerGrid = ({
                                             setBundlePickerHabit(habit);
                                             setContextMenu(null);
                                         }}
-                                        className="flex items-center gap-2 px-2 py-1.5 text-sm text-neutral-300 hover:bg-neutral-700/50 rounded transition-colors text-left w-full"
+                                        className="flex items-center gap-2 px-2 py-1.5 text-sm text-content-secondary hover:bg-surface-2/50 rounded transition-colors text-left w-full"
                                     >
                                         <Layers size={14} /> Add to Bundle…
                                     </button>
@@ -1515,7 +1515,7 @@ export const TrackerGrid = ({
                                             onConvertToBundle(habit);
                                             setContextMenu(null);
                                         }}
-                                        className="flex items-center gap-2 px-2 py-1.5 text-sm text-neutral-300 hover:bg-neutral-700/50 rounded transition-colors text-left w-full"
+                                        className="flex items-center gap-2 px-2 py-1.5 text-sm text-content-secondary hover:bg-surface-2/50 rounded transition-colors text-left w-full"
                                     >
                                         <Layers size={14} /> Convert to Bundle…
                                     </button>
@@ -1526,7 +1526,7 @@ export const TrackerGrid = ({
                                         onViewHistory(habit);
                                         setContextMenu(null);
                                     }}
-                                    className="flex items-center gap-2 px-2 py-1.5 text-sm text-neutral-300 hover:bg-neutral-700/50 rounded transition-colors text-left w-full"
+                                    className="flex items-center gap-2 px-2 py-1.5 text-sm text-content-secondary hover:bg-surface-2/50 rounded transition-colors text-left w-full"
                                 >
                                     <History size={14} /> View History
                                 </button>
@@ -1536,7 +1536,7 @@ export const TrackerGrid = ({
                                         onEditHabit(habit);
                                         setContextMenu(null);
                                     }}
-                                    className="flex items-center gap-2 px-2 py-1.5 text-sm text-neutral-300 hover:bg-neutral-700/50 rounded transition-colors text-left w-full"
+                                    className="flex items-center gap-2 px-2 py-1.5 text-sm text-content-secondary hover:bg-surface-2/50 rounded transition-colors text-left w-full"
                                 >
                                     <Pencil size={14} /> Edit Habit
                                 </button>

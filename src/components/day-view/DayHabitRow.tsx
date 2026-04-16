@@ -50,7 +50,7 @@ export const DayHabitRow = ({
 
     return (
         <div
-            className="group relative flex flex-col bg-neutral-900/40 border border-white/5 rounded-xl transition-all hover:bg-neutral-800/40 hover:border-white/10 mb-2 overflow-hidden"
+            className="group relative flex flex-col bg-surface-0/40 border border-line-subtle rounded-xl transition-all hover:bg-surface-1/40 hover:border-line-subtle mb-2 overflow-hidden"
             onMouseEnter={() => setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}
         >
@@ -72,7 +72,7 @@ export const DayHabitRow = ({
                         "flex-shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all duration-300",
                         isCompleted
                             ? "bg-emerald-500 border-emerald-500 text-neutral-900 scale-100"
-                            : "border-white/20 text-transparent hover:border-emerald-500/50 scale-95 hover:scale-100"
+                            : "border-line-strong text-transparent hover:border-emerald-500/50 scale-95 hover:scale-100"
                     )}
                 >
                     <Check size={14} strokeWidth={3} />
@@ -82,20 +82,20 @@ export const DayHabitRow = ({
                 <div className="flex-1 flex flex-col justify-center min-w-0">
                     <span className={cn(
                         "text-base font-medium truncate transition-colors",
-                        isCompleted ? "text-neutral-500 line-through decoration-white/20" : "text-neutral-200"
+                        isCompleted ? "text-content-muted line-through decoration-white/20" : "text-content-primary"
                     )}>
                         {habit.name}
                     </span>
 
                     {/* Metadata Row */}
-                    <div className="flex items-center gap-3 mt-0.5 text-xs text-neutral-500">
+                    <div className="flex items-center gap-3 mt-0.5 text-xs text-content-muted">
                         {/* Linked Goal Trophy */}
                         {habit.linkedGoalId && (
                             <Trophy size={12} className="flex-shrink-0 text-amber-500" />
                         )}
                         {/* Goal Indicator */}
                         {habit.goal && (
-                            <div className="flex items-center gap-1 hover:text-neutral-300 transition-colors cursor-help" title={`Goal: ${habit.goal.target ?? 1} ${habit.goal.unit ?? 'times'} (${habit.goal.frequency})`}>
+                            <div className="flex items-center gap-1 hover:text-content-secondary transition-colors cursor-help" title={`Goal: ${habit.goal.target ?? 1} ${habit.goal.unit ?? 'times'} (${habit.goal.frequency})`}>
                                 {habit.goal.type === 'number'
                                     ? <Hash size={12} className="text-sky-400" />
                                     : <Target size={12} className="text-emerald-500" />}
@@ -104,7 +104,7 @@ export const DayHabitRow = ({
 
                         {/* Time Estimate */}
                         <div
-                            className="flex items-center gap-1 hover:text-neutral-300 transition-colors cursor-pointer"
+                            className="flex items-center gap-1 hover:text-content-secondary transition-colors cursor-pointer"
                             onClick={() => setIsEditingTime(true)}
                         >
                             <Clock size={12} />
@@ -112,7 +112,7 @@ export const DayHabitRow = ({
                                 <input
                                     autoFocus
                                     type="number"
-                                    className="w-12 bg-neutral-800 text-white rounded px-1 py-0.5 text-xs border border-white/10 focus:outline-none focus:border-emerald-500"
+                                    className="w-12 bg-surface-1 text-content-primary rounded px-1 py-0.5 text-xs border border-line-subtle focus:outline-none focus:border-emerald-500"
                                     value={timeInput}
                                     onChange={(e) => setTimeInput(e.target.value)}
                                     onBlur={handleTimeSubmit}
@@ -134,8 +134,8 @@ export const DayHabitRow = ({
                     <button
                         onClick={() => onPin(habit.id)}
                         className={cn(
-                            "p-2 rounded-lg transition-colors hover:bg-white/10",
-                            habit.pinned ? "text-blue-400" : "text-neutral-500 hover:text-white"
+                            "p-2 rounded-lg transition-colors hover:bg-surface-2",
+                            habit.pinned ? "text-blue-400" : "text-content-muted hover:text-content-primary"
                         )}
                         title={habit.pinned ? "Unpin from Today's Focus" : "Pin to Today's Focus"}
                     >
@@ -144,7 +144,7 @@ export const DayHabitRow = ({
                     {isChecklistBundle && (
                         <button
                             onClick={() => setIsExpanded(!isExpanded)}
-                            className="p-2 rounded-lg text-neutral-500 hover:text-white hover:bg-white/10 transition-colors"
+                            className="p-2 rounded-lg text-content-muted hover:text-content-primary hover:bg-surface-2 transition-colors"
                         >
                             {isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
                         </button>
@@ -154,17 +154,17 @@ export const DayHabitRow = ({
 
             {/* Checklist Bundle Children */}
             {isChecklistBundle && isExpanded && subHabits && (
-                <div className="flex flex-col border-t border-white/5 bg-neutral-900/30">
+                <div className="flex flex-col border-t border-line-subtle bg-surface-0/30">
                     {subHabits.map(child => (
                         // Reusing simplified logic for children, or recursively render row? 
                         // For MVP simple rendering is safer.
-                        <div key={child.id} className="flex items-center gap-3 p-3 pl-12 border-b border-white/5 last:border-0 hover:bg-white/[0.02] transition-colors">
+                        <div key={child.id} className="flex items-center gap-3 p-3 pl-12 border-b border-line-subtle last:border-0 hover:bg-white/[0.02] transition-colors">
                             {/* Child actions would need to be passed down or handled via context in parent */}
-                            <span className="text-sm text-neutral-400">{child.name}</span>
+                            <span className="text-sm text-content-secondary">{child.name}</span>
                         </div>
                     ))}
                     {(!subHabits || subHabits.length === 0) && (
-                        <div className="p-3 pl-12 text-xs text-neutral-600 italic">No items in bundle</div>
+                        <div className="p-3 pl-12 text-xs text-content-muted italic">No items in bundle</div>
                     )}
                 </div>
             )}
@@ -179,8 +179,8 @@ export const DayHabitRow = ({
                             className={cn(
                                 "px-3 py-1.5 rounded-md text-xs font-medium border transition-all",
                                 selectedChoice === option.key
-                                    ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/50"
-                                    : "bg-neutral-800 text-neutral-400 border-white/5 hover:border-white/20 hover:text-white"
+                                    ? "bg-accent-soft text-accent-contrast border-emerald-500/50"
+                                    : "bg-surface-1 text-content-secondary border-line-subtle hover:border-line-strong hover:text-content-primary"
                             )}
                         >
                             {option.label}
