@@ -1,6 +1,8 @@
 import React, { useEffect, useMemo, useRef } from 'react';
 import { useHabitStore } from '../store/HabitContext';
-import { getHeatmapColor } from '../utils/analytics';
+import { getHeatmapColor } from '../theme/heatmap';
+import { useTheme } from '../theme/ThemeContext';
+import { useThemeColors } from '../theme/useThemeColors';
 import { getBundleChildIds, isHabitComplete } from '../utils/habitUtils';
 import { eachDayOfInterval, subDays, format, getDay, startOfWeek, endOfWeek, isSameMonth } from 'date-fns';
 import { Tooltip } from 'react-tooltip';
@@ -12,6 +14,8 @@ interface YearHeatmapGridProps {
 
 export const YearHeatmapGrid: React.FC<YearHeatmapGridProps> = React.memo(({ habits }) => {
     const { logs, extendLogWindow } = useHabitStore();
+    const { resolvedMode } = useTheme();
+    const themeColors = useThemeColors();
 
     // On mount, extend the log window to cover a full year if needed.
     // The initial load only fetches 90 days; the year heatmap needs 365.
@@ -135,13 +139,13 @@ export const YearHeatmapGrid: React.FC<YearHeatmapGridProps> = React.memo(({ hab
                 <div className="h-6" />
 
                 {/* Day Labels (Sun-Sat) */}
-                <div className="text-[10px] text-neutral-500 font-medium flex items-center justify-end pr-2">S</div>
-                <div className="text-[10px] text-neutral-500 font-medium flex items-center justify-end pr-2">M</div>
-                <div className="text-[10px] text-neutral-500 font-medium flex items-center justify-end pr-2">T</div>
-                <div className="text-[10px] text-neutral-500 font-medium flex items-center justify-end pr-2">W</div>
-                <div className="text-[10px] text-neutral-500 font-medium flex items-center justify-end pr-2">T</div>
-                <div className="text-[10px] text-neutral-500 font-medium flex items-center justify-end pr-2">F</div>
-                <div className="text-[10px] text-neutral-500 font-medium flex items-center justify-end pr-2">S</div>
+                <div className="text-[10px] text-content-muted font-medium flex items-center justify-end pr-2">S</div>
+                <div className="text-[10px] text-content-muted font-medium flex items-center justify-end pr-2">M</div>
+                <div className="text-[10px] text-content-muted font-medium flex items-center justify-end pr-2">T</div>
+                <div className="text-[10px] text-content-muted font-medium flex items-center justify-end pr-2">W</div>
+                <div className="text-[10px] text-content-muted font-medium flex items-center justify-end pr-2">T</div>
+                <div className="text-[10px] text-content-muted font-medium flex items-center justify-end pr-2">F</div>
+                <div className="text-[10px] text-content-muted font-medium flex items-center justify-end pr-2">S</div>
 
                 {/* Data Columns */}
                 {weeks.map((week, wIndex) => {
@@ -154,7 +158,7 @@ export const YearHeatmapGrid: React.FC<YearHeatmapGridProps> = React.memo(({ hab
                             {/* Row 0: Month Label Slot */}
                             <div className="h-6 relative">
                                 {label && (
-                                    <span className="absolute bottom-1 left-0 text-[10px] text-neutral-500 font-medium whitespace-nowrap z-10">
+                                    <span className="absolute bottom-1 left-0 text-[10px] text-content-muted font-medium whitespace-nowrap z-10">
                                         {label.text}
                                     </span>
                                 )}
@@ -166,7 +170,8 @@ export const YearHeatmapGrid: React.FC<YearHeatmapGridProps> = React.memo(({ hab
                                     key={day.date.toISOString()}
                                     data-tooltip-id="heatmap-tooltip"
                                     data-tooltip-content={`${format(day.date, 'MMM d, yyyy')}: ${day.count} completions across ${day.categoryCount} categories`}
-                                    className={`aspect-square w-full rounded-sm ${getHeatmapColor(day.intensity)} transition-all hover:ring-1 hover:ring-white/50`}
+                                    className="aspect-square w-full rounded-sm transition-all hover:ring-1 hover:ring-focus/50"
+                                    style={{ background: getHeatmapColor(day.intensity, resolvedMode) }}
                                 />
                             ))}
                         </React.Fragment>
@@ -177,7 +182,11 @@ export const YearHeatmapGrid: React.FC<YearHeatmapGridProps> = React.memo(({ hab
             <div className="mt-4">
                 <HeatmapLegend />
             </div>
-            <Tooltip id="heatmap-tooltip" className="z-50 !bg-neutral-800 !text-white !opacity-100 !rounded-lg !px-3 !py-1 !text-xs" />
+            <Tooltip
+                id="heatmap-tooltip"
+                className="z-50 !opacity-100 !rounded-lg !px-3 !py-1 !text-xs"
+                style={{ background: themeColors.chartTooltipBg, color: themeColors.contentPrimary, border: `1px solid ${themeColors.lineSubtle}` }}
+            />
         </div>
     );
 });

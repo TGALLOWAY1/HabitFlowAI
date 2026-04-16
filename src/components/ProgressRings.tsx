@@ -4,33 +4,41 @@ import { useHabitStore } from '../store/HabitContext';
 import { format, subDays } from 'date-fns';
 import { Brain, Activity, Battery, Moon } from 'lucide-react';
 import { getDailyHabitRingProgress } from '../utils/habitUtils';
+import { useThemeColors } from '../theme/useThemeColors';
+import type { ThemeColors } from '../theme/palette';
 
-// Custom Tooltip for dual-line charts
-const DualTooltip = ({ active, payload, label }: any) => {
-    if (active && payload && payload.length) {
-        // Dedup payload in case we have multiple lines (solid + dashed) for same data
-        const uniquePayload = payload.filter((entry: any, index: number, self: any[]) =>
-            index === self.findIndex((e: any) => e.name === entry.name)
-        );
+// Custom Tooltip for dual-line charts — theme-aware via a factory that
+// closes over the current palette.
+const makeDualTooltip = (c: ThemeColors) => {
+    const DualTooltip = ({ active, payload, label }: any) => {
+        if (active && payload && payload.length) {
+            const uniquePayload = payload.filter((entry: any, index: number, self: any[]) =>
+                index === self.findIndex((e: any) => e.name === entry.name)
+            );
 
-        return (
-            <div className="bg-neutral-800 border border-neutral-700 p-2 rounded shadow-lg text-xs z-50">
-                <p className="text-white font-medium mb-1">{label}</p>
-                {uniquePayload.map((entry: any, index: number) => (
-                    <div key={index} className="flex items-center gap-2">
-                        <div
-                            className="w-2 h-2 rounded-full"
-                            style={{ backgroundColor: entry.color }}
-                        />
-                        <span style={{ color: entry.color }}>
-                            {entry.name}: {entry.value}
-                        </span>
-                    </div>
-                ))}
-            </div>
-        );
-    }
-    return null;
+            return (
+                <div
+                    className="p-2 rounded shadow-lg text-xs z-50 border"
+                    style={{ background: c.chartTooltipBg, borderColor: c.lineSubtle }}
+                >
+                    <p className="font-medium mb-1" style={{ color: c.contentPrimary }}>{label}</p>
+                    {uniquePayload.map((entry: any, index: number) => (
+                        <div key={index} className="flex items-center gap-2">
+                            <div
+                                className="w-2 h-2 rounded-full"
+                                style={{ backgroundColor: entry.color }}
+                            />
+                            <span style={{ color: entry.color }}>
+                                {entry.name}: {entry.value}
+                            </span>
+                        </div>
+                    ))}
+                </div>
+            );
+        }
+        return null;
+    };
+    return DualTooltip;
 };
 
 // Custom Diamond Dot for Evening
@@ -49,6 +57,8 @@ const DiamondDot = (props: any) => {
 
 export const ProgressRings: React.FC = React.memo(() => {
     const { habits, logs, wellbeingLogs } = useHabitStore();
+    const themeColors = useThemeColors();
+    const DualTooltip = useMemo(() => makeDualTooltip(themeColors), [themeColors]);
     const today = format(new Date(), 'yyyy-MM-dd');
 
     // Calculate Habit Completion (exclude bundle sub-habits, derive bundle completion from children)
@@ -161,11 +171,11 @@ export const ProgressRings: React.FC = React.memo(() => {
                                 stroke="none"
                             >
                                 <Cell key="val" fill={color} />
-                                <Cell key="empty" fill="#262626" />
+                                <Cell key="empty" fill={themeColors.surface2} />
                             </Pie>
                         </PieChart>
                     </ResponsiveContainer>
-                    <div className="absolute inset-0 flex items-center justify-center text-white font-bold text-lg">
+                    <div className="absolute inset-0 flex items-center justify-center text-content-primary font-bold text-lg">
                         {value > 0 ? value : '-'}
                     </div>
                 </div>
@@ -174,31 +184,31 @@ export const ProgressRings: React.FC = React.memo(() => {
         );
 
         return (
-            <div className="flex items-center justify-between p-6 bg-neutral-900/50 rounded-2xl border border-white/5 h-full">
+            <div className="flex items-center justify-between p-6 bg-surface-1/60 rounded-2xl border border-line-subtle h-full">
                 <div className="flex items-center">
                     {/* Icon and Label Section */}
                     <div className="mr-6 min-w-[100px]">
-                        <div className="flex items-center gap-2 text-neutral-400 mb-1 font-medium">
+                        <div className="flex items-center gap-2 text-content-secondary mb-1 font-medium">
                             <Icon size={18} style={{ color: iconColor }} />
                             {label}
                         </div>
-                        <div className="text-xs text-neutral-500">Last 7 Days (M vs E)</div>
+                        <div className="text-xs text-content-muted">Last 7 Days (M vs E)</div>
                     </div>
 
                     {/* Dual Rings */}
-                    <div className="flex items-center gap-4 border-l border-white/5 pl-6">
+                    <div className="flex items-center gap-4 border-l border-line-subtle pl-6">
                         {renderRing(morningRingData, morningColor, morningValue, 'Morning')}
                         {renderRing(eveningRingData, eveningColor, eveningValue, 'Evening')}
                     </div>
                 </div>
 
                 {/* Dual Line Chart */}
-                <div className="flex-1 h-24 ml-8 border-l border-white/5 pl-8">
+                <div className="flex-1 h-24 ml-8 border-l border-line-subtle pl-8">
                     <ResponsiveContainer width="100%" height="100%">
                         <LineChart data={weeklyData}>
                             <XAxis
                                 dataKey="day"
-                                stroke="#525252"
+                                stroke={themeColors.chartAxis}
                                 fontSize={10}
                                 tickLine={false}
                                 axisLine={false}
@@ -208,7 +218,7 @@ export const ProgressRings: React.FC = React.memo(() => {
                                 domain={[0, 5]}
                                 hide
                             />
-                            <Tooltip content={<DualTooltip />} cursor={{ stroke: 'rgba(255,255,255,0.1)', strokeWidth: 1 }} />
+                            <Tooltip content={<DualTooltip />} cursor={{ stroke: themeColors.chartGrid, strokeWidth: 1 }} />
 
                             {/* Morning - Dashed Layer (connects gaps) */}
                             <Line
@@ -273,8 +283,8 @@ export const ProgressRings: React.FC = React.memo(() => {
     return (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {/* Left Column: Daily Overview & Main Ring */}
-            <div className="flex flex-col items-center justify-between p-6 bg-neutral-900/50 rounded-2xl border border-white/5 h-full">
-                <h3 className="text-xl font-bold text-white mb-4">Daily Overview</h3>
+            <div className="flex flex-col items-center justify-between p-6 bg-surface-1/60 rounded-2xl border border-line-subtle h-full">
+                <h3 className="text-xl font-bold text-content-primary mb-4">Daily Overview</h3>
 
                 <div className="relative w-48 h-48 mb-6">
                     <ResponsiveContainer width="100%" height="100%">
@@ -290,31 +300,31 @@ export const ProgressRings: React.FC = React.memo(() => {
                                 dataKey="value"
                                 stroke="none"
                             >
-                                <Cell key="completed" fill="#10b981" />
-                                <Cell key="remaining" fill="#262626" />
+                                <Cell key="completed" fill={themeColors.accent} />
+                                <Cell key="remaining" fill={themeColors.surface2} />
                             </Pie>
                         </PieChart>
                     </ResponsiveContainer>
                     <div className="absolute inset-0 flex flex-col items-center justify-center">
-                        <span className="text-4xl font-bold text-white">{completionRate}%</span>
-                        <span className="text-sm text-neutral-500 uppercase tracking-wider">Done</span>
+                        <span className="text-4xl font-bold text-content-primary">{completionRate}%</span>
+                        <span className="text-sm text-content-muted uppercase tracking-wider">Done</span>
                     </div>
                 </div>
 
                 {/* Sleep & Energy Stacked Below Ring */}
                 <div className="flex flex-col gap-3 w-full">
-                    <div className="flex items-center gap-3 px-4 py-3 bg-neutral-800/50 rounded-xl border border-white/5 w-full">
+                    <div className="flex items-center gap-3 px-4 py-3 bg-surface-1/50 rounded-xl border border-line-subtle w-full">
                         <Moon size={20} className="text-indigo-400" />
                         <div className="flex items-center justify-between w-full">
-                            <span className="text-sm text-neutral-400">Sleep Score</span>
-                            <span className="text-lg font-bold text-white">{currentWellbeing.sleepScore}</span>
+                            <span className="text-sm text-content-secondary">Sleep Score</span>
+                            <span className="text-lg font-bold text-content-primary">{currentWellbeing.sleepScore}</span>
                         </div>
                     </div>
-                    <div className="flex items-center gap-3 px-4 py-3 bg-neutral-800/50 rounded-xl border border-white/5 w-full">
-                        <Battery size={20} className="text-emerald-400" />
+                    <div className="flex items-center gap-3 px-4 py-3 bg-surface-1/50 rounded-xl border border-line-subtle w-full">
+                        <Battery size={20} className="text-accent-contrast" />
                         <div className="flex items-center justify-between w-full">
-                            <span className="text-sm text-neutral-400">Energy</span>
-                            <span className="text-lg font-bold text-white">{currentWellbeing.energy}</span>
+                            <span className="text-sm text-content-secondary">Energy</span>
+                            <span className="text-lg font-bold text-content-primary">{currentWellbeing.energy}</span>
                         </div>
                     </div>
                 </div>
@@ -329,8 +339,8 @@ export const ProgressRings: React.FC = React.memo(() => {
                         eveningValue={currentWellbeing.depression.evening}
                         max={5}
                         metricKey="depression"
-                        morningColor="#3b82f6" // Blue
-                        eveningColor="#8b5cf6" // Violet
+                        morningColor="#3b82f6" // Blue — semantic: morning
+                        eveningColor="#8b5cf6" // Violet — semantic: evening
                         iconColor="#3b82f6"
                         icon={Brain}
                     />

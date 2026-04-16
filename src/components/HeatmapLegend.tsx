@@ -1,21 +1,21 @@
 import React from 'react';
-import { getHeatmapColor } from '../utils/analytics';
+import { getHeatmapColor, HEATMAP_LEVELS } from '../theme/heatmap';
+import { useTheme } from '../theme/ThemeContext';
 
 export const HeatmapLegend: React.FC = React.memo(() => {
+    const { resolvedMode } = useTheme();
+    const levels = Array.from({ length: HEATMAP_LEVELS }, (_, i) => i);
     return (
-        <div className="flex items-center justify-end gap-2 mt-4 text-xs text-neutral-500">
+        <div className="flex items-center justify-end gap-2 mt-4 text-xs text-content-muted">
             <span>Low</span>
             <div className="flex items-center gap-1">
-                {/* 0 (Empty) */}
-                <div className={`w-3 h-3 rounded-sm ${getHeatmapColor(0)}`} />
-                {/* 1 */}
-                <div className={`w-3 h-3 rounded-sm ${getHeatmapColor(1)}`} />
-                {/* 2 */}
-                <div className={`w-3 h-3 rounded-sm ${getHeatmapColor(2)}`} />
-                {/* 3 */}
-                <div className={`w-3 h-3 rounded-sm ${getHeatmapColor(3)}`} />
-                {/* 4 (Max) */}
-                <div className={`w-3 h-3 rounded-sm ${getHeatmapColor(4)}`} />
+                {levels.map((level) => (
+                    <div
+                        key={level}
+                        className="w-3 h-3 rounded-sm"
+                        style={{ background: getHeatmapColor(level, resolvedMode) }}
+                    />
+                ))}
             </div>
             <span>High</span>
         </div>
