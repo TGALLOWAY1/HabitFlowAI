@@ -1,8 +1,17 @@
 import { useState, useCallback } from 'react';
 import { useAuth } from '../store/AuthContext';
+import { useDashboardPrefs } from '../store/DashboardPrefsContext';
+import { useTheme } from '../theme/ThemeContext';
+import type { ThemeMode } from '../theme/palette';
 import { getGeminiApiKey, setGeminiApiKey } from '../lib/geminiClient';
 import { deleteAllUserData, isHealthFeatureEnabled } from '../lib/persistenceClient';
-import { Eye, EyeOff, Sparkles, Activity, ChevronRight } from 'lucide-react';
+import { Eye, EyeOff, Sparkles, Activity, ChevronRight, Sun, Moon, Monitor } from 'lucide-react';
+
+const APPEARANCE_OPTIONS: ReadonlyArray<{ mode: ThemeMode; label: string; Icon: typeof Sun; hint: string }> = [
+  { mode: 'light', label: 'Light', Icon: Sun, hint: 'Bright' },
+  { mode: 'dark', label: 'Dark', Icon: Moon, hint: 'Default' },
+  { mode: 'system', label: 'System', Icon: Monitor, hint: 'Match device' },
+];
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -12,6 +21,8 @@ interface SettingsModalProps {
 
 export function SettingsModal({ isOpen, onClose, onNavigate }: SettingsModalProps) {
   const { user } = useAuth();
+  const { setThemeMode } = useDashboardPrefs();
+  const { mode: themeMode } = useTheme();
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [geminiKey, setGeminiKey] = useState(() => getGeminiApiKey());
@@ -73,6 +84,43 @@ export function SettingsModal({ isOpen, onClose, onNavigate }: SettingsModalProp
                 </div>
               </section>
             )}
+
+            {/* Appearance */}
+            <section>
+              <h3 className="text-xs font-medium text-content-muted uppercase tracking-wider mb-2">
+                Appearance
+              </h3>
+              <div
+                role="radiogroup"
+                aria-label="Theme"
+                className="grid grid-cols-3 gap-2"
+              >
+                {APPEARANCE_OPTIONS.map(({ mode, label, Icon, hint }) => {
+                  const isActive = themeMode === mode;
+                  return (
+                    <button
+                      key={mode}
+                      type="button"
+                      role="radio"
+                      aria-checked={isActive}
+                      onClick={() => setThemeMode(mode)}
+                      className={`flex flex-col items-center gap-1 px-3 py-3 rounded-lg border text-xs font-medium transition-colors ${
+                        isActive
+                          ? 'bg-accent-soft border-accent/40 text-accent-contrast'
+                          : 'bg-surface-1 border-line-subtle text-content-secondary hover:bg-surface-2 hover:text-content-primary'
+                      }`}
+                    >
+                      <Icon size={18} />
+                      <span>{label}</span>
+                      <span className="text-[10px] text-content-muted">{hint}</span>
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="text-[11px] text-content-muted mt-2">
+                System follows your device preference. Your choice syncs across devices.
+              </p>
+            </section>
 
             {/* Setup Guide */}
             <section>
@@ -158,7 +206,7 @@ export function SettingsModal({ isOpen, onClose, onNavigate }: SettingsModalProp
                     <button
                       type="button"
                       onClick={handleSaveGeminiKey}
-                      className="px-3 py-2 rounded-lg bg-emerald-600/80 text-content-primary hover:bg-emerald-600 text-sm whitespace-nowrap"
+                      className="px-3 py-2 rounded-lg bg-accent text-content-on-accent hover:bg-accent-strong text-sm whitespace-nowrap transition-colors"
                     >
                       {geminiKeySaved ? 'Saved!' : 'Save'}
                     </button>
@@ -170,7 +218,7 @@ export function SettingsModal({ isOpen, onClose, onNavigate }: SettingsModalProp
                         setGeminiKey('');
                         setGeminiApiKey('');
                       }}
-                      className="mt-2 text-xs text-red-400 hover:text-red-300"
+                      className="mt-2 text-xs text-danger-contrast hover:opacity-80"
                     >
                       Remove key
                     </button>
@@ -190,12 +238,12 @@ export function SettingsModal({ isOpen, onClose, onNavigate }: SettingsModalProp
                   <button
                     type="button"
                     onClick={() => setShowDeleteConfirm(true)}
-                    className="w-full px-4 py-2.5 rounded-lg bg-surface-1 text-red-400 border border-line-subtle hover:bg-surface-2 text-sm text-left"
+                    className="w-full px-4 py-2.5 rounded-lg bg-surface-1 text-danger-contrast border border-line-subtle hover:bg-surface-2 text-sm text-left"
                   >
                     Delete my data
                   </button>
                 ) : (
-                  <div className="rounded-lg bg-surface-1/50 border border-red-500/30 p-3 space-y-3">
+                  <div className="rounded-lg bg-danger-soft border border-danger/40 p-3 space-y-3">
                     <p className="text-sm text-content-secondary">
                       This will permanently delete all your habits, logs, and settings. This action cannot be undone.
                     </p>
@@ -203,7 +251,7 @@ export function SettingsModal({ isOpen, onClose, onNavigate }: SettingsModalProp
                       <button
                         type="button"
                         onClick={() => setShowDeleteConfirm(false)}
-                        className="px-3 py-1.5 rounded-lg bg-surface-2 text-content-primary border border-line-subtle hover:bg-surface-2 text-sm"
+                        className="px-3 py-1.5 rounded-lg bg-surface-1 text-content-primary border border-line-subtle hover:bg-surface-2 text-sm"
                       >
                         Cancel
                       </button>
@@ -224,7 +272,7 @@ export function SettingsModal({ isOpen, onClose, onNavigate }: SettingsModalProp
                             setIsDeleting(false);
                           }
                         }}
-                        className="px-3 py-1.5 rounded-lg bg-red-600 text-content-primary hover:bg-red-500 disabled:opacity-50 text-sm"
+                        className="px-3 py-1.5 rounded-lg bg-danger text-content-on-accent hover:opacity-90 disabled:opacity-50 text-sm"
                       >
                         {isDeleting ? 'Deleting...' : 'Yes, delete everything'}
                       </button>
