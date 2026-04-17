@@ -18,7 +18,7 @@ export const PinnedHabitsStrip = ({ habits, onUnpin, onToggle, checkStatus }: Pi
 
     return (
         <div className="w-full mb-8 animate-in fade-in slide-in-from-top-4 duration-500">
-            <h2 className="text-xs font-bold text-neutral-500 uppercase tracking-wider mb-3 px-1 flex items-center gap-2">
+            <h2 className="text-xs font-bold text-content-muted uppercase tracking-wider mb-3 px-1 flex items-center gap-2">
                 <Flame size={12} className="text-orange-500" />
                 Today's Focus
             </h2>

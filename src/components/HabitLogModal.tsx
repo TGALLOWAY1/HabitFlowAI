@@ -74,15 +74,15 @@ export const HabitLogModal: React.FC<HabitLogModalProps> = ({ isOpen, onClose, h
 
     return (
         <div className="modal-overlay fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-            <div className="w-full max-w-sm bg-neutral-900 border border-white/10 rounded-2xl p-6 shadow-2xl scale-100 animate-in zoom-in-95 duration-200 max-h-[90dvh] flex flex-col">
+            <div className="w-full max-w-sm bg-surface-0 border border-line-subtle rounded-2xl p-6 shadow-2xl scale-100 animate-in zoom-in-95 duration-200 max-h-[90dvh] flex flex-col">
 
                 {/* Header */}
                 <div className="flex items-center justify-between mb-6">
                     <div>
-                        <h3 className="text-lg font-bold text-white">{habit.name}</h3>
-                        <p className="text-xs text-neutral-400">{date}</p>
+                        <h3 className="text-lg font-bold text-content-primary">{habit.name}</h3>
+                        <p className="text-xs text-content-secondary">{date}</p>
                     </div>
-                    <button onClick={onClose} className="min-h-[44px] min-w-[44px] flex items-center justify-center text-neutral-400 hover:text-white transition-colors -mr-2" aria-label="Close">
+                    <button onClick={onClose} className="min-h-[44px] min-w-[44px] flex items-center justify-center text-content-secondary hover:text-content-primary transition-colors -mr-2" aria-label="Close">
                         <X size={20} />
                     </button>
                 </div>
@@ -101,26 +101,26 @@ export const HabitLogModal: React.FC<HabitLogModalProps> = ({ isOpen, onClose, h
                                     "w-full flex items-center justify-between p-4 rounded-xl border transition-all duration-200",
                                     isSelected
                                         ? "bg-amber-500/10 border-amber-500/50 shadow-[0_0_15px_rgba(245,158,11,0.1)]"
-                                        : "bg-neutral-800/50 border-white/5 hover:bg-neutral-800 hover:border-white/10"
+                                        : "bg-surface-1/50 border-line-subtle hover:bg-surface-1 hover:border-line-subtle"
                                 )}
                             >
                                 <div className="flex items-center gap-3">
                                     <div className={cn(
                                         "w-5 h-5 rounded-full border flex items-center justify-center transition-colors",
-                                        isSelected ? "border-amber-500 bg-amber-500" : "border-neutral-600"
+                                        isSelected ? "border-amber-500 bg-amber-500" : "border-line-strong"
                                     )}>
                                         {isSelected && <CheckCircle2 size={12} className="text-black" strokeWidth={3} />}
                                     </div>
                                     <span className={cn(
                                         "text-sm font-medium",
-                                        isSelected ? "text-amber-400" : "text-neutral-300"
+                                        isSelected ? "text-amber-400" : "text-content-secondary"
                                     )}>
                                         {option.label}
                                     </span>
                                 </div>
 
                                 {hasMetric && (
-                                    <span className="text-xs text-neutral-500 flex items-center gap-1">
+                                    <span className="text-xs text-content-muted flex items-center gap-1">
                                         <Hash size={12} />
                                         {option.metricConfig?.unit || 'value'}
                                     </span>
@@ -133,7 +133,7 @@ export const HabitLogModal: React.FC<HabitLogModalProps> = ({ isOpen, onClose, h
                 {/* Metric Input (Conditional) */}
                 {selectedOption && isMetricRequired && (
                     <div className="mb-6 animate-in slide-in-from-top-2 fade-in">
-                        <label className="block text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-2">
+                        <label className="block text-xs font-semibold text-content-muted uppercase tracking-wider mb-2">
                             Enter Amount ({selectedOption.metricConfig?.unit || 'value'})
                         </label>
                         <input
@@ -142,7 +142,7 @@ export const HabitLogModal: React.FC<HabitLogModalProps> = ({ isOpen, onClose, h
                             onChange={(e) => setMetricValue(e.target.value)}
                             // Auto-focus when appearing
                             autoFocus
-                            className="w-full bg-neutral-800 border border-white/10 rounded-xl px-4 py-3 text-white text-lg font-bold focus:outline-none focus:border-amber-500 transition-colors"
+                            className="w-full bg-surface-1 border border-line-subtle rounded-xl px-4 py-3 text-content-primary text-lg font-bold focus:outline-none focus:border-amber-500 transition-colors"
                             placeholder="0"
                         />
                     </div>

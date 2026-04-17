@@ -54,22 +54,22 @@ export const GoalPulseCard: React.FC<GoalPulseCardProps> = ({ goalWithProgress, 
     // Determine if goal should have subtle emphasis (has deadline and is upcoming)
     const hasUpcomingDeadline = deadlineInfo !== null;
     const emphasisClass = hasUpcomingDeadline
-        ? 'border-emerald-500/20 bg-neutral-900/60'
-        : 'border-white/5 bg-neutral-900/50';
+        ? 'border-accent/20 bg-surface-0/60'
+        : 'border-line-subtle bg-surface-0/50';
 
     return (
         <button
             onClick={onClick}
-            className={`group w-full text-left ${emphasisClass} hover:bg-neutral-800 border hover:border-white/10 rounded-xl p-3 transition-all duration-200 cursor-pointer flex flex-col justify-between h-full`}
+            className={`group w-full text-left ${emphasisClass} hover:bg-surface-1 border hover:border-line-subtle rounded-xl p-3 transition-all duration-200 cursor-pointer flex flex-col justify-between h-full`}
         >
             <div className="flex items-start justify-between w-full mb-2">
                 <div className="flex-1 min-w-0 pr-2">
-                    <h4 className="text-sm font-medium text-neutral-200 group-hover:text-white truncate">
+                    <h4 className="text-sm font-medium text-content-primary group-hover:text-content-primary truncate">
                         {goal.title}
                     </h4>
                     {/* Optional "Upcoming" / "Preparing" label */}
                     {deadlineInfo && (
-                        <div className="text-[10px] text-emerald-400/80 font-medium mt-0.5">
+                        <div className="text-[10px] text-accent-contrast/80 font-medium mt-0.5">
                             {deadlineInfo.label}
                         </div>
                     )}
@@ -77,11 +77,11 @@ export const GoalPulseCard: React.FC<GoalPulseCardProps> = ({ goalWithProgress, 
 
                 {/* One-Time Goal Status / Cumulative Value */}
                 {isCumulative ? (
-                    <span className="text-xs font-mono text-neutral-500 group-hover:text-neutral-400 whitespace-nowrap">
+                    <span className="text-xs font-mono text-content-muted group-hover:text-content-secondary whitespace-nowrap">
                         {Math.round(progress.percent)}%
                     </span>
                 ) : (
-                    <span className="text-[10px] uppercase tracking-wide font-medium text-neutral-500 bg-neutral-800/50 px-1.5 py-0.5 rounded border border-white/5">
+                    <span className="text-[10px] uppercase tracking-wide font-medium text-content-muted bg-surface-1/50 px-1.5 py-0.5 rounded border border-line-subtle">
                         {deadlineLabel}
                     </span>
                 )}
@@ -89,7 +89,7 @@ export const GoalPulseCard: React.FC<GoalPulseCardProps> = ({ goalWithProgress, 
 
             {/* Progress Bar (Only for Cumulative) */}
             {isCumulative && (
-                <div className="w-full h-1 bg-neutral-800 rounded-full overflow-hidden">
+                <div className="w-full h-1 bg-surface-1 rounded-full overflow-hidden">
                     <div
                         className="h-full bg-emerald-500/80 transition-all duration-500"
                         style={{ width: `${Math.min(100, progress.percent)}%` }}
@@ -99,7 +99,7 @@ export const GoalPulseCard: React.FC<GoalPulseCardProps> = ({ goalWithProgress, 
 
             {/* One-Time Goal Extra Context (Optional, keep minimal) */}
             {!isCumulative && (
-                <div className="text-xs text-neutral-600 truncate">
+                <div className="text-xs text-content-muted truncate">
                     {goal.completedAt ? 'Completed' : 'One-time goal'}
                 </div>
             )}

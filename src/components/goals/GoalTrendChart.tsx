@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { ComposedChart, Line, Area, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine, ResponsiveContainer } from 'recharts';
 import { format, parseISO, isValid, eachDayOfInterval, isAfter, subDays, addDays, differenceInDays } from 'date-fns';
+import { useThemeColors } from '../../theme/useThemeColors';
 
 interface GoalTrendChartProps {
     data: Array<{
@@ -26,9 +27,11 @@ export const GoalTrendChart: React.FC<GoalTrendChartProps> = ({
     deadline,
     targetValue,
     firstEntryDate,
-    color = "#10b981", // emerald-500
+    color,
     unit = ""
 }) => {
+    const themeColors = useThemeColors();
+    const accent = color ?? themeColors.accent;
     const { chartData, currentActual, forecastDateStr } = useMemo(() => {
         // 1. Determine the effective chart start: first entry minus a 2-day
         // buffer if we have one, else fall back to the goal's startDate.
@@ -137,8 +140,8 @@ export const GoalTrendChart: React.FC<GoalTrendChartProps> = ({
 
     if (!isValid(parseISO(startDate)) || !isValid(parseISO(deadline))) {
         return (
-            <div className="flex items-center justify-center h-64 bg-neutral-900/30 rounded-lg border border-white/5">
-                <p className="text-neutral-500 text-sm">Invalid date configuration.</p>
+            <div className="flex items-center justify-center h-64 bg-surface-1/60 rounded-lg border border-line-subtle">
+                <p className="text-content-muted text-sm">Invalid date configuration.</p>
             </div>
         );
     }
@@ -146,9 +149,9 @@ export const GoalTrendChart: React.FC<GoalTrendChartProps> = ({
     return (
         <div className="w-full space-y-3">
             {requiredPace !== null && (
-                <div className="text-sm text-neutral-400">
+                <div className="text-sm text-content-secondary">
                     Required pace:{' '}
-                    <span className="text-white font-medium">
+                    <span className="text-content-primary font-medium">
                         {requiredPace.toFixed(1)} {unit}
                     </span>{' '}
                     / week
@@ -156,17 +159,17 @@ export const GoalTrendChart: React.FC<GoalTrendChartProps> = ({
             )}
             <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs">
                 <div className="flex items-center gap-1.5">
-                    <span className="inline-block w-4 border-t border-neutral-500" />
-                    <span className="text-neutral-400">Deadline {format(parseISO(deadline), 'MMM d')}</span>
+                    <span className="inline-block w-4 border-t border-content-muted" />
+                    <span className="text-content-secondary">Deadline {format(parseISO(deadline), 'MMM d')}</span>
                 </div>
                 {forecastDateStr && (
                     <div className="flex items-center gap-1.5">
-                        <span className="inline-block w-4 border-t border-dashed border-emerald-500" />
-                        <span className="text-emerald-500">Forecast {format(parseISO(forecastDateStr), 'MMM d')}</span>
+                        <span className="inline-block w-4 border-t border-dashed" style={{ borderColor: accent }} />
+                        <span style={{ color: accent }}>Forecast {format(parseISO(forecastDateStr), 'MMM d')}</span>
                     </div>
                 )}
             </div>
-            <div className="w-full h-80 bg-neutral-900/30 rounded-lg border border-white/5 p-4">
+            <div className="w-full h-80 bg-surface-1/60 rounded-lg border border-line-subtle p-4">
             <ResponsiveContainer width="100%" height="100%">
                 <ComposedChart
                     data={chartData}
@@ -174,22 +177,22 @@ export const GoalTrendChart: React.FC<GoalTrendChartProps> = ({
                 >
                     <defs>
                         <linearGradient id="colorActual" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor={color} stopOpacity={0.3} />
-                            <stop offset="95%" stopColor={color} stopOpacity={0} />
+                            <stop offset="5%" stopColor={accent} stopOpacity={0.3} />
+                            <stop offset="95%" stopColor={accent} stopOpacity={0} />
                         </linearGradient>
                     </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" vertical={false} />
+                    <CartesianGrid strokeDasharray="3 3" stroke={themeColors.chartGrid} vertical={false} />
                     <XAxis
                         dataKey="date"
                         tickFormatter={formatXAxis}
-                        stroke="#737373"
+                        stroke={themeColors.chartAxis}
                         fontSize={12}
                         tickLine={false}
                         axisLine={false}
                         minTickGap={30}
                     />
                     <YAxis
-                        stroke="#737373"
+                        stroke={themeColors.chartAxis}
                         fontSize={12}
                         tickLine={false}
                         axisLine={false}
@@ -197,9 +200,9 @@ export const GoalTrendChart: React.FC<GoalTrendChartProps> = ({
                     />
                     <Tooltip
                         contentStyle={{
-                            backgroundColor: '#171717',
-                            borderColor: '#262626',
-                            color: '#e5e5e5',
+                            backgroundColor: themeColors.chartTooltipBg,
+                            borderColor: themeColors.lineSubtle,
+                            color: themeColors.contentPrimary,
                             borderRadius: '8px',
                             fontSize: '12px'
                         }}
@@ -215,7 +218,7 @@ export const GoalTrendChart: React.FC<GoalTrendChartProps> = ({
                     <Line
                         type="monotone"
                         dataKey="ideal"
-                        stroke="#525252" // Neutral-600
+                        stroke={themeColors.contentMuted}
                         strokeDasharray="5 5"
                         dot={false}
                         strokeWidth={2}
@@ -226,7 +229,7 @@ export const GoalTrendChart: React.FC<GoalTrendChartProps> = ({
                     <Area
                         type="monotone"
                         dataKey="actual"
-                        stroke={color}
+                        stroke={accent}
                         fillOpacity={1}
                         fill="url(#colorActual)"
                         strokeWidth={2}
@@ -237,7 +240,7 @@ export const GoalTrendChart: React.FC<GoalTrendChartProps> = ({
                     {/* Deadline vertical marker */}
                     <ReferenceLine
                         x={deadline}
-                        stroke="#737373" // neutral-500
+                        stroke={themeColors.contentMuted}
                         strokeWidth={1}
                     />
 
@@ -245,7 +248,7 @@ export const GoalTrendChart: React.FC<GoalTrendChartProps> = ({
                     {forecastDateStr && (
                         <ReferenceLine
                             x={forecastDateStr}
-                            stroke="#10b981" // emerald-500
+                            stroke={accent}
                             strokeWidth={1.5}
                             strokeDasharray="4 4"
                         />

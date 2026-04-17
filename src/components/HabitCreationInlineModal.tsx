@@ -92,10 +92,10 @@ export const HabitCreationInlineModal: React.FC<HabitCreationInlineModalProps> =
 
     return (
         <div className="modal-overlay fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-            <div className="w-full max-w-md bg-neutral-900 border border-white/10 rounded-2xl p-6 shadow-2xl">
+            <div className="w-full max-w-md bg-surface-0 border border-line-subtle rounded-2xl p-6 shadow-2xl">
                 <div className="flex items-center justify-between mb-6">
-                    <h3 className="text-xl font-bold text-white">Create New Habit</h3>
-                    <button onClick={handleCancel} className="text-neutral-400 hover:text-white transition-colors">
+                    <h3 className="text-xl font-bold text-content-primary">Create New Habit</h3>
+                    <button onClick={handleCancel} className="text-content-secondary hover:text-content-primary transition-colors">
                         <X size={20} />
                     </button>
                 </div>
@@ -103,14 +103,14 @@ export const HabitCreationInlineModal: React.FC<HabitCreationInlineModalProps> =
                 <form onSubmit={handleSubmit} className="space-y-4">
                     {/* Title/Name */}
                     <div>
-                        <label className="block text-sm font-medium text-neutral-400 mb-1">
+                        <label className="block text-sm font-medium text-content-secondary mb-1">
                             Habit Name <span className="text-red-400">*</span>
                         </label>
                         <input
                             type="text"
                             value={name}
                             onChange={(e) => setName(e.target.value)}
-                            className="w-full bg-neutral-800 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-emerald-500"
+                            className="w-full bg-surface-1 border border-line-subtle rounded-lg px-4 py-2 text-content-primary focus:outline-none focus:border-focus"
                             placeholder="e.g., Morning Run"
                             required
                         />
@@ -118,7 +118,7 @@ export const HabitCreationInlineModal: React.FC<HabitCreationInlineModalProps> =
 
                     {/* Type */}
                     <div>
-                        <label className="block text-sm font-medium text-neutral-400 mb-1">
+                        <label className="block text-sm font-medium text-content-secondary mb-1">
                             Type <span className="text-red-400">*</span>
                         </label>
                         <select
@@ -131,7 +131,7 @@ export const HabitCreationInlineModal: React.FC<HabitCreationInlineModalProps> =
                                     setUnit('');
                                 }
                             }}
-                            className="w-full bg-neutral-800 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-emerald-500"
+                            className="w-full bg-surface-1 border border-line-subtle rounded-lg px-4 py-2 text-content-primary focus:outline-none focus:border-focus"
                         >
                             <option value="binary">Binary</option>
                             <option value="quantified">Quantified</option>
@@ -141,14 +141,14 @@ export const HabitCreationInlineModal: React.FC<HabitCreationInlineModalProps> =
                     {/* Target (only for quantified) */}
                     {type === 'quantified' && (
                         <div>
-                            <label className="block text-sm font-medium text-neutral-400 mb-1">
+                            <label className="block text-sm font-medium text-content-secondary mb-1">
                                 Target Value <span className="text-red-400">*</span>
                             </label>
                             <input
                                 type="number"
                                 value={target}
                                 onChange={(e) => setTarget(e.target.value)}
-                                className="w-full bg-neutral-800 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-emerald-500"
+                                className="w-full bg-surface-1 border border-line-subtle rounded-lg px-4 py-2 text-content-primary focus:outline-none focus:border-focus"
                                 placeholder="e.g., 30"
                                 min="0.01"
                                 step="0.01"
@@ -160,14 +160,14 @@ export const HabitCreationInlineModal: React.FC<HabitCreationInlineModalProps> =
                     {/* Unit (only for quantified) */}
                     {type === 'quantified' && (
                         <div>
-                            <label className="block text-sm font-medium text-neutral-400 mb-1">
+                            <label className="block text-sm font-medium text-content-secondary mb-1">
                                 Unit <span className="text-red-400">*</span>
                             </label>
                             <input
                                 type="text"
                                 value={unit}
                                 onChange={(e) => setUnit(e.target.value)}
-                                className="w-full bg-neutral-800 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-emerald-500"
+                                className="w-full bg-surface-1 border border-line-subtle rounded-lg px-4 py-2 text-content-primary focus:outline-none focus:border-focus"
                                 placeholder="e.g., minutes, miles, glasses"
                                 required
                             />
@@ -176,13 +176,13 @@ export const HabitCreationInlineModal: React.FC<HabitCreationInlineModalProps> =
 
                     {/* Category */}
                     <div>
-                        <label className="block text-sm font-medium text-neutral-400 mb-1">
+                        <label className="block text-sm font-medium text-content-secondary mb-1">
                             Category <span className="text-red-400">*</span>
                         </label>
                         <select
                             value={categoryId}
                             onChange={(e) => setCategoryId(e.target.value)}
-                            className="w-full bg-neutral-800 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-emerald-500"
+                            className="w-full bg-surface-1 border border-line-subtle rounded-lg px-4 py-2 text-content-primary focus:outline-none focus:border-focus"
                             required
                         >
                             <option value="">Select a category...</option>
@@ -196,17 +196,17 @@ export const HabitCreationInlineModal: React.FC<HabitCreationInlineModalProps> =
 
                     {/* Icon/Image (Optional) */}
                     <div>
-                        <label className="block text-sm font-medium text-neutral-400 mb-1">
-                            Icon/Image URL <span className="text-neutral-500">(Optional)</span>
+                        <label className="block text-sm font-medium text-content-secondary mb-1">
+                            Icon/Image URL <span className="text-content-muted">(Optional)</span>
                         </label>
                         <input
                             type="url"
                             value={imageUrl}
                             onChange={(e) => setImageUrl(e.target.value)}
-                            className="w-full bg-neutral-800 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-emerald-500"
+                            className="w-full bg-surface-1 border border-line-subtle rounded-lg px-4 py-2 text-content-primary focus:outline-none focus:border-focus"
                             placeholder="https://example.com/image.png"
                         />
-                        <p className="mt-1 text-xs text-neutral-500">
+                        <p className="mt-1 text-xs text-content-muted">
                             URL to an icon or image for this habit
                         </p>
                     </div>
@@ -215,7 +215,7 @@ export const HabitCreationInlineModal: React.FC<HabitCreationInlineModalProps> =
                         <button
                             type="button"
                             onClick={handleCancel}
-                            className="px-4 py-2 text-neutral-400 hover:text-white transition-colors"
+                            className="px-4 py-2 text-content-secondary hover:text-content-primary transition-colors"
                         >
                             Cancel
                         </button>
@@ -224,8 +224,8 @@ export const HabitCreationInlineModal: React.FC<HabitCreationInlineModalProps> =
                             disabled={!isFormValid}
                             className={`px-4 py-2 font-medium rounded-lg transition-colors ${
                                 isFormValid
-                                    ? 'bg-emerald-500 text-neutral-900 hover:bg-emerald-400'
-                                    : 'bg-neutral-800 text-neutral-500 cursor-not-allowed'
+                                    ? 'bg-accent text-content-on-accent hover:bg-accent-strong'
+                                    : 'bg-surface-1 text-content-muted cursor-not-allowed'
                             }`}
                         >
                             Create Habit

@@ -32,8 +32,8 @@ export const NumberChipSelector: React.FC<NumberChipSelectorProps> = ({
                     className={`
                         w-9 h-9 rounded-lg text-xs font-bold transition-all
                         ${value === n
-                            ? 'bg-emerald-500 text-neutral-900 shadow-[0_0_10px_rgba(16,185,129,0.3)]'
-                            : 'bg-neutral-800 text-neutral-400 hover:bg-neutral-700 hover:text-white'}
+                            ? 'bg-accent text-content-on-accent shadow-[0_0_10px_rgba(16,185,129,0.3)]'
+                            : 'bg-surface-1 text-content-secondary hover:bg-surface-2 hover:text-content-primary'}
                         ${disabled ? 'opacity-50 cursor-not-allowed' : ''}
                     `}
                 >

@@ -41,13 +41,13 @@ export const DeleteGoalConfirmModal: React.FC<DeleteGoalConfirmModalProps> = ({
 
     return (
         <div className="modal-overlay fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-            <div className="w-full max-w-md bg-neutral-900 border border-white/10 rounded-2xl p-6 shadow-2xl">
+            <div className="w-full max-w-md bg-surface-0 border border-line-subtle rounded-2xl p-6 shadow-2xl">
                 <div className="flex items-center justify-between mb-6">
-                    <h3 className="text-xl font-bold text-white">Delete Goal</h3>
+                    <h3 className="text-xl font-bold text-content-primary">Delete Goal</h3>
                     <button
                         onClick={handleCancel}
                         disabled={isDeleting}
-                        className="min-h-[44px] min-w-[44px] flex items-center justify-center text-neutral-400 hover:text-white transition-colors disabled:opacity-50 -mr-2"
+                        className="min-h-[44px] min-w-[44px] flex items-center justify-center text-content-secondary hover:text-content-primary transition-colors disabled:opacity-50 -mr-2"
                         aria-label="Close"
                     >
                         <X size={20} />
@@ -60,24 +60,24 @@ export const DeleteGoalConfirmModal: React.FC<DeleteGoalConfirmModalProps> = ({
                         <AlertTriangle className="text-amber-400 flex-shrink-0 mt-0.5" size={20} />
                         <div className="flex-1">
                             <div className="text-amber-400 font-medium mb-1">Confirm Deletion</div>
-                            <div className="text-white text-sm">
+                            <div className="text-content-primary text-sm">
                                 Delete this goal? This will not delete underlying habits or habit logs, but the goal and its progress will be removed.
                             </div>
                         </div>
                     </div>
 
                     {/* Goal Title */}
-                    <div className="p-3 bg-neutral-800/50 rounded-lg">
-                        <div className="text-neutral-400 text-xs mb-1">Goal</div>
-                        <div className="text-white text-sm font-medium">{goalTitle}</div>
+                    <div className="p-3 bg-surface-1/50 rounded-lg">
+                        <div className="text-content-secondary text-xs mb-1">Goal</div>
+                        <div className="text-content-primary text-sm font-medium">{goalTitle}</div>
                     </div>
 
                     {/* Error Display */}
                     {error && (
-                        <div className="p-3 bg-red-500/10 border border-red-500/50 rounded-lg flex items-start gap-3">
-                            <AlertTriangle className="text-red-400 flex-shrink-0 mt-0.5" size={16} />
+                        <div className="p-3 bg-danger-soft border border-danger/50 rounded-lg flex items-start gap-3">
+                            <AlertTriangle className="text-danger-contrast flex-shrink-0 mt-0.5" size={16} />
                             <div className="flex-1">
-                                <div className="text-red-400 text-sm">{error}</div>
+                                <div className="text-danger-contrast text-sm">{error}</div>
                             </div>
                         </div>
                     )}
@@ -88,7 +88,7 @@ export const DeleteGoalConfirmModal: React.FC<DeleteGoalConfirmModalProps> = ({
                             type="button"
                             onClick={handleCancel}
                             disabled={isDeleting}
-                            className="flex-1 px-4 py-2 bg-neutral-700 hover:bg-neutral-600 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="flex-1 px-4 py-2 bg-surface-2 hover:bg-surface-2 text-content-primary rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             Cancel
                         </button>
@@ -96,7 +96,7 @@ export const DeleteGoalConfirmModal: React.FC<DeleteGoalConfirmModalProps> = ({
                             type="button"
                             onClick={handleConfirm}
                             disabled={isDeleting}
-                            className="flex-1 px-4 py-2 bg-red-500 hover:bg-red-400 text-white font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                            className="flex-1 px-4 py-2 bg-danger hover:bg-danger/80 text-content-primary font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                         >
                             {isDeleting ? (
                                 <>

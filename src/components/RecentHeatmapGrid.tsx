@@ -1,6 +1,8 @@
 import React, { useMemo, useRef } from 'react';
 import { useHabitStore } from '../store/HabitContext';
-import { getHeatmapColor } from '../utils/analytics';
+import { getHeatmapColor } from '../theme/heatmap';
+import { useTheme } from '../theme/ThemeContext';
+import { useThemeColors } from '../theme/useThemeColors';
 import { getBundleChildIds, isHabitComplete } from '../utils/habitUtils';
 import { eachDayOfInterval, subDays, format, startOfDay } from 'date-fns';
 import { Tooltip } from 'react-tooltip';
@@ -13,6 +15,8 @@ interface RecentHeatmapGridProps {
 
 export const RecentHeatmapGrid: React.FC<RecentHeatmapGridProps> = React.memo(({ habits, range }) => {
     const { logs } = useHabitStore();
+    const { resolvedMode } = useTheme();
+    const themeColors = useThemeColors();
     const containerRef = useRef<HTMLDivElement>(null);
     // const [containerWidth, setContainerWidth] = useState(0);
 
@@ -120,14 +124,19 @@ export const RecentHeatmapGrid: React.FC<RecentHeatmapGridProps> = React.memo(({
                         key={day.date.toISOString()}
                         data-tooltip-id="recent-heatmap-tooltip"
                         data-tooltip-content={`${format(day.date, 'MMM d, yyyy')}: ${day.count} completions across ${day.categoryCount} categories`}
-                        className={`${cellSizeClasses} ${getHeatmapColor(day.intensity)} transition-all hover:scale-105 hover:ring-2 hover:ring-white/20`}
+                        className={`${cellSizeClasses} transition-all hover:scale-105 hover:ring-2 hover:ring-focus/40`}
+                        style={{ background: getHeatmapColor(day.intensity, resolvedMode) }}
                     />
                 ))}
             </div>
 
             <HeatmapLegend />
 
-            <Tooltip id="recent-heatmap-tooltip" className="z-50 !bg-neutral-800 !text-white !opacity-100 !rounded-lg !px-3 !py-1 !text-xs" />
+            <Tooltip
+                id="recent-heatmap-tooltip"
+                className="z-50 !opacity-100 !rounded-lg !px-3 !py-1 !text-xs"
+                style={{ background: themeColors.chartTooltipBg, color: themeColors.contentPrimary, border: `1px solid ${themeColors.lineSubtle}` }}
+            />
         </div>
     );
 });

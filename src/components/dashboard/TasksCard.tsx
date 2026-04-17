@@ -14,9 +14,9 @@ export const TasksCard: React.FC<TasksCardProps> = ({ onNavigateToTasks }) => {
 
     if (loading) {
         return (
-            <div className="bg-neutral-900/50 rounded-2xl border border-white/5 p-4 backdrop-blur-sm animate-pulse">
-                <div className="h-4 w-20 bg-neutral-800 rounded mb-2" />
-                <div className="h-3 w-16 bg-neutral-800 rounded" />
+            <div className="bg-surface-0/50 rounded-2xl border border-line-subtle p-4 backdrop-blur-sm animate-pulse">
+                <div className="h-4 w-20 bg-surface-1 rounded mb-2" />
+                <div className="h-3 w-16 bg-surface-1 rounded" />
             </div>
         );
     }
@@ -24,22 +24,22 @@ export const TasksCard: React.FC<TasksCardProps> = ({ onNavigateToTasks }) => {
     return (
         <button
             onClick={onNavigateToTasks}
-            className="bg-neutral-900/50 rounded-2xl border border-white/5 p-4 backdrop-blur-sm text-left w-full hover:bg-neutral-800/50 transition-colors group"
+            className="bg-surface-0/50 rounded-2xl border border-line-subtle p-4 backdrop-blur-sm text-left w-full hover:bg-surface-1/50 transition-colors group"
         >
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-xl bg-neutral-800 text-blue-400">
+                    <div className="p-2 rounded-xl bg-surface-1 text-blue-400">
                         <CheckSquare size={20} />
                     </div>
                     <div>
-                        <p className="text-sm font-medium text-white">
+                        <p className="text-sm font-medium text-content-primary">
                             {totalCount === 0
                                 ? 'Tasks'
                                 : `${completedCount}/${totalCount} tasks`}
                         </p>
                     </div>
                 </div>
-                <ChevronRight size={16} className="text-neutral-600 group-hover:text-neutral-400 transition-colors" />
+                <ChevronRight size={16} className="text-content-muted group-hover:text-content-secondary transition-colors" />
             </div>
         </button>
     );

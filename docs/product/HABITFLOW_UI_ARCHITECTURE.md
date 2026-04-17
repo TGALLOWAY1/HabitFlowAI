@@ -140,7 +140,7 @@ HabitFlow App
 | Delete Goal Confirm | Modal | Goal context menu "Delete" | Deletion confirmation dialog | Goals |
 | Delete Habit Confirm | Modal | Trash button on a habit that is linked to one or more goals (shown after the click-twice confirm so the user sees which goals are affected) | Lists the affected goals and explains historical progress on them is preserved before allowing deletion | Habits, Goals |
 | Completed Habits | Modal | Routine runner completion | Summary of habits logged during routine | Habits, Entries |
-| Settings | Modal | Header settings icon | Preferences, API keys, data management | User config |
+| Settings | Modal | Header settings icon | Appearance (Light / Dark / System), preferences, API keys, data management | User config |
 | Info / Tutorial | Modal | Header info icon | App tutorial and feature explanations | — |
 | Habit Creation Inline | Modal | Quick-add in certain contexts | Lightweight inline habit creation | Habits |
 
@@ -464,7 +464,8 @@ graph TB
 - **Drag-to-reorder:** Supported for categories (long-press), goals within categories, pinned goals on dashboard
 - **Soft delete:** All deletions use confirmation modals; data is soft-deleted (`deletedAt`)
 - **Mobile-first:** Bottom tab bar, safe-area insets, touch-friendly tap targets (44px+)
-- **Color theming:** Categories have associated colors; habits inherit category color
+- **Category colors:** Categories have associated user-chosen colors; habits inherit category color. These are data-encoding colors (stay visually distinct across themes), not theme tokens.
+- **Theme system:** Light / Dark / System modes. User-menu quick toggle + Settings → Appearance section. All core surfaces consume semantic tokens (`bg-surface-0/1/2`, `text-content-primary/secondary/muted`, `bg-accent`, `bg-accent-soft`, `border-line-subtle/strong`) defined in `src/theme/palette.ts`. Charts and heatmaps use `useThemeColors()` and `getHeatmapColor(intensity, mode)` for hex consumers. A pre-hydration script in `index.html` applies the active theme class before React boots. Choice persists in `DashboardPrefs.themeMode` for cross-device sync.
 
 ---
 

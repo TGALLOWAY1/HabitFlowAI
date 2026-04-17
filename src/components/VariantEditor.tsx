@@ -97,17 +97,17 @@ export const VariantEditor: React.FC<VariantEditorProps> = ({
             <div className="space-y-3">
                 <div className="flex gap-4">
                     <div className="flex-1">
-                        <label className="block text-xs font-medium text-neutral-500 mb-1">Variant Name</label>
+                        <label className="block text-xs font-medium text-content-muted mb-1">Variant Name</label>
                         <input
                             type="text"
                             value={variant.name}
                             onChange={e => updateVariantField({ name: e.target.value })}
-                            className="w-full bg-neutral-900 border border-white/10 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-emerald-500 placeholder-neutral-600"
+                            className="w-full bg-surface-0 border border-line-subtle rounded-lg px-3 py-2 text-content-primary focus:outline-none focus:border-emerald-500 placeholder-neutral-600"
                             placeholder="e.g., Quick, Standard, Deep"
                         />
                     </div>
                     <div className="w-28">
-                        <label className="block text-xs font-medium text-neutral-500 mb-1">Duration (min)</label>
+                        <label className="block text-xs font-medium text-content-muted mb-1">Duration (min)</label>
                         <input
                             type="number"
                             min="1"
@@ -126,7 +126,7 @@ export const VariantEditor: React.FC<VariantEditorProps> = ({
                                     updateVariantField({ estimatedDurationMinutes: 1 });
                                 }
                             }}
-                            className="w-full bg-neutral-900 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500 placeholder-neutral-600"
+                            className="w-full bg-surface-0 border border-line-subtle rounded-lg px-3 py-2 text-sm text-content-primary focus:outline-none focus:border-emerald-500 placeholder-neutral-600"
                             placeholder="15"
                         />
                     </div>
@@ -135,15 +135,15 @@ export const VariantEditor: React.FC<VariantEditorProps> = ({
                     type="text"
                     value={variant.description || ''}
                     onChange={e => updateVariantField({ description: e.target.value || undefined })}
-                    className="w-full bg-neutral-900 border border-white/10 rounded-lg px-3 py-2 text-sm text-neutral-400 focus:outline-none focus:border-emerald-500 placeholder-neutral-600"
+                    className="w-full bg-surface-0 border border-line-subtle rounded-lg px-3 py-2 text-sm text-content-secondary focus:outline-none focus:border-emerald-500 placeholder-neutral-600"
                     placeholder="Description (optional)"
                 />
             </div>
 
             {/* Steps Header */}
             <div className="flex items-center justify-between">
-                <label className="text-sm font-medium text-neutral-400">
-                    Steps {steps.length > 0 && <span className="text-neutral-600">({steps.length})</span>}
+                <label className="text-sm font-medium text-content-secondary">
+                    Steps {steps.length > 0 && <span className="text-content-muted">({steps.length})</span>}
                 </label>
             </div>
 
@@ -158,11 +158,11 @@ export const VariantEditor: React.FC<VariantEditorProps> = ({
                     return (
                         <div
                             key={step.id}
-                            className="group bg-neutral-800/50 border border-white/5 rounded-xl overflow-hidden hover:border-white/10 transition-all"
+                            className="group bg-surface-1/50 border border-line-subtle rounded-xl overflow-hidden hover:border-line-subtle transition-all"
                         >
                             <div className="flex items-center gap-3 p-3">
                                 {/* Step number */}
-                                <div className="w-7 h-7 rounded-full bg-white/5 flex items-center justify-center text-xs text-neutral-500 flex-shrink-0">
+                                <div className="w-7 h-7 rounded-full bg-white/5 flex items-center justify-center text-xs text-content-muted flex-shrink-0">
                                     {index + 1}
                                 </div>
 
@@ -172,18 +172,18 @@ export const VariantEditor: React.FC<VariantEditorProps> = ({
                                     onClick={() => setEditingStepId(step.id)}
                                     className="flex-1 text-left min-w-0"
                                 >
-                                    <div className="font-medium text-white truncate text-sm">
-                                        {step.title || <span className="text-neutral-500 italic">Untitled Step</span>}
+                                    <div className="font-medium text-content-primary truncate text-sm">
+                                        {step.title || <span className="text-content-muted italic">Untitled Step</span>}
                                     </div>
                                     {/* Badges row */}
                                     <div className="flex items-center gap-2 mt-1 flex-wrap">
                                         {linkedHabit && (
-                                            <span className="inline-flex items-center gap-1 text-[11px] text-emerald-400 bg-emerald-500/10 rounded-full px-2 py-0.5">
+                                            <span className="inline-flex items-center gap-1 text-[11px] text-accent-contrast bg-accent-soft rounded-full px-2 py-0.5">
                                                 <Link2 size={10} /> {linkedHabit.name}
                                             </span>
                                         )}
                                         {hasTimer && (
-                                            <span className="inline-flex items-center gap-1 text-[11px] text-neutral-400 bg-white/5 rounded-full px-2 py-0.5">
+                                            <span className="inline-flex items-center gap-1 text-[11px] text-content-secondary bg-white/5 rounded-full px-2 py-0.5">
                                                 {step.timerMode === 'stopwatch' ? <Timer size={10} /> : <Clock size={10} />}
                                                 {step.timerMode === 'stopwatch'
                                                     ? 'Stopwatch'
@@ -193,7 +193,7 @@ export const VariantEditor: React.FC<VariantEditorProps> = ({
                                             </span>
                                         )}
                                         {step.trackingFields && step.trackingFields.length > 0 && (
-                                            <span className="inline-flex items-center gap-1 text-[11px] text-neutral-400 bg-white/5 rounded-full px-2 py-0.5">
+                                            <span className="inline-flex items-center gap-1 text-[11px] text-content-secondary bg-white/5 rounded-full px-2 py-0.5">
                                                 {step.trackingFields.length} field{step.trackingFields.length > 1 ? 's' : ''}
                                             </span>
                                         )}
@@ -205,7 +205,7 @@ export const VariantEditor: React.FC<VariantEditorProps> = ({
                                     <button
                                         type="button"
                                         onClick={() => moveStep(index, -1)}
-                                        className="p-1.5 text-neutral-500 hover:text-white transition-colors disabled:opacity-20"
+                                        className="p-1.5 text-content-muted hover:text-content-primary transition-colors disabled:opacity-20"
                                         title="Move Up"
                                         disabled={index === 0}
                                     >
@@ -214,7 +214,7 @@ export const VariantEditor: React.FC<VariantEditorProps> = ({
                                     <button
                                         type="button"
                                         onClick={() => moveStep(index, 1)}
-                                        className="p-1.5 text-neutral-500 hover:text-white transition-colors disabled:opacity-20"
+                                        className="p-1.5 text-content-muted hover:text-content-primary transition-colors disabled:opacity-20"
                                         title="Move Down"
                                         disabled={index === steps.length - 1}
                                     >
@@ -223,7 +223,7 @@ export const VariantEditor: React.FC<VariantEditorProps> = ({
                                     <button
                                         type="button"
                                         onClick={() => removeStep(step.id)}
-                                        className="p-1.5 text-neutral-500 hover:text-red-400 transition-colors"
+                                        className="p-1.5 text-content-muted hover:text-red-400 transition-colors"
                                         title="Delete Step"
                                     >
                                         <Trash2 size={14} />
@@ -238,7 +238,7 @@ export const VariantEditor: React.FC<VariantEditorProps> = ({
                 <button
                     type="button"
                     onClick={addStep}
-                    className="w-full flex items-center justify-center gap-2 p-4 border-2 border-dashed border-neutral-700 hover:border-emerald-500/50 rounded-xl text-neutral-400 hover:text-emerald-400 transition-all"
+                    className="w-full flex items-center justify-center gap-2 p-4 border-2 border-dashed border-line-strong hover:border-emerald-500/50 rounded-xl text-content-secondary hover:text-accent-contrast transition-all"
                 >
                     <Plus size={18} />
                     <span className="text-sm font-medium">Add Step</span>
@@ -247,7 +247,7 @@ export const VariantEditor: React.FC<VariantEditorProps> = ({
 
             {/* Delete Variant */}
             {onDelete && (
-                <div className="pt-2 border-t border-white/5">
+                <div className="pt-2 border-t border-line-subtle">
                     <button
                         type="button"
                         onClick={onDelete}

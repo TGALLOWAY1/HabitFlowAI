@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { format, parseISO, isValid, subDays } from 'date-fns';
+import { useThemeColors } from '../../theme/useThemeColors';
 
 interface GoalCumulativeChartProps {
     data: Array<{
@@ -20,9 +21,11 @@ interface ChartPoint {
 
 export const GoalCumulativeChart: React.FC<GoalCumulativeChartProps> = ({
     data,
-    color = "#10b981", // emerald-500
+    color,
     unit = ""
 }) => {
+    const themeColors = useThemeColors();
+    const lineColor = color ?? themeColors.accent;
     const chartData = useMemo<ChartPoint[]>(() => {
         // Sort by date ascending to ensure proper line graph
         const sorted: ChartPoint[] = [...data]
@@ -52,14 +55,14 @@ export const GoalCumulativeChart: React.FC<GoalCumulativeChartProps> = ({
 
     if (data.length === 0) {
         return (
-            <div className="flex items-center justify-center h-64 bg-neutral-900/30 rounded-lg border border-white/5">
-                <p className="text-neutral-500 text-sm">No progress data available yet.</p>
+            <div className="flex items-center justify-center h-64 bg-surface-1/60 rounded-lg border border-line-subtle">
+                <p className="text-content-muted text-sm">No progress data available yet.</p>
             </div>
         );
     }
 
     return (
-        <div className="w-full h-64 bg-neutral-900/30 rounded-lg border border-white/5 p-4">
+        <div className="w-full h-64 bg-surface-1/60 rounded-lg border border-line-subtle p-4">
             <ResponsiveContainer width="100%" height="100%">
                 <AreaChart
                     data={chartData}
@@ -67,22 +70,22 @@ export const GoalCumulativeChart: React.FC<GoalCumulativeChartProps> = ({
                 >
                     <defs>
                         <linearGradient id="colorValueCumulative" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor={color} stopOpacity={0.3} />
-                            <stop offset="95%" stopColor={color} stopOpacity={0} />
+                            <stop offset="5%" stopColor={lineColor} stopOpacity={0.3} />
+                            <stop offset="95%" stopColor={lineColor} stopOpacity={0} />
                         </linearGradient>
                     </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" vertical={false} />
+                    <CartesianGrid strokeDasharray="3 3" stroke={themeColors.chartGrid} vertical={false} />
                     <XAxis
                         dataKey="date"
                         tickFormatter={formatXAxis}
-                        stroke="#737373"
+                        stroke={themeColors.chartAxis}
                         fontSize={12}
                         tickLine={false}
                         axisLine={false}
                         minTickGap={30}
                     />
                     <YAxis
-                        stroke="#737373"
+                        stroke={themeColors.chartAxis}
                         fontSize={12}
                         tickLine={false}
                         axisLine={false}
@@ -90,13 +93,13 @@ export const GoalCumulativeChart: React.FC<GoalCumulativeChartProps> = ({
                     />
                     <Tooltip
                         contentStyle={{
-                            backgroundColor: '#171717',
-                            borderColor: '#262626',
-                            color: '#e5e5e5',
+                            backgroundColor: themeColors.chartTooltipBg,
+                            borderColor: themeColors.lineSubtle,
+                            color: themeColors.contentPrimary,
                             borderRadius: '8px',
                             fontSize: '12px'
                         }}
-                        itemStyle={{ color: color }}
+                        itemStyle={{ color: lineColor }}
                         formatter={(value: number, _name, item) => {
                             // Suppress tooltip content for the synthetic leading buffer point
                             if (item && (item.payload as ChartPoint)?.synthetic) {
@@ -109,7 +112,7 @@ export const GoalCumulativeChart: React.FC<GoalCumulativeChartProps> = ({
                     <Area
                         type="monotone"
                         dataKey="value"
-                        stroke={color}
+                        stroke={lineColor}
                         fillOpacity={1}
                         fill="url(#colorValueCumulative)"
                         strokeWidth={2}
@@ -125,8 +128,8 @@ export const GoalCumulativeChart: React.FC<GoalCumulativeChartProps> = ({
                                     cx={cx}
                                     cy={cy}
                                     r={4}
-                                    fill={color}
-                                    stroke="#0A0A0A"
+                                    fill={lineColor}
+                                    stroke={themeColors.surface1}
                                     strokeWidth={1.5}
                                 />
                             );

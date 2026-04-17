@@ -133,7 +133,7 @@ const SortableCategoryPill: React.FC<SortableCategoryPillProps> = ({
                             e.stopPropagation();
                         }}
                         onPointerDown={(e) => e.stopPropagation()}
-                        className="px-4 py-2 rounded-full bg-neutral-800 text-white text-sm font-medium border border-emerald-500 outline-none w-auto min-w-[100px]"
+                        className="px-4 py-2 rounded-full bg-surface-1 text-content-primary text-sm font-medium border border-emerald-500 outline-none w-auto min-w-[100px]"
                     />
                 </form>
             </div>
@@ -164,8 +164,8 @@ const SortableCategoryPill: React.FC<SortableCategoryPillProps> = ({
                 className={`
           px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all select-none
           ${isActive
-                        ? `${category.color} text-white shadow-lg shadow-white/10 pr-8`
-                        : 'bg-neutral-800 text-neutral-400 hover:bg-neutral-700 hover:text-white'
+                        ? `${category.color} text-content-primary shadow-lg shadow-white/10 pr-8`
+                        : 'bg-surface-1 text-content-secondary hover:bg-surface-2 hover:text-content-primary'
                     }
           ${reorderMode ? 'ring-1 ring-emerald-500/40 cursor-grab' : ''}
         `}
@@ -177,8 +177,8 @@ const SortableCategoryPill: React.FC<SortableCategoryPillProps> = ({
                 <button
                     onClick={onDelete}
                     className={`absolute right-1 top-1/2 -translate-y-1/2 p-1.5 rounded-full transition-colors z-10 ${deleteConfirmId === category.id
-                        ? 'bg-red-500 text-white hover:bg-red-600 shadow-sm'
-                        : 'hover:bg-black/20 text-white/70 hover:text-white'
+                        ? 'bg-red-500 text-content-primary hover:bg-red-600 shadow-sm'
+                        : 'hover:bg-black/20 text-content-primary/70 hover:text-content-primary'
                         }`}
                     title={deleteConfirmId === category.id ? "Click again to confirm delete" : "Delete Category"}
                     onPointerDown={(e) => e.stopPropagation()}
@@ -316,8 +316,8 @@ export const CategoryTabs: React.FC<CategoryTabsProps> = ({
                     onClick={() => onSelectCategory(uncategorized.id)}
                     className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap flex-shrink-0 transition-all ${
                         activeCategoryId === uncategorized.id
-                            ? 'bg-amber-500 text-neutral-900 shadow-lg shadow-amber-500/20'
-                            : 'bg-neutral-800 text-amber-400 hover:bg-neutral-700 border border-amber-500/30'
+                            ? 'bg-warning text-content-on-accent shadow-lg shadow-warning/20'
+                            : 'bg-surface-1 text-warning-contrast hover:bg-surface-2 border border-warning/30'
                     }`}
                 >
                     Uncategorized
@@ -327,7 +327,7 @@ export const CategoryTabs: React.FC<CategoryTabsProps> = ({
             {reorderMode ? (
                 <button
                     onClick={() => setReorderMode(false)}
-                    className="px-3 py-2 rounded-full bg-emerald-500 text-neutral-900 text-sm font-medium hover:bg-emerald-400 transition-colors flex items-center gap-1 whitespace-nowrap flex-shrink-0"
+                    className="px-3 py-2 rounded-full bg-accent text-content-on-accent text-sm font-medium hover:bg-accent-strong transition-colors flex items-center gap-1 whitespace-nowrap flex-shrink-0"
                 >
                     <Check size={14} strokeWidth={3} /> Done
                 </button>
@@ -340,12 +340,12 @@ export const CategoryTabs: React.FC<CategoryTabsProps> = ({
                             value={newCategoryName}
                             onChange={(e) => { setNewCategoryName(e.target.value); setAddCategoryError(null); }}
                             placeholder="Category name..."
-                            className="px-3 py-2 rounded-full bg-neutral-800 text-white text-sm border border-neutral-700 focus:border-emerald-500 outline-none w-32"
+                            className="px-3 py-2 rounded-full bg-surface-1 text-content-primary text-sm border border-line-strong focus:border-emerald-500 outline-none w-32"
                             onBlur={() => !newCategoryName && !addCategoryError && setIsAdding(false)}
                             aria-invalid={!!addCategoryError}
                             aria-describedby={addCategoryError ? 'add-category-error' : undefined}
                         />
-                        <button type="submit" className="p-2 rounded-full bg-emerald-500 text-white hover:bg-emerald-600">
+                        <button type="submit" className="p-2 rounded-full bg-accent text-content-on-accent hover:bg-accent-strong">
                             <Plus size={14} />
                         </button>
                     </div>
@@ -358,7 +358,7 @@ export const CategoryTabs: React.FC<CategoryTabsProps> = ({
             ) : (
                 <button
                     onClick={() => setIsAdding(true)}
-                    className="px-3 py-2 rounded-full bg-neutral-800 text-neutral-400 hover:bg-neutral-700 hover:text-white transition-colors"
+                    className="px-3 py-2 rounded-full bg-surface-1 text-content-secondary hover:bg-surface-2 hover:text-content-primary transition-colors"
                     title="Add Category"
                 >
                     <Plus size={18} />

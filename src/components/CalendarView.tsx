@@ -42,7 +42,7 @@ const DroppableSlot = ({ dayIndex, time, children }: { dayIndex: number, time: s
     return (
         <div
             ref={setNodeRef}
-            className={`h-[40px] border-b border-white/5 w-full relative group transition-colors ${isOver ? 'bg-emerald-500/10' : ''}`}
+            className={`h-[40px] border-b border-line-subtle w-full relative group transition-colors ${isOver ? 'bg-accent-soft' : ''}`}
         >
             {children}
         </div>
@@ -164,8 +164,8 @@ export const CalendarView: React.FC = () => {
                 className={cn(
                     "rounded px-2 py-1 transition-colors cursor-move group overflow-hidden z-20 hover:shadow-lg hover:scale-[1.02] active:scale-95 duration-100 h-full w-full border",
                     isNonNegotiable
-                        ? "bg-emerald-500/20 border-yellow-500 shadow-[0_0_8px_rgba(234,179,8,0.4)]"
-                        : "bg-emerald-500/20 border-emerald-500/50 hover:bg-emerald-500/30"
+                        ? "bg-accent-soft border-yellow-500 shadow-[0_0_8px_rgba(234,179,8,0.4)]"
+                        : "bg-accent-soft border-accent/50 hover:bg-accent-strong/30"
                 )}
                 style={style}
                 title={`${habit.name} (${habit.scheduledTime})${isNonNegotiable ? ' - Non-Negotiable' : ''}`}
@@ -173,7 +173,7 @@ export const CalendarView: React.FC = () => {
                 <div className={cn("text-xs font-medium truncate", isNonNegotiable ? "text-yellow-100" : "text-emerald-100")}>
                     {habit.name}
                 </div>
-                <div className="text-[10px] text-emerald-300/80 truncate">
+                <div className="text-[10px] text-accent-contrast/80 truncate">
                     {habit.scheduledTime} ({habit.durationMinutes}m)
                 </div>
             </div>
@@ -191,33 +191,33 @@ export const CalendarView: React.FC = () => {
                 />
 
                 {/* Header */}
-                <div className="flex items-center justify-between bg-neutral-900/50 p-4 rounded-xl border border-white/5 backdrop-blur-sm">
-                    <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                        <CalendarIcon className="text-emerald-400" />
+                <div className="flex items-center justify-between bg-surface-0/50 p-4 rounded-xl border border-line-subtle backdrop-blur-sm">
+                    <h2 className="text-xl font-bold text-content-primary flex items-center gap-2">
+                        <CalendarIcon className="text-accent-contrast" />
                         Weekly Calendar
                     </h2>
                     <div className="flex items-center gap-4">
-                        <button onClick={handlePrevWeek} className="p-2 hover:bg-white/5 rounded-lg text-neutral-400 hover:text-white">
+                        <button onClick={handlePrevWeek} className="p-2 hover:bg-surface-2 rounded-lg text-content-secondary hover:text-content-primary">
                             <ChevronLeft size={20} />
                         </button>
-                        <span className="font-medium text-neutral-200">
+                        <span className="font-medium text-content-primary">
                             {format(currentWeekStart, 'MMM d')} - {format(addDays(currentWeekStart, 6), 'MMM d, yyyy')}
                         </span>
-                        <button onClick={handleNextWeek} className="p-2 hover:bg-white/5 rounded-lg text-neutral-400 hover:text-white">
+                        <button onClick={handleNextWeek} className="p-2 hover:bg-surface-2 rounded-lg text-content-secondary hover:text-content-primary">
                             <ChevronRight size={20} />
                         </button>
                     </div>
                 </div>
 
                 {/* Calendar Grid Container */}
-                <div className="flex-1 bg-neutral-900/50 rounded-xl border border-white/5 backdrop-blur-sm overflow-hidden flex flex-col relative min-h-[400px]">
+                <div className="flex-1 bg-surface-0/50 rounded-xl border border-line-subtle backdrop-blur-sm overflow-hidden flex flex-col relative min-h-[400px]">
                     {/* Header Row (Days) */}
-                    <div className="flex border-b border-white/5 bg-neutral-900 sticky top-0 z-20 pr-4">
-                        <div className="w-16 flex-shrink-0 border-r border-white/5" />
+                    <div className="flex border-b border-line-subtle bg-surface-0 sticky top-0 z-20 pr-4">
+                        <div className="w-16 flex-shrink-0 border-r border-line-subtle" />
                         {weekDays.map(day => (
-                            <div key={day.toISOString()} className="flex-1 p-2 text-center border-r border-white/5 last:border-0 border-b border-transparent">
-                                <div className="text-xs font-medium text-neutral-500 uppercase">{format(day, 'EEE')}</div>
-                                <div className={`text-lg font-bold ${isSameDay(day, new Date()) ? 'text-emerald-400' : 'text-neutral-300'}`}>
+                            <div key={day.toISOString()} className="flex-1 p-2 text-center border-r border-line-subtle last:border-0 border-b border-transparent">
+                                <div className="text-xs font-medium text-content-muted uppercase">{format(day, 'EEE')}</div>
+                                <div className={`text-lg font-bold ${isSameDay(day, new Date()) ? 'text-accent-contrast' : 'text-content-secondary'}`}>
                                     {format(day, 'd')}
                                 </div>
                             </div>
@@ -228,9 +228,9 @@ export const CalendarView: React.FC = () => {
                     <div className="flex-1 overflow-y-auto relative scrollbar-thin scrollbar-thumb-neutral-700">
                         <div className="flex relative min-h-[1000px]">
                             {/* Time Labels Column */}
-                            <div className="w-16 flex-shrink-0 border-r border-white/5 bg-neutral-900/50 z-10">
+                            <div className="w-16 flex-shrink-0 border-r border-line-subtle bg-surface-0/50 z-10">
                                 {timeSlots.map((slot, i) => (
-                                    <div key={i} className="h-[40px] text-[10px] text-neutral-500 text-right pr-2 pt-1 border-b border-white/5 last:border-0">
+                                    <div key={i} className="h-[40px] text-[10px] text-content-muted text-right pr-2 pt-1 border-b border-line-subtle last:border-0">
                                         {slot.minute === 0 ? slot.timeStr : ''}
                                     </div>
                                 ))}
@@ -244,7 +244,7 @@ export const CalendarView: React.FC = () => {
                                         const jsDayIndex = day.getDay();
 
                                         return (
-                                            <div key={day.toISOString()} className="flex-1 border-r border-white/5 last:border-0 h-full relative group">
+                                            <div key={day.toISOString()} className="flex-1 border-r border-line-subtle last:border-0 h-full relative group">
                                                 {/* Droppable Background Slots */}
                                                 <div className="absolute inset-0 flex flex-col z-0">
                                                     {timeSlots.map((slot, i) => (
@@ -286,17 +286,17 @@ export const CalendarView: React.FC = () => {
 
                 {/* Unassigned Habits Table */}
                 {unassignedHabits.length > 0 && (
-                    <div className="bg-neutral-900/50 rounded-xl border border-white/5 backdrop-blur-sm p-6 overflow-hidden flex flex-col max-h-[40%] shrink-0">
-                        <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2 shrink-0">
+                    <div className="bg-surface-0/50 rounded-xl border border-line-subtle backdrop-blur-sm p-6 overflow-hidden flex flex-col max-h-[40%] shrink-0">
+                        <h3 className="text-lg font-bold text-content-primary mb-4 flex items-center gap-2 shrink-0">
                             <Clock className="text-yellow-500" size={18} />
                             Unassigned Habits
-                            <span className="text-xs font-normal text-neutral-500 ml-2">
+                            <span className="text-xs font-normal text-content-muted ml-2">
                                 (Set a time to move these to the calendar)
                             </span>
                         </h3>
                         <div className="overflow-auto min-h-0">
-                            <table className="w-full text-left text-sm text-neutral-400">
-                                <thead className="text-xs uppercase text-neutral-300 sticky top-0 bg-neutral-900 z-10">
+                            <table className="w-full text-left text-sm text-content-secondary">
+                                <thead className="text-xs uppercase text-content-secondary sticky top-0 bg-surface-0 z-10">
                                     <tr>
                                         <th className="px-4 py-3">Habit Name</th>
                                         <th className="px-4 py-3">Assigned Days</th>
@@ -353,7 +353,7 @@ const UnassignedHabitRow = ({ habit, onUpdate }: { habit: Habit, onUpdate: any }
 
     return (
         <tr className="hover:bg-white/[0.02] transition-colors">
-            <td className="px-4 py-3 font-medium text-white">{habit.name}</td>
+            <td className="px-4 py-3 font-medium text-content-primary">{habit.name}</td>
             <td className="px-4 py-3">
                 <div className="flex gap-1">
                     {days.map((d, i) => (
@@ -362,7 +362,7 @@ const UnassignedHabitRow = ({ habit, onUpdate }: { habit: Habit, onUpdate: any }
                             onClick={() => setAssignedDays(prev =>
                                 prev.includes(i) ? prev.filter(x => x !== i) : [...prev, i]
                             )}
-                            className={`w-6 h-6 text-[10px] rounded flex items-center justify-center transition-colors ${assignedDays.includes(i) ? 'bg-emerald-500 text-neutral-900 font-bold' : 'bg-neutral-800 hover:bg-neutral-700'
+                            className={`w-6 h-6 text-[10px] rounded flex items-center justify-center transition-colors ${assignedDays.includes(i) ? 'bg-accent text-content-on-accent font-bold' : 'bg-surface-1 hover:bg-surface-2'
                                 }`}
                         >
                             {d}
@@ -375,7 +375,7 @@ const UnassignedHabitRow = ({ habit, onUpdate }: { habit: Habit, onUpdate: any }
                     type="time"
                     value={time}
                     onChange={e => setTime(e.target.value)}
-                    className="bg-neutral-800 border-white/10 rounded px-2 py-1 text-white focus:border-emerald-500 focus:outline-none"
+                    className="bg-surface-1 border-line-subtle rounded px-2 py-1 text-content-primary focus:border-focus focus:outline-none"
                 />
             </td>
             <td className="px-4 py-3">
@@ -383,7 +383,7 @@ const UnassignedHabitRow = ({ habit, onUpdate }: { habit: Habit, onUpdate: any }
                     type="number"
                     value={duration}
                     onChange={e => setDuration(e.target.value)}
-                    className="bg-neutral-800 border-white/10 rounded px-2 py-1 text-white w-20 focus:border-emerald-500 focus:outline-none"
+                    className="bg-surface-1 border-line-subtle rounded px-2 py-1 text-content-primary w-20 focus:border-focus focus:outline-none"
                     min="5" step="5"
                 />
             </td>
@@ -392,8 +392,8 @@ const UnassignedHabitRow = ({ habit, onUpdate }: { habit: Habit, onUpdate: any }
                     onClick={handleSave}
                     disabled={!isDirty || !time}
                     className={`p-1.5 rounded-lg transition-colors ${isDirty && time
-                        ? 'bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500 hover:text-white cursor-pointer'
-                        : 'bg-white/5 text-neutral-600 cursor-not-allowed'
+                        ? 'bg-accent-soft text-accent-contrast hover:bg-accent-strong hover:text-content-primary cursor-pointer'
+                        : 'bg-white/5 text-content-muted cursor-not-allowed'
                         }`}
                     title={!time ? "Time required" : !isDirty ? "No changes" : "Save Changes"}
                 >

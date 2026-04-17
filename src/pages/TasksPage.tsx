@@ -7,7 +7,7 @@ export const TasksPage: React.FC = () => {
     const { tasks, loading, error } = useTasks();
 
     if (loading) return (
-        <div className="flex items-center justify-center h-full text-neutral-500 animate-pulse">
+        <div className="flex items-center justify-center h-full text-content-muted animate-pulse">
             Loading tasks...
         </div>
     );
@@ -41,22 +41,22 @@ export const TasksPage: React.FC = () => {
     return (
         <div className="flex flex-col h-full gap-6">
             {/* Description - sits like a definition under the Tasks header */}
-            <p className="text-neutral-500 text-sm -mt-3">
+            <p className="text-content-muted text-sm -mt-3">
                 A one-time action with a clear finish. Once completed, it's done.
             </p>
 
             <div className="flex flex-col md:flex-row h-full gap-6">
 
                 {/* TODAY COLUMN */}
-                <div className="flex-1 flex flex-col min-w-0 bg-neutral-900/30 rounded-xl border border-neutral-800/50 overflow-hidden">
-                    <div className="p-4 border-b border-neutral-800/50 bg-neutral-900/50 flex items-baseline justify-between">
+                <div className="flex-1 flex flex-col min-w-0 bg-surface-0/30 rounded-xl border border-line-subtle/50 overflow-hidden">
+                    <div className="p-4 border-b border-line-subtle/50 bg-surface-0/50 flex items-baseline justify-between">
                         <h2 className="text-lg font-medium text-emerald-500/90">Today</h2>
                         {todayTasks.filter(t => t.status !== 'completed').length > 0 && (
-                            <span className="text-xs text-neutral-600 font-mono">{todayTasks.filter(t => t.status !== 'completed').length} active</span>
+                            <span className="text-xs text-content-muted font-mono">{todayTasks.filter(t => t.status !== 'completed').length} active</span>
                         )}
                     </div>
 
-                    <div className="p-4 bg-neutral-900/20 border-b border-neutral-800/30">
+                    <div className="p-4 bg-surface-0/20 border-b border-line-subtle/30">
                         <AddTaskInput defaultPlacement="today" placeholder="Add directly to today..." />
                     </div>
 
@@ -67,10 +67,10 @@ export const TasksPage: React.FC = () => {
                             ))}
                             {sortedToday.length === 0 && (
                                 <div className="py-8 text-center">
-                                    <p className="text-neutral-500 text-sm mb-3">Commit what matters for today.</p>
+                                    <p className="text-content-muted text-sm mb-3">Commit what matters for today.</p>
                                     <div className="flex flex-wrap justify-center gap-1.5">
                                         {['Email recruiter', 'Refill prescription', 'Schedule workout'].map((ex) => (
-                                            <span key={ex} className="px-2.5 py-1 text-[11px] text-neutral-600 bg-neutral-800/50 rounded-full border border-white/5">
+                                            <span key={ex} className="px-2.5 py-1 text-[11px] text-content-muted bg-surface-1/50 rounded-full border border-line-subtle">
                                                 {ex}
                                             </span>
                                         ))}
@@ -82,15 +82,15 @@ export const TasksPage: React.FC = () => {
                 </div>
 
                 {/* INBOX COLUMN */}
-                <div className="flex-1 flex flex-col min-w-0 bg-neutral-900/30 rounded-xl border border-neutral-800/50 overflow-hidden">
-                    <div className="p-4 border-b border-neutral-800/50 bg-neutral-900/50 flex items-baseline justify-between">
-                        <h2 className="text-lg font-medium text-neutral-300">Inbox</h2>
+                <div className="flex-1 flex flex-col min-w-0 bg-surface-0/30 rounded-xl border border-line-subtle/50 overflow-hidden">
+                    <div className="p-4 border-b border-line-subtle/50 bg-surface-0/50 flex items-baseline justify-between">
+                        <h2 className="text-lg font-medium text-content-secondary">Inbox</h2>
                         {inboxTasks.filter(t => t.status !== 'completed').length > 0 && (
-                            <span className="text-xs text-neutral-600 font-mono">{inboxTasks.filter(t => t.status !== 'completed').length} pending</span>
+                            <span className="text-xs text-content-muted font-mono">{inboxTasks.filter(t => t.status !== 'completed').length} pending</span>
                         )}
                     </div>
 
-                    <div className="p-4 bg-neutral-900/20 border-b border-neutral-800/30">
+                    <div className="p-4 bg-surface-0/20 border-b border-line-subtle/30">
                         <AddTaskInput defaultPlacement="inbox" placeholder="Capture to inbox..." />
                     </div>
 
@@ -101,10 +101,10 @@ export const TasksPage: React.FC = () => {
                             ))}
                             {sortedInbox.length === 0 && (
                                 <div className="py-8 text-center">
-                                    <p className="text-neutral-500 text-sm mb-3">Capture what's on your mind.</p>
+                                    <p className="text-content-muted text-sm mb-3">Capture what's on your mind.</p>
                                     <div className="flex flex-wrap justify-center gap-1.5">
                                         {['Call landlord', 'Buy groceries', 'Send invoice'].map((ex) => (
-                                            <span key={ex} className="px-2.5 py-1 text-[11px] text-neutral-600 bg-neutral-800/50 rounded-full border border-white/5">
+                                            <span key={ex} className="px-2.5 py-1 text-[11px] text-content-muted bg-surface-1/50 rounded-full border border-line-subtle">
                                                 {ex}
                                             </span>
                                         ))}
@@ -116,7 +116,7 @@ export const TasksPage: React.FC = () => {
                 </div>
 
             </div>
-            <div className="text-center text-xs text-neutral-600 pb-2">
+            <div className="text-center text-xs text-content-muted pb-2">
                 Tasks reset visually at midnight, but remain in your list until completed or deleted.
             </div>
         </div>

@@ -249,20 +249,20 @@ export const ScheduleView = () => {
             <div className="py-3 flex items-center justify-between">
                 <button
                     onClick={() => setWeekOffset(w => w - 1)}
-                    className="p-1 text-neutral-400 hover:text-white transition-colors"
+                    className="p-1 text-content-secondary hover:text-content-primary transition-colors"
                     aria-label="Previous week"
                 >
                     <ChevronLeft size={20} />
                 </button>
                 <button
                     onClick={() => setWeekOffset(0)}
-                    className="text-neutral-400 font-medium text-sm hover:text-white transition-colors"
+                    className="text-content-secondary font-medium text-sm hover:text-content-primary transition-colors"
                 >
                     {weekOffset === 0 ? 'This Week' : `${format(weekStart, 'MMM d')} – ${format(endOfWeek(weekStart, { weekStartsOn: 1 }), 'MMM d')}`}
                 </button>
                 <button
                     onClick={() => setWeekOffset(w => w + 1)}
-                    className="p-1 text-neutral-400 hover:text-white transition-colors"
+                    className="p-1 text-content-secondary hover:text-content-primary transition-colors"
                     aria-label="Next week"
                 >
                     <ChevronRight size={20} />
@@ -282,14 +282,14 @@ export const ScheduleView = () => {
                             onClick={() => setSelectedDayIndex(i)}
                             className={`flex flex-col items-center py-2 px-1 rounded-lg transition-all text-xs ${
                                 isSelected
-                                    ? 'bg-emerald-500/20 border border-emerald-500/50 text-emerald-400'
+                                    ? 'bg-accent-soft border border-emerald-500/50 text-accent-contrast'
                                     : isToday
-                                        ? 'bg-neutral-800 border border-white/10 text-white'
-                                        : 'bg-neutral-800/50 border border-transparent text-neutral-400 hover:bg-neutral-800'
+                                        ? 'bg-surface-1 border border-line-subtle text-content-primary'
+                                        : 'bg-surface-1/50 border border-transparent text-content-secondary hover:bg-surface-1'
                             }`}
                         >
                             <span className="font-medium">{dayNames[i]}</span>
-                            <span className={`text-lg font-semibold ${isSelected ? 'text-emerald-400' : ''}`}>
+                            <span className={`text-lg font-semibold ${isSelected ? 'text-accent-contrast' : ''}`}>
                                 {format(day, 'd')}
                             </span>
                         </button>
@@ -299,7 +299,7 @@ export const ScheduleView = () => {
 
             {dayViewLoading && (
                 <div className="flex items-center justify-center py-8">
-                    <p className="text-neutral-500">Loading...</p>
+                    <p className="text-content-muted">Loading...</p>
                 </div>
             )}
 
@@ -316,10 +316,10 @@ export const ScheduleView = () => {
                         renderCategoryGroups(scheduledGrouped)
                     ) : (
                         <div className="flex flex-col items-center justify-center p-6 text-center">
-                            <div className="w-12 h-12 bg-neutral-800 rounded-full flex items-center justify-center mb-3">
-                                <Calendar size={24} className="text-neutral-500" />
+                            <div className="w-12 h-12 bg-surface-1 rounded-full flex items-center justify-center mb-3">
+                                <Calendar size={24} className="text-content-muted" />
                             </div>
-                            <p className="text-sm text-neutral-500">
+                            <p className="text-sm text-content-muted">
                                 No scheduled habits for {format(selectedDate, 'EEEE')}
                             </p>
                         </div>
@@ -330,11 +330,11 @@ export const ScheduleView = () => {
                         <div className="mt-2">
                             <button
                                 onClick={() => setShowDailyHabits(!showDailyHabits)}
-                                className="flex items-center gap-2 w-full py-2 px-3 rounded-lg bg-neutral-800/50 border border-white/5 text-neutral-400 hover:text-white transition-colors"
+                                className="flex items-center gap-2 w-full py-2 px-3 rounded-lg bg-surface-1/50 border border-line-subtle text-content-secondary hover:text-content-primary transition-colors"
                             >
                                 {showDailyHabits ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
                                 <span className="text-sm font-medium">Daily Habits</span>
-                                <span className="text-xs text-neutral-500 ml-auto">{dailyHabits.length}</span>
+                                <span className="text-xs text-content-muted ml-auto">{dailyHabits.length}</span>
                             </button>
                             {showDailyHabits && (
                                 <div className="mt-2 flex flex-col gap-2">

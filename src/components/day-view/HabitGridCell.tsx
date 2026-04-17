@@ -116,7 +116,7 @@ export const HabitGridCell = ({
             );
         }
         if (habit.goal) return <CheckCheck size={12} className="text-emerald-500" />;
-        if (habit.timeEstimate) return <span className="text-[10px] text-neutral-500 font-medium">{habit.timeEstimate}m</span>;
+        if (habit.timeEstimate) return <span className="text-[10px] text-content-muted font-medium">{habit.timeEstimate}m</span>;
         return null;
     };
 
@@ -140,15 +140,15 @@ export const HabitGridCell = ({
                     className={cn(
                         "flex-shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all duration-300 relative",
                         isCompleted
-                            ? "bg-emerald-500/10 border-emerald-500 text-emerald-500"
-                            : "border-white/20 text-transparent hover:border-emerald-500/50"
+                            ? "bg-accent-soft border-emerald-500 text-emerald-500"
+                            : "border-line-strong text-transparent hover:border-emerald-500/50"
                     )}
                     title={`${habitStatus.currentValue}/${habitStatus.targetValue} ${habit.goal?.unit ?? ''}`}
                 >
                     {isCompleted ? (
                         <Check size={12} strokeWidth={3} />
                     ) : pct > 0 ? (
-                        <span className="text-[8px] font-bold text-neutral-400">{Math.round(pct)}%</span>
+                        <span className="text-[8px] font-bold text-content-secondary">{Math.round(pct)}%</span>
                     ) : null}
                 </button>
             );
@@ -160,8 +160,8 @@ export const HabitGridCell = ({
                 className={cn(
                     "flex-shrink-0 w-5 h-5 rounded-full border flex items-center justify-center transition-all duration-300",
                     isCompleted
-                        ? "bg-emerald-500/10 border-emerald-500 text-emerald-500"
-                        : "border-white/20 text-transparent hover:border-emerald-500/50"
+                        ? "bg-accent-soft border-emerald-500 text-emerald-500"
+                        : "border-line-strong text-transparent hover:border-emerald-500/50"
                 )}
             >
                 {isCompleted && <Check size={12} strokeWidth={3} />}
@@ -174,8 +174,8 @@ export const HabitGridCell = ({
             className={cn(
                 "relative flex flex-col rounded-lg border transition-all duration-300 overflow-hidden",
                 isExpanded
-                    ? "bg-neutral-800 border-white/10 shadow-lg scale-[1.02] z-10"
-                    : "bg-neutral-900/40 border-white/5 hover:bg-neutral-800/60 hover:border-white/10",
+                    ? "bg-surface-1 border-line-subtle shadow-lg scale-[1.02] z-10"
+                    : "bg-surface-0/40 border-line-subtle hover:bg-surface-1/60 hover:border-line-subtle",
                 // Claim extra grid rows for bundles with sub-habits
                 hasSubHabits && !isExpanded && "row-span-2"
             )}
@@ -191,7 +191,7 @@ export const HabitGridCell = ({
                 {/* Name - Center */}
                 <span className={cn(
                     "flex-1 text-sm font-medium truncate select-none transition-colors",
-                    isCompleted ? "text-neutral-500 line-through decoration-white/20" : "text-neutral-300"
+                    isCompleted ? "text-content-muted line-through decoration-white/20" : "text-content-secondary"
                 )}>
                     {habit.name}
                 </span>
@@ -216,7 +216,7 @@ export const HabitGridCell = ({
 
             {/* BUNDLE SUB-HABITS (Always Visible for bundles) */}
             {isChecklistBundle && hasSubHabits && (
-                <div className="flex flex-col border-t border-white/5">
+                <div className="flex flex-col border-t border-line-subtle">
                     {subHabits!.map(child => {
                         const childDone = subHabitStatuses?.get(child.id) ?? false;
                         return (
@@ -233,14 +233,14 @@ export const HabitGridCell = ({
                                         "flex-shrink-0 w-4 h-4 rounded border flex items-center justify-center transition-all duration-200",
                                         childDone
                                             ? "bg-indigo-500/20 border-indigo-500 text-indigo-400"
-                                            : "border-white/15 text-transparent hover:border-indigo-400/50"
+                                            : "border-line-strong text-transparent hover:border-indigo-400/50"
                                     )}
                                 >
                                     {childDone && <Check size={10} strokeWidth={3} />}
                                 </button>
                                 <span className={cn(
                                     "text-xs truncate transition-colors flex items-center gap-1",
-                                    childDone ? "text-neutral-600 line-through" : "text-neutral-400"
+                                    childDone ? "text-content-muted line-through" : "text-content-secondary"
                                 )}>
                                     {child.name}
                                     {child.linkedGoalId && <Trophy size={10} className="flex-shrink-0 text-amber-500" />}
@@ -264,7 +264,7 @@ export const HabitGridCell = ({
                                 "px-2 py-1 rounded text-[10px] font-medium border transition-all",
                                 selectedChoices?.has(option.id)
                                     ? "bg-amber-500/20 text-amber-300 border-amber-500/50"
-                                    : "bg-neutral-800 text-neutral-400 border-white/5 hover:border-white/20 hover:text-white"
+                                    : "bg-surface-1 text-content-secondary border-line-subtle hover:border-line-strong hover:text-content-primary"
                             )}
                         >
                             {option.name}
@@ -280,25 +280,25 @@ export const HabitGridCell = ({
             {/* EXPANDED CONTENT AREA */}
             {isExpanded && (
                 <div className="px-3 pb-3 pt-0 flex flex-col gap-3 animate-in fade-in slide-in-from-top-1 duration-200 cursor-default" onClick={e => e.stopPropagation()}>
-                    <div className="h-px w-full bg-white/5 mb-1" />
+                    <div className="h-px w-full bg-surface-1 mb-1" />
 
                     {/* Habit Metadata */}
                     {(habit.timeEstimate || habit.timesPerWeek || habit.nonNegotiable || (isQuantity && habitStatus) || habit.assignedDays) && (
                         <div className="flex flex-wrap gap-2">
                             {habit.timeEstimate && (
-                                <span className="flex items-center gap-1 text-[10px] text-neutral-500 bg-white/5 px-2 py-0.5 rounded-full">
+                                <span className="flex items-center gap-1 text-[10px] text-content-muted bg-surface-1 px-2 py-0.5 rounded-full">
                                     <Clock size={10} />
                                     {habit.timeEstimate}m
                                 </span>
                             )}
                             {isQuantity && habitStatus && (
-                                <span className="flex items-center gap-1 text-[10px] text-neutral-500 bg-white/5 px-2 py-0.5 rounded-full">
+                                <span className="flex items-center gap-1 text-[10px] text-content-muted bg-surface-1 px-2 py-0.5 rounded-full">
                                     <Target size={10} />
                                     {habitStatus.currentValue}/{habitStatus.targetValue} {habit.goal?.unit || ''}
                                 </span>
                             )}
                             {habit.timesPerWeek != null && habit.timesPerWeek > 0 && (
-                                <span className="flex items-center gap-1 text-[10px] text-neutral-500 bg-white/5 px-2 py-0.5 rounded-full">
+                                <span className="flex items-center gap-1 text-[10px] text-content-muted bg-surface-1 px-2 py-0.5 rounded-full">
                                     <Repeat size={10} />
                                     {habit.timesPerWeek}x/week
                                 </span>
@@ -310,7 +310,7 @@ export const HabitGridCell = ({
                                 </span>
                             )}
                             {habit.assignedDays && habit.assignedDays.length > 0 && habit.assignedDays.length < 7 && (
-                                <span className="flex items-center gap-1 text-[10px] text-neutral-500 bg-white/5 px-2 py-0.5 rounded-full">
+                                <span className="flex items-center gap-1 text-[10px] text-content-muted bg-surface-1 px-2 py-0.5 rounded-full">
                                     <Calendar size={10} />
                                     {habit.assignedDays.map(d => ['Su','Mo','Tu','We','Th','Fr','Sa'][d]).join(', ')}
                                 </span>
@@ -323,7 +323,7 @@ export const HabitGridCell = ({
                         {onAddToBundle && habit.type !== 'bundle' && !habit.bundleParentId && (
                             <button
                                 onClick={() => onAddToBundle(habit)}
-                                className="flex items-center gap-1.5 px-2 py-1 rounded-md transition-colors text-xs text-neutral-500 hover:text-neutral-300 hover:bg-white/5"
+                                className="flex items-center gap-1.5 px-2 py-1 rounded-md transition-colors text-xs text-content-muted hover:text-content-secondary hover:bg-surface-2"
                             >
                                 <Layers size={12} />
                                 <span>Bundle</span>
@@ -332,7 +332,7 @@ export const HabitGridCell = ({
                         {onMoveToCategory && (
                             <button
                                 onClick={() => onMoveToCategory(habit)}
-                                className="flex items-center gap-1.5 px-2 py-1 rounded-md transition-colors text-xs text-neutral-500 hover:text-neutral-300 hover:bg-white/5"
+                                className="flex items-center gap-1.5 px-2 py-1 rounded-md transition-colors text-xs text-content-muted hover:text-content-secondary hover:bg-surface-2"
                             >
                                 <FolderInput size={12} />
                                 <span>Move</span>
@@ -341,7 +341,7 @@ export const HabitGridCell = ({
                         {onViewHistory && (
                             <button
                                 onClick={() => onViewHistory(habit)}
-                                className="p-1.5 rounded-md transition-colors text-neutral-500 hover:text-neutral-300 hover:bg-white/5"
+                                className="p-1.5 rounded-md transition-colors text-content-muted hover:text-content-secondary hover:bg-surface-2"
                                 title="View History"
                             >
                                 <History size={12} />
@@ -350,7 +350,7 @@ export const HabitGridCell = ({
                         {onEditHabit && (
                             <button
                                 onClick={() => onEditHabit(habit)}
-                                className="p-1.5 rounded-md transition-colors text-neutral-500 hover:text-neutral-300 hover:bg-white/5"
+                                className="p-1.5 rounded-md transition-colors text-content-muted hover:text-content-secondary hover:bg-surface-2"
                                 title="Edit Habit"
                             >
                                 <Pencil size={12} />
@@ -362,7 +362,7 @@ export const HabitGridCell = ({
                                 "p-1.5 rounded-md transition-colors",
                                 habit.pinned
                                     ? "bg-blue-500/10 text-blue-400 hover:bg-blue-500/20"
-                                    : "text-neutral-500 hover:text-neutral-300 hover:bg-white/5"
+                                    : "text-content-muted hover:text-content-secondary hover:bg-surface-2"
                             )}
                             title={habit.pinned ? 'Unpin' : 'Pin to Focus'}
                         >
@@ -375,7 +375,7 @@ export const HabitGridCell = ({
                                         await onDeleteHabit(habit.id);
                                     }
                                 }}
-                                className="p-1.5 rounded-md transition-colors text-neutral-500 hover:text-red-400 hover:bg-white/5"
+                                className="p-1.5 rounded-md transition-colors text-content-muted hover:text-red-400 hover:bg-surface-2"
                                 title="Delete Habit"
                             >
                                 <Trash2 size={12} />

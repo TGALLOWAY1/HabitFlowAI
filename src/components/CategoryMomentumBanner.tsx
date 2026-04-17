@@ -18,21 +18,21 @@ export const CategoryMomentumBanner: React.FC<CategoryMomentumBannerProps> = ({ 
 
     // Determine color based on state for visual flair, or keep simple text
     const stateColors: Record<string, string> = {
-        'Strong': 'text-emerald-400',
+        'Strong': 'text-accent-contrast',
         'Steady': 'text-blue-400',
         'Building': 'text-orange-400',
-        'Paused': 'text-neutral-400'
+        'Paused': 'text-content-secondary'
     };
 
-    const colorClass = stateColors[state] || 'text-neutral-400';
+    const colorClass = stateColors[state] || 'text-content-secondary';
 
     return (
         <div className="flex items-center gap-3 px-1 animate-in slide-in-from-top-1 duration-300">
             <div className={`text-xs font-bold uppercase tracking-wider ${colorClass}`}>
                 Momentum: {state}
             </div>
-            <div className="hidden sm:block w-px h-3 bg-white/10" />
-            <div className="text-sm text-neutral-400 italic font-medium">
+            <div className="hidden sm:block w-px h-3 bg-surface-2" />
+            <div className="text-sm text-content-secondary italic font-medium">
                 "{phrase}"
             </div>
         </div>

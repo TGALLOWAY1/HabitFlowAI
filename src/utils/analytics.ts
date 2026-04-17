@@ -85,6 +85,12 @@ export const calculateHabitStats = (habit: Habit, logs: Record<string, DayLog>):
     };
 };
 
+/**
+ * @deprecated The class-returning form is retained for compatibility with
+ * legacy call-sites but always returns the dark-mode ladder and cannot
+ * honor the active theme. Prefer `getHeatmapColor(intensity, mode)` from
+ * `src/theme/heatmap.ts` which returns a theme-aware hex string.
+ */
 export const getHeatmapColor = (intensity: number) => {
     if (intensity === 0) return 'bg-neutral-800/50';
     if (intensity === 1) return 'bg-emerald-900/80';
@@ -92,3 +98,6 @@ export const getHeatmapColor = (intensity: number) => {
     if (intensity === 3) return 'bg-emerald-500';
     return 'bg-emerald-400';
 };
+
+// Re-export the theme-aware form so callers can migrate incrementally.
+export { getHeatmapColor as getHeatmapColorForTheme, HEATMAP_LEVELS } from '../theme/heatmap';

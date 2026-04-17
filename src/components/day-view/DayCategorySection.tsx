@@ -113,7 +113,7 @@ export const DayCategorySection = ({
                 {dragHandleProps && (
                     <div
                         {...dragHandleProps}
-                        className="p-1 cursor-grab active:cursor-grabbing text-neutral-600 hover:text-neutral-400 transition-colors touch-none"
+                        className="p-1 cursor-grab active:cursor-grabbing text-content-muted hover:text-content-secondary transition-colors touch-none"
                     >
                         <GripVertical size={18} />
                     </div>
@@ -146,13 +146,13 @@ export const DayCategorySection = ({
                 })()}
 
                 {allDone && (
-                    <span className="ml-auto flex items-center gap-1 text-xs text-emerald-500 font-medium bg-emerald-500/10 px-2 py-0.5 rounded-full">
+                    <span className="ml-auto flex items-center gap-1 text-xs text-emerald-500 font-medium bg-accent-soft px-2 py-0.5 rounded-full">
                         <CheckCircle2 size={12} />
                         All Done
                     </span>
                 )}
                 {!allDone && (
-                    <span className="ml-auto text-xs text-neutral-600">
+                    <span className="ml-auto text-xs text-content-muted">
                         {completedCount}/{habits.length}
                     </span>
                 )}

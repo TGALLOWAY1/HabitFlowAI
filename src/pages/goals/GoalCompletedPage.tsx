@@ -84,7 +84,7 @@ export const GoalCompletedPage: React.FC<GoalCompletedPageProps> = ({
             <div className="w-full max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
                 <div className="flex flex-col items-center gap-4 py-12">
                     <Loader2 className="text-emerald-500 animate-spin" size={32} />
-                    <div className="text-neutral-400 text-sm">Loading...</div>
+                    <div className="text-content-secondary text-sm">Loading...</div>
                 </div>
             </div>
         );
@@ -93,7 +93,7 @@ export const GoalCompletedPage: React.FC<GoalCompletedPageProps> = ({
     if (!goal) {
         return (
             <div className="w-full max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
-                <div className="text-center py-12 text-neutral-500">
+                <div className="text-center py-12 text-content-muted">
                     <p>Goal not found</p>
                 </div>
             </div>
@@ -145,7 +145,7 @@ export const GoalCompletedPage: React.FC<GoalCompletedPageProps> = ({
                             <CelebratoryBadgeIcon goalId={goalId} badgeImageUrl={goal.badgeImageUrl} size={64} />
                         </div>
                         <Sparkles
-                            className="absolute -top-4 -right-4 text-emerald-400 animate-pulse"
+                            className="absolute -top-4 -right-4 text-accent-contrast animate-pulse"
                             size={40}
                         />
                         <Sparkles
@@ -157,10 +157,10 @@ export const GoalCompletedPage: React.FC<GoalCompletedPageProps> = ({
                 </div>
 
                 {/* Celebration Message */}
-                <h1 className="text-4xl sm:text-5xl font-bold text-white mb-4 animate-fade-in">
+                <h1 className="text-4xl sm:text-5xl font-bold text-content-primary mb-4 animate-fade-in">
                     You completed your goal!
                 </h1>
-                <h2 className="text-2xl sm:text-3xl font-semibold text-emerald-400 mb-8">
+                <h2 className="text-2xl sm:text-3xl font-semibold text-accent-contrast mb-8">
                     {goal.title}
                 </h2>
 
@@ -168,32 +168,32 @@ export const GoalCompletedPage: React.FC<GoalCompletedPageProps> = ({
                 <div className="max-w-lg mx-auto mb-10 space-y-4">
                     {/* Target Value and Unit - Hide for OneTime */}
                     {goal.type !== 'onetime' && goal.targetValue && (
-                        <div className="p-4 bg-neutral-800/50 border border-white/10 rounded-lg">
-                            <div className="text-neutral-400 text-sm mb-1">Target</div>
-                            <div className="text-2xl font-bold text-white">
+                        <div className="p-4 bg-surface-1/50 border border-line-subtle rounded-lg">
+                            <div className="text-content-secondary text-sm mb-1">Target</div>
+                            <div className="text-2xl font-bold text-content-primary">
                                 {goal.targetValue}
-                                {goal.unit && <span className="text-emerald-400"> {goal.unit}</span>}
+                                {goal.unit && <span className="text-accent-contrast"> {goal.unit}</span>}
                             </div>
                         </div>
                     )}
 
                     {/* Time Span */}
                     {timeSpan !== null && createdDateFormatted && completedDateFormatted && (
-                        <div className="p-4 bg-neutral-800/50 border border-white/10 rounded-lg">
-                            <div className="text-neutral-400 text-sm mb-1">Time Span</div>
-                            <div className="text-lg font-semibold text-white">
+                        <div className="p-4 bg-surface-1/50 border border-line-subtle rounded-lg">
+                            <div className="text-content-secondary text-sm mb-1">Time Span</div>
+                            <div className="text-lg font-semibold text-content-primary">
                                 {timeSpan === 0 ? 'Same day' : `${timeSpan} ${timeSpan === 1 ? 'day' : 'days'}`}
                             </div>
-                            <div className="text-neutral-400 text-xs mt-1">
+                            <div className="text-content-secondary text-xs mt-1">
                                 {createdDateFormatted} → {completedDateFormatted}
                             </div>
                         </div>
                     )}
 
                     {/* Habit Count */}
-                    <div className="p-4 bg-neutral-800/50 border border-white/10 rounded-lg">
-                        <div className="text-neutral-400 text-sm mb-1">Habits Involved</div>
-                        <div className="text-2xl font-bold text-white">
+                    <div className="p-4 bg-surface-1/50 border border-line-subtle rounded-lg">
+                        <div className="text-content-secondary text-sm mb-1">Habits Involved</div>
+                        <div className="text-2xl font-bold text-content-primary">
                             {habitCount} {habitCount === 1 ? 'habit' : 'habits'}
                         </div>
                     </div>
@@ -204,7 +204,7 @@ export const GoalCompletedPage: React.FC<GoalCompletedPageProps> = ({
                     {/* Primary CTA: View Win Archive */}
                     <button
                         onClick={() => onViewWinArchive?.()}
-                        className="flex items-center gap-2 px-8 py-4 bg-emerald-500 hover:bg-emerald-400 text-neutral-900 font-semibold rounded-lg transition-colors text-lg"
+                        className="flex items-center gap-2 px-8 py-4 bg-emerald-500 hover:bg-accent-strong text-neutral-900 font-semibold rounded-lg transition-colors text-lg"
                     >
                         <Trophy size={20} />
                         View Win Archive
@@ -219,7 +219,7 @@ export const GoalCompletedPage: React.FC<GoalCompletedPageProps> = ({
                                 onBack();
                             }
                         }}
-                        className="flex items-center gap-2 px-6 py-3 bg-neutral-700 hover:bg-neutral-600 text-white font-medium rounded-lg transition-colors"
+                        className="flex items-center gap-2 px-6 py-3 bg-surface-2 hover:bg-surface-2 text-content-primary font-medium rounded-lg transition-colors"
                     >
                         Continue
                     </button>
@@ -227,33 +227,33 @@ export const GoalCompletedPage: React.FC<GoalCompletedPageProps> = ({
 
                 {/* What's Next? Decision Flow */}
                 {goal.type !== 'onetime' && (
-                    <div className="max-w-lg mx-auto mt-12 pt-8 border-t border-white/10">
-                        <h3 className="text-lg font-semibold text-white mb-2">What feels right next?</h3>
-                        <p className="text-neutral-400 text-sm mb-6">
+                    <div className="max-w-lg mx-auto mt-12 pt-8 border-t border-line-subtle">
+                        <h3 className="text-lg font-semibold text-content-primary mb-2">What feels right next?</h3>
+                        <p className="text-content-secondary text-sm mb-6">
                             Choose how you want to continue — or come back to this later.
                         </p>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             <button
                                 onClick={() => onLevelUp?.(goalId)}
-                                className="p-4 bg-neutral-800/50 border border-white/10 rounded-xl hover:bg-neutral-800 hover:border-emerald-500/30 transition-all text-left"
+                                className="p-4 bg-surface-1/50 border border-line-subtle rounded-xl hover:bg-surface-1 hover:border-accent/30 transition-all text-left"
                             >
                                 <div className="flex items-center gap-2 mb-1">
-                                    <TrendingUp size={16} className="text-emerald-400" />
-                                    <span className="text-emerald-400 font-medium">Level Up</span>
+                                    <TrendingUp size={16} className="text-accent-contrast" />
+                                    <span className="text-accent-contrast font-medium">Level Up</span>
                                 </div>
-                                <div className="text-neutral-500 text-xs">
+                                <div className="text-content-muted text-xs">
                                     Raise the target and keep pushing
                                 </div>
                             </button>
                             <button
                                 onClick={() => onRepeat?.(goalId)}
-                                className="p-4 bg-neutral-800/50 border border-white/10 rounded-xl hover:bg-neutral-800 hover:border-blue-500/30 transition-all text-left"
+                                className="p-4 bg-surface-1/50 border border-line-subtle rounded-xl hover:bg-surface-1 hover:border-blue-500/30 transition-all text-left"
                             >
                                 <div className="flex items-center gap-2 mb-1">
                                     <RotateCcw size={16} className="text-blue-400" />
                                     <span className="text-blue-400 font-medium">Repeat</span>
                                 </div>
-                                <div className="text-neutral-500 text-xs">
+                                <div className="text-content-muted text-xs">
                                     Same target, fresh start
                                 </div>
                             </button>
@@ -262,25 +262,25 @@ export const GoalCompletedPage: React.FC<GoalCompletedPageProps> = ({
                                     onArchive?.(goalId);
                                     if (onBack) onBack();
                                 }}
-                                className="p-4 bg-neutral-800/50 border border-white/10 rounded-xl hover:bg-neutral-800 hover:border-yellow-500/30 transition-all text-left"
+                                className="p-4 bg-surface-1/50 border border-line-subtle rounded-xl hover:bg-surface-1 hover:border-yellow-500/30 transition-all text-left"
                             >
                                 <div className="flex items-center gap-2 mb-1">
                                     <Archive size={16} className="text-yellow-400" />
                                     <span className="text-yellow-400 font-medium">Archive</span>
                                 </div>
-                                <div className="text-neutral-500 text-xs">
+                                <div className="text-content-muted text-xs">
                                     Save to Win Archive, done for now
                                 </div>
                             </button>
                             <button
                                 onClick={onBack}
-                                className="p-4 bg-neutral-800/50 border border-white/10 rounded-xl hover:bg-neutral-800 hover:border-white/20 transition-all text-left"
+                                className="p-4 bg-surface-1/50 border border-line-subtle rounded-xl hover:bg-surface-1 hover:border-line-strong transition-all text-left"
                             >
                                 <div className="flex items-center gap-2 mb-1">
-                                    <Clock size={16} className="text-neutral-300" />
-                                    <span className="text-neutral-300 font-medium">Decide Later</span>
+                                    <Clock size={16} className="text-content-secondary" />
+                                    <span className="text-content-secondary font-medium">Decide Later</span>
                                 </div>
-                                <div className="text-neutral-500 text-xs">
+                                <div className="text-content-muted text-xs">
                                     Come back to this anytime
                                 </div>
                             </button>

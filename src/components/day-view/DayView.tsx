@@ -284,7 +284,7 @@ export const DayView = ({ onAddHabit, onEditHabit, onViewHistory, onDeleteHabit 
     // Show loading state while habits are being fetched
     if (loading) {
         return (
-            <div className="flex items-center justify-center p-12 text-neutral-500 text-sm">Loading habits…</div>
+            <div className="flex items-center justify-center p-12 text-content-muted text-sm">Loading habits…</div>
         );
     }
 
@@ -293,48 +293,48 @@ export const DayView = ({ onAddHabit, onEditHabit, onViewHistory, onDeleteHabit 
         return (
             <div className="flex flex-col items-center justify-center p-6 sm:p-10 text-center">
                 {/* The Rules — matching InfoModal style */}
-                <div className="w-full max-w-sm bg-emerald-500/5 border border-emerald-500/20 rounded-lg px-3 py-2.5 mb-5">
-                    <p className="text-xs text-emerald-400 uppercase tracking-wide font-semibold mb-1.5">The Rules</p>
-                    <ul className="space-y-0.5 text-sm text-neutral-300">
-                        <li>Habits are <span className="text-emerald-400 font-medium">performed</span></li>
-                        <li>Routines are <span className="text-emerald-400 font-medium">completed</span></li>
-                        <li>Goals are <span className="text-emerald-400 font-medium">achieved</span></li>
+                <div className="w-full max-w-sm bg-emerald-500/5 border border-accent/20 rounded-lg px-3 py-2.5 mb-5">
+                    <p className="text-xs text-accent-contrast uppercase tracking-wide font-semibold mb-1.5">The Rules</p>
+                    <ul className="space-y-0.5 text-sm text-content-secondary">
+                        <li>Habits are <span className="text-accent-contrast font-medium">performed</span></li>
+                        <li>Routines are <span className="text-accent-contrast font-medium">completed</span></li>
+                        <li>Goals are <span className="text-accent-contrast font-medium">achieved</span></li>
                     </ul>
                 </div>
 
                 {/* Definitions — matching InfoModal structure */}
                 <div className="w-full max-w-sm space-y-4 mb-6 text-left">
-                    <div className="pl-3 border-l-2 border-emerald-500/40">
-                        <p className="text-sm text-neutral-200">
-                            <span className="font-bold text-emerald-400">Habit</span>
+                    <div className="pl-3 border-l-2 border-accent/40">
+                        <p className="text-sm text-content-primary">
+                            <span className="font-bold text-accent-contrast">Habit</span>
                         </p>
-                        <p className="text-sm text-neutral-400 mt-1">A repeated behavior performed over time. Each day, a habit is simply performed or not.</p>
+                        <p className="text-sm text-content-secondary mt-1">A repeated behavior performed over time. Each day, a habit is simply performed or not.</p>
                         <div className="flex flex-wrap gap-1.5 mt-2">
                             {['Morning Walk', 'Drink Water', 'Read 5 pages', 'Stretch', 'Vitamins'].map((ex) => (
-                                <span key={ex} className="px-2.5 py-0.5 text-xs text-neutral-400 bg-neutral-800/80 rounded-full border border-white/5">{ex}</span>
+                                <span key={ex} className="px-2.5 py-0.5 text-xs text-content-secondary bg-surface-1/80 rounded-full border border-line-subtle">{ex}</span>
                             ))}
                         </div>
                     </div>
-                    <div className="pl-3 border-l-2 border-emerald-500/40">
-                        <p className="text-sm text-neutral-200">
-                            <span className="font-bold text-emerald-400">Routine</span>
+                    <div className="pl-3 border-l-2 border-accent/40">
+                        <p className="text-sm text-content-primary">
+                            <span className="font-bold text-accent-contrast">Routine</span>
                         </p>
-                        <p className="text-sm text-neutral-400 mt-1">A group of habits performed together in a sequence.</p>
-                        <p className="text-xs text-neutral-500 italic mt-1.5 pl-2">— "Morning Reset" — Stretch + Meditate + Review goals</p>
+                        <p className="text-sm text-content-secondary mt-1">A group of habits performed together in a sequence.</p>
+                        <p className="text-xs text-content-muted italic mt-1.5 pl-2">— "Morning Reset" — Stretch + Meditate + Review goals</p>
                     </div>
-                    <div className="pl-3 border-l-2 border-emerald-500/40">
-                        <p className="text-sm text-neutral-200">
-                            <span className="font-bold text-emerald-400">Goal</span>
+                    <div className="pl-3 border-l-2 border-accent/40">
+                        <p className="text-sm text-content-primary">
+                            <span className="font-bold text-accent-contrast">Goal</span>
                         </p>
-                        <p className="text-sm text-neutral-400 mt-1">An outcome achieved by consistently performing the habits that support it.</p>
-                        <p className="text-xs text-neutral-500 italic mt-1.5 pl-2">— "Run a 10K" — supported by: Running habit</p>
+                        <p className="text-sm text-content-secondary mt-1">An outcome achieved by consistently performing the habits that support it.</p>
+                        <p className="text-xs text-content-muted italic mt-1.5 pl-2">— "Run a 10K" — supported by: Running habit</p>
                     </div>
                 </div>
 
                 {onAddHabit && (
                     <button
                         onClick={onAddHabit}
-                        className="flex items-center gap-2 px-5 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-white font-medium rounded-lg transition-colors"
+                        className="flex items-center gap-2 px-5 py-2.5 bg-accent hover:bg-accent-strong text-content-primary font-medium rounded-lg transition-colors"
                     >
                         <Plus size={18} />
                         Create Your First Habit
@@ -348,7 +348,7 @@ export const DayView = ({ onAddHabit, onEditHabit, onViewHistory, onDeleteHabit 
         <div className="flex flex-col w-full max-w-6xl mx-auto pb-24 px-4 sm:px-6">
             {/* Header */}
             <div className="py-3 flex items-center justify-between">
-                <p className="text-neutral-400 font-medium">{displayDate}</p>
+                <p className="text-content-secondary font-medium">{displayDate}</p>
             </div>
 
             {/* Health Suggestions */}
@@ -357,7 +357,7 @@ export const DayView = ({ onAddHabit, onEditHabit, onViewHistory, onDeleteHabit 
             {/* Loading State */}
             {dayViewLoading && (
                 <div className="flex items-center justify-center py-8">
-                    <p className="text-neutral-500">Loading...</p>
+                    <p className="text-content-muted">Loading...</p>
                 </div>
             )}
 

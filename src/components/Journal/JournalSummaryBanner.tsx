@@ -81,17 +81,17 @@ export function JournalSummaryBanner() {
   if (!loading && !error && !summary) return null;
 
   return (
-    <div className="bg-neutral-900/50 rounded-2xl border border-purple-500/20 p-4 sm:p-5 backdrop-blur-sm mb-4">
+    <div className="bg-surface-0/50 rounded-2xl border border-purple-500/20 p-4 sm:p-5 backdrop-blur-sm mb-4">
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2">
           <Sparkles size={16} className="text-purple-400" />
-          <h3 className="text-sm font-semibold text-white">Weekly Journal Summary</h3>
+          <h3 className="text-sm font-semibold text-content-primary">Weekly Journal Summary</h3>
         </div>
         <div className="flex items-center gap-1">
           {summary && (
             <button
               onClick={() => setExpanded(!expanded)}
-              className="p-1.5 text-neutral-500 hover:text-white rounded-lg hover:bg-white/5 transition-colors"
+              className="p-1.5 text-content-muted hover:text-content-primary rounded-lg hover:bg-surface-2 transition-colors"
               aria-label={expanded ? 'Collapse' : 'Expand'}
             >
               {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
@@ -100,7 +100,7 @@ export function JournalSummaryBanner() {
           {(summary || error) && (
             <button
               onClick={handleDismiss}
-              className="p-1.5 text-neutral-500 hover:text-white rounded-lg hover:bg-white/5 transition-colors"
+              className="p-1.5 text-content-muted hover:text-content-primary rounded-lg hover:bg-surface-2 transition-colors"
               aria-label="Dismiss"
             >
               <X size={14} />
@@ -113,14 +113,14 @@ export function JournalSummaryBanner() {
       {loading && (
         <div className="flex items-center gap-3 py-2">
           <Loader2 size={16} className="text-purple-400 animate-spin" />
-          <span className="text-sm text-neutral-400">Generating your weekly summary...</span>
+          <span className="text-sm text-content-secondary">Generating your weekly summary...</span>
         </div>
       )}
 
       {/* Error */}
       {error && !loading && (
-        <div className="rounded-lg bg-red-500/10 border border-red-500/20 p-3">
-          <p className="text-sm text-red-300">{error}</p>
+        <div className="rounded-lg bg-danger-soft border border-danger/30 p-3">
+          <p className="text-sm text-danger-contrast">{error}</p>
         </div>
       )}
 
@@ -129,17 +129,17 @@ export function JournalSummaryBanner() {
         <div className="space-y-2">
           {period && (
             <div className="flex items-center gap-3">
-              <p className="text-[11px] text-neutral-500">
+              <p className="text-[11px] text-content-muted">
                 {period.start} to {period.end}
               </p>
               {entryCount > 0 && (
-                <p className="text-[11px] text-neutral-500">
+                <p className="text-[11px] text-content-muted">
                   {entryCount} {entryCount === 1 ? 'entry' : 'entries'}
                 </p>
               )}
             </div>
           )}
-          <div className="prose prose-sm prose-invert max-w-none text-neutral-300 leading-relaxed [&_h1]:text-base [&_h1]:font-semibold [&_h1]:text-white [&_h2]:text-sm [&_h2]:font-semibold [&_h2]:text-white [&_h3]:text-sm [&_h3]:font-medium [&_h3]:text-neutral-200 [&_strong]:text-white [&_ul]:space-y-1 [&_li]:text-sm">
+          <div className="prose prose-sm prose-invert max-w-none text-content-secondary leading-relaxed [&_h1]:text-base [&_h1]:font-semibold [&_h1]:text-content-primary [&_h2]:text-sm [&_h2]:font-semibold [&_h2]:text-content-primary [&_h3]:text-sm [&_h3]:font-medium [&_h3]:text-content-primary [&_strong]:text-content-primary [&_ul]:space-y-1 [&_li]:text-sm">
             {summary.split('\n').map((line, i) => {
               if (!line.trim()) return <br key={i} />;
               const formatted = line

@@ -143,7 +143,7 @@ export const RoutineRunnerModal: React.FC<RoutineRunnerModalProps> = ({
 
     return (
         <div className="modal-overlay fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
-            <div className="w-full max-w-4xl max-h-[90dvh] h-[85vh] bg-neutral-900 border border-white/10 rounded-2xl shadow-2xl flex flex-col overflow-hidden relative">
+            <div className="w-full max-w-4xl max-h-[90dvh] h-[85vh] bg-surface-0 border border-line-subtle rounded-2xl shadow-2xl flex flex-col overflow-hidden relative">
 
                 {/* Header / Progress Bar */}
                 <div className="absolute top-0 left-0 w-full z-10">
@@ -156,7 +156,7 @@ export const RoutineRunnerModal: React.FC<RoutineRunnerModalProps> = ({
                         </div>
                     )}
                     <div className="flex items-center justify-between p-4 bg-gradient-to-b from-black/50 to-transparent">
-                        <h2 className="text-sm font-medium text-white/70 uppercase tracking-wider">
+                        <h2 className="text-sm font-medium text-content-primary/70 uppercase tracking-wider">
                             {isCompletionView ? 'Routine Complete' : (
                                 <>
                                     {routine.title}
@@ -166,7 +166,7 @@ export const RoutineRunnerModal: React.FC<RoutineRunnerModalProps> = ({
                                 </>
                             )}
                         </h2>
-                        <button onClick={handleClose} className="min-h-[44px] min-w-[44px] flex items-center justify-center text-white/50 hover:text-white transition-colors -mr-2" aria-label="Close">
+                        <button onClick={handleClose} className="min-h-[44px] min-w-[44px] flex items-center justify-center text-content-primary/50 hover:text-content-primary transition-colors -mr-2" aria-label="Close">
                             <X size={24} />
                         </button>
                     </div>
@@ -177,11 +177,11 @@ export const RoutineRunnerModal: React.FC<RoutineRunnerModalProps> = ({
                     {isCompletionView ? (
                         <div className="max-w-md w-full space-y-8 animate-fade-in-up my-auto">
                             <div className="text-center space-y-2">
-                                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-emerald-500/20 text-emerald-400 mb-4">
+                                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-accent-soft text-accent-contrast mb-4">
                                     <Check size={32} strokeWidth={3} />
                                 </div>
-                                <h3 className="text-3xl font-bold text-white">All Done!</h3>
-                                <p className="text-neutral-400">Great job completing your routine.</p>
+                                <h3 className="text-3xl font-bold text-content-primary">All Done!</h3>
+                                <p className="text-content-secondary">Great job completing your routine.</p>
                             </div>
                         </div>
                     ) : (
@@ -192,7 +192,7 @@ export const RoutineRunnerModal: React.FC<RoutineRunnerModalProps> = ({
                                 {timer.displayTime !== null && (
                                     <div className="flex flex-col items-center gap-2">
                                         <div className={`text-6xl font-mono font-bold tabular-nums tracking-tight ${
-                                            timer.mode === 'stopwatch' ? 'text-blue-400' : 'text-emerald-400'
+                                            timer.mode === 'stopwatch' ? 'text-blue-400' : 'text-accent-contrast'
                                         }`}>
                                             {timer.formatTime(timer.displayTime)}
                                         </div>
@@ -202,7 +202,7 @@ export const RoutineRunnerModal: React.FC<RoutineRunnerModalProps> = ({
                                             )}
                                             <button
                                                 onClick={timer.toggle}
-                                                className="px-6 py-2 bg-neutral-800 rounded-full text-white hover:bg-neutral-700 transition-colors flex items-center gap-2 font-medium"
+                                                className="px-6 py-2 bg-surface-1 rounded-full text-content-primary hover:bg-surface-2 transition-colors flex items-center gap-2 font-medium"
                                             >
                                                 {timer.isRunning ? (
                                                     <><Pause size={18} fill="currentColor" /> Pause</>
@@ -212,7 +212,7 @@ export const RoutineRunnerModal: React.FC<RoutineRunnerModalProps> = ({
                                             </button>
                                             <button
                                                 onClick={timer.reset}
-                                                className="min-h-[44px] min-w-[44px] flex items-center justify-center bg-neutral-800 rounded-full text-neutral-400 hover:text-white hover:bg-neutral-700 transition-colors"
+                                                className="min-h-[44px] min-w-[44px] flex items-center justify-center bg-surface-1 rounded-full text-content-secondary hover:text-content-primary hover:bg-surface-2 transition-colors"
                                                 title="Reset Timer"
                                             >
                                                 <RotateCcw size={18} />
@@ -220,13 +220,13 @@ export const RoutineRunnerModal: React.FC<RoutineRunnerModalProps> = ({
                                         </div>
                                     </div>
                                 )}
-                                <h3 className="text-2xl md:text-3xl font-bold text-white leading-tight">
+                                <h3 className="text-2xl md:text-3xl font-bold text-content-primary leading-tight">
                                     {currentStep?.title}
                                 </h3>
                             </div>
 
                             {/* CENTER: Visual (Image or Placeholder) */}
-                            <div className={`w-full aspect-video max-h-[40vh] bg-neutral-800/50 rounded-2xl overflow-hidden shadow-lg border border-white/5 flex items-center justify-center relative flex-shrink-0 ${!currentStep?.imageUrl ? 'bg-neutral-900 border-dashed opacity-50' : ''}`}>
+                            <div className={`w-full aspect-video max-h-[40vh] bg-surface-1/50 rounded-2xl overflow-hidden shadow-lg border border-line-subtle flex items-center justify-center relative flex-shrink-0 ${!currentStep?.imageUrl ? 'bg-surface-0 border-dashed opacity-50' : ''}`}>
                                 {currentStep?.imageUrl ? (
                                     <img
                                         src={currentStep.imageUrl}
@@ -242,8 +242,8 @@ export const RoutineRunnerModal: React.FC<RoutineRunnerModalProps> = ({
 
                             {/* BOTTOM: Instructions */}
                             {currentStep?.instruction && (
-                                <div className="w-full bg-neutral-800/50 rounded-xl p-5 border border-white/5 text-center">
-                                    <p className="text-neutral-200 text-lg whitespace-pre-wrap leading-relaxed">
+                                <div className="w-full bg-surface-1/50 rounded-xl p-5 border border-line-subtle text-center">
+                                    <p className="text-content-primary text-lg whitespace-pre-wrap leading-relaxed">
                                         {currentStep.instruction}
                                     </p>
                                 </div>
@@ -251,8 +251,8 @@ export const RoutineRunnerModal: React.FC<RoutineRunnerModalProps> = ({
 
                             {/* Tracking Fields */}
                             {currentStep?.trackingFields && currentStep.trackingFields.length > 0 && (
-                                <div className="w-full bg-neutral-800/50 rounded-xl p-5 border border-white/5 space-y-3">
-                                    <h4 className="text-xs font-medium text-neutral-500 uppercase tracking-wider">Track</h4>
+                                <div className="w-full bg-surface-1/50 rounded-xl p-5 border border-line-subtle space-y-3">
+                                    <h4 className="text-xs font-medium text-content-muted uppercase tracking-wider">Track</h4>
                                     {currentStep.trackingFields.map(field => (
                                         <TrackingFieldInput
                                             key={field.id}
@@ -276,12 +276,12 @@ export const RoutineRunnerModal: React.FC<RoutineRunnerModalProps> = ({
                                                 role="listitem"
                                                 className={`inline-flex items-center justify-center w-8 h-8 rounded-full text-xs font-medium transition-colors ${
                                                     status === 'done'
-                                                        ? 'bg-emerald-500/30 text-emerald-400'
+                                                        ? 'bg-emerald-500/30 text-accent-contrast'
                                                         : status === 'skipped'
-                                                            ? 'bg-neutral-600/50 text-neutral-500'
+                                                            ? 'bg-surface-2/50 text-content-muted'
                                                             : isCurrent
-                                                                ? 'bg-white/20 text-white ring-1 ring-white/30'
-                                                                : 'bg-white/5 text-neutral-400'
+                                                                ? 'bg-white/20 text-content-primary ring-1 ring-white/30'
+                                                                : 'bg-white/5 text-content-secondary'
                                                 }`}
                                                 title={status === 'done' ? `${s.title} – Done` : status === 'skipped' ? `${s.title} – Skipped` : s.title}
                                             >
@@ -298,7 +298,7 @@ export const RoutineRunnerModal: React.FC<RoutineRunnerModalProps> = ({
                                     <button
                                         type="button"
                                         onClick={() => setStepState(currentStep.id, 'done')}
-                                        className="flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 transition-colors text-sm font-medium"
+                                        className="flex items-center gap-2 px-4 py-2 rounded-lg bg-accent-soft text-accent-contrast hover:bg-accent-strong/30 transition-colors text-sm font-medium"
                                     >
                                         <CircleCheck size={18} />
                                         Mark done
@@ -306,7 +306,7 @@ export const RoutineRunnerModal: React.FC<RoutineRunnerModalProps> = ({
                                     <button
                                         type="button"
                                         onClick={() => setStepState(currentStep.id, 'skipped')}
-                                        className="flex items-center gap-2 px-4 py-2 rounded-lg bg-neutral-600/50 text-neutral-400 hover:bg-neutral-600/70 hover:text-neutral-300 transition-colors text-sm font-medium"
+                                        className="flex items-center gap-2 px-4 py-2 rounded-lg bg-surface-2/50 text-content-secondary hover:bg-surface-2/70 hover:text-content-secondary transition-colors text-sm font-medium"
                                     >
                                         <Forward size={18} />
                                         Skip step
@@ -318,20 +318,20 @@ export const RoutineRunnerModal: React.FC<RoutineRunnerModalProps> = ({
                 </div>
 
                 {/* Footer / Controls */}
-                <div className="p-6 border-t border-white/10 bg-neutral-900/50 backdrop-blur-md">
+                <div className="p-6 border-t border-line-subtle bg-surface-0/50 backdrop-blur-md">
                     <div className="flex justify-between items-center max-w-4xl mx-auto w-full">
                         {!isCompletionView ? (
                             <>
                                 <button
                                     onClick={handlePrevious}
                                     disabled={currentStepIndex === 0}
-                                    className="flex items-center gap-2 px-4 py-2 text-neutral-400 hover:text-white disabled:opacity-30 disabled:hover:text-neutral-400 transition-colors"
+                                    className="flex items-center gap-2 px-4 py-2 text-content-secondary hover:text-content-primary disabled:opacity-30 disabled:hover:text-content-secondary transition-colors"
                                 >
                                     <ChevronLeft size={20} />
                                     Back
                                 </button>
 
-                                <div className="flex items-center gap-2 text-neutral-500 font-mono text-sm">
+                                <div className="flex items-center gap-2 text-content-muted font-mono text-sm">
                                     {currentStepIndex + 1} / {steps.length}
                                 </div>
 
@@ -347,7 +347,7 @@ export const RoutineRunnerModal: React.FC<RoutineRunnerModalProps> = ({
                             <>
                                 <button
                                     onClick={handlePrevious}
-                                    className="flex items-center gap-2 px-4 py-2 text-neutral-400 hover:text-white transition-colors"
+                                    className="flex items-center gap-2 px-4 py-2 text-content-secondary hover:text-content-primary transition-colors"
                                 >
                                     Back to Routine
                                 </button>
@@ -355,7 +355,7 @@ export const RoutineRunnerModal: React.FC<RoutineRunnerModalProps> = ({
                                     <button
                                         type="button"
                                         onClick={() => setShowCompletedHabitsModal(true)}
-                                        className="flex items-center gap-2 px-6 py-3 bg-neutral-700 text-white font-semibold rounded-lg hover:bg-neutral-600 transition-colors touch-manipulation"
+                                        className="flex items-center gap-2 px-6 py-3 bg-surface-2 text-content-primary font-semibold rounded-lg hover:bg-surface-2 transition-colors touch-manipulation"
                                     >
                                         Complete Routine
                                     </button>
@@ -363,7 +363,7 @@ export const RoutineRunnerModal: React.FC<RoutineRunnerModalProps> = ({
                                         <button
                                             onClick={() => handleFinish(true)}
                                             disabled={submitting}
-                                            className="flex items-center gap-2 px-6 py-3 bg-emerald-500 text-neutral-900 font-bold rounded-lg hover:bg-emerald-400 transition-colors shadow-lg shadow-emerald-500/20"
+                                            className="flex items-center gap-2 px-6 py-3 bg-accent text-content-on-accent font-bold rounded-lg hover:bg-accent-strong transition-colors shadow-lg shadow-emerald-500/20"
                                         >
                                             {submitting ? 'Saving...' : 'Complete + Log Habits'}
                                             <Check size={20} />

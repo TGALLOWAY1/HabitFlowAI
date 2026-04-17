@@ -68,24 +68,24 @@ const SortableTrackGoal: React.FC<{
             style={style}
             {...attributes}
             className={`flex items-center gap-3 px-3 py-3 rounded-lg transition-colors ${
-                isDragging ? 'bg-neutral-700/50 shadow-lg' :
-                isActive ? 'bg-emerald-500/5 border border-emerald-500/20' :
-                'bg-neutral-800/30 border border-white/5'
+                isDragging ? 'bg-surface-2/50 shadow-lg' :
+                isActive ? 'bg-emerald-500/5 border border-accent/20' :
+                'bg-surface-1/30 border border-line-subtle'
             } ${isLocked ? 'opacity-60' : ''}`}
         >
             {/* Drag handle */}
             <div {...listeners} className="cursor-grab active:cursor-grabbing flex-shrink-0 touch-none">
-                <GripVertical size={16} className="text-neutral-500" />
+                <GripVertical size={16} className="text-content-muted" />
             </div>
 
             {/* State indicator */}
             <div className="flex-shrink-0 w-6 h-6 flex items-center justify-center">
                 {isCompleted ? (
-                    <div className="w-5 h-5 rounded-full bg-emerald-500/20 flex items-center justify-center">
-                        <Check size={12} className="text-emerald-400" />
+                    <div className="w-5 h-5 rounded-full bg-accent-soft flex items-center justify-center">
+                        <Check size={12} className="text-accent-contrast" />
                     </div>
                 ) : isLocked ? (
-                    <Lock size={14} className="text-neutral-600" />
+                    <Lock size={14} className="text-content-muted" />
                 ) : (
                     <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
                 )}
@@ -97,26 +97,26 @@ const SortableTrackGoal: React.FC<{
                 className="flex-1 min-w-0 text-left"
             >
                 <div className={`text-sm ${
-                    isCompleted ? 'text-neutral-500 line-through' :
-                    isLocked ? 'text-neutral-500' :
-                    'text-white font-medium'
+                    isCompleted ? 'text-content-muted line-through' :
+                    isLocked ? 'text-content-muted' :
+                    'text-content-primary font-medium'
                 }`}>
                     {goal.title}
                 </div>
                 {isActive && goal.activeWindowStart && (
-                    <div className="text-xs text-neutral-500 mt-0.5">
+                    <div className="text-xs text-content-muted mt-0.5">
                         Tracking since {format(parseISO(goal.activeWindowStart), 'MMM d, yyyy')}
                     </div>
                 )}
                 {isCompleted && goal.activeWindowEnd && (
-                    <div className="text-xs text-neutral-600 mt-0.5">
+                    <div className="text-xs text-content-muted mt-0.5">
                         Completed {format(parseISO(goal.activeWindowEnd), 'MMM d, yyyy')}
                     </div>
                 )}
             </button>
 
             {/* Step indicator */}
-            <span className="text-xs text-neutral-600 flex-shrink-0">{index + 1}/{total}</span>
+            <span className="text-xs text-content-muted flex-shrink-0">{index + 1}/{total}</span>
 
             {/* Remove button */}
             <button
@@ -124,7 +124,7 @@ const SortableTrackGoal: React.FC<{
                 className="p-1 rounded hover:bg-red-500/10 transition-colors flex-shrink-0"
                 title="Remove from track"
             >
-                <Trash2 size={13} className="text-neutral-600 hover:text-red-400" />
+                <Trash2 size={13} className="text-content-muted hover:text-red-400" />
             </button>
         </div>
     );
@@ -205,7 +205,7 @@ export const GoalTrackDetailPage: React.FC<GoalTrackDetailPageProps> = ({
             <div className="w-full max-w-2xl mx-auto px-4 sm:px-6 py-12">
                 <div className="flex flex-col items-center gap-4">
                     <Loader2 className="text-emerald-500 animate-spin" size={32} />
-                    <div className="text-neutral-400 text-sm">Loading track...</div>
+                    <div className="text-content-secondary text-sm">Loading track...</div>
                 </div>
             </div>
         );
@@ -214,7 +214,7 @@ export const GoalTrackDetailPage: React.FC<GoalTrackDetailPageProps> = ({
     if (error || !data) {
         return (
             <div className="w-full max-w-2xl mx-auto px-4 sm:px-6 py-6">
-                <button onClick={onBack} className="flex items-center gap-1.5 text-neutral-400 hover:text-white mb-4 text-sm">
+                <button onClick={onBack} className="flex items-center gap-1.5 text-content-secondary hover:text-content-primary mb-4 text-sm">
                     <ArrowLeft size={16} /> Back
                 </button>
                 <div className="text-red-400 text-sm">{error || 'Track not found'}</div>
@@ -234,7 +234,7 @@ export const GoalTrackDetailPage: React.FC<GoalTrackDetailPageProps> = ({
             {/* Back button */}
             <button
                 onClick={onBack}
-                className="flex items-center gap-1.5 text-neutral-400 hover:text-white mb-4 text-sm transition-colors"
+                className="flex items-center gap-1.5 text-content-secondary hover:text-content-primary mb-4 text-sm transition-colors"
             >
                 <ArrowLeft size={16} /> Back to Goals
             </button>
@@ -242,24 +242,24 @@ export const GoalTrackDetailPage: React.FC<GoalTrackDetailPageProps> = ({
             {/* Track header */}
             <div className="mb-6">
                 <div className="flex items-center gap-2.5 mb-2">
-                    <Route size={20} className="text-emerald-400" />
-                    <h1 className="text-xl font-bold text-white">{track.name}</h1>
+                    <Route size={20} className="text-accent-contrast" />
+                    <h1 className="text-xl font-bold text-content-primary">{track.name}</h1>
                 </div>
                 {track.description && (
-                    <p className="text-sm text-neutral-400 mb-3">{track.description}</p>
+                    <p className="text-sm text-content-secondary mb-3">{track.description}</p>
                 )}
                 <div className="flex items-center gap-3 text-sm">
                     {category && (
-                        <span className={`font-medium ${categoryColorClass || 'text-neutral-400'}`}>
+                        <span className={`font-medium ${categoryColorClass || 'text-content-secondary'}`}>
                             {category.name}
                         </span>
                     )}
-                    <span className="text-neutral-500">
+                    <span className="text-content-muted">
                         {completedCount} of {goals.length} completed
                     </span>
                 </div>
                 {/* Progress bar */}
-                <div className="mt-3 h-2 bg-neutral-700 rounded-full overflow-hidden">
+                <div className="mt-3 h-2 bg-surface-2 rounded-full overflow-hidden">
                     <div
                         className="h-full bg-emerald-500 rounded-full transition-all duration-300"
                         style={{ width: `${progressPercent}%` }}
@@ -295,17 +295,17 @@ export const GoalTrackDetailPage: React.FC<GoalTrackDetailPageProps> = ({
             {/* Add goal */}
             <div className="mt-4">
                 {showAddGoalPicker ? (
-                    <div className="bg-neutral-800/50 border border-white/10 rounded-lg p-3">
-                        <div className="text-sm font-medium text-white mb-2">Add a goal to this track</div>
+                    <div className="bg-surface-1/50 border border-line-subtle rounded-lg p-3">
+                        <div className="text-sm font-medium text-content-primary mb-2">Add a goal to this track</div>
                         {availableGoals.length === 0 ? (
-                            <div className="text-xs text-neutral-500">No available goals in this category</div>
+                            <div className="text-xs text-content-muted">No available goals in this category</div>
                         ) : (
                             <div className="space-y-1 max-h-48 overflow-y-auto">
                                 {availableGoals.map(goal => (
                                     <button
                                         key={goal.id}
                                         onClick={() => handleAddGoal(goal.id)}
-                                        className="w-full text-left px-3 py-2 text-sm text-neutral-300 hover:bg-neutral-700/50 rounded-md transition-colors"
+                                        className="w-full text-left px-3 py-2 text-sm text-content-secondary hover:bg-surface-2/50 rounded-md transition-colors"
                                     >
                                         {goal.title}
                                     </button>
@@ -314,7 +314,7 @@ export const GoalTrackDetailPage: React.FC<GoalTrackDetailPageProps> = ({
                         )}
                         <button
                             onClick={() => setShowAddGoalPicker(false)}
-                            className="mt-2 text-xs text-neutral-500 hover:text-neutral-400"
+                            className="mt-2 text-xs text-content-muted hover:text-content-secondary"
                         >
                             Cancel
                         </button>
@@ -322,7 +322,7 @@ export const GoalTrackDetailPage: React.FC<GoalTrackDetailPageProps> = ({
                 ) : (
                     <button
                         onClick={() => setShowAddGoalPicker(true)}
-                        className="flex items-center gap-1.5 text-sm text-neutral-400 hover:text-emerald-400 transition-colors"
+                        className="flex items-center gap-1.5 text-sm text-content-secondary hover:text-accent-contrast transition-colors"
                     >
                         <Plus size={15} /> Add goal to track
                     </button>

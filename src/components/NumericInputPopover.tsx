@@ -72,7 +72,7 @@ export const NumericInputPopover: React.FC<NumericInputPopoverProps> = ({
             <div className="fixed inset-0" onClick={onClose} />
             <form
                 onSubmit={handleSubmit}
-                className="relative bg-neutral-800 border border-white/10 rounded-xl p-3 shadow-xl flex items-center gap-2 w-48 animate-in fade-in zoom-in-95 duration-200"
+                className="relative bg-surface-1 border border-line-subtle rounded-xl p-3 shadow-xl flex items-center gap-2 w-48 animate-in fade-in zoom-in-95 duration-200"
             >
                 <input
                     ref={inputRef}
@@ -81,13 +81,13 @@ export const NumericInputPopover: React.FC<NumericInputPopoverProps> = ({
                     pattern="[0-9]*\.?[0-9]*"
                     value={value}
                     onChange={(e) => setValue(e.target.value)}
-                    className="w-full bg-neutral-900 border border-white/10 rounded-lg px-3 py-1.5 text-white text-sm focus:outline-none focus:border-emerald-500"
+                    className="w-full bg-surface-0 border border-line-subtle rounded-lg px-3 py-1.5 text-content-primary text-sm focus:outline-none focus:border-focus"
                     placeholder="0"
                 />
-                {unit && <span className="text-xs text-neutral-500 font-medium">{unit}</span>}
+                {unit && <span className="text-xs text-content-muted font-medium">{unit}</span>}
                 <button
                     type="submit"
-                    className="p-1.5 bg-emerald-500 text-neutral-900 rounded-lg hover:bg-emerald-400 transition-colors"
+                    className="p-1.5 bg-accent text-content-on-accent rounded-lg hover:bg-accent-strong transition-colors"
                 >
                     <Check size={14} strokeWidth={3} />
                 </button>

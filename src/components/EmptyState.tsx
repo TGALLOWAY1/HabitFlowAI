@@ -24,15 +24,15 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
 }) => {
   return (
     <div className={`flex flex-col items-center justify-center p-8 sm:p-12 text-center ${className}`}>
-      <div className="w-14 h-14 bg-neutral-800 rounded-full flex items-center justify-center mb-5">
-        <Icon size={28} className="text-neutral-500" />
+      <div className="w-14 h-14 bg-surface-1 rounded-full flex items-center justify-center mb-5">
+        <Icon size={28} className="text-content-muted" />
       </div>
 
-      <h3 className="text-lg font-semibold text-white mb-2 max-w-md">
+      <h3 className="text-lg font-semibold text-content-primary mb-2 max-w-md">
         {title}
       </h3>
 
-      <p className="text-sm text-neutral-400 mb-4 max-w-sm leading-relaxed">
+      <p className="text-sm text-content-secondary mb-4 max-w-sm leading-relaxed">
         {description}
       </p>
 
@@ -41,7 +41,7 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
           {examples.map((example) => (
             <span
               key={example}
-              className="px-3 py-1 text-xs text-neutral-400 bg-neutral-800/80 rounded-full border border-white/5"
+              className="px-3 py-1 text-xs text-content-secondary bg-surface-1/80 rounded-full border border-line-subtle"
             >
               {example}
             </span>
@@ -52,7 +52,7 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
       {ctaLabel && onCtaClick && (
         <button
           onClick={onCtaClick}
-          className="flex items-center gap-2 px-5 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-neutral-900 font-medium rounded-lg transition-colors text-sm"
+          className="flex items-center gap-2 px-5 py-2.5 bg-accent hover:bg-accent-strong text-content-on-accent font-medium rounded-lg transition-colors text-sm"
         >
           {ctaLabel}
         </button>

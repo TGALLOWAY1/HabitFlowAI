@@ -28,6 +28,7 @@ import { DayView } from './components/day-view/DayView';
 import { ScheduleView } from './components/day-view/ScheduleView';
 import { DevIdentityPanel } from './components/DevIdentityPanel';
 import { DashboardPrefsProvider } from './store/DashboardPrefsContext';
+import { ThemeProvider } from './theme/ThemeContext';
 
 // Retry wrapper for lazy imports — handles stale chunk failures after deployments
 function lazyRetry<T extends React.ComponentType<any>>(
@@ -289,11 +290,11 @@ const HabitTrackerContent: React.FC = () => {
     <div className="flex flex-col h-full gap-6">
       {/* Error Banner */}
       {lastPersistenceError && (
-        <div className="p-3 mb-2 text-sm text-red-100 bg-red-600/90 border border-red-500/50 rounded-lg flex items-center justify-between shadow-lg backdrop-blur-sm">
+        <div className="p-3 mb-2 text-sm text-danger-contrast bg-danger-soft border border-danger/40 rounded-lg flex items-center justify-between shadow-lg backdrop-blur-sm">
           <span>{lastPersistenceError}</span>
           <button
             type="button"
-            className="ml-4 px-3 py-1 text-red-100 hover:text-white hover:bg-red-700/50 rounded transition-colors font-medium"
+            className="ml-4 px-3 py-1 text-danger-contrast hover:bg-surface-2 rounded transition-colors font-medium"
             onClick={clearPersistenceError}
           >
             Dismiss
@@ -305,7 +306,7 @@ const HabitTrackerContent: React.FC = () => {
         {/* Title Section */}
         <div className={`flex flex-col gap-2 ${view === 'journal' || view === 'analytics' ? 'hidden' : ''}`}>
           <div className="flex items-center justify-between">
-            <h2 className="text-2xl font-bold text-white">
+            <h2 className="text-2xl font-bold text-content-primary">
               {view === 'tracker' ? 'Habits' : view === 'dashboard' ? 'Dashboard' : view === 'routines' ? 'Routines' : view === 'tasks' ? 'Tasks' : 'Goals'}
             </h2>
 
@@ -313,7 +314,7 @@ const HabitTrackerContent: React.FC = () => {
               {view === 'tracker' && (
                 <button
                   onClick={() => { setEditingHabit(null); setIsModalOpen(true); }}
-                  className="p-2 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-neutral-900 transition-colors"
+                  className="p-2 rounded-lg bg-accent hover:bg-accent-strong text-content-on-accent transition-colors"
                   title="Add Habit"
                 >
                   <Plus size={20} />
@@ -323,7 +324,7 @@ const HabitTrackerContent: React.FC = () => {
                 <>
                   <button
                     onClick={() => setShowCreateTrack(true)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-neutral-400 hover:text-emerald-400 bg-neutral-800/50 hover:bg-neutral-800 border border-white/5 rounded-lg transition-colors"
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-content-secondary hover:text-accent-contrast bg-surface-1 hover:bg-surface-2 border border-line-subtle rounded-lg transition-colors"
                     title="New Track"
                   >
                     <Route size={13} />
@@ -331,7 +332,7 @@ const HabitTrackerContent: React.FC = () => {
                   </button>
                   <button
                     onClick={() => setShowCreateGoal(true)}
-                    className="p-2 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-neutral-900 transition-colors"
+                    className="p-2 rounded-lg bg-accent hover:bg-accent-strong text-content-on-accent transition-colors"
                     title="Create Goal"
                   >
                     <Plus size={20} />
@@ -341,7 +342,7 @@ const HabitTrackerContent: React.FC = () => {
               {view === 'routines' && (
                 <button
                   onClick={() => setRoutineEditorState({ isOpen: true, mode: 'create', routine: undefined })}
-                  className="p-2 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-neutral-900 transition-colors"
+                  className="p-2 rounded-lg bg-accent hover:bg-accent-strong text-content-on-accent transition-colors"
                   title="New Routine"
                 >
                   <Plus size={20} />
@@ -352,7 +353,7 @@ const HabitTrackerContent: React.FC = () => {
 
           {/* Goals View Toggle — centered below title */}
           {view === 'goals' && !selectedGoalId && !completedGoalId && (
-            <div className="flex gap-4 border-b border-white/5">
+            <div className="flex gap-4 border-b border-line-subtle">
               {([
                 { id: 'all' as const, label: 'All', icon: List },
                 { id: 'schedule' as const, label: 'Schedule', icon: CalendarClock },
@@ -361,14 +362,14 @@ const HabitTrackerContent: React.FC = () => {
                 <button
                   key={id}
                   onClick={() => setGoalsViewMode(id)}
-                  className={`pb-3 px-3 text-sm font-medium transition-colors relative ${goalsViewMode === id ? 'text-emerald-400' : 'text-white/40 hover:text-white/60'}`}
+                  className={`pb-3 px-3 text-sm font-medium transition-colors relative ${goalsViewMode === id ? 'text-accent-contrast' : 'text-content-muted hover:text-content-secondary'}`}
                 >
                   <div className="flex items-center gap-2">
                     <Icon size={16} />
                     {label}
                   </div>
                   {goalsViewMode === id && (
-                    <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-emerald-400 rounded-t-full" />
+                    <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-accent rounded-t-full" />
                   )}
                 </button>
               ))}
@@ -377,7 +378,7 @@ const HabitTrackerContent: React.FC = () => {
 
           {/* Tracker View Toggle — centered below title */}
           {view === 'tracker' && (
-            <div className="flex gap-4 border-b border-white/5">
+            <div className="flex gap-4 border-b border-line-subtle">
               {([
                 { id: 'all' as const, label: 'All', icon: List },
                 { id: 'day' as const, label: 'Today', icon: CalendarDays },
@@ -386,14 +387,14 @@ const HabitTrackerContent: React.FC = () => {
                 <button
                   key={id}
                   onClick={() => setTrackerViewMode(id)}
-                  className={`pb-3 px-3 text-sm font-medium transition-colors relative ${trackerViewMode === id ? 'text-emerald-400' : 'text-white/40 hover:text-white/60'}`}
+                  className={`pb-3 px-3 text-sm font-medium transition-colors relative ${trackerViewMode === id ? 'text-accent-contrast' : 'text-content-muted hover:text-content-secondary'}`}
                 >
                   <div className="flex items-center gap-2">
                     <Icon size={16} />
                     {label}
                   </div>
                   {trackerViewMode === id && (
-                    <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-emerald-400 rounded-t-full" />
+                    <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-accent rounded-t-full" />
                   )}
                 </button>
               ))}
@@ -426,7 +427,7 @@ const HabitTrackerContent: React.FC = () => {
         )
       }
 
-      <Suspense fallback={<div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500" /></div>}>
+      <Suspense fallback={<div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-accent" /></div>}>
       {
         completedGoalId ? (
           <GoalCompletedPage
@@ -700,24 +701,26 @@ const HabitTrackerContent: React.FC = () => {
 function App() {
   return (
     <ErrorBoundary>
-      <AuthProvider>
-        <AuthGate>
-          <ToastProvider>
-            <HabitProvider>
-              <RoutineProvider>
-                <TaskProvider>
-                  <DashboardPrefsProvider>
-                    <Layout>
-                      <HabitTrackerContent />
-                    </Layout>
-                    {import.meta.env.DEV && <DevIdentityPanel />}
-                  </DashboardPrefsProvider>
-                </TaskProvider>
-              </RoutineProvider>
-            </HabitProvider>
-          </ToastProvider>
-        </AuthGate>
-      </AuthProvider>
+      <ThemeProvider>
+        <AuthProvider>
+          <AuthGate>
+            <ToastProvider>
+              <HabitProvider>
+                <RoutineProvider>
+                  <TaskProvider>
+                    <DashboardPrefsProvider>
+                      <Layout>
+                        <HabitTrackerContent />
+                      </Layout>
+                      {import.meta.env.DEV && <DevIdentityPanel />}
+                    </DashboardPrefsProvider>
+                  </TaskProvider>
+                </RoutineProvider>
+              </HabitProvider>
+            </ToastProvider>
+          </AuthGate>
+        </AuthProvider>
+      </ThemeProvider>
     </ErrorBoundary>
   );
 }

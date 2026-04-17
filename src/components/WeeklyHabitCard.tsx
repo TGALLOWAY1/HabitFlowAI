@@ -83,8 +83,8 @@ export const WeeklyHabitCard: React.FC<WeeklyHabitCardProps> = ({
                     <div className={cn(
                         "w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all",
                         isCompleted
-                            ? "bg-emerald-500 border-emerald-500 text-neutral-900"
-                            : "border-neutral-600 hover:border-emerald-500/50"
+                            ? "bg-accent border-accent text-content-on-accent"
+                            : "border-line-strong hover:border-accent/50"
                     )}>
                         {isCompleted && <Check size={14} strokeWidth={3} />}
                     </div>
@@ -98,8 +98,8 @@ export const WeeklyHabitCard: React.FC<WeeklyHabitCardProps> = ({
                                 className={cn(
                                     "w-3 h-8 rounded-full transition-all",
                                     i < currentCount
-                                        ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]"
-                                        : "bg-neutral-800 border border-white/10"
+                                        ? "bg-accent shadow-[0_0_8px_rgba(16,185,129,0.4)]"
+                                        : "bg-surface-1 border border-line-subtle"
                                 )}
                             />
                         ))}
@@ -108,11 +108,11 @@ export const WeeklyHabitCard: React.FC<WeeklyHabitCardProps> = ({
             case 'quantity':
                 return (
                     <div className="w-full space-y-2">
-                        <div className="flex justify-between text-xs text-neutral-400">
+                        <div className="flex justify-between text-xs text-content-secondary">
                             <span>{currentCount} {habit.goal.unit}</span>
                             <span>{target} {habit.goal.unit}</span>
                         </div>
-                        <div className="w-full h-2 bg-neutral-800 rounded-full overflow-hidden">
+                        <div className="w-full h-2 bg-surface-1 rounded-full overflow-hidden">
                             <div
                                 className="h-full bg-emerald-500 transition-all duration-500"
                                 style={{ width: `${progressPercent}%` }}
@@ -124,7 +124,7 @@ export const WeeklyHabitCard: React.FC<WeeklyHabitCardProps> = ({
     };
 
     const getHelperText = () => {
-        if (isCompleted) return <span className="text-emerald-400">Done for the week!</span>;
+        if (isCompleted) return <span className="text-accent-contrast">Done for the week!</span>;
         switch (intentType) {
             case 'binary': return "Not done yet this week";
             case 'frequency': return `${currentCount} of ${target} sessions`;
@@ -144,15 +144,15 @@ export const WeeklyHabitCard: React.FC<WeeklyHabitCardProps> = ({
             className={cn(
                 "group relative flex flex-col gap-4 p-5 rounded-2xl border transition-all cursor-pointer select-none min-h-[160px]",
                 isCompleted
-                    ? "bg-neutral-900/80 border-emerald-500/30 hover:border-emerald-500/50"
-                    : "bg-neutral-900 border-white/5 hover:bg-neutral-800 hover:border-white/10"
+                    ? "bg-surface-0/80 border-accent/30 hover:border-accent/50"
+                    : "bg-surface-0 border-line-subtle hover:bg-surface-1 hover:border-line-subtle"
             )}
         >
             <div className="flex justify-between items-start">
                 <div className="space-y-1">
                     <h4 className={cn(
                         "font-medium text-lg transition-colors line-clamp-2",
-                        isCompleted ? "text-emerald-400" : "text-neutral-200"
+                        isCompleted ? "text-accent-contrast" : "text-content-primary"
                     )}>
                         {habit.name}
                     </h4>
@@ -167,21 +167,21 @@ export const WeeklyHabitCard: React.FC<WeeklyHabitCardProps> = ({
                 <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                     <button
                         onClick={(e) => { e.stopPropagation(); onViewHistory(habit); }}
-                        className="p-1.5 hover:bg-white/10 rounded-lg text-neutral-400 hover:text-white"
+                        className="p-1.5 hover:bg-surface-2 rounded-lg text-content-secondary hover:text-content-primary"
                         title="History"
                     >
                         <History size={14} />
                     </button>
                     <button
                         onClick={(e) => { e.stopPropagation(); onEdit(habit); }}
-                        className="p-1.5 hover:bg-white/10 rounded-lg text-neutral-400 hover:text-white"
+                        className="p-1.5 hover:bg-surface-2 rounded-lg text-content-secondary hover:text-content-primary"
                         title="Edit"
                     >
                         <Edit2 size={14} />
                     </button>
                     <button
                         onClick={(e) => { e.stopPropagation(); onDelete(habit); }}
-                        className="p-1.5 hover:bg-red-500/10 rounded-lg text-neutral-400 hover:text-red-400"
+                        className="p-1.5 hover:bg-danger-soft rounded-lg text-content-secondary hover:text-danger-contrast"
                         title="Delete"
                     >
                         <Trash2 size={14} />
@@ -193,7 +193,7 @@ export const WeeklyHabitCard: React.FC<WeeklyHabitCardProps> = ({
                 {renderIndicator()}
             </div>
 
-            <div className="mt-2 flex justify-between items-center text-xs text-neutral-500 font-medium">
+            <div className="mt-2 flex justify-between items-center text-xs text-content-muted font-medium">
                 <div className="flex items-center gap-2">
                     {potentialEvidence && !isCompleted && (
                         <Zap size={12} className="text-purple-400 fill-purple-400 animate-pulse" />

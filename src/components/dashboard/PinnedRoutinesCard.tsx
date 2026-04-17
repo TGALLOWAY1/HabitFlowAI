@@ -35,8 +35,8 @@ const ICON_OPTIONS = [
 ] as const;
 
 const COLOR_OPTIONS = [
-    { key: 'neutral', class: 'bg-neutral-500', text: 'text-neutral-500' },
-    { key: 'emerald', class: 'bg-emerald-500', text: 'text-emerald-400' },
+    { key: 'neutral', class: 'bg-neutral-500', text: 'text-content-muted' },
+    { key: 'emerald', class: 'bg-emerald-500', text: 'text-accent-contrast' },
     { key: 'blue', class: 'bg-blue-500', text: 'text-blue-400' },
     { key: 'purple', class: 'bg-purple-500', text: 'text-purple-400' },
     { key: 'amber', class: 'bg-amber-500', text: 'text-amber-400' },
@@ -52,7 +52,7 @@ function getIconComponent(key?: string) {
 
 function getColorTextClass(key?: string) {
     const match = COLOR_OPTIONS.find(o => o.key === key);
-    return match?.text ?? 'text-neutral-500';
+    return match?.text ?? 'text-content-muted';
 }
 
 function readLocalStorageIds(): string[] {
@@ -157,11 +157,11 @@ const CustomizePopover: React.FC<{
     return (
         <div
             ref={ref}
-            className="absolute right-0 top-full mt-1 z-50 bg-neutral-800 border border-white/10 rounded-xl p-3 shadow-xl w-64"
+            className="absolute right-0 top-full mt-1 z-50 bg-surface-1 border border-line-subtle rounded-xl p-3 shadow-xl w-64"
         >
             {/* Colors */}
             <div className="mb-3">
-                <span className="text-[10px] uppercase tracking-wider text-neutral-500 font-medium">Color</span>
+                <span className="text-[10px] uppercase tracking-wider text-content-muted font-medium">Color</span>
                 <div className="flex flex-wrap gap-2 mt-1.5">
                     {COLOR_OPTIONS.map(c => (
                         <button
@@ -177,7 +177,7 @@ const CustomizePopover: React.FC<{
 
             {/* Icons */}
             <div className="mb-3">
-                <span className="text-[10px] uppercase tracking-wider text-neutral-500 font-medium">Icon</span>
+                <span className="text-[10px] uppercase tracking-wider text-content-muted font-medium">Icon</span>
                 <div className="grid grid-cols-8 gap-1.5 mt-1.5">
                     {ICON_OPTIONS.map(({ key, icon: Icon }) => (
                         <button
@@ -185,8 +185,8 @@ const CustomizePopover: React.FC<{
                             onClick={() => setSelectedIcon(key)}
                             className={`w-7 h-7 flex items-center justify-center rounded-md transition-all ${
                                 selectedIcon === key
-                                    ? 'bg-neutral-600 text-white'
-                                    : 'text-neutral-400 hover:bg-neutral-700 hover:text-white'
+                                    ? 'bg-surface-2 text-content-primary'
+                                    : 'text-content-secondary hover:bg-surface-2 hover:text-content-primary'
                             }`}
                             title={key}
                         >
@@ -202,8 +202,8 @@ const CustomizePopover: React.FC<{
                 disabled={!hasChanges || saving}
                 className={`w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-medium transition-colors ${
                     hasChanges && !saving
-                        ? 'bg-emerald-500 text-white hover:bg-emerald-400'
-                        : 'bg-neutral-700 text-neutral-500 cursor-not-allowed'
+                        ? 'bg-emerald-500 text-content-primary hover:bg-accent-strong'
+                        : 'bg-surface-2 text-content-muted cursor-not-allowed'
                 }`}
             >
                 <Check size={12} />
@@ -266,24 +266,24 @@ export const PinnedRoutinesCard: React.FC<PinnedRoutinesCardProps> = ({
 
     if (pinnedRoutines.length === 0 && !showManage) {
         return (
-            <div className="bg-neutral-900/50 rounded-2xl border border-white/5 p-4 backdrop-blur-sm">
+            <div className="bg-surface-0/50 rounded-2xl border border-line-subtle p-4 backdrop-blur-sm">
                 <div className="flex items-center justify-between mb-3">
-                    <h3 className="text-sm font-semibold text-white">Pinned Routines</h3>
+                    <h3 className="text-sm font-semibold text-content-primary">Pinned Routines</h3>
                     <button
                         onClick={() => setShowManage(true)}
-                        className="text-[11px] text-emerald-400 hover:text-emerald-300 transition-colors"
+                        className="text-[11px] text-accent-contrast hover:text-accent-contrast transition-colors"
                     >
                         Manage
                     </button>
                 </div>
-                <p className="text-xs text-neutral-500">
+                <p className="text-xs text-content-muted">
                     Pin routines to see them here.
                     {onViewAllRoutines && (
                         <>
                             {' '}
                             <button
                                 onClick={onViewAllRoutines}
-                                className="text-emerald-500 hover:text-emerald-400 transition-colors"
+                                className="text-emerald-500 hover:text-accent-contrast transition-colors"
                             >
                                 View routines
                             </button>
@@ -295,23 +295,23 @@ export const PinnedRoutinesCard: React.FC<PinnedRoutinesCardProps> = ({
     }
 
     return (
-        <div className={`bg-neutral-900/50 rounded-2xl border border-white/5 p-4 backdrop-blur-sm${customizingId ? ' relative z-10' : ''}`}>
+        <div className={`bg-surface-0/50 rounded-2xl border border-line-subtle p-4 backdrop-blur-sm${customizingId ? ' relative z-10' : ''}`}>
             <div className="flex items-center justify-between mb-3">
-                <h3 className="text-sm font-semibold text-white">Pinned Routines</h3>
+                <h3 className="text-sm font-semibold text-content-primary">Pinned Routines</h3>
                 <div className="flex items-center gap-2">
                     <button
                         onClick={() => {
                             setShowManage(s => !s);
                             setCustomizingId(null);
                         }}
-                        className={`text-[11px] transition-colors ${showManage ? 'text-white' : 'text-emerald-400 hover:text-emerald-300'}`}
+                        className={`text-[11px] transition-colors ${showManage ? 'text-content-primary' : 'text-accent-contrast hover:text-accent-contrast'}`}
                     >
                         {showManage ? 'Done' : 'Manage'}
                     </button>
                     {onViewAllRoutines && (
                         <button
                             onClick={onViewAllRoutines}
-                            className="text-[11px] text-neutral-500 hover:text-white transition-colors"
+                            className="text-[11px] text-content-muted hover:text-content-primary transition-colors"
                         >
                             View all
                         </button>
@@ -325,20 +325,20 @@ export const PinnedRoutinesCard: React.FC<PinnedRoutinesCardProps> = ({
                         <div key={routine.id} className="relative flex items-center gap-2">
                             <button
                                 onClick={() => togglePin(routine.id)}
-                                className="flex items-center gap-3 flex-1 px-3 py-2.5 rounded-lg hover:bg-neutral-800/50 transition-colors text-left min-h-[44px]"
+                                className="flex items-center gap-3 flex-1 px-3 py-2.5 rounded-lg hover:bg-surface-1/50 transition-colors text-left min-h-[44px]"
                             >
                                 <Pin
                                     size={14}
-                                    className={isPinned(routine.id) ? 'text-emerald-400' : 'text-neutral-600'}
+                                    className={isPinned(routine.id) ? 'text-accent-contrast' : 'text-content-muted'}
                                     fill={isPinned(routine.id) ? 'currentColor' : 'none'}
                                 />
-                                <span className={`text-sm ${isPinned(routine.id) ? 'text-white' : 'text-neutral-400'}`}>
+                                <span className={`text-sm ${isPinned(routine.id) ? 'text-content-primary' : 'text-content-secondary'}`}>
                                     {routine.title}
                                 </span>
                             </button>
                             <button
                                 onClick={() => setCustomizingId(customizingId === routine.id ? null : routine.id)}
-                                className="p-2 rounded-md hover:bg-neutral-700 transition-colors text-neutral-500 hover:text-white flex-shrink-0"
+                                className="p-2 rounded-md hover:bg-surface-2 transition-colors text-content-muted hover:text-content-primary flex-shrink-0"
                                 title="Customize icon & color"
                             >
                                 <Palette size={14} />
@@ -361,7 +361,7 @@ export const PinnedRoutinesCard: React.FC<PinnedRoutinesCardProps> = ({
                         const IconComp = getIconComponent(routine.icon);
                         const colorClass = routine.color
                             ? getColorTextClass(routine.color)
-                            : (done ? 'text-emerald-400' : 'text-neutral-500');
+                            : (done ? 'text-accent-contrast' : 'text-content-muted');
                         const hasMultiple = isMultiVariant(routine);
                         const defaultVariant = resolveVariant(routine);
                         const resolvedSteps = defaultVariant?.steps || routine.steps || [];
@@ -380,15 +380,15 @@ export const PinnedRoutinesCard: React.FC<PinnedRoutinesCardProps> = ({
                             <button
                                 key={routine.id}
                                 onClick={handleClick}
-                                className="flex items-center justify-between w-full px-3 py-2.5 rounded-lg hover:bg-neutral-800/50 transition-colors min-h-[44px]"
+                                className="flex items-center justify-between w-full px-3 py-2.5 rounded-lg hover:bg-surface-1/50 transition-colors min-h-[44px]"
                             >
                                 <div className="flex items-center gap-3 min-w-0">
                                     {done ? (
-                                        <CheckCircle2 size={16} className="text-emerald-400 flex-shrink-0" />
+                                        <CheckCircle2 size={16} className="text-accent-contrast flex-shrink-0" />
                                     ) : (
                                         <IconComp size={14} className={`${colorClass} flex-shrink-0`} />
                                     )}
-                                    <span className={`text-sm truncate ${done ? 'text-neutral-500' : 'text-white'}`}>
+                                    <span className={`text-sm truncate ${done ? 'text-content-muted' : 'text-content-primary'}`}>
                                         {routine.title}
                                         {done && completionInfo.variantName && (
                                             <span className="text-emerald-500/60 ml-1">({completionInfo.variantName})</span>
@@ -396,7 +396,7 @@ export const PinnedRoutinesCard: React.FC<PinnedRoutinesCardProps> = ({
                                     </span>
                                 </div>
                                 <div className="flex items-center gap-2 flex-shrink-0 ml-3">
-                                    <span className="text-[11px] text-neutral-600">
+                                    <span className="text-[11px] text-content-muted">
                                         {resolvedSteps.length} steps
                                     </span>
                                     {hasMultiple && !done && (
@@ -406,9 +406,9 @@ export const PinnedRoutinesCard: React.FC<PinnedRoutinesCardProps> = ({
                                         </span>
                                     )}
                                     {done ? (
-                                        <span className="text-[11px] text-emerald-400 font-medium">Done</span>
+                                        <span className="text-[11px] text-accent-contrast font-medium">Done</span>
                                     ) : (
-                                        <ChevronRight size={14} className="text-neutral-600" />
+                                        <ChevronRight size={14} className="text-content-muted" />
                                     )}
                                 </div>
                             </button>

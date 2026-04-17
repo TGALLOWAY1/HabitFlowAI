@@ -218,21 +218,21 @@ export const ProgressDashboard: React.FC<ProgressDashboardProps> = ({
             <JournalSummaryCard compact />
 
             {/* Goals at a glance */}
-            <div className="bg-neutral-900/50 rounded-2xl border border-white/5 p-6 backdrop-blur-sm">
+            <div className="bg-surface-0/50 rounded-2xl border border-line-subtle p-6 backdrop-blur-sm">
                 <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-lg font-semibold text-white">Goals at a glance</h3>
+                    <h3 className="text-lg font-semibold text-content-primary">Goals at a glance</h3>
                     <div className="flex items-center gap-2">
                         {progressData && progressData.goalsWithProgress.length > 0 && (
                             <button
                                 onClick={() => setShowGoalManage(s => !s)}
-                                className={`text-[11px] transition-colors ${showGoalManage ? 'text-white' : 'text-emerald-400 hover:text-emerald-300'}`}
+                                className={`text-[11px] transition-colors ${showGoalManage ? 'text-content-primary' : 'text-accent-contrast hover:text-accent-contrast'}`}
                             >
                                 {showGoalManage ? 'Done' : 'Manage'}
                             </button>
                         )}
                         <button
                             onClick={() => onViewGoal && onViewGoal('all')}
-                            className="text-xs text-neutral-500 hover:text-white transition-colors"
+                            className="text-xs text-content-muted hover:text-content-primary transition-colors"
                         >
                             View all
                         </button>
@@ -245,11 +245,11 @@ export const ProgressDashboard: React.FC<ProgressDashboardProps> = ({
                     </div>
                 ) : !progressData || progressData.goalsWithProgress.length === 0 ? (
                     <div className="text-center py-6">
-                        <h4 className="text-neutral-400 text-sm mb-2">No active goals</h4>
+                        <h4 className="text-content-secondary text-sm mb-2">No active goals</h4>
                         {onCreateGoal && (
                             <button
                                 onClick={onCreateGoal}
-                                className="text-emerald-500 hover:text-emerald-400 text-xs font-medium transition-colors"
+                                className="text-emerald-500 hover:text-accent-contrast text-xs font-medium transition-colors"
                             >
                                 + Add a goal
                             </button>
@@ -263,19 +263,19 @@ export const ProgressDashboard: React.FC<ProgressDashboardProps> = ({
                                 <button
                                     key={goal.id}
                                     onClick={() => toggleGoalPin(goal.id)}
-                                    className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg hover:bg-neutral-800/50 transition-colors text-left min-h-[44px]"
+                                    className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg hover:bg-surface-1/50 transition-colors text-left min-h-[44px]"
                                 >
                                     <Pin
                                         size={14}
-                                        className={isGoalPinned(goal.id) ? 'text-emerald-400' : 'text-neutral-600'}
+                                        className={isGoalPinned(goal.id) ? 'text-accent-contrast' : 'text-content-muted'}
                                         fill={isGoalPinned(goal.id) ? 'currentColor' : 'none'}
                                     />
-                                    <span className={`text-sm ${isGoalPinned(goal.id) ? 'text-white' : 'text-neutral-400'}`}>
+                                    <span className={`text-sm ${isGoalPinned(goal.id) ? 'text-content-primary' : 'text-content-secondary'}`}>
                                         {goal.title}
                                     </span>
                                 </button>
                             ))}
-                        <p className="text-[10px] text-neutral-600 px-3 pt-2">
+                        <p className="text-[10px] text-content-muted px-3 pt-2">
                             {pinnedGoalIds.length === 0
                                 ? 'Pin goals to choose which ones appear here. Showing first 4 by default.'
                                 : `${pinnedGoalIds.length} goal${pinnedGoalIds.length !== 1 ? 's' : ''} pinned`}

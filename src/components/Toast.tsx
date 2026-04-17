@@ -60,16 +60,16 @@ const ToastItem = ({ toast, onDismiss }: { toast: Toast; onDismiss: (id: string)
             className={cn(
                 "pointer-events-auto flex items-center gap-3 px-4 py-3 rounded-xl border shadow-lg backdrop-blur-sm",
                 "animate-in slide-in-from-right-5 fade-in duration-300 min-w-[260px] max-w-[380px]",
-                toast.type === 'success' && "bg-emerald-500/10 border-emerald-500/20 text-emerald-300",
-                toast.type === 'error' && "bg-red-500/10 border-red-500/20 text-red-300",
-                toast.type === 'info' && "bg-neutral-800 border-white/10 text-neutral-200",
+                toast.type === 'success' && "bg-accent-soft border-accent/20 text-accent-contrast",
+                toast.type === 'error' && "bg-danger-soft border-danger/30 text-danger-contrast",
+                toast.type === 'info' && "bg-surface-1 border-line-subtle text-content-primary",
             )}
         >
             <Icon size={18} className="flex-shrink-0" />
             <span className="text-sm font-medium flex-1">{toast.message}</span>
             <button
                 onClick={() => onDismiss(toast.id)}
-                className="flex-shrink-0 p-0.5 rounded hover:bg-white/10 transition-colors"
+                className="flex-shrink-0 p-0.5 rounded hover:bg-surface-2 transition-colors"
             >
                 <X size={14} />
             </button>

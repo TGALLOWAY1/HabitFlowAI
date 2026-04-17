@@ -62,22 +62,22 @@ export function JournalDisplay({ onEdit, lastSavedEntry }: JournalDisplayProps) 
     };
 
     if (loading) {
-        return <div className="text-center p-8 text-white/50">Loading journal history...</div>;
+        return <div className="text-center p-8 text-content-primary/50">Loading journal history...</div>;
     }
 
     if (entries.length === 0) {
         return (
-            <div className="flex flex-col items-center text-center p-8 sm:p-12 bg-white/5 rounded-2xl border border-white/10">
-                <div className="w-14 h-14 bg-neutral-800 rounded-full flex items-center justify-center mb-5">
-                    <BookOpen size={28} className="text-neutral-500" />
+            <div className="flex flex-col items-center text-center p-8 sm:p-12 bg-white/5 rounded-2xl border border-line-subtle">
+                <div className="w-14 h-14 bg-surface-1 rounded-full flex items-center justify-center mb-5">
+                    <BookOpen size={28} className="text-content-muted" />
                 </div>
-                <h3 className="text-lg font-semibold text-white mb-2">No entries yet</h3>
-                <p className="text-sm text-neutral-400 mb-4 max-w-sm leading-relaxed">
+                <h3 className="text-lg font-semibold text-content-primary mb-2">No entries yet</h3>
+                <p className="text-sm text-content-secondary mb-4 max-w-sm leading-relaxed">
                     Use journaling to reflect, review, or just get thoughts out of your head.
                 </p>
                 <div className="flex flex-wrap justify-center gap-2">
                     {['Quick Free Write', 'Morning Reflection', 'Evening Review'].map((ex) => (
-                        <span key={ex} className="px-3 py-1 text-xs text-neutral-400 bg-neutral-800/80 rounded-full border border-white/5">
+                        <span key={ex} className="px-3 py-1 text-xs text-content-secondary bg-surface-1/80 rounded-full border border-line-subtle">
                             {ex}
                         </span>
                     ))}
@@ -91,12 +91,12 @@ export function JournalDisplay({ onEdit, lastSavedEntry }: JournalDisplayProps) 
             {entries.map((entry) => (
                 <div
                     key={entry.id}
-                    className="group relative bg-white/5 hover:bg-white/10 border border-white/5 hover:border-white/20 rounded-xl p-5 transition-all duration-300"
+                    className="group relative bg-white/5 hover:bg-surface-2 border border-line-subtle hover:border-line-strong rounded-xl p-5 transition-all duration-300"
                 >
                     <div className="flex justify-between items-start mb-3">
                         <div>
                             <div className="flex items-center gap-2 mb-1">
-                                <span className="text-xs font-semibold uppercase tracking-wider text-emerald-400 bg-emerald-400/10 px-2 py-0.5 rounded-full">
+                                <span className="text-xs font-semibold uppercase tracking-wider text-accent-contrast bg-emerald-400/10 px-2 py-0.5 rounded-full">
                                     {getTemplateTitle(entry.templateId)}
                                 </span>
                                 {entry.mode === 'deep' && (
@@ -111,7 +111,7 @@ export function JournalDisplay({ onEdit, lastSavedEntry }: JournalDisplayProps) 
                                     </span>
                                 )}
                             </div>
-                            <h4 className="text-lg font-medium text-white">
+                            <h4 className="text-lg font-medium text-content-primary">
                                 {format(new Date(entry.date + 'T00:00:00'), 'EEEE, MMMM do, yyyy')}
                             </h4>
                         </div>
@@ -119,14 +119,14 @@ export function JournalDisplay({ onEdit, lastSavedEntry }: JournalDisplayProps) 
                         <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                             <button
                                 onClick={() => onEdit(entry)}
-                                className="p-2 text-white/40 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
+                                className="p-2 text-content-primary/40 hover:text-content-primary hover:bg-surface-2 rounded-lg transition-colors"
                                 title="Edit Entry"
                             >
                                 <Edit2 size={16} />
                             </button>
                             <button
                                 onClick={() => handleDelete(entry.id)}
-                                className="p-2 text-red-400/40 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-colors"
+                                className="p-2 text-danger-contrast/40 hover:text-danger-contrast hover:bg-danger-soft rounded-lg transition-colors"
                                 title="Delete Entry"
                             >
                                 <Trash2 size={16} />
@@ -134,8 +134,8 @@ export function JournalDisplay({ onEdit, lastSavedEntry }: JournalDisplayProps) 
                         </div>
                     </div>
 
-                    <div className="text-white/70 line-clamp-3 text-sm font-light italic leading-relaxed">
-                        {entry.persona && <span className="text-white/40 not-italic mr-2">[{entry.persona}]</span>}
+                    <div className="text-content-primary/70 line-clamp-3 text-sm font-light italic leading-relaxed">
+                        {entry.persona && <span className="text-content-primary/40 not-italic mr-2">[{entry.persona}]</span>}
                         {Object.values(entry.content).join(' ').slice(0, 200)}...
                     </div>
                 </div>

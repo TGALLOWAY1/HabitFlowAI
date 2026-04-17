@@ -9,7 +9,7 @@ interface DailyCheckInCardProps {
 }
 
 const METRIC_ICONS: Record<string, { icon: React.FC<{ size?: number; className?: string }>; color: string }> = {
-    energy: { icon: Battery, color: 'text-emerald-400' },
+    energy: { icon: Battery, color: 'text-accent-contrast' },
     calm: { icon: Droplets, color: 'text-sky-400' },
     stress: { icon: Droplets, color: 'text-rose-400' },
     focus: { icon: Brain, color: 'text-violet-400' },
@@ -68,11 +68,11 @@ export const DailyCheckInCard: React.FC<DailyCheckInCardProps> = ({ onOpenCheckI
         return (
             <button
                 onClick={onOpenCheckIn}
-                className="bg-neutral-900/50 rounded-2xl border border-white/5 p-4 backdrop-blur-sm text-left w-full hover:bg-neutral-800/50 transition-colors"
+                className="bg-surface-0/50 rounded-2xl border border-line-subtle p-4 backdrop-blur-sm text-left w-full hover:bg-surface-1/50 transition-colors"
             >
                 <div className="flex items-center gap-2 mb-2">
-                    <CheckCircle2 size={16} className="text-emerald-400" />
-                    <span className="text-xs font-medium text-emerald-400">{sessionLabel} check-in</span>
+                    <CheckCircle2 size={16} className="text-accent-contrast" />
+                    <span className="text-xs font-medium text-accent-contrast">{sessionLabel} check-in</span>
                 </div>
                 {summaryMetrics.length > 0 && (
                     <div className="flex flex-wrap gap-2">
@@ -82,11 +82,11 @@ export const DailyCheckInCard: React.FC<DailyCheckInCardProps> = ({ onOpenCheckI
                             return (
                                 <span
                                     key={label}
-                                    className="flex items-center gap-1 px-2 py-0.5 bg-neutral-800 rounded-md text-[11px] text-neutral-300"
+                                    className="flex items-center gap-1 px-2 py-0.5 bg-surface-1 rounded-md text-[11px] text-content-secondary"
                                 >
                                     {IconComp && <IconComp size={11} className={meta.color} />}
-                                    <span className="text-white font-medium">{value}</span>
-                                    <span className="text-neutral-600">/{max}</span>
+                                    <span className="text-content-primary font-medium">{value}</span>
+                                    <span className="text-content-muted">/{max}</span>
                                 </span>
                             );
                         })}
@@ -104,18 +104,18 @@ export const DailyCheckInCard: React.FC<DailyCheckInCardProps> = ({ onOpenCheckI
     return (
         <button
             onClick={onOpenCheckIn}
-            className="bg-neutral-900/50 rounded-2xl border border-white/5 p-4 backdrop-blur-sm text-left w-full hover:bg-neutral-800/50 transition-colors group"
+            className="bg-surface-0/50 rounded-2xl border border-line-subtle p-4 backdrop-blur-sm text-left w-full hover:bg-surface-1/50 transition-colors group"
         >
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                    <div className={`p-2 rounded-xl bg-neutral-800 ${iconColor}`}>
+                    <div className={`p-2 rounded-xl bg-surface-1 ${iconColor}`}>
                         <Icon size={20} />
                     </div>
                     <div>
-                        <p className="text-sm font-medium text-white">{ctaLabel}</p>
+                        <p className="text-sm font-medium text-content-primary">{ctaLabel}</p>
                     </div>
                 </div>
-                <ChevronRight size={16} className="text-neutral-600 group-hover:text-neutral-400 transition-colors" />
+                <ChevronRight size={16} className="text-content-muted group-hover:text-content-secondary transition-colors" />
             </div>
         </button>
     );

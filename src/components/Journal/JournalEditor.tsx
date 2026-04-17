@@ -80,9 +80,9 @@ const CATEGORY_COLORS: Record<string, CategoryColor> = {
         border: 'hover:border-cyan-400/30',
     },
     'personal-growth': {
-        idleIcon: 'text-emerald-400/80',
+        idleIcon: 'text-accent-contrast/80',
         idleBg: 'bg-emerald-400/10',
-        activeIcon: 'text-emerald-300',
+        activeIcon: 'text-accent-contrast',
         activeBg: 'bg-emerald-400/20',
         border: 'hover:border-emerald-400/30',
     },
@@ -95,11 +95,11 @@ const CATEGORY_COLORS: Record<string, CategoryColor> = {
     },
 };
 const DEFAULT_CATEGORY_COLOR: CategoryColor = {
-    idleIcon: 'text-white/50',
+    idleIcon: 'text-content-primary/50',
     idleBg: 'bg-white/5',
-    activeIcon: 'text-white',
+    activeIcon: 'text-content-primary',
     activeBg: 'bg-white/10',
-    border: 'hover:border-white/20',
+    border: 'hover:border-line-strong',
 };
 
 /**
@@ -250,24 +250,24 @@ export function JournalEditor({ existingEntry, onSave, onCancel, initialTemplate
             <div key={template.id} className="relative group">
                 <button
                     onClick={() => handleSelectTemplate(template.id)}
-                    className={`w-full text-left p-3.5 bg-white/[0.03] hover:bg-white/[0.07] border border-white/5 ${colors.border} rounded-lg transition-all duration-200`}
+                    className={`w-full text-left p-3.5 bg-white/[0.03] hover:bg-white/[0.07] border border-line-subtle ${colors.border} rounded-lg transition-all duration-200`}
                 >
                     <div className="flex items-start gap-2.5">
                         <div className={`p-1.5 ${colors.idleBg} rounded-lg ${colors.idleIcon} flex-shrink-0 mt-0.5 transition-colors`}>
                             <Icon size={14} />
                         </div>
                         <div className="min-w-0 pr-5">
-                            <h4 className="text-sm font-semibold text-white leading-tight">{template.title}</h4>
-                            <p className="text-white/40 text-xs mt-1 line-clamp-1">{template.description}</p>
+                            <h4 className="text-sm font-semibold text-content-primary leading-tight">{template.title}</h4>
+                            <p className="text-content-primary/40 text-xs mt-1 line-clamp-1">{template.description}</p>
                         </div>
                     </div>
                 </button>
                 <button
                     onClick={(e) => { e.stopPropagation(); togglePin(template.id); }}
-                    className={`absolute top-2.5 right-2.5 p-1 rounded-md hover:bg-white/10 transition-all ${pinned ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
+                    className={`absolute top-2.5 right-2.5 p-1 rounded-md hover:bg-surface-2 transition-all ${pinned ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
                     aria-label={pinned ? 'Unpin template' : 'Pin template'}
                 >
-                    <Star size={12} className={pinned ? 'text-amber-400 fill-amber-400' : 'text-white/30'} />
+                    <Star size={12} className={pinned ? 'text-amber-400 fill-amber-400' : 'text-content-primary/30'} />
                 </button>
             </div>
         );
@@ -284,7 +284,7 @@ export function JournalEditor({ existingEntry, onSave, onCancel, initialTemplate
                 {/* Pinned section */}
                 {pinnedTemplates.length > 0 && (
                     <div className="mb-1">
-                        <h3 className="text-xs font-semibold text-white/30 uppercase tracking-widest mb-3 flex items-center gap-2">
+                        <h3 className="text-xs font-semibold text-content-primary/30 uppercase tracking-widest mb-3 flex items-center gap-2">
                             <Star size={12} className="text-amber-400 fill-amber-400" />
                             Pinned
                         </h3>
@@ -307,18 +307,18 @@ export function JournalEditor({ existingEntry, onSave, onCancel, initialTemplate
                         <div key={category.id}>
                             <button
                                 onClick={() => toggleCategory(category.id)}
-                                className="w-full text-left flex items-center justify-between p-3.5 bg-white/[0.03] hover:bg-white/[0.06] border border-white/5 hover:border-white/10 rounded-xl transition-all"
+                                className="w-full text-left flex items-center justify-between p-3.5 bg-white/[0.03] hover:bg-white/[0.06] border border-line-subtle hover:border-line-subtle rounded-xl transition-all"
                             >
                                 <div className="flex items-center gap-3">
                                     <div className={`p-2 ${iconBgClass} ${iconTextClass} rounded-lg transition-colors`}>
                                         <Icon size={18} />
                                     </div>
                                     <div>
-                                        <h3 className="text-sm font-semibold text-white">{category.title}</h3>
-                                        <p className="text-white/40 text-xs">{category.description}</p>
+                                        <h3 className="text-sm font-semibold text-content-primary">{category.title}</h3>
+                                        <p className="text-content-primary/40 text-xs">{category.description}</p>
                                     </div>
                                 </div>
-                                <div className="flex items-center gap-2 text-white/30">
+                                <div className="flex items-center gap-2 text-content-primary/30">
                                     <span className="text-xs">{categoryTemplates.length}</span>
                                     {isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
                                 </div>
@@ -354,7 +354,7 @@ export function JournalEditor({ existingEntry, onSave, onCancel, initialTemplate
                     {selectedTemplateId === 'free-write' ? (
                         <div className="relative h-full">
                             <textarea
-                                className="w-full h-full min-h-[300px] bg-white/[0.02] border border-white/5 rounded-xl p-4 sm:p-6 text-white/90 text-lg leading-relaxed focus:bg-white/[0.04] focus:border-white/10 focus:ring-0 focus:outline-none resize-none font-sans placeholder:text-white/20"
+                                className="w-full h-full min-h-[300px] bg-white/[0.02] border border-line-subtle rounded-xl p-4 sm:p-6 text-content-primary/90 text-lg leading-relaxed focus:bg-white/[0.04] focus:border-line-subtle focus:ring-0 focus:outline-none resize-none font-sans placeholder:text-content-primary/20"
                                 placeholder="Start writing..."
                                 value={content['free-write'] || ''}
                                 onChange={(e) => handleAnswerChange('free-write', e.target.value)}
@@ -364,11 +364,11 @@ export function JournalEditor({ existingEntry, onSave, onCancel, initialTemplate
                         <div className="space-y-6">
                             {prompts.map((prompt) => (
                                 <div key={prompt.id} className="group">
-                                    <label className="block text-white/90 text-lg font-medium mb-3">
+                                    <label className="block text-content-primary/90 text-lg font-medium mb-3">
                                         {prompt.text}
                                     </label>
                                     <textarea
-                                        className="w-full bg-[#151515] border border-white/10 hover:border-white/20 focus:border-emerald-500/50 rounded-xl p-4 text-white/90 placeholder:text-white/10 focus:outline-none focus:bg-[#1a1a1a] transition-all resize-none min-h-[120px]"
+                                        className="w-full bg-[#151515] border border-line-subtle hover:border-line-strong focus:border-accent/50 rounded-xl p-4 text-content-primary/90 placeholder:text-content-primary/10 focus:outline-none focus:bg-[#1a1a1a] transition-all resize-none min-h-[120px]"
                                         placeholder="Type your thoughts here..."
                                         value={content[prompt.id] || ''}
                                         onChange={(e) => handleAnswerChange(prompt.id, e.target.value)}
@@ -381,14 +381,14 @@ export function JournalEditor({ existingEntry, onSave, onCancel, initialTemplate
                 <div className="flex justify-between items-center pt-3 pb-3 flex-shrink-0">
                     <button
                         onClick={handleDiscard}
-                        className="text-white/40 hover:text-red-400 text-sm font-medium transition-colors px-2 py-1"
+                        className="text-content-primary/40 hover:text-danger-contrast text-sm font-medium transition-colors px-2 py-1"
                     >
                         Discard Draft
                     </button>
                     <button
                         onClick={handleSave}
                         disabled={isSubmitting}
-                        className="flex items-center gap-2 px-6 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-black font-semibold rounded-xl shadow-lg shadow-emerald-500/20 transition-all hover:scale-105 disabled:opacity-50 disabled:scale-100"
+                        className="flex items-center gap-2 px-6 py-2.5 bg-accent hover:bg-accent-strong text-black font-semibold rounded-xl shadow-lg shadow-emerald-500/20 transition-all hover:scale-105 disabled:opacity-50 disabled:scale-100"
                     >
                         <Save size={18} />
                         {isSubmitting ? 'Saving...' : 'Save Entry'}
@@ -399,10 +399,10 @@ export function JournalEditor({ existingEntry, onSave, onCancel, initialTemplate
     }
 
     return (
-        <div className="bg-zinc-900 border border-white/10 rounded-2xl p-0 shadow-2xl relative max-w-4xl mx-auto h-[calc(100vh-14rem)] flex flex-col overflow-hidden">
-            <div className="flex justify-between items-center px-6 py-4 border-b border-white/5 bg-zinc-900/95 backdrop-blur z-10">
-                <h2 className="text-lg font-bold text-white flex items-center gap-2">
-                    <span className="text-emerald-400">
+        <div className="bg-zinc-900 border border-line-subtle rounded-2xl p-0 shadow-2xl relative max-w-4xl mx-auto h-[calc(100vh-14rem)] flex flex-col overflow-hidden">
+            <div className="flex justify-between items-center px-6 py-4 border-b border-line-subtle bg-zinc-900/95 backdrop-blur z-10">
+                <h2 className="text-lg font-bold text-content-primary flex items-center gap-2">
+                    <span className="text-accent-contrast">
                         <WritingIcon size={20} />
                     </span>
                     {currentTemplate.title}
@@ -410,7 +410,7 @@ export function JournalEditor({ existingEntry, onSave, onCancel, initialTemplate
                 {!existingEntry && (
                     <button
                         onClick={handleBackToSelection}
-                        className="text-white/40 hover:text-white p-1.5 rounded-lg hover:bg-white/10 transition-colors"
+                        className="text-content-primary/40 hover:text-content-primary p-1.5 rounded-lg hover:bg-surface-2 transition-colors"
                         aria-label="Close template"
                     >
                         <X size={20} />
@@ -422,7 +422,7 @@ export function JournalEditor({ existingEntry, onSave, onCancel, initialTemplate
                 {selectedTemplateId === 'free-write' ? (
                     <div className="relative h-full min-h-[500px]">
                         <textarea
-                            className="w-full h-full min-h-[500px] bg-white/[0.02] border border-white/5 rounded-xl p-6 text-white/90 text-lg leading-relaxed focus:bg-white/[0.04] focus:border-white/10 focus:ring-0 focus:outline-none resize-none font-sans placeholder:text-white/20"
+                            className="w-full h-full min-h-[500px] bg-white/[0.02] border border-line-subtle rounded-xl p-6 text-content-primary/90 text-lg leading-relaxed focus:bg-white/[0.04] focus:border-line-subtle focus:ring-0 focus:outline-none resize-none font-sans placeholder:text-content-primary/20"
                             placeholder="Start writing..."
                             value={content['free-write'] || ''}
                             onChange={(e) => handleAnswerChange('free-write', e.target.value)}
@@ -434,11 +434,11 @@ export function JournalEditor({ existingEntry, onSave, onCancel, initialTemplate
                         <div className="space-y-6">
                             {prompts.map((prompt) => (
                                 <div key={prompt.id} className="group animate-in fade-in slide-in-from-bottom-4 duration-500 fill-mode-backwards" style={{ animationDelay: `${prompts.indexOf(prompt) * 100}ms` }}>
-                                    <label className="block text-white/90 text-lg font-medium mb-3">
+                                    <label className="block text-content-primary/90 text-lg font-medium mb-3">
                                         {prompt.text}
                                     </label>
                                     <textarea
-                                        className="w-full bg-[#151515] border border-white/10 hover:border-white/20 focus:border-emerald-500/50 rounded-xl p-4 text-white/90 placeholder:text-white/10 focus:outline-none focus:bg-[#1a1a1a] transition-all resize-none min-h-[120px]"
+                                        className="w-full bg-[#151515] border border-line-subtle hover:border-line-strong focus:border-accent/50 rounded-xl p-4 text-content-primary/90 placeholder:text-content-primary/10 focus:outline-none focus:bg-[#1a1a1a] transition-all resize-none min-h-[120px]"
                                         placeholder="Type your thoughts here..."
                                         value={content[prompt.id] || ''}
                                         onChange={(e) => handleAnswerChange(prompt.id, e.target.value)}
@@ -452,7 +452,7 @@ export function JournalEditor({ existingEntry, onSave, onCancel, initialTemplate
                                     onClick={() => setMode(mode === 'standard' ? 'deep' : 'standard')}
                                     className={`group flex items-center gap-2 px-6 py-3 rounded-full text-sm font-medium transition-all ${mode === 'deep'
                                         ? 'bg-purple-900/30 text-purple-300 border border-purple-500/30 hover:bg-purple-900/50'
-                                        : 'bg-white/5 text-emerald-400/80 hover:text-emerald-300 hover:bg-emerald-500/20 border border-emerald-500/20'
+                                        : 'bg-white/5 text-accent-contrast/80 hover:text-accent-contrast hover:bg-accent-strong/20 border border-accent/20'
                                         }`}
                                 >
                                     {mode === 'standard' ? (
@@ -474,10 +474,10 @@ export function JournalEditor({ existingEntry, onSave, onCancel, initialTemplate
                 )}
             </div>
 
-            <div className="px-6 py-4 border-t border-white/5 bg-zinc-900 flex justify-between items-center">
+            <div className="px-6 py-4 border-t border-line-subtle bg-zinc-900 flex justify-between items-center">
                 <button
                     onClick={handleDiscard}
-                    className="text-white/40 hover:text-red-400 text-sm font-medium transition-colors px-2 py-1"
+                    className="text-content-primary/40 hover:text-danger-contrast text-sm font-medium transition-colors px-2 py-1"
                 >
                     Discard Draft
                 </button>
@@ -485,7 +485,7 @@ export function JournalEditor({ existingEntry, onSave, onCancel, initialTemplate
                     <button
                         onClick={handleSave}
                         disabled={isSubmitting}
-                        className="flex items-center gap-2 px-6 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-black font-semibold rounded-xl shadow-lg shadow-emerald-500/20 transition-all hover:scale-105 disabled:opacity-50 disabled:scale-100"
+                        className="flex items-center gap-2 px-6 py-2.5 bg-accent hover:bg-accent-strong text-black font-semibold rounded-xl shadow-lg shadow-emerald-500/20 transition-all hover:scale-105 disabled:opacity-50 disabled:scale-100"
                     >
                         <Save size={18} />
                         {isSubmitting ? 'Saving...' : 'Save Entry'}
