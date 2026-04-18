@@ -263,16 +263,26 @@ export const ProgressDashboard: React.FC<ProgressDashboardProps> = ({
                                 <button
                                     key={goal.id}
                                     onClick={() => toggleGoalPin(goal.id)}
-                                    className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg hover:bg-neutral-800/50 transition-colors text-left min-h-[44px]"
+                                    aria-pressed={isGoalPinned(goal.id)}
+                                    className={`flex items-center gap-3 w-full px-3 py-2.5 rounded-lg transition-colors text-left min-h-[44px] ${
+                                        isGoalPinned(goal.id)
+                                            ? 'bg-emerald-500/10 hover:bg-emerald-500/15'
+                                            : 'hover:bg-neutral-800/50'
+                                    }`}
                                 >
                                     <Pin
                                         size={14}
                                         className={isGoalPinned(goal.id) ? 'text-emerald-400' : 'text-neutral-600'}
                                         fill={isGoalPinned(goal.id) ? 'currentColor' : 'none'}
                                     />
-                                    <span className={`text-sm ${isGoalPinned(goal.id) ? 'text-white' : 'text-neutral-400'}`}>
+                                    <span className={`text-sm flex-1 ${isGoalPinned(goal.id) ? 'text-white' : 'text-neutral-400'}`}>
                                         {goal.title}
                                     </span>
+                                    {isGoalPinned(goal.id) && (
+                                        <span className="text-[10px] uppercase tracking-wide text-emerald-400 font-medium">
+                                            Pinned
+                                        </span>
+                                    )}
                                 </button>
                             ))}
                         <p className="text-[10px] text-neutral-600 px-3 pt-2">
