@@ -46,6 +46,14 @@ export interface Achievement {
   icon: 'streak' | 'completions' | 'week' | 'consistency' | 'first' | 'track';
 }
 
+export interface EntriesByHabitItem {
+  habitId: string;
+  name: string;
+  color?: string;
+  totalEntries: number;
+  entriesInRange: number;
+}
+
 export interface HabitAnalyticsSummary {
   consistencyScore: number;
   completionRate: number;
@@ -63,6 +71,7 @@ export interface HabitAnalyticsSummary {
   behaviorPatterns: BehaviorPatterns;
   achievements: Achievement[];
   totalActiveDays: number;
+  entriesByHabit: EntriesByHabitItem[];
 }
 
 export interface HeatmapDataPoint {

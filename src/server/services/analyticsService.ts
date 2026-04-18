@@ -36,6 +36,14 @@ export interface Achievement {
   icon: 'streak' | 'completions' | 'week' | 'consistency' | 'first' | 'track';
 }
 
+export interface EntriesByHabitItem {
+  habitId: string;
+  name: string;
+  color?: string;
+  totalEntries: number;
+  entriesInRange: number;
+}
+
 export interface HabitAnalyticsSummary {
   consistencyScore: number;
   completionRate: number;
@@ -56,6 +64,8 @@ export interface HabitAnalyticsSummary {
   behaviorPatterns: BehaviorPatterns;
   achievements: Achievement[];
   totalActiveDays: number;
+  // Per-habit entry counts (lifetime + within selected range)
+  entriesByHabit: EntriesByHabitItem[];
 }
 
 export interface HeatmapDataPoint {
@@ -375,7 +385,8 @@ export function computeHabitAnalyticsSummary(
   categories: Category[],
   referenceDayKey: string,
   days: number,
-  timeZone?: string
+  timeZone?: string,
+  lifetimeTotals?: Array<{ habitId: string; entryCount: number }>,
 ): HabitAnalyticsSummary {
   const trackable = getTrackableHabits(habits);
   const dayStatesByHabit = buildDayStatesByHabit(entries, timeZone);
@@ -540,6 +551,34 @@ export function computeHabitAnalyticsSummary(
   // ─── NEW: Achievements ─────────────────────────────────────────────────
   const achievements = computeAchievements(maxBestStreak, totalCompletions, bestWeekCompletions, consistencyScore, daysWithCompletion.size);
 
+  // ─── Per-habit entry counts (lifetime + in-range) ─────────────────────
+  const inRangeByHabit = new Map<string, number>();
+  for (const entry of entries) {
+    const dk = getCanonicalDayKeyFromEntry(entry, { timeZone });
+    if (!dk || !dayKeySet.has(dk)) continue;
+    inRangeByHabit.set(entry.habitId, (inRangeByHabit.get(entry.habitId) ?? 0) + 1);
+  }
+  const lifetimeMap = new Map<string, number>();
+  if (lifetimeTotals) {
+    for (const t of lifetimeTotals) lifetimeMap.set(t.habitId, t.entryCount);
+  }
+  const habitCategoryMap = new Map(categories.map(c => [c.id, c]));
+  const entriesByHabit: EntriesByHabitItem[] = habits
+    .filter(h => !h.archived)
+    .map(h => {
+      const cat = h.categoryId ? habitCategoryMap.get(h.categoryId) : undefined;
+      const lifetime = lifetimeMap.get(h.id);
+      return {
+        habitId: h.id,
+        name: h.name,
+        color: cat?.color,
+        totalEntries: lifetime ?? (inRangeByHabit.get(h.id) ?? 0),
+        entriesInRange: inRangeByHabit.get(h.id) ?? 0,
+      };
+    })
+    .filter(item => item.totalEntries > 0)
+    .sort((a, b) => b.totalEntries - a.totalEntries);
+
   return {
     consistencyScore: Math.round(consistencyScore * 1000) / 1000,
     completionRate: Math.round(completionRate * 1000) / 1000,
@@ -557,6 +596,7 @@ export function computeHabitAnalyticsSummary(
     behaviorPatterns,
     achievements,
     totalActiveDays: daysWithCompletion.size,
+    entriesByHabit,
   };
 }
 

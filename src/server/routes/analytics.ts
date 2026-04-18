@@ -8,7 +8,7 @@ import type { Request, Response } from 'express';
 import { getRequestIdentity } from '../middleware/identity';
 import { resolveTimeZone, getNowDayKey } from '../utils/dayKey';
 import { getHabitsByUser } from '../repositories/habitRepository';
-import { getHabitEntriesByUser, getHabitEntriesByUserInRange } from '../repositories/habitEntryRepository';
+import { getHabitEntriesByUser, getHabitEntriesByUserInRange, aggregateHabitEntryTotals } from '../repositories/habitEntryRepository';
 import { subDays, parseISO, format } from 'date-fns';
 import { getCategoriesByUser } from '../repositories/categoryRepository';
 import { getAllMembershipsByUser } from '../repositories/bundleMembershipRepository';
@@ -53,8 +53,9 @@ export async function getHabitAnalyticsSummary(req: Request, res: Response): Pro
       getAllMembershipsByUser(householdId, userId),
       getCategoriesByUser(householdId, userId),
     ]);
+    const lifetimeTotals = await aggregateHabitEntryTotals(habits.map(h => h.id), householdId, userId);
 
-    const summary = computeHabitAnalyticsSummary(habits, entries, memberships, categories, referenceDayKey, days, timeZone);
+    const summary = computeHabitAnalyticsSummary(habits, entries, memberships, categories, referenceDayKey, days, timeZone, lifetimeTotals);
     res.json(summary);
   } catch (error) {
     console.error('[analytics] summary error:', error);
@@ -203,8 +204,9 @@ export async function getAllHabitAnalytics(req: Request, res: Response): Promise
       getGoalTracksByUser(householdId, userId),
       getGoalsByUser(householdId, userId),
     ]);
+    const lifetimeTotals = await aggregateHabitEntryTotals(habits.map(h => h.id), householdId, userId);
 
-    const summary = computeHabitAnalyticsSummary(habits, entries, memberships, categories, referenceDayKey, days, timeZone);
+    const summary = computeHabitAnalyticsSummary(habits, entries, memberships, categories, referenceDayKey, days, timeZone, lifetimeTotals);
 
     // Merge goal track achievements into the summary
     const trackedGoals = goals.filter(g => g.trackId);
