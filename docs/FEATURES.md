@@ -64,6 +64,7 @@ Canonical inventory of all user-facing features. Keep this document in sync with
 ## Tasks
 
 - **Create Tasks** — Add one-time actionable items
+- **Edit Task Title** — Click the task title or the pencil icon to rename; Enter saves, Escape cancels
 - **Today / Inbox Lists** — Separate columns for today's tasks and backlog
 - **Task Completion** — Mark tasks as done
 - **Auto-Sorting** — Active tasks first, then sorted by newest
