@@ -299,8 +299,9 @@ graph TB
 |---|---|
 | **Create** | Add Habit Modal → inline "new category" button |
 | **View / Filter** | Tracker → Category Tabs (horizontal pill bar) |
-| **Rename** | Category Tabs → click name → inline edit |
+| **Rename** | Category Tabs → double-click name → inline edit |
 | **Reorder** | Category Tabs → long-press (500ms) → drag |
+| **Change Color** | Category Tabs → active pill → palette icon → color swatch bar |
 | **Delete** | Category Tabs → delete action |
 | **Assign habit** | Add Habit Modal or Category Picker Modal |
 

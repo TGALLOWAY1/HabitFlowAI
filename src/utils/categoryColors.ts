@@ -1,6 +1,6 @@
 import type { Category } from '../types';
 
-const CATEGORY_COLOR_PALETTE = [
+export const CATEGORY_COLOR_PALETTE = [
   'bg-emerald-500',
   'bg-violet-500',
   'bg-rose-500',

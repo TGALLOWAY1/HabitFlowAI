@@ -1,8 +1,8 @@
 import React from 'react';
 import { useHabitStore } from '../store/HabitContext';
 import type { Category } from '../types';
-import { Plus, X, Check } from 'lucide-react';
-import { nextCategoryColor } from '../utils/categoryColors';
+import { Plus, X, Check, Palette } from 'lucide-react';
+import { CATEGORY_COLOR_PALETTE, nextCategoryColor } from '../utils/categoryColors';
 import {
     DndContext,
     closestCenter,
@@ -34,6 +34,7 @@ interface SortableCategoryPillProps {
     onSelect: () => void;
     onDelete: (e: React.MouseEvent) => void;
     onRename: (newName: string) => Promise<void>;
+    onOpenColorPicker: () => void;
     deleteConfirmId: string | null;
     reorderMode: boolean;
     onEnterReorderMode: () => void;
@@ -45,6 +46,7 @@ const SortableCategoryPill: React.FC<SortableCategoryPillProps> = ({
     onSelect,
     onDelete,
     onRename,
+    onOpenColorPicker,
     deleteConfirmId,
     reorderMode,
     onEnterReorderMode,
@@ -164,7 +166,7 @@ const SortableCategoryPill: React.FC<SortableCategoryPillProps> = ({
                 className={`
           px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all select-none
           ${isActive
-                        ? `${category.color} text-white shadow-lg shadow-white/10 pr-8`
+                        ? `${category.color} text-white shadow-lg shadow-white/10 pr-14`
                         : 'bg-neutral-800 text-neutral-400 hover:bg-neutral-700 hover:text-white'
                     }
           ${reorderMode ? 'ring-1 ring-emerald-500/40 cursor-grab' : ''}
@@ -174,17 +176,30 @@ const SortableCategoryPill: React.FC<SortableCategoryPillProps> = ({
             </button>
 
             {isActive && !reorderMode && (
-                <button
-                    onClick={onDelete}
-                    className={`absolute right-1 top-1/2 -translate-y-1/2 p-1.5 rounded-full transition-colors z-10 ${deleteConfirmId === category.id
-                        ? 'bg-red-500 text-white hover:bg-red-600 shadow-sm'
-                        : 'hover:bg-black/20 text-white/70 hover:text-white'
-                        }`}
-                    title={deleteConfirmId === category.id ? "Click again to confirm delete" : "Delete Category"}
-                    onPointerDown={(e) => e.stopPropagation()}
-                >
-                    <X size={14} />
-                </button>
+                <>
+                    <button
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            onOpenColorPicker();
+                        }}
+                        className="absolute right-8 top-1/2 -translate-y-1/2 p-1.5 rounded-full transition-colors z-10 hover:bg-black/20 text-white/70 hover:text-white"
+                        title="Change Category Color"
+                        onPointerDown={(e) => e.stopPropagation()}
+                    >
+                        <Palette size={14} />
+                    </button>
+                    <button
+                        onClick={onDelete}
+                        className={`absolute right-1 top-1/2 -translate-y-1/2 p-1.5 rounded-full transition-colors z-10 ${deleteConfirmId === category.id
+                            ? 'bg-red-500 text-white hover:bg-red-600 shadow-sm'
+                            : 'hover:bg-black/20 text-white/70 hover:text-white'
+                            }`}
+                        title={deleteConfirmId === category.id ? "Click again to confirm delete" : "Delete Category"}
+                        onPointerDown={(e) => e.stopPropagation()}
+                    >
+                        <X size={14} />
+                    </button>
+                </>
             )}
         </div>
     );
@@ -202,6 +217,12 @@ export const CategoryTabs: React.FC<CategoryTabsProps> = ({
     const [addCategoryError, setAddCategoryError] = React.useState<string | null>(null);
     const [deleteConfirmId, setDeleteConfirmId] = React.useState<string | null>(null);
     const [reorderMode, setReorderMode] = React.useState(false);
+    const [colorPickerId, setColorPickerId] = React.useState<string | null>(null);
+
+    const colorPickerCategory = React.useMemo(
+        () => categories.find((c) => c.id === colorPickerId) ?? null,
+        [categories, colorPickerId],
+    );
 
     const normalizeCategoryName = (name: string) => name.trim().replace(/\s+/g, ' ').toLowerCase();
 
@@ -287,6 +308,9 @@ export const CategoryTabs: React.FC<CategoryTabsProps> = ({
                             onRename={async (newName) => {
                                 await updateCategory(category.id, { name: newName });
                             }}
+                            onOpenColorPicker={() =>
+                                setColorPickerId((prev) => (prev === category.id ? null : category.id))
+                            }
                             deleteConfirmId={deleteConfirmId}
                             reorderMode={reorderMode}
                             onEnterReorderMode={() => setReorderMode(true)}
@@ -368,6 +392,51 @@ export const CategoryTabs: React.FC<CategoryTabsProps> = ({
         </div>
         {showRightFade && (
             <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-neutral-900 pointer-events-none" />
+        )}
+        {colorPickerCategory && (
+            <div
+                role="dialog"
+                aria-label={`Change color for ${colorPickerCategory.name}`}
+                className="flex items-center gap-2 px-3 pb-2 flex-wrap"
+            >
+                <span className="text-xs text-neutral-400">
+                    Color for <span className="text-white font-medium">{colorPickerCategory.name}</span>:
+                </span>
+                {CATEGORY_COLOR_PALETTE.map((color) => {
+                    const isSelected = colorPickerCategory.color === color;
+                    return (
+                        <button
+                            key={color}
+                            onClick={async () => {
+                                if (!isSelected) {
+                                    try {
+                                        await updateCategory(colorPickerCategory.id, { color });
+                                    } catch (error) {
+                                        console.error('Failed to update category color:', error);
+                                    }
+                                }
+                                setColorPickerId(null);
+                            }}
+                            className={`w-6 h-6 rounded-full ${color} transition-all ${
+                                isSelected
+                                    ? 'ring-2 ring-white ring-offset-2 ring-offset-neutral-900'
+                                    : 'hover:ring-2 hover:ring-white/50'
+                            }`}
+                            title={color.replace('bg-', '').replace('-500', '')}
+                            aria-label={`Set color to ${color.replace('bg-', '').replace('-500', '')}`}
+                            aria-pressed={isSelected}
+                        />
+                    );
+                })}
+                <button
+                    onClick={() => setColorPickerId(null)}
+                    className="ml-auto p-1 rounded-full text-neutral-400 hover:text-white hover:bg-neutral-800 transition-colors"
+                    title="Close color picker"
+                    aria-label="Close color picker"
+                >
+                    <X size={14} />
+                </button>
+            </div>
         )}
         </div>
     );

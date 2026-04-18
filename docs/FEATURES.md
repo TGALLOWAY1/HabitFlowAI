@@ -10,6 +10,7 @@ Canonical inventory of all user-facing features. Keep this document in sync with
 - **Tracking Types** — Boolean (done/not done) or Quantity (numeric value with unit)
 - **Scheduling** — Assign habits to specific days of the week, set frequency (daily, weekly with times-per-week, required-days-per-week)
 - **Categories** — Organize habits into color-coded categories; reorder via drag-and-drop
+- **Category Color Customization** — Change the color of any category from an 8-color palette; the new color propagates everywhere the category is rendered (tabs, completion rows, category breakdown chart)
 - **Quick Toggle** — Mark habits complete/incomplete from the tracker grid or day view
 - **Habit History** — View past completion logs and patterns for any habit
 - **Streaks** — Auto-computed current and longest streaks from completion data
