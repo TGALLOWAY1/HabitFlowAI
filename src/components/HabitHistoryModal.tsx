@@ -398,7 +398,7 @@ export const HabitHistoryModal: React.FC<HabitHistoryModalProps> = ({ habitId, o
                                     /* Date List - show all dates with entries */
                                     <div>
                                         <h3 className="text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-2">
-                                            Entry History ({entryDates.length} {entryDates.length === 1 ? 'day' : 'days'})
+                                            Entry History ({entries.length} {entries.length === 1 ? 'entry' : 'entries'})
                                         </h3>
                                         {entryDates.length === 0 ? (
                                             <p className="text-sm text-neutral-600 py-4 text-center">No entries yet. Select a date on the calendar to add one.</p>

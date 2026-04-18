@@ -138,6 +138,80 @@ describe('computeHabitAnalyticsSummary', () => {
     expect(result.longestStreak).toBe(0);
     expect(result.totalCompletions).toBe(0);
     expect(result.graduatedHabits).toBe(0);
+    expect(result.entriesByHabit).toEqual([]);
+  });
+
+  describe('entriesByHabit', () => {
+    it('returns empty array when no entries exist', () => {
+      const result = computeHabitAnalyticsSummary([createHabit()], [], [], [], '2026-03-31', 7);
+      expect(result.entriesByHabit).toEqual([]);
+    });
+
+    it('uses lifetime totals when provided and reports in-range count', () => {
+      const habits = [createHabit({ id: 'h1', name: 'Run' })];
+      const entries = [
+        createEntry('h1', '2026-03-30'),
+        createEntry('h1', '2026-03-31'),
+      ];
+      const lifetimeTotals = [{ habitId: 'h1', entryCount: 42 }];
+
+      const result = computeHabitAnalyticsSummary(habits, entries, [], [], '2026-03-31', 7, undefined, lifetimeTotals);
+
+      expect(result.entriesByHabit).toHaveLength(1);
+      expect(result.entriesByHabit[0]).toMatchObject({
+        habitId: 'h1',
+        name: 'Run',
+        totalEntries: 42,
+        entriesInRange: 2,
+      });
+    });
+
+    it('falls back to in-range count when no lifetime totals provided', () => {
+      const habits = [createHabit({ id: 'h1' })];
+      const entries = [createEntry('h1', '2026-03-31')];
+      const result = computeHabitAnalyticsSummary(habits, entries, [], [], '2026-03-31', 7);
+      expect(result.entriesByHabit).toEqual([
+        expect.objectContaining({ habitId: 'h1', totalEntries: 1, entriesInRange: 1 }),
+      ]);
+    });
+
+    it('sorts habits by lifetime entry count descending', () => {
+      const habits = [
+        createHabit({ id: 'h1', name: 'Low' }),
+        createHabit({ id: 'h2', name: 'High' }),
+        createHabit({ id: 'h3', name: 'Mid' }),
+      ];
+      const lifetimeTotals = [
+        { habitId: 'h1', entryCount: 5 },
+        { habitId: 'h2', entryCount: 50 },
+        { habitId: 'h3', entryCount: 20 },
+      ];
+      const result = computeHabitAnalyticsSummary(habits, [], [], [], '2026-03-31', 7, undefined, lifetimeTotals);
+      expect(result.entriesByHabit.map(e => e.habitId)).toEqual(['h2', 'h3', 'h1']);
+    });
+
+    it('attaches category color to each habit', () => {
+      const habits = [createHabit({ id: 'h1', categoryId: 'cat-1' })];
+      const categories = [createCategory('cat-1', 'Health', 'bg-blue-500')];
+      const lifetimeTotals = [{ habitId: 'h1', entryCount: 3 }];
+      const result = computeHabitAnalyticsSummary(habits, [], [], categories, '2026-03-31', 7, undefined, lifetimeTotals);
+      expect(result.entriesByHabit[0].color).toBe('bg-blue-500');
+    });
+
+    it('excludes archived habits and habits with zero entries', () => {
+      const habits = [
+        createHabit({ id: 'h1' }),
+        createHabit({ id: 'h2', archived: true }),
+        createHabit({ id: 'h3' }),
+      ];
+      const lifetimeTotals = [
+        { habitId: 'h1', entryCount: 5 },
+        { habitId: 'h2', entryCount: 99 }, // archived → excluded
+        // h3 → no entries → excluded
+      ];
+      const result = computeHabitAnalyticsSummary(habits, [], [], [], '2026-03-31', 7, undefined, lifetimeTotals);
+      expect(result.entriesByHabit.map(e => e.habitId)).toEqual(['h1']);
+    });
   });
 });
 

@@ -16,6 +16,7 @@ import { SummaryCards } from '../components/analytics/SummaryCards';
 import { StreaksSection } from '../components/analytics/StreaksSection';
 import { TrendChart } from '../components/analytics/TrendChart';
 import { CategoryBreakdown } from '../components/analytics/CategoryBreakdown';
+import { EntriesByHabit } from '../components/analytics/EntriesByHabit';
 import { BehaviorPatterns } from '../components/analytics/BehaviorPatterns';
 import { AchievementsSection } from '../components/analytics/AchievementsSection';
 import { InsightsPanel } from '../components/analytics/InsightsPanel';
@@ -211,6 +212,7 @@ export const AnalyticsPage: React.FC<AnalyticsPageProps> = ({ onBack }) => {
           <ActivitySection />
           <TrendChart data={trends} loading={loading} />
           <CategoryBreakdown data={categories} loading={loading} />
+          <EntriesByHabit data={summary?.entriesByHabit ?? null} loading={loading} />
           <BehaviorPatterns data={summary?.behaviorPatterns ?? null} loading={loading} />
           <AchievementsSection data={summary?.achievements ?? null} loading={loading} />
           <InsightsPanel data={insights} loading={loading} />
