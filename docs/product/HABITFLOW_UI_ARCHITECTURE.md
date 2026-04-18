@@ -118,7 +118,7 @@ HabitFlow App
 | Create Goal (Step 1) | Modal | "+ Goal" button on Goals page | Enter goal details (title, type, target, deadline, category) | Goals, Categories | Create Goal Step 2 |
 | Create Goal (Step 2) | Modal | Next from Step 1 | Link habits to goal (filtered by category if selected) | Goals, Habits | Goals List (on submit) |
 | Journal | Page | Dashboard card / `?view=journal` | Free-write, templates, history tabs; auto-generated AI summary banner | Journal Entries | — |
-| Tasks | Page | Dashboard card / `?view=tasks` | Today + Inbox columns | Tasks | — |
+| Tasks | Page | Dashboard card / `?view=tasks` | Today + Inbox columns; click a task title or pencil icon to rename inline | Tasks | — |
 | Wellbeing History | Page | Dashboard link | Historical wellbeing charts and trends | Wellbeing Entries | — |
 | Debug Entries | Page (dev) | `?view=debug-entries` | Testing entry data | Entries | — |
 
