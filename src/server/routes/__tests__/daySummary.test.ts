@@ -17,6 +17,7 @@ vi.mock('../../repositories/bundleMembershipRepository', () => ({
 
 import { getHabitsByUser } from '../../repositories/habitRepository';
 import { getHabitEntriesByUser } from '../../repositories/habitEntryRepository';
+import { getAllMembershipsByUser } from '../../repositories/bundleMembershipRepository';
 
 function createRes(): Response {
   return {
@@ -142,6 +143,7 @@ describe('getDaySummary', () => {
     vi.mocked(getHabitEntriesByUser).mockResolvedValue(entries);
 
     const req = {
+      householdId: 'test-household',
       userId: 'test-user',
       query: {
         startDayKey: '2026-02-15',
@@ -226,6 +228,7 @@ describe('getDaySummary', () => {
     vi.mocked(getHabitEntriesByUser).mockResolvedValue(entries);
 
     const req = {
+      householdId: 'test-household',
       userId: 'test-user',
       query: {
         startDayKey: '2026-02-17',
@@ -248,5 +251,87 @@ describe('getDaySummary', () => {
       expect(dayKey).toMatch(dayKeyRegex);
       expect(dayKey >= body.startDayKey && dayKey <= body.endDayKey).toBe(true);
     }
+  });
+
+  it('derived bundle parent respects membership daysOfWeek filter', async () => {
+    // 2026-01-07 is a Wednesday (day-of-week = 3).
+    // 2026-01-08 is a Thursday (day-of-week = 4).
+    const parent: Habit = {
+      id: 'bundle-parent',
+      categoryId: 'cat-1',
+      name: 'Morning Routine',
+      goal: { type: 'boolean', frequency: 'daily', target: 1 },
+      type: 'bundle',
+      bundleType: 'checklist',
+      subHabitIds: ['child-wed-only'],
+      archived: false,
+      createdAt: '2026-01-01T00:00:00.000Z',
+    };
+    const child: Habit = {
+      id: 'child-wed-only',
+      categoryId: 'cat-1',
+      name: 'Stretch (Wednesdays only)',
+      goal: { type: 'boolean', frequency: 'daily', target: 1 },
+      bundleParentId: 'bundle-parent',
+      archived: false,
+      createdAt: '2026-01-01T00:00:00.000Z',
+    };
+
+    vi.mocked(getHabitsByUser).mockResolvedValue([parent, child]);
+    vi.mocked(getAllMembershipsByUser).mockResolvedValue([
+      {
+        id: 'm-1',
+        parentHabitId: 'bundle-parent',
+        childHabitId: 'child-wed-only',
+        activeFromDayKey: '2026-01-01',
+        activeToDayKey: null,
+        daysOfWeek: [3], // Wednesday only
+        createdAt: '2026-01-01T00:00:00.000Z',
+        updatedAt: '2026-01-01T00:00:00.000Z',
+      },
+    ]);
+    vi.mocked(getHabitEntriesByUser).mockResolvedValue([
+      createEntry({
+        id: 'e-wed',
+        habitId: 'child-wed-only',
+        dayKey: '2026-01-07',
+        timestamp: '2026-01-07T12:00:00.000Z',
+        source: 'manual',
+        value: 1,
+      }),
+      createEntry({
+        id: 'e-thu',
+        habitId: 'child-wed-only',
+        dayKey: '2026-01-08',
+        timestamp: '2026-01-08T12:00:00.000Z',
+        source: 'manual',
+        value: 1,
+      }),
+    ]);
+
+    const req = {
+      householdId: 'test-household',
+      userId: 'test-user',
+      query: {
+        startDayKey: '2026-01-07',
+        endDayKey: '2026-01-08',
+        timeZone: 'UTC',
+      },
+    } as unknown as Request;
+
+    const res = createRes();
+    await getDaySummary(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(200);
+    const body = vi.mocked(res.json).mock.calls[0][0];
+
+    // Wednesday: child is active per membership, so parent log is derived and complete.
+    expect(body.logs['bundle-parent-2026-01-07']).toEqual(
+      expect.objectContaining({ completed: true })
+    );
+
+    // Thursday: child is NOT active per membership (daysOfWeek=[3]).
+    // No active children => no derived parent log for that day.
+    expect(body.logs['bundle-parent-2026-01-08']).toBeUndefined();
   });
 });
