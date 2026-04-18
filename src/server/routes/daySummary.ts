@@ -228,7 +228,10 @@ export async function getDaySummary(req: Request, res: Response): Promise<void> 
               if (m.activeFromDayKey > dayKey) return false;
               if (m.activeToDayKey && m.activeToDayKey < dayKey) return false;
               if (m.daysOfWeek && m.daysOfWeek.length > 0) {
-                const dayOfWeek = new Date(dayKey + 'T12:00:00').getDay();
+                // Noon-UTC + getUTCDay so the day-of-week is independent of
+                // the server's local timezone, matching bundleMembershipRepository,
+                // progress.ts, scheduleEngine, and client habitUtils.
+                const dayOfWeek = new Date(dayKey + 'T12:00:00Z').getUTCDay();
                 if (!m.daysOfWeek.includes(dayOfWeek)) return false;
               }
               return true;
