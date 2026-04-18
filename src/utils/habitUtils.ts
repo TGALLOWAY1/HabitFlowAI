@@ -282,23 +282,19 @@ export function isHabitComplete(
 }
 
 /**
- * Computes daily habit ring progress: { completed, total } for top-level daily habit units.
- * Uses the same filtering as the Today view (getHabitsForDate): only daily-frequency,
- * non-archived, root-level habits count toward the ring.
+ * Computes daily habit ring progress: { completed, total } matching the rows
+ * the Today view displays. Bundle parents count as a single row (children are
+ * already excluded via getBundleChildIds); their completion is derived from
+ * children via isHabitComplete -> computeBundleStatus. Keeping bundles in the
+ * tally keeps the dashboard ring aligned with the check state a user sees on
+ * the Today page.
  */
 export function getDailyHabitRingProgress(
     habits: Habit[],
     logs: Record<string, DayLog>,
     date: string
 ): { completed: number; total: number } {
-    const dailyRootHabits = getHabitsForDate(habits, date);
-    // Exclude bundle parents from ring metrics — their completion is derived
-    // from children, who are already excluded from root. This aligns with
-    // analytics (which also excludes bundle parents via isTrackableHabit).
-    // Without this, a user with 3 standalone + 1 bundle sees 4 total in the
-    // ring but 5 total in analytics (3 standalone + 2 children), causing
-    // inconsistent completion percentages across views.
-    const trackable = dailyRootHabits.filter(h => h.type !== 'bundle');
+    const trackable = getHabitsForDate(habits, date);
     const completed = trackable.filter(h => isHabitComplete(h, logs, date)).length;
     return { completed, total: trackable.length };
 }
