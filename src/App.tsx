@@ -574,6 +574,7 @@ const HabitTrackerContent: React.FC = () => {
             onNavigateToJournal={() => handleNavigate('journal')}
             onNavigateToRoutines={() => handleNavigate('routines')}
             onNavigateToTasks={() => handleNavigate('tasks')}
+            onNavigateToGoals={() => handleNavigate('goals')}
             onNavigate={(route) => handleNavigate(route as AppRoute)}
           />
         ) : view === 'wellbeing-history' ? (

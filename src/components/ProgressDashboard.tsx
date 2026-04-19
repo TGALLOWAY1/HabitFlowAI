@@ -101,6 +101,7 @@ interface ProgressDashboardProps {
     onNavigateToJournal?: () => void;
     onNavigateToRoutines?: () => void;
     onNavigateToTasks?: () => void;
+    onNavigateToGoals?: () => void;
     onNavigate?: (route: string, params?: Record<string, string>) => void;
 }
 
@@ -114,6 +115,7 @@ export const ProgressDashboard: React.FC<ProgressDashboardProps> = ({
     onNavigateToJournal,
     onNavigateToRoutines,
     onNavigateToTasks,
+    onNavigateToGoals,
     onNavigate,
 }) => {
     const { user } = useAuth();
@@ -231,7 +233,7 @@ export const ProgressDashboard: React.FC<ProgressDashboardProps> = ({
                             </button>
                         )}
                         <button
-                            onClick={() => onViewGoal && onViewGoal('all')}
+                            onClick={() => onNavigateToGoals?.()}
                             className="text-xs text-neutral-500 hover:text-white transition-colors"
                         >
                             View all
