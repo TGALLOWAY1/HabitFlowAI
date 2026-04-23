@@ -20,7 +20,7 @@ Canonical inventory of all user-facing features. Keep this document in sync with
 - **Habit-Goal Linking** — Link habits to goals so completions count as goal progress. A single habit can be linked to multiple goals simultaneously (e.g., one "study session" habit contributing to a sequence of exam goals in a track).
 - **Habit-Routine Linking** — Link habits to routine steps so routine completion auto-logs habits
 - **Archiving** — Archive habits instead of deleting; soft-delete pattern
-- **Deletion with Goal Warning** — Deleting a habit linked to one or more goals surfaces a confirmation modal listing the affected goals. Historical progress on those goals is preserved — past entries continue to count — but the habit is removed from the goal's linked-habits list and can no longer be logged
+- **Deletion with Goal Warning** — Deleting a habit linked to one or more goals surfaces a confirmation modal listing the affected goals. Historical progress on those goals is preserved — past entries continue to count — but the habit is removed from the goal's linked-habits list and can no longer be logged. Deletion is soft: the habit's name/unit is retained so orphaned historical entries can still render with their original label on goal detail pages
 - **Reordering** — Drag-and-drop to reorder habits within categories
 
 ## Routines
@@ -44,7 +44,8 @@ Canonical inventory of all user-facing features. Keep this document in sync with
 - **Goal Types: One-time** — Binary milestone achievement (e.g., "Pass the B2 exam")
 - **Linked Habits** — Connect habits that contribute to goal progress; completions auto-update progress
 - **Progress Visualization** — Real-time progress bar with milestone markers at 25/50/75%
-- **Cumulative Chart** — Line graph of total progress over time
+- **Cumulative Chart** — Line graph of total progress over time. Renders from the same server-derived contributions series as the top "currentValue" total, so the two always agree
+- **Removed-Habit Contributors** — When a goal has historical progress from habits that have since been deleted, the goal detail page surfaces those contributions in a "Removed habits still contributing" list. The habit name is preserved via soft-delete so users can see exactly which removed habit is contributing how many units
 - **Trend Analysis** — Compare actual vs. required pace to hit deadline
 - **Weekly Summary** — Aggregated contribution data by week
 - **Day-by-Day View** — Chronological list of individual contributions

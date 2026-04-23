@@ -43,7 +43,9 @@ function getDateString(daysAgo: number): string {
  */
 async function resolveBundleIds(habitIds: string[], householdId: string, userId: string): Promise<string[]> {
   const resolvedIds = new Set<string>();
-  const allHabits = await getHabitsByUser(householdId, userId);
+  // Include soft-deleted habits so bundle resolution still works for goals
+  // that linked to a bundle that was later removed.
+  const allHabits = await getHabitsByUser(householdId, userId, { includeDeleted: true });
   const habitMap = new Map(allHabits.map(h => [h.id, h]));
 
   for (const id of habitIds) {
@@ -121,7 +123,9 @@ export async function computeGoalProgressV2(
     timeZone,
   });
 
-  const allHabits = await getHabitsByUser(householdId, userId);
+  // Include soft-deleted habits so boolean-target multipliers and unit matches
+  // still apply for orphan entries (habit was removed but its entries remain).
+  const allHabits = await getHabitsByUser(householdId, userId, { includeDeleted: true });
   const habitMap = new Map(allHabits.map(h => [h.id, h]));
 
   // For tracked goals, only count entries within the active window
@@ -288,7 +292,8 @@ export async function computeGoalsWithProgressV2(
 
   const [goals, allHabits] = await Promise.all([
     getGoalsByUser(householdId, userId),
-    getHabitsByUser(householdId, userId),
+    // Include soft-deleted habits so goal progress preserves orphan contributions.
+    getHabitsByUser(householdId, userId, { includeDeleted: true }),
   ]);
 
   return computeGoalsWithProgressFromData(goals, allHabits, householdId, userId, timeZone);
@@ -317,6 +322,22 @@ export async function computeGoalsWithProgressFromData(
   prefetchedEntries?: HabitEntry[]
 ): Promise<Array<{ goal: Goal; progress: GoalProgress }>> {
   const habitMap = new Map(allHabits.map(h => [h.id, h]));
+
+  // Supplement with soft-deleted habits referenced by any goal's linkedHabitIds.
+  // Callers typically pass only active habits (for other purposes). We need the
+  // deleted ones so boolean-target multipliers and unit checks still apply to
+  // orphan entries.
+  const referencedIds = new Set<string>();
+  for (const goal of goals) {
+    for (const id of goal.linkedHabitIds) referencedIds.add(id);
+  }
+  const missingIds = Array.from(referencedIds).filter(id => !habitMap.has(id));
+  if (missingIds.length > 0) {
+    const deletedHabits = await getHabitsByUser(householdId, userId, { includeDeleted: true });
+    for (const habit of deletedHabits) {
+      if (missingIds.includes(habit.id)) habitMap.set(habit.id, habit);
+    }
+  }
 
   // Pre-fetch memberships for all bundle parents referenced by goals
   const bundleParentIds = new Set<string>();
@@ -410,6 +431,20 @@ export async function computeGoalListProgress(
   timeZone: string = 'UTC'
 ): Promise<Array<{ goal: Goal; progress: GoalProgress }>> {
   const habitMap = new Map(allHabits.map(h => [h.id, h]));
+
+  // Supplement with soft-deleted habits referenced by any goal. Needed so
+  // boolean-target multipliers and unit checks still apply to orphan entries.
+  const referencedIds = new Set<string>();
+  for (const goal of goals) {
+    for (const id of goal.linkedHabitIds) referencedIds.add(id);
+  }
+  const missingIds = Array.from(referencedIds).filter(id => !habitMap.has(id));
+  if (missingIds.length > 0) {
+    const allWithDeleted = await getHabitsByUser(householdId, userId, { includeDeleted: true });
+    for (const habit of allWithDeleted) {
+      if (missingIds.includes(habit.id)) habitMap.set(habit.id, habit);
+    }
+  }
 
   // Pre-fetch memberships for all bundle parents referenced by goals
   const bundleParentIds = new Set<string>();
