@@ -47,7 +47,7 @@ function TestConsumer({ onMount }: { onMount?: (store: ReturnType<typeof useRout
             <span data-testid="step-states">{JSON.stringify(store.stepStates)}</span>
             <span data-testid="execution-state">{store.executionState}</span>
             <button onClick={() => store.selectRoutine(mockRoutine.id)}>Select</button>
-            <button onClick={() => store.startRoutine()}>Start</button>
+            <button onClick={() => store.activeRoutine && store.startRoutine(store.activeRoutine)}>Start</button>
             <button onClick={() => store.setStepState('step-a', 'done')}>Mark A done</button>
             <button onClick={() => store.setStepState('step-b', 'skipped')}>Mark B skipped</button>
             <button onClick={() => store.exitRoutine()}>Exit</button>
