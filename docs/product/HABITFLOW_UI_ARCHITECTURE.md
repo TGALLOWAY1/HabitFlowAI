@@ -112,7 +112,7 @@ HabitFlow App
 | Goals — All | Page | Bottom tab "Goals", "All" toggle | Collapsible category stacks with progress bars. "New Track" button in header bar next to "+" | Goals, Categories | Create Goal Flow, Goal Detail, Edit Goal Modal, Create Track Modal |
 | Goals — Schedule | Page | "Schedule" toggle on Goals | Insight calendar with deadlines, forecasts, milestones | Goals, Categories | Goal Detail, Focus Mode |
 | Goals — Achievements | Page | "Achievements" toggle on Goals (trophy icon) | Gallery of completed goals (was Win Archive) | Goals | Goal Detail |
-| Goal Detail | Page | Click goal card / pinned goal | Charts, entries, linked habits for one goal | Goals, Habits, Entries | Edit Goal Modal, Goal Completed |
+| Goal Detail | Page | Click goal card / pinned goal | Charts, entries, linked habits (plus a "Removed habits still contributing" list when the goal has orphan contributions from deleted habits) for one goal | Goals, Habits, Entries | Edit Goal Modal, Goal Completed |
 | Goal Completed | Page | Auto-shown on 100% or manual | Celebratory screen with next actions | Goals | Achievements, Goal Detail, Level Up |
 | Goal Track Detail | Page | Click track in Goals page | Track name, ordered goals with states, reorder, add/remove goals | Goal Tracks, Goals | Goal Detail, Goals List |
 | Create Goal (Step 1) | Modal | "+ Goal" button on Goals page | Enter goal details (title, type, target, deadline, category) | Goals, Categories | Create Goal Step 2 |

@@ -50,6 +50,12 @@ Pending suggestions created when a `suggest` rule is satisfied. User must accept
 - **Subjective-state truth:** `wellbeingEntries`
 - **Derived read-model surfaces** (computed from entries, not stored): day view, day summary, progress/overview, streaks, goal progress.
 
+## Soft Delete
+
+- **Habits** are soft-deleted: `DELETE /api/habits/:id` sets `Habit.deletedAt` rather than removing the row. The document is retained so that orphan entries (which still contribute to goal progress) can display the habit's original name and unit in historical views. Default readers (`getHabitsByUser`, etc.) filter out soft-deleted; goal-progress code opts in via `{ includeDeleted: true }`.
+- **Entries** are soft-deleted via `HabitEntry.deletedAt`.
+- **Truth records** are never hard-deleted.
+
 ## HabitEntry Semantics
 
 `HabitEntry` fields are defined in `src/models/persistenceTypes.ts`.

@@ -366,6 +366,9 @@ export function InfoModal({ isOpen, onClose }: InfoModalProps) {
                 <p className="text-xs text-neutral-500 mt-2">
                   <span className="font-semibold text-emerald-400">Goal Tracks</span> — Create ordered sequences of goals within a category (e.g., Exam 1 → Exam 2 → Exam 3). Only one goal per track is active at a time. When you complete the active goal, the next one unlocks automatically. Progress for each goal only counts from when it became active, so shared habits won't leak progress forward.
                 </p>
+                <p className="text-xs text-neutral-500 mt-2">
+                  <span className="font-semibold text-emerald-400">Removed habits still contributing</span> — If you delete a habit that was linked to a goal, its historical entries still count toward that goal's total. The goal detail page lists those removed habits under a "Removed habits still contributing" section so you can see exactly where the progress came from.
+                </p>
               </div>
             </div>
           )}
