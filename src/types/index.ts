@@ -166,13 +166,39 @@ export interface GoalTrackWithGoals {
 export type CompletedGoal = Goal;
 
 /**
+ * Per-entry contribution to a goal. Server-derived so that chart + weekly
+ * summary + day-by-day list all sum to `progress.currentValue` by construction.
+ */
+export interface GoalContribution {
+    id: string;
+    /** DayKey (YYYY-MM-DD) */
+    date: string;
+    habitId: string;
+    /** Name at query time; retained for deleted habits via soft delete. */
+    habitName: string;
+    /** True if the habit has been deleted (soft). Entry still contributes. */
+    habitDeleted: boolean;
+    /** Value added by this entry, already adjusted for boolean target. */
+    value: number;
+    unit?: string;
+    source?: string;
+}
+
+/**
  * Goal Detail
  *
- * Data for goal detail page: goal, progress, and history (entries-derived).
+ * Data for goal detail page: goal, progress, and a full per-entry
+ * contributions array. All derived views (cumulative chart, weekly
+ * summary, day-by-day list) must render from `contributions` so they
+ * stay in lockstep with `progress.currentValue`.
  */
 export interface GoalDetail {
     goal: Goal;
     progress: GoalProgress;
+    contributions: GoalContribution[];
+    /**
+     * @deprecated Use `contributions`. Kept for transitional reads only.
+     */
     history?: { date: string; value: number }[];
 }
 

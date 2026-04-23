@@ -24,7 +24,6 @@ import type { GoalTrack } from '../../types';
 import { GoalCumulativeChart } from '../../components/goals/GoalCumulativeChart';
 import { GoalWeeklySummary } from '../../components/goals/GoalWeeklySummary';
 import { GoalEntryList } from '../../components/goals/GoalEntryList';
-import type { HabitEntry } from '../../models/persistenceTypes';
 
 interface GoalDetailPageProps {
     goalId: string;
@@ -39,7 +38,7 @@ type Tab = 'cumulative' | 'dayByDay' | 'trend';
 
 export const GoalDetailPage: React.FC<GoalDetailPageProps> = ({ goalId, onBack, onNavigateToCompleted, onViewHabit, onViewGoal }) => {
     const { data, loading, error, refetch } = useGoalDetail(goalId);
-    const { habits, logs } = useHabitStore();
+    const { habits } = useHabitStore();
     const [activeTab, setActiveTab] = useState<Tab>('cumulative');
     const [showEditModal, setShowEditModal] = useState(false);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -64,7 +63,8 @@ export const GoalDetailPage: React.FC<GoalDetailPageProps> = ({ goalId, onBack, 
         return map;
     }, [habits]);
 
-    // Get linked habits
+    // Get linked habits (active only — deleted contributors are rendered from
+    // the server-provided contributions list below).
     const linkedHabits = useMemo(() => {
         if (!data) return [];
         return data.goal.linkedHabitIds
@@ -72,101 +72,33 @@ export const GoalDetailPage: React.FC<GoalDetailPageProps> = ({ goalId, onBack, 
             .filter((habit): habit is NonNullable<typeof habit> => habit !== undefined);
     }, [data, habitMap]);
 
-    // Derive linked habit entries from HabitContext logs (already pre-fetched)
-    // instead of making N separate API calls per linked habit
-    const linkedHabitEntries = useMemo(() => {
-        if (!data?.goal.linkedHabitIds.length) return [];
-
-        const linkedSet = new Set(data.goal.linkedHabitIds);
-        const entries: HabitEntry[] = [];
-
-        for (const [_key, dayLog] of Object.entries(logs)) {
-            if (!linkedSet.has(dayLog.habitId)) continue;
-            if (!dayLog.completed && !dayLog.value) continue;
-
-            entries.push({
-                id: `entry-${dayLog.habitId}-${dayLog.date}`,
-                habitId: dayLog.habitId,
-                timestamp: dayLog.date,
-                dayKey: dayLog.date,
-                date: dayLog.date,
-                dateKey: dayLog.date,
-                value: dayLog.value ?? (dayLog.completed ? 1 : 0),
-                source: dayLog.source,
-                routineId: dayLog.routineId,
-                deletedAt: undefined,
-                createdAt: dayLog.date,
-                updatedAt: dayLog.date,
-            } as HabitEntry);
-        }
-
-        return entries;
-    }, [data?.goal.linkedHabitIds, logs]);
-
-    // Combine Data for Charts/List
+    // Canonical per-entry contributions come from the server. All derived
+    // views (chart, weekly summary, day-by-day list) render from this so
+    // sum(combinedEntries[].value) === progress.currentValue by construction.
     const combinedEntries = useMemo(() => {
-        if (!data) return [];
+        if (!data?.contributions) return [];
+        return data.contributions
+            .map(c => ({
+                id: c.id,
+                date: c.date,
+                value: c.value,
+                source: 'habit' as const,
+                habitName: c.habitName,
+                habitDeleted: c.habitDeleted,
+                unit: c.unit ?? data.goal.unit,
+            }))
+            .sort((a, b) => a.date.localeCompare(b.date));
+    }, [data]);
 
-        const fromHabits = linkedHabitEntries
-            .filter(entry => {
-                const habit = habitMap.get(entry.habitId);
-                if (!habit) return false;
-
-                // Type-Based Aggregation Logic
-                if (data.goal.type === 'cumulative') {
-                    // Include all habits (boolean habits contribute their target per entry)
-                    return true;
-                }
-
-                // For other goal types (onetime), accept everything
-                return true;
-            })
-            .map(entry => {
-                const habit = habitMap.get(entry.habitId);
-                // Use entry.date (YYYY-MM-DD) as the canonical date source.
-                // Fallback to timestamp split if needed, but entry.date is required.
-                const dateStr = entry.date || entry.timestamp.split('T')[0];
-
-                return {
-                    id: entry.id,
-                    date: dateStr,
-                    // Now that we filtered incompatible units, we can safely use value.
-                    // If value is undefined but unit matched (unlikely if strictly checked, but possible for some data shapes),
-                    // we might default to 0 or 1.
-                    // If goal is cumulative, we expect a number.
-                    value: (() => {
-                        const h = habitMap.get(entry.habitId);
-                        // Boolean habits contribute their target value per entry
-                        if (h?.goal.type === 'boolean' && data.goal.type === 'cumulative') {
-                            return h.goal.target ?? 1;
-                        }
-                        return entry.value !== undefined ? entry.value : 0;
-                    })(),
-                    source: 'habit' as const,
-                    habitName: habit?.name,
-                    unit: habit?.goal.unit || data.goal.unit
-                };
-            });
-
-        const combined = fromHabits.filter(item => item.date);
-        console.log('[GoalDetail] Final combined entries:', combined);
-        return combined.sort((a, b) => (a.date || '').localeCompare(b.date || ''));
-    }, [data, linkedHabitEntries, habitMap]);
-
-    // Calculate Cumulative Data for Chart
+    // Cumulative series for the chart: running sum of contribution values.
     const cumulativeData = useMemo(() => {
         let total = 0;
-        // Sort ascending by date safely
-        const sorted = [...combinedEntries].sort((a, b) => (a.date || '').localeCompare(b.date || ''));
-
-        return sorted.map(entry => {
+        return combinedEntries.map(entry => {
             total += entry.value;
-            return {
-                date: entry.date,
-                value: total
-            };
+            return { date: entry.date, value: total };
         });
     }, [combinedEntries]);
+
 
     // Inline Milestones Logic
     const milestones = useMemo(() => {

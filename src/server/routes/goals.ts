@@ -858,6 +858,12 @@ export async function getGoalDetailRoute(req: Request, res: Response): Promise<v
     }
 
     const { getEntryViewsForHabits } = await import('../services/truthQuery');
+    const { getAggregationMode, getCountMode } = await import('../utils/goalLinkSemantics');
+
+    // Build habit map including soft-deleted so orphan entries resolve a name
+    // and boolean-target multipliers still apply.
+    const allHabits = await getHabitsByUser(householdId, userId, { includeDeleted: true });
+    const habitMap = new Map(allHabits.map(h => [h.id, h]));
 
     const entryViews = await getEntryViewsForHabits(goal.linkedHabitIds, householdId, userId, {
       timeZone: userTimeZone,
@@ -865,6 +871,69 @@ export async function getGoalDetailRoute(req: Request, res: Response): Promise<v
 
     const activeEntries = entryViews.filter(e => !e.deletedAt);
 
+    // Respect the goal's active window if it is a tracked goal.
+    const dateWindow = goal.activeWindowStart
+      ? { start: goal.activeWindowStart, end: goal.activeWindowEnd || undefined }
+      : undefined;
+    const windowedEntries = dateWindow
+      ? activeEntries.filter(e => {
+          if (e.dayKey < dateWindow.start) return false;
+          if (dateWindow.end && e.dayKey > dateWindow.end) return false;
+          return true;
+        })
+      : activeEntries;
+
+    // Build the canonical per-entry contributions list. All derived views on
+    // the frontend (cumulative chart, weekly summary, day-by-day list) must
+    // render from this so the sum matches progress.currentValue by construction.
+    const aggregationMode = getAggregationMode(goal);
+    const countMode = getCountMode(goal);
+
+    // For count-mode='distinctDays', dedupe by dayKey server-side. currentValue =
+    // distinct-day count, so we emit one contribution per day (worth 1) so
+    // that sum(contributions[].value) === currentValue.
+    const sourceEntries = (aggregationMode === 'count' && countMode === 'distinctDays')
+      ? (() => {
+          const seen = new Map<string, typeof windowedEntries[number]>();
+          for (const e of windowedEntries) {
+            if (!seen.has(e.dayKey)) seen.set(e.dayKey, e);
+          }
+          return Array.from(seen.values());
+        })()
+      : windowedEntries;
+
+    const contributions = sourceEntries.map((entry, idx) => {
+      const habit = habitMap.get(entry.habitId);
+      let value: number;
+      if (aggregationMode === 'sum') {
+        // Boolean habits contribute their target per entry (e.g. "do 25 pull ups"
+        // records 1 entry but counts for 25). Missing habit (shouldn't happen
+        // post soft-delete, but guard): fall back to the entry's raw value.
+        if (habit?.goal.type === 'boolean') {
+          value = habit.goal.target ?? 1;
+        } else {
+          value = entry.value ?? 0;
+        }
+      } else {
+        // count-mode: each unit of progress is worth 1 (entry or day).
+        value = 1;
+      }
+
+      return {
+        // EntryView has no stable id; synthesize one per row (stable for a
+        // given fetched response — the frontend only needs it for React keys).
+        id: `${entry.habitId}-${entry.dayKey}-${entry.timestampUtc ?? idx}`,
+        date: entry.dayKey,
+        habitId: entry.habitId,
+        habitName: habit?.name ?? 'Removed habit',
+        habitDeleted: !!habit?.deletedAt,
+        value,
+        unit: habit?.goal.unit ?? goal.unit,
+        source: entry.source,
+      };
+    });
+
+    // Legacy 30-day history (kept for transitional clients until removed).
     const historyMap = new Map<string, number>();
     const last30Days: string[] = [];
     for (let i = 0; i < 30; i++) {
@@ -872,17 +941,10 @@ export async function getGoalDetailRoute(req: Request, res: Response): Promise<v
       last30Days.push(dateStr);
       historyMap.set(dateStr, 0);
     }
-
-    for (const entry of activeEntries) {
-      if (!historyMap.has(entry.dayKey)) continue;
-      const current = historyMap.get(entry.dayKey) || 0;
-      if (goal.type === 'cumulative') {
-        historyMap.set(entry.dayKey, current + (entry.value ?? 0));
-      } else {
-        historyMap.set(entry.dayKey, current + 1);
-      }
+    for (const c of contributions) {
+      if (!historyMap.has(c.date)) continue;
+      historyMap.set(c.date, (historyMap.get(c.date) || 0) + c.value);
     }
-
     const history = last30Days.reverse().map(date => ({
       date,
       value: historyMap.get(date) || 0,
@@ -891,6 +953,7 @@ export async function getGoalDetailRoute(req: Request, res: Response): Promise<v
     res.status(200).json({
       goal,
       progress,
+      contributions,
       history,
     });
   } catch (error) {
