@@ -121,6 +121,13 @@ export interface Habit {
     /** Whether the habit is archived (hidden from active tracking) */
     archived: boolean;
 
+    /**
+     * Soft delete marker (ISO 8601). When set, the habit is removed from
+     * active views but the document is retained so historical entries keep
+     * a resolvable name/unit for goal progress displays.
+     */
+    deletedAt?: string;
+
     /** ISO 8601 timestamp of when the habit was created */
     createdAt: string;
 

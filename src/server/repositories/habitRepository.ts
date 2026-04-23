@@ -69,8 +69,14 @@ export async function createHabit(
   // Atomic upsert: prevents TOCTOU race where concurrent requests both
   // pass a findOne check and then both insert, creating duplicates.
   // $setOnInsert only applies fields when a new document is created.
+  // Filter by deletedAt absent so a soft-deleted habit with the same name
+  // does not silently resurrect when the user creates a new habit.
   const result = await collection.findOneAndUpdate(
-    scopeFilter(householdId, userId, { name: data.name, categoryId: data.categoryId }),
+    scopeFilter(householdId, userId, {
+      name: data.name,
+      categoryId: data.categoryId,
+      deletedAt: { $exists: false },
+    }),
     {
       $setOnInsert: {
         id,
@@ -96,12 +102,32 @@ export async function createHabit(
   return stripScope(result);
 }
 
-export async function getHabitsByUser(householdId: string, userId: string): Promise<Habit[]> {
+export interface HabitReadOptions {
+  /**
+   * When true, include soft-deleted habits (deletedAt set) in results.
+   * Default: false. Used by goal progress to resolve historical names/units.
+   */
+  includeDeleted?: boolean;
+}
+
+function withDeletedFilter(
+  extra: Record<string, unknown>,
+  includeDeleted: boolean | undefined
+): Record<string, unknown> {
+  if (includeDeleted) return extra;
+  return { ...extra, deletedAt: { $exists: false } };
+}
+
+export async function getHabitsByUser(
+  householdId: string,
+  userId: string,
+  options?: HabitReadOptions
+): Promise<Habit[]> {
   const db = await getDb();
   const collection = db.collection(COLLECTION_NAME);
 
   const documents = await collection
-    .find(scopeFilter(householdId, userId))
+    .find(scopeFilter(householdId, userId, withDeletedFilter({}, options?.includeDeleted)))
     .sort({ order: 1, createdAt: 1 })
     .toArray();
 
@@ -111,13 +137,14 @@ export async function getHabitsByUser(householdId: string, userId: string): Prom
 export async function getHabitsByCategory(
   categoryId: string,
   householdId: string,
-  userId: string
+  userId: string,
+  options?: HabitReadOptions
 ): Promise<Habit[]> {
   const db = await getDb();
   const collection = db.collection(COLLECTION_NAME);
 
   const documents = await collection
-    .find(scopeFilter(householdId, userId, { categoryId }))
+    .find(scopeFilter(householdId, userId, withDeletedFilter({ categoryId }, options?.includeDeleted)))
     .sort({ order: 1, createdAt: 1 })
     .toArray();
 
@@ -127,12 +154,15 @@ export async function getHabitsByCategory(
 export async function getHabitById(
   id: string,
   householdId: string,
-  userId: string
+  userId: string,
+  options?: HabitReadOptions
 ): Promise<Habit | null> {
   const db = await getDb();
   const collection = db.collection(COLLECTION_NAME);
 
-  const document = await collection.findOne(scopeFilter(householdId, userId, { id }));
+  const document = await collection.findOne(
+    scopeFilter(householdId, userId, withDeletedFilter({ id }, options?.includeDeleted))
+  );
   if (!document) return null;
 
   return stripScope(document);
@@ -148,8 +178,10 @@ export async function updateHabit(
   const db = await getDb();
   const collection = db.collection(COLLECTION_NAME);
 
+  // Refuse to update soft-deleted habits: they should only be resurrectable
+  // via an explicit restore path, not via an ordinary PATCH.
   const result = await collection.findOneAndUpdate(
-    scopeFilter(householdId, userId, { id }),
+    scopeFilter(householdId, userId, { id, deletedAt: { $exists: false } }),
     { $set: patch },
     { returnDocument: 'after', session }
   );
@@ -158,6 +190,14 @@ export async function updateHabit(
   return stripScope(result);
 }
 
+/**
+ * Soft-delete a habit. Sets `deletedAt`; the document is retained so that
+ * orphaned entries (which still contribute to goal progress) can display
+ * the habit's original name and unit in historical views.
+ *
+ * Idempotent: deleting an already-deleted habit returns false without
+ * updating deletedAt (so the original deletion timestamp is preserved).
+ */
 export async function deleteHabit(
   id: string,
   householdId: string,
@@ -166,8 +206,11 @@ export async function deleteHabit(
   const db = await getDb();
   const collection = db.collection(COLLECTION_NAME);
 
-  const result = await collection.deleteOne(scopeFilter(householdId, userId, { id }));
-  return result.deletedCount > 0;
+  const result = await collection.updateOne(
+    scopeFilter(householdId, userId, { id, deletedAt: { $exists: false } }),
+    { $set: { deletedAt: new Date().toISOString() } }
+  );
+  return result.modifiedCount > 0;
 }
 
 export async function reorderHabits(
@@ -267,8 +310,9 @@ export async function linkHabitsToGoal(
   const goalsCollection = db.collection(GOALS_COLLECTION);
 
   // Fetch the habits we're linking and their existing linkedGoalId values.
+  // Skip soft-deleted habits: re-linking a removed habit would resurrect it.
   const habits = await habitsCollection
-    .find(scopeFilter(householdId, userId, { id: { $in: habitIds } }))
+    .find(scopeFilter(householdId, userId, { id: { $in: habitIds }, deletedAt: { $exists: false } }))
     .project({ id: 1, linkedGoalId: 1 })
     .toArray();
 
@@ -338,8 +382,9 @@ export async function unlinkHabitsFromGoal(
   const goalsCollection = db.collection(GOALS_COLLECTION);
 
   // Find habits currently pointing at this goal.
+  // Skip soft-deleted habits: they no longer carry the primary-goal UI hint.
   const habitsPointingHere = await habitsCollection
-    .find(scopeFilter(householdId, userId, { linkedGoalId: goalId }))
+    .find(scopeFilter(householdId, userId, { linkedGoalId: goalId, deletedAt: { $exists: false } }))
     .project({ id: 1 })
     .toArray();
 
