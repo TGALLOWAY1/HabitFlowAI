@@ -99,6 +99,24 @@ export const GoalDetailPage: React.FC<GoalDetailPageProps> = ({ goalId, onBack, 
         });
     }, [combinedEntries]);
 
+    // Deleted-habit contributors. Users need to see these so the gap
+    // between active-habit entries and progress.currentValue is explainable
+    // ("Chin ups was removed but its 88 pull-ups still count here").
+    const deletedContributors = useMemo(() => {
+        if (!data?.contributions) return [];
+        const byHabit = new Map<string, { habitName: string; total: number; count: number }>();
+        for (const c of data.contributions) {
+            if (!c.habitDeleted) continue;
+            const existing = byHabit.get(c.habitId) ?? { habitName: c.habitName, total: 0, count: 0 };
+            existing.total += c.value;
+            existing.count += 1;
+            byHabit.set(c.habitId, existing);
+        }
+        return Array.from(byHabit.entries())
+            .map(([habitId, v]) => ({ habitId, ...v }))
+            .sort((a, b) => b.total - a.total);
+    }, [data]);
+
 
     // Inline Milestones Logic
     const milestones = useMemo(() => {
@@ -620,6 +638,48 @@ export const GoalDetailPage: React.FC<GoalDetailPageProps> = ({ goalId, onBack, 
                         </div>
                     )}
                 </div>
+
+                {deletedContributors.length > 0 && (
+                    <div className="mt-8">
+                        <div className="mb-3">
+                            <p className="text-neutral-300 text-sm font-medium">Removed habits still contributing</p>
+                            <p className="text-neutral-500 text-xs mt-0.5">
+                                These habits have been deleted but their historical entries still count toward this goal's total.
+                            </p>
+                        </div>
+                        <div className="space-y-2">
+                            {deletedContributors.map(contrib => (
+                                <div
+                                    key={contrib.habitId}
+                                    className="flex items-center justify-between p-3 bg-neutral-900/30 border border-white/5 rounded-lg"
+                                >
+                                    <div className="flex items-center gap-3 min-w-0">
+                                        <div className="w-8 h-8 rounded-lg bg-neutral-800 flex items-center justify-center text-neutral-500 flex-shrink-0">
+                                            <Trash2 size={14} />
+                                        </div>
+                                        <div className="min-w-0">
+                                            <div className="text-neutral-200 text-sm font-medium truncate">
+                                                {contrib.habitName}
+                                            </div>
+                                            <div className="text-neutral-500 text-xs">
+                                                <span className="inline-block px-1.5 py-0.5 bg-neutral-800 text-neutral-400 text-[10px] rounded mr-1.5">
+                                                    Removed
+                                                </span>
+                                                {contrib.count} {contrib.count === 1 ? 'entry' : 'entries'}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="text-right flex-shrink-0">
+                                        <div className="text-neutral-200 text-sm font-medium">
+                                            +{Number.isInteger(contrib.total) ? contrib.total : contrib.total.toFixed(1)}
+                                            {goal.unit && <span className="text-neutral-500 text-xs font-normal ml-1">{goal.unit}</span>}
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
             </div>
 
             {/* Manual contribution area removed in V1: progress is derived from habit entries */}
