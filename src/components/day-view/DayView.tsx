@@ -1,6 +1,6 @@
 import { useMemo, useState, useEffect } from 'react';
 import { useHabitStore } from '../../store/HabitContext';
-import { getHabitsForDate } from '../../utils/habitUtils';
+import { getTodayHabitStats } from '../../utils/habitUtils';
 import { evaluateChecklistSuccess } from '../../shared/checklistSuccessRule';
 import { PinnedHabitsStrip } from './PinnedHabitsStrip';
 import { DayCategorySection } from './DayCategorySection';
@@ -154,11 +154,13 @@ export const DayView = ({ onAddHabit, onEditHabit, onViewHistory, onDeleteHabit 
         return new Map(dayViewData.habits.map(status => [status.habit.id, status]));
     }, [dayViewData]);
 
+    const todayHabitStats = useMemo(
+        () => getTodayHabitStats(habits, logs, dateStr),
+        [habits, logs, dateStr]
+    );
+
     // 1. Filter Habits for Today (Root level, frequency match)
-    const todaysHabits = useMemo(() => {
-        if (!habits) return [];
-        return getHabitsForDate(habits, dateStr);
-    }, [habits, dateStr]);
+    const todaysHabits = todayHabitStats.scheduledHabitsForToday;
 
     // Lookup Map for Bundle Resolution
     const allHabitsLookup = useMemo(() => {
@@ -197,15 +199,26 @@ export const DayView = ({ onAddHabit, onEditHabit, onViewHistory, onDeleteHabit 
             }
         };
 
-        // Merge root habits
-        todaysHabits.forEach(mergeHabitLog);
-
-        // Merge sub-habits of bundles so DayCategorySection can look up their status
+        // Merge root habits + shared completion semantics
         todaysHabits.forEach(habit => {
             if (habit.type === 'bundle' && habit.subHabitIds) {
                 habit.subHabitIds.forEach(subId => {
                     const subHabit = allHabitsLookup.get(subId);
                     if (subHabit) mergeHabitLog(subHabit);
+                });
+            }
+
+            const existing = map.get(habit.id);
+            const isComplete = todayHabitStats.habitCompletionStates[habit.id] ?? false;
+            if (existing) {
+                map.set(habit.id, { ...existing, isComplete });
+            } else {
+                map.set(habit.id, {
+                    habit,
+                    isComplete,
+                    currentValue: 0,
+                    targetValue: 1,
+                    progressPercent: isComplete ? 100 : 0,
                 });
             }
         });
@@ -221,9 +234,11 @@ export const DayView = ({ onAddHabit, onEditHabit, onViewHistory, onDeleteHabit 
                 });
 
                 const totalChildren = habit.subHabitIds.length;
-                const parentComplete = habit.bundleType === 'choice'
-                    ? completedChildren > 0
-                    : evaluateChecklistSuccess(completedChildren, totalChildren, habit.checklistSuccessRule).meetsSuccessRule;
+                const parentComplete = todayHabitStats.habitCompletionStates[habit.id] ?? (
+                    habit.bundleType === 'choice'
+                        ? completedChildren > 0
+                        : evaluateChecklistSuccess(completedChildren, totalChildren, habit.checklistSuccessRule).meetsSuccessRule
+                );
 
                 const existing = map.get(habit.id);
                 if (existing) {
@@ -238,7 +253,7 @@ export const DayView = ({ onAddHabit, onEditHabit, onViewHistory, onDeleteHabit 
         });
 
         return map;
-    }, [habitStatusMap, logs, todaysHabits, dateStr, allHabitsLookup]);
+    }, [habitStatusMap, logs, todaysHabits, dateStr, allHabitsLookup, todayHabitStats.habitCompletionStates]);
 
     // 2. Identify Pinned Habits
     const pinnedHabits = useMemo(() => {
