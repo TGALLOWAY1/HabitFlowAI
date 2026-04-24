@@ -100,6 +100,8 @@ Canonical inventory of all user-facing features. Keep this document in sync with
 - **Category Breakdown** — Completion rates by habit category
 - **Insights Panel** — Generated observations about behavior patterns
 - **Activity Heatmap** — Calendar view of activity across all habits
+  - **Overall view** — Last Year / Last 90 Days / Last 30 Days
+  - **By Category view** — Per-category mini heatmap with 7d / 14d / 30d / 90d toggle
 - **Routine Analytics** — Completion frequency, variant usage, timing stats
 - **Goal Analytics** — Completion rates, progress velocity
 
