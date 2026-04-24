@@ -12,7 +12,7 @@ export const ActivitySection: React.FC<ActivitySectionProps> = ({ onSelectCatego
   const { habits, categories } = useHabitStore();
   const [activityTab, setActivityTab] = useState<'overall' | 'category'>('overall');
   const [heatmapRange, setHeatmapRange] = useState<'year' | '90d' | '30d'>('30d');
-  const [categoryRange, setCategoryRange] = useState<'7d' | '14d'>('14d');
+  const [categoryRange, setCategoryRange] = useState<'7d' | '14d' | '30d' | '90d'>('14d');
 
   return (
     <div className="bg-neutral-900/50 rounded-2xl border border-white/5 p-6 backdrop-blur-sm">
@@ -31,7 +31,7 @@ export const ActivitySection: React.FC<ActivitySectionProps> = ({ onSelectCatego
             </select>
           ) : (
             <div className="flex bg-neutral-800 rounded-md p-0.5 border border-white/5">
-              {(['7d', '14d'] as const).map((r) => (
+              {(['7d', '14d', '30d', '90d'] as const).map((r) => (
                 <button
                   key={r}
                   onClick={() => setCategoryRange(r)}

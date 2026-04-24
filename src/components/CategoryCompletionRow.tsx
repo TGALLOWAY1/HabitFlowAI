@@ -6,10 +6,26 @@ import { Tooltip } from 'react-tooltip';
 import { ChevronRight } from 'lucide-react';
 import { resolveTextColorClass } from '../utils/categoryColors';
 
+type CategoryRange = '7d' | '14d' | '30d' | '90d';
+
+const DAYS_TO_SUBTRACT: Record<CategoryRange, number> = {
+    '7d': 6,
+    '14d': 13,
+    '30d': 29,
+    '90d': 89,
+};
+
+const GRID_COLS: Record<CategoryRange, number> = {
+    '7d': 10,
+    '14d': 7,
+    '30d': 10,
+    '90d': 30,
+};
+
 interface CategoryCompletionRowProps {
     category: any;
     habits: any[];
-    range: '7d' | '14d';
+    range: CategoryRange;
     onClick: () => void;
 }
 
@@ -18,8 +34,8 @@ export const CategoryCompletionRow: React.FC<CategoryCompletionRowProps> = React
 
     const { days, totalCompletions, gridCols } = useMemo(() => {
         const today = startOfDay(new Date());
-        const daysToSubtract = range === '7d' ? 6 : 13;
-        const cols = range === '7d' ? 10 : 7;
+        const daysToSubtract = DAYS_TO_SUBTRACT[range];
+        const cols = GRID_COLS[range];
 
         const startDate = subDays(today, daysToSubtract);
         const dateRange = eachDayOfInterval({ start: startDate, end: today });
