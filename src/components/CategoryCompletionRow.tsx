@@ -16,10 +16,10 @@ interface CategoryCompletionRowProps {
 export const CategoryCompletionRow: React.FC<CategoryCompletionRowProps> = React.memo(({ category, habits, range, onClick }) => {
     const { logs } = useHabitStore();
 
-    const { days, totalCompletions } = useMemo(() => {
+    const { days, totalCompletions, gridCols } = useMemo(() => {
         const today = startOfDay(new Date());
-        let daysToSubtract = 13; // default 14d (0-13)
-        if (range === '7d') daysToSubtract = 6;
+        const daysToSubtract = range === '7d' ? 6 : 13;
+        const cols = range === '7d' ? 10 : 7;
 
         const startDate = subDays(today, daysToSubtract);
         const dateRange = eachDayOfInterval({ start: startDate, end: today });
@@ -58,7 +58,7 @@ export const CategoryCompletionRow: React.FC<CategoryCompletionRowProps> = React
             };
         });
 
-        return { days: processedDays, totalCompletions: rangeTotal };
+        return { days: processedDays, totalCompletions: rangeTotal, gridCols: cols };
     }, [habits, logs, range]);
 
     const textColorClass = resolveTextColorClass(category.color);
@@ -68,7 +68,7 @@ export const CategoryCompletionRow: React.FC<CategoryCompletionRowProps> = React
             onClick={onClick}
             className="w-full group flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl bg-neutral-900/30 border border-white/5 hover:bg-neutral-800/50 hover:border-emerald-500/30 transition-all duration-200"
         >
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 sm:min-w-[160px] sm:flex-shrink-0">
                 <div className={`w-1 h-8 rounded-full ${category.color} opacity-80`} />
                 <div className="text-left">
                     <h4 className={`font-bold text-sm ${textColorClass} group-hover:text-white transition-colors`}>
@@ -82,19 +82,21 @@ export const CategoryCompletionRow: React.FC<CategoryCompletionRowProps> = React
                 </div>
             </div>
 
-            <div className="flex items-center gap-4">
-                {/* Mini Heatmap Grid */}
-                <div className="flex gap-1">
+            <div className="flex-1 min-w-0 flex items-center gap-4">
+                <div
+                    className="flex-1 min-w-0 grid gap-1"
+                    style={{ gridTemplateColumns: `repeat(${gridCols}, minmax(0, 1fr))` }}
+                >
                     {days.map((day) => (
                         <div
                             key={day.date.toISOString()}
                             data-tooltip-id={`cat-tooltip-${category.id}`}
                             data-tooltip-content={`${format(day.date, 'MMM d')}: ${day.count} completions`}
-                            className={`w-3 h-8 rounded-sm ${getHeatmapColor(day.intensity)} transition-all hover:opacity-80`}
+                            className={`aspect-square w-full rounded-sm ${getHeatmapColor(day.intensity)} transition-all hover:opacity-80`}
                         />
                     ))}
                 </div>
-                <ChevronRight size={16} className="text-neutral-600 group-hover:text-white transition-colors hidden sm:block" />
+                <ChevronRight size={16} className="text-neutral-600 group-hover:text-white transition-colors hidden sm:block flex-shrink-0" />
             </div>
 
             <Tooltip id={`cat-tooltip-${category.id}`} className="z-50 !bg-neutral-800 !text-white !opacity-100 !rounded-lg !px-3 !py-1 !text-xs" />
