@@ -13,6 +13,7 @@ import {
     getRootHabits,
     isHabitComplete,
     getDailyHabitRingProgress,
+    getTodayHabitStats,
     getBundleChildIds,
     computeBundleStatus,
     getHabitsForDate,
@@ -108,6 +109,30 @@ describe('Case A — standalone habits only', () => {
         ]);
         const result = getDailyHabitRingProgress(habits, logs, DATE);
         expect(result).toEqual({ completed: 2, total: 3 });
+    });
+
+    it('number habit completion uses value-to-target semantics (today and ring stay aligned)', () => {
+        const habits = [
+            makeHabit({
+                id: 'h-num',
+                name: 'Drink water',
+                goal: { type: 'number', frequency: 'daily', target: 8, unit: 'cups' },
+            }),
+        ];
+        const logs = Object.fromEntries([
+            makeLog('h-num', DATE, false, 8),
+        ]);
+        const result = getDailyHabitRingProgress(habits, logs, DATE);
+        expect(result).toEqual({ completed: 1, total: 1 });
+    });
+
+    it('checking/unchecking a today habit updates shared completedCount', () => {
+        const habits = [makeHabit({ id: 'h1', name: 'Meditate' })];
+        const checkedLogs = Object.fromEntries([makeLog('h1', DATE, true)]);
+        const uncheckedLogs = Object.fromEntries([makeLog('h1', DATE, false)]);
+
+        expect(getTodayHabitStats(habits, checkedLogs, DATE).completedCount).toBe(1);
+        expect(getTodayHabitStats(habits, uncheckedLogs, DATE).completedCount).toBe(0);
     });
 });
 
@@ -239,6 +264,28 @@ describe('Case E — bundle completion semantics', () => {
             ]);
             const result = getDailyHabitRingProgress(habits, logs, DATE);
             expect(result).toEqual({ completed: 1, total: 1 });
+        });
+
+        it('ring respects checklist threshold success rule', () => {
+            const thresholdBundle = makeHabit({
+                id: 'bundle-threshold',
+                name: 'Threshold Bundle',
+                type: 'bundle',
+                bundleType: 'checklist',
+                checklistSuccessRule: { type: 'threshold', threshold: 2 },
+                subHabitIds: ['t-child-1', 't-child-2', 't-child-3'],
+            });
+            const habitsWithChildren = [
+                thresholdBundle,
+                makeHabit({ id: 't-child-1', name: 'A', bundleParentId: 'bundle-threshold' }),
+                makeHabit({ id: 't-child-2', name: 'B', bundleParentId: 'bundle-threshold' }),
+                makeHabit({ id: 't-child-3', name: 'C', bundleParentId: 'bundle-threshold' }),
+            ];
+            const logs = Object.fromEntries([
+                makeLog('t-child-1', DATE, true),
+                makeLog('t-child-2', DATE, true),
+            ]);
+            expect(getDailyHabitRingProgress(habitsWithChildren, logs, DATE)).toEqual({ completed: 1, total: 1 });
         });
     });
 
@@ -403,6 +450,45 @@ describe('Edge cases', () => {
         // Saturday — only h2 counts toward the ring
         const result = getDailyHabitRingProgress(habits, {}, DATE);
         expect(result.total).toBe(1);
+    });
+
+    it('Tuesday-only habit is included Tuesday and excluded Wednesday', () => {
+        const tuesday = '2026-03-24';
+        const wednesday = '2026-03-25';
+        const habits = [
+            makeHabit({ id: 'h-tue', name: 'Tuesday only', assignedDays: [2] }),
+            makeHabit({ id: 'h-daily', name: 'Daily' }),
+        ];
+
+        const tueStats = getTodayHabitStats(habits, {}, tuesday);
+        const wedStats = getTodayHabitStats(habits, {}, wednesday);
+
+        expect(tueStats.scheduledHabitsForToday.map(h => h.id)).toContain('h-tue');
+        expect(wedStats.scheduledHabitsForToday.map(h => h.id)).not.toContain('h-tue');
+    });
+
+    it('scheduled checklist bundle is excluded on off-day (regression: prevented ring/today mismatch)', () => {
+        const bundle = makeHabit({
+            id: 'bundle-scheduled',
+            name: 'Tue Checklist',
+            type: 'bundle',
+            bundleType: 'checklist',
+            assignedDays: [2], // Tuesday only
+            subHabitIds: ['bundle-scheduled-child-1', 'bundle-scheduled-child-2'],
+        });
+        const child1 = makeHabit({ id: 'bundle-scheduled-child-1', name: 'A', bundleParentId: bundle.id });
+        const child2 = makeHabit({ id: 'bundle-scheduled-child-2', name: 'B', bundleParentId: bundle.id });
+        const habits = [bundle, child1, child2];
+        const logs = Object.fromEntries([
+            makeLog('bundle-scheduled-child-1', '2026-03-24', true),
+            makeLog('bundle-scheduled-child-2', '2026-03-24', true),
+        ]);
+
+        const tuesdayResult = getDailyHabitRingProgress(habits, logs, '2026-03-24');
+        const wednesdayResult = getDailyHabitRingProgress(habits, logs, '2026-03-25');
+
+        expect(tuesdayResult).toEqual({ completed: 1, total: 1 });
+        expect(wednesdayResult).toEqual({ completed: 0, total: 0 });
     });
 
     it('child with bundleParentId excluded even if parent subHabitIds is missing', () => {

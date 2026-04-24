@@ -278,7 +278,93 @@ export function isHabitComplete(
     if (habit.type === 'bundle' && habit.subHabitIds && habit.subHabitIds.length > 0) {
         return computeBundleStatus(habit, logs, date).completed;
     }
-    return !!logs[`${habit.id}-${date}`]?.completed;
+
+    const log = logs[`${habit.id}-${date}`];
+    if (!log) return false;
+
+    if (habit.goal?.type === 'number') {
+        const currentValue = log.value ?? 0;
+        const targetValue = habit.goal?.target;
+        return typeof targetValue === 'number' && targetValue > 0
+            ? currentValue >= targetValue
+            : currentValue > 0;
+    }
+
+    // For boolean habits, prefer explicit completion; fallback to value > 0 for legacy entries.
+    if (typeof log.completed === 'boolean') {
+        return log.completed;
+    }
+    return (log.value ?? 0) > 0;
+}
+
+export interface TodayHabitStats {
+    scheduledHabitsForToday: Habit[];
+    completedCount: number;
+    totalCount: number;
+    completionPercentage: number;
+    habitCompletionStates: Record<string, boolean>;
+}
+
+/**
+ * Shared source of truth for "today habits" statistics used by both Today View
+ * and the dashboard ring so they stay in lockstep for:
+ * - schedule filtering
+ * - bundle parent/child semantics
+ * - numeric vs boolean completion semantics
+ */
+export function getTodayHabitStats(
+    habits: Habit[],
+    logs: Record<string, DayLog>,
+    date: string
+): TodayHabitStats {
+    const scheduledHabitsForToday = getHabitsForDate(habits, date);
+    const habitLookup = new Map(habits.map(h => [h.id, h]));
+    const completionStates = new Map<string, boolean>();
+
+    const computeComplete = (habit: Habit): boolean => {
+        const cached = completionStates.get(habit.id);
+        if (cached !== undefined) return cached;
+
+        let isComplete = false;
+
+        if (habit.type === 'bundle' && habit.subHabitIds && habit.subHabitIds.length > 0) {
+            const childCompletions = habit.subHabitIds.map((childId) => {
+                const childHabit = habitLookup.get(childId);
+                if (!childHabit) return false;
+                return computeComplete(childHabit);
+            });
+
+            if (habit.bundleType === 'choice') {
+                isComplete = childCompletions.some(Boolean);
+            } else {
+                const completedChildren = childCompletions.filter(Boolean).length;
+                isComplete = evaluateChecklistSuccess(
+                    completedChildren,
+                    habit.subHabitIds.length,
+                    habit.checklistSuccessRule
+                ).meetsSuccessRule;
+            }
+        } else {
+            isComplete = isHabitComplete(habit, logs, date);
+        }
+
+        completionStates.set(habit.id, isComplete);
+        return isComplete;
+    };
+
+    const completedCount = scheduledHabitsForToday.reduce((acc, habit) => (
+        computeComplete(habit) ? acc + 1 : acc
+    ), 0);
+    const totalCount = scheduledHabitsForToday.length;
+    const completionPercentage = totalCount > 0 ? (completedCount / totalCount) * 100 : 0;
+
+    return {
+        scheduledHabitsForToday,
+        completedCount,
+        totalCount,
+        completionPercentage,
+        habitCompletionStates: Object.fromEntries(completionStates.entries()),
+    };
 }
 
 /**
@@ -294,9 +380,8 @@ export function getDailyHabitRingProgress(
     logs: Record<string, DayLog>,
     date: string
 ): { completed: number; total: number } {
-    const trackable = getHabitsForDate(habits, date);
-    const completed = trackable.filter(h => isHabitComplete(h, logs, date)).length;
-    return { completed, total: trackable.length };
+    const stats = getTodayHabitStats(habits, logs, date);
+    return { completed: stats.completedCount, total: stats.totalCount };
 }
 
 export function getHabitsForDate(
