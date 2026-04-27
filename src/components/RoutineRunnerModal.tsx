@@ -25,7 +25,7 @@ export const RoutineRunnerModal: React.FC<RoutineRunnerModalProps> = ({
 }) => {
     const { refreshDayLogs, habits } = useHabitStore();
     const {
-        selectRoutine, startRoutine, exitRoutine,
+        startRoutine, exitRoutine,
         stepStates, setStepState, startedAt,
         stepTrackingData, stepTimingData,
         setStepTrackingValue, recordStepTime,
@@ -52,12 +52,14 @@ export const RoutineRunnerModal: React.FC<RoutineRunnerModalProps> = ({
     // Track previous step index to record timing on step change
     const prevStepIndexRef = useRef(currentStepIndex);
 
-    // Sync execution state with context: init stepStates when runner opens
+    // Sync execution state with context: init stepStates when runner opens.
+    // Uses the atomic startRoutine(routine, variantId) so initialization does
+    // not depend on intermediate state flushing between two separate calls.
     useEffect(() => {
         if (isOpen && routine) {
-            selectRoutine(routine.id);
-            startRoutine(variantId);
+            startRoutine(routine, variantId);
         }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isOpen, routine?.id, variantId]);
 
     const handleClose = () => {
