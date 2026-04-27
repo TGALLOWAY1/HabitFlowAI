@@ -809,6 +809,7 @@ export interface BatchCreateEntriesResponse {
   created: number;
   updated: number;
   results: Array<{ habitId: string; dayKey: string; id: string }>;
+  completedGoalIds?: string[];
 }
 
 /**
@@ -1195,8 +1196,8 @@ export async function fetchGoalProgress(goalId: string, timeZone: string = getLo
  * @param data - Entry data
  * @returns Promise<{ entry: HabitEntry, dayLog: DayLog | null }>
  */
-export async function createHabitEntry(data: Partial<HabitEntry>): Promise<{ entry: HabitEntry, dayLog: DayLog | null }> {
-  const response = await apiRequest<{ entry: HabitEntry, dayLog: DayLog | null }>('/entries', {
+export async function createHabitEntry(data: Partial<HabitEntry>): Promise<{ entry: HabitEntry, dayLog: DayLog | null, completedGoalIds?: string[] }> {
+  const response = await apiRequest<{ entry: HabitEntry, dayLog: DayLog | null, completedGoalIds?: string[] }>('/entries', {
     method: 'POST',
     body: JSON.stringify(data),
   });
@@ -1210,8 +1211,8 @@ export async function createHabitEntry(data: Partial<HabitEntry>): Promise<{ ent
  * @param patch - Data to update
  * @returns Promise<{ entry: HabitEntry, dayLog: DayLog | null }>
  */
-export async function updateHabitEntry(id: string, patch: Partial<HabitEntry>): Promise<{ entry: HabitEntry, dayLog: DayLog | null }> {
-  const response = await apiRequest<{ entry: HabitEntry, dayLog: DayLog | null }>(`/entries/${id}`, {
+export async function updateHabitEntry(id: string, patch: Partial<HabitEntry>): Promise<{ entry: HabitEntry, dayLog: DayLog | null, completedGoalIds?: string[] }> {
+  const response = await apiRequest<{ entry: HabitEntry, dayLog: DayLog | null, completedGoalIds?: string[] }>(`/entries/${id}`, {
     method: 'PATCH',
     body: JSON.stringify(patch),
   });
@@ -1225,9 +1226,9 @@ export async function updateHabitEntry(id: string, patch: Partial<HabitEntry>): 
  * @param dateKey - Date Key (YYYY-MM-DD)
  * @param data - Entry data (value, optionKey, etc.)
  */
-export async function upsertHabitEntry(habitId: string, dateKey: string, data: any = {}): Promise<{ entry: HabitEntry, dayLog: DayLog | null }> {
+export async function upsertHabitEntry(habitId: string, dateKey: string, data: any = {}): Promise<{ entry: HabitEntry, dayLog: DayLog | null, completedGoalIds?: string[] }> {
   const safe = buildHabitEntryUpsertPayload(typeof data === 'object' && data !== null ? data : {});
-  const response = await apiRequest<{ entry: HabitEntry, dayLog: DayLog | null }>('/entries', {
+  const response = await apiRequest<{ entry: HabitEntry, dayLog: DayLog | null, completedGoalIds?: string[] }>('/entries', {
     method: 'PUT',
     body: JSON.stringify({ habitId, dateKey, ...safe }),
   });

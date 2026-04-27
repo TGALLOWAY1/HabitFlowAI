@@ -172,6 +172,15 @@ export const GoalDetailPage: React.FC<GoalDetailPageProps> = ({ goalId, onBack, 
                 ? goal.deadline
                 : undefined;
 
+            // Only forward mode fields if they hold a recognized value — legacy goals
+            // may have nulls/invalid values stored that would trip server validation.
+            const aggregationMode = (goal.aggregationMode === 'count' || goal.aggregationMode === 'sum')
+                ? goal.aggregationMode
+                : undefined;
+            const countMode = (goal.countMode === 'distinctDays' || goal.countMode === 'entries')
+                ? goal.countMode
+                : undefined;
+
             const newGoal = await createGoal({
                 title: goal.title,
                 type: goal.type,
@@ -179,8 +188,8 @@ export const GoalDetailPage: React.FC<GoalDetailPageProps> = ({ goalId, onBack, 
                 unit: goal.unit,
                 linkedHabitIds: goal.linkedHabitIds,
                 linkedTargets: goal.linkedTargets,
-                aggregationMode: goal.aggregationMode,
-                countMode: goal.countMode,
+                aggregationMode,
+                countMode,
                 deadline,
                 categoryId: goal.categoryId,
                 notes: goal.notes,

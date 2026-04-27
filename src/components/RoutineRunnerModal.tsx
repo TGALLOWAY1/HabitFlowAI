@@ -23,7 +23,7 @@ export const RoutineRunnerModal: React.FC<RoutineRunnerModalProps> = ({
     variantId,
     onClose,
 }) => {
-    const { refreshDayLogs, habits } = useHabitStore();
+    const { refreshDayLogs, habits, notifyGoalCompletion } = useHabitStore();
     const {
         selectRoutine, startRoutine, exitRoutine,
         stepStates, setStepState, startedAt,
@@ -391,12 +391,13 @@ export const RoutineRunnerModal: React.FC<RoutineRunnerModalProps> = ({
                         setLoggingHabits(true);
                         try {
                             const timezone = typeof Intl !== 'undefined' ? Intl.DateTimeFormat().resolvedOptions().timeZone : undefined;
-                            await batchCreateEntries({
+                            const batchResult = await batchCreateEntries({
                                 habitIds,
                                 routineId: routine?.id,
                                 timezone,
                             });
                             await refreshDayLogs();
+                            notifyGoalCompletion(batchResult.completedGoalIds);
                             setShowCompletedHabitsModal(false);
                             exitRoutine();
                             onClose();

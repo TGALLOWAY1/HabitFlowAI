@@ -60,6 +60,8 @@ interface HabitContextType {
     deleteHabitEntry: (id: string) => Promise<void>;
     upsertHabitEntry: (habitId: string, dateKey: string, data?: any) => Promise<void>;
     deleteHabitEntryByKey: (habitId: string, dateKey: string) => Promise<void>;
+    /** Surface server-reported goal completions (from a recent entry mutation) up to the app. */
+    notifyGoalCompletion: (completedGoalIds: string[] | undefined) => void;
     potentialEvidence: HabitPotentialEvidence[];
     loading: boolean;
 }
@@ -75,7 +77,10 @@ export const useHabitStore = () => {
 };
 
 
-export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const HabitProvider: React.FC<{
+    children: React.ReactNode;
+    onGoalCompleted?: (goalId: string) => void;
+}> = ({ children, onGoalCompleted }) => {
     // All persistent data is stored in MongoDB via the backend API.
     // localStorage-based persistence is no longer supported.
 
@@ -91,6 +96,17 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     // Use refs to prevent double execution in React StrictMode
     const initializedRef = useRef(false);
     const hasLoadedWellbeingRef = useRef(false);
+
+    // Forward server-reported goal completions up to the consumer (App). The first
+    // newly-completed goal wins the celebration screen; the rest are still marked
+    // complete on the server and will surface in the archive.
+    const onGoalCompletedRef = useRef(onGoalCompleted);
+    useEffect(() => { onGoalCompletedRef.current = onGoalCompleted; }, [onGoalCompleted]);
+    const notifyGoalCompletion = useCallback((completedGoalIds: string[] | undefined) => {
+        if (!completedGoalIds || completedGoalIds.length === 0) return;
+        const cb = onGoalCompletedRef.current;
+        if (cb) cb(completedGoalIds[0]);
+    }, []);
 
     const toLocalDayKey = (date: Date): string => {
         const year = date.getFullYear();
@@ -431,6 +447,12 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                     });
                     return next;
                 });
+                // Surface any goal that just hit 100% from these creates.
+                for (const result of results) {
+                    if (result && 'completedGoalIds' in result) {
+                        notifyGoalCompletion(result.completedGoalIds);
+                    }
+                }
                 scheduleBackgroundSync();
             } catch (error) {
                 console.error('Failed to toggle checklist bundle:', error instanceof Error ? error.message : 'Unknown error');
@@ -484,7 +506,7 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 }
             } else {
                 // Create Entry (Toggle On)
-                const { dayLog } = await createHabitEntry({
+                const { dayLog, completedGoalIds } = await createHabitEntry({
                     habitId,
                     date,
                     value: 1,
@@ -495,6 +517,7 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 if (dayLog) {
                     setLogs(prev => ({ ...prev, [key]: dayLog }));
                 }
+                notifyGoalCompletion(completedGoalIds);
             }
             scheduleBackgroundSync();
         } catch (error) {
@@ -528,7 +551,7 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             await clearHabitEntriesForDay(habitId, date);
 
             // 2. Create new entry with total value
-            const { dayLog } = await createHabitEntry({
+            const { dayLog, completedGoalIds } = await createHabitEntry({
                 habitId,
                 date,
                 value,
@@ -538,6 +561,7 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             if (dayLog) {
                 setLogs(prev => ({ ...prev, [key]: dayLog }));
             }
+            notifyGoalCompletion(completedGoalIds);
             scheduleBackgroundSync();
         } catch (error) {
             console.error('Failed to update log:', error instanceof Error ? error.message : 'Unknown error');
@@ -549,8 +573,9 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     const updateHabitEntryContext = async (id: string, patch: any) => { // eslint-disable-line @typescript-eslint/no-explicit-any
         try {
-            await updateHabitEntry(id, patch);
+            const { completedGoalIds } = await updateHabitEntry(id, patch);
             await refreshDayLogs();
+            notifyGoalCompletion(completedGoalIds);
         } catch (error) {
             console.error('Failed to update habit entry:', error);
             throw error;
@@ -815,7 +840,8 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         }
 
         try {
-            const { dayLog } = await upsertHabitEntry(habitId, dateKey, data);
+            const { dayLog, completedGoalIds } = await upsertHabitEntry(habitId, dateKey, data);
+            notifyGoalCompletion(completedGoalIds);
 
             // Update local state with the recomputed DayLog (legacy cache)
             if (dayLog) {
@@ -915,6 +941,7 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         potentialEvidence,
         upsertHabitEntry: upsertHabitEntryContext,
         deleteHabitEntryByKey: deleteHabitEntryByKeyContext,
+        notifyGoalCompletion,
         loading,
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }), [categories, habits, logs, wellbeingLogs, potentialEvidence, lastPersistenceError, loading]);

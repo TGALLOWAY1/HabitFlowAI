@@ -132,4 +132,44 @@ describe('Goal Create Routes', () => {
             // This confirms that "type must be cumulative or onetime"
         });
     });
+
+    // Regression: legacy goals stored with countMode/aggregationMode = null were
+    // tripping validation on Repeat / Level Up / Extend, which forwards the
+    // original goal's mode fields verbatim. Validator now treats null the same
+    // as undefined (i.e. "fall through to defaults").
+    describe('POST /api/goals - legacy null mode fields', () => {
+        it('should create a cumulative goal when countMode is explicitly null', async () => {
+            const response = await request(app)
+                .post('/api/goals')
+                .send({
+                    title: 'Journal',
+                    type: 'cumulative',
+                    targetValue: 10,
+                    unit: 'entries',
+                    linkedHabitIds: [],
+                    countMode: null,
+                    aggregationMode: null,
+                })
+                .expect(201);
+
+            expect(response.body.goal.title).toBe('Journal');
+            expect(response.body.goal.type).toBe('cumulative');
+        });
+
+        it('should still reject countMode set to a junk string', async () => {
+            const response = await request(app)
+                .post('/api/goals')
+                .send({
+                    title: 'Bad CountMode',
+                    type: 'cumulative',
+                    targetValue: 10,
+                    linkedHabitIds: [],
+                    countMode: 'banana',
+                })
+                .expect(400);
+
+            expect(response.body.error.code).toBe('VALIDATION_ERROR');
+            expect(response.body.error.message).toMatch(/countMode/);
+        });
+    });
 });
