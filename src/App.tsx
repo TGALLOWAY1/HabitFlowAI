@@ -28,6 +28,7 @@ import { DayView } from './components/day-view/DayView';
 import { ScheduleView } from './components/day-view/ScheduleView';
 import { DevIdentityPanel } from './components/DevIdentityPanel';
 import { DashboardPrefsProvider } from './store/DashboardPrefsContext';
+import { GoalCompletionProvider, useGoalCompletion } from './store/GoalCompletionContext';
 
 // Retry wrapper for lazy imports — handles stale chunk failures after deployments
 function lazyRetry<T extends React.ComponentType<any>>(
@@ -199,7 +200,7 @@ const HabitTrackerContent: React.FC = () => {
 
   const [showCreateGoal, setShowCreateGoal] = useState(false);
   const [showCreateTrack, setShowCreateTrack] = useState(false);
-  const [completedGoalId, setCompletedGoalId] = useState<string | null>(null);
+  const { completedGoalId, setCompletedGoalId } = useGoalCompletion();
 
   // Routine State
   const [routineEditorState, setRoutineEditorState] = useState<{
@@ -706,13 +707,25 @@ const HabitTrackerContent: React.FC = () => {
   );
 };
 
+// Bridges GoalCompletionContext into HabitProvider so server-reported goal
+// completions (via entry mutations) pop the celebration screen.
+const HabitProviderWithGoalBridge = ({ children }: { children: React.ReactNode }) => {
+  const { setCompletedGoalId } = useGoalCompletion();
+  return (
+    <HabitProvider onGoalCompleted={(goalId) => setCompletedGoalId(goalId)}>
+      {children}
+    </HabitProvider>
+  );
+};
+
 function App() {
   return (
     <ErrorBoundary>
       <AuthProvider>
         <AuthGate>
           <ToastProvider>
-            <HabitProvider>
+            <GoalCompletionProvider>
+              <HabitProviderWithGoalBridge>
               <RoutineProvider>
                 <TaskProvider>
                   <DashboardPrefsProvider>
@@ -723,7 +736,8 @@ function App() {
                   </DashboardPrefsProvider>
                 </TaskProvider>
               </RoutineProvider>
-            </HabitProvider>
+              </HabitProviderWithGoalBridge>
+            </GoalCompletionProvider>
           </ToastProvider>
         </AuthGate>
       </AuthProvider>
