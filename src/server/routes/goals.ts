@@ -71,15 +71,16 @@ function validateGoalData(data: any): string | null {
     return 'unit must be a string if provided';
   }
 
-  // Validate aggregationMode if provided
-  if (data.aggregationMode !== undefined) {
+  // Validate aggregationMode if provided. Treat null as "not provided" so legacy
+  // documents (where MongoDB stored a missing field as null) fall through to defaults.
+  if (data.aggregationMode !== undefined && data.aggregationMode !== null) {
     if (data.aggregationMode !== 'count' && data.aggregationMode !== 'sum') {
       return 'aggregationMode must be either "count" or "sum"';
     }
   }
 
-  // Validate countMode if provided
-  if (data.countMode !== undefined) {
+  // Validate countMode if provided. Same null tolerance as aggregationMode.
+  if (data.countMode !== undefined && data.countMode !== null) {
     if (data.countMode !== 'distinctDays' && data.countMode !== 'entries') {
       return 'countMode must be either "distinctDays" or "entries"';
     }
@@ -141,14 +142,23 @@ function buildIteratedGoalData(goal: Goal, currentValue: number | null): Omit<Go
     ? goal.targetValue
     : Math.max(resolvedCurrentValue, baseTargetValue) + baseTargetValue;
 
+  // Only forward mode fields if they hold a recognized value. Legacy goals can have
+  // these stored as null or other junk; passing them through would trip validation.
+  const aggregationMode = (goal.aggregationMode === 'count' || goal.aggregationMode === 'sum')
+    ? goal.aggregationMode
+    : undefined;
+  const countMode = (goal.countMode === 'distinctDays' || goal.countMode === 'entries')
+    ? goal.countMode
+    : undefined;
+
   return {
     title: goal.title,
     type: goal.type,
     targetValue: goal.type === 'onetime' ? goal.targetValue : nextTargetValue,
     unit: goal.unit,
     linkedHabitIds: goal.linkedHabitIds,
-    aggregationMode: goal.aggregationMode,
-    countMode: goal.countMode,
+    aggregationMode,
+    countMode,
     linkedTargets: goal.linkedTargets,
     deadline: goal.deadline,
     completedAt: undefined,

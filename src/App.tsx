@@ -460,8 +460,16 @@ const HabitTrackerContent: React.FC = () => {
             onRepeat={async (goalId) => {
               try {
                 const original = await fetchGoal(goalId);
-                const { id, createdAt, completedAt, sortOrder, ...goalData } = original;
-                await createGoal(goalData);
+                const { id, createdAt, completedAt, sortOrder, aggregationMode, countMode, ...rest } = original;
+                // Only forward mode fields if they hold a recognized value — legacy goals
+                // may have nulls/invalid values that would trip server validation.
+                const safeAggregationMode = (aggregationMode === 'count' || aggregationMode === 'sum')
+                  ? aggregationMode
+                  : undefined;
+                const safeCountMode = (countMode === 'distinctDays' || countMode === 'entries')
+                  ? countMode
+                  : undefined;
+                await createGoal({ ...rest, aggregationMode: safeAggregationMode, countMode: safeCountMode });
                 setCompletedGoalId(null);
                 handleNavigate('goals');
               } catch (err) {
