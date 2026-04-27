@@ -20,6 +20,7 @@ import { normalizeHabitEntryPayload } from '../utils/dayKeyNormalization';
 import { resolveTimeZone, getNowDayKey } from '../utils/dayKey';
 import { getRequestIdentity } from '../middleware/identity';
 import { invalidateUserCaches } from '../lib/cacheInstances';
+import { checkAndCompleteLinkedGoals } from '../services/goalAutoCompletion';
 
 /**
  * Get entry views for a habit (via truthQuery).
@@ -168,10 +169,18 @@ export async function createHabitEntryRoute(req: Request, res: Response): Promis
             userId
         );
 
+        const completedGoalIds = await checkAndCompleteLinkedGoals(
+            [newEntry.habitId],
+            householdId,
+            userId,
+            userTimeZone
+        );
+
         invalidateUserCaches(userId);
         res.status(201).json({
             entry: responseEntry,
-            dayLog: updatedDayLog
+            dayLog: updatedDayLog,
+            completedGoalIds,
         });
 
     } catch (error) {
@@ -328,6 +337,11 @@ export async function updateHabitEntryRoute(req: Request, res: Response): Promis
         // Add date to response for backward compatibility (derived from dayKey)
         const responseEntry = { ...updatedEntry, date: updatedEntry.dayKey };
 
+        // Resolve timezone once for the auto-completion check.
+        const completionTimeZone = resolveTimeZone(
+            patch.timeZone && typeof patch.timeZone === 'string' ? patch.timeZone : undefined
+        );
+
         if (oldDayKey !== newDayKey) {
             // DayKey changed: recompute both old and new dayKeys
             // This ensures no stale completion/progress remains on the old dayKey
@@ -338,11 +352,19 @@ export async function updateHabitEntryRoute(req: Request, res: Response): Promis
 
             const newDayLog = await recomputeDayLogForHabit(habitId, newDayKey, householdId, userId);
 
+            const completedGoalIds = await checkAndCompleteLinkedGoals(
+                [habitId],
+                householdId,
+                userId,
+                completionTimeZone
+            );
+
             invalidateUserCaches(userId);
             // Return the new dayLog (old one is cleaned up if no entries remain)
             res.json({
                 entry: responseEntry, // Includes date as derived alias
-                dayLog: newDayLog
+                dayLog: newDayLog,
+                completedGoalIds,
             });
         } else {
             // DayKey unchanged: recompute once (current behavior)
@@ -353,10 +375,18 @@ export async function updateHabitEntryRoute(req: Request, res: Response): Promis
                 userId
             );
 
+            const completedGoalIds = await checkAndCompleteLinkedGoals(
+                [habitId],
+                householdId,
+                userId,
+                completionTimeZone
+            );
+
             invalidateUserCaches(userId);
             res.json({
                 entry: responseEntry,
-                dayLog: updatedDayLog
+                dayLog: updatedDayLog,
+                completedGoalIds,
             });
         }
 
@@ -437,10 +467,21 @@ export async function upsertHabitEntryRoute(req: Request, res: Response): Promis
 
         const updatedDayLog = await recomputeDayLogForHabit(habitId, dateKey, householdId, userId);
 
+        const upsertTimeZone = resolveTimeZone(
+            data.timeZone && typeof data.timeZone === 'string' ? data.timeZone : undefined
+        );
+        const completedGoalIds = await checkAndCompleteLinkedGoals(
+            [habitId],
+            householdId,
+            userId,
+            upsertTimeZone
+        );
+
         invalidateUserCaches(userId);
         res.json({
             entry,
-            dayLog: updatedDayLog
+            dayLog: updatedDayLog,
+            completedGoalIds,
         });
 
     } catch (error) {
@@ -484,6 +525,7 @@ export async function batchCreateEntriesRoute(req: Request, res: Response): Prom
         let updated = 0;
         const results: { habitId: string; dayKey: string; id: string }[] = [];
         const now = new Date().toISOString();
+        const touchedHabitIds = new Set<string>();
 
         for (const item of entries) {
             const habitId = item?.habitId;
@@ -510,10 +552,18 @@ export async function batchCreateEntriesRoute(req: Request, res: Response): Prom
 
             await recomputeDayLogForHabit(habitId, dayKey, householdId, userId);
             results.push({ habitId: entry.habitId, dayKey: entry.dayKey ?? dayKey, id: entry.id });
+            touchedHabitIds.add(habitId);
         }
 
+        const completedGoalIds = await checkAndCompleteLinkedGoals(
+            Array.from(touchedHabitIds),
+            householdId,
+            userId,
+            timeZone
+        );
+
         invalidateUserCaches(userId);
-        res.status(200).json({ created, updated, results });
+        res.status(200).json({ created, updated, results, completedGoalIds });
     } catch (error) {
         console.error('Error in batch create entries:', error);
         res.status(500).json({ error: 'Failed to batch create entries' });
