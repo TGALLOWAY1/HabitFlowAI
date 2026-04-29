@@ -44,7 +44,7 @@ export function buildIterationChains(goals: Goal[]): IterationChain[] {
         while (cursor && !seen.has(cursor.id)) {
             seen.add(cursor.id);
             ordered.unshift(cursor);
-            const prevId = cursor.iteratedFromGoalId;
+            const prevId: string | undefined = cursor.iteratedFromGoalId;
             cursor = prevId ? byId.get(prevId) : undefined;
         }
 
