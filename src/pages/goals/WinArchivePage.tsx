@@ -1,18 +1,66 @@
-import React from 'react';
-import { Trophy, Calendar } from 'lucide-react';
+import React, { useMemo, useState } from 'react';
+import { Trophy, Star, TrendingUp, Flag, Loader2, AlertCircle } from 'lucide-react';
 import { useCompletedGoals } from '../../lib/useCompletedGoals';
-import { format, parseISO } from 'date-fns';
-import { Loader2, AlertCircle } from 'lucide-react';
-import { CelebratoryBadgeIcon } from '../../components/goals/CelebratoryBadgeIcon';
+import { useGoalTracks } from '../../lib/useGoalTracks';
+import { buildIterationChains } from '../../utils/goalIterationChains';
+import { AchievementSectionHeader } from '../../components/goals/achievements/AchievementSectionHeader';
+import { SingleAchievementCard } from '../../components/goals/achievements/SingleAchievementCard';
+import { ProgressiveAchievementCard } from '../../components/goals/achievements/ProgressiveAchievementCard';
+import { TrackAchievementRow } from '../../components/goals/achievements/TrackAchievementRow';
+import type { Goal } from '../../types';
 
 interface WinArchivePageProps {
     onViewGoal?: (goalId: string) => void;
+    onViewTrack?: (trackId: string) => void;
 }
 
-export const WinArchivePage: React.FC<WinArchivePageProps> = ({ onViewGoal }) => {
-    const { data, loading, error } = useCompletedGoals();
+const SINGLE_PREVIEW_LIMIT = 8;
+const PROGRESSIVE_PREVIEW_LIMIT = 4;
 
-    if (loading) {
+export const WinArchivePage: React.FC<WinArchivePageProps> = ({ onViewGoal, onViewTrack }) => {
+    const { data: completedGoals, loading: completedLoading, error: completedError } = useCompletedGoals();
+    const { data: tracks, loading: tracksLoading } = useGoalTracks();
+
+    const [singleExpanded, setSingleExpanded] = useState(false);
+    const [progressiveExpanded, setProgressiveExpanded] = useState(false);
+
+    const { singleGoals, progressiveChains, trackRows } = useMemo(() => {
+        const goals = completedGoals ?? [];
+        const single = goals
+            .filter(g => g.completedAt && !g.trackId && g.type === 'onetime')
+            .sort((a, b) => (b.completedAt ?? '').localeCompare(a.completedAt ?? ''));
+
+        const progressiveCandidates = goals.filter(g => g.completedAt && !g.trackId && g.type === 'cumulative');
+        const progressive = buildIterationChains(progressiveCandidates);
+
+        const trackedGoalsByTrackId = new Map<string, Goal[]>();
+        for (const g of goals) {
+            if (!g.trackId) continue;
+            const list = trackedGoalsByTrackId.get(g.trackId) ?? [];
+            list.push(g);
+            trackedGoalsByTrackId.set(g.trackId, list);
+        }
+
+        const rows = (tracks ?? [])
+            .map(track => {
+                const earned = trackedGoalsByTrackId.get(track.id) ?? [];
+                if (earned.length === 0) return null;
+                return { track, goals: earned };
+            })
+            .filter((r): r is { track: typeof tracks[number]; goals: Goal[] } => r !== null)
+            .sort((a, b) => {
+                const at = a.track.completedAt ?? a.track.updatedAt ?? '';
+                const bt = b.track.completedAt ?? b.track.updatedAt ?? '';
+                return bt.localeCompare(at);
+            });
+
+        return { singleGoals: single, progressiveChains: progressive, trackRows: rows };
+    }, [completedGoals, tracks]);
+
+    const loading = completedLoading || tracksLoading;
+    const hasAnyAchievements = singleGoals.length > 0 || progressiveChains.length > 0 || trackRows.length > 0;
+
+    if (loading && !completedGoals) {
         return (
             <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
                 <div className="flex flex-col items-center gap-4">
@@ -23,110 +71,132 @@ export const WinArchivePage: React.FC<WinArchivePageProps> = ({ onViewGoal }) =>
         );
     }
 
-    if (error) {
+    if (completedError) {
         return (
             <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
                 <div className="mb-6 sm:mb-8">
-                    <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2">Win Archive</h1>
-                    <p className="text-neutral-400 text-sm sm:text-base">
-                        Every goal you've completed becomes a badge of who you are becoming.
-                    </p>
+                    <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2">Achievements</h1>
+                    <p className="text-neutral-400 text-sm sm:text-base">A gallery of your accomplishments.</p>
                 </div>
                 <div className="p-4 bg-red-500/10 border border-red-500/50 rounded-lg flex items-start gap-3">
                     <AlertCircle className="text-red-400 flex-shrink-0 mt-0.5" size={20} />
                     <div className="flex-1">
                         <div className="text-red-400 font-medium mb-1">Error</div>
-                        <div className="text-red-300 text-sm">{error.message}</div>
+                        <div className="text-red-300 text-sm">{completedError.message}</div>
                     </div>
                 </div>
             </div>
         );
     }
 
-    const formatCompletedDate = (completedAt: string): string => {
-        try {
-            return format(parseISO(completedAt), 'MMM yyyy');
-        } catch {
-            return completedAt;
-        }
-    };
+    const visibleSingles = singleExpanded ? singleGoals : singleGoals.slice(0, SINGLE_PREVIEW_LIMIT);
+    const visibleProgressives = progressiveExpanded ? progressiveChains : progressiveChains.slice(0, PROGRESSIVE_PREVIEW_LIMIT);
 
     return (
         <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
-            {/* Header */}
             <div className="mb-6 sm:mb-8">
-                <h1 className="text-2xl sm:text-3xl font-bold text-white mb-1">Win Archive</h1>
-                <p className="text-sm sm:text-base text-neutral-400">
-                    Every completed goal becomes a badge of who you are becoming.
-                </p>
+                <h1 className="text-2xl sm:text-3xl font-bold text-white mb-1">Achievements</h1>
+                <p className="text-sm sm:text-base text-neutral-400">A gallery of your accomplishments.</p>
             </div>
 
-            {/* Empty State */}
-            {!data || data.length === 0 ? (
+            {!hasAnyAchievements ? (
                 <div className="text-center py-16 sm:py-20">
                     <div className="max-w-md mx-auto">
                         <div className="w-16 h-16 mx-auto bg-neutral-800 rounded-full flex items-center justify-center mb-4">
                             <Trophy className="text-amber-400/50" size={32} />
                         </div>
-                        <h2 className="text-lg font-semibold text-white mb-2">Your Win Archive Awaits</h2>
-                        <p className="text-neutral-400 text-sm mb-1">
-                            Every completed goal becomes a badge of achievement here.
-                        </p>
-                        <p className="text-neutral-500 text-xs">
-                            Complete your first goal to see it celebrated in your archive!
-                        </p>
+                        <h2 className="text-lg font-semibold text-white mb-2">Your gallery awaits</h2>
+                        <p className="text-neutral-400 text-sm mb-1">Every completed goal becomes a badge here.</p>
+                        <p className="text-neutral-500 text-xs">Complete your first goal to get started.</p>
                     </div>
                 </div>
             ) : (
-                /* Gallery Grid — compact cards */
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4">
-                    {data.map((goal, index) => (
-                        <button
-                            key={goal.id}
-                            onClick={() => onViewGoal?.(goal.id)}
-                            className="group relative bg-neutral-800/40 border border-white/[0.06] rounded-xl overflow-hidden hover:border-emerald-500/40 hover:bg-neutral-800/70 transition-all duration-200 text-left win-card-animate focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50"
-                            style={{
-                                animationDelay: `${index * 40}ms`,
-                                animationFillMode: 'both',
-                            }}
-                        >
-                            {/* Badge icon area — square aspect */}
-                            <div className="relative aspect-square w-full bg-neutral-900/60 overflow-hidden p-4">
-                                <CelebratoryBadgeIcon
-                                    goalId={goal.id}
-                                    badgeImageUrl={goal.badgeImageUrl}
-                                    size={44}
-                                    className="group-hover:scale-105 transition-transform duration-300"
-                                />
+                <div className="space-y-8 sm:space-y-10">
+                    <section>
+                        <AchievementSectionHeader
+                            icon={Star}
+                            title="Single Achievements"
+                            description="One-time goals you've completed."
+                            iconColor="text-emerald-400"
+                            iconBg="bg-emerald-500/10"
+                            showViewAll={singleGoals.length > SINGLE_PREVIEW_LIMIT}
+                            onViewAll={() => setSingleExpanded(v => !v)}
+                            viewAllLabel={singleExpanded ? 'Show less' : 'View all'}
+                        />
+                        {singleGoals.length === 0 ? (
+                            <p className="text-xs sm:text-sm text-neutral-500 italic pl-1">Complete a one-time goal to see it here.</p>
+                        ) : (
+                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4">
+                                {visibleSingles.map((goal, idx) => (
+                                    <SingleAchievementCard
+                                        key={goal.id}
+                                        goal={goal}
+                                        onClick={onViewGoal}
+                                        animationDelayMs={idx * 40}
+                                    />
+                                ))}
                             </div>
+                        )}
+                    </section>
 
-                            {/* Info — compact */}
-                            <div className="px-2.5 py-2">
-                                <h3 className="text-xs sm:text-sm font-medium text-neutral-200 line-clamp-2 leading-tight group-hover:text-emerald-400 transition-colors duration-200">
-                                    {goal.title}
-                                </h3>
-                                {goal.completedAt && (
-                                    <div className="flex items-center gap-1 mt-1 text-neutral-500 text-[10px] sm:text-xs">
-                                        <Calendar size={10} />
-                                        <span>{formatCompletedDate(goal.completedAt)}</span>
-                                    </div>
-                                )}
+                    <section>
+                        <AchievementSectionHeader
+                            icon={TrendingUp}
+                            title="Progressive Achievements"
+                            description="Goals with milestones or increasing targets."
+                            iconColor="text-purple-400"
+                            iconBg="bg-purple-500/10"
+                            showViewAll={progressiveChains.length > PROGRESSIVE_PREVIEW_LIMIT}
+                            onViewAll={() => setProgressiveExpanded(v => !v)}
+                            viewAllLabel={progressiveExpanded ? 'Show less' : 'View all'}
+                        />
+                        {progressiveChains.length === 0 ? (
+                            <p className="text-xs sm:text-sm text-neutral-500 italic pl-1">Complete a cumulative goal to see it here.</p>
+                        ) : (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                                {visibleProgressives.map((chain, idx) => (
+                                    <ProgressiveAchievementCard
+                                        key={chain.head.id}
+                                        chain={chain}
+                                        onClick={onViewGoal}
+                                        animationDelayMs={idx * 40}
+                                    />
+                                ))}
                             </div>
-                        </button>
-                    ))}
+                        )}
+                    </section>
+
+                    <section>
+                        <AchievementSectionHeader
+                            icon={Flag}
+                            title="Track Achievements"
+                            description="Milestones earned as part of goal tracks."
+                            iconColor="text-cyan-400"
+                            iconBg="bg-cyan-500/10"
+                        />
+                        {trackRows.length === 0 ? (
+                            <p className="text-xs sm:text-sm text-neutral-500 italic pl-1">Complete a goal in a track to see it here.</p>
+                        ) : (
+                            <div>
+                                {trackRows.map(({ track, goals }) => (
+                                    <TrackAchievementRow
+                                        key={track.id}
+                                        track={track}
+                                        goals={goals}
+                                        onViewGoal={onViewGoal}
+                                        onViewTrack={onViewTrack}
+                                    />
+                                ))}
+                            </div>
+                        )}
+                    </section>
                 </div>
             )}
 
             <style>{`
                 @keyframes win-card-enter {
-                    from {
-                        opacity: 0;
-                        transform: translateY(12px) scale(0.97);
-                    }
-                    to {
-                        opacity: 1;
-                        transform: translateY(0) scale(1);
-                    }
+                    from { opacity: 0; transform: translateY(12px) scale(0.97); }
+                    to { opacity: 1; transform: translateY(0) scale(1); }
                 }
                 .win-card-animate {
                     animation: win-card-enter 0.35s ease-out;

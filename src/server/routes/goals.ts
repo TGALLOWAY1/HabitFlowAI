@@ -129,6 +129,10 @@ function validateGoalData(data: any): string | null {
     }
   }
 
+  if (data.iteratedFromGoalId !== undefined && typeof data.iteratedFromGoalId !== 'string') {
+    return 'iteratedFromGoalId must be a string if provided';
+  }
+
   return null;
 }
 
@@ -166,6 +170,7 @@ function buildIteratedGoalData(goal: Goal, currentValue: number | null): Omit<Go
     badgeImageUrl: undefined,
     categoryId: goal.categoryId,
     sortOrder: goal.sortOrder,
+    iteratedFromGoalId: goal.id,
   };
 }
 
