@@ -138,7 +138,8 @@ HabitFlow App
 | Daily Check-in | Modal | Dashboard check-in card | Wellbeing metrics entry (sleep, mood, stress) | Wellbeing Entries |
 | Edit Goal | Modal | Goal context menu "Edit" | Modify goal title, target, deadline | Goals |
 | Delete Goal Confirm | Modal | Goal context menu "Delete" | Deletion confirmation dialog | Goals |
-| Delete Habit Confirm | Modal | Trash button on a habit that is linked to one or more goals (shown after the click-twice confirm so the user sees which goals are affected) | Lists the affected goals and explains historical progress on them is preserved before allowing deletion | Habits, Goals |
+| Remove Habit | Modal | Trash button on a habit that is linked to one or more goals (shown after the click-twice confirm so the user sees which goals are affected) | Lists the affected goals and offers two paths: **Archive** (recommended, restorable from Settings) or **Delete permanently** (soft-delete, not restorable). For unlinked habits the trash icon archives directly without opening this modal | Habits, Goals |
+| Archived Habits | Modal | Settings → "View archived habits" | Lists archived habits with Restore and Delete-permanently actions; empty state explains archive preserves entries | Habits |
 | Completed Habits | Modal | Routine runner completion | Summary of habits logged during routine | Habits, Entries |
 | Settings | Modal | Header settings icon | Preferences, API keys, data management | User config |
 | Info / Tutorial | Modal | Header info icon | App tutorial and feature explanations | — |
@@ -153,7 +154,7 @@ These surfaces are only visible to users with the Apple Health feature enabled (
 | Health Suggestion Banner | Inline Component | Auto-shown in Day View when pending suggestions exist | Accept/dismiss health-based habit suggestions | Health Suggestions, Habits, Entries |
 | Apple Health Page | Full Page (`?view=health`) | Settings → Apple Health | Create health-tracked habits, manage connected habits, configure rules | Habits, Health Rules |
 
-**Total: 15 pages + 16 modals + 2 feature-gated surfaces = 33 distinct UI surfaces**
+**Total: 15 pages + 17 modals + 2 feature-gated surfaces = 34 distinct UI surfaces**
 
 ---
 
@@ -245,6 +246,9 @@ graph TB
 | **Analyze** | Dashboard heatmap, category completion rows |
 | **Assign Category** | Add Habit Modal (creation) or Category Picker Modal |
 | **Link to Goal** | Add Habit Modal or Create Goal Flow (Step 2) |
+| **Archive** | Tracker → trash icon (click twice). Goal-linked habits open the Remove Habit modal first |
+| **Restore** | Settings → View archived habits → Restore |
+| **Delete permanently** | Goal-linked: Remove Habit modal → "Delete permanently". Archived habit: Settings → View archived habits → trash icon → confirm |
 
 ### Routine
 

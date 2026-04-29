@@ -512,7 +512,7 @@ export async function updateHabit(
 
 /**
  * Delete a habit.
- * 
+ *
  * @param id - Habit ID
  * @returns Promise<void>
  * @throws Error if API request fails or habit not found
@@ -522,6 +522,27 @@ export async function deleteHabit(id: string): Promise<void> {
   await apiRequest<{ message: string }>(`/habits/${id}`, {
     method: 'DELETE',
   });
+}
+
+/**
+ * Archive a habit (user-initiated). Hides it from active views but keeps
+ * entries intact. Restorable via `unarchiveHabit`.
+ */
+export async function archiveHabit(id: string): Promise<Habit> {
+  const response = await apiRequest<{ habit: Habit }>(`/habits/${id}/archive`, {
+    method: 'POST',
+  });
+  return response.habit;
+}
+
+/**
+ * Restore a habit from archive.
+ */
+export async function unarchiveHabit(id: string): Promise<Habit> {
+  const response = await apiRequest<{ habit: Habit }>(`/habits/${id}/unarchive`, {
+    method: 'POST',
+  });
+  return response.habit;
 }
 
 /**

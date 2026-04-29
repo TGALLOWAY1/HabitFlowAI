@@ -54,6 +54,12 @@ export interface Habit {
     linkedGoalId?: string; // Optional parent Goal ID
     linkedRoutineIds?: string[]; // Optional linked Routines
     archived: boolean;
+    /** ISO 8601 timestamp of when the habit was archived. Set on user archive, cleared on restore. */
+    archivedAt?: string;
+    /** Why the habit is archived. 'user' = user-driven (persists); 'category_deleted' = system (auto-recovered). */
+    archivedReason?: 'user' | 'category_deleted';
+    /** Soft delete marker. Backend filters these out of the active list, so frontend rarely sees it set. */
+    deletedAt?: string;
     createdAt: string;
 
     // Bundle fields

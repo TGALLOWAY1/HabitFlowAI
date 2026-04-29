@@ -191,6 +191,63 @@ export async function updateHabit(
 }
 
 /**
+ * Archive a habit (user-initiated). Sets `archived: true` plus archive
+ * metadata so the habit is hidden from active views but can be restored
+ * later with all entries intact.
+ *
+ * Uses `archivedReason: 'user'` to distinguish from category-deletion
+ * archives, which the GET /api/habits self-heal logic auto-restores.
+ */
+export async function archiveHabit(
+  id: string,
+  householdId: string,
+  userId: string
+): Promise<Habit | null> {
+  const db = await getDb();
+  const collection = db.collection(COLLECTION_NAME);
+
+  const result = await collection.findOneAndUpdate(
+    scopeFilter(householdId, userId, { id, deletedAt: { $exists: false } }),
+    {
+      $set: {
+        archived: true,
+        archivedAt: new Date().toISOString(),
+        archivedReason: 'user',
+      },
+    },
+    { returnDocument: 'after' }
+  );
+
+  if (!result) return null;
+  return stripScope(result);
+}
+
+/**
+ * Restore a habit from archive. Sets `archived: false` and unsets the
+ * archive metadata so the habit re-appears in active views.
+ */
+export async function unarchiveHabit(
+  id: string,
+  householdId: string,
+  userId: string
+): Promise<Habit | null> {
+  const db = await getDb();
+  const collection = db.collection(COLLECTION_NAME);
+
+  const result = await collection.findOneAndUpdate(
+    scopeFilter(householdId, userId, { id, deletedAt: { $exists: false } }),
+    {
+      $set: { archived: false },
+      $unset: { archivedAt: '', archivedReason: '' },
+    },
+    { returnDocument: 'after' }
+  );
+
+  if (!result) return null;
+  return stripScope(result);
+}
+
+/**
  * Soft-delete a habit. Sets `deletedAt`; the document is retained so that
  * orphaned entries (which still contribute to goal progress) can display
  * the habit's original name and unit in historical views.

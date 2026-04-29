@@ -13,6 +13,8 @@ import {
   getHabitById,
   updateHabit,
   deleteHabit,
+  archiveHabit,
+  unarchiveHabit,
   reorderHabits,
   recoverCategoryDeletedHabits,
 } from '../repositories/habitRepository';
@@ -79,8 +81,9 @@ export async function getHabits(req: Request, res: Response): Promise<void> {
           const invalidCategoryId = !!h.categoryId && !categoryIds.has(h.categoryId);
           // Also recover habits that are archived but have NO archivedReason —
           // these were stranded by a bug where uncategorizeHabitsByCategory cleared
-          // archivedReason without setting archived: false.
-          const archivedWithoutReason = h.archived === true && !(h as any).archivedReason;
+          // archivedReason without setting archived: false. User-driven archives
+          // always set archivedReason: 'user', so they are preserved here.
+          const archivedWithoutReason = h.archived === true && !h.archivedReason;
           return missingCategoryId || invalidCategoryId || archivedWithoutReason;
         });
 
@@ -290,7 +293,8 @@ export async function updateHabitRoute(req: Request, res: Response): Promise<voi
   try {
     const { id } = req.params;
     const {
-      name, categoryId, goal, description, archived, assignedDays, scheduledTime, durationMinutes,
+      name, categoryId, goal, description, archived, archivedAt, archivedReason,
+      assignedDays, scheduledTime, durationMinutes,
       nonNegotiable, nonNegotiableDays, deadline, type, subHabitIds, bundleParentId, order,
       bundleType, bundleOptions,
       pinned, timeEstimate,
@@ -310,6 +314,10 @@ export async function updateHabitRoute(req: Request, res: Response): Promise<voi
     if (goal !== undefined) patch.goal = goal;
     if (description !== undefined) patch.description = description;
     if (archived !== undefined) patch.archived = archived;
+    // Allow callers to clear archive metadata by sending null, or set it by
+    // sending an ISO string / valid reason. Undefined means "leave as-is".
+    if (archivedAt !== undefined) patch.archivedAt = archivedAt === null ? undefined : archivedAt;
+    if (archivedReason !== undefined) patch.archivedReason = archivedReason === null ? undefined : archivedReason;
     if (assignedDays !== undefined) patch.assignedDays = assignedDays;
     if (scheduledTime !== undefined) patch.scheduledTime = scheduledTime;
     if (durationMinutes !== undefined) patch.durationMinutes = durationMinutes;
@@ -455,8 +463,82 @@ export async function deleteHabitRoute(req: Request, res: Response): Promise<voi
 }
 
 /**
+ * Archive a habit (user-initiated). Hides it from active views but keeps
+ * all entries intact so it can be restored later via /unarchive.
+ *
+ * POST /api/habits/:id/archive
+ */
+export async function archiveHabitRoute(req: Request, res: Response): Promise<void> {
+  try {
+    const { id } = req.params;
+    if (!id) {
+      res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Habit ID is required' } });
+      return;
+    }
+
+    const { householdId, userId } = getRequestIdentity(req);
+    const habit = await archiveHabit(id, householdId, userId);
+
+    if (!habit) {
+      res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Habit not found' } });
+      return;
+    }
+
+    invalidateUserCaches(userId);
+    res.status(200).json({ habit });
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error('Error archiving habit:', errorMessage);
+    res.status(500).json({
+      error: {
+        code: 'INTERNAL_SERVER_ERROR',
+        message: 'Failed to archive habit',
+        details: process.env.NODE_ENV === 'development' ? errorMessage : undefined,
+      },
+    });
+  }
+}
+
+/**
+ * Restore a habit from archive. Returns it to active views with all entries
+ * intact.
+ *
+ * POST /api/habits/:id/unarchive
+ */
+export async function unarchiveHabitRoute(req: Request, res: Response): Promise<void> {
+  try {
+    const { id } = req.params;
+    if (!id) {
+      res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Habit ID is required' } });
+      return;
+    }
+
+    const { householdId, userId } = getRequestIdentity(req);
+    const habit = await unarchiveHabit(id, householdId, userId);
+
+    if (!habit) {
+      res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Habit not found' } });
+      return;
+    }
+
+    invalidateUserCaches(userId);
+    res.status(200).json({ habit });
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error('Error unarchiving habit:', errorMessage);
+    res.status(500).json({
+      error: {
+        code: 'INTERNAL_SERVER_ERROR',
+        message: 'Failed to unarchive habit',
+        details: process.env.NODE_ENV === 'development' ? errorMessage : undefined,
+      },
+    });
+  }
+}
+
+/**
  * Reorder habits.
- * 
+ *
  * PATCH /api/habits/reorder
  */
 export async function reorderHabitsRoute(req: Request, res: Response): Promise<void> {

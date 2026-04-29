@@ -19,8 +19,8 @@ Canonical inventory of all user-facing features. Keep this document in sync with
 - **Bundle Membership Management** — Move habits into/out of bundles; end or archive memberships
 - **Habit-Goal Linking** — Link habits to goals so completions count as goal progress. A single habit can be linked to multiple goals simultaneously (e.g., one "study session" habit contributing to a sequence of exam goals in a track).
 - **Habit-Routine Linking** — Link habits to routine steps so routine completion auto-logs habits
-- **Archiving** — Archive habits instead of deleting; soft-delete pattern
-- **Deletion with Goal Warning** — Deleting a habit linked to one or more goals surfaces a confirmation modal listing the affected goals. Historical progress on those goals is preserved — past entries continue to count — but the habit is removed from the goal's linked-habits list and can no longer be logged. Deletion is soft: the habit's name/unit is retained so orphaned historical entries can still render with their original label on goal detail pages
+- **Archiving** — Archive a habit to hide it from active tracking while preserving the habit definition and all entries. The trash icon archives by default (click twice to confirm). Restored from **Settings → View archived habits** with one click; restoration brings the habit back to its original category with full entry history intact
+- **Remove Habit Modal (goal-linked habits)** — Removing a habit linked to one or more goals opens a chooser listing affected goals and offering two paths: **Archive** (recommended, restorable) or **Delete permanently** (soft-delete, not restorable from UI). Historical goal progress is preserved either way — past entries keep contributing to the goal — but only Archive lets you bring the habit itself back without re-creating it
 - **Reordering** — Drag-and-drop to reorder habits within categories
 
 ## Routines
@@ -144,6 +144,7 @@ Canonical inventory of all user-facing features. Keep this document in sync with
 - **Gemini API Key** — Add, view, or remove AI integration key
 - **Apple Health Link** — Connect health integration (beta users)
 - **Setup Guide Reopen** — Re-trigger onboarding walkthrough
+- **View Archived Habits** — Modal listing archived habits with Restore (one-click) and Delete-permanently (two-step confirm) actions; shows count when non-empty
 - **Delete All Data** — Permanent data wipe with confirmation
 
 ## Cross-Cutting
