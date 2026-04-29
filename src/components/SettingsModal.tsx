@@ -1,8 +1,10 @@
 import { useState, useCallback } from 'react';
 import { useAuth } from '../store/AuthContext';
+import { useHabitStore } from '../store/HabitContext';
 import { getGeminiApiKey, setGeminiApiKey } from '../lib/geminiClient';
 import { deleteAllUserData, isHealthFeatureEnabled } from '../lib/persistenceClient';
-import { Eye, EyeOff, Sparkles, Activity, ChevronRight } from 'lucide-react';
+import { Eye, EyeOff, Sparkles, Activity, ChevronRight, Archive } from 'lucide-react';
+import { ArchivedHabitsModal } from './ArchivedHabitsModal';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -12,11 +14,14 @@ interface SettingsModalProps {
 
 export function SettingsModal({ isOpen, onClose, onNavigate }: SettingsModalProps) {
   const { user } = useAuth();
+  const { habits } = useHabitStore();
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [geminiKey, setGeminiKey] = useState(() => getGeminiApiKey());
   const [showGeminiKey, setShowGeminiKey] = useState(false);
   const [geminiKeySaved, setGeminiKeySaved] = useState(false);
+  const [showArchivedHabits, setShowArchivedHabits] = useState(false);
+  const archivedCount = habits.filter(h => h.archived === true && !h.deletedAt).length;
   const handleReopenGuide = useCallback(() => {
     try { localStorage.removeItem('hf_setup_guide_dismissed'); } catch { /* noop */ }
     window.dispatchEvent(new Event('habitflow:reopen-setup-guide'));
@@ -83,6 +88,25 @@ export function SettingsModal({ isOpen, onClose, onNavigate }: SettingsModalProp
               >
                 <Sparkles size={16} className="text-emerald-400 flex-shrink-0" />
                 Reopen setup guide
+              </button>
+            </section>
+
+            {/* Habits */}
+            <section>
+              <h3 className="text-xs font-medium text-neutral-500 uppercase tracking-wider mb-2">
+                Habits
+              </h3>
+              <button
+                type="button"
+                onClick={() => setShowArchivedHabits(true)}
+                className="w-full px-4 py-2.5 rounded-lg bg-neutral-800 text-neutral-200 border border-white/10 hover:bg-neutral-700 text-sm text-left flex items-center gap-2"
+              >
+                <Archive size={16} className="text-emerald-400 flex-shrink-0" />
+                <span className="flex-1">View archived habits</span>
+                {archivedCount > 0 && (
+                  <span className="text-[11px] text-neutral-400">{archivedCount}</span>
+                )}
+                <ChevronRight size={16} className="text-neutral-500" />
               </button>
             </section>
 
@@ -236,6 +260,10 @@ export function SettingsModal({ isOpen, onClose, onNavigate }: SettingsModalProp
           </div>
         </div>
       </div>
+      <ArchivedHabitsModal
+        isOpen={showArchivedHabits}
+        onClose={() => setShowArchivedHabits(false)}
+      />
     </div>
   );
 }

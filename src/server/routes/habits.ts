@@ -81,8 +81,9 @@ export async function getHabits(req: Request, res: Response): Promise<void> {
           const invalidCategoryId = !!h.categoryId && !categoryIds.has(h.categoryId);
           // Also recover habits that are archived but have NO archivedReason —
           // these were stranded by a bug where uncategorizeHabitsByCategory cleared
-          // archivedReason without setting archived: false.
-          const archivedWithoutReason = h.archived === true && !(h as any).archivedReason;
+          // archivedReason without setting archived: false. User-driven archives
+          // always set archivedReason: 'user', so they are preserved here.
+          const archivedWithoutReason = h.archived === true && !h.archivedReason;
           return missingCategoryId || invalidCategoryId || archivedWithoutReason;
         });
 
