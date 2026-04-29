@@ -46,6 +46,7 @@ export const GoalDetailPage: React.FC<GoalDetailPageProps> = ({ goalId, onBack, 
     const [isMarkingComplete, setIsMarkingComplete] = useState(false);
     const [showExtendForm, setShowExtendForm] = useState(false);
     const [extendTarget, setExtendTarget] = useState('');
+    const [extendTitle, setExtendTitle] = useState('');
     const [isExtending, setIsExtending] = useState(false);
     const [extendError, setExtendError] = useState<string | null>(null);
     const [showTrackMenu, setShowTrackMenu] = useState(false);
@@ -152,13 +153,29 @@ export const GoalDetailPage: React.FC<GoalDetailPageProps> = ({ goalId, onBack, 
 
     const handleExtendGoal = async () => {
         if (!data) return;
-        const numTarget = parseFloat(extendTarget);
-        if (isNaN(numTarget) || numTarget <= 0) {
-            setExtendError('Target must be a positive number');
-            return;
+        const { goal } = data;
+        const isOnetime = goal.type === 'onetime';
+
+        // Onetime goals have no meaningful targetValue — progress is binary —
+        // so the user only edits the title (e.g. "Chin Up (10 lbs)" -> "(20 lbs)").
+        // Cumulative goals require a strictly higher target.
+        let nextTarget: number | undefined = goal.targetValue;
+        if (!isOnetime) {
+            const numTarget = parseFloat(extendTarget);
+            if (isNaN(numTarget) || numTarget <= 0) {
+                setExtendError('Target must be a positive number');
+                return;
+            }
+            if (numTarget <= (goal.targetValue ?? 0)) {
+                setExtendError(`New target must be higher than the original (${goal.targetValue})`);
+                return;
+            }
+            nextTarget = numTarget;
         }
-        if (numTarget <= (data.goal.targetValue ?? 0)) {
-            setExtendError(`New target must be higher than the original (${data.goal.targetValue})`);
+
+        const trimmedTitle = extendTitle.trim();
+        if (isOnetime && !trimmedTitle) {
+            setExtendError('Title is required');
             return;
         }
 
@@ -166,7 +183,6 @@ export const GoalDetailPage: React.FC<GoalDetailPageProps> = ({ goalId, onBack, 
         setExtendError(null);
 
         try {
-            const { goal } = data;
             // Clear past deadlines to avoid invalid date intervals in GoalTrendChart
             const deadline = goal.deadline && goal.deadline >= new Date().toISOString().slice(0, 10)
                 ? goal.deadline
@@ -182,9 +198,9 @@ export const GoalDetailPage: React.FC<GoalDetailPageProps> = ({ goalId, onBack, 
                 : undefined;
 
             const newGoal = await createGoal({
-                title: goal.title,
+                title: trimmedTitle || goal.title,
                 type: goal.type,
-                targetValue: numTarget,
+                targetValue: nextTarget,
                 unit: goal.unit,
                 linkedHabitIds: goal.linkedHabitIds,
                 linkedTargets: goal.linkedTargets,
@@ -193,6 +209,7 @@ export const GoalDetailPage: React.FC<GoalDetailPageProps> = ({ goalId, onBack, 
                 deadline,
                 categoryId: goal.categoryId,
                 notes: goal.notes,
+                iteratedFromGoalId: goal.id,
             });
 
             // Navigate to the new active goal
@@ -467,13 +484,14 @@ export const GoalDetailPage: React.FC<GoalDetailPageProps> = ({ goalId, onBack, 
             )}
 
             {/* Extend Goal (for completed goals) */}
-            {goal.completedAt && goal.type !== 'onetime' && (
+            {goal.completedAt && (
                 <div className="mb-8">
                     {!showExtendForm ? (
                         <div>
                             <button
                                 onClick={() => {
                                     setExtendTarget(((goal.targetValue ?? 0) * 2).toString());
+                                    setExtendTitle(goal.title);
                                     setExtendError(null);
                                     setShowExtendForm(true);
                                 }}
@@ -483,27 +501,44 @@ export const GoalDetailPage: React.FC<GoalDetailPageProps> = ({ goalId, onBack, 
                                 Extend Goal
                             </button>
                             <p className="text-neutral-500 text-xs mt-2">
-                                Create a new goal with a higher target. This goal stays in your Win Archive.
+                                {goal.type === 'onetime'
+                                    ? 'Create a follow-up goal (e.g. a heavier weight or harder variation). This goal stays in your Win Archive.'
+                                    : 'Create a new goal with a higher target. This goal stays in your Win Archive.'}
                             </p>
                         </div>
                     ) : (
                         <div className="p-4 bg-blue-500/5 border border-blue-500/20 rounded-lg space-y-3">
-                            <div className="text-sm text-blue-300 font-medium">Set your new target</div>
-                            <div className="text-xs text-neutral-500">
-                                Original target: {goal.targetValue} {goal.unit} (completed). Your progress carries over to the new goal.
+                            <div className="text-sm text-blue-300 font-medium">
+                                {goal.type === 'onetime' ? 'Name the next iteration' : 'Set your new target'}
                             </div>
-                            <div className="flex items-center gap-3">
+                            <div className="text-xs text-neutral-500">
+                                {goal.type === 'onetime'
+                                    ? `Original: ${goal.title} (completed). Edit the title for the next iteration.`
+                                    : `Original target: ${goal.targetValue} ${goal.unit ?? ''} (completed). Your progress carries over to the new goal.`}
+                            </div>
+                            {goal.type === 'onetime' ? (
                                 <input
-                                    type="number"
-                                    value={extendTarget}
-                                    onChange={(e) => setExtendTarget(e.target.value)}
-                                    min={(goal.targetValue ?? 0) + 1}
-                                    className="w-32 bg-neutral-800 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500"
-                                    placeholder="New target"
+                                    type="text"
+                                    value={extendTitle}
+                                    onChange={(e) => setExtendTitle(e.target.value)}
+                                    className="w-full bg-neutral-800 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500"
+                                    placeholder="New goal title"
                                     autoFocus
                                 />
-                                {goal.unit && <span className="text-neutral-400 text-sm">{goal.unit}</span>}
-                            </div>
+                            ) : (
+                                <div className="flex items-center gap-3">
+                                    <input
+                                        type="number"
+                                        value={extendTarget}
+                                        onChange={(e) => setExtendTarget(e.target.value)}
+                                        min={(goal.targetValue ?? 0) + 1}
+                                        className="w-32 bg-neutral-800 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500"
+                                        placeholder="New target"
+                                        autoFocus
+                                    />
+                                    {goal.unit && <span className="text-neutral-400 text-sm">{goal.unit}</span>}
+                                </div>
+                            )}
                             {extendError && (
                                 <div className="text-red-400 text-xs">{extendError}</div>
                             )}
