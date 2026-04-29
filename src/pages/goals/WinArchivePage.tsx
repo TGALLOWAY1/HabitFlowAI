@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Trophy, Star, TrendingUp, Flag, Loader2, AlertCircle } from 'lucide-react';
 import { useCompletedGoals } from '../../lib/useCompletedGoals';
+import { useGoalsWithProgress } from '../../lib/useGoalsWithProgress';
 import { useGoalTracks } from '../../lib/useGoalTracks';
 import { buildIterationChains } from '../../utils/goalIterationChains';
 import { AchievementSectionHeader } from '../../components/goals/achievements/AchievementSectionHeader';
@@ -20,6 +21,7 @@ const PROGRESSIVE_PREVIEW_LIMIT = 4;
 export const WinArchivePage: React.FC<WinArchivePageProps> = ({ onViewGoal, onViewTrack }) => {
     const { data: completedGoals, loading: completedLoading, error: completedError } = useCompletedGoals();
     const { data: tracks, loading: tracksLoading } = useGoalTracks();
+    const { data: activeGoalsWithProgress, loading: activeGoalsLoading } = useGoalsWithProgress();
 
     const [singleExpanded, setSingleExpanded] = useState(false);
     const [progressiveExpanded, setProgressiveExpanded] = useState(false);
@@ -33,19 +35,30 @@ export const WinArchivePage: React.FC<WinArchivePageProps> = ({ onViewGoal, onVi
         const progressiveCandidates = goals.filter(g => g.completedAt && !g.trackId && g.type === 'cumulative');
         const progressive = buildIterationChains(progressiveCandidates);
 
+        // Track rows include both completed and not-yet-completed (active/locked)
+        // goals so the user can see the full track progression with greyed-out
+        // milestones for goals still ahead. TrackAchievementRow already renders
+        // locked goals with a lock icon — we just need to feed them in.
         const trackedGoalsByTrackId = new Map<string, Goal[]>();
-        for (const g of goals) {
-            if (!g.trackId) continue;
+        const seenIds = new Set<string>();
+        const collect = (g: Goal) => {
+            if (!g.trackId || seenIds.has(g.id)) return;
+            seenIds.add(g.id);
             const list = trackedGoalsByTrackId.get(g.trackId) ?? [];
             list.push(g);
             trackedGoalsByTrackId.set(g.trackId, list);
-        }
+        };
+        for (const g of goals) collect(g);
+        for (const gp of activeGoalsWithProgress ?? []) collect(gp.goal);
 
         const rows = (tracks ?? [])
             .map(track => {
-                const earned = trackedGoalsByTrackId.get(track.id) ?? [];
-                if (earned.length === 0) return null;
-                return { track, goals: earned };
+                const members = trackedGoalsByTrackId.get(track.id) ?? [];
+                // Only surface tracks that have at least one earned goal —
+                // the Achievements page is for celebrating progress, not
+                // listing every empty track.
+                if (!members.some(g => g.completedAt)) return null;
+                return { track, goals: members };
             })
             .filter((r): r is { track: typeof tracks[number]; goals: Goal[] } => r !== null)
             .sort((a, b) => {
@@ -55,9 +68,9 @@ export const WinArchivePage: React.FC<WinArchivePageProps> = ({ onViewGoal, onVi
             });
 
         return { singleGoals: single, progressiveChains: progressive, trackRows: rows };
-    }, [completedGoals, tracks]);
+    }, [completedGoals, tracks, activeGoalsWithProgress]);
 
-    const loading = completedLoading || tracksLoading;
+    const loading = completedLoading || tracksLoading || activeGoalsLoading;
     const hasAnyAchievements = singleGoals.length > 0 || progressiveChains.length > 0 || trackRows.length > 0;
 
     if (loading && !completedGoals) {
