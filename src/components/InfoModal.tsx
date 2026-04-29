@@ -322,6 +322,24 @@ export function InfoModal({ isOpen, onClose }: InfoModalProps) {
 
               <div className="border-b border-white/5" />
 
+              {/* Removing habits — Archive vs Delete */}
+              <div className="pl-3 border-l-2 border-emerald-500/40">
+                <p className="text-sm text-neutral-200">
+                  <span className="font-bold text-emerald-400">Removing a habit</span>
+                </p>
+                <p className="text-sm text-neutral-300 mt-1">The trash icon archives a habit by default — useful when you've finished a short-term habit (like "watch 10 tutorials") but might want to bring it back later.</p>
+                <ul className="mt-2 space-y-1.5">
+                  <li className="text-xs text-neutral-400 pl-2">
+                    <span className="font-semibold text-emerald-300">Archive</span> — Hidden from active tracking. The habit and all its entries are kept. Restore from <span className="text-neutral-300">Settings → View archived habits</span>. Click the trash icon twice to archive (one click for "are you sure", second to confirm).
+                  </li>
+                  <li className="text-xs text-neutral-400 pl-2">
+                    <span className="font-semibold text-red-300">Delete permanently</span> — Available from the Remove Habit modal (shown for goal-linked habits) and from the Archived Habits view. Past entries continue to count toward goal progress, but the habit cannot be restored from the UI.
+                  </li>
+                </ul>
+              </div>
+
+              <div className="border-b border-white/5" />
+
               {/* Routine Variants */}
               <div className="pl-3 border-l-2 border-emerald-500/40">
                 <p className="text-sm text-neutral-200">
