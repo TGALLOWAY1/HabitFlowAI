@@ -489,6 +489,9 @@ const HabitTrackerContent: React.FC = () => {
             onViewGoal={(goalId) => {
               handleNavigate('goals', { goalId });
             }}
+            onViewTrack={(trackId) => {
+              handleNavigate('goals', { trackId });
+            }}
           />
         ) : selectedGoalId ? (
           <GoalDetailPage
@@ -615,6 +618,9 @@ const HabitTrackerContent: React.FC = () => {
           <WinArchivePage
             onViewGoal={(goalId) => {
               handleNavigate('goals', { goalId });
+            }}
+            onViewTrack={(trackId) => {
+              handleNavigate('goals', { trackId });
             }}
           />
         ) : (
