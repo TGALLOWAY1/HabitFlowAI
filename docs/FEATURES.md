@@ -51,8 +51,8 @@ Canonical inventory of all user-facing features. Keep this document in sync with
 - **Day-by-Day View** — Chronological list of individual contributions
 - **Goal Schedule View** — Calendar showing deadlines, forecasts, and milestones across all goals
 - **Achievement Badges** — Auto-generated badges for completed goals
-- **Win Archive** — Gallery of completed goals with badges
-- **Goal Extension** — Create a continuation goal with higher target after completion
+- **Achievements Gallery** — Three structured sections of completed goals: **Single** (one-time wins), **Progressive** (cumulative goals with their full iteration history rendered as connected milestone nodes — e.g. 25 → 50 → 100), and **Track** (per-track horizontal rows showing earned goal badges plus muted lock stubs for goals not yet earned). In-progress tracks appear here as soon as one goal in the track is earned.
+- **Goal Extension** — Create a continuation goal with higher target after completion. Extended goals carry an `iteratedFromGoalId` backref so the Achievements gallery can collapse the chain into a single Progressive card showing the full target history.
 - **Mark Complete** — Manually mark goals as achieved
 - **Goal Ordering** — Drag-and-drop reorder within category groups
 - **Inactivity Coaching** — Rule-based popup suggestions when a goal is stagnant
