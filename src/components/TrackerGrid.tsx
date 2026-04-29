@@ -158,7 +158,7 @@ const HabitActionButtons = ({
                             await onDelete(habit.id);
                             setDeleteConfirmId(null);
                         } catch (error) {
-                            console.error('Failed to delete habit:', error);
+                            console.error('Failed to remove habit:', error);
                         }
                     } else {
                         setDeleteConfirmId(habit.id);
@@ -168,10 +168,10 @@ const HabitActionButtons = ({
                 className={cn(
                     "p-1.5 rounded-lg transition-all",
                     deleteConfirmId === habit.id
-                        ? "bg-red-500/20 text-red-400 opacity-100"
-                        : "hover:bg-neutral-800 text-neutral-500 hover:text-red-400"
+                        ? "bg-amber-500/20 text-amber-400 opacity-100"
+                        : "hover:bg-neutral-800 text-neutral-500 hover:text-amber-400"
                 )}
-                title={deleteConfirmId === habit.id ? "Click again to delete" : "Delete Habit"}
+                title={deleteConfirmId === habit.id ? "Click again to archive" : "Archive Habit"}
             >
                 <Trash2 size={14} />
             </button>
@@ -796,6 +796,7 @@ export const TrackerGrid = ({
     const childLookupHabits = allHabits ?? habits;
     const {
         deleteHabit,
+        archiveHabit,
         reorderHabits,
         toggleHabit,
         upsertHabitEntry,
@@ -874,43 +875,44 @@ export const TrackerGrid = ({
 
     const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
     const [deleteMode, setDeleteMode] = useState(false);
-    // Pending confirmation for deleting a habit that is linked to one or more
-    // goals. Shown via DeleteHabitConfirmModal after the user clicks trash twice
-    // — the modal surfaces affected goals so the user understands what gets
-    // disconnected (historical progress is still preserved by design).
+    // Pending confirmation for removing a habit that is linked to one or more
+    // goals. Shown via the Remove Habit modal after the user clicks trash twice —
+    // the modal surfaces affected goals and offers Archive (default) or Delete
+    // permanently. Historical goal progress is preserved either way.
     const [pendingDeleteHabit, setPendingDeleteHabit] = useState<{
         habit: Habit;
         linkedGoalTitles: string[];
     } | null>(null);
 
     /**
-     * Wrapper around deleteHabit that surfaces a confirmation modal when the
-     * habit is linked to any goal. Used in place of the raw deleteHabit when
-     * passing down to child rows.
+     * Wrapper invoked from the trash icon. Archives by default — the safer
+     * action that preserves the habit and entries. For habits linked to a
+     * goal, opens a modal that lets the user choose Archive vs Delete
+     * permanently and surfaces affected goals.
      *
-     * - Unlinked habit → delete immediately (existing "click-twice" flow in
+     * - Unlinked habit → archive immediately (the "click-twice" flow in
      *   HabitActionButtons still protects against accidental clicks).
-     * - Linked habit → open DeleteHabitConfirmModal listing affected goals.
+     * - Linked habit → open Remove Habit modal listing affected goals.
      *   Returns a resolved Promise so the child's click-twice state resets.
      */
     const handleDeleteHabitRequest = useCallback(async (id: string): Promise<void> => {
         const habit = habits.find(h => h.id === id);
         if (!habit) {
-            await deleteHabit(id);
+            await archiveHabit(id);
             return;
         }
         const linkedGoals = (goalsWithProgress || []).filter(gwp =>
             gwp.goal.linkedHabitIds?.includes(id)
         );
         if (linkedGoals.length === 0) {
-            await deleteHabit(id);
+            await archiveHabit(id);
             return;
         }
         setPendingDeleteHabit({
             habit,
             linkedGoalTitles: linkedGoals.map(gwp => gwp.goal.title),
         });
-    }, [habits, goalsWithProgress, deleteHabit]);
+    }, [habits, goalsWithProgress, archiveHabit]);
 
     const [historyModalHabitId, setHistoryModalHabitId] = useState<string | null>(null);
     const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
@@ -1577,11 +1579,18 @@ export const TrackerGrid = ({
                 habitName={bundlePickerHabit?.name ?? ''}
             />
 
-            {/* Delete Habit Confirmation Modal (shown only for habits linked to goals) */}
+            {/* Remove Habit modal (shown only for habits linked to goals).
+                Offers Archive (default) or Delete permanently — both preserve
+                historical goal progress; only Archive can be restored from UI. */}
             <DeleteHabitConfirmModal
                 isOpen={!!pendingDeleteHabit}
                 onClose={() => setPendingDeleteHabit(null)}
-                onConfirm={async () => {
+                onArchive={async () => {
+                    if (!pendingDeleteHabit) return;
+                    await archiveHabit(pendingDeleteHabit.habit.id);
+                    setPendingDeleteHabit(null);
+                }}
+                onDelete={async () => {
                     if (!pendingDeleteHabit) return;
                     await deleteHabit(pendingDeleteHabit.habit.id);
                     setPendingDeleteHabit(null);
