@@ -1084,6 +1084,13 @@ export interface Goal {
      * Undefined means the window is still open (goal is currently active).
      */
     activeWindowEnd?: string;
+
+    /**
+     * ID of the prior goal in an iteration chain. Set by the server when a
+     * cumulative goal is "extended" (iterated). Undefined for original goals
+     * and for goals iterated before this field existed (legacy data).
+     */
+    iteratedFromGoalId?: string;
 }
 
 /** Goals stored as an array */
