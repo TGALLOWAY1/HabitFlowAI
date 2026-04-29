@@ -122,6 +122,19 @@ export interface Habit {
     archived: boolean;
 
     /**
+     * ISO 8601 timestamp of when the habit was archived. Set together with
+     * `archived: true`. Cleared on unarchive.
+     */
+    archivedAt?: string;
+
+    /**
+     * Why the habit is archived. Distinguishes user-driven archive (which
+     * persists until the user restores it) from system-driven archive caused
+     * by category deletion (which is auto-recovered on the next session).
+     */
+    archivedReason?: 'user' | 'category_deleted';
+
+    /**
      * Soft delete marker (ISO 8601). When set, the habit is removed from
      * active views but the document is retained so historical entries keep
      * a resolvable name/unit for goal progress displays.

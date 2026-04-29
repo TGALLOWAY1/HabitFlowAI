@@ -12,6 +12,8 @@ import {
     saveHabit,
     updateHabit as updateHabitApi, // Reserved for future use
     deleteHabit as deleteHabitApi,
+    archiveHabit as archiveHabitApi,
+    unarchiveHabit as unarchiveHabitApi,
     fetchDaySummary,
 
     fetchWellbeingEntries,
@@ -41,6 +43,8 @@ interface HabitContextType {
     toggleHabit: (habitId: string, date: string) => Promise<void>;
     updateLog: (habitId: string, date: string, value: number) => Promise<void>;
     deleteHabit: (id: string) => Promise<void>;
+    archiveHabit: (id: string) => Promise<Habit>;
+    unarchiveHabit: (id: string) => Promise<Habit>;
     deleteCategory: (id: string) => Promise<void>;
     importHabits: (
         categories: Omit<Category, 'id'>[],
@@ -638,6 +642,30 @@ export const HabitProvider: React.FC<{
         }
     };
 
+    const archiveHabit = async (id: string): Promise<Habit> => {
+        try {
+            const updatedHabit = await archiveHabitApi(id);
+            setHabits(prev => prev.map(h => h.id === id ? updatedHabit : h));
+            return updatedHabit;
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+            console.error('Failed to archive habit:', errorMessage);
+            throw error;
+        }
+    };
+
+    const unarchiveHabit = async (id: string): Promise<Habit> => {
+        try {
+            const updatedHabit = await unarchiveHabitApi(id);
+            setHabits(prev => prev.map(h => h.id === id ? updatedHabit : h));
+            return updatedHabit;
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+            console.error('Failed to unarchive habit:', errorMessage);
+            throw error;
+        }
+    };
+
     const deleteCategory = async (id: string) => {
         try {
             await deleteCategoryApi(id);
@@ -928,6 +956,8 @@ export const HabitProvider: React.FC<{
         updateHabitEntry: updateHabitEntryContext,
         deleteHabitEntry: deleteHabitEntryContext,
         deleteHabit,
+        archiveHabit,
+        unarchiveHabit,
         deleteCategory,
         importHabits,
         reorderCategories,
