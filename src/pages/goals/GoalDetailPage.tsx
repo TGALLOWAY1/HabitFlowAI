@@ -193,6 +193,7 @@ export const GoalDetailPage: React.FC<GoalDetailPageProps> = ({ goalId, onBack, 
                 deadline,
                 categoryId: goal.categoryId,
                 notes: goal.notes,
+                iteratedFromGoalId: goal.id,
             });
 
             // Navigate to the new active goal
