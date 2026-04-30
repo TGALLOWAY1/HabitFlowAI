@@ -1371,37 +1371,6 @@ export const TrackerGrid = ({
                 </div>
             </DndContext>
 
-            {/* Delete Confirmation Modal */}
-            {deleteConfirmId && (
-                <div className="modal-overlay fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-                    <div className="bg-neutral-900 border border-white/10 rounded-xl p-6 w-full max-w-sm shadow-xl">
-                        <h3 className="text-lg font-bold text-white mb-2">Delete Habit?</h3>
-                        <p className="text-neutral-400 mb-6 text-sm">
-                            Are you sure you want to delete this habit? This action cannot be undone and all history will be lost.
-                        </p>
-                        <div className="flex gap-3 justify-end">
-                            <button
-                                onClick={() => setDeleteConfirmId(null)}
-                                className="px-4 py-2 text-sm font-medium text-neutral-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors"
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                onClick={async () => {
-                                    if (deleteConfirmId) {
-                                        await deleteHabit(deleteConfirmId);
-                                        setDeleteConfirmId(null);
-                                    }
-                                }}
-                                className="px-4 py-2 text-sm font-medium text-white bg-red-500/10 text-red-500 hover:bg-red-500/20 border border-red-500/20 rounded-lg transition-colors"
-                            >
-                                Delete
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
             {/* Modals */}
             <NumericInputPopover
                 isOpen={popoverState.isOpen}
