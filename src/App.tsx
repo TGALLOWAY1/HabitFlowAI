@@ -477,11 +477,6 @@ const HabitTrackerContent: React.FC = () => {
                 console.error('Failed to repeat goal:', err);
               }
             }}
-            onArchive={() => {
-              setCompletedGoalId(null);
-              setGoalsViewMode('achievements');
-              handleNavigate('goals');
-            }}
           />
         ) : view === 'wins' ? (
           // Legacy wins route: show achievements tab within goals
