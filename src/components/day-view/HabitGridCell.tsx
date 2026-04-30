@@ -1,6 +1,10 @@
+import { useState, useMemo } from 'react';
 import { Check, CheckCheck, Target, Hash, Pin, PinOff, ListTodo, Layers, FolderInput, Trophy, Clock, Calendar, Shield, Repeat, Activity, History, Pencil, Trash2 } from 'lucide-react';
 import type { Habit, DayLog } from '../../types';
 import { cn } from '../../utils/cn';
+import { useHabitStore } from '../../store/HabitContext';
+import { useGoalsWithProgress } from '../../lib/useGoalsWithProgress';
+import { DeleteHabitConfirmModal } from '../DeleteHabitConfirmModal';
 
 interface DayViewHabitStatus {
     habit: Habit;
@@ -25,7 +29,12 @@ interface HabitGridCellProps {
     onAddToBundle?: (habit: Habit) => void;
     onViewHistory?: (habit: Habit) => void;
     onEditHabit?: (habit: Habit) => void;
-    onDeleteHabit?: (id: string) => Promise<void>;
+    /**
+     * Whether the trash button is shown. The remove flow itself (archive
+     * default + Remove Habit modal for goal-linked habits) is handled
+     * internally so this view stays consistent with the All-tab tracker.
+     */
+    showRemove?: boolean;
 
     // Bundle Props
     subHabits?: Habit[];
@@ -53,7 +62,7 @@ export const HabitGridCell = ({
     onAddToBundle,
     onViewHistory,
     onEditHabit,
-    onDeleteHabit,
+    showRemove,
     subHabits,
     subHabitStatuses,
     onSubHabitToggle,
@@ -64,6 +73,27 @@ export const HabitGridCell = ({
     log,
     childStatusMap
 }: HabitGridCellProps) => {
+    const { archiveHabit, deleteHabit } = useHabitStore();
+    const { data: goalsWithProgress } = useGoalsWithProgress();
+    const [showRemoveModal, setShowRemoveModal] = useState(false);
+
+    // Resolve the goals (if any) that link to this habit so the modal can
+    // surface them. Computed lazily — `goalsWithProgress` may be undefined
+    // during initial load.
+    const linkedGoalTitles = useMemo(() => {
+        if (!goalsWithProgress) return [];
+        return goalsWithProgress
+            .filter(gwp => gwp.goal.linkedHabitIds?.includes(habit.id))
+            .map(gwp => gwp.goal.title);
+    }, [goalsWithProgress, habit.id]);
+
+    const handleRemoveClick = () => {
+        // Always open the modal so the user sees Archive (default) vs
+        // Delete permanently. For unlinked habits the modal hides the
+        // goal-warning section automatically.
+        setShowRemoveModal(true);
+    };
+
     const isChecklistBundle = habit.type === 'bundle' && habit.bundleType === 'checklist';
     const isChoiceBundle = habit.type === 'bundle' && habit.bundleType === 'choice';
     const isQuantity = habit.goal?.type === 'number';
@@ -368,15 +398,11 @@ export const HabitGridCell = ({
                         >
                             {habit.pinned ? <PinOff size={12} /> : <Pin size={12} />}
                         </button>
-                        {onDeleteHabit && (
+                        {showRemove && (
                             <button
-                                onClick={async () => {
-                                    if (confirm(`Delete "${habit.name}"? This cannot be undone.`)) {
-                                        await onDeleteHabit(habit.id);
-                                    }
-                                }}
-                                className="p-1.5 rounded-md transition-colors text-neutral-500 hover:text-red-400 hover:bg-white/5"
-                                title="Delete Habit"
+                                onClick={handleRemoveClick}
+                                className="p-1.5 rounded-md transition-colors text-neutral-500 hover:text-amber-400 hover:bg-white/5"
+                                title="Archive Habit"
                             >
                                 <Trash2 size={12} />
                             </button>
@@ -384,6 +410,21 @@ export const HabitGridCell = ({
                     </div>
                 </div>
             )}
+
+            <DeleteHabitConfirmModal
+                isOpen={showRemoveModal}
+                onClose={() => setShowRemoveModal(false)}
+                onArchive={async () => {
+                    await archiveHabit(habit.id);
+                    setShowRemoveModal(false);
+                }}
+                onDelete={async () => {
+                    await deleteHabit(habit.id);
+                    setShowRemoveModal(false);
+                }}
+                habitName={habit.name}
+                linkedGoalTitles={linkedGoalTitles}
+            />
         </div>
     );
 };

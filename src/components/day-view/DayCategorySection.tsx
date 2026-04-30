@@ -27,7 +27,8 @@ interface DayCategorySectionProps {
     onAddToBundle?: (habit: Habit) => void;
     onViewHistory?: (habit: Habit) => void;
     onEditHabit?: (habit: Habit) => void;
-    onDeleteHabit?: (id: string) => Promise<void>;
+    /** Whether HabitGridCells in this section show the trash/archive button. */
+    showRemove?: boolean;
     allHabitsLookup: Map<string, Habit>;
     onUpdateHabitEntry: (habitId: string, dateKey: string, data: any) => Promise<void>;
     deleteHabitEntryByKey: (habitId: string, dateKey: string) => Promise<void>;
@@ -45,7 +46,7 @@ export const DayCategorySection = ({
     onAddToBundle,
     onViewHistory,
     onEditHabit,
-    onDeleteHabit,
+    showRemove,
     allHabitsLookup,
     onUpdateHabitEntry,
     deleteHabitEntryByKey,
@@ -206,7 +207,7 @@ export const DayCategorySection = ({
                                 onAddToBundle={onAddToBundle}
                                 onViewHistory={onViewHistory}
                                 onEditHabit={onEditHabit}
-                                onDeleteHabit={onDeleteHabit}
+                                showRemove={showRemove}
                                 subHabits={subHabits}
                                 subHabitStatuses={subHabitStatuses}
                                 habitStatus={status}

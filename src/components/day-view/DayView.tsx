@@ -81,10 +81,9 @@ interface DayViewProps {
     onAddHabit?: () => void;
     onEditHabit?: (habit: Habit) => void;
     onViewHistory?: (habit: Habit) => void;
-    onDeleteHabit?: (id: string) => Promise<void>;
 }
 
-export const DayView = ({ onAddHabit, onEditHabit, onViewHistory, onDeleteHabit }: DayViewProps = {}) => {
+export const DayView = ({ onAddHabit, onEditHabit, onViewHistory }: DayViewProps = {}) => {
     const {
         habits,
         categories,
@@ -426,7 +425,7 @@ export const DayView = ({ onAddHabit, onEditHabit, onViewHistory, onDeleteHabit 
                                                 onAddToBundle={(h) => setBundlePickerHabit(h)}
                                                 onViewHistory={onViewHistory}
                                                 onEditHabit={onEditHabit}
-                                                onDeleteHabit={onDeleteHabit}
+                                    showRemove
                                                 allHabitsLookup={allHabitsLookup}
                                                 onUpdateHabitEntry={upsertHabitEntry}
                                                 deleteHabitEntryByKey={deleteHabitEntryByKey}
@@ -449,7 +448,7 @@ export const DayView = ({ onAddHabit, onEditHabit, onViewHistory, onDeleteHabit 
                                     onAddToBundle={(h) => setBundlePickerHabit(h)}
                                     onViewHistory={onViewHistory}
                                     onEditHabit={onEditHabit}
-                                    onDeleteHabit={onDeleteHabit}
+                                    showRemove
                                     allHabitsLookup={allHabitsLookup}
                                     onUpdateHabitEntry={upsertHabitEntry}
                                     deleteHabitEntryByKey={deleteHabitEntryByKey}
