@@ -134,7 +134,7 @@ describe('Goal Create Routes', () => {
     });
 
     // Regression: legacy goals stored with countMode/aggregationMode = null were
-    // tripping validation on Repeat / Level Up / Extend, which forwards the
+    // tripping validation on Repeat / Extend, which forwards the
     // original goal's mode fields verbatim. Validator now treats null the same
     // as undefined (i.e. "fall through to defaults").
     describe('POST /api/goals - legacy null mode fields', () => {

@@ -981,7 +981,7 @@ export async function markGoalAsCompleted(id: string): Promise<Goal> {
 
 /**
  * Mark a goal as completed AND create an iterated follow-up goal with a higher target.
- * Used when the user explicitly chooses "Level Up" after completion.
+ * Used when the user explicitly chooses "Extend" after completion.
  *
  * @param id - Goal ID
  * @returns Promise with the updated goal and the new iterated goal

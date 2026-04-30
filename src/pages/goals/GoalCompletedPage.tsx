@@ -30,7 +30,7 @@ interface GoalCompletedPageProps {
     onBack?: () => void;
     onViewGoalDetail?: (goalId: string) => void;
     onViewWinArchive?: () => void;
-    onLevelUp?: (goalId: string) => void;
+    onExtend?: (goalId: string) => void;
     onRepeat?: (goalId: string) => void;
 }
 
@@ -47,7 +47,7 @@ export const GoalCompletedPage: React.FC<GoalCompletedPageProps> = ({
     onBack,
     onViewGoalDetail,
     onViewWinArchive,
-    onLevelUp,
+    onExtend,
     onRepeat,
 }) => {
     // Check caches first — only fetch detail as fallback
@@ -232,12 +232,12 @@ export const GoalCompletedPage: React.FC<GoalCompletedPageProps> = ({
                         </p>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             <button
-                                onClick={() => onLevelUp?.(goalId)}
+                                onClick={() => onExtend?.(goalId)}
                                 className="p-4 bg-neutral-800/50 border border-white/10 rounded-xl hover:bg-neutral-800 hover:border-emerald-500/30 transition-all text-left"
                             >
                                 <div className="flex items-center gap-2 mb-1">
                                     <TrendingUp size={16} className="text-emerald-400" />
-                                    <span className="text-emerald-400 font-medium">Level Up</span>
+                                    <span className="text-emerald-400 font-medium">Extend</span>
                                 </div>
                                 <div className="text-neutral-500 text-xs">
                                     Raise the target and keep pushing
