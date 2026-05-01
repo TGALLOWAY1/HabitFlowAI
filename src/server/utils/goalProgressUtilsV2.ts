@@ -13,9 +13,87 @@ import { getMembershipsByParent } from '../repositories/bundleMembershipReposito
 import { aggregateHabitEntryTotals } from '../repositories/habitEntryRepository';
 import { getEntryViewsForHabits, getRecentEntryViewsForHabits, buildEntryViewsFromEntries } from '../services/truthQuery';
 import { getAggregationMode, getCountMode, unitsMatch } from './goalLinkSemantics';
-import type { Goal, GoalProgress, Habit, HabitEntry, GoalProgressWarning } from '../../models/persistenceTypes';
+import type { Goal, GoalProgress, Habit, HabitEntry, GoalProgressWarning, MilestoneState } from '../../models/persistenceTypes';
 import type { EntryView } from '../services/truthQuery';
 import type { DayKey } from '../../domain/time/dayKey';
+
+/**
+ * Compute derived state for each goal milestone.
+ *
+ * `completed` is taken from `currentValue >= milestone.value` so it always
+ * agrees with the headline progress bar. `completedAtDayKey` (the first dayKey
+ * at which the running cumulative crossed the threshold) is computed only when
+ * `entries` is provided — the list path passes `null` to skip the walk.
+ *
+ * The returned array preserves the input ordering of `milestones`; ascending
+ * order is enforced by the route layer on write.
+ */
+export function computeMilestoneStates(input: {
+  milestones: Goal['milestones'];
+  currentValue: number;
+  /** Pass `null` from cheap paths (list view) to skip the entry walk. */
+  entries: EntryView[] | null;
+  aggregationMode: 'sum' | 'count';
+  countMode: 'distinctDays' | 'entries';
+  habitMap?: Map<string, Habit>;
+}): MilestoneState[] {
+  const { milestones, currentValue, entries, aggregationMode, countMode, habitMap } = input;
+  if (!milestones || milestones.length === 0) return [];
+
+  const crossingByValue = new Map<number, string>();
+
+  if (entries && entries.length > 0) {
+    const sorted = entries.slice().sort((a, b) => {
+      if (a.dayKey !== b.dayKey) return a.dayKey < b.dayKey ? -1 : 1;
+      return (a.timestampUtc || '').localeCompare(b.timestampUtc || '');
+    });
+
+    const sortedMilestones = milestones.slice().sort((a, b) => a.value - b.value);
+    const distinctDays = new Set<string>();
+    let running = 0;
+    let nextIdx = 0;
+
+    for (const entry of sorted) {
+      if (aggregationMode === 'sum') {
+        let inc = entry.value ?? 0;
+        if (habitMap) {
+          const habit = habitMap.get(entry.habitId);
+          if (habit?.goal.type === 'boolean') {
+            inc = habit.goal.target ?? 1;
+          }
+        }
+        running += inc;
+      } else if (countMode === 'entries') {
+        running += 1;
+      } else {
+        if (distinctDays.has(entry.dayKey)) continue;
+        distinctDays.add(entry.dayKey);
+        running = distinctDays.size;
+      }
+
+      while (
+        nextIdx < sortedMilestones.length &&
+        running >= sortedMilestones[nextIdx].value
+      ) {
+        crossingByValue.set(sortedMilestones[nextIdx].value, entry.dayKey);
+        nextIdx++;
+      }
+      if (nextIdx >= sortedMilestones.length) break;
+    }
+  }
+
+  return milestones.map((m) => {
+    const state: MilestoneState = {
+      id: m.id,
+      value: m.value,
+      completed: currentValue >= m.value,
+    };
+    const crossingDay = crossingByValue.get(m.value);
+    if (crossingDay) state.completedAtDayKey = crossingDay;
+    if (m.acknowledgedAt) state.acknowledgedAt = m.acknowledgedAt;
+    return state;
+  });
+}
 
 /**
  * Get date string in YYYY-MM-DD format for N days ago.
@@ -264,6 +342,15 @@ export function computeFullGoalProgressV2(
 
   const inactivityWarning = !goal.completedAt && daysWithoutProgress >= 4;
 
+  const milestoneStates = computeMilestoneStates({
+    milestones: goal.milestones,
+    currentValue,
+    entries: filteredEntries,
+    aggregationMode,
+    countMode,
+    habitMap,
+  });
+
   return {
     currentValue,
     percent,
@@ -271,6 +358,7 @@ export function computeFullGoalProgressV2(
     lastThirtyDays: lastThirtyDaysData,
     inactivityWarning,
     warnings: warnings.length > 0 ? warnings : undefined,
+    ...(milestoneStates.length > 0 ? { milestoneStates } : {}),
   };
 }
 
@@ -675,6 +763,17 @@ export async function computeGoalListProgress(
     const daysWithoutProgress = lastSevenDaysData.filter(day => !day.hasProgress).length;
     const inactivityWarning = !goal.completedAt && daysWithoutProgress >= 4;
 
+    // List path: skip the per-entry walk; completion derives from currentValue.
+    // No completedAtDayKey is set here — only the full path computes timestamps.
+    const milestoneStates = computeMilestoneStates({
+      milestones: goal.milestones,
+      currentValue,
+      entries: null,
+      aggregationMode,
+      countMode,
+      habitMap,
+    });
+
     results.push({
       goal,
       progress: {
@@ -684,6 +783,7 @@ export async function computeGoalListProgress(
         lastThirtyDays: lastThirtyDaysData,
         inactivityWarning,
         warnings: warnings.length > 0 ? warnings : undefined,
+        ...(milestoneStates.length > 0 ? { milestoneStates } : {}),
       },
     });
   }

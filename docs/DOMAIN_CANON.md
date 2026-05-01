@@ -25,6 +25,7 @@ It does not replace the canonical references.
 
 4. Derived metrics are recomputable.
 - Streaks, momentum, percentages, and charts are read-model outputs.
+- Goal milestone *completion* is derived in `computeMilestoneStates` (`src/server/utils/goalProgressUtilsV2.ts`). Only milestone configuration (id, value) and `acknowledgedAt` are stored on `Goal.milestones`.
 
 ## Bundle Identity Model
 
