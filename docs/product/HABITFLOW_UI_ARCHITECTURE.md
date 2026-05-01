@@ -75,7 +75,7 @@ HabitFlow App
 │       │   ├── Category filter
 │       │   ├── Single-goal focus mode
 │       │   └── Date detail panel (cluster inspection)
-│       ├── Achievements — Three-section gallery: Single, Progressive (with iteration-history milestone nodes), Track (horizontal rows per track with locked stubs for not-yet-earned goals)
+│       ├── Achievements — Three-section gallery: Single, Progressive (iteration-history nodes plus in-progress goals with crossed milestones, both rendered as connected node chains), Track (horizontal rows per track with locked stubs for not-yet-earned goals)
 │       ├── [+] Create Goal (→ multi-step flow)
 │       ├── Goal Detail Page (charts, entries, linked habits)
 │       ├── Edit Goal (→ modal)
@@ -111,11 +111,11 @@ HabitFlow App
 | Routines List | Page | Bottom tab "Routines" | Card list of all routines | Routines | Routine Editor, Runner, Preview |
 | Goals — All | Page | Bottom tab "Goals", "All" toggle | Collapsible category stacks with progress bars. "New Track" button in header bar next to "+" | Goals, Categories | Create Goal Flow, Goal Detail, Edit Goal Modal, Create Track Modal |
 | Goals — Schedule | Page | "Schedule" toggle on Goals | Insight calendar with deadlines, forecasts, milestones | Goals, Categories | Goal Detail, Focus Mode |
-| Goals — Achievements | Page | "Achievements" toggle on Goals (trophy icon) | Three-section accomplishments gallery — Single (one-time wins), Progressive (cumulative goals with iteration-chain milestone nodes), Track (horizontal per-track rows with locked stubs for not-yet-earned goals). Section-local "View all" expands long Single/Progressive lists | Goals, Goal Tracks | Goal Detail, Goal Track Detail |
+| Goals — Achievements | Page | "Achievements" toggle on Goals (trophy icon) | Three-section accomplishments gallery — Single (one-time wins), Progressive (iteration-chain nodes plus in-progress milestone-bearing goals with parallel completion state — completed nodes filled, future nodes outlined), Track (horizontal per-track rows with locked stubs for not-yet-earned goals). Section-local "View all" expands long Single/Progressive lists | Goals, Goal Tracks | Goal Detail, Goal Track Detail |
 | Goal Detail | Page | Click goal card / pinned goal | Charts, entries, linked habits (plus a "Removed habits still contributing" list when the goal has orphan contributions from deleted habits) for one goal | Goals, Habits, Entries | Edit Goal Modal, Goal Completed |
 | Goal Completed | Page | Auto-shown on 100% or manual | Celebratory screen with next actions | Goals | Achievements, Goal Detail, Extend |
 | Goal Track Detail | Page | Click track in Goals page | Track name, ordered goals with states, reorder, add/remove goals | Goal Tracks, Goals | Goal Detail, Goals List |
-| Create Goal (Step 1) | Modal | "+ Goal" button on Goals page | Enter goal details (title, type, target, deadline, category) | Goals, Categories | Create Goal Step 2 |
+| Create Goal (Step 1) | Modal | "+ Goal" button on Goals page | Enter goal details. For cumulative goals: title, type, **MilestoneRowList** (intermediate stages plus a pinned "Final Goal" row that holds `targetValue`), unit, deadline, category. For one-time goals: title, type, event date, category. | Goals, Categories | Create Goal Step 2 |
 | Create Goal (Step 2) | Modal | Next from Step 1 | Link habits to goal (filtered by category if selected) | Goals, Habits | Goals List (on submit) |
 | Journal | Page | Dashboard card / `?view=journal` | Free-write, templates, history tabs; auto-generated AI summary banner | Journal Entries | — |
 | Tasks | Page | Dashboard card / `?view=tasks` | Today + Inbox columns; click a task title or pencil icon to rename inline | Tasks | — |
