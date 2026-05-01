@@ -79,6 +79,17 @@ Bundle parent completion is derived from children whose membership is active on 
 
 See: `src/server/repositories/bundleMembershipRepository.ts`
 
+## Goal Milestones
+
+Cumulative goals may declare intermediate stages via `Goal.milestones`. Each entry has:
+- `id` — server-assigned UUID
+- `value` — threshold > 0 and strictly less than `Goal.targetValue`
+- `acknowledgedAt?` — ISO timestamp set after the user dismisses the per-milestone celebration
+
+Milestone *completion* is derived at read time from HabitEntries (see `src/server/utils/goalProgressUtilsV2.ts` → `computeMilestoneStates`); only the configuration above and `acknowledgedAt` are stored. The server normalizes the array to ascending order by `value` on write.
+
+`acknowledgedAt` is the only progress-adjacent field stored on the goal. It mirrors `Goal.completedAt`: derived completion remains canonical, while the acknowledgment marker keeps the celebration screen idempotent across reloads.
+
 ## DayKey Boundary
 
 DayKey utilities and validation:
