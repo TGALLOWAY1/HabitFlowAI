@@ -78,6 +78,12 @@ Base URL: `/api`
 - `PUT /goals/:id`
 - `DELETE /goals/:id`
 
+### Milestones
+
+Cumulative goals may declare intermediate stages via the optional `milestones` field on POST/PUT bodies. Each entry: `{ value: number }` (server assigns `id`). Constraints: positive number, unique, strictly less than `targetValue`, max 20 entries, only valid when `type === 'cumulative'`. Server normalizes to ascending order by `value`. PUT-replace preserves `acknowledgedAt` from existing milestones matched by `id`.
+
+`GoalProgress` responses include a parallel `milestoneStates: MilestoneState[]` whose `completed` flag is derived from HabitEntries. The full-progress path also populates `completedAtDayKey` (the first dayKey at which the running cumulative crossed the milestone value).
+
 ## Journal
 
 - `GET /journal`

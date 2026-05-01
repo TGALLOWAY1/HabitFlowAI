@@ -172,4 +172,149 @@ describe('Goal Create Routes', () => {
             expect(response.body.error.message).toMatch(/countMode/);
         });
     });
+
+    describe('POST /api/goals - Milestones', () => {
+        it('should create a cumulative goal with valid milestones', async () => {
+            const response = await request(app)
+                .post('/api/goals')
+                .send({
+                    title: '100 Pull-Ups',
+                    type: 'cumulative',
+                    targetValue: 100,
+                    unit: 'pull-ups',
+                    linkedHabitIds: [],
+                    milestones: [{ value: 25 }, { value: 50 }, { value: 75 }],
+                })
+                .expect(201);
+
+            expect(response.body.goal.milestones).toHaveLength(3);
+            expect(response.body.goal.milestones.map((m: { value: number }) => m.value)).toEqual([25, 50, 75]);
+            for (const milestone of response.body.goal.milestones) {
+                expect(typeof milestone.id).toBe('string');
+                expect(milestone.id.length).toBeGreaterThan(0);
+                expect(milestone.acknowledgedAt).toBeUndefined();
+            }
+        });
+
+        it('should normalize milestones into ascending order', async () => {
+            const response = await request(app)
+                .post('/api/goals')
+                .send({
+                    title: 'Sorted',
+                    type: 'cumulative',
+                    targetValue: 100,
+                    linkedHabitIds: [],
+                    milestones: [{ value: 75 }, { value: 25 }, { value: 50 }],
+                })
+                .expect(201);
+
+            expect(response.body.goal.milestones.map((m: { value: number }) => m.value)).toEqual([25, 50, 75]);
+        });
+
+        it('should drop client-supplied acknowledgedAt on create', async () => {
+            const response = await request(app)
+                .post('/api/goals')
+                .send({
+                    title: 'Fresh Goal',
+                    type: 'cumulative',
+                    targetValue: 100,
+                    linkedHabitIds: [],
+                    milestones: [{ value: 25, acknowledgedAt: '2025-01-01T00:00:00.000Z' }],
+                })
+                .expect(201);
+
+            expect(response.body.goal.milestones[0].acknowledgedAt).toBeUndefined();
+        });
+
+        it('should accept an empty milestones array', async () => {
+            const response = await request(app)
+                .post('/api/goals')
+                .send({
+                    title: 'No milestones',
+                    type: 'cumulative',
+                    targetValue: 100,
+                    linkedHabitIds: [],
+                    milestones: [],
+                })
+                .expect(201);
+
+            expect(response.body.goal.milestones).toEqual([]);
+        });
+
+        it('should reject milestones on a onetime goal', async () => {
+            const response = await request(app)
+                .post('/api/goals')
+                .send({
+                    title: 'Bad onetime',
+                    type: 'onetime',
+                    targetValue: 1,
+                    linkedHabitIds: [],
+                    milestones: [{ value: 1 }],
+                })
+                .expect(400);
+
+            expect(response.body.error.message).toMatch(/cumulative/);
+        });
+
+        it('should reject duplicate milestone values', async () => {
+            const response = await request(app)
+                .post('/api/goals')
+                .send({
+                    title: 'Dups',
+                    type: 'cumulative',
+                    targetValue: 100,
+                    linkedHabitIds: [],
+                    milestones: [{ value: 25 }, { value: 25 }],
+                })
+                .expect(400);
+
+            expect(response.body.error.message).toMatch(/unique/);
+        });
+
+        it('should reject milestone values >= targetValue', async () => {
+            const response = await request(app)
+                .post('/api/goals')
+                .send({
+                    title: 'Over',
+                    type: 'cumulative',
+                    targetValue: 100,
+                    linkedHabitIds: [],
+                    milestones: [{ value: 100 }],
+                })
+                .expect(400);
+
+            expect(response.body.error.message).toMatch(/less than targetValue/);
+        });
+
+        it('should reject more than 20 milestones', async () => {
+            const tooMany = Array.from({ length: 21 }, (_, i) => ({ value: i + 1 }));
+            const response = await request(app)
+                .post('/api/goals')
+                .send({
+                    title: 'Too many',
+                    type: 'cumulative',
+                    targetValue: 100,
+                    linkedHabitIds: [],
+                    milestones: tooMany,
+                })
+                .expect(400);
+
+            expect(response.body.error.message).toMatch(/at most 20/);
+        });
+
+        it('should reject non-positive milestone values', async () => {
+            const response = await request(app)
+                .post('/api/goals')
+                .send({
+                    title: 'Zero',
+                    type: 'cumulative',
+                    targetValue: 100,
+                    linkedHabitIds: [],
+                    milestones: [{ value: 0 }],
+                })
+                .expect(400);
+
+            expect(response.body.error.message).toMatch(/positive/);
+        });
+    });
 });
