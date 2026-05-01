@@ -1272,3 +1272,72 @@ export async function deleteGoalRoute(req: Request, res: Response): Promise<void
     });
   }
 }
+
+/**
+ * Acknowledge a milestone celebration.
+ *
+ * POST /api/goals/:id/milestones/:milestoneId/acknowledge
+ *
+ * Sets `acknowledgedAt = now` on the matching milestone. Idempotent — calling
+ * twice returns the goal unchanged with the original acknowledgedAt preserved.
+ */
+export async function acknowledgeMilestoneRoute(req: Request, res: Response): Promise<void> {
+  try {
+    const { id, milestoneId } = req.params;
+    if (!id || !milestoneId) {
+      res.status(400).json({
+        error: { code: 'VALIDATION_ERROR', message: 'Goal ID and milestone ID are required' },
+      });
+      return;
+    }
+
+    const { householdId, userId } = getRequestIdentity(req);
+    const existing = await getGoalById(id, householdId, userId);
+    if (!existing) {
+      res.status(404).json({
+        error: { code: 'NOT_FOUND', message: 'Goal not found' },
+      });
+      return;
+    }
+
+    const milestones = existing.milestones ?? [];
+    const targetIndex = milestones.findIndex((m) => m.id === milestoneId);
+    if (targetIndex === -1) {
+      res.status(404).json({
+        error: { code: 'NOT_FOUND', message: 'Milestone not found' },
+      });
+      return;
+    }
+
+    // Idempotent: do not overwrite an existing acknowledgedAt.
+    if (milestones[targetIndex].acknowledgedAt) {
+      res.status(200).json({ goal: existing });
+      return;
+    }
+
+    const updatedMilestones: GoalMilestone[] = milestones.map((m, idx) =>
+      idx === targetIndex ? { ...m, acknowledgedAt: new Date().toISOString() } : m,
+    );
+
+    const goal = await updateGoal(id, householdId, userId, { milestones: updatedMilestones });
+    if (!goal) {
+      res.status(404).json({
+        error: { code: 'NOT_FOUND', message: 'Goal not found' },
+      });
+      return;
+    }
+
+    invalidateUserCaches(userId);
+    res.status(200).json({ goal });
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error('Error acknowledging milestone:', errorMessage);
+    res.status(500).json({
+      error: {
+        code: 'INTERNAL_SERVER_ERROR',
+        message: 'Failed to acknowledge milestone',
+        details: process.env.NODE_ENV === 'development' ? errorMessage : undefined,
+      },
+    });
+  }
+}

@@ -14,7 +14,7 @@ import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import express, { type Express } from 'express';
 import request from 'supertest';
 import { setupTestMongo, teardownTestMongo, getTestDb } from '../../../test/mongoTestHelper';
-import { updateGoalRoute } from '../goals';
+import { updateGoalRoute, acknowledgeMilestoneRoute } from '../goals';
 import { createGoal, getGoalById, updateGoal } from '../../repositories/goalRepository';
 import { MONGO_COLLECTIONS } from '../../../models/persistenceTypes';
 
@@ -35,6 +35,7 @@ describe('PUT /api/goals/:id — milestones', () => {
       next();
     });
     app.put('/api/goals/:id', updateGoalRoute);
+    app.post('/api/goals/:id/milestones/:milestoneId/acknowledge', acknowledgeMilestoneRoute);
   });
 
   afterAll(async () => {
@@ -207,5 +208,60 @@ describe('PUT /api/goals/:id — milestones', () => {
     const goal = await makeCumulativeGoal([{ id: 'm', value: 25 }]);
     const updated = await updateGoal(goal.id, HOUSEHOLD, USER, { notes: 'test' });
     expect(updated?.milestones).toHaveLength(1);
+  });
+
+  describe('POST /api/goals/:id/milestones/:milestoneId/acknowledge', () => {
+    it('sets acknowledgedAt on the matching milestone', async () => {
+      const goal = await makeCumulativeGoal([
+        { id: 'm-25', value: 25 },
+        { id: 'm-50', value: 50 },
+      ]);
+
+      const before = Date.now();
+      const res = await request(app)
+        .post(`/api/goals/${goal.id}/milestones/m-25/acknowledge`)
+        .expect(200);
+      const after = Date.now();
+
+      const ack = res.body.goal.milestones.find((m: { id: string }) => m.id === 'm-25');
+      expect(ack.acknowledgedAt).toBeDefined();
+      const ackTime = Date.parse(ack.acknowledgedAt);
+      expect(ackTime).toBeGreaterThanOrEqual(before);
+      expect(ackTime).toBeLessThanOrEqual(after);
+
+      // Other milestones untouched
+      const other = res.body.goal.milestones.find((m: { id: string }) => m.id === 'm-50');
+      expect(other.acknowledgedAt).toBeUndefined();
+    });
+
+    it('is idempotent — preserves the original acknowledgedAt on repeat call', async () => {
+      const goal = await makeCumulativeGoal([{ id: 'm', value: 25 }]);
+
+      const first = await request(app)
+        .post(`/api/goals/${goal.id}/milestones/m/acknowledge`)
+        .expect(200);
+      const firstAck = first.body.goal.milestones[0].acknowledgedAt;
+      expect(firstAck).toBeDefined();
+
+      // Second call should not change the timestamp
+      await new Promise((r) => setTimeout(r, 10));
+      const second = await request(app)
+        .post(`/api/goals/${goal.id}/milestones/m/acknowledge`)
+        .expect(200);
+      expect(second.body.goal.milestones[0].acknowledgedAt).toBe(firstAck);
+    });
+
+    it('returns 404 when the goal does not exist', async () => {
+      await request(app)
+        .post('/api/goals/no-goal/milestones/m/acknowledge')
+        .expect(404);
+    });
+
+    it('returns 404 when the milestone id is unknown', async () => {
+      const goal = await makeCumulativeGoal([{ id: 'm-25', value: 25 }]);
+      await request(app)
+        .post(`/api/goals/${goal.id}/milestones/wrong-id/acknowledge`)
+        .expect(404);
+    });
   });
 });
