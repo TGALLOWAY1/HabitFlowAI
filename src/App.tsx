@@ -445,7 +445,7 @@ const HabitTrackerContent: React.FC = () => {
               setCompletedGoalId(null);
               handleNavigate('goals', { goalId });
             }}
-            onLevelUp={async (goalId) => {
+            onExtend={async (goalId) => {
               try {
                 const result = await iterateGoal(goalId);
                 setCompletedGoalId(null);
@@ -455,7 +455,7 @@ const HabitTrackerContent: React.FC = () => {
                   handleNavigate('goals');
                 }
               } catch (err) {
-                console.error('Failed to level up goal:', err);
+                console.error('Failed to extend goal:', err);
               }
             }}
             onRepeat={async (goalId) => {
@@ -476,11 +476,6 @@ const HabitTrackerContent: React.FC = () => {
               } catch (err) {
                 console.error('Failed to repeat goal:', err);
               }
-            }}
-            onArchive={() => {
-              setCompletedGoalId(null);
-              setGoalsViewMode('achievements');
-              handleNavigate('goals');
             }}
           />
         ) : view === 'wins' ? (
