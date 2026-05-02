@@ -29,6 +29,9 @@ import { ScheduleView } from './components/day-view/ScheduleView';
 import { DevIdentityPanel } from './components/DevIdentityPanel';
 import { DashboardPrefsProvider } from './store/DashboardPrefsContext';
 import { GoalCompletionProvider, useGoalCompletion } from './store/GoalCompletionContext';
+import { useMilestoneCelebrationWatcher } from './lib/useMilestoneCelebrationWatcher';
+import { MilestoneCelebrationModal } from './components/goals/MilestoneCelebrationModal';
+import { acknowledgeMilestone } from './lib/persistenceClient';
 
 // Retry wrapper for lazy imports — handles stale chunk failures after deployments
 function lazyRetry<T extends React.ComponentType<any>>(
@@ -200,7 +203,11 @@ const HabitTrackerContent: React.FC = () => {
 
   const [showCreateGoal, setShowCreateGoal] = useState(false);
   const [showCreateTrack, setShowCreateTrack] = useState(false);
-  const { completedGoalId, setCompletedGoalId } = useGoalCompletion();
+  const { completedGoalId, setCompletedGoalId, pendingMilestone, dismissPendingMilestone } = useGoalCompletion();
+
+  // Watch goals-with-progress for unacknowledged crossed milestones and queue
+  // their celebrations.
+  useMilestoneCelebrationWatcher();
 
   // Routine State
   const [routineEditorState, setRoutineEditorState] = useState<{
@@ -701,6 +708,19 @@ const HabitTrackerContent: React.FC = () => {
           handleNavigate('goals', { trackId });
         }}
       />
+
+      {pendingMilestone && (
+        <MilestoneCelebrationModal
+          milestone={pendingMilestone}
+          onDismiss={() => {
+            const { goalId, milestoneId } = pendingMilestone;
+            dismissPendingMilestone();
+            void acknowledgeMilestone(goalId, milestoneId).catch((err) => {
+              console.error('Failed to acknowledge milestone:', err);
+            });
+          }}
+        />
+      )}
 
       <BottomTabBar activeView={view} onNavigate={handleNavigate} />
     </div >

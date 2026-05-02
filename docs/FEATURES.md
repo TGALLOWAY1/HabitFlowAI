@@ -42,6 +42,7 @@ Canonical inventory of all user-facing features. Keep this document in sync with
 - **Create/Edit Goals** — Set goals with title, type, target, deadline, category, and linked habits
 - **Goal Types: Cumulative** — Track total progress toward a numeric target (e.g., "Run 100 miles")
 - **Goal Types: One-time** — Binary milestone achievement (e.g., "Pass the B2 exam")
+- **Cumulative Goal Milestones** — Cumulative goals can declare intermediate stages (e.g., 25/50/75 within a 100 Pull-Ups goal). Milestones are server-validated to be unique, positive, and strictly less than the final target (max 20). Completion is derived from HabitEntries — only the configuration and a per-milestone `acknowledgedAt` celebration marker are stored. Each crossed milestone triggers the goal-completed celebration screen and renders as a node on the Achievements gallery's Progressive card.
 - **Linked Habits** — Connect habits that contribute to goal progress; completions auto-update progress
 - **Progress Visualization** — Real-time progress bar with milestone markers at 25/50/75%
 - **Cumulative Chart** — Line graph of total progress over time. Renders from the same server-derived contributions series as the top "currentValue" total, so the two always agree
@@ -51,7 +52,7 @@ Canonical inventory of all user-facing features. Keep this document in sync with
 - **Day-by-Day View** — Chronological list of individual contributions
 - **Goal Schedule View** — Calendar showing deadlines, forecasts, and milestones across all goals
 - **Achievement Badges** — Auto-generated badges for completed goals
-- **Achievements Gallery** — Three structured sections of completed goals: **Single** (one-time wins), **Progressive** (cumulative goals with their full iteration history rendered as connected milestone nodes — e.g. 25 → 50 → 100), and **Track** (per-track horizontal rows showing earned goal badges plus muted lock stubs for goals not yet earned). In-progress tracks appear here as soon as one goal in the track is earned.
+- **Achievements Gallery** — Three structured sections of completed goals: **Single** (one-time wins), **Progressive** (cumulative goals with iteration history *and* in-progress goals with crossed milestones, both rendered as connected milestone nodes — e.g. 25 → 50 → 100), and **Track** (per-track horizontal rows showing earned goal badges plus muted lock stubs for goals not yet earned). In-progress tracks appear here as soon as one goal in the track is earned. In-progress milestone goals appear as soon as at least one milestone is crossed.
 - **Goal Extension** — Create a continuation goal with higher target after completion. Extended goals carry an `iteratedFromGoalId` backref so the Achievements gallery can collapse the chain into a single Progressive card showing the full target history.
 - **Mark Complete** — Manually mark goals as achieved
 - **Goal Ordering** — Drag-and-drop reorder within category groups

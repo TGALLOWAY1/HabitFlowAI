@@ -371,7 +371,7 @@ export function InfoModal({ isOpen, onClose }: InfoModalProps) {
                 <ul className="mt-1.5 space-y-1.5">
                   <li className="text-xs text-neutral-400 pl-2 flex items-start gap-1.5">
                     <Target size={13} className="text-emerald-400 mt-0.5 shrink-0" />
-                    <span><span className="font-semibold text-emerald-400">Cumulative</span> — Track total progress toward a target number (e.g., "Run 100 miles").</span>
+                    <span><span className="font-semibold text-emerald-400">Cumulative</span> — Track total progress toward a target number (e.g., "Run 100 miles"). You can add intermediate <span className="font-semibold text-emerald-400">milestones</span> (e.g., 25/50/75 within a 100 Pull-Ups goal). Each crossed milestone shows a celebration screen and lands on the Achievements gallery as its own stage.</span>
                   </li>
                   <li className="text-xs text-neutral-400 pl-2 flex items-start gap-1.5">
                     <CalendarCheck size={13} className="text-emerald-400 mt-0.5 shrink-0" />

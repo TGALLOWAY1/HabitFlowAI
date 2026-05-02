@@ -1104,6 +1104,32 @@ export interface Goal {
      * and for goals iterated before this field existed (legacy data).
      */
     iteratedFromGoalId?: string;
+
+    /**
+     * Optional intermediate stages for cumulative goals. Each milestone is a
+     * checkpoint value strictly less than `targetValue`; completion is derived
+     * from HabitEntries (see `computeMilestoneStates`). Only milestone
+     * configuration and the `acknowledgedAt` celebration marker are stored.
+     * Server normalizes to ascending order by `value`. Only valid when
+     * `type === 'cumulative'`.
+     */
+    milestones?: GoalMilestone[];
+}
+
+/**
+ * Intermediate stage within a cumulative goal. Completion is derived; only
+ * `acknowledgedAt` is stored, mirroring how `Goal.completedAt` is stored to
+ * keep the celebration screen idempotent.
+ */
+export interface GoalMilestone {
+    /** Server-assigned UUID */
+    id: string;
+
+    /** Threshold value (must be > 0 and < parent Goal.targetValue) */
+    value: number;
+
+    /** ISO 8601 timestamp set when the user dismisses the milestone celebration */
+    acknowledgedAt?: string;
 }
 
 /** Goals stored as an array */
@@ -1195,6 +1221,34 @@ export interface GoalProgress {
 
     /** Whether the goal has an inactivity warning (≥4 days with no progress in last 7 days) */
     inactivityWarning: boolean;
+
+    /**
+     * Derived state for each configured milestone, ordered to match
+     * `Goal.milestones`. Present only when the goal has milestones.
+     * `completedAtDayKey` is populated only by the full-progress path.
+     */
+    milestoneStates?: MilestoneState[];
+}
+
+/**
+ * Derived state for a single milestone. Completion is computed at read time
+ * from HabitEntries; only `acknowledgedAt` is stored on the parent goal.
+ */
+export interface MilestoneState {
+    /** Matches `GoalMilestone.id` */
+    id: string;
+
+    /** Threshold value (mirrored from `GoalMilestone.value` for client convenience) */
+    value: number;
+
+    /** True when the running cumulative has crossed `value` */
+    completed: boolean;
+
+    /** First dayKey at which `running >= value`. Only set on the full-progress path. */
+    completedAtDayKey?: string;
+
+    /** Mirrored from `GoalMilestone.acknowledgedAt` */
+    acknowledgedAt?: string;
 }
 
 /**

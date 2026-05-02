@@ -968,6 +968,19 @@ export async function updateGoal(
 }
 
 /**
+ * Acknowledge a goal milestone — marks the celebration as dismissed so it
+ * doesn't replay on reload.
+ */
+export async function acknowledgeMilestone(goalId: string, milestoneId: string): Promise<Goal> {
+  const response = await apiRequest<{ goal: Goal }>(
+    `/goals/${goalId}/milestones/${milestoneId}/acknowledge`,
+    { method: 'POST' },
+  );
+  invalidateGoalCaches(goalId);
+  return response.goal;
+}
+
+/**
  * Mark a goal as completed by setting completedAt to the current timestamp.
  * 
  * @param id - Goal ID

@@ -9,6 +9,13 @@ interface ProgressiveAchievementCardProps {
     chain: IterationChain;
     onClick?: (goalId: string) => void;
     animationDelayMs?: number;
+    /**
+     * Optional parallel array of completion flags for each node in `chain.targets`.
+     * Used by milestone-bearing goals where some milestones may not yet be reached.
+     * For iteration chains (the original use case), omit this — all nodes render
+     * as completed.
+     */
+    completed?: boolean[];
 }
 
 function formatCompletedDate(completedAt: string): string {
@@ -23,6 +30,7 @@ export const ProgressiveAchievementCard: React.FC<ProgressiveAchievementCardProp
     chain,
     onClick,
     animationDelayMs,
+    completed,
 }) => {
     const { head, targets } = chain;
     const milestoneLabel = head.targetValue
@@ -57,7 +65,7 @@ export const ProgressiveAchievementCard: React.FC<ProgressiveAchievementCardProp
                 </div>
             </div>
             <div className="px-1 sm:px-2">
-                <MilestoneNodes targets={targets} />
+                <MilestoneNodes targets={targets} completed={completed} />
             </div>
             {head.completedAt && (
                 <div className="flex items-center justify-end gap-1 mt-3 text-neutral-500 text-[10px] sm:text-xs">

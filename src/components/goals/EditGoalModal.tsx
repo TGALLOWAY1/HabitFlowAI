@@ -5,6 +5,7 @@ import { useHabitStore } from '../../store/HabitContext';
 import type { GoalWithProgress } from '../../models/persistenceTypes';
 import { invalidateGoalCaches } from '../../lib/goalDataCache';
 import { AddHabitModal } from '../AddHabitModal';
+import { MilestoneRowList, makeMilestoneRowKey, type MilestoneRow } from './MilestoneRowList';
 
 interface EditGoalModalProps {
     isOpen: boolean;
@@ -29,6 +30,13 @@ export const EditGoalModal: React.FC<EditGoalModalProps> = ({
     const [unit, setUnit] = useState(goal.unit || '');
     const [selectedHabitIds, setSelectedHabitIds] = useState<string[]>(goal.linkedHabitIds);
     const [deadline, setDeadline] = useState(goal.deadline || '');
+    const [milestoneRows, setMilestoneRows] = useState<MilestoneRow[]>(() =>
+        (goal.milestones ?? []).map((m) => ({
+            rowKey: makeMilestoneRowKey(),
+            serverId: m.id,
+            valueText: m.value.toString(),
+        })),
+    );
 
     // Category State
     const [categoryId, setCategoryId] = useState(goal.categoryId || '');
@@ -54,6 +62,13 @@ export const EditGoalModal: React.FC<EditGoalModalProps> = ({
             setSelectedHabitIds(goal.linkedHabitIds);
             setDeadline(goal.deadline || '');
             setCategoryId(goal.categoryId || '');
+            setMilestoneRows(
+                (goal.milestones ?? []).map((m) => ({
+                    rowKey: makeMilestoneRowKey(),
+                    serverId: m.id,
+                    valueText: m.value.toString(),
+                })),
+            );
             setError(null);
             setHabitSearch('');
             setFilterByGoalCategory(true);
@@ -120,6 +135,36 @@ export const EditGoalModal: React.FC<EditGoalModalProps> = ({
             return;
         }
 
+        // Build the milestones payload for cumulative goals. Preserve serverId
+        // (round-trip) so the backend can match by id and carry acknowledgedAt.
+        let milestonesPayload: Array<{ id: string; value: number }> | undefined;
+        if (goal.type === 'cumulative') {
+            const seen = new Set<number>();
+            const built: Array<{ id: string; value: number }> = [];
+            for (const row of milestoneRows) {
+                if (row.valueText.trim() === '') {
+                    setError('Milestone values cannot be empty');
+                    return;
+                }
+                const v = parseFloat(row.valueText);
+                if (!Number.isFinite(v) || v <= 0) {
+                    setError('Milestone values must be positive numbers');
+                    return;
+                }
+                if (v >= numTarget) {
+                    setError('Each milestone must be less than the final target');
+                    return;
+                }
+                if (seen.has(v)) {
+                    setError('Milestone values must be unique');
+                    return;
+                }
+                seen.add(v);
+                built.push({ id: row.serverId ?? '', value: v });
+            }
+            milestonesPayload = built;
+        }
+
         // Event date is optional for one-time goals
         // No validation needed
 
@@ -146,6 +191,7 @@ export const EditGoalModal: React.FC<EditGoalModalProps> = ({
                 linkedHabitIds: selectedHabitIds,
                 deadline: deadline || undefined,
                 categoryId: categoryId || undefined,
+                ...(milestonesPayload !== undefined ? { milestones: milestonesPayload } : {}),
             });
 
             // Invalidate cache
@@ -308,54 +354,46 @@ export const EditGoalModal: React.FC<EditGoalModalProps> = ({
                             />
                         </div>
 
-                        {/* Target & Deadline Params */}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            {/* Target - Only for cumulative or frequency number goals */}
-                            {goal.type !== 'onetime' && (
-                                <>
-                                    <div>
-                                        <label className="block text-sm font-medium text-neutral-300 mb-2">
-                                            Target Value
-                                        </label>
-                                        <input
-                                            type="number"
-                                            value={targetValue}
-                                            onChange={(e) => {
-                                                const newVal = e.target.value;
-                                                const oldVal = targetValue;
-                                                // Auto-update title if it contains the old target number
-                                                if (oldVal && newVal && oldVal !== newVal) {
-                                                    const regex = new RegExp(`\\b${oldVal}\\b`);
-                                                    if (regex.test(title)) {
-                                                        setTitle(title.replace(regex, newVal));
-                                                    }
-                                                }
-                                                setTargetValue(newVal);
-                                            }}
-                                            className="w-full bg-neutral-800 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-emerald-500"
-                                            min="1"
-                                            step="any"
-                                        />
-                                    </div>
+                        {/* Milestones (cumulative only) — folds in Target Value as the Final Goal row */}
+                        {goal.type !== 'onetime' && (
+                            <MilestoneRowList
+                                targetValueText={targetValue}
+                                onTargetChange={(newVal) => {
+                                    const oldVal = targetValue;
+                                    if (oldVal && newVal && oldVal !== newVal) {
+                                        const regex = new RegExp(`\\b${oldVal}\\b`);
+                                        if (regex.test(title)) {
+                                            setTitle(title.replace(regex, newVal));
+                                        }
+                                    }
+                                    setTargetValue(newVal);
+                                }}
+                                unit={unit}
+                                milestones={milestoneRows}
+                                onChange={setMilestoneRows}
+                                disabled={isSubmitting}
+                            />
+                        )}
 
-                                    {/* Unit */}
-                                    <div>
-                                        <label className="block text-sm font-medium text-neutral-300 mb-2">
-                                            Unit Label
-                                        </label>
-                                        <input
-                                            type="text"
-                                            value={unit}
-                                            onChange={(e) => setUnit(e.target.value)}
-                                            className="w-full bg-neutral-800 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-emerald-500"
-                                            placeholder="e.g., books, miles"
-                                        />
-                                    </div>
-                                </>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            {/* Unit (cumulative goals only) */}
+                            {goal.type !== 'onetime' && (
+                                <div>
+                                    <label className="block text-sm font-medium text-neutral-300 mb-2">
+                                        Unit Label
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={unit}
+                                        onChange={(e) => setUnit(e.target.value)}
+                                        className="w-full bg-neutral-800 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-emerald-500"
+                                        placeholder="e.g., books, miles"
+                                    />
+                                </div>
                             )}
 
                             {/* Deadline */}
-                            <div className={goal.type === 'onetime' ? "sm:col-span-2" : "sm:col-span-2"}>
+                            <div className={goal.type === 'onetime' ? 'sm:col-span-2' : ''}>
                                 <label className="block text-sm font-medium text-neutral-300 mb-2">
                                     {goal.type === 'onetime' ? 'Event Date (Optional)' : 'Deadline (Optional)'}
                                 </label>

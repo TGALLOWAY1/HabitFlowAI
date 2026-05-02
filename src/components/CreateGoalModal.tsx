@@ -3,6 +3,7 @@ import { X, Target, CalendarCheck, Plus, Search, Loader2, AlertCircle, Calendar,
 import { useHabitStore } from '../store/HabitContext';
 import { createGoal } from '../lib/persistenceClient';
 import { HabitCreationInlineModal } from './HabitCreationInlineModal';
+import { MilestoneRowList, type MilestoneRow } from './goals/MilestoneRowList';
 
 interface CreateGoalModalProps {
     isOpen: boolean;
@@ -22,6 +23,7 @@ export const CreateGoalModal: React.FC<CreateGoalModalProps> = ({ isOpen, onClos
     const [unit, setUnit] = useState('');
     const [deadline, setDeadline] = useState('');
     const [categoryId, setCategoryId] = useState('');
+    const [milestoneRows, setMilestoneRows] = useState<MilestoneRow[]>([]);
 
     // Category creation state
     const [isCreatingCategory, setIsCreatingCategory] = useState(false);
@@ -51,6 +53,7 @@ export const CreateGoalModal: React.FC<CreateGoalModalProps> = ({ isOpen, onClos
             setUnit('');
             setDeadline('');
             setCategoryId('');
+            setMilestoneRows([]);
             setIsCreatingCategory(false);
             setNewCategoryName('');
             setSelectedHabitIds(new Set());
@@ -78,11 +81,43 @@ export const CreateGoalModal: React.FC<CreateGoalModalProps> = ({ isOpen, onClos
             );
     }, [habits, searchQuery, categoryMap, categoryId]);
 
+    // Parse and validate milestone rows
+    const parsedMilestones = useMemo(() => {
+        const targetNum = parseFloat(targetValue);
+        const targetValid = !isNaN(targetNum) && targetNum > 0;
+        const seen = new Set<number>();
+        let allValid = true;
+        const values: number[] = [];
+
+        for (const row of milestoneRows) {
+            const v = parseFloat(row.valueText);
+            if (row.valueText.trim() === '' || !Number.isFinite(v) || v <= 0) {
+                allValid = false;
+                continue;
+            }
+            if (seen.has(v)) {
+                allValid = false;
+                continue;
+            }
+            if (targetValid && v >= targetNum) {
+                allValid = false;
+                continue;
+            }
+            seen.add(v);
+            values.push(v);
+        }
+
+        return { values, allValid };
+    }, [milestoneRows, targetValue]);
+
     // Validation
     const isStep1Valid = (() => {
         if (!title.trim()) return false;
         if (type === 'cumulative') {
-            return targetValue !== '' && !isNaN(parseFloat(targetValue)) && parseFloat(targetValue) > 0;
+            const target = parseFloat(targetValue);
+            if (targetValue === '' || isNaN(target) || target <= 0) return false;
+            if (!parsedMilestones.allValid) return false;
+            return true;
         }
         return true;
     })();
@@ -156,6 +191,9 @@ export const CreateGoalModal: React.FC<CreateGoalModalProps> = ({ isOpen, onClos
                 linkedHabitIds: Array.from(selectedHabitIds),
                 deadline: deadline || undefined,
                 categoryId: categoryId || undefined,
+                ...(type === 'cumulative' && parsedMilestones.values.length > 0
+                    ? { milestones: parsedMilestones.values.map((value) => ({ id: '', value })) }
+                    : {}),
             });
 
             onClose();
@@ -243,56 +281,55 @@ export const CreateGoalModal: React.FC<CreateGoalModalProps> = ({ isOpen, onClos
 
                             {/* Conditional Fields */}
                             {type !== 'onetime' ? (
-                                <div className="flex items-end gap-3">
-                                    <div className="flex-1 space-y-2">
-                                        <label className="block text-sm font-medium text-neutral-400">Target Value</label>
-                                        <input
-                                            type="number"
-                                            value={targetValue}
-                                            onChange={(e) => setTargetValue(e.target.value)}
-                                            className="w-full bg-neutral-900/50 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/50 transition-all"
-                                            placeholder="e.g., 100"
-                                            min="0.01"
-                                            step="0.01"
-                                        />
+                                <>
+                                    <MilestoneRowList
+                                        targetValueText={targetValue}
+                                        onTargetChange={setTargetValue}
+                                        unit={unit}
+                                        milestones={milestoneRows}
+                                        onChange={setMilestoneRows}
+                                        disabled={isSubmitting}
+                                    />
+
+                                    <div className="flex items-end gap-3">
+                                        <div className="flex-1 space-y-2">
+                                            <label className="block text-sm font-medium text-neutral-400">
+                                                Unit <span className="text-neutral-500 font-normal">(Optional)</span>
+                                            </label>
+                                            <input
+                                                type="text"
+                                                value={unit}
+                                                onChange={(e) => setUnit(e.target.value)}
+                                                className="w-full bg-neutral-900/50 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/50 transition-all"
+                                                placeholder="e.g., miles, sessions"
+                                            />
+                                        </div>
+                                        <div className="relative">
+                                            <button
+                                                type="button"
+                                                onClick={() => deadlineInputRef.current?.showPicker()}
+                                                className={`min-h-[48px] min-w-[48px] flex items-center justify-center rounded-xl border transition-all ${
+                                                    deadline
+                                                        ? 'bg-emerald-500/10 border-emerald-500/50 text-emerald-400'
+                                                        : 'bg-neutral-900/50 border-white/10 text-neutral-400 hover:border-white/20 hover:text-white'
+                                                }`}
+                                                aria-label={deadline ? `Deadline: ${deadline}` : 'Set deadline'}
+                                                title={deadline ? `Deadline: ${deadline}` : 'Set deadline'}
+                                            >
+                                                <Calendar size={20} />
+                                            </button>
+                                            <input
+                                                ref={deadlineInputRef}
+                                                type="date"
+                                                value={deadline}
+                                                onChange={(e) => setDeadline(e.target.value)}
+                                                className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
+                                                min={new Date().toISOString().split('T')[0]}
+                                                aria-label="Deadline date"
+                                            />
+                                        </div>
                                     </div>
-                                    <div className="flex-1 space-y-2">
-                                        <label className="block text-sm font-medium text-neutral-400">
-                                            Unit <span className="text-neutral-500 font-normal">(Optional)</span>
-                                        </label>
-                                        <input
-                                            type="text"
-                                            value={unit}
-                                            onChange={(e) => setUnit(e.target.value)}
-                                            className="w-full bg-neutral-900/50 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/50 transition-all"
-                                            placeholder="e.g., miles, sessions"
-                                        />
-                                    </div>
-                                    <div className="relative">
-                                        <button
-                                            type="button"
-                                            onClick={() => deadlineInputRef.current?.showPicker()}
-                                            className={`min-h-[48px] min-w-[48px] flex items-center justify-center rounded-xl border transition-all ${
-                                                deadline
-                                                    ? 'bg-emerald-500/10 border-emerald-500/50 text-emerald-400'
-                                                    : 'bg-neutral-900/50 border-white/10 text-neutral-400 hover:border-white/20 hover:text-white'
-                                            }`}
-                                            aria-label={deadline ? `Deadline: ${deadline}` : 'Set deadline'}
-                                            title={deadline ? `Deadline: ${deadline}` : 'Set deadline'}
-                                        >
-                                            <Calendar size={20} />
-                                        </button>
-                                        <input
-                                            ref={deadlineInputRef}
-                                            type="date"
-                                            value={deadline}
-                                            onChange={(e) => setDeadline(e.target.value)}
-                                            className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
-                                            min={new Date().toISOString().split('T')[0]}
-                                            aria-label="Deadline date"
-                                        />
-                                    </div>
-                                </div>
+                                </>
                             ) : (
                                 <div className="flex items-center gap-3">
                                     <span className="text-sm text-neutral-400">Event Date</span>

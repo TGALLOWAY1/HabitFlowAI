@@ -3,7 +3,7 @@ import { Trophy, Star, TrendingUp, Flag, Loader2, AlertCircle } from 'lucide-rea
 import { useCompletedGoals } from '../../lib/useCompletedGoals';
 import { useGoalsWithProgress } from '../../lib/useGoalsWithProgress';
 import { useGoalTracks } from '../../lib/useGoalTracks';
-import { buildIterationChains } from '../../utils/goalIterationChains';
+import { buildIterationChains, type IterationChain } from '../../utils/goalIterationChains';
 import { AchievementSectionHeader } from '../../components/goals/achievements/AchievementSectionHeader';
 import { SingleAchievementCard } from '../../components/goals/achievements/SingleAchievementCard';
 import { ProgressiveAchievementCard } from '../../components/goals/achievements/ProgressiveAchievementCard';
@@ -26,7 +26,7 @@ export const WinArchivePage: React.FC<WinArchivePageProps> = ({ onViewGoal, onVi
     const [singleExpanded, setSingleExpanded] = useState(false);
     const [progressiveExpanded, setProgressiveExpanded] = useState(false);
 
-    const { singleGoals, progressiveChains, trackRows } = useMemo(() => {
+    const { singleGoals, progressiveChains, milestoneCards, trackRows } = useMemo(() => {
         const goals = completedGoals ?? [];
         const single = goals
             .filter(g => g.completedAt && !g.trackId && g.type === 'onetime')
@@ -34,6 +34,40 @@ export const WinArchivePage: React.FC<WinArchivePageProps> = ({ onViewGoal, onVi
 
         const progressiveCandidates = goals.filter(g => g.completedAt && !g.trackId && g.type === 'cumulative');
         const progressive = buildIterationChains(progressiveCandidates);
+
+        // Surface in-progress cumulative goals that have crossed at least one
+        // milestone. Each appears as a Progressive-style card whose nodes are
+        // the milestone values + the final target, with completion flags.
+        type MilestoneCard = { chain: IterationChain; completed: boolean[] };
+        const milestone: MilestoneCard[] = [];
+        for (const gp of activeGoalsWithProgress ?? []) {
+            const { goal, progress } = gp;
+            if (goal.trackId) continue;
+            if (goal.type !== 'cumulative') continue;
+            const ms = goal.milestones ?? [];
+            if (ms.length === 0) continue;
+            const states = progress.milestoneStates ?? [];
+            const anyCompleted = states.some(s => s.completed);
+            if (!anyCompleted) continue;
+
+            const sorted = ms.slice().sort((a, b) => a.value - b.value);
+            const target = goal.targetValue ?? 0;
+            const targets = [...sorted.map(m => m.value), target];
+            const stateById = new Map(states.map(s => [s.id, s]));
+            const completedFlags = [
+                ...sorted.map(m => stateById.get(m.id)?.completed === true),
+                !!goal.completedAt,
+            ];
+            milestone.push({
+                chain: { head: goal, goals: [goal], targets },
+                completed: completedFlags,
+            });
+        }
+        milestone.sort((a, b) => {
+            const at = a.chain.head.completedAt ?? a.chain.head.createdAt;
+            const bt = b.chain.head.completedAt ?? b.chain.head.createdAt;
+            return (bt ?? '').localeCompare(at ?? '');
+        });
 
         // Track rows include both completed and not-yet-completed (active/locked)
         // goals so the user can see the full track progression with greyed-out
@@ -67,11 +101,11 @@ export const WinArchivePage: React.FC<WinArchivePageProps> = ({ onViewGoal, onVi
                 return bt.localeCompare(at);
             });
 
-        return { singleGoals: single, progressiveChains: progressive, trackRows: rows };
+        return { singleGoals: single, progressiveChains: progressive, milestoneCards: milestone, trackRows: rows };
     }, [completedGoals, tracks, activeGoalsWithProgress]);
 
     const loading = completedLoading || tracksLoading || activeGoalsLoading;
-    const hasAnyAchievements = singleGoals.length > 0 || progressiveChains.length > 0 || trackRows.length > 0;
+    const hasAnyAchievements = singleGoals.length > 0 || progressiveChains.length > 0 || milestoneCards.length > 0 || trackRows.length > 0;
 
     if (loading && !completedGoals) {
         return (
@@ -104,6 +138,7 @@ export const WinArchivePage: React.FC<WinArchivePageProps> = ({ onViewGoal, onVi
 
     const visibleSingles = singleExpanded ? singleGoals : singleGoals.slice(0, SINGLE_PREVIEW_LIMIT);
     const visibleProgressives = progressiveExpanded ? progressiveChains : progressiveChains.slice(0, PROGRESSIVE_PREVIEW_LIMIT);
+    const hasProgressiveContent = progressiveChains.length > 0 || milestoneCards.length > 0;
 
     return (
         <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
@@ -163,8 +198,8 @@ export const WinArchivePage: React.FC<WinArchivePageProps> = ({ onViewGoal, onVi
                             onViewAll={() => setProgressiveExpanded(v => !v)}
                             viewAllLabel={progressiveExpanded ? 'Show less' : 'View all'}
                         />
-                        {progressiveChains.length === 0 ? (
-                            <p className="text-xs sm:text-sm text-neutral-500 italic pl-1">Complete a cumulative goal to see it here.</p>
+                        {!hasProgressiveContent ? (
+                            <p className="text-xs sm:text-sm text-neutral-500 italic pl-1">Complete a cumulative goal or cross a milestone to see it here.</p>
                         ) : (
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                                 {visibleProgressives.map((chain, idx) => (
@@ -173,6 +208,15 @@ export const WinArchivePage: React.FC<WinArchivePageProps> = ({ onViewGoal, onVi
                                         chain={chain}
                                         onClick={onViewGoal}
                                         animationDelayMs={idx * 40}
+                                    />
+                                ))}
+                                {milestoneCards.map(({ chain, completed }, idx) => (
+                                    <ProgressiveAchievementCard
+                                        key={`milestone-${chain.head.id}`}
+                                        chain={chain}
+                                        completed={completed}
+                                        onClick={onViewGoal}
+                                        animationDelayMs={(visibleProgressives.length + idx) * 40}
                                     />
                                 ))}
                             </div>

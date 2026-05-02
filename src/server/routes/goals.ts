@@ -6,6 +6,7 @@
  */
 
 import type { Request, Response } from 'express';
+import { randomUUID } from 'crypto';
 import {
   createGoal,
   getGoalsByUser,
@@ -19,7 +20,7 @@ import {
 import { getHabitsByUser, linkHabitsToGoal, unlinkHabitsFromGoal } from '../repositories/habitRepository';
 // getHabitEntriesByUser removed — entries are now fetched filtered by habit ID in computeGoalsWithProgressFromData
 import { computeGoalProgressV2, computeGoalListProgress } from '../utils/goalProgressUtilsV2';
-import type { Goal } from '../../models/persistenceTypes';
+import type { Goal, GoalMilestone } from '../../models/persistenceTypes';
 import { getRequestIdentity } from '../middleware/identity';
 import { generateBadgeForGoal, backfillGoalBadges } from '../services/badgeGenerationService';
 import { invalidateUserCaches } from '../lib/cacheInstances';
@@ -134,6 +135,73 @@ function validateGoalData(data: any): string | null {
   }
 
   return null;
+}
+
+const MAX_MILESTONES = 20;
+
+/**
+ * Validate a raw milestones payload and return a normalized array (sorted
+ * ascending by value, server-assigned IDs where missing). Returns either
+ * `{ error }` for a 400 message or `{ milestones }` for the normalized list.
+ *
+ * `effectiveType` and `effectiveTargetValue` are the values the goal will have
+ * after the operation completes — for PUT, callers must merge in patch + existing.
+ *
+ * When `acknowledgedAt` is present on an input entry, it is preserved as-is;
+ * the dedicated POST /goals/:id/milestones/:mid/acknowledge route is the
+ * primary writer, but PUT-replace round-tripping must not silently lose marks.
+ */
+function validateAndNormalizeMilestones(
+  raw: unknown,
+  effectiveType: 'cumulative' | 'onetime',
+  effectiveTargetValue: number | undefined,
+): { error: string | null; milestones?: GoalMilestone[] } {
+  if (raw === null) return { error: null, milestones: [] };
+  if (!Array.isArray(raw)) return { error: 'milestones must be an array' };
+  if (raw.length === 0) return { error: null, milestones: [] };
+  if (effectiveType !== 'cumulative') {
+    return { error: 'milestones are only allowed on cumulative goals' };
+  }
+  if (typeof effectiveTargetValue !== 'number' || !(effectiveTargetValue > 0)) {
+    return { error: 'milestones require a positive targetValue' };
+  }
+  if (raw.length > MAX_MILESTONES) {
+    return { error: `at most ${MAX_MILESTONES} milestones are allowed` };
+  }
+
+  const seen = new Set<number>();
+  const normalized: GoalMilestone[] = [];
+  for (const m of raw as Array<Record<string, unknown>>) {
+    if (!m || typeof m !== 'object') {
+      return { error: 'each milestone must be an object' };
+    }
+    const value = m.value;
+    if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) {
+      return { error: 'each milestone.value must be a positive finite number' };
+    }
+    if (value >= effectiveTargetValue) {
+      return { error: 'each milestone.value must be strictly less than targetValue' };
+    }
+    if (seen.has(value)) {
+      return { error: 'milestone values must be unique' };
+    }
+    seen.add(value);
+
+    const entry: GoalMilestone = {
+      id: typeof m.id === 'string' && m.id.length > 0 ? m.id : randomUUID(),
+      value,
+    };
+    if (m.acknowledgedAt !== undefined && m.acknowledgedAt !== null) {
+      if (typeof m.acknowledgedAt !== 'string') {
+        return { error: 'milestone.acknowledgedAt must be a string if provided' };
+      }
+      entry.acknowledgedAt = m.acknowledgedAt;
+    }
+    normalized.push(entry);
+  }
+
+  normalized.sort((a, b) => a.value - b.value);
+  return { error: null, milestones: normalized };
 }
 
 function buildIteratedGoalData(goal: Goal, currentValue: number | null): Omit<Goal, 'id' | 'createdAt'> {
@@ -415,6 +483,24 @@ export async function createGoalRoute(req: Request, res: Response): Promise<void
       return;
     }
 
+    let normalizedMilestones: GoalMilestone[] | undefined;
+    if (req.body.milestones !== undefined) {
+      const result = validateAndNormalizeMilestones(
+        req.body.milestones,
+        req.body.type,
+        req.body.targetValue,
+      );
+      if (result.error) {
+        res.status(400).json({
+          error: { code: 'VALIDATION_ERROR', message: result.error },
+        });
+        return;
+      }
+      // Drop any client-supplied acknowledgedAt on create — the goal hasn't
+      // existed yet, so no celebration could have been dismissed.
+      normalizedMilestones = (result.milestones ?? []).map(({ id, value }) => ({ id, value }));
+    }
+
     // Set default aggregationMode and countMode if not provided
     const aggregationMode = req.body.aggregationMode || (req.body.type === 'cumulative' ? 'sum' : 'count');
     const countMode = req.body.countMode || (aggregationMode === 'count' ? 'distinctDays' : undefined);
@@ -456,6 +542,7 @@ export async function createGoalRoute(req: Request, res: Response): Promise<void
         badgeImageUrl: req.body.badgeImageUrl?.trim(),
         categoryId: req.body.categoryId,
         sortOrder,
+        ...(normalizedMilestones !== undefined ? { milestones: normalizedMilestones } : {}),
       },
       householdId,
       userId
@@ -690,6 +777,62 @@ export async function updateGoalRoute(req: Request, res: Response): Promise<void
       patch.sortOrder = req.body.sortOrder;
     }
 
+    // Milestones: validate against the goal's effective type/targetValue after
+    // applying the patch, and merge acknowledgedAt from existing milestones by
+    // id so the celebration marker survives PUT-replace round-trips.
+    if (req.body.milestones !== undefined) {
+      const { householdId: hid, userId: uid } = getRequestIdentity(req);
+      const existingForMilestones = await getGoalById(id, hid, uid);
+      if (!existingForMilestones) {
+        res.status(404).json({
+          error: { code: 'NOT_FOUND', message: 'Goal not found' },
+        });
+        return;
+      }
+
+      const effectiveType = (patch.type ?? existingForMilestones.type) as 'cumulative' | 'onetime';
+      const effectiveTargetValue = patch.targetValue ?? existingForMilestones.targetValue;
+
+      const result = validateAndNormalizeMilestones(
+        req.body.milestones,
+        effectiveType,
+        effectiveTargetValue,
+      );
+      if (result.error) {
+        res.status(400).json({
+          error: { code: 'VALIDATION_ERROR', message: result.error },
+        });
+        return;
+      }
+
+      const existingById = new Map(
+        (existingForMilestones.milestones ?? []).map((m) => [m.id, m]),
+      );
+      const merged = (result.milestones ?? []).map((m) => {
+        const prior = existingById.get(m.id);
+        if (prior?.acknowledgedAt && !m.acknowledgedAt) {
+          return { ...m, acknowledgedAt: prior.acknowledgedAt };
+        }
+        return m;
+      });
+      patch.milestones = merged;
+    } else if (patch.type === 'onetime') {
+      // Type is being switched to onetime; existing milestones (if any) become
+      // invalid. Reject so the user explicitly clears them rather than silently
+      // dropping celebration history.
+      const { householdId: hid, userId: uid } = getRequestIdentity(req);
+      const existingForTypeChange = await getGoalById(id, hid, uid);
+      if (existingForTypeChange?.milestones && existingForTypeChange.milestones.length > 0) {
+        res.status(400).json({
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: 'Cannot switch to onetime while milestones are configured. Clear milestones first.',
+          },
+        });
+        return;
+      }
+    }
+
     if (Object.keys(patch).length === 0) {
       res.status(400).json({
         error: {
@@ -698,6 +841,24 @@ export async function updateGoalRoute(req: Request, res: Response): Promise<void
         },
       });
       return;
+    }
+
+    // If targetValue is being lowered without an explicit milestones patch,
+    // ensure existing milestones still respect `value < targetValue`.
+    if (patch.targetValue !== undefined && patch.milestones === undefined) {
+      const { householdId: hid, userId: uid } = getRequestIdentity(req);
+      const existingForTargetCheck = await getGoalById(id, hid, uid);
+      const ms = existingForTargetCheck?.milestones ?? [];
+      const violating = ms.find((m) => m.value >= patch.targetValue!);
+      if (violating) {
+        res.status(400).json({
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: `Cannot set targetValue at or below existing milestone (${violating.value}). Adjust milestones first.`,
+          },
+        });
+        return;
+      }
     }
 
     const { householdId, userId } = getRequestIdentity(req);
@@ -1106,6 +1267,75 @@ export async function deleteGoalRoute(req: Request, res: Response): Promise<void
       error: {
         code: 'INTERNAL_SERVER_ERROR',
         message: 'Failed to delete goal',
+        details: process.env.NODE_ENV === 'development' ? errorMessage : undefined,
+      },
+    });
+  }
+}
+
+/**
+ * Acknowledge a milestone celebration.
+ *
+ * POST /api/goals/:id/milestones/:milestoneId/acknowledge
+ *
+ * Sets `acknowledgedAt = now` on the matching milestone. Idempotent — calling
+ * twice returns the goal unchanged with the original acknowledgedAt preserved.
+ */
+export async function acknowledgeMilestoneRoute(req: Request, res: Response): Promise<void> {
+  try {
+    const { id, milestoneId } = req.params;
+    if (!id || !milestoneId) {
+      res.status(400).json({
+        error: { code: 'VALIDATION_ERROR', message: 'Goal ID and milestone ID are required' },
+      });
+      return;
+    }
+
+    const { householdId, userId } = getRequestIdentity(req);
+    const existing = await getGoalById(id, householdId, userId);
+    if (!existing) {
+      res.status(404).json({
+        error: { code: 'NOT_FOUND', message: 'Goal not found' },
+      });
+      return;
+    }
+
+    const milestones = existing.milestones ?? [];
+    const targetIndex = milestones.findIndex((m) => m.id === milestoneId);
+    if (targetIndex === -1) {
+      res.status(404).json({
+        error: { code: 'NOT_FOUND', message: 'Milestone not found' },
+      });
+      return;
+    }
+
+    // Idempotent: do not overwrite an existing acknowledgedAt.
+    if (milestones[targetIndex].acknowledgedAt) {
+      res.status(200).json({ goal: existing });
+      return;
+    }
+
+    const updatedMilestones: GoalMilestone[] = milestones.map((m, idx) =>
+      idx === targetIndex ? { ...m, acknowledgedAt: new Date().toISOString() } : m,
+    );
+
+    const goal = await updateGoal(id, householdId, userId, { milestones: updatedMilestones });
+    if (!goal) {
+      res.status(404).json({
+        error: { code: 'NOT_FOUND', message: 'Goal not found' },
+      });
+      return;
+    }
+
+    invalidateUserCaches(userId);
+    res.status(200).json({ goal });
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error('Error acknowledging milestone:', errorMessage);
+    res.status(500).json({
+      error: {
+        code: 'INTERNAL_SERVER_ERROR',
+        message: 'Failed to acknowledge milestone',
         details: process.env.NODE_ENV === 'development' ? errorMessage : undefined,
       },
     });
