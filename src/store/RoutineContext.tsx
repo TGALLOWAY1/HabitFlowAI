@@ -43,7 +43,7 @@ interface RoutineContextType {
     // Execution Actions
     selectRoutine: (routineId: string) => void;
     selectVariant: (variantId: string) => void;
-    startRoutine: (variantId?: string) => void;
+    startRoutine: (routine: Routine, variantId?: string) => void;
     exitRoutine: () => void;
     nextStep: () => void;
     prevStep: () => void;
@@ -187,37 +187,43 @@ export const RoutineProvider: React.FC<{ children: React.ReactNode }> = ({ child
         setActiveVariantId(variantId);
     };
 
-    const startRoutine = (variantId?: string) => {
-        if (activeRoutine) {
-            const effectiveVariantId = variantId || activeVariantId;
-            setActiveVariantId(effectiveVariantId);
-            setExecutionState('execute');
-            setCurrentStepIndex(0);
-            setStartedAt(new Date().toISOString());
+    // Atomically enter execute mode for the given routine. Accepts the routine
+    // directly so step-state initialization never reads a stale closure value
+    // (the prior implementation chained selectRoutine → startRoutine and relied
+    // on activeRoutine being set, which isn't flushed yet within the same
+    // effect — leaving stepStates uninitialized and executionState stuck at
+    // 'preview' even though the UI rendered the execute view).
+    const startRoutine = (routine: Routine, variantId?: string) => {
+        const effectiveVariantId = variantId || routine.defaultVariantId || routine.variants?.[0]?.id || null;
 
-            // Initialize step states from the resolved variant's steps
-            const steps = resolveSteps(activeRoutine, effectiveVariantId || undefined);
-            const initial: StepStates = {};
-            const initialTracking: Record<string, Record<string, string | number>> = {};
-            for (const step of steps) {
-                initial[step.id] = 'neutral';
-                // Pre-populate tracking fields with defaults
-                if (step.trackingFields?.length) {
-                    const fieldValues: Record<string, string | number> = {};
-                    for (const field of step.trackingFields) {
-                        if (field.defaultValue !== undefined) {
-                            fieldValues[field.id] = field.defaultValue;
-                        }
-                    }
-                    if (Object.keys(fieldValues).length > 0) {
-                        initialTracking[step.id] = fieldValues;
+        setActiveRoutine(routine);
+        setActiveVariantId(effectiveVariantId);
+        setExecutionState('execute');
+        setCurrentStepIndex(0);
+        setStartedAt(new Date().toISOString());
+
+        // Initialize step states from the resolved variant's steps
+        const steps = resolveSteps(routine, effectiveVariantId || undefined);
+        const initial: StepStates = {};
+        const initialTracking: Record<string, Record<string, string | number>> = {};
+        for (const step of steps) {
+            initial[step.id] = 'neutral';
+            // Pre-populate tracking fields with defaults
+            if (step.trackingFields?.length) {
+                const fieldValues: Record<string, string | number> = {};
+                for (const field of step.trackingFields) {
+                    if (field.defaultValue !== undefined) {
+                        fieldValues[field.id] = field.defaultValue;
                     }
                 }
+                if (Object.keys(fieldValues).length > 0) {
+                    initialTracking[step.id] = fieldValues;
+                }
             }
-            setStepStates(initial);
-            setStepTrackingData(initialTracking);
-            setStepTimingData({});
         }
+        setStepStates(initial);
+        setStepTrackingData(initialTracking);
+        setStepTimingData({});
     };
 
     const exitRoutine = () => {
