@@ -7,6 +7,19 @@ Base URL: `/api`
 - User identity is passed via `X-User-Id` header (middleware in `src/server/middleware/auth.ts`).
 - CORS is configured in `src/server/index.ts`.
 
+### Auth Endpoints
+
+All under `/api/auth`. Public endpoints (login, invite redeem, forgot-password,
+reset-password, bootstrap-admin) are rate-limited via `authRateLimiter`.
+
+- `POST /auth/invite/redeem` — `{ inviteCode, email, password, displayName }` → creates user + session, sets `hf_session` cookie.
+- `POST /auth/login` — `{ email, password }` → sets `hf_session` cookie.
+- `POST /auth/logout` — clears the session cookie and invalidates the server session.
+- `GET  /auth/me` — current user `{ householdId, userId, email, displayName, role }`; 401 without a session.
+- `POST /auth/bootstrap-admin` — one-time admin bootstrap behind `BOOTSTRAP_ADMIN_KEY`.
+- `POST /auth/forgot-password` — `{ email }` → always returns `{ ok: true }`. If the email matches a user, emails a single-use reset link valid for 15 minutes.
+- `POST /auth/reset-password` — `{ token, newPassword }` → updates the user's password, marks the token used, and invalidates all active sessions for that user.
+
 ## Categories
 
 - `GET /categories`

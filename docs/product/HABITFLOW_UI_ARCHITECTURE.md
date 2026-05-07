@@ -121,6 +121,10 @@ HabitFlow App
 | Tasks | Page | Dashboard card / `?view=tasks` | Today + Inbox columns; click a task title or pencil icon to rename inline | Tasks | — |
 | Wellbeing History | Page | Dashboard link | Historical wellbeing charts and trends | Wellbeing Entries | — |
 | Debug Entries | Page (dev) | `?view=debug-entries` | Testing entry data | Entries | — |
+| Login | Page | Default for unauthenticated users | Email + password sign in. Includes "Forgot password?" link and switch to invite redeem | — | Invite Redeem, Forgot Password |
+| Invite Redeem | Page | "Have an invite code?" link on Login | Create an account with an invite code | Users | Login |
+| Forgot Password | Page | "Forgot password?" link on Login | Email input. Submitting always shows a non-committal success message; if the email matches a user, a 15-minute reset link is sent | — | Login |
+| Reset Password | Page | Emailed link (`/reset-password?token=…`) | New password + confirm. On success, returns to Login with a "Password updated" banner; all prior sessions for the user are invalidated | — | Login |
 
 ### Modals
 
@@ -323,6 +327,17 @@ graph TB
 ---
 
 ## 6. Core User Flows
+
+### Reset a Forgotten Password
+
+1. **Start:** Login page → click "Forgot password?"
+2. Forgot Password page opens — enter email → submit
+3. App always shows the same success copy regardless of whether the email exists (no enumeration)
+4. If the email matches a user, a 15-minute reset link is sent (`POST /api/auth/forgot-password`)
+5. User clicks the emailed link → opens `/reset-password?token=…` → Reset Password page
+6. Enter new password + confirm → submit (`POST /api/auth/reset-password`)
+7. Server updates the password, marks the token used, invalidates all active sessions for the user
+8. App returns to Login page with a "Password updated. Please sign in with your new password." banner
 
 ### Log a Habit
 
