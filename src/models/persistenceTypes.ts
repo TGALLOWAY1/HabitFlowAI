@@ -1388,6 +1388,21 @@ export interface Session {
 }
 
 /**
+ * Password reset token (raw token emailed to user; only SHA-256 hash stored).
+ * Single-use: `usedAt` is set on consumption. TTL index on `expiresAt`.
+ * Stored in 'passwordResetTokens' collection.
+ */
+export interface PasswordResetToken {
+  _id: string;
+  userId: string;
+  householdId: string;
+  tokenHash: string;
+  createdAt: string;
+  expiresAt: string;
+  usedAt?: string;
+}
+
+/**
  * MongoDB Collection Names
  *
  * Constants for MongoDB collection names.
@@ -1415,6 +1430,7 @@ export const MONGO_COLLECTIONS = {
     USERS: 'users',
     INVITES: 'invites',
     SESSIONS: 'sessions',
+    PASSWORD_RESET_TOKENS: 'passwordResetTokens',
     HEALTH_METRICS_DAILY: 'healthMetricsDaily',
     HABIT_HEALTH_RULES: 'habitHealthRules',
     HEALTH_SUGGESTIONS: 'healthSuggestions',

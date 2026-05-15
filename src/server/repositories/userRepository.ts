@@ -65,6 +65,14 @@ export async function updateLastLogin(userId: string): Promise<void> {
   );
 }
 
+export async function updatePasswordHash(userId: string, passwordHash: string): Promise<void> {
+  const db = await getDb();
+  await db.collection(COL).updateOne(
+    { _id: userId } as any,
+    { $set: { passwordHash } }
+  );
+}
+
 export async function findUserById(userId: string): Promise<AuthUser | null> {
   const db = await getDb();
   const doc = await db.collection(COL).findOne(

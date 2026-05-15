@@ -13,6 +13,7 @@ import {
   findUserByEmailAndHousehold,
   findUserByEmail,
   updateLastLogin,
+  updatePasswordHash,
   countUsers,
 } from '../repositories/userRepository';
 import { findInviteByCodeHash, incrementInviteUses } from '../repositories/inviteRepository';
@@ -20,9 +21,18 @@ import {
   createSession,
   createSessionToken,
   deleteSessionByTokenHash,
+  deleteSessionsByUserId,
 } from '../repositories/sessionRepository';
-import { hashInviteCode, hashSessionToken } from '../lib/authCrypto';
+import {
+  claimPasswordResetToken,
+  createPasswordResetToken,
+  deleteActiveTokensForUser,
+} from '../repositories/passwordResetTokenRepository';
+import { generateSessionToken, hashInviteCode, hashSessionToken } from '../lib/authCrypto';
+import { sendPasswordResetEmail } from '../lib/email';
 import { sessionCache } from '../middleware/session';
+
+const PASSWORD_RESET_TTL_MS = 15 * 60 * 1000;
 
 const SALT_ROUNDS = 12;
 
@@ -285,4 +295,98 @@ export async function postBootstrapAdmin(req: Request, res: Response): Promise<v
       role: user.role,
     },
   });
+}
+
+function getAppBaseUrl(req: Request): string {
+  const fromEnv = process.env.APP_BASE_URL;
+  if (fromEnv && fromEnv.trim().length > 0) return fromEnv.replace(/\/$/, '');
+  // Fall back to the request's own origin so local dev still produces a usable link.
+  const proto = (req.headers['x-forwarded-proto'] as string | undefined) ?? req.protocol;
+  const host = req.get('host') ?? 'localhost';
+  return `${proto}://${host}`;
+}
+
+/**
+ * POST /api/auth/forgot-password
+ * Body: { email }
+ *
+ * Always responds 200 to avoid leaking which emails are registered.
+ * If the email matches a user, generates a single-use reset token, stores
+ * its hash, and emails the user a link valid for 15 minutes.
+ */
+export async function postForgotPassword(req: Request, res: Response): Promise<void> {
+  const body = req.body ?? {};
+  const emailCheck = validateEmail(body.email);
+  if (!emailCheck.valid) {
+    res.status(400).json({ error: emailCheck.error });
+    return;
+  }
+
+  const normalizedEmail = String(body.email).trim().toLowerCase();
+  const user = await findUserByEmail(normalizedEmail);
+
+  if (user) {
+    // Invalidate any prior pending tokens — only the freshest link works.
+    await deleteActiveTokensForUser(user._id);
+
+    const rawToken = generateSessionToken();
+    const tokenHash = hashSessionToken(rawToken);
+    const expiresAt = new Date(Date.now() + PASSWORD_RESET_TTL_MS).toISOString();
+    await createPasswordResetToken({
+      userId: user._id,
+      householdId: user.householdId,
+      tokenHash,
+      expiresAt,
+    });
+
+    const baseUrl = getAppBaseUrl(req);
+    const resetUrl = `${baseUrl}/reset-password?token=${rawToken}`;
+    await sendPasswordResetEmail(user.email, resetUrl);
+  }
+
+  res.status(200).json({ ok: true });
+}
+
+/**
+ * POST /api/auth/reset-password
+ * Body: { token, newPassword }
+ *
+ * Validates a reset token, updates the user's password, marks the token used
+ * (single-use), and invalidates all existing sessions for that user so any
+ * already-open sessions are forced to re-authenticate.
+ */
+export async function postResetPassword(req: Request, res: Response): Promise<void> {
+  const body = req.body ?? {};
+  const token = body.token;
+  const newPassword = body.newPassword;
+
+  if (token == null || typeof token !== 'string' || token.trim().length === 0) {
+    res.status(400).json({ error: 'Reset token is required.' });
+    return;
+  }
+  const passwordCheck = validatePassword(newPassword);
+  if (!passwordCheck.valid) {
+    res.status(400).json({ error: passwordCheck.error });
+    return;
+  }
+
+  const tokenHash = hashSessionToken(String(token));
+  // Atomic claim: prevents concurrent reset-password requests from both
+  // succeeding with the same raw token. If the claim fails the token has
+  // already been used, has expired, or never existed.
+  const record = await claimPasswordResetToken(tokenHash);
+  if (!record) {
+    res.status(400).json({ error: 'Invalid or expired reset token.' });
+    return;
+  }
+
+  const passwordHash = await bcrypt.hash(String(newPassword), SALT_ROUNDS);
+  await updatePasswordHash(record.userId, passwordHash);
+  await deleteSessionsByUserId(record.userId);
+  // Evict cached sessions for this user. Without this, sessionMiddleware can
+  // serve an authenticated request from its 60s cache for up to a minute
+  // after the DB row is gone, undoing the "all sessions invalidated" promise.
+  sessionCache.invalidateWhere((s) => s.userId === record.userId);
+
+  res.status(200).json({ ok: true });
 }

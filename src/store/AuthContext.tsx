@@ -28,6 +28,8 @@ interface AuthContextValue extends AuthState {
   redeemInvite: (inviteCode: string, email: string, password: string, displayName: string) => Promise<{ ok: boolean; error?: string }>;
   logout: () => Promise<void>;
   clearError: () => void;
+  requestPasswordReset: (email: string) => Promise<{ ok: boolean; error?: string }>;
+  resetPassword: (token: string, newPassword: string) => Promise<{ ok: boolean; error?: string }>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -153,8 +155,38 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setState((prev) => ({ ...prev, error: null }));
   }, []);
 
+  const requestPasswordReset = useCallback(async (email: string): Promise<{ ok: boolean; error?: string }> => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/auth/forgot-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+      if (res.ok) return { ok: true };
+      const data = await res.json().catch(() => ({}));
+      return { ok: false, error: data.error || 'Could not request password reset.' };
+    } catch {
+      return { ok: false, error: 'Network error. Please try again.' };
+    }
+  }, []);
+
+  const resetPassword = useCallback(async (token: string, newPassword: string): Promise<{ ok: boolean; error?: string }> => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/auth/reset-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token, newPassword }),
+      });
+      if (res.ok) return { ok: true };
+      const data = await res.json().catch(() => ({}));
+      return { ok: false, error: data.error || 'Password reset failed.' };
+    } catch {
+      return { ok: false, error: 'Network error. Please try again.' };
+    }
+  }, []);
+
   return (
-    <AuthContext.Provider value={{ ...state, login, redeemInvite, logout, clearError }}>
+    <AuthContext.Provider value={{ ...state, login, redeemInvite, logout, clearError, requestPasswordReset, resetPassword }}>
       {children}
     </AuthContext.Provider>
   );

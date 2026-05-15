@@ -28,6 +28,8 @@ import {
   postLogin,
   postLogout,
   postBootstrapAdmin,
+  postForgotPassword,
+  postResetPassword,
 } from './routes/auth';
 import { postCreateInvite, getInvites, postRevokeInvite } from './routes/adminInvites';
 import householdUsersRouter from './routes/householdUsers';
@@ -121,6 +123,8 @@ export function createApp(): Express {
   app.post('/api/auth/invite/redeem', authRateLimiter, postInviteRedeem);
   app.post('/api/auth/login', authRateLimiter, postLogin);
   app.post('/api/auth/bootstrap-admin', authRateLimiter, postBootstrapAdmin);
+  app.post('/api/auth/forgot-password', authRateLimiter, postForgotPassword);
+  app.post('/api/auth/reset-password', authRateLimiter, postResetPassword);
   app.post('/api/auth/logout', postLogout); // No session required — just clears cookie
 
   app.use(sessionMiddleware);

@@ -46,6 +46,13 @@ export class TTLCache<T> {
     }
   }
 
+  /** Remove every entry whose value matches the predicate. */
+  invalidateWhere(predicate: (value: T) => boolean): void {
+    for (const [key, entry] of this.store) {
+      if (predicate(entry.data)) this.store.delete(key);
+    }
+  }
+
   clear(): void {
     this.store.clear();
   }
