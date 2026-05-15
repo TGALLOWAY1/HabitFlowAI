@@ -33,26 +33,26 @@ export async function createPasswordResetToken(params: {
 }
 
 /**
- * Returns the token row only when it is still active: not used, not expired.
+ * Atomically claim a reset token: sets `usedAt` on the matching active row in
+ * a single round-trip and returns the pre-update document, or `null` if no
+ * active token matches (expired, already used, or unknown). Use this in the
+ * reset-password handler so concurrent requests with the same raw token can't
+ * both succeed.
  */
-export async function findActivePasswordResetToken(tokenHash: string): Promise<PasswordResetToken | null> {
+export async function claimPasswordResetToken(tokenHash: string): Promise<PasswordResetToken | null> {
   const db = await getDb();
   const now = new Date().toISOString();
-  const doc = await db.collection(COL).findOne({
-    tokenHash,
-    expiresAt: { $gt: now },
-    usedAt: { $exists: false },
-  });
-  if (!doc) return null;
-  return doc as unknown as PasswordResetToken;
-}
-
-export async function markPasswordResetTokenUsed(id: string): Promise<void> {
-  const db = await getDb();
-  await db.collection(COL).updateOne(
-    { _id: id } as any,
-    { $set: { usedAt: new Date().toISOString() } },
+  const result = await db.collection(COL).findOneAndUpdate(
+    {
+      tokenHash,
+      expiresAt: { $gt: now },
+      usedAt: { $exists: false },
+    },
+    { $set: { usedAt: now } },
+    { returnDocument: 'before' },
   );
+  if (!result) return null;
+  return result as unknown as PasswordResetToken;
 }
 
 /**

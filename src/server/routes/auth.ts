@@ -24,10 +24,9 @@ import {
   deleteSessionsByUserId,
 } from '../repositories/sessionRepository';
 import {
+  claimPasswordResetToken,
   createPasswordResetToken,
   deleteActiveTokensForUser,
-  findActivePasswordResetToken,
-  markPasswordResetTokenUsed,
 } from '../repositories/passwordResetTokenRepository';
 import { generateSessionToken, hashInviteCode, hashSessionToken } from '../lib/authCrypto';
 import { sendPasswordResetEmail } from '../lib/email';
@@ -372,7 +371,10 @@ export async function postResetPassword(req: Request, res: Response): Promise<vo
   }
 
   const tokenHash = hashSessionToken(String(token));
-  const record = await findActivePasswordResetToken(tokenHash);
+  // Atomic claim: prevents concurrent reset-password requests from both
+  // succeeding with the same raw token. If the claim fails the token has
+  // already been used, has expired, or never existed.
+  const record = await claimPasswordResetToken(tokenHash);
   if (!record) {
     res.status(400).json({ error: 'Invalid or expired reset token.' });
     return;
@@ -380,7 +382,6 @@ export async function postResetPassword(req: Request, res: Response): Promise<vo
 
   const passwordHash = await bcrypt.hash(String(newPassword), SALT_ROUNDS);
   await updatePasswordHash(record.userId, passwordHash);
-  await markPasswordResetTokenUsed(record._id);
   await deleteSessionsByUserId(record.userId);
 
   res.status(200).json({ ok: true });
