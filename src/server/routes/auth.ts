@@ -383,6 +383,10 @@ export async function postResetPassword(req: Request, res: Response): Promise<vo
   const passwordHash = await bcrypt.hash(String(newPassword), SALT_ROUNDS);
   await updatePasswordHash(record.userId, passwordHash);
   await deleteSessionsByUserId(record.userId);
+  // Evict cached sessions for this user. Without this, sessionMiddleware can
+  // serve an authenticated request from its 60s cache for up to a minute
+  // after the DB row is gone, undoing the "all sessions invalidated" promise.
+  sessionCache.invalidateWhere((s) => s.userId === record.userId);
 
   res.status(200).json({ ok: true });
 }
