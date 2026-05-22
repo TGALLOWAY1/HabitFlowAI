@@ -47,7 +47,7 @@ Canonical inventory of all user-facing features. Keep this document in sync with
 - **Progress Visualization** — Real-time progress bar with milestone markers at 25/50/75%
 - **Cumulative Chart** — Line graph of total progress over time. Renders from the same server-derived contributions series as the top "currentValue" total, so the two always agree
 - **Removed-Habit Contributors** — When a goal has historical progress from habits that have since been deleted, the goal detail page surfaces those contributions in a "Removed habits still contributing" list. The habit name is preserved via soft-delete so users can see exactly which removed habit is contributing how many units
-- **Trend Analysis** — Compare actual vs. required pace to hit deadline
+- **Trend Analysis** — Compare actual vs. required pace to hit deadline. Includes an adjustable "Start from" date control: narrowing the window excludes a long inactivity gap (e.g. an injury break) so it no longer dominates the chart or drags down the forecast/required-pace run-rate. Cumulative values are preserved — the actual line is seeded with the running total carried in from before the window, so earlier progress is never lost
 - **Weekly Summary** — Aggregated contribution data by week
 - **Day-by-Day View** — Chronological list of individual contributions
 - **Goal Schedule View** — Calendar showing deadlines, forecasts, and milestones across all goals

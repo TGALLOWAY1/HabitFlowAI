@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { ComposedChart, Line, Area, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine, ResponsiveContainer } from 'recharts';
 import { format, parseISO, isValid, eachDayOfInterval, isAfter, subDays, addDays, differenceInDays } from 'date-fns';
 
@@ -29,35 +29,62 @@ export const GoalTrendChart: React.FC<GoalTrendChartProps> = ({
     color = "#10b981", // emerald-500
     unit = ""
 }) => {
-    const { chartData, currentActual, forecastDateStr } = useMemo(() => {
-        // 1. Determine the effective chart start: first entry minus a 2-day
-        // buffer if we have one, else fall back to the goal's startDate.
+    // User-adjustable left edge of the trend window (YYYY-MM-DD). null = the
+    // default start (first entry minus a buffer). Narrowing the window lets
+    // users exclude a long inactivity gap (e.g. an injury break) so it doesn't
+    // dominate the chart or drag the run-rate down. Cumulative y-values are
+    // unaffected — the actual line is seeded with the running total carried in
+    // from before the window, so progress from the start is never lost.
+    const [windowStart, setWindowStart] = useState<string | null>(null);
+
+    const { chartData, currentActual, forecastDateStr, defaultStartStr } = useMemo(() => {
+        // 1. Determine the effective chart start. A valid user-chosen
+        // windowStart wins; otherwise it's the first entry minus a 2-day
+        // buffer, falling back to the goal's startDate.
         const today = new Date();
         const fallbackStart = parseISO(startDate);
         const firstEntry = firstEntryDate ? parseISO(firstEntryDate) : null;
-        const effectiveStart = (firstEntry && isValid(firstEntry))
+        const defaultStart = (firstEntry && isValid(firstEntry))
             ? subDays(firstEntry, 2)
             : fallbackStart;
+        const customStart = windowStart ? parseISO(windowStart) : null;
+        const effectiveStart = (customStart && isValid(customStart)) ? customStart : defaultStart;
         const end = parseISO(deadline);
 
+        const defaultStartStr = isValid(defaultStart) ? format(defaultStart, 'yyyy-MM-dd') : '';
+
         if (!isValid(effectiveStart) || !isValid(end)) {
-            return { chartData: [], currentActual: 0, forecastDateStr: null };
+            return { chartData: [], currentActual: 0, forecastDateStr: null, defaultStartStr };
         }
 
-        // 2. Compute the forecasted finish date from the current run-rate.
-        // Require at least 3 entries to avoid wildly volatile early forecasts.
-        // Rate = currentValue / days since first entry. Finish = firstEntry +
-        // (target / rate).
         const sortedData = [...data].sort((a, b) => a.date.localeCompare(b.date));
         const latestActual = sortedData.length > 0 ? sortedData[sortedData.length - 1].value : 0;
+        const effectiveStartStr = format(effectiveStart, 'yyyy-MM-dd');
 
+        // Cumulative value carried in from before the window. The actual line
+        // and the run-rate baseline both start from here, so windowing never
+        // discards earlier progress.
+        let carryIn = 0;
+        for (const d of sortedData) {
+            if (d.date < effectiveStartStr) carryIn = d.value;
+            else break;
+        }
+
+        // 2. Forecast the finish date from the run-rate measured over the
+        // window only. Rate = progress made within the window / days since the
+        // window start. Projecting the remaining work forward from today gives
+        // the same result as the old whole-history formula when no window is
+        // set (carryIn = 0, effectiveStart anchored at the first entry).
+        const entriesInWindow = sortedData.filter(d => d.date >= effectiveStartStr).length;
         let forecastDate: Date | null = null;
-        if (sortedData.length >= 3 && firstEntry && isValid(firstEntry)) {
-            const daysElapsed = Math.max(1, differenceInDays(today, firstEntry));
-            const dailyRate = latestActual / daysElapsed;
-            if (dailyRate > 0) {
-                const daysToFinish = Math.ceil(targetValue / dailyRate);
-                forecastDate = addDays(firstEntry, daysToFinish);
+        if (entriesInWindow >= 3) {
+            const daysInWindow = Math.max(1, differenceInDays(today, effectiveStart));
+            const dailyRate = (latestActual - carryIn) / daysInWindow;
+            const remaining = targetValue - latestActual;
+            if (dailyRate > 0 && remaining > 0) {
+                forecastDate = addDays(today, Math.ceil(remaining / dailyRate));
+            } else if (dailyRate > 0) {
+                forecastDate = today;
             }
         }
 
@@ -66,29 +93,34 @@ export const GoalTrendChart: React.FC<GoalTrendChartProps> = ({
         // both vertical markers stay visible.
         const chartEnd = (forecastDate && isAfter(forecastDate, end)) ? forecastDate : end;
 
-        // Generate all days between effectiveStart and chartEnd
+        // If the window starts after the chart's right edge there's nothing to
+        // draw — bail out rather than letting eachDayOfInterval throw.
+        if (isAfter(effectiveStart, chartEnd)) {
+            return { chartData: [], currentActual: latestActual, forecastDateStr: null, defaultStartStr };
+        }
+
         const allDays = eachDayOfInterval({ start: effectiveStart, end: chartEnd });
 
-        // Calculate the ideal pace (linear growth) from effectiveStart -> deadline.
-        // The ideal line starts at 0 on the chart's leftmost day and rises
-        // linearly to targetValue on the deadline. After the deadline it
-        // stays at targetValue.
-        const deadlineIndex = differenceInDays(end, effectiveStart);
-        const dailyPace = deadlineIndex > 0 ? targetValue / deadlineIndex : targetValue;
+        // Ideal pace: a straight line from the window's left edge (at the
+        // carried-in total) up to targetValue on the deadline, then flat. When
+        // no window is set carryIn is 0, so this reduces to the original
+        // 0 -> target line.
+        const idealSpanDays = differenceInDays(end, effectiveStart);
+        const idealDailyPace = idealSpanDays > 0 ? (targetValue - carryIn) / idealSpanDays : (targetValue - carryIn);
 
         // Create a map of actual data for O(1) lookup
         const dataMap = new Map(sortedData.map(d => [d.date, d.value]));
 
         // Fill data points. The passed 'data' prop is already cumulative.
-        // Carry forward the last known actual value to fill gaps on days
-        // with no log, up to today. Future days keep actual = null.
-        let lastKnownActual = 0;
+        // Seed with the carried-in total and carry forward the last known
+        // value to fill gaps up to today. Future days keep actual = null.
+        let lastKnownActual = carryIn;
 
         const points = allDays.map((dateObj, index) => {
             const dateStr = format(dateObj, 'yyyy-MM-dd');
 
             // Ideal caps at targetValue once we pass the deadline.
-            const idealValue = Math.min(targetValue, index * dailyPace);
+            const idealValue = Math.min(targetValue, carryIn + index * idealDailyPace);
 
             let actualValue: number | null = null;
             if (!isAfter(dateObj, today)) {
@@ -109,8 +141,9 @@ export const GoalTrendChart: React.FC<GoalTrendChartProps> = ({
             chartData: points,
             currentActual: lastKnownActual,
             forecastDateStr: forecastDate ? format(forecastDate, 'yyyy-MM-dd') : null,
+            defaultStartStr,
         };
-    }, [data, startDate, deadline, targetValue, firstEntryDate]);
+    }, [data, startDate, deadline, targetValue, firstEntryDate, windowStart]);
 
     // Required pace: how much per week do they still need to average to hit
     // the target by the deadline? Only shown if there's remaining progress
@@ -143,17 +176,42 @@ export const GoalTrendChart: React.FC<GoalTrendChartProps> = ({
         );
     }
 
+    const todayStr = format(new Date(), 'yyyy-MM-dd');
+
     return (
         <div className="w-full space-y-3">
-            {requiredPace !== null && (
-                <div className="text-sm text-neutral-400">
-                    Required pace:{' '}
-                    <span className="text-white font-medium">
-                        {requiredPace.toFixed(1)} {unit}
-                    </span>{' '}
-                    / week
+            <div className="flex flex-wrap items-center justify-between gap-2">
+                {requiredPace !== null ? (
+                    <div className="text-sm text-neutral-400">
+                        Required pace:{' '}
+                        <span className="text-white font-medium">
+                            {requiredPace.toFixed(1)} {unit}
+                        </span>{' '}
+                        / week
+                    </div>
+                ) : <span />}
+                <div className="flex items-center gap-2 text-xs text-neutral-400">
+                    <label htmlFor="trend-window-start">Start from</label>
+                    <input
+                        id="trend-window-start"
+                        type="date"
+                        value={windowStart ?? ''}
+                        min={defaultStartStr || undefined}
+                        max={todayStr}
+                        onChange={(e) => setWindowStart(e.target.value || null)}
+                        className="bg-neutral-800 border border-white/10 rounded px-2 py-1 text-white text-xs [color-scheme:dark]"
+                    />
+                    {windowStart && (
+                        <button
+                            type="button"
+                            onClick={() => setWindowStart(null)}
+                            className="text-emerald-400 hover:text-emerald-300"
+                        >
+                            Reset
+                        </button>
+                    )}
                 </div>
-            )}
+            </div>
             <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs">
                 <div className="flex items-center gap-1.5">
                     <span className="inline-block w-4 border-t border-neutral-500" />
