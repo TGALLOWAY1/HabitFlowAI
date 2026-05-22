@@ -275,7 +275,7 @@ graph TB
 | **View detail** | Goals page → click goal → Goal Detail Page |
 | **Edit** | Goal Detail or Goals list → menu → Edit Goal Modal |
 | **Delete** | Goal context menu → Delete Goal Confirm Modal |
-| **Track progress** | Goal Detail Page (cumulative chart, trend chart, entry list) |
+| **Track progress** | Goal Detail Page (cumulative chart, trend chart with adjustable "Start from" window, entry list) |
 | **Complete** | Auto-triggered at 100% → Goal Completed Page |
 | **Extend / Repeat** | Goal Completed Page actions |
 | **View wins** | Goals page "Achievements" tab → Win Archive |
