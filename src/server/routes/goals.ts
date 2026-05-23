@@ -39,8 +39,12 @@ async function validateHabitIdsExist(
 ): Promise<string[]> {
   if (habitIds.length === 0) return [];
 
-  // Single batch fetch instead of N individual queries
-  const allHabits = await getHabitsByUser(householdId, userId);
+  // Single batch fetch instead of N individual queries. Include soft-deleted
+  // habits: their IDs still "exist" and their entries remain historical
+  // contributions to goal progress, so a goal (or an extended copy of one) may
+  // legitimately reference a deleted habit. Scope by household + user still
+  // rejects genuinely-nonexistent or foreign IDs.
+  const allHabits = await getHabitsByUser(householdId, userId, { includeDeleted: true });
   const existingIds = new Set(allHabits.map((h) => h.id));
 
   return habitIds.filter((id) => !existingIds.has(id));
