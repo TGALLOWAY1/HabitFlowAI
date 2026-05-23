@@ -14,7 +14,7 @@ import { createHabit, deleteHabit } from '../../repositories/habitRepository';
 import { createGoal } from '../../repositories/goalRepository';
 import { setupTestMongo, teardownTestMongo, getTestDb } from '../../../test/mongoTestHelper';
 import { createHabitEntryRoute } from '../habitEntries';
-import { getGoalsWithProgress, getGoalDetailRoute, getGoalProgress, createGoalRoute } from '../goals';
+import { getGoalsWithProgress, getGoalDetailRoute, getGoalProgress, createGoalRoute, updateGoalRoute } from '../goals';
 import { requestContextMiddleware } from '../../middleware/requestContext';
 
 const TEST_HOUSEHOLD = 'test-household-goals-deleted-habits';
@@ -44,6 +44,7 @@ describe('Goal progress with deleted habits', () => {
     app.get('/api/goals/:id/detail', getGoalDetailRoute);
     app.get('/api/goals/:id/progress', getGoalProgress);
     app.post('/api/goals', createGoalRoute);
+    app.put('/api/goals/:id', updateGoalRoute);
   });
 
   afterAll(async () => {
@@ -265,5 +266,42 @@ describe('Goal progress with deleted habits', () => {
     expect(res.status).toBe(201);
     expect(res.body.goal.targetValue).toBe(1000);
     expect(res.body.goal.linkedHabitIds).toContain(habit.id);
+  });
+
+  it('iterating an already-completed goal creates the iterated goal (PUT /api/goals/:id)', async () => {
+    const cat = await createCategory({ name: 'Strength', color: '#FF00FF' }, TEST_HOUSEHOLD, TEST_USER);
+    const habit = await createHabit(
+      {
+        name: 'Pullups',
+        categoryId: cat.id,
+        goal: { type: 'number', frequency: 'daily', target: 50, unit: 'reps' },
+      },
+      TEST_HOUSEHOLD,
+      TEST_USER
+    );
+
+    const completed = await createGoal(
+      {
+        title: 'Do 500 Pullups',
+        type: 'cumulative',
+        targetValue: 500,
+        unit: 'reps',
+        linkedHabitIds: [habit.id],
+        aggregationMode: 'sum',
+        completedAt: new Date().toISOString(),
+      },
+      TEST_HOUSEHOLD,
+      TEST_USER
+    );
+
+    // Popup "Extend" path: iterate a goal that is already completed.
+    const res = await request(app)
+      .put(`/api/goals/${completed.id}`)
+      .send({ completedAt: new Date().toISOString(), iterate: true });
+
+    expect(res.status).toBe(200);
+    expect(res.body.iteratedGoal).not.toBeNull();
+    expect(res.body.iteratedGoal.targetValue).toBeGreaterThan(500);
+    expect(res.body.iteratedGoal.iteratedFromGoalId).toBe(completed.id);
   });
 });

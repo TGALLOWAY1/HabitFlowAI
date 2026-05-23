@@ -883,12 +883,15 @@ export async function updateGoalRoute(req: Request, res: Response): Promise<void
         return;
       }
 
-      if (!existingGoal.completedAt) {
+      // Iterate when explicitly requested, regardless of prior completion state.
+      // The "You completed your goal!" popup extends a goal that is already
+      // completed, so gating this on `!existingGoal.completedAt` would silently
+      // skip iteration and create nothing.
+      if (req.body.iterate === true) {
         const { computeGoalProgressV2 } = await import('../utils/goalProgressUtilsV2');
         const progress = await computeGoalProgressV2(id, householdId, userId, 'UTC');
         currentValueForIteration = progress?.currentValue ?? 0;
-        // Only iterate if explicitly requested by the client
-        shouldIterateGoal = req.body.iterate === true;
+        shouldIterateGoal = true;
       }
     }
 
