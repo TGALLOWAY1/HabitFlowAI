@@ -39,8 +39,12 @@ async function validateHabitIdsExist(
 ): Promise<string[]> {
   if (habitIds.length === 0) return [];
 
-  // Single batch fetch instead of N individual queries
-  const allHabits = await getHabitsByUser(householdId, userId);
+  // Single batch fetch instead of N individual queries. Include soft-deleted
+  // habits: their IDs still "exist" and their entries remain historical
+  // contributions to goal progress, so a goal (or an extended copy of one) may
+  // legitimately reference a deleted habit. Scope by household + user still
+  // rejects genuinely-nonexistent or foreign IDs.
+  const allHabits = await getHabitsByUser(householdId, userId, { includeDeleted: true });
   const existingIds = new Set(allHabits.map((h) => h.id));
 
   return habitIds.filter((id) => !existingIds.has(id));
@@ -879,12 +883,15 @@ export async function updateGoalRoute(req: Request, res: Response): Promise<void
         return;
       }
 
-      if (!existingGoal.completedAt) {
+      // Iterate when explicitly requested, regardless of prior completion state.
+      // The "You completed your goal!" popup extends a goal that is already
+      // completed, so gating this on `!existingGoal.completedAt` would silently
+      // skip iteration and create nothing.
+      if (req.body.iterate === true) {
         const { computeGoalProgressV2 } = await import('../utils/goalProgressUtilsV2');
         const progress = await computeGoalProgressV2(id, householdId, userId, 'UTC');
         currentValueForIteration = progress?.currentValue ?? 0;
-        // Only iterate if explicitly requested by the client
-        shouldIterateGoal = req.body.iterate === true;
+        shouldIterateGoal = true;
       }
     }
 
