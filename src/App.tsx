@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, Suspense } from 'react';
+import React, { useState, useEffect, useMemo, useRef, Suspense } from 'react';
 import { AuthProvider } from './store/AuthContext';
 import { HabitProvider, useHabitStore } from './store/HabitContext';
 import { RoutineProvider } from './store/RoutineContext';
@@ -191,6 +191,10 @@ const HabitTrackerContent: React.FC = () => {
     const params = new URLSearchParams(window.location.search);
     return params.get("trackId");
   });
+
+  // Guards against a completed goal being extended/repeated more than once if
+  // the action is re-fired before navigation away — each call creates a goal.
+  const goalActionInFlightRef = useRef(false);
 
   // Track View Mode: 'all', 'day', or 'schedule' — default to 'day' for new users
   const [trackerViewMode, setTrackerViewMode] = useState<'all' | 'day' | 'schedule'>(() =>
@@ -453,6 +457,8 @@ const HabitTrackerContent: React.FC = () => {
               handleNavigate('goals', { goalId });
             }}
             onExtend={async (goalId) => {
+              if (goalActionInFlightRef.current) return;
+              goalActionInFlightRef.current = true;
               try {
                 const result = await iterateGoal(goalId);
                 setCompletedGoalId(null);
@@ -463,9 +469,13 @@ const HabitTrackerContent: React.FC = () => {
                 }
               } catch (err) {
                 console.error('Failed to extend goal:', err);
+              } finally {
+                goalActionInFlightRef.current = false;
               }
             }}
             onRepeat={async (goalId) => {
+              if (goalActionInFlightRef.current) return;
+              goalActionInFlightRef.current = true;
               try {
                 const original = await fetchGoal(goalId);
                 const { id, createdAt, completedAt, sortOrder, aggregationMode, countMode, ...rest } = original;
@@ -482,6 +492,8 @@ const HabitTrackerContent: React.FC = () => {
                 handleNavigate('goals');
               } catch (err) {
                 console.error('Failed to repeat goal:', err);
+              } finally {
+                goalActionInFlightRef.current = false;
               }
             }}
           />
