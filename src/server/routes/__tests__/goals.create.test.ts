@@ -317,4 +317,36 @@ describe('Goal Create Routes', () => {
             expect(response.body.error.message).toMatch(/positive/);
         });
     });
+
+    describe('POST /api/goals - duplicate burst idempotency', () => {
+        const dupBody = {
+            title: 'Get away from shame based identity',
+            type: 'cumulative' as const,
+            targetValue: 20,
+            unit: 'Journal',
+            linkedHabitIds: [],
+        };
+
+        it('collapses two identical rapid create requests into one goal', async () => {
+            const first = await request(app).post('/api/goals').send(dupBody).expect(201);
+            const second = await request(app).post('/api/goals').send(dupBody).expect(200);
+
+            // Second request returns the same goal rather than creating a new one
+            expect(second.body.goal.id).toBe(first.body.goal.id);
+
+            const goals = await getGoalsByUser(TEST_HOUSEHOLD_ID, TEST_USER_ID);
+            expect(goals).toHaveLength(1);
+        });
+
+        it('does not collapse goals that differ in target value', async () => {
+            await request(app).post('/api/goals').send(dupBody).expect(201);
+            await request(app)
+                .post('/api/goals')
+                .send({ ...dupBody, targetValue: 30 })
+                .expect(201);
+
+            const goals = await getGoalsByUser(TEST_HOUSEHOLD_ID, TEST_USER_ID);
+            expect(goals).toHaveLength(2);
+        });
+    });
 });
