@@ -34,4 +34,14 @@ export async function runStartupMigrations(): Promise<void> {
     await markComplete(m002Id);
     console.log(`[Migrations] ${m002Id} complete.`);
   }
+
+  // Migration 003: Remove duplicate goals created by un-guarded create bursts
+  const m003Id = '003_dedupe_goals';
+  if (!await hasRun(m003Id)) {
+    console.log(`[Migrations] Running ${m003Id}...`);
+    const { dedupeGoals } = await import('./003_dedupe_goals');
+    await dedupeGoals();
+    await markComplete(m003Id);
+    console.log(`[Migrations] ${m003Id} complete.`);
+  }
 }
