@@ -25,6 +25,11 @@ import { getRequestIdentity } from '../middleware/identity';
 import { generateBadgeForGoal, backfillGoalBadges } from '../services/badgeGenerationService';
 import { invalidateUserCaches } from '../lib/cacheInstances';
 
+// Window for collapsing duplicate goal-create bursts (double-clicked
+// Repeat/Extend, rapid re-fires). Goals identical across title/type/target/
+// category/linkedHabitIds created within this window are treated as one.
+const DUPLICATE_GOAL_WINDOW_MS = 10_000;
+
 /**
  * Validate that all habit IDs in linkedHabitIds exist in the database.
  * 
@@ -544,9 +549,30 @@ export async function createGoalRoute(req: Request, res: Response): Promise<void
       }
     }
 
+    // Idempotency safety net: collapse a burst of identical create requests
+    // (e.g. a double-clicked "Repeat"/"Extend") into one goal. We only match
+    // goals created within a short window, so an intentional same-title goal
+    // made later is never blocked.
+    const trimmedTitle = req.body.title.trim();
+    const requestedHabitIds = new Set<string>(req.body.linkedHabitIds);
+    const recentDuplicate = (await getGoalsByUser(householdId, userId)).find(g => {
+      if (g.title !== trimmedTitle) return false;
+      if (g.type !== req.body.type) return false;
+      if (g.targetValue !== req.body.targetValue) return false;
+      if ((g.categoryId ?? null) !== (req.body.categoryId ?? null)) return false;
+      const existingHabitIds = g.linkedHabitIds ?? [];
+      if (existingHabitIds.length !== requestedHabitIds.size) return false;
+      if (!existingHabitIds.every(id => requestedHabitIds.has(id))) return false;
+      return Date.now() - new Date(g.createdAt).getTime() < DUPLICATE_GOAL_WINDOW_MS;
+    });
+    if (recentDuplicate) {
+      res.status(200).json({ goal: recentDuplicate });
+      return;
+    }
+
     const goal = await createGoal(
       {
-        title: req.body.title.trim(),
+        title: trimmedTitle,
         type: req.body.type,
         targetValue: req.body.targetValue,
         unit: req.body.unit?.trim(),

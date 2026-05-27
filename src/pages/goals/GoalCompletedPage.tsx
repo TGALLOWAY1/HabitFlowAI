@@ -55,6 +55,7 @@ export const GoalCompletedPage: React.FC<GoalCompletedPageProps> = ({
     const { data, loading } = useGoalDetail(cachedGoal ? '' : goalId);
     const goal = cachedGoal ?? data?.goal;
     const [showConfetti, setShowConfetti] = useState(true);
+    const [actionPending, setActionPending] = useState(false);
 
     // Hide confetti after animation completes
     useEffect(() => {
@@ -232,8 +233,13 @@ export const GoalCompletedPage: React.FC<GoalCompletedPageProps> = ({
                         </p>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             <button
-                                onClick={() => onExtend?.(goalId)}
-                                className="p-4 bg-neutral-800/50 border border-white/10 rounded-xl hover:bg-neutral-800 hover:border-emerald-500/30 transition-all text-left"
+                                onClick={() => {
+                                    if (actionPending) return;
+                                    setActionPending(true);
+                                    onExtend?.(goalId);
+                                }}
+                                disabled={actionPending}
+                                className="p-4 bg-neutral-800/50 border border-white/10 rounded-xl hover:bg-neutral-800 hover:border-emerald-500/30 transition-all text-left disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                                 <div className="flex items-center gap-2 mb-1">
                                     <TrendingUp size={16} className="text-emerald-400" />
@@ -244,8 +250,13 @@ export const GoalCompletedPage: React.FC<GoalCompletedPageProps> = ({
                                 </div>
                             </button>
                             <button
-                                onClick={() => onRepeat?.(goalId)}
-                                className="p-4 bg-neutral-800/50 border border-white/10 rounded-xl hover:bg-neutral-800 hover:border-blue-500/30 transition-all text-left"
+                                onClick={() => {
+                                    if (actionPending) return;
+                                    setActionPending(true);
+                                    onRepeat?.(goalId);
+                                }}
+                                disabled={actionPending}
+                                className="p-4 bg-neutral-800/50 border border-white/10 rounded-xl hover:bg-neutral-800 hover:border-blue-500/30 transition-all text-left disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                                 <div className="flex items-center gap-2 mb-1">
                                     <RotateCcw size={16} className="text-blue-400" />
