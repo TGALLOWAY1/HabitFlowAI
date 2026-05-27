@@ -268,6 +268,52 @@ describe('Goal progress with deleted habits', () => {
     expect(res.body.goal.linkedHabitIds).toContain(habit.id);
   });
 
+  it('extending a goal whose linked habit no longer exists at all succeeds (POST /api/goals)', async () => {
+    // A goal can carry a reference to a habit that was hard-deleted (or otherwise
+    // no longer exists even among soft-deleted habits). The source goal is allowed
+    // to keep that ref, so extending it must not be blocked by strict validation.
+    const original = await createGoal(
+      {
+        title: 'Do 500 Pullups',
+        type: 'cumulative',
+        targetValue: 500,
+        unit: 'reps',
+        linkedHabitIds: ['4d364a40-d4f8-4636-82a7-f5a27391004b'],
+        aggregationMode: 'sum',
+      },
+      TEST_HOUSEHOLD,
+      TEST_USER
+    );
+
+    const res = await request(app).post('/api/goals').send({
+      title: 'Do 500 Pullups',
+      type: 'cumulative',
+      targetValue: 1000,
+      unit: 'reps',
+      linkedHabitIds: original.linkedHabitIds,
+      aggregationMode: 'sum',
+      iteratedFromGoalId: original.id,
+    });
+
+    expect(res.status).toBe(201);
+    expect(res.body.goal.targetValue).toBe(1000);
+    expect(res.body.goal.linkedHabitIds).toContain('4d364a40-d4f8-4636-82a7-f5a27391004b');
+  });
+
+  it('creating a NON-iterated goal with a nonexistent habit still fails (POST /api/goals)', async () => {
+    // Guard: the iteration carve-out must not weaken validation for ordinary creates.
+    const res = await request(app).post('/api/goals').send({
+      title: 'Bogus goal',
+      type: 'cumulative',
+      targetValue: 100,
+      linkedHabitIds: ['00000000-0000-0000-0000-000000000000'],
+      aggregationMode: 'sum',
+    });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error.message).toContain('do not exist');
+  });
+
   it('iterating an already-completed goal creates the iterated goal (PUT /api/goals/:id)', async () => {
     const cat = await createCategory({ name: 'Strength', color: '#FF00FF' }, TEST_HOUSEHOLD, TEST_USER);
     const habit = await createHabit(

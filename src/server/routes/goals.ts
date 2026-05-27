@@ -476,7 +476,20 @@ export async function createGoalRoute(req: Request, res: Response): Promise<void
 
     const { householdId, userId } = getRequestIdentity(req);
 
-    const invalidHabitIds = await validateHabitIdsExist(req.body.linkedHabitIds, householdId, userId);
+    // When extending/iterating an existing goal, the new goal inherits the
+    // source goal's linkedHabitIds. Those refs are allowed to point at habits
+    // that no longer exist (even hard-deleted ones): the source goal was
+    // permitted to keep them — the PATCH path only validates newly-added IDs —
+    // and their entries remain historical contributions to progress. Validate
+    // only the IDs that aren't already on the source goal, mirroring updateGoalRoute.
+    let habitIdsToValidate: string[] = req.body.linkedHabitIds;
+    if (req.body.iteratedFromGoalId) {
+      const sourceGoal = await getGoalById(req.body.iteratedFromGoalId, householdId, userId);
+      const inheritedIds = new Set(sourceGoal?.linkedHabitIds ?? []);
+      habitIdsToValidate = req.body.linkedHabitIds.filter((hid: string) => !inheritedIds.has(hid));
+    }
+
+    const invalidHabitIds = await validateHabitIdsExist(habitIdsToValidate, householdId, userId);
     if (invalidHabitIds.length > 0) {
       res.status(400).json({
         error: {
