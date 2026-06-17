@@ -228,3 +228,130 @@ export interface GoalAnalyticsSummary {
 export async function fetchGoalSummary(days = 90): Promise<GoalAnalyticsSummary> {
   return analyticsRequest(`/analytics/goals/summary${buildParams(days)}`);
 }
+
+// ─── Sleep Analytics ─────────────────────────────────────────────────────────
+
+/** A single headline metric with its sample size and period-over-period trend. */
+export interface SleepStat {
+  /** Average over the window, or null when there is no data. */
+  value: number | null;
+  /** Number of nights that contributed to `value`. */
+  sampleSize: number;
+  /** Signed change vs the previous equal-length period (same units as value). */
+  trendDelta: number | null;
+  /**
+   * Whether the metric improved/worsened vs the previous period.
+   * 'better'/'worse' is interpreted against the metric's polarity by the service.
+   */
+  trendDirection: 'better' | 'worse' | 'stable' | null;
+}
+
+/**
+ * Flat, numeric, null-explicit per-night record. Keyed by the MORNING dayKey the
+ * night was logged under. AI-friendly: future features consume this directly.
+ */
+export interface SleepNight {
+  dayKey: string;
+  appleSleepScore: number | null;
+  bedtimeScore: number | null;
+  durationScore: number | null;
+  interruptionScore: number | null;
+  bedtimeMinutes: number | null;   // minutes-after-noon (0..1439)
+  wakeMinutes: number | null;      // minutes-after-noon (0..1439)
+  durationMinutes: number | null;
+  latencyMinutes: number | null;
+  awakenings: number | null;
+  sleepAidUsed: boolean | null;
+  sleepQuality0to4: number | null;
+  morningEnergy: number | null;
+  hasData: boolean;
+}
+
+export interface SleepTrendPoint {
+  dayKey: string;
+  durationMinutes: number | null;
+  appleSleepScore: number | null;
+  bedtimeMinutes: number | null;   // minutes-after-noon (for bedtime chart + 10PM line)
+  wakeMinutes: number | null;      // minutes-after-noon (for wake chart + 6AM line)
+  sleepQuality0to10: number | null;
+}
+
+export interface SleepWeekSummary {
+  weekLabel: string;               // ISO week, matches TrendDataPoint convention
+  avgDurationMinutes: number | null;
+  avgLatencyMinutes: number | null;
+  nightsOnTarget: number;
+  avgAwakenings: number | null;
+  sleepAidFreeNights: number;
+  avgMorningEnergy: number | null;
+}
+
+export interface SleepFactorInsight {
+  factorId: string;                // metricKey or habitId
+  factorName: string;
+  source: 'form' | 'habit';
+  outcome: 'appleSleepScore' | 'sleepQuality' | 'latencyMinutes' | 'bedtimeMinutes';
+  factorPresentMean: number;
+  factorAbsentMean: number;
+  meanDifference: number;          // signed, outcome units
+  effectSize: number;              // Cohen's d
+  direction: 'improves' | 'worsens';
+  nPresent: number;
+  nAbsent: number;
+  message: string;                 // pre-rendered, caveated, includes both Ns
+}
+
+export interface SleepAchievement {
+  id: string;
+  label: string;
+  description: string;
+  earned: boolean;
+  value?: number | null;
+  icon: 'streak' | 'quality' | 'consistency' | 'aidfree' | 'latency';
+}
+
+export interface SleepTargets {
+  bedtimeMinutes: number;          // minutes-after-noon
+  wakeMinutes: number;             // minutes-after-noon
+  durationMinutes: number;
+}
+
+export interface SleepIndependence {
+  aidFreeNights: number;
+  aidNights: number;
+  aidFreePercent: number | null;   // 0-1, null if no data
+  currentAidFreeStreak: number;
+  longestAidFreeStreak: number;
+  trendDirection: 'better' | 'worse' | 'stable' | null;
+  trendDelta: number | null;       // change in aid-free percent vs previous period
+  sampleSize: number;
+}
+
+export interface SleepAnalyticsSummary {
+  // headline cards
+  avgDurationMinutes: SleepStat;
+  avgLatencyMinutes: SleepStat;
+  avgBedtimeMinutes: SleepStat;    // minutes-after-noon; client formats to clock
+  avgWakeMinutes: SleepStat;
+  avgSleepQuality0to10: SleepStat;
+  avgAppleSleepScore: SleepStat;
+  // consistency
+  consistencyScore: number | null; // 0-100
+  consistencyBedtime: number | null;
+  consistencyWake: number | null;
+  consistencyTrendDelta: number | null;
+  // independence
+  independence: SleepIndependence;
+  // trend + weekly
+  trend: SleepTrendPoint[];
+  weeklySummary: SleepWeekSummary[];
+  // correlations
+  topFactors: SleepFactorInsight[];
+  // achievements
+  achievements: SleepAchievement[];
+  // meta / AI-friendly
+  nights: SleepNight[];
+  targets: SleepTargets;
+  rangeDays: number;
+  coverage: { nightsWithData: number; nightsInRange: number };
+}
