@@ -69,6 +69,7 @@ import { postWeeklySummary } from './routes/aiSummary';
 import { postWeeklyReview } from './routes/aiWeeklyReview';
 import { postSuggestVariants } from './routes/aiVariantSuggestion';
 import { postJournalSummary } from './routes/aiJournalSummary';
+import { postJournalReview } from './routes/aiJournalReview';
 import {
   getHabitAnalyticsSummary,
   getHabitAnalyticsHeatmap,
@@ -235,6 +236,7 @@ export function createApp(): Express {
   app.post('/api/ai/weekly-review', postWeeklyReview);
   app.post('/api/ai/suggest-variants', postSuggestVariants);
   app.post('/api/ai/journal-summary', postJournalSummary);
+  app.post('/api/ai/journal-review', postJournalReview);
   app.get('/api/analytics/habits/all', getAllHabitAnalytics);
   app.get('/api/analytics/habits/summary', getHabitAnalyticsSummary);
   app.get('/api/analytics/habits/heatmap', getHabitAnalyticsHeatmap);
