@@ -118,9 +118,9 @@ export const SleepSummaryCards: React.FC<Props> = ({ data, loading }) => {
             </div>
           </div>
           <div className="text-right space-y-1 text-[11px] text-neutral-400">
-            <div>Bedtime <span className="text-white font-semibold">{sub.bedtime ?? '—'}</span></div>
-            <div>Duration <span className="text-white font-semibold">{sub.duration ?? '—'}</span></div>
-            <div>Interruption <span className="text-white font-semibold">{sub.interruption ?? '—'}</span></div>
+            <div>Duration <span className="text-white font-semibold">{sub.duration ?? '—'}</span><span className="text-neutral-600">/50</span></div>
+            <div>Bedtime <span className="text-white font-semibold">{sub.bedtime ?? '—'}</span><span className="text-neutral-600">/25</span></div>
+            <div>Interruption <span className="text-white font-semibold">{sub.interruption ?? '—'}</span><span className="text-neutral-600">/25</span></div>
           </div>
         </div>
         <div className="mt-2 text-[10px] text-neutral-600">

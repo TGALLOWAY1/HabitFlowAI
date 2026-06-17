@@ -108,6 +108,24 @@ export const SleepEntryForm: React.FC<SleepEntryFormProps> = ({ isOpen, onClose,
     return Number.isFinite(n) ? n : null;
   };
 
+  /**
+   * Apple's sleep score = duration (0-50) + bedtime (0-25) + interruption (0-25).
+   * When the user enters any sub-score, auto-fill the overall as their sum so the
+   * primary signal stays consistent (still manually overridable afterward).
+   */
+  const setSubScore = (which: 'bedtime' | 'duration' | 'interruption', raw: string) => {
+    const next = { bedtime: bedtimeScore, duration: durationScore, interruption: interruptionScore };
+    next[which] = raw;
+    if (which === 'bedtime') setBedtimeScore(raw);
+    if (which === 'duration') setDurationScore(raw);
+    if (which === 'interruption') setInterruptionScore(raw);
+    const anyPresent = [next.bedtime, next.duration, next.interruption].some((v) => v.trim() !== '');
+    if (anyPresent) {
+      const sum = (parseIntOrNull(next.bedtime) ?? 0) + (parseIntOrNull(next.duration) ?? 0) + (parseIntOrNull(next.interruption) ?? 0);
+      setAppleScore(String(sum));
+    }
+  };
+
   const computedDuration = (): number | null => {
     const h = parseIntOrNull(durationH);
     const m = parseIntOrNull(durationM);
@@ -195,11 +213,11 @@ export const SleepEntryForm: React.FC<SleepEntryFormProps> = ({ isOpen, onClose,
             <h3 className="text-xs font-semibold text-neutral-400 uppercase tracking-wide flex items-center gap-2">
               <Watch size={14} className="text-indigo-400" /> Apple Watch Sleep Score
             </h3>
-            <NumberField label="Overall (0-100)" value={appleScore} onChange={setAppleScore} max={100} />
+            <NumberField label="Overall (0-100, auto-sums from components)" value={appleScore} onChange={setAppleScore} max={100} />
             <div className="grid grid-cols-3 gap-2">
-              <NumberField label="Bedtime" value={bedtimeScore} onChange={setBedtimeScore} max={100} small />
-              <NumberField label="Duration" value={durationScore} onChange={setDurationScore} max={100} small />
-              <NumberField label="Interrupt." value={interruptionScore} onChange={setInterruptionScore} max={100} small />
+              <NumberField label="Duration /50" value={durationScore} onChange={(v) => setSubScore('duration', v)} max={50} small />
+              <NumberField label="Bedtime /25" value={bedtimeScore} onChange={(v) => setSubScore('bedtime', v)} max={25} small />
+              <NumberField label="Interrupt. /25" value={interruptionScore} onChange={(v) => setSubScore('interruption', v)} max={25} small />
             </div>
           </section>
 

@@ -148,10 +148,10 @@ Added for the Sleep Analytics dashboard. All are captured via the dedicated **Sl
 
 | Key | Type / encoding | Notes |
 |---|---|---|
-| `appleSleepScore` | `number` 0-100 | Apple Watch overall Sleep Score (PRIMARY signal) |
-| `appleSleepBedtimeScore` | `number` 0-100 | Apple Watch bedtime sub-score |
-| `appleSleepDurationScore` | `number` 0-100 | Apple Watch duration sub-score |
-| `appleSleepInterruptionScore` | `number` 0-100 | Apple Watch interruption sub-score |
+| `appleSleepScore` | `number` 0-100 | Apple Watch overall Sleep Score (PRIMARY signal). Equals the sum of the three sub-scores below. |
+| `appleSleepBedtimeScore` | `number` 0-25 | Apple Watch bedtime sub-score (weighted component) |
+| `appleSleepDurationScore` | `number` 0-50 | Apple Watch duration sub-score (weighted component) |
+| `appleSleepInterruptionScore` | `number` 0-25 | Apple Watch interruption sub-score (weighted component) |
 | `sleepBedtimeMinutes` | `number` 0..1439 | Clock time fell asleep, **minutes-after-noon** (see below) |
 | `sleepWakeMinutes` | `number` 0..1439 | Clock time woke, **minutes-after-noon** |
 | `sleepDurationMinutes` | `number` minutes | Total time asleep (e.g. 408 = 6h48m) |

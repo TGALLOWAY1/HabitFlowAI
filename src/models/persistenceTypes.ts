@@ -883,10 +883,10 @@ export const WELLBEING_METRIC_KEYS = [
     'fueling',
     'recovery',
     // Sleep Analytics — outcomes (all recorded with timeOfDay:'morning')
-    'appleSleepScore',            // Apple Watch overall Sleep Score, 0-100 (PRIMARY signal)
-    'appleSleepBedtimeScore',     // Apple Watch bedtime sub-score, 0-100
-    'appleSleepDurationScore',    // Apple Watch duration sub-score, 0-100
-    'appleSleepInterruptionScore',// Apple Watch interruption sub-score, 0-100
+    'appleSleepScore',            // Apple Watch overall Sleep Score, 0-100 (PRIMARY); = sum of the 3 sub-scores
+    'appleSleepBedtimeScore',     // Apple Watch bedtime sub-score, 0-25
+    'appleSleepDurationScore',    // Apple Watch duration sub-score, 0-50
+    'appleSleepInterruptionScore',// Apple Watch interruption sub-score, 0-25
     'sleepBedtimeMinutes',        // clock time fell asleep, minutes-after-noon (0..1439)
     'sleepWakeMinutes',           // clock time woke, minutes-after-noon (0..1439)
     'sleepDurationMinutes',       // total time asleep, minutes (e.g. 408 = 6h48m)
