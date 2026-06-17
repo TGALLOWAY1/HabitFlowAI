@@ -9,6 +9,7 @@ import type { Request, Response } from 'express';
 import { getRequestIdentity } from '../middleware/identity';
 import { validateDayKey } from '../domain/canonicalValidators';
 import { createWellbeingEntries, getWellbeingEntries, softDeleteWellbeingEntry, type WellbeingEntryUpsertInput } from '../repositories/wellbeingEntryRepository';
+import { invalidateUserCaches } from '../lib/cacheInstances';
 
 /**
  * Get wellbeing entries for a user in a dayKey range.
@@ -74,6 +75,9 @@ export async function upsertWellbeingEntriesRoute(req: Request, res: Response): 
       defaultTimeZone: typeof defaultTimeZone === 'string' ? defaultTimeZone : 'UTC',
     });
 
+    // Sleep analytics is derived from wellbeing entries — refresh on write.
+    invalidateUserCaches(userId);
+
     res.status(200).json({ wellbeingEntries: saved });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
@@ -107,6 +111,8 @@ export async function deleteWellbeingEntryRoute(req: Request, res: Response): Pr
       res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Wellbeing entry not found' } });
       return;
     }
+
+    invalidateUserCaches(userId);
 
     res.status(200).json({ message: 'Wellbeing entry deleted successfully' });
   } catch (error) {

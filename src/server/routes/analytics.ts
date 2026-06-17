@@ -26,6 +26,8 @@ import {
   computeGoalAnalytics,
   computeGoalTrackAchievements,
 } from '../services/analyticsService';
+import { computeSleepAnalytics, DEFAULT_SLEEP_TARGETS } from '../services/sleepAnalyticsService';
+import { getWellbeingEntries } from '../repositories/wellbeingEntryRepository';
 import { analyticsCache } from '../lib/cacheInstances';
 
 function parseDays(query: unknown, defaultDays = 90): number {
@@ -228,6 +230,50 @@ export async function getAllHabitAnalytics(req: Request, res: Response): Promise
   } catch (error) {
     console.error('[analytics] all habit analytics error:', error);
     res.status(500).json({ error: 'Failed to compute habit analytics' });
+  }
+}
+
+export async function getSleepAnalyticsSummary(req: Request, res: Response): Promise<void> {
+  try {
+    const { householdId, userId } = getRequestIdentity(req);
+    const timeZone = resolveTimeZone(typeof req.query.timeZone === 'string' ? req.query.timeZone : undefined);
+    const days = parseDays(req.query.days, 30);
+    const referenceDayKey = getNowDayKey(timeZone);
+
+    // Cache key is prefixed with `${userId}:` so invalidateUserCaches() clears it.
+    const cacheKey = `${userId}:sleep:${days}`;
+    const cached = analyticsCache.get(cacheKey);
+    if (cached) {
+      res.json(cached);
+      return;
+    }
+
+    // Wellbeing entries span two windows (current + previous) for trend deltas.
+    const wellbeingStart = startDayKeyForRange(referenceDayKey, days * 2);
+    const habitStart = startDayKeyForRange(referenceDayKey, days);
+    const [wellbeingEntries, habits, habitEntries, categories] = await Promise.all([
+      getWellbeingEntries({ userId, startDayKey: wellbeingStart, endDayKey: referenceDayKey }),
+      getHabitsByUser(householdId, userId),
+      getHabitEntriesByUserInRange(householdId, userId, habitStart, referenceDayKey),
+      getCategoriesByUser(householdId, userId),
+    ]);
+
+    const result = computeSleepAnalytics(
+      wellbeingEntries,
+      habits,
+      habitEntries,
+      categories,
+      referenceDayKey,
+      days,
+      timeZone,
+      DEFAULT_SLEEP_TARGETS,
+    );
+
+    analyticsCache.set(cacheKey, result);
+    res.json(result);
+  } catch (error) {
+    console.error('[analytics] sleep summary error:', error);
+    res.status(500).json({ error: 'Failed to compute sleep analytics' });
   }
 }
 

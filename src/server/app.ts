@@ -77,6 +77,7 @@ import {
   getAllHabitAnalytics,
   getRoutineAnalyticsSummary,
   getGoalAnalyticsSummary,
+  getSleepAnalyticsSummary,
 } from './routes/analytics';
 
 export function createApp(): Express {
@@ -240,6 +241,7 @@ export function createApp(): Express {
   app.get('/api/analytics/habits/insights', getHabitAnalyticsInsights);
   app.get('/api/analytics/routines/summary', getRoutineAnalyticsSummary);
   app.get('/api/analytics/goals/summary', getGoalAnalyticsSummary);
+  app.get('/api/analytics/sleep/summary', getSleepAnalyticsSummary);
   app.get('/api/admin/integrity-report', getIntegrityReport);
   app.post('/api/admin/dedup-habits', requireAdmin, dedupHabits);
   app.post('/api/admin/recover-habits', requireAdmin, recoverHabits);
