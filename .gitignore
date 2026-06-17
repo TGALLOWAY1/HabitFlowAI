@@ -30,3 +30,10 @@ dist-ssr
 # Migration run artifacts (regenerated on each run)
 docs/migrations/user-migration-*.json
 docs/migrations/test-user-cleanup-*.json
+
+# Scratch / debug artifacts (keep root clean — do not commit)
+/check_*.ts
+/clean_*.py
+/fix_*.py
+/*_output.txt
+/tsc_output.txt
