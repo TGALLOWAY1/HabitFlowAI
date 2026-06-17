@@ -35,93 +35,23 @@ Full feature inventory: [`docs/FEATURES.md`](docs/FEATURES.md).
 - **CI-enforced beta gate:** A narrower lint + test suite runs against `src/server`, `src/shared`, and `src/domain` to keep the canonical layers clean without blocking the fast-moving UI code.
 - **Tests never touch a real DB:** The default Vitest config uses `mongodb-memory-server`; opting into a live DB requires `ALLOW_LIVE_DB_TESTS=true` **and** a DB name containing `_test`.
 
-## Weekly AI Review (applied AI feature)
+## Applied AI
 
-The **Weekly AI Review** turns a week of structured habit, sleep, mood, journal, and goal
-data into grounded weekly feedback. The system deliberately separates **observed facts**,
-**inferred patterns**, and **recommendations** so the model produces useful coaching without
-hallucinating advice.
+AI features are **BYOK Gemini** (the user supplies their own key; it is stored client-side only
+and never persisted server-side) and generated on demand with no extra dependencies. Two are
+worth calling out as applied-LLM engineering:
 
-**Data / AI flow:**
+- **Weekly AI Review** — turns a week of habit, sleep, mood, journal, and goal data into a grounded,
+  schema-constrained review (Summary · Wins · Struggles · Patterns w/ confidence · Recommendations ·
+  Data Limitations). The server owns the week boundaries and sends only DB-derived facts, never raw
+  collections.
+- **AI Journal Review** — turns journal entries over a chosen date range into a structured, explicitly
+  non-clinical reflection aid (themes, stressors, wins, self-talk, reflection questions, next steps),
+  grounded only in the user's own writing with confidence calibration and crisis-safe handling.
 
-```
-Dashboard card (this week / last week)
-   → POST /api/ai/weekly-review  (Gemini BYOK)
-      → collect one week, scoped by (householdId, userId):
-          habitEntries · wellbeingEntries (sleep & mood) · journalEntries · goals
-      → aggregate into compact OBSERVED FACTS
-          per-habit days-logged vs. cadence · per-day breakdown (habits/sleep/mood/journaled)
-          weekly wellbeing averages · journal consistency · active goals
-      → Gemini 3.5 Flash with a JSON responseSchema + grounding rules
-      → validate & normalize → typed WeeklyAIReview
-   → render: Summary · Wins · Struggles · Patterns (confidence) · Recommendations · Data Limitations
-```
-
-**Grounding guarantees:**
-- Only facts derived from the database are sent to the model — no raw collections, no free-form dumps.
-- The prompt forbids inventing data and requires every win/struggle to cite specific numbers.
-- The server (not the model) owns the week boundaries; a response schema enforces a stable shape.
-- Thin weeks surface honest **Data Limitations** instead of low-evidence patterns; pattern
-  confidence (`low`/`medium`/`high`) is tied to how much supporting data exists.
-
-**Implementation notes:**
-- Server route: [`src/server/routes/aiWeeklyReview.ts`](src/server/routes/aiWeeklyReview.ts);
-  shared contract: [`src/shared/weeklyAiReview.ts`](src/shared/weeklyAiReview.ts).
-- Client + UI: `fetchWeeklyAIReview` in [`src/lib/geminiClient.ts`](src/lib/geminiClient.ts) and
-  [`src/components/dashboard/WeeklyAIReviewCard.tsx`](src/components/dashboard/WeeklyAIReviewCard.tsx).
-- BYOK Gemini, consistent with the existing AI routes — no server-side API key and no new dependencies.
-
-## AI Journal Review (applied AI feature)
-
-The **AI Journal Review** transforms unstructured journal entries into structured, grounded
-feedback. The user picks a date range and gets a reflection aid — emotional themes, recurring
-stressors, wins, self-talk patterns, reflection questions, and small next steps — built entirely
-from their own writing.
-
-**What user data it uses:** only the user's own `journalEntries` within the selected range
-(scoped by `userId`). AI-generated summaries are excluded so the review reflects what the user
-actually wrote. No habit, sleep, or wellbeing data is included.
-
-**Data / AI flow:**
-
-```
-Journal → "AI Review" tab (last 7/30 days or custom range)
-   → POST /api/ai/journal-review  (Gemini BYOK)
-      → fetch journalEntries for [rangeStart, rangeEnd], scoped by userId
-      → resolve template prompt IDs → readable questions; paraphrasable Q/A context
-      → Gemini 3.5 Flash with a JSON responseSchema + grounding & safety rules
-      → validate & normalize → typed AIJournalReview
-   → render: Overview · Emotional Themes · Recurring Stressors · Wins ·
-             Self-Talk Patterns · Reflection Questions · Suggested Next Steps · Data Limitations
-```
-
-**How the output is grounded:**
-- Only the user's own entries for the chosen range are sent — no other collections, no free-form dumps.
-- The prompt separates **observed evidence** from **inferred themes** from **suggested next steps**,
-  forbids inventing facts, and forbids long verbatim quotes (paraphrase only).
-- The server (not the model) owns the range boundaries; a response schema enforces a stable shape.
-- Theme/stressor confidence (`low`/`medium`/`high`) is tied to how much evidence exists. Sparse
-  ranges are flagged with a low-data warning and honest **Data Limitations** instead of fabricated patterns.
-
-**How safety / tone are handled:**
-- The review is explicitly **non-clinical**: the prompt bans diagnoses and labels
-  ("you are depressed", "this indicates trauma") and requires tentative language
-  ("your entries suggest…", "this may be worth reflecting on…").
-- If entries suggest self-harm or crisis, the model returns a gentle `crisisNotice` that encourages
-  reaching out to trusted people or emergency/crisis resources — it does not attempt crisis counseling.
-- The empty state guides the user to write or widen the range; nothing is generated when there is no data.
-
-**Why it is interesting as an AI engineering feature:** it shows applied LLM integration with
-**schema-constrained structured output**, **strict grounding** in user-selected data, explicit
-**evidence/inference/action separation**, **confidence calibration**, **low-data + safety handling**,
-and a polished, mobile-friendly UI — generated on demand, with no extra dependencies or server-side keys.
-
-**Implementation notes:**
-- Server route: [`src/server/routes/aiJournalReview.ts`](src/server/routes/aiJournalReview.ts);
-  shared contract: [`src/shared/aiJournalReview.ts`](src/shared/aiJournalReview.ts).
-- Client + UI: `fetchJournalReview` in [`src/lib/geminiClient.ts`](src/lib/geminiClient.ts) and
-  [`src/components/Journal/JournalReviewPanel.tsx`](src/components/Journal/JournalReviewPanel.tsx).
-- BYOK Gemini, consistent with the existing AI routes — generated on demand (not persisted), no new dependencies.
+Both deliberately separate **observed facts → inferred patterns → recommendations** so the model
+coaches without hallucinating. Design, data flow, grounding strategy, and the routes/contracts are
+documented in [`docs/ai-features.md`](docs/ai-features.md).
 
 ## Architecture overview
 
@@ -144,16 +74,7 @@ and a polished, mobile-friendly UI — generated on demand, with no extra depend
 
 More detail: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md), [`docs/DATA_MODEL.md`](docs/DATA_MODEL.md), [`docs/DOMAIN_CANON.md`](docs/DOMAIN_CANON.md).
 
-## Key features
-
-- **Habits:** boolean/quantity tracking, scheduling, categories, bundles (checklist + choice), habit-goal + habit-routine linking, streaks, archiving.
-- **Routines:** multi-variant (Quick / Standard / Deep), per-step timers and images, AI variant suggestions, auto-logging linked habits on completion.
-- **Goals:** cumulative or one-time, pace/trend analysis, milestone badges, inactivity coaching, goal **tracks** (ordered sequences with locked/active/completed states).
-- **Journal:** 11 persona-driven templates + free-write, upsert-by-day idempotency, AI weekly summaries.
-- **Wellbeing:** morning/evening check-ins, heatmap / weekly / small-multiples views, configurable extra metrics.
-- **Analytics:** consistency score, category breakdown, activity heatmap, routine + goal analytics.
-- **Apple Health (beta):** import steps, calories, sleep, workouts, weight → auto-log habits via rules.
-- **Dashboard:** daily completion ring, pinned goals, pinned routines, AI weekly card, tasks, setup guide.
+The full, status-tagged feature inventory is in [`docs/FEATURES.md`](docs/FEATURES.md).
 
 ## Demo / live link
 
@@ -244,12 +165,16 @@ The **Gemini API key** for AI features is **not** an env var — it is entered i
 
 ## Future work
 
-- Analytics page migration (replacing Tasks in primary nav) — plan in [`docs/audits/analytics_page_implementation_audit_2026-03-29.md`](docs/audits/analytics_page_implementation_audit_2026-03-29.md).
-- Finish the historical linkage/archive correctness remediation so deletion/unlink flows can't erase archived meaning.
-- Shareable path-based URLs for all pages (move away from `?view=...`).
-- Multi-user household UI: invites, shared habits, per-user views.
-- Pluggable AI providers (Anthropic, OpenAI) alongside Gemini.
-- Native iOS/Android wrappers with real push notifications for routines and check-ins.
+Prioritized upcoming work lives in [`ROADMAP.md`](ROADMAP.md) (near-term, later, and backlog).
+
+## Project docs
+
+- [`docs/FEATURES.md`](docs/FEATURES.md) — canonical feature inventory with status
+- [`ROADMAP.md`](ROADMAP.md) — prioritized upcoming work
+- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — system design, identity, DayKey, truth ownership
+- [`docs/DATA_MODEL.md`](docs/DATA_MODEL.md) — collections and ownership boundaries
+- [`docs/ai-features.md`](docs/ai-features.md) — applied-AI design and data flow
+- [`docs/DOC_INDEX.md`](docs/DOC_INDEX.md) — full documentation map and standards
 
 ---
 
