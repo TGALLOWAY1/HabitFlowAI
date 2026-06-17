@@ -139,7 +139,8 @@ HabitFlow App
 | Routine Editor | Modal | "+ Routine" or edit routine | Create/edit routines with variants; step list navigates to dedicated Step Editor panel | Routines, Habits |
 | Routine Runner | Modal | "Play" button on routine card | Step-by-step routine execution with timers | Routines, Habits, Entries |
 | Routine Preview | Modal | Preview button on routine card | Read-only routine view before starting | Routines |
-| Daily Check-in | Modal | Dashboard check-in card | Wellbeing metrics entry (sleep, mood, stress) | Wellbeing Entries |
+| Daily Check-in | Modal | Dashboard check-in card | Wellbeing metrics entry (sleep, mood, stress); morning tab has a "Log Sleep" entry point | Wellbeing Entries |
+| Log Sleep | Modal | "Log Sleep" button on Daily Check-in morning tab | Apple Watch sleep score + sub-scores, bedtime/wake pickers, duration, quality, last-night habit toggles, and configurable sleep targets | Wellbeing Entries, Dashboard Prefs |
 | Edit Goal | Modal | Goal context menu "Edit" | Modify goal title, target, deadline | Goals |
 | Delete Goal Confirm | Modal | Goal context menu "Delete" | Deletion confirmation dialog | Goals |
 | Remove Habit | Modal | Trash button on a habit that is linked to one or more goals (shown after the click-twice confirm so the user sees which goals are affected) | Lists the affected goals and offers two paths: **Archive** (recommended, restorable from Settings) or **Delete permanently** (soft-delete, not restorable). For unlinked habits the trash icon archives directly without opening this modal | Habits, Goals |
@@ -300,6 +301,7 @@ graph TB
 | **Goal progress charts** | Goal Detail Page (cumulative, trend, weekly summary) |
 | **Wellbeing trends** | Wellbeing History Page |
 | **Weekly summary** | Dashboard weekly summary card |
+| **Sleep analytics** | Analytics Page → Sleep tab (Habits / Routines / Goals / Sleep) — Apple Watch score, consistency, independence, bedtime/wake & duration trends, correlation factors, weekly summary, achievements |
 
 ### Category
 

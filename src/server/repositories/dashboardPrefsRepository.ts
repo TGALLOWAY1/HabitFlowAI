@@ -42,7 +42,7 @@ export async function getDashboardPrefs(householdId: string, userId: string): Pr
 export async function updateDashboardPrefs(
   householdId: string,
   userId: string,
-  patch: { pinnedRoutineIds?: string[]; pinnedGoalIds?: string[]; pinnedJournalTemplateIds?: string[]; checkinExtraMetricKeys?: string[]; hideStreaks?: boolean }
+  patch: { pinnedRoutineIds?: string[]; pinnedGoalIds?: string[]; pinnedJournalTemplateIds?: string[]; checkinExtraMetricKeys?: string[]; hideStreaks?: boolean; sleepTargets?: { bedtimeMinutes: number; wakeMinutes: number; durationMinutes: number } }
 ): Promise<DashboardPrefs> {
   const scope = requireScope(householdId, userId);
   await ensureIndexes();
@@ -119,6 +119,20 @@ export async function updateDashboardPrefs(
 
   if (patch.hideStreaks !== undefined) {
     update.hideStreaks = !!patch.hideStreaks;
+  }
+
+  if (patch.sleepTargets !== undefined) {
+    const t = patch.sleepTargets;
+    const clampMinute = (n: unknown) => {
+      const v = Math.round(Number(n));
+      if (!Number.isFinite(v)) throw new Error('sleepTargets values must be numbers');
+      return Math.max(0, Math.min(1439, v));
+    };
+    update.sleepTargets = {
+      bedtimeMinutes: clampMinute(t.bedtimeMinutes),
+      wakeMinutes: clampMinute(t.wakeMinutes),
+      durationMinutes: Math.max(0, Math.min(1440, Math.round(Number(t.durationMinutes)) || 0)),
+    };
   }
 
   // Fix: Use full document replace approach to avoid MongoDB update conflicts

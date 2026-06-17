@@ -1,16 +1,18 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
-import { ArrowLeft, CheckSquare, RefreshCw, Target } from 'lucide-react';
+import { ArrowLeft, CheckSquare, RefreshCw, Target, Moon } from 'lucide-react';
 import { useAuth } from '../store/AuthContext';
 import {
   fetchAllHabitAnalytics,
   fetchRoutineSummary,
   fetchGoalSummary,
+  fetchSleepSummary,
   type HabitAnalyticsSummary,
   type TrendDataPoint,
   type CategoryBreakdownItem,
   type Insight,
   type RoutineAnalyticsSummary,
   type GoalAnalyticsSummary,
+  type SleepAnalyticsSummary,
 } from '../lib/analyticsClient';
 import { SummaryCards } from '../components/analytics/SummaryCards';
 import { StreaksSection } from '../components/analytics/StreaksSection';
@@ -22,12 +24,13 @@ import { AchievementsSection } from '../components/analytics/AchievementsSection
 import { InsightsPanel } from '../components/analytics/InsightsPanel';
 import { RoutineAnalytics } from '../components/analytics/RoutineAnalytics';
 import { GoalAnalytics } from '../components/analytics/GoalAnalytics';
+import { SleepAnalytics } from '../components/analytics/sleep/SleepAnalytics';
 import { ActivitySection } from '../components/ActivitySection';
 
 const BETA_EMAIL = 'tj.galloway1@gmail.com';
 
 type TimeRange = 7 | 14 | 30 | 'custom';
-type AnalyticsTab = 'habits' | 'routines' | 'goals';
+type AnalyticsTab = 'habits' | 'routines' | 'goals' | 'sleep';
 
 function getDaysFromRange(range: TimeRange, customStart: string, customEnd: string): number {
   if (range === 'custom' && customStart && customEnd) {
@@ -66,6 +69,9 @@ export const AnalyticsPage: React.FC<AnalyticsPageProps> = ({ onBack }) => {
 
   // Goals state
   const [goalData, setGoalData] = useState<GoalAnalyticsSummary | null>(null);
+
+  // Sleep state
+  const [sleepData, setSleepData] = useState<SleepAnalyticsSummary | null>(null);
 
   const loadHabitData = useCallback(async (days: number) => {
     setLoading(true);
@@ -113,6 +119,18 @@ export const AnalyticsPage: React.FC<AnalyticsPageProps> = ({ onBack }) => {
     }
   }, []);
 
+  const loadSleepData = useCallback(async (days: number) => {
+    setLoading(true);
+    try {
+      const data = await fetchSleepSummary(days);
+      setSleepData(data);
+    } catch (err) {
+      console.error('[AnalyticsPage] Failed to load sleep analytics:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     if (!isAuthorized) {
       onBack();
@@ -124,7 +142,8 @@ export const AnalyticsPage: React.FC<AnalyticsPageProps> = ({ onBack }) => {
     if (activeTab === 'habits') loadHabitData(days);
     else if (activeTab === 'routines') loadRoutineData(days);
     else if (activeTab === 'goals') loadGoalData(days);
-  }, [isAuthorized, onBack, activeTab, timeRange, customStart, customEnd, loadHabitData, loadRoutineData, loadGoalData]);
+    else if (activeTab === 'sleep') loadSleepData(days);
+  }, [isAuthorized, onBack, activeTab, timeRange, customStart, customEnd, loadHabitData, loadRoutineData, loadGoalData, loadSleepData]);
 
   if (!isAuthorized) return null;
 
@@ -132,6 +151,7 @@ export const AnalyticsPage: React.FC<AnalyticsPageProps> = ({ onBack }) => {
     { value: 'habits', label: 'Habits', icon: CheckSquare },
     { value: 'routines', label: 'Routines', icon: RefreshCw },
     { value: 'goals', label: 'Goals', icon: Target },
+    { value: 'sleep', label: 'Sleep', icon: Moon },
   ];
 
   return (
@@ -225,6 +245,10 @@ export const AnalyticsPage: React.FC<AnalyticsPageProps> = ({ onBack }) => {
 
       {activeTab === 'goals' && (
         <GoalAnalytics data={goalData} loading={loading} />
+      )}
+
+      {activeTab === 'sleep' && (
+        <SleepAnalytics data={sleepData} loading={loading} />
       )}
     </div>
   );

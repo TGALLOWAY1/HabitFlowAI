@@ -135,6 +135,58 @@ These keys were added as an **additive superset** to support multiple personas w
 - **Derived**: No
 - **Stability Status**: **LOCKED**
 
+---
+
+## Sleep Analytics Keys (LOCKED)
+
+Added for the Sleep Analytics dashboard. All are captured via the dedicated **SleepEntryForm**
+(launched from the Daily Check-in morning tab), persisted as `WellbeingEntry` records with
+`timeOfDay:'morning'` and `source:'checkin'`. They are **not** part of `WellbeingSession` and are
+**not** rendered as generic check-in sliders (no `METRIC_UI` entry).
+
+### Outcome keys
+
+| Key | Type / encoding | Notes |
+|---|---|---|
+| `appleSleepScore` | `number` 0-100 | Apple Watch overall Sleep Score (PRIMARY signal). Equals the sum of the three sub-scores below. |
+| `appleSleepBedtimeScore` | `number` 0-25 | Apple Watch bedtime sub-score (weighted component) |
+| `appleSleepDurationScore` | `number` 0-50 | Apple Watch duration sub-score (weighted component) |
+| `appleSleepInterruptionScore` | `number` 0-25 | Apple Watch interruption sub-score (weighted component) |
+| `sleepBedtimeMinutes` | `number` 0..1439 | Clock time fell asleep, **minutes-after-noon** (see below) |
+| `sleepWakeMinutes` | `number` 0..1439 | Clock time woke, **minutes-after-noon** |
+| `sleepDurationMinutes` | `number` minutes | Total time asleep (e.g. 408 = 6h48m) |
+| `sleepLatencyMinutes` | `number` minutes | Time to fall asleep (deferred from default form) |
+| `sleepAwakenings` | `number` count ≥ 0 | Interruptions during the night (deferred from default form) |
+| `sleepAidUsed` | `number` 0/1 | 1 = a sleep aid was used (e.g. clonazepam) |
+
+### Behavioral correlation factor keys
+
+These replace the user's former "Sleep" habit category; the correlation engine treats them
+identically to habit-derived factor signals.
+
+| Key | Type / encoding | Notes |
+|---|---|---|
+| `factorPhoneInBed` | `number` 0/1 | Phone used in bed |
+| `factorBlueLightMinutes` | `number` minutes ≥ 0 | Blue-light exposure after target time |
+| `factorWindDown` | `number` 0/1 | Completed a wind-down routine |
+| `factorLateNightEating` | `number` 0/1 | Ate within ~3h of bed |
+| `factorCaffeineAfter12` | `number` count ≥ 0 | Caffeinated drinks after noon |
+
+### Minutes-after-noon encoding (clock times)
+
+Bedtime/wake clock times are stored as **minutes elapsed since 12:00 noon**, wrapped into
+`0..1439`, so a normal sleep window stays numerically contiguous across midnight:
+
+```
+minutesAfterNoon = ((hour*60 + minute) - 720 + 1440) % 1440
+// 10:00 PM → 600, 11:58 PM → 718, 12:05 AM → 725, 6:00 AM → 1083
+// inverse: clockMinutes = (minutesAfterNoon + 720) % 1440
+```
+
+- **User Input**: Yes (SleepEntryForm). **Derived**: No. **Stability Status**: **LOCKED**.
+
+---
+
 ### Session Structure Keys
 
 #### `morning`

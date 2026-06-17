@@ -6,6 +6,7 @@ import type { WellbeingSession } from '../types';
 import { WELLBEING_METRIC_KEYS, type WellbeingMetricKey } from '../models/persistenceTypes';
 import { getActivePersonaConfig } from '../shared/personas/activePersona';
 import { fetchDashboardPrefs, updateDashboardPrefs } from '../lib/persistenceClient';
+import { SleepEntryForm } from './SleepEntryForm';
 
 interface DailyCheckInModalProps {
     isOpen: boolean;
@@ -44,7 +45,9 @@ type MetricUiConfig = {
     kind?: 'number' | 'text';
 };
 
-const METRIC_UI: Record<WellbeingMetricKey, MetricUiConfig> = {
+// Partial: sleep-analytics metric keys (appleSleepScore, sleep*, factor*) are captured
+// via the dedicated SleepEntryForm, not as generic sliders, so they have no entry here.
+const METRIC_UI: Partial<Record<WellbeingMetricKey, MetricUiConfig>> = {
     depression: { key: 'depression', label: 'Depression (legacy)', icon: <Brain size={16} className="text-blue-400" />, colorClass: 'text-blue-400', min: 1, max: 5, step: 1, kind: 'number' },
     anxiety: { key: 'anxiety', label: 'Anxiety', icon: <Activity size={16} className="text-purple-400" />, colorClass: 'text-purple-400', min: 1, max: 5, step: 1, kind: 'number' },
     energy: { key: 'energy', label: 'Energy', icon: <Battery size={16} className="text-emerald-400" />, colorClass: 'text-emerald-400', min: 1, max: 5, step: 1, kind: 'number' },
@@ -70,6 +73,7 @@ export const DailyCheckInModal: React.FC<DailyCheckInModalProps> = ({ isOpen, on
     const checkinSubset = persona.checkinSubset;
     const [extraKeys, setExtraKeys] = useState<WellbeingMetricKey[]>([]);
     const [notesOpen, setNotesOpen] = useState(false);
+    const [sleepFormOpen, setSleepFormOpen] = useState(false);
 
     const subsetSet = new Set<WellbeingMetricKey>([
         ...(checkinSubset as WellbeingMetricKey[]),
@@ -141,7 +145,8 @@ export const DailyCheckInModal: React.FC<DailyCheckInModalProps> = ({ isOpen, on
 
     const addableMetrics = (WELLBEING_METRIC_KEYS as readonly WellbeingMetricKey[])
         .filter((k) => k !== 'notes')
-        .filter((k) => !subsetSet.has(k));
+        .filter((k) => !subsetSet.has(k))
+        .filter((k) => !!METRIC_UI[k]); // exclude sleep-form-only keys (no slider config)
 
     const handleAddMetric = async (key: WellbeingMetricKey) => {
         const next = Array.from(new Set([...extraKeys, key]));
@@ -217,6 +222,7 @@ export const DailyCheckInModal: React.FC<DailyCheckInModalProps> = ({ isOpen, on
     if (!isOpen) return null;
 
     return (
+      <>
         <div className="modal-overlay fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
             <div className="bg-neutral-900 border border-white/10 rounded-2xl w-full max-w-md max-h-[90dvh] shadow-2xl overflow-hidden flex flex-col animate-in fade-in zoom-in duration-200">
                 {/* Header with Tabs */}
@@ -269,6 +275,20 @@ export const DailyCheckInModal: React.FC<DailyCheckInModalProps> = ({ isOpen, on
 
                 {/* Body */}
                 <div className="flex-1 overflow-y-auto modal-scroll p-6 space-y-6">
+                    {/* Dedicated sleep logging (morning) — feeds Sleep Analytics */}
+                    {activeTab === 'morning' && (
+                        <button
+                            type="button"
+                            onClick={() => setSleepFormOpen(true)}
+                            className="w-full flex items-center justify-between gap-2 px-4 py-3 bg-indigo-500/10 border border-indigo-500/30 rounded-xl text-indigo-300 hover:bg-indigo-500/15 transition-colors"
+                        >
+                            <span className="flex items-center gap-2 text-sm font-medium">
+                                <Moon size={16} className="text-indigo-400" /> Log Sleep (Apple Watch score & schedule)
+                            </span>
+                            <span className="text-xs text-indigo-400/70">Open</span>
+                        </button>
+                    )}
+
                     {/* Render persona-selected metric subset from the canonical superset */}
                     {checkinSubset
                         .filter((k): k is WellbeingMetricKey => (WELLBEING_METRIC_KEYS as readonly string[]).includes(k))
@@ -446,5 +466,7 @@ export const DailyCheckInModal: React.FC<DailyCheckInModalProps> = ({ isOpen, on
                 </div>
             </div>
         </div>
+        <SleepEntryForm isOpen={sleepFormOpen} onClose={() => setSleepFormOpen(false)} />
+      </>
     );
 };
