@@ -2,10 +2,11 @@ import { useState } from 'react';
 import { JournalDisplay } from '../components/Journal/JournalDisplay';
 import { JournalEditor } from '../components/Journal/JournalEditor';
 import type { JournalEntry } from '../models/persistenceTypes';
-import { PenLine, LayoutTemplate, History } from 'lucide-react';
+import { PenLine, LayoutTemplate, History, Sparkles } from 'lucide-react';
 import { JournalSummaryBanner } from '../components/Journal/JournalSummaryBanner';
+import { JournalReviewPanel } from '../components/Journal/JournalReviewPanel';
 
-type JournalTab = 'free' | 'templates' | 'history';
+type JournalTab = 'free' | 'templates' | 'history' | 'review';
 
 export function JournalPage() {
     const [activeTab, setActiveTab] = useState<JournalTab>('free');
@@ -41,6 +42,7 @@ export function JournalPage() {
         { id: 'free', label: 'Free Write', icon: PenLine },
         { id: 'templates', label: 'Templates', icon: LayoutTemplate },
         { id: 'history', label: 'History', icon: History },
+        { id: 'review', label: 'AI Review', icon: Sparkles },
     ];
 
     return (
@@ -96,10 +98,15 @@ export function JournalPage() {
                             onSave={handleSave}
                         />
                     </div>
-                ) : (
+                ) : activeTab === 'history' ? (
                     // History Tab
                     <div className="animate-in fade-in duration-300">
                         <JournalDisplay onEdit={handleEdit} lastSavedEntry={lastSavedEntry} />
+                    </div>
+                ) : (
+                    // AI Review Tab
+                    <div className="animate-in fade-in duration-300">
+                        <JournalReviewPanel />
                     </div>
                 )}
             </div>

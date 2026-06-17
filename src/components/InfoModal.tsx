@@ -438,6 +438,10 @@ export function InfoModal({ isOpen, onClose }: InfoModalProps) {
                     <p className="mt-0.5">Auto-generated weekly summary of your journal entries with themes, highlights, actionable feedback, and follow-up reminders. Appears as a dismissible banner on the Journal page and is saved to your journal history.</p>
                   </li>
                   <li className="text-xs text-neutral-400 pl-2">
+                    <span className="font-semibold text-neutral-300">AI Journal Review</span>
+                    <p className="mt-0.5">On the Journal page's "AI Review" tab, pick a date range (last 7/30 days or custom) and generate a structured, grounded review of your entries: an Overview, Emotional Themes, Recurring Stressors, Wins, Self-Talk Patterns, Reflection Questions, Suggested Next Steps, and honest Data Limitations. It reads only your own writing, separates evidence from interpretation from suggestions, and stays supportive and non-clinical (no diagnoses). Empty ranges and sparse data are flagged, and you can regenerate anytime.</p>
+                  </li>
+                  <li className="text-xs text-neutral-400 pl-2">
                     <span className="font-semibold text-neutral-300">Persona-Driven Insights</span>
                     <p className="mt-0.5">Choose an AI persona (like "The Strategic Coach") to guide your journaling prompts.</p>
                   </li>

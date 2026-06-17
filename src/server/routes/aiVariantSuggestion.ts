@@ -80,7 +80,7 @@ Rules:
 - Variants should meaningfully differ in scope, duration, or focus
 - Do NOT wrap in markdown code blocks. Return raw JSON only.`;
 
-        const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(body.geminiApiKey.trim())}`;
+        const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${encodeURIComponent(body.geminiApiKey.trim())}`;
 
         const geminiResponse = await fetch(geminiUrl, {
             method: 'POST',
@@ -91,7 +91,7 @@ Rules:
                     temperature: 0.8,
                     maxOutputTokens: 4096,
                     // Disable thinking for structured JSON output
-                    thinkingConfig: { thinkingBudget: 0 },
+                    thinkingConfig: { thinkingLevel: 'low' },
                 },
             }),
         });

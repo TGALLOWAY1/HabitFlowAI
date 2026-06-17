@@ -113,7 +113,7 @@ ${journalSummaryLines.length > 0 ? journalSummaryLines.join('\n') : '(No journal
 Please write a weekly summary now. Use markdown formatting for readability.`;
 
     // Call Gemini API
-    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(geminiApiKey.trim())}`;
+    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${encodeURIComponent(geminiApiKey.trim())}`;
 
     const geminiResponse = await fetch(geminiUrl, {
       method: 'POST',
@@ -124,7 +124,7 @@ Please write a weekly summary now. Use markdown formatting for readability.`;
           temperature: 0.7,
           maxOutputTokens: 1024,
           // Disable thinking for direct text output
-          thinkingConfig: { thinkingBudget: 0 },
+          thinkingConfig: { thinkingLevel: 'low' },
         },
       }),
     });
