@@ -10,6 +10,7 @@ import { JournalCard } from './dashboard/JournalCard';
 import { TasksCard } from './dashboard/TasksCard';
 import { PinnedRoutinesCard } from './dashboard/PinnedRoutinesCard';
 import { WeeklySummaryCard } from './dashboard/WeeklySummaryCard';
+import { WeeklyAIReviewCard } from './dashboard/WeeklyAIReviewCard';
 import { JournalSummaryCard } from './Journal/JournalSummaryCard';
 import { SetupDashboard } from './dashboard/SetupDashboard';
 import { useSetupProgress } from '../hooks/useSetupProgress';
@@ -212,6 +213,9 @@ export const ProgressDashboard: React.FC<ProgressDashboardProps> = ({
                     onViewAllRoutines={onNavigateToRoutines}
                 />
             )}
+
+            {/* AI Weekly Review (structured, grounded) */}
+            <WeeklyAIReviewCard />
 
             {/* AI Weekly Summary */}
             <WeeklySummaryCard />
