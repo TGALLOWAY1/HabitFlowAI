@@ -1,7 +1,32 @@
 # Documentation Index
 
+## Documentation Standards
+
+HabitFlow docs follow one rule: **README = what the app is + how to run it; FEATURES = the
+product spec; everything else = implementation detail.** Keep duplication out by putting each kind
+of content in exactly one home.
+
+| File | Owns | Does **not** contain |
+|---|---|---|
+| `README.md` (root) | Concise product overview, setup, scripts, tech stack, links | Long feature specs, roadmap, AI implementation detail |
+| `docs/FEATURES.md` | Canonical feature inventory **with status** | Install instructions, deep architecture |
+| `ROADMAP.md` (root) | Prioritized future work (near-term / later / backlog) | Descriptions of already-shipped features |
+| `docs/ai-features.md` | Applied-AI design, data flow, contracts | User-facing feature copy (link to FEATURES instead) |
+| `docs/ARCHITECTURE.md`, `docs/DATA_MODEL.md` | Technical structure & schema | Product marketing |
+
+**Conventions:**
+- **New feature →** add it to `docs/FEATURES.md` (mark `Beta`/`Partial` if not fully shipped) and,
+  if user-facing, update `docs/product/HABITFLOW_UI_ARCHITECTURE.md` and the "How HabitFlow Works"
+  modal (`src/components/InfoModal.tsx`) per `.claude/CLAUDE.md`.
+- **Update status →** edit the Status summary table and the relevant item in `docs/FEATURES.md`.
+  Use **Needs Verification** rather than guessing when a status is unconfirmed.
+- **Ship a roadmap item →** remove it from `ROADMAP.md` and document it in `docs/FEATURES.md`.
+- **Keep README concise** — link to `docs/FEATURES.md` / `ROADMAP.md` instead of duplicating lists.
+
 ## Start Here
 
+- `README.md` — product overview, setup, scripts, tech stack (root).
+- `ROADMAP.md` — prioritized upcoming work, near-term to backlog (root).
 - `docs/V1_PRODUCT_DIRECTION.md` — current v1 product direction (personal-use-first, practical).
 - `docs/DOMAIN_CANON.md` — minimal invariants and canonical references.
 - `docs/ARCHITECTURE.md` — system architecture, identity, dayKey policy, HabitEntries-only truth (post–M6).
@@ -9,7 +34,8 @@
 - `docs/API.md` — backend route inventory and API contracts.
 - `docs/DATA_MODEL.md` — implemented collections and ownership boundaries (post–M6).
 - `docs/DEV_GUIDE.md` — setup, scripts, testing, and runbook.
-- `docs/FEATURES.md` — canonical feature list organized by domain (habits, routines, goals, journal, AI, etc.).
+- `docs/FEATURES.md` — canonical feature list with status, organized by domain (habits, routines, goals, journal, AI, etc.).
+- `docs/ai-features.md` — applied-AI features: design, data flow, grounding, routes/contracts.
 - `docs/VERIFICATION.md` — consistency and dashboard validation checklist.
 - `docs/maintenance/verification.md` — test suite commands and smoke test checklist.
 - `docs/semantics/daykey.md` — DayKey and timezone policy (America/New_York fallback).
