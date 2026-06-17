@@ -112,7 +112,7 @@ describe('postWeeklyReview', () => {
   });
 
   it('sends only grounded observed facts to Gemini and returns a normalized review', async () => {
-    const fetchMock = vi.fn(async () =>
+    const fetchMock = vi.fn(async (_url: string, _init: RequestInit) =>
       geminiOk({
         summary: 'Solid week overall.',
         wins: ['Logged Walk 5 of 7 days', ''], // empty string should be filtered out
@@ -138,7 +138,7 @@ describe('postWeeklyReview', () => {
     expect(res.status).toHaveBeenCalledWith(200);
 
     // --- Grounding: the prompt contains DB-derived facts, not invented content ---
-    const promptBody = JSON.parse(vi.mocked(fetchMock).mock.calls[0][1]!.body as string);
+    const promptBody = JSON.parse(vi.mocked(fetchMock).mock.calls[0][1].body as string);
     const promptText = promptBody.contents[0].parts[0].text as string;
     expect(promptText).toContain('Walk');
     expect(promptText).toContain('daysLogged');
