@@ -52,7 +52,7 @@ Dashboard card (this week / last week)
       → aggregate into compact OBSERVED FACTS
           per-habit days-logged vs. cadence · per-day breakdown (habits/sleep/mood/journaled)
           weekly wellbeing averages · journal consistency · active goals
-      → Gemini 2.5 Flash with a JSON responseSchema + grounding rules
+      → Gemini 3.5 Flash with a JSON responseSchema + grounding rules
       → validate & normalize → typed WeeklyAIReview
    → render: Summary · Wins · Struggles · Patterns (confidence) · Recommendations · Data Limitations
 ```
@@ -89,7 +89,7 @@ Journal → "AI Review" tab (last 7/30 days or custom range)
    → POST /api/ai/journal-review  (Gemini BYOK)
       → fetch journalEntries for [rangeStart, rangeEnd], scoped by userId
       → resolve template prompt IDs → readable questions; paraphrasable Q/A context
-      → Gemini 2.5 Flash with a JSON responseSchema + grounding & safety rules
+      → Gemini 3.5 Flash with a JSON responseSchema + grounding & safety rules
       → validate & normalize → typed AIJournalReview
    → render: Overview · Emotional Themes · Recurring Stressors · Wins ·
              Self-Talk Patterns · Reflection Questions · Suggested Next Steps · Data Limitations

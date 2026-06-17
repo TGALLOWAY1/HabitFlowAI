@@ -287,7 +287,7 @@ Return the review as JSON matching the provided schema.`;
     };
 
     // ---- Call Gemini (structured JSON output) ----
-    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(
+    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${encodeURIComponent(
       geminiApiKey.trim(),
     )}`;
 
@@ -301,7 +301,7 @@ Return the review as JSON matching the provided schema.`;
           maxOutputTokens: 2048,
           responseMimeType: 'application/json',
           responseSchema,
-          thinkingConfig: { thinkingBudget: 0 },
+          thinkingConfig: { thinkingLevel: 'low' },
         },
       }),
     });
