@@ -871,6 +871,23 @@ export const WELLBEING_METRIC_KEYS = [
     'hydration',
     'fueling',
     'recovery',
+    // Sleep Analytics — outcomes (all recorded with timeOfDay:'morning')
+    'appleSleepScore',            // Apple Watch overall Sleep Score, 0-100 (PRIMARY signal)
+    'appleSleepBedtimeScore',     // Apple Watch bedtime sub-score, 0-100
+    'appleSleepDurationScore',    // Apple Watch duration sub-score, 0-100
+    'appleSleepInterruptionScore',// Apple Watch interruption sub-score, 0-100
+    'sleepBedtimeMinutes',        // clock time fell asleep, minutes-after-noon (0..1439)
+    'sleepWakeMinutes',           // clock time woke, minutes-after-noon (0..1439)
+    'sleepDurationMinutes',       // total time asleep, minutes (e.g. 408 = 6h48m)
+    'sleepLatencyMinutes',        // time to fall asleep, minutes (deferred from default form)
+    'sleepAwakenings',            // count of interruptions (deferred from default form)
+    'sleepAidUsed',               // 0/1, 1 = a sleep aid was used (e.g. clonazepam)
+    // Sleep Analytics — behavioral correlation factors (replace the deleted Sleep habits)
+    'factorPhoneInBed',           // 0/1
+    'factorBlueLightMinutes',     // minutes of blue-light exposure after target, >= 0
+    'factorWindDown',             // 0/1, completed a wind-down routine
+    'factorLateNightEating',      // 0/1, ate within ~3h of bed
+    'factorCaffeineAfter12',      // count of caffeinated drinks after noon, >= 0
 ] as const;
 
 export type WellbeingMetricKey = typeof WELLBEING_METRIC_KEYS[number];

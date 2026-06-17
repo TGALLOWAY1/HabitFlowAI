@@ -44,7 +44,9 @@ type MetricUiConfig = {
     kind?: 'number' | 'text';
 };
 
-const METRIC_UI: Record<WellbeingMetricKey, MetricUiConfig> = {
+// Partial: sleep-analytics metric keys (appleSleepScore, sleep*, factor*) are captured
+// via the dedicated SleepEntryForm, not as generic sliders, so they have no entry here.
+const METRIC_UI: Partial<Record<WellbeingMetricKey, MetricUiConfig>> = {
     depression: { key: 'depression', label: 'Depression (legacy)', icon: <Brain size={16} className="text-blue-400" />, colorClass: 'text-blue-400', min: 1, max: 5, step: 1, kind: 'number' },
     anxiety: { key: 'anxiety', label: 'Anxiety', icon: <Activity size={16} className="text-purple-400" />, colorClass: 'text-purple-400', min: 1, max: 5, step: 1, kind: 'number' },
     energy: { key: 'energy', label: 'Energy', icon: <Battery size={16} className="text-emerald-400" />, colorClass: 'text-emerald-400', min: 1, max: 5, step: 1, kind: 'number' },
@@ -141,7 +143,8 @@ export const DailyCheckInModal: React.FC<DailyCheckInModalProps> = ({ isOpen, on
 
     const addableMetrics = (WELLBEING_METRIC_KEYS as readonly WellbeingMetricKey[])
         .filter((k) => k !== 'notes')
-        .filter((k) => !subsetSet.has(k));
+        .filter((k) => !subsetSet.has(k))
+        .filter((k) => !!METRIC_UI[k]); // exclude sleep-form-only keys (no slider config)
 
     const handleAddMetric = async (key: WellbeingMetricKey) => {
         const next = Array.from(new Set([...extraKeys, key]));
