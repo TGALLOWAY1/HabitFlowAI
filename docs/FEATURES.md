@@ -105,6 +105,16 @@ Canonical inventory of all user-facing features. Keep this document in sync with
   - **By Category view** — Per-category mini heatmap with 7d / 14d / 30d / 90d toggle
 - **Routine Analytics** — Completion frequency, variant usage, timing stats
 - **Goal Analytics** — Completion rates, progress velocity
+- **Sleep Analytics** (Sleep tab) — Dedicated sleep dashboard answering "Am I becoming more consistent at sleeping ~10 PM–6 AM with high quality and less reliance on sleep aids?"
+  - **Apple Watch Sleep Score** — Manually-entered overall score (0-100) plus bedtime / duration / interruption sub-scores (the primary signal)
+  - **Headline metrics** — Average duration, latency, bedtime, wake time, sleep quality (0-10), each with sample size and period-over-period trend
+  - **Sleep Consistency Score** — Rewards similar bedtime AND wake clock times night-to-night (circular std-dev), independent of how long you sleep
+  - **Sleep Independence** — Sleep-aid-free nights, current/longest aid-free streak, percent aid-free, and trend
+  - **Trend charts** — Bedtime & wake vs target reference lines (10 PM / 6 AM), and duration vs target
+  - **Correlation engine** — Ranks tracked behaviors (phone in bed, blue light, wind-down, late eating, caffeine, plus any habit) by their measured effect on sleep outcomes, framed as correlation (Cohen's d, sample-size guards), never causation
+  - **Weekly summary & achievements** — Per-week duration/latency/on-target/aid-free/energy rollups and milestone cards
+  - **Configurable targets** — User-set target bedtime / wake / duration (default 10 PM / 6 AM / 8h)
+  - Data captured via a dedicated **Sleep entry form** on the Daily Check-in (morning), stored as wellbeing entries
 
 ## AI Features (Gemini BYOK)
 

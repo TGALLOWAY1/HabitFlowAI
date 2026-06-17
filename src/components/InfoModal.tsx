@@ -362,6 +362,31 @@ export function InfoModal({ isOpen, onClose }: InfoModalProps) {
 
               <div className="border-b border-white/5" />
 
+              {/* Sleep Analytics */}
+              <div className="pl-3 border-l-2 border-emerald-500/40">
+                <p className="text-sm text-neutral-200">
+                  <span className="font-bold text-emerald-400">Sleep Analytics</span>
+                </p>
+                <p className="text-sm text-neutral-300 mt-1">A dedicated Sleep tab in Analytics built around your Apple Watch Sleep Score (overall plus bedtime, duration, and interruption sub-scores). Use the "Log Sleep" button on the morning check-in to record your score, bedtime/wake times, duration, quality, and last-night habits.</p>
+                <ul className="mt-1.5 space-y-1.5">
+                  <li className="text-xs text-neutral-400 pl-2 flex items-start gap-1.5">
+                    <Activity size={13} className="text-emerald-400 mt-0.5 shrink-0" />
+                    <span><span className="font-semibold text-emerald-400">Consistency Score</span> — rewards similar bedtime and wake times night-to-night, independent of how long you sleep.</span>
+                  </li>
+                  <li className="text-xs text-neutral-400 pl-2 flex items-start gap-1.5">
+                    <Activity size={13} className="text-emerald-400 mt-0.5 shrink-0" />
+                    <span><span className="font-semibold text-emerald-400">Independence</span> — tracks sleep-aid-free nights and streaks to help reduce reliance on sleep aids.</span>
+                  </li>
+                  <li className="text-xs text-neutral-400 pl-2 flex items-start gap-1.5">
+                    <Activity size={13} className="text-emerald-400 mt-0.5 shrink-0" />
+                    <span><span className="font-semibold text-emerald-400">Correlations</span> — surfaces which behaviors (phone in bed, blue light, caffeine, wind-down, late eating, and more) line up with better or worse sleep, always framed as correlation, not proof.</span>
+                  </li>
+                </ul>
+                <p className="text-xs text-neutral-500 mt-2">Set your own target bedtime, wake time, and duration (default 10 PM / 6 AM / 8h) from the Log Sleep form.</p>
+              </div>
+
+              <div className="border-b border-white/5" />
+
               {/* Goal Types */}
               <div className="pl-3 border-l-2 border-emerald-500/40">
                 <p className="text-sm text-neutral-200">
