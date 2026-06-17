@@ -46,6 +46,7 @@ HabitFlow App
 │   │   ├── Pinned Routines (→ Routine Runner)
 │   │   ├── Tasks Card (→ Tasks Page)
 │   │   ├── Journal Card (→ Journal Page)
+│   │   ├── Weekly AI Review (structured: Summary / Wins / Struggles / Patterns / Recommendations / Data Limitations; this-week / last-week)
 │   │   ├── Weekly Summary
 │   │   └── Heatmap (30d / 90d / year)
 │   │

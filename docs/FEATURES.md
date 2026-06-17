@@ -120,6 +120,7 @@ Canonical inventory of all user-facing features. Keep this document in sync with
 
 - **API Key Management** — Store Gemini API key in localStorage (never persisted server-side); configure via Settings
 - **AI Weekly Summary** — General recap of habits and journal entries from the past week (Dashboard)
+- **Weekly AI Review** — Structured, grounded review of a selected week (this week / last week) on the Dashboard. Aggregates habit entries, sleep & mood from wellbeing check-ins, journal activity, and goals into observed facts, then returns a typed review: Summary, Wins, Struggles, Patterns (each with a low/medium/high confidence), Recommendations, and Data Limitations. The prompt separates observed facts from inferred patterns from suggestions and forbids inventing data; low-data weeks are reported honestly via Data Limitations rather than fabricated patterns
 - **AI Journal Summary** — Auto-generated weekly journal summary shown as a dismissible banner; persisted as a journal entry in history
 - **AI Variant Suggestions** — Generate routine variants based on routine title and steps
 - **Persona-Driven Journaling** — Template personas guide journaling prompts
@@ -139,6 +140,7 @@ Canonical inventory of all user-facing features. Keep this document in sync with
 - **Daily Check-In Card** — Quick access to morning/evening wellbeing check-in
 - **Goals at a Glance** — Pinned goals with progress bars (configurable which goals to pin)
 - **Pinned Routines Card** — Quick-start buttons for favorite routines
+- **Weekly AI Review Card** — Generate a structured, grounded review (Summary, Wins, Struggles, Patterns with confidence, Recommendations, Data Limitations) for this week or last week
 - **AI Weekly Summary Card** — Generate AI recap of the week
 - **Journal Card** — Recent entries and shortcuts to Free Write / Templates / History
 - **Tasks Card** — Today's task completion status

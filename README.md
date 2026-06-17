@@ -23,6 +23,7 @@ HabitFlowAI lets you:
 - Log **wellbeing** check-ins (anxiety, mood, energy, stress) and view them as heatmaps or weekly summaries.
 - Sync selected **Apple Health** metrics to auto-log habits based on rules (beta).
 - Get **AI weekly recaps** via your own Gemini API key (BYOK, stored client-side only).
+- Generate a **Weekly AI Review** — a grounded, structured review (Summary / Wins / Struggles / Patterns with confidence / Recommendations / Data Limitations) built from your real habit, sleep, mood, journal, and goal data.
 
 Full feature inventory: [`docs/FEATURES.md`](docs/FEATURES.md).
 
@@ -33,6 +34,42 @@ Full feature inventory: [`docs/FEATURES.md`](docs/FEATURES.md).
 - **Identity-scoped multi-tenant from day one:** Every API request carries `X-Household-Id` and `X-User-Id` headers; all repositories filter by userId. Production refuses unauthenticated requests.
 - **CI-enforced beta gate:** A narrower lint + test suite runs against `src/server`, `src/shared`, and `src/domain` to keep the canonical layers clean without blocking the fast-moving UI code.
 - **Tests never touch a real DB:** The default Vitest config uses `mongodb-memory-server`; opting into a live DB requires `ALLOW_LIVE_DB_TESTS=true` **and** a DB name containing `_test`.
+
+## Weekly AI Review (applied AI feature)
+
+The **Weekly AI Review** turns a week of structured habit, sleep, mood, journal, and goal
+data into grounded weekly feedback. The system deliberately separates **observed facts**,
+**inferred patterns**, and **recommendations** so the model produces useful coaching without
+hallucinating advice.
+
+**Data / AI flow:**
+
+```
+Dashboard card (this week / last week)
+   → POST /api/ai/weekly-review  (Gemini BYOK)
+      → collect one week, scoped by (householdId, userId):
+          habitEntries · wellbeingEntries (sleep & mood) · journalEntries · goals
+      → aggregate into compact OBSERVED FACTS
+          per-habit days-logged vs. cadence · per-day breakdown (habits/sleep/mood/journaled)
+          weekly wellbeing averages · journal consistency · active goals
+      → Gemini 2.5 Flash with a JSON responseSchema + grounding rules
+      → validate & normalize → typed WeeklyAIReview
+   → render: Summary · Wins · Struggles · Patterns (confidence) · Recommendations · Data Limitations
+```
+
+**Grounding guarantees:**
+- Only facts derived from the database are sent to the model — no raw collections, no free-form dumps.
+- The prompt forbids inventing data and requires every win/struggle to cite specific numbers.
+- The server (not the model) owns the week boundaries; a response schema enforces a stable shape.
+- Thin weeks surface honest **Data Limitations** instead of low-evidence patterns; pattern
+  confidence (`low`/`medium`/`high`) is tied to how much supporting data exists.
+
+**Implementation notes:**
+- Server route: [`src/server/routes/aiWeeklyReview.ts`](src/server/routes/aiWeeklyReview.ts);
+  shared contract: [`src/shared/weeklyAiReview.ts`](src/shared/weeklyAiReview.ts).
+- Client + UI: `fetchWeeklyAIReview` in [`src/lib/geminiClient.ts`](src/lib/geminiClient.ts) and
+  [`src/components/dashboard/WeeklyAIReviewCard.tsx`](src/components/dashboard/WeeklyAIReviewCard.tsx).
+- BYOK Gemini, consistent with the existing AI routes — no server-side API key and no new dependencies.
 
 ## Architecture overview
 

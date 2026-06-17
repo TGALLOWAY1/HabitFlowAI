@@ -9,6 +9,7 @@ import { API_BASE_URL } from './persistenceConfig';
 import { getIdentityHeaders } from './persistenceClient';
 import { fetchEntries } from '../api/journal';
 import type { JournalEntry } from '../models/persistenceTypes';
+import type { WeeklyAIReviewResponse } from '../shared/weeklyAiReview';
 
 const GEMINI_KEY_STORAGE = 'habitflow_gemini_api_key';
 
@@ -82,6 +83,41 @@ export async function fetchLatestJournalSummaryEntry(): Promise<JournalEntry | n
   const startDate = sevenDaysAgo.toISOString().slice(0, 10);
   const entries = await fetchEntries({ startDate });
   return entries.find(e => e.templateId === 'ai-weekly-summary') ?? null;
+}
+
+/**
+ * Generate a structured, grounded Weekly AI Review.
+ *
+ * @param weekStart Any day within the desired week (YYYY-MM-DD). Omit for the current week.
+ */
+export async function fetchWeeklyAIReview(weekStart?: string): Promise<WeeklyAIReviewResponse> {
+  const geminiApiKey = getGeminiApiKey();
+  if (!geminiApiKey) {
+    throw new Error('No Gemini API key configured. Add your key in Settings.');
+  }
+
+  const timeZone =
+    typeof Intl !== 'undefined' ? Intl.DateTimeFormat().resolvedOptions().timeZone : undefined;
+
+  const url = `${API_BASE_URL}/ai/weekly-review`;
+  const response = await fetch(url, {
+    method: 'POST',
+    credentials: 'include',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getIdentityHeaders(),
+    },
+    body: JSON.stringify({ geminiApiKey, weekStart, timeZone }),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(
+      errorData?.error?.message || `Failed to generate weekly review (${response.status})`,
+    );
+  }
+
+  return response.json();
 }
 
 export async function fetchWeeklySummary(): Promise<WeeklySummaryResponse> {

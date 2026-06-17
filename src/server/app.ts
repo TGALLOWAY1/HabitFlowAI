@@ -66,6 +66,7 @@ import healthSuggestionRoutes from './routes/healthSuggestions';
 import { requireHealthFeature } from './middleware/requireHealthFeature';
 import { deleteUserData } from './routes/userData';
 import { postWeeklySummary } from './routes/aiSummary';
+import { postWeeklyReview } from './routes/aiWeeklyReview';
 import { postSuggestVariants } from './routes/aiVariantSuggestion';
 import { postJournalSummary } from './routes/aiJournalSummary';
 import {
@@ -231,6 +232,7 @@ export function createApp(): Express {
   app.get('/api/dayView', getDayView);
   app.use('/api/evidence', habitPotentialEvidenceRoutes);
   app.post('/api/ai/weekly-summary', postWeeklySummary);
+  app.post('/api/ai/weekly-review', postWeeklyReview);
   app.post('/api/ai/suggest-variants', postSuggestVariants);
   app.post('/api/ai/journal-summary', postJournalSummary);
   app.get('/api/analytics/habits/all', getAllHabitAnalytics);
