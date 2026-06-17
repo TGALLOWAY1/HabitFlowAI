@@ -1,6 +1,33 @@
 # HabitFlowAI Feature List
 
-Canonical inventory of all user-facing features. Keep this document in sync with the codebase — update it whenever a feature is added, removed, or significantly changed.
+**This is the single source of truth for product functionality.** Canonical inventory of all
+user-facing features — keep it in sync with the codebase, updating it whenever a feature is added,
+removed, or significantly changed. Future/unshipped work belongs in [`../ROADMAP.md`](../ROADMAP.md),
+not here.
+
+**Status legend:** **Shipped** (in production) · **Beta** (gated / limited rollout) ·
+**Partial** (incomplete) · **In Progress** · **Needs Verification** (status unconfirmed).
+Every feature area below is **Shipped** unless an item notes otherwise.
+
+## Status summary
+
+| Area | Status | Notes |
+|---|---|---|
+| Habits | Shipped | Tracking, scheduling, categories, bundles, linking, streaks, archiving |
+| Routines | Shipped | Variants, timers, images, runner, AI variant suggestions, auto-logging |
+| Goals & Tracks | Shipped | Cumulative/one-time, milestones, trends, achievements, ordered tracks |
+| Tasks | Shipped | Today/Inbox lists; slated to move out of primary nav (see roadmap) |
+| Journal | Shipped | Free-write + 11 persona templates, upsert-by-day, AI summary banner |
+| Wellbeing | Shipped | Morning/evening check-ins, heatmap/weekly/small-multiples views |
+| Analytics | Shipped | Consistency, category breakdown, heatmaps, routine/goal/sleep analytics |
+| Sleep Analytics | Shipped | Dedicated Sleep tab; Apple Watch sleep score, consistency, correlations |
+| AI Features (Gemini BYOK) | Shipped | Weekly Review, Journal Review, summaries, variant suggestions |
+| Apple Health Integration | Beta | Email-allowlisted users only; requires external sync bridge |
+| Dashboard | Shipped | Daily ring, pinned goals/routines, AI cards, tasks, setup guide |
+| Views | Shipped | Tracker grid, Day view, weekly Schedule view |
+| Settings & Account | Shipped | API key, archived habits, delete-all-data |
+
+> Engineering detail for the AI features lives in [`ai-features.md`](ai-features.md).
 
 ---
 
