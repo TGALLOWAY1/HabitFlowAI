@@ -327,6 +327,10 @@ export interface SleepIndependence {
   sampleSize: number;
 }
 
+export async function fetchSleepSummary(days = 30): Promise<SleepAnalyticsSummary> {
+  return analyticsRequest(`/analytics/sleep/summary${buildParams(days)}`);
+}
+
 export interface SleepAnalyticsSummary {
   // headline cards
   avgDurationMinutes: SleepStat;
