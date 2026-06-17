@@ -171,6 +171,7 @@ Prioritized upcoming work lives in [`ROADMAP.md`](ROADMAP.md) (near-term, later,
 
 - [`docs/FEATURES.md`](docs/FEATURES.md) — canonical feature inventory with status
 - [`ROADMAP.md`](ROADMAP.md) — prioritized upcoming work
+- [`CHANGELOG.md`](CHANGELOG.md) — core milestones over time
 - [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — system design, identity, DayKey, truth ownership
 - [`docs/DATA_MODEL.md`](docs/DATA_MODEL.md) — collections and ownership boundaries
 - [`docs/ai-features.md`](docs/ai-features.md) — applied-AI design and data flow

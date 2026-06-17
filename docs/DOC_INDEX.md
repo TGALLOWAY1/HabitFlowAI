@@ -27,6 +27,8 @@ of content in exactly one home.
 
 - `README.md` — product overview, setup, scripts, tech stack (root).
 - `ROADMAP.md` — prioritized upcoming work, near-term to backlog (root).
+- `CHANGELOG.md` — core milestones over time (root).
+- `tasks/todo.md` — active, prioritized task list (manual vs. agent).
 - `docs/V1_PRODUCT_DIRECTION.md` — current v1 product direction (personal-use-first, practical).
 - `docs/DOMAIN_CANON.md` — minimal invariants and canonical references.
 - `docs/ARCHITECTURE.md` — system architecture, identity, dayKey policy, HabitEntries-only truth (post–M6).
