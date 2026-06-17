@@ -426,6 +426,10 @@ export function InfoModal({ isOpen, onClose }: InfoModalProps) {
                 <p className="text-sm text-neutral-300 mt-1">AI-powered tools to enhance your experience (uses your own API key):</p>
                 <ul className="mt-2 space-y-2">
                   <li className="text-xs text-neutral-400 pl-2">
+                    <span className="font-semibold text-neutral-300">Weekly AI Review</span>
+                    <p className="mt-0.5">A grounded, structured review of your week (this week or last week) on the Dashboard. It reads your real habit, sleep, mood, journal, and goal data and returns a Summary, Wins, Struggles, Patterns (each with a confidence level), Recommendations, and Data Limitations. It only uses your actual data and keeps facts, patterns, and suggestions separate — if a week is thin on data, it says so instead of inventing patterns.</p>
+                  </li>
+                  <li className="text-xs text-neutral-400 pl-2">
                     <span className="font-semibold text-neutral-300">Variant Suggestions</span>
                     <p className="mt-0.5">AI analyzes your routine and suggests Quick/Standard/Deep variants with full step lists.</p>
                   </li>
