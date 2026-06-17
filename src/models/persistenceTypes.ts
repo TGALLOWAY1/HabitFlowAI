@@ -683,6 +683,17 @@ export interface DashboardPrefs {
     /** When true, streak/flame indicators are hidden across the UI */
     hideStreaks?: boolean;
 
+    /**
+     * User's sleep schedule targets for Sleep Analytics.
+     * Clock times encoded as minutes-after-noon (see Sleep data contract).
+     * Defaults (10 PM / 6 AM / 8h) are applied server-side when unset.
+     */
+    sleepTargets?: {
+        bedtimeMinutes: number;
+        wakeMinutes: number;
+        durationMinutes: number;
+    };
+
     /** ISO 8601 timestamp */
     updatedAt: string;
 }

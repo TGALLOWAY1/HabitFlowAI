@@ -28,6 +28,7 @@ import {
 } from '../services/analyticsService';
 import { computeSleepAnalytics, DEFAULT_SLEEP_TARGETS } from '../services/sleepAnalyticsService';
 import { getWellbeingEntries } from '../repositories/wellbeingEntryRepository';
+import { getDashboardPrefs } from '../repositories/dashboardPrefsRepository';
 import { analyticsCache } from '../lib/cacheInstances';
 
 function parseDays(query: unknown, defaultDays = 90): number {
@@ -251,11 +252,12 @@ export async function getSleepAnalyticsSummary(req: Request, res: Response): Pro
     // Wellbeing entries span two windows (current + previous) for trend deltas.
     const wellbeingStart = startDayKeyForRange(referenceDayKey, days * 2);
     const habitStart = startDayKeyForRange(referenceDayKey, days);
-    const [wellbeingEntries, habits, habitEntries, categories] = await Promise.all([
+    const [wellbeingEntries, habits, habitEntries, categories, prefs] = await Promise.all([
       getWellbeingEntries({ userId, startDayKey: wellbeingStart, endDayKey: referenceDayKey }),
       getHabitsByUser(householdId, userId),
       getHabitEntriesByUserInRange(householdId, userId, habitStart, referenceDayKey),
       getCategoriesByUser(householdId, userId),
+      getDashboardPrefs(householdId, userId),
     ]);
 
     const result = computeSleepAnalytics(
@@ -266,7 +268,7 @@ export async function getSleepAnalyticsSummary(req: Request, res: Response): Pro
       referenceDayKey,
       days,
       timeZone,
-      DEFAULT_SLEEP_TARGETS,
+      prefs.sleepTargets ?? DEFAULT_SLEEP_TARGETS,
     );
 
     analyticsCache.set(cacheKey, result);
