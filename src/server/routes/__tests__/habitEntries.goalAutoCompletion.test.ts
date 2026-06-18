@@ -18,6 +18,7 @@ import {
     createHabitEntryRoute,
     upsertHabitEntryRoute,
     batchCreateEntriesRoute,
+    deleteHabitEntriesForDayRoute,
 } from '../habitEntries';
 import { requestContextMiddleware } from '../../middleware/requestContext';
 
@@ -48,6 +49,7 @@ describe('Goal auto-completion on entry mutation', () => {
         app.post('/api/entries', createHabitEntryRoute);
         app.put('/api/entries', upsertHabitEntryRoute);
         app.post('/api/entries/batch', batchCreateEntriesRoute);
+        app.delete('/api/entries', deleteHabitEntriesForDayRoute);
     });
 
     afterAll(async () => {
@@ -159,5 +161,71 @@ describe('Goal auto-completion on entry mutation', () => {
         });
         expect(res.status).toBe(200);
         expect(res.body.completedGoalIds).toEqual([goalId]);
+    });
+
+    // ---------------------------------------------------------------------
+    // Source-of-truth reconciliation (Bug #1): a stale `completedAt` must not
+    // survive a correction that drops derived progress back below the target.
+    // ---------------------------------------------------------------------
+
+    it('reopens a completed goal when a later edit drops progress below the target', async () => {
+        const day = todayKey();
+
+        // Over-log to 12 (target 10) — goal auto-completes.
+        const complete = await request(app).put('/api/entries').send({
+            habitId, dateKey: day, value: 12, source: 'manual', timeZone: 'UTC',
+        });
+        expect(complete.body.completedGoalIds).toEqual([goalId]);
+        expect((await getGoalById(goalId, TEST_HOUSEHOLD, TEST_USER))?.completedAt).toBeTruthy();
+
+        // Correct the same entry down to 4 — now 4/10 = 40%, below target.
+        const corrected = await request(app).put('/api/entries').send({
+            habitId, dateKey: day, value: 4, source: 'manual', timeZone: 'UTC',
+        });
+        expect(corrected.status).toBe(200);
+        // Nothing is newly completed by this call.
+        expect(corrected.body.completedGoalIds).toEqual([]);
+
+        // The stale completion is cleared — the goal is active again.
+        const goal = await getGoalById(goalId, TEST_HOUSEHOLD, TEST_USER);
+        expect(goal?.completedAt == null).toBe(true);
+    });
+
+    it('reopens a completed goal when entries are deleted below the target', async () => {
+        const day = todayKey();
+
+        const complete = await request(app).post('/api/entries').send({
+            habitId, dayKey: day, value: 10, source: 'manual', timeZone: 'UTC',
+        });
+        expect(complete.body.completedGoalIds).toEqual([goalId]);
+        expect((await getGoalById(goalId, TEST_HOUSEHOLD, TEST_USER))?.completedAt).toBeTruthy();
+
+        // Delete the day's entries entirely — progress drops to 0.
+        const del = await request(app)
+            .delete('/api/entries')
+            .query({ habitId, date: day });
+        expect(del.status).toBe(200);
+
+        const goal = await getGoalById(goalId, TEST_HOUSEHOLD, TEST_USER);
+        expect(goal?.completedAt == null).toBe(true);
+    });
+
+    it('keeps the goal completed when a correction still meets the target', async () => {
+        const day = todayKey();
+
+        const complete = await request(app).put('/api/entries').send({
+            habitId, dateKey: day, value: 15, source: 'manual', timeZone: 'UTC',
+        });
+        expect(complete.body.completedGoalIds).toEqual([goalId]);
+        const completedAt = (await getGoalById(goalId, TEST_HOUSEHOLD, TEST_USER))?.completedAt;
+        expect(completedAt).toBeTruthy();
+
+        // Lower to 11 — still >= target 10, so completion is preserved unchanged.
+        await request(app).put('/api/entries').send({
+            habitId, dateKey: day, value: 11, source: 'manual', timeZone: 'UTC',
+        });
+
+        const goal = await getGoalById(goalId, TEST_HOUSEHOLD, TEST_USER);
+        expect(goal?.completedAt).toBe(completedAt);
     });
 });

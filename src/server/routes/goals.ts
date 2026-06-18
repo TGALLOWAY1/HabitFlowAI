@@ -213,6 +213,43 @@ function validateAndNormalizeMilestones(
   return { error: null, milestones: normalized };
 }
 
+/**
+ * Build the carry-forward milestones for a goal that extends `sourceGoal`.
+ *
+ * Extending 50 -> 100 must preserve the progression so the achievements UI can
+ * render "50 done / 100 in progress" instead of a bare 60% bar with no history.
+ * The prior target (50) becomes a milestone on the new goal, and any milestones
+ * the source goal already carried are accumulated too — so 50 -> 100 -> 150
+ * yields milestones [50, 100] on the 150 goal.
+ *
+ * Carry-forward milestones are pre-acknowledged (acknowledgedAt set): they
+ * represent checkpoints the user already reached and celebrated, so the new goal
+ * should show them as completed nodes without re-popping a celebration modal the
+ * instant it is created.
+ *
+ * Every emitted value is strictly less than `nextTargetValue` (prior target and
+ * prior milestones are all below the raised target), so the result already
+ * satisfies the milestone invariants enforced on write.
+ */
+export function buildCarryForwardMilestones(sourceGoal: Goal, nextTargetValue: number): GoalMilestone[] {
+  if (sourceGoal.type !== 'cumulative') return [];
+  if (typeof nextTargetValue !== 'number' || !(nextTargetValue > 0)) return [];
+
+  const priorTarget = typeof sourceGoal.targetValue === 'number' ? sourceGoal.targetValue : undefined;
+  const candidateValues = [
+    ...(sourceGoal.milestones ?? []).map((m) => m.value),
+    ...(priorTarget !== undefined ? [priorTarget] : []),
+  ];
+
+  const acknowledgedAt = new Date().toISOString();
+  const uniqueAscending = Array.from(new Set(candidateValues))
+    .filter((v) => typeof v === 'number' && Number.isFinite(v) && v > 0 && v < nextTargetValue)
+    .sort((a, b) => a - b)
+    .slice(0, MAX_MILESTONES);
+
+  return uniqueAscending.map((value) => ({ id: randomUUID(), value, acknowledgedAt }));
+}
+
 function buildIteratedGoalData(goal: Goal, currentValue: number | null): Omit<Goal, 'id' | 'createdAt'> {
   const baseTargetValue = (typeof goal.targetValue === 'number' && goal.targetValue > 0)
     ? goal.targetValue
@@ -232,10 +269,15 @@ function buildIteratedGoalData(goal: Goal, currentValue: number | null): Omit<Go
     ? goal.countMode
     : undefined;
 
+  const resolvedTargetValue = goal.type === 'onetime' ? goal.targetValue : nextTargetValue;
+  const milestones = (typeof resolvedTargetValue === 'number')
+    ? buildCarryForwardMilestones(goal, resolvedTargetValue)
+    : [];
+
   return {
     title: goal.title,
     type: goal.type,
-    targetValue: goal.type === 'onetime' ? goal.targetValue : nextTargetValue,
+    targetValue: resolvedTargetValue,
     unit: goal.unit,
     linkedHabitIds: goal.linkedHabitIds,
     aggregationMode,
@@ -248,6 +290,7 @@ function buildIteratedGoalData(goal: Goal, currentValue: number | null): Omit<Go
     categoryId: goal.categoryId,
     sortOrder: goal.sortOrder,
     iteratedFromGoalId: goal.id,
+    ...(milestones.length > 0 ? { milestones } : {}),
   };
 }
 
@@ -488,8 +531,9 @@ export async function createGoalRoute(req: Request, res: Response): Promise<void
     // and their entries remain historical contributions to progress. Validate
     // only the IDs that aren't already on the source goal, mirroring updateGoalRoute.
     let habitIdsToValidate: string[] = req.body.linkedHabitIds;
+    let sourceGoal: Goal | null = null;
     if (req.body.iteratedFromGoalId) {
-      const sourceGoal = await getGoalById(req.body.iteratedFromGoalId, householdId, userId);
+      sourceGoal = await getGoalById(req.body.iteratedFromGoalId, householdId, userId);
       const inheritedIds = new Set(sourceGoal?.linkedHabitIds ?? []);
       habitIdsToValidate = req.body.linkedHabitIds.filter((hid: string) => !inheritedIds.has(hid));
     }
@@ -521,6 +565,13 @@ export async function createGoalRoute(req: Request, res: Response): Promise<void
       // Drop any client-supplied acknowledgedAt on create — the goal hasn't
       // existed yet, so no celebration could have been dismissed.
       normalizedMilestones = (result.milestones ?? []).map(({ id, value }) => ({ id, value }));
+    } else if (sourceGoal && req.body.type === 'cumulative' && typeof req.body.targetValue === 'number') {
+      // Extension via the frontend create path (POST with iteratedFromGoalId and
+      // no explicit milestones): carry the prior target(s) forward as
+      // pre-acknowledged milestones so the extended goal shows its progression
+      // (e.g. 50 done / 100 in progress). Mirrors the backend iterate path.
+      const carried = buildCarryForwardMilestones(sourceGoal, req.body.targetValue);
+      if (carried.length > 0) normalizedMilestones = carried;
     }
 
     // Set default aggregationMode and countMode if not provided

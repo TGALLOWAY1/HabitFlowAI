@@ -255,6 +255,10 @@ export async function deleteHabitEntryRoute(req: Request, res: Response): Promis
 
         const updatedDayLog = await recomputeDayLogForHabit(habitId, dayKey, householdId, userId);
 
+        // Reconcile linked-goal completion: a deletion can drop a cumulative
+        // goal back below its target, which must reopen it (entries are truth).
+        await checkAndCompleteLinkedGoals([habitId], householdId, userId, resolveTimeZone(undefined));
+
         invalidateUserCaches(userId);
         res.json({
             success: true,
@@ -420,6 +424,10 @@ export async function deleteHabitEntriesForDayRoute(req: Request, res: Response)
         await deleteHabitEntriesForDay(habitId, dayKey, householdId, userId);
 
         const updatedDayLog = await recomputeDayLogForHabit(habitId, dayKey, householdId, userId);
+
+        // Reconcile linked-goal completion: clearing a day can drop a cumulative
+        // goal back below its target, which must reopen it (entries are truth).
+        await checkAndCompleteLinkedGoals([habitId], householdId, userId, resolveTimeZone(undefined));
 
         invalidateUserCaches(userId);
         res.json({
@@ -606,6 +614,10 @@ export async function deleteHabitEntryByKeyRoute(req: Request, res: Response): P
 
         // 2. Recompute dayLog after deletion
         const updatedDayLog = await recomputeDayLogForHabit(habitId, dateKey, householdId, userId);
+
+        // Reconcile linked-goal completion: a deletion can drop a cumulative
+        // goal back below its target, which must reopen it (entries are truth).
+        await checkAndCompleteLinkedGoals([habitId], householdId, userId, resolveTimeZone(undefined));
 
         invalidateUserCaches(userId);
         res.json({
