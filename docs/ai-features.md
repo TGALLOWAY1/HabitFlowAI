@@ -108,5 +108,11 @@ and a polished, mobile-friendly UI — generated on demand, with no extra depend
 
 - **AI Journal Summary** — auto-generated weekly journal summary shown as a dismissible banner and
   persisted as a journal entry in history.
+- **AI Report History** — generated Weekly Reviews and Journal Summaries are archived to the
+  `aiReports` collection (per-user, soft-deleted). The Dashboard cards expose a wand icon to
+  generate and a clock icon to browse, reopen, or delete past reports. Routes:
+  `GET /api/ai/reports`, `GET /api/ai/reports/:id`, `DELETE /api/ai/reports/:id`
+  ([`src/server/routes/aiReports.ts`](../src/server/routes/aiReports.ts),
+  [`src/server/repositories/aiReportRepository.ts`](../src/server/repositories/aiReportRepository.ts)).
 - **AI Variant Suggestions** — generate routine variants from a routine's title and existing steps.
 - **Persona-Driven Journaling** — template personas guide journaling prompts and tone.
