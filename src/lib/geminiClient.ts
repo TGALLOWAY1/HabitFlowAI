@@ -2,7 +2,7 @@
  * Gemini BYOK Client
  *
  * Manages the user's Gemini API key (stored only in localStorage)
- * and provides a client function to fetch the weekly AI summary.
+ * and provides client functions to fetch the AI reviews and summaries.
  */
 
 import { API_BASE_URL } from './persistenceConfig';
@@ -31,13 +31,6 @@ export function setGeminiApiKey(key: string): void {
 
 export function hasGeminiApiKey(): boolean {
   return getGeminiApiKey().length > 0;
-}
-
-export interface WeeklySummaryResponse {
-  summary: string;
-  period: { start: string; end: string };
-  habitDaysTracked: number;
-  journalEntriesCount: number;
 }
 
 export interface JournalSummaryResponse {
@@ -151,33 +144,6 @@ export async function fetchJournalReview(
     const errorData = await response.json().catch(() => ({}));
     throw new Error(
       errorData?.error?.message || `Failed to generate journal review (${response.status})`,
-    );
-  }
-
-  return response.json();
-}
-
-export async function fetchWeeklySummary(): Promise<WeeklySummaryResponse> {
-  const geminiApiKey = getGeminiApiKey();
-  if (!geminiApiKey) {
-    throw new Error('No Gemini API key configured. Add your key in Settings.');
-  }
-
-  const url = `${API_BASE_URL}/ai/weekly-summary`;
-  const response = await fetch(url, {
-    method: 'POST',
-    credentials: 'include',
-    headers: {
-      'Content-Type': 'application/json',
-      ...getIdentityHeaders(),
-    },
-    body: JSON.stringify({ geminiApiKey }),
-  });
-
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    throw new Error(
-      errorData?.error?.message || `Failed to generate summary (${response.status})`,
     );
   }
 
