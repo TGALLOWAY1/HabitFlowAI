@@ -410,6 +410,12 @@ export function InfoModal({ isOpen, onClose }: InfoModalProps) {
                   <span className="font-semibold text-emerald-400">Goal Tracks</span> — Create ordered sequences of goals within a category (e.g., Exam 1 → Exam 2 → Exam 3). Only one goal per track is active at a time. When you complete the active goal, the next one unlocks automatically. Progress for each goal only counts from when it became active, so shared habits won't leak progress forward.
                 </p>
                 <p className="text-xs text-neutral-500 mt-2">
+                  <span className="font-semibold text-emerald-400">Extending a goal</span> — When you finish a cumulative goal you can extend it to a higher target (e.g. 50 → 100). The new goal keeps your past targets as completed milestones, so the Achievements gallery shows your full progression (50 done, 100 in progress) instead of starting over.
+                </p>
+                <p className="text-xs text-neutral-500 mt-2">
+                  <span className="font-semibold text-emerald-400">Completion follows your entries</span> — A goal is only "complete" while your logged entries actually meet its target. If you correct a mistaken entry (say 105 down to 15) so you no longer hit the target, the goal automatically reopens and leaves the Achievements gallery. Completion is always derived from your real data, never a flag left behind.
+                </p>
+                <p className="text-xs text-neutral-500 mt-2">
                   <span className="font-semibold text-emerald-400">Removed habits still contributing</span> — If you delete a habit that was linked to a goal, its historical entries still count toward that goal's total. The goal detail page lists those removed habits under a "Removed habits still contributing" section so you can see exactly where the progress came from.
                 </p>
               </div>

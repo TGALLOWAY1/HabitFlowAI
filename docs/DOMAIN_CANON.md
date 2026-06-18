@@ -26,6 +26,7 @@ It does not replace the canonical references.
 4. Derived metrics are recomputable.
 - Streaks, momentum, percentages, and charts are read-model outputs.
 - Goal milestone *completion* is derived in `computeMilestoneStates` (`src/server/utils/goalProgressUtilsV2.ts`). Only milestone configuration (id, value) and `acknowledgedAt` are stored on `Goal.milestones`.
+- A cumulative goal's stored `completedAt` is a cache of derived truth, not an override of it. Every entry mutation reconciles it in both directions via `checkAndCompleteLinkedGoals` (`src/server/services/goalAutoCompletion.ts`): it is set when entry-derived progress reaches the target and **cleared** when a later edit/delete drops progress back below the target. A corrected over-log (e.g. 105 → 15) therefore reopens the goal; a stale "completed" flag must never survive a correction. (One-time goals complete manually and tracked goals are exempt from reopening — their completion is bound to the track state machine.)
 
 ## Bundle Identity Model
 
