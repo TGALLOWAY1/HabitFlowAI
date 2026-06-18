@@ -132,7 +132,7 @@ ${journalLines.join('\n\n')}
 Please write the weekly journal summary now.`;
 
     // Call Gemini API
-    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${encodeURIComponent(geminiApiKey.trim())}`;
+    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(geminiApiKey.trim())}`;
 
     const geminiResponse = await fetch(geminiUrl, {
       method: 'POST',
@@ -142,7 +142,7 @@ Please write the weekly journal summary now.`;
         generationConfig: {
           temperature: 0.7,
           maxOutputTokens: 2048,
-          thinkingConfig: { thinkingLevel: 'low' },
+          thinkingConfig: { thinkingBudget: 0 },
         },
       }),
     });
