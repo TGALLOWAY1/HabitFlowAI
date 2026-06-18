@@ -8,7 +8,7 @@
 
 import type { Request, Response } from 'express';
 import type { RoutineVariant, RoutineStep } from '../../models/persistenceTypes';
-import { buildGeminiUrl, GEMINI_THINKING_CONFIG, extractGeminiText } from '../lib/gemini';
+import { GEMINI_MODEL, buildGeminiUrl, GEMINI_THINKING_CONFIG, extractGeminiText } from '../lib/gemini';
 
 interface SuggestVariantsRequest {
     routineId?: string;
@@ -113,6 +113,10 @@ Rules:
                 error: {
                     code: 'GEMINI_API_ERROR',
                     message: 'Failed to get response from Gemini. Please try again later.',
+                    details:
+                        process.env.NODE_ENV === 'development'
+                            ? `Gemini upstream status ${geminiResponse.status} (model ${GEMINI_MODEL})`
+                            : undefined,
                 },
             });
             return;

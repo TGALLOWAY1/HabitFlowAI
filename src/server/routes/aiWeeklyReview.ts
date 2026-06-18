@@ -24,7 +24,7 @@ import { getEntriesByUser } from '../repositories/journal';
 import { getWellbeingEntries } from '../repositories/wellbeingEntryRepository';
 import { getGoalsByUser } from '../repositories/goalRepository';
 import { saveAIReport } from '../repositories/aiReportRepository';
-import { buildGeminiUrl, GEMINI_THINKING_CONFIG, extractGeminiText } from '../lib/gemini';
+import { GEMINI_MODEL, buildGeminiUrl, GEMINI_THINKING_CONFIG, extractGeminiText } from '../lib/gemini';
 import { resolveTimeZone, getNowDayKey } from '../utils/dayKey';
 import { isValidDayKey } from '../../domain/time/dayKey';
 import type {
@@ -365,6 +365,10 @@ Return the review as JSON matching the provided schema.`;
         error: {
           code: 'GEMINI_API_ERROR',
           message: 'Failed to get response from Gemini. Please try again later.',
+          details:
+            process.env.NODE_ENV === 'development'
+              ? `Gemini upstream status ${geminiResponse.status} (model ${GEMINI_MODEL})`
+              : undefined,
         },
       });
       return;

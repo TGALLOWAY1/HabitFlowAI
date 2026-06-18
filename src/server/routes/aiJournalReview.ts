@@ -28,7 +28,7 @@ import { getEntriesByUser } from '../repositories/journal';
 import { JOURNAL_TEMPLATES, FREE_WRITE_TEMPLATE } from '../../data/journalTemplates';
 import type { JournalTemplate, JournalPrompt } from '../../data/journalTemplates';
 import { isValidDayKey } from '../../domain/time/dayKey';
-import { buildGeminiUrl, GEMINI_THINKING_CONFIG, extractGeminiText } from '../lib/gemini';
+import { GEMINI_MODEL, buildGeminiUrl, GEMINI_THINKING_CONFIG, extractGeminiText } from '../lib/gemini';
 import type {
   AIJournalReview,
   EmotionalTheme,
@@ -320,6 +320,10 @@ Return the review as JSON matching the provided schema.`;
         error: {
           code: 'GEMINI_API_ERROR',
           message: 'Failed to get response from Gemini. Please try again later.',
+          details:
+            process.env.NODE_ENV === 'development'
+              ? `Gemini upstream status ${geminiResponse.status} (model ${GEMINI_MODEL})`
+              : undefined,
         },
       });
       return;

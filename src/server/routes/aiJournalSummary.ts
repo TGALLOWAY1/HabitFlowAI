@@ -11,7 +11,7 @@ import type { Request, Response } from 'express';
 import { getRequestIdentity } from '../middleware/identity';
 import { getEntriesByUser, upsertEntryByTemplateAndDate } from '../repositories/journal';
 import { saveAIReport } from '../repositories/aiReportRepository';
-import { buildGeminiUrl, GEMINI_THINKING_CONFIG, extractGeminiText } from '../lib/gemini';
+import { GEMINI_MODEL, buildGeminiUrl, GEMINI_THINKING_CONFIG, extractGeminiText } from '../lib/gemini';
 import { JOURNAL_TEMPLATES, FREE_WRITE_TEMPLATE } from '../../data/journalTemplates';
 import type { JournalTemplate, JournalPrompt } from '../../data/journalTemplates';
 
@@ -166,6 +166,10 @@ Please write the weekly journal summary now.`;
         error: {
           code: 'GEMINI_API_ERROR',
           message: 'Failed to get response from Gemini. Please try again later.',
+          details:
+            process.env.NODE_ENV === 'development'
+              ? `Gemini upstream status ${geminiResponse.status} (model ${GEMINI_MODEL})`
+              : undefined,
         },
       });
       return;
