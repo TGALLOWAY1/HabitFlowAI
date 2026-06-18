@@ -9,6 +9,15 @@ dated by when the work landed on `main`. Format loosely follows
 ## Unreleased
 
 ### Changed
+- **Gemini 3.5 Flash upgrade.** All AI routes (Weekly Review, Journal Review, Journal Summary, Variant
+  Suggestions) now call `gemini-3.5-flash` through a shared `src/server/lib/gemini.ts` helper (model id,
+  URL builder, response-text extraction). Adapted the request to the Gemini 3 API: `thinkingConfig`
+  uses `thinkingLevel: 'low'` (the legacy `thinkingBudget` is no longer sent), and the explicit
+  `temperature` overrides were removed since Gemini 3 is tuned for its default (1.0). A non-2xx Gemini
+  response now surfaces the upstream status in development-only error `details` for easier diagnosis.
+- **AI report history (persisted archive).** Generated Weekly Reviews and Journal Summaries are saved to
+  a new `aiReports` collection; Dashboard AI cards expose a wand (generate) and clock (history) icon to
+  browse, reopen, or delete past reports.
 - **Documentation standardization & repo cleanup.** README slimmed to overview + setup; `docs/FEATURES.md`
   made the canonical, status-tagged feature inventory; added `ROADMAP.md`, `docs/ai-features.md`, a
   CHANGELOG, and a Documentation Standards section in `docs/DOC_INDEX.md`. Decluttered the repo root
