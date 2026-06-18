@@ -244,16 +244,34 @@ export async function postWeeklyReview(req: Request, res: Response): Promise<voi
     // ---- Build the grounded prompt ----
     const prompt = `You are an analytical wellness coach for a habit-tracking app called HabitFlow.
 You will be given OBSERVED FACTS derived directly from one user's database for a single week.
-Produce a grounded weekly review.
+Produce a single, comprehensive weekly review that both tells the story of the week AND provides
+evidence-based analysis. Fill in every section of the schema.
+
+SECTIONS (fill each):
+1. "summary" — "Week at a Glance": a natural-language narrative that tells the story of the week
+   in 1-3 short paragraphs. Cover overall consistency, notable progress, mood/energy trends, and the
+   single most notable success. Read naturally. Do NOT include recommendations here.
+2. "facts" — ONLY objective, measurable observations directly supported by the data
+   (e.g. "Completed 24 of 28 planned habits (86%).", "Journaled on 5 of 7 days.",
+   "Average sleep score was 71."). No interpretation, no speculation, no recommendations.
+3. "patterns" — trends and relationships supported by the data. Use tentative language
+   ("appears associated with", "correlates with", "may indicate"). Never claim causation.
+4. "journalThemes" — recurring topics, emerging themes, frequently mentioned challenges, and
+   emotional tone/trends drawn ONLY from the journal snippets. Focus on recurring themes across
+   entries, not individual entries. If there are no journal entries, return an empty array.
+5. "wins" — the most meaningful accomplishments. Encouraging without exaggeration. Cite specifics.
+6. "areasForAttention" — issues, risks, or recurring challenges. Observational, non-judgmental.
+7. "recommendations" — a SMALL number of actionable suggestions (MAXIMUM 5, prefer 3-5),
+   high-impact and grounded in the observed data.
 
 STRICT GROUNDING RULES:
 - Use ONLY the observed facts below. Never invent habits, numbers, sleep data, moods, or events that are not present.
-- Clearly distinguish observed facts (what happened) from inferred patterns (relationships you noticed) from recommendations (suggestions).
+- Clearly distinguish facts (section 2) from inferred patterns (section 3) from recommendations (section 7).
 - In "patterns", set "confidence" to "low", "medium", or "high" based ONLY on how much supporting data exists. If there are few data points, use "low".
-- If a category has little or no data (e.g. no journal entries, no sleep/mood data), DO NOT fabricate patterns about it. Instead add an honest note to "dataLimitations".
-- Wins and struggles must each cite specific numbers from the facts (e.g. "logged X 5 of 7 days").
+- If a category has little or no data (e.g. no journal entries, no sleep/mood data), DO NOT fabricate content about it. Instead add an honest note to "dataLimitations" and leave that section's array short or empty.
+- Wins, facts, and areasForAttention must cite specific numbers from the data (e.g. "logged X 5 of 7 days").
 - Recommendations must be small and behaviorally realistic (e.g. "move your workout earlier on Thursdays"), never generic ("be more disciplined").
-- Keep the summary to 2-4 sentences. Provide 2-5 wins, 2-5 struggles. It is fine to provide fewer if the data does not support more.
+- Provide 2-5 facts, 2-5 wins, 2-5 areasForAttention when the data supports them; fewer is fine when it does not.
 
 OBSERVED FACTS (JSON):
 ${JSON.stringify(observedFacts, null, 2)}
@@ -262,6 +280,7 @@ Notes for interpretation:
 - "daysLogged" vs "targetDays" reflects how often each habit was completed relative to its cadence this week.
 - "dayByDay" lets you look for relationships (e.g. sleep score vs. next-day habits completed, mood vs. journaling).
 - Wellbeing values are on the user's own check-in scales; treat them as relative within this week, not absolute.
+- "journal[].snippet" holds short excerpts of what the user wrote; use these for "journalThemes" only.
 
 Return the review as JSON matching the provided schema.`;
 
@@ -269,8 +288,7 @@ Return the review as JSON matching the provided schema.`;
       type: 'object',
       properties: {
         summary: { type: 'string' },
-        wins: { type: 'array', items: { type: 'string' } },
-        struggles: { type: 'array', items: { type: 'string' } },
+        facts: { type: 'array', items: { type: 'string' } },
         patterns: {
           type: 'array',
           items: {
@@ -283,6 +301,9 @@ Return the review as JSON matching the provided schema.`;
             required: ['title', 'evidence', 'confidence'],
           },
         },
+        journalThemes: { type: 'array', items: { type: 'string' } },
+        wins: { type: 'array', items: { type: 'string' } },
+        areasForAttention: { type: 'array', items: { type: 'string' } },
         recommendations: {
           type: 'array',
           items: {
@@ -297,7 +318,16 @@ Return the review as JSON matching the provided schema.`;
         },
         dataLimitations: { type: 'array', items: { type: 'string' } },
       },
-      required: ['summary', 'wins', 'struggles', 'patterns', 'recommendations', 'dataLimitations'],
+      required: [
+        'summary',
+        'facts',
+        'patterns',
+        'journalThemes',
+        'wins',
+        'areasForAttention',
+        'recommendations',
+        'dataLimitations',
+      ],
     };
 
     // ---- Call Gemini (structured JSON output) ----
@@ -384,24 +414,29 @@ Return the review as JSON matching the provided schema.`;
           .filter((p) => p.title.length > 0)
       : [];
 
-    const recommendations: WeeklyReviewRecommendation[] = Array.isArray(parsed.recommendations)
-      ? parsed.recommendations
-          .filter((r): r is WeeklyReviewRecommendation => !!r && typeof r === 'object')
-          .map((r) => ({
-            title: String(r.title ?? ''),
-            reason: String(r.reason ?? ''),
-            suggestedAction: String(r.suggestedAction ?? ''),
-          }))
-          .filter((r) => r.title.length > 0)
-      : [];
+    // Cap recommendations at 5 per the product spec (small, high-impact set).
+    const recommendations: WeeklyReviewRecommendation[] = (
+      Array.isArray(parsed.recommendations)
+        ? parsed.recommendations
+            .filter((r): r is WeeklyReviewRecommendation => !!r && typeof r === 'object')
+            .map((r) => ({
+              title: String(r.title ?? ''),
+              reason: String(r.reason ?? ''),
+              suggestedAction: String(r.suggestedAction ?? ''),
+            }))
+            .filter((r) => r.title.length > 0)
+        : []
+    ).slice(0, 5);
 
     const review: WeeklyAIReview = {
       weekStart: startDayKey,
       weekEnd: endDayKey,
       summary: typeof parsed.summary === 'string' ? parsed.summary : '',
-      wins: strArray(parsed.wins),
-      struggles: strArray(parsed.struggles),
+      facts: strArray(parsed.facts),
       patterns,
+      journalThemes: strArray(parsed.journalThemes),
+      wins: strArray(parsed.wins),
+      areasForAttention: strArray(parsed.areasForAttention),
       recommendations,
       dataLimitations: strArray(parsed.dataLimitations),
     };
