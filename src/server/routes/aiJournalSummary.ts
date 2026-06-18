@@ -10,6 +10,7 @@
 import type { Request, Response } from 'express';
 import { getRequestIdentity } from '../middleware/identity';
 import { getEntriesByUser, upsertEntryByTemplateAndDate } from '../repositories/journal';
+import { saveAIReport } from '../repositories/aiReportRepository';
 import { JOURNAL_TEMPLATES, FREE_WRITE_TEMPLATE } from '../../data/journalTemplates';
 import type { JournalTemplate, JournalPrompt } from '../../data/journalTemplates';
 
@@ -57,7 +58,7 @@ export async function postJournalSummary(req: Request, res: Response): Promise<v
       return;
     }
 
-    const { userId } = getRequestIdentity(req);
+    const { userId, householdId } = getRequestIdentity(req);
 
     // Calculate date range: last 7 days
     const now = new Date();
@@ -185,6 +186,18 @@ Please write the weekly journal summary now.`;
       content: { summary: summaryText },
       date: endDate,
     }, userId);
+
+    // Archive the report for history (best-effort; never block the response).
+    try {
+      await saveAIReport(householdId, userId, {
+        kind: 'journal_summary',
+        periodStart: startDate,
+        periodEnd: endDate,
+        payload: { summary: summaryText, journalEntriesCount: entries.length },
+      });
+    } catch (saveErr) {
+      console.error('[AI Journal Summary] Failed to archive report:', saveErr);
+    }
 
     res.status(200).json({
       summary: summaryText,

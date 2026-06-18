@@ -23,6 +23,7 @@ import { getDb } from '../lib/mongoClient';
 import { getEntriesByUser } from '../repositories/journal';
 import { getWellbeingEntries } from '../repositories/wellbeingEntryRepository';
 import { getGoalsByUser } from '../repositories/goalRepository';
+import { saveAIReport } from '../repositories/aiReportRepository';
 import { resolveTimeZone, getNowDayKey } from '../utils/dayKey';
 import { isValidDayKey } from '../../domain/time/dayKey';
 import type {
@@ -440,6 +441,18 @@ Return the review as JSON matching the provided schema.`;
       recommendations,
       dataLimitations: strArray(parsed.dataLimitations),
     };
+
+    // Archive the report for history (best-effort; never block the response).
+    try {
+      await saveAIReport(householdId, userId, {
+        kind: 'weekly_review',
+        periodStart: startDayKey,
+        periodEnd: endDayKey,
+        payload: { review },
+      });
+    } catch (saveErr) {
+      console.error('[AI Weekly Review] Failed to archive report:', saveErr);
+    }
 
     res.status(200).json({
       review,
