@@ -1,6 +1,8 @@
 import { useState } from 'react';
-import { Sparkles, Loader2, X, ChevronDown, ChevronUp } from 'lucide-react';
+import { Sparkles, Loader2, X, ChevronDown, ChevronUp, Wand2, History } from 'lucide-react';
 import { hasGeminiApiKey, fetchJournalSummary } from '../../lib/geminiClient';
+import { JournalSummaryBody } from './JournalSummaryBody';
+import { AIReportHistoryModal } from '../dashboard/AIReportHistoryModal';
 
 interface JournalSummaryCardProps {
   compact?: boolean;
@@ -13,6 +15,7 @@ export function JournalSummaryCard({ compact }: JournalSummaryCardProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState(true);
+  const [showHistory, setShowHistory] = useState(false);
 
   const hasKey = hasGeminiApiKey();
 
@@ -63,6 +66,23 @@ export function JournalSummaryCard({ compact }: JournalSummaryCardProps) {
           </h3>
         </div>
         <div className="flex items-center gap-2">
+          <button
+            onClick={handleGenerate}
+            disabled={loading}
+            className="p-1.5 text-neutral-500 hover:text-white rounded-lg hover:bg-white/5 transition-colors disabled:opacity-40"
+            aria-label="Generate journal summary"
+            title="Generate summary"
+          >
+            <Wand2 size={16} />
+          </button>
+          <button
+            onClick={() => setShowHistory(true)}
+            className="p-1.5 text-neutral-500 hover:text-white rounded-lg hover:bg-white/5 transition-colors"
+            aria-label="View summary history"
+            title="History"
+          >
+            <History size={16} />
+          </button>
           {summary && (
             <button
               onClick={() => setExpanded(!expanded)}
@@ -83,6 +103,14 @@ export function JournalSummaryCard({ compact }: JournalSummaryCardProps) {
           )}
         </div>
       </div>
+
+      {showHistory && (
+        <AIReportHistoryModal
+          kind="journal_summary"
+          title="Journal Summary"
+          onClose={() => setShowHistory(false)}
+        />
+      )}
 
       {/* Idle state */}
       {!summary && !loading && !error && (
@@ -140,20 +168,7 @@ export function JournalSummaryCard({ compact }: JournalSummaryCardProps) {
               )}
             </div>
           )}
-          <div className="prose prose-sm prose-invert max-w-none text-neutral-300 leading-relaxed [&_h1]:text-base [&_h1]:font-semibold [&_h1]:text-white [&_h2]:text-sm [&_h2]:font-semibold [&_h2]:text-white [&_h3]:text-sm [&_h3]:font-medium [&_h3]:text-neutral-200 [&_strong]:text-white [&_ul]:space-y-1 [&_li]:text-sm">
-            {summary.split('\n').map((line, i) => {
-              if (!line.trim()) return <br key={i} />;
-              const formatted = line
-                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-                .replace(/^### (.*)/, '<h3>$1</h3>')
-                .replace(/^## (.*)/, '<h2>$1</h2>')
-                .replace(/^# (.*)/, '<h1>$1</h1>')
-                .replace(/^[*-] (.*)/, '<li>$1</li>');
-              return (
-                <div key={i} dangerouslySetInnerHTML={{ __html: formatted }} />
-              );
-            })}
-          </div>
+          <JournalSummaryBody summary={summary} />
           <div className="pt-2 border-t border-white/5">
             <button
               onClick={handleGenerate}

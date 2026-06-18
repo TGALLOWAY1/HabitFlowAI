@@ -23,6 +23,8 @@ import { getDb } from '../lib/mongoClient';
 import { getEntriesByUser } from '../repositories/journal';
 import { getWellbeingEntries } from '../repositories/wellbeingEntryRepository';
 import { getGoalsByUser } from '../repositories/goalRepository';
+import { saveAIReport } from '../repositories/aiReportRepository';
+import { GEMINI_MODEL, buildGeminiUrl, GEMINI_THINKING_CONFIG, extractGeminiText } from '../lib/gemini';
 import { resolveTimeZone, getNowDayKey } from '../utils/dayKey';
 import { isValidDayKey } from '../../domain/time/dayKey';
 import type {
@@ -331,9 +333,7 @@ Return the review as JSON matching the provided schema.`;
     };
 
     // ---- Call Gemini (structured JSON output) ----
-    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${encodeURIComponent(
-      geminiApiKey.trim(),
-    )}`;
+    const geminiUrl = buildGeminiUrl(geminiApiKey.trim());
 
     const geminiResponse = await fetch(geminiUrl, {
       method: 'POST',
@@ -341,11 +341,10 @@ Return the review as JSON matching the provided schema.`;
       body: JSON.stringify({
         contents: [{ parts: [{ text: prompt }] }],
         generationConfig: {
-          temperature: 0.4,
           maxOutputTokens: 2048,
           responseMimeType: 'application/json',
           responseSchema,
-          thinkingConfig: { thinkingLevel: 'low' },
+          thinkingConfig: GEMINI_THINKING_CONFIG,
         },
       }),
     });
@@ -366,17 +365,16 @@ Return the review as JSON matching the provided schema.`;
         error: {
           code: 'GEMINI_API_ERROR',
           message: 'Failed to get response from Gemini. Please try again later.',
+          details:
+            process.env.NODE_ENV === 'development'
+              ? `Gemini upstream status ${geminiResponse.status} (model ${GEMINI_MODEL})`
+              : undefined,
         },
       });
       return;
     }
 
-    const geminiData = (await geminiResponse.json()) as {
-      candidates?: Array<{ content?: { parts?: Array<{ text?: string; thought?: boolean }> } }>;
-    };
-    const parts = geminiData?.candidates?.[0]?.content?.parts || [];
-    const outputPart = parts.find((p) => !p.thought && p.text) || parts[0];
-    const rawText = outputPart?.text;
+    const rawText = extractGeminiText(await geminiResponse.json());
 
     if (!rawText) {
       res.status(502).json({
@@ -440,6 +438,18 @@ Return the review as JSON matching the provided schema.`;
       recommendations,
       dataLimitations: strArray(parsed.dataLimitations),
     };
+
+    // Archive the report for history (best-effort; never block the response).
+    try {
+      await saveAIReport(householdId, userId, {
+        kind: 'weekly_review',
+        periodStart: startDayKey,
+        periodEnd: endDayKey,
+        payload: { review },
+      });
+    } catch (saveErr) {
+      console.error('[AI Weekly Review] Failed to archive report:', saveErr);
+    }
 
     res.status(200).json({
       review,

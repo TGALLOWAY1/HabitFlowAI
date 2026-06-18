@@ -10,6 +10,8 @@
 import type { Request, Response } from 'express';
 import { getRequestIdentity } from '../middleware/identity';
 import { getEntriesByUser, upsertEntryByTemplateAndDate } from '../repositories/journal';
+import { saveAIReport } from '../repositories/aiReportRepository';
+import { GEMINI_MODEL, buildGeminiUrl, GEMINI_THINKING_CONFIG, extractGeminiText } from '../lib/gemini';
 import { JOURNAL_TEMPLATES, FREE_WRITE_TEMPLATE } from '../../data/journalTemplates';
 import type { JournalTemplate, JournalPrompt } from '../../data/journalTemplates';
 
@@ -57,7 +59,7 @@ export async function postJournalSummary(req: Request, res: Response): Promise<v
       return;
     }
 
-    const { userId } = getRequestIdentity(req);
+    const { userId, householdId } = getRequestIdentity(req);
 
     // Calculate date range: last 7 days
     const now = new Date();
@@ -132,7 +134,7 @@ ${journalLines.join('\n\n')}
 Please write the weekly journal summary now.`;
 
     // Call Gemini API
-    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${encodeURIComponent(geminiApiKey.trim())}`;
+    const geminiUrl = buildGeminiUrl(geminiApiKey.trim());
 
     const geminiResponse = await fetch(geminiUrl, {
       method: 'POST',
@@ -140,9 +142,8 @@ Please write the weekly journal summary now.`;
       body: JSON.stringify({
         contents: [{ parts: [{ text: prompt }] }],
         generationConfig: {
-          temperature: 0.7,
           maxOutputTokens: 2048,
-          thinkingConfig: { thinkingLevel: 'low' },
+          thinkingConfig: GEMINI_THINKING_CONFIG,
         },
       }),
     });
@@ -165,18 +166,18 @@ Please write the weekly journal summary now.`;
         error: {
           code: 'GEMINI_API_ERROR',
           message: 'Failed to get response from Gemini. Please try again later.',
+          details:
+            process.env.NODE_ENV === 'development'
+              ? `Gemini upstream status ${geminiResponse.status} (model ${GEMINI_MODEL})`
+              : undefined,
         },
       });
       return;
     }
 
-    const geminiData = await geminiResponse.json() as {
-      candidates?: Array<{ content?: { parts?: Array<{ text?: string; thought?: boolean }> } }>;
-    };
-
-    const parts = geminiData?.candidates?.[0]?.content?.parts ?? [];
-    const outputPart = parts.find(p => !p.thought && p.text) ?? parts[0];
-    const summaryText = outputPart?.text ?? 'Unable to generate journal summary. Please try again.';
+    const summaryText =
+      extractGeminiText(await geminiResponse.json()) ??
+      'Unable to generate journal summary. Please try again.';
 
     // Persist summary as a journal entry (upsert: one per day)
     const savedEntry = await upsertEntryByTemplateAndDate({
@@ -185,6 +186,18 @@ Please write the weekly journal summary now.`;
       content: { summary: summaryText },
       date: endDate,
     }, userId);
+
+    // Archive the report for history (best-effort; never block the response).
+    try {
+      await saveAIReport(householdId, userId, {
+        kind: 'journal_summary',
+        periodStart: startDate,
+        periodEnd: endDate,
+        payload: { summary: summaryText, journalEntriesCount: entries.length },
+      });
+    } catch (saveErr) {
+      console.error('[AI Journal Summary] Failed to archive report:', saveErr);
+    }
 
     res.status(200).json({
       summary: summaryText,

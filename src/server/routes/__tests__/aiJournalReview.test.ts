@@ -144,6 +144,12 @@ describe('postJournalReview', () => {
     expect(promptText.toLowerCase()).toContain('diagnose'); // safety instruction present
     expect(promptBody.generationConfig.responseMimeType).toBe('application/json');
 
+    // --- Gemini 3.5 request contract ---
+    const url = vi.mocked(fetchMock).mock.calls[0][0] as string;
+    expect(url).toContain('/models/gemini-3.5-flash:generateContent');
+    expect(promptBody.generationConfig.thinkingConfig).toEqual({ thinkingLevel: 'low' });
+    expect(promptBody.generationConfig).not.toHaveProperty('temperature');
+
     const body = vi.mocked(res.json).mock.calls[0][0];
     const review = body.review;
 

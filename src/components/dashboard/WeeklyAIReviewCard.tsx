@@ -1,18 +1,9 @@
 import React, { useState } from 'react';
-import {
-  Sparkles,
-  Loader2,
-  Trophy,
-  AlertTriangle,
-  LineChart,
-  Lightbulb,
-  Info,
-  RefreshCw,
-  ClipboardList,
-  BookOpen,
-} from 'lucide-react';
+import { Sparkles, Loader2, RefreshCw, Wand2, History } from 'lucide-react';
 import { hasGeminiApiKey, fetchWeeklyAIReview } from '../../lib/geminiClient';
-import type { WeeklyAIReview, ReviewConfidence } from '../../shared/weeklyAiReview';
+import type { WeeklyAIReview } from '../../shared/weeklyAiReview';
+import { WeeklyReviewBody } from './WeeklyReviewBody';
+import { AIReportHistoryModal } from './AIReportHistoryModal';
 
 type WeekChoice = 'this' | 'last';
 
@@ -28,31 +19,12 @@ function mondayOf(weeksAgo: number): string {
   return `${y}-${m}-${dd}`;
 }
 
-const CONFIDENCE_STYLES: Record<ReviewConfidence, string> = {
-  high: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30',
-  medium: 'bg-amber-500/15 text-amber-300 border-amber-500/30',
-  low: 'bg-neutral-500/15 text-neutral-300 border-neutral-500/30',
-};
-
-const Section: React.FC<{
-  icon: React.ReactNode;
-  title: string;
-  children: React.ReactNode;
-}> = ({ icon, title, children }) => (
-  <div>
-    <div className="flex items-center gap-2 mb-2">
-      {icon}
-      <h4 className="text-sm font-semibold text-white">{title}</h4>
-    </div>
-    {children}
-  </div>
-);
-
 export const WeeklyAIReviewCard: React.FC = () => {
   const [review, setReview] = useState<WeeklyAIReview | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [week, setWeek] = useState<WeekChoice>('this');
+  const [showHistory, setShowHistory] = useState(false);
 
   const hasKey = hasGeminiApiKey();
 
@@ -90,16 +62,6 @@ export const WeeklyAIReviewCard: React.FC = () => {
     );
   }
 
-  const isEmptyReview =
-    review &&
-    !review.summary &&
-    review.facts.length === 0 &&
-    review.wins.length === 0 &&
-    review.areasForAttention.length === 0 &&
-    review.patterns.length === 0 &&
-    review.journalThemes.length === 0 &&
-    review.recommendations.length === 0;
-
   return (
     <div className="bg-neutral-900/50 rounded-2xl border border-white/5 p-6 backdrop-blur-sm">
       <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
@@ -107,20 +69,47 @@ export const WeeklyAIReviewCard: React.FC = () => {
           <Sparkles size={18} className="text-indigo-400" />
           <h3 className="text-lg font-semibold text-white">Weekly AI Review</h3>
         </div>
-        <div className="flex items-center gap-1 rounded-lg bg-white/5 p-0.5">
-          {(['this', 'last'] as WeekChoice[]).map((choice) => (
-            <button
-              key={choice}
-              onClick={() => selectWeek(choice)}
-              className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
-                week === choice ? 'bg-indigo-600/80 text-white' : 'text-neutral-400 hover:text-white'
-              }`}
-            >
-              {choice === 'this' ? 'This week' : 'Last week'}
-            </button>
-          ))}
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 rounded-lg bg-white/5 p-0.5">
+            {(['this', 'last'] as WeekChoice[]).map((choice) => (
+              <button
+                key={choice}
+                onClick={() => selectWeek(choice)}
+                className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
+                  week === choice ? 'bg-indigo-600/80 text-white' : 'text-neutral-400 hover:text-white'
+                }`}
+              >
+                {choice === 'this' ? 'This week' : 'Last week'}
+              </button>
+            ))}
+          </div>
+          <button
+            onClick={() => handleGenerate()}
+            disabled={loading}
+            className="p-1.5 text-neutral-400 hover:text-white rounded-lg hover:bg-white/5 transition-colors disabled:opacity-40"
+            aria-label="Generate weekly review"
+            title="Generate review"
+          >
+            <Wand2 size={16} />
+          </button>
+          <button
+            onClick={() => setShowHistory(true)}
+            className="p-1.5 text-neutral-400 hover:text-white rounded-lg hover:bg-white/5 transition-colors"
+            aria-label="View review history"
+            title="History"
+          >
+            <History size={16} />
+          </button>
         </div>
       </div>
+
+      {showHistory && (
+        <AIReportHistoryModal
+          kind="weekly_review"
+          title="Weekly Review"
+          onClose={() => setShowHistory(false)}
+        />
+      )}
 
       {/* Idle / empty-of-results */}
       {!review && !loading && !error && (
@@ -162,172 +151,7 @@ export const WeeklyAIReviewCard: React.FC = () => {
 
       {review && (
         <div className="space-y-5">
-          <p className="text-[11px] text-neutral-500">
-            {review.weekStart} to {review.weekEnd}
-          </p>
-
-          {isEmptyReview ? (
-            <div className="rounded-lg bg-white/5 border border-white/10 p-4">
-              <p className="text-sm text-neutral-300">
-                There isn’t enough data this week to produce a confident review.
-              </p>
-            </div>
-          ) : (
-            <>
-              {/* 1. Week at a Glance */}
-              {review.summary && (
-                <Section
-                  icon={<Sparkles size={15} className="text-indigo-400" />}
-                  title="Week at a Glance"
-                >
-                  <div className="space-y-2">
-                    {review.summary
-                      .split('\n')
-                      .map((para) => para.trim())
-                      .filter((para) => para.length > 0)
-                      .map((para, i) => (
-                        <p key={i} className="text-sm text-neutral-200 leading-relaxed">
-                          {para}
-                        </p>
-                      ))}
-                  </div>
-                </Section>
-              )}
-
-              {/* 2. Facts */}
-              {review.facts.length > 0 && (
-                <Section
-                  icon={<ClipboardList size={15} className="text-neutral-300" />}
-                  title="Facts"
-                >
-                  <ul className="space-y-1.5">
-                    {review.facts.map((f, i) => (
-                      <li key={i} className="flex gap-2 text-sm text-neutral-300">
-                        <span className="text-neutral-500 mt-0.5">•</span>
-                        <span>{f}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </Section>
-              )}
-
-              {/* 3. Patterns */}
-              {review.patterns.length > 0 && (
-                <Section
-                  icon={<LineChart size={15} className="text-sky-400" />}
-                  title="Patterns"
-                >
-                  <div className="space-y-2.5">
-                    {review.patterns.map((p, i) => (
-                      <div
-                        key={i}
-                        className="rounded-lg bg-white/5 border border-white/10 p-3"
-                      >
-                        <div className="flex items-start justify-between gap-2 mb-1">
-                          <span className="text-sm font-medium text-white">{p.title}</span>
-                          <span
-                            className={`shrink-0 text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded border ${CONFIDENCE_STYLES[p.confidence]}`}
-                          >
-                            {p.confidence}
-                          </span>
-                        </div>
-                        <p className="text-xs text-neutral-400 leading-relaxed">{p.evidence}</p>
-                      </div>
-                    ))}
-                  </div>
-                </Section>
-              )}
-
-              {/* 4. Journal Themes */}
-              {review.journalThemes.length > 0 && (
-                <Section
-                  icon={<BookOpen size={15} className="text-purple-400" />}
-                  title="Journal Themes"
-                >
-                  <ul className="space-y-1.5">
-                    {review.journalThemes.map((t, i) => (
-                      <li key={i} className="flex gap-2 text-sm text-neutral-300">
-                        <span className="text-purple-400 mt-0.5">•</span>
-                        <span>{t}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </Section>
-              )}
-
-              {/* 5. Wins */}
-              {review.wins.length > 0 && (
-                <Section
-                  icon={<Trophy size={15} className="text-emerald-400" />}
-                  title="Wins"
-                >
-                  <ul className="space-y-1.5">
-                    {review.wins.map((w, i) => (
-                      <li key={i} className="flex gap-2 text-sm text-neutral-300">
-                        <span className="text-emerald-400 mt-0.5">•</span>
-                        <span>{w}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </Section>
-              )}
-
-              {/* 6. Areas for Attention */}
-              {review.areasForAttention.length > 0 && (
-                <Section
-                  icon={<AlertTriangle size={15} className="text-amber-400" />}
-                  title="Areas for Attention"
-                >
-                  <ul className="space-y-1.5">
-                    {review.areasForAttention.map((s, i) => (
-                      <li key={i} className="flex gap-2 text-sm text-neutral-300">
-                        <span className="text-amber-400 mt-0.5">•</span>
-                        <span>{s}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </Section>
-              )}
-
-              {/* 7. Recommendations */}
-              {review.recommendations.length > 0 && (
-                <Section
-                  icon={<Lightbulb size={15} className="text-indigo-400" />}
-                  title="Recommendations for Next Week"
-                >
-                  <div className="space-y-2.5">
-                    {review.recommendations.map((r, i) => (
-                      <div key={i} className="rounded-lg bg-white/5 border border-white/10 p-3">
-                        <p className="text-sm font-medium text-white mb-0.5">{r.title}</p>
-                        {r.reason && (
-                          <p className="text-xs text-neutral-400 leading-relaxed">{r.reason}</p>
-                        )}
-                        {r.suggestedAction && (
-                          <p className="text-xs text-indigo-300 mt-1 leading-relaxed">
-                            → {r.suggestedAction}
-                          </p>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </Section>
-              )}
-            </>
-          )}
-
-          {/* Data limitations — always shown when present */}
-          {review.dataLimitations.length > 0 && (
-            <Section icon={<Info size={15} className="text-neutral-400" />} title="Data Limitations">
-              <ul className="space-y-1.5">
-                {review.dataLimitations.map((d, i) => (
-                  <li key={i} className="flex gap-2 text-xs text-neutral-400">
-                    <span className="text-neutral-500 mt-0.5">•</span>
-                    <span>{d}</span>
-                  </li>
-                ))}
-              </ul>
-            </Section>
-          )}
+          <WeeklyReviewBody review={review} />
 
           <div className="pt-2 border-t border-white/5">
             <button

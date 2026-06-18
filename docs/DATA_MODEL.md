@@ -29,6 +29,7 @@ Defined in `src/models/persistenceTypes.ts` (`MONGO_COLLECTIONS`). **Current** c
 - `healthMetricsDaily` (imported Apple Health data — NOT behavioral truth)
 - `habitHealthRules` (habit ↔ health data rule mappings)
 - `healthSuggestions` (pending suggestions from health rule evaluation)
+- `aiReports` (archived AI-generated insights — Weekly Review, Journal Summary — for history; generated artifacts, not derived truth; soft-deleted)
 
 **Removed / no longer used:** `dayLogs`, `goalManualLogs`. Do not reference these in new code or docs.
 

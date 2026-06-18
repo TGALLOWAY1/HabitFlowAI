@@ -47,8 +47,10 @@ HabitFlow App
 │   │   ├── Tasks Card (→ Tasks Page)
 │   │   ├── Journal Card (→ Journal Page)
 │   │   ├── AI Insights (section grouping the AI reports)
-│   │   │   ├── Weekly AI Review (Week at a Glance / Facts / Patterns / Journal Themes / Wins / Areas for Attention / Recommendations / Data Limitations; this-week / last-week)
-│   │   │   └── Journal Insights (compact Journal Summary)
+│   │   │   ├── Weekly AI Review (Week at a Glance / Facts / Patterns / Journal Themes / Wins / Areas for Attention / Recommendations / Data Limitations; this-week / last-week; wand=generate, clock=history)
+│   │   │   │   └── AI Report History modal (browse / open / delete saved Weekly Reviews)
+│   │   │   └── Journal Insights (compact Journal Summary; wand=generate, clock=history)
+│   │   │       └── AI Report History modal (browse / open / delete saved Journal Summaries)
 │   │   └── Heatmap (30d / 90d / year)
 │   │
 │   ├── Habits (Tracker)
