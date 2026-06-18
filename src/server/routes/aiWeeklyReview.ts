@@ -24,6 +24,7 @@ import { getEntriesByUser } from '../repositories/journal';
 import { getWellbeingEntries } from '../repositories/wellbeingEntryRepository';
 import { getGoalsByUser } from '../repositories/goalRepository';
 import { saveAIReport } from '../repositories/aiReportRepository';
+import { buildGeminiUrl, GEMINI_THINKING_CONFIG, extractGeminiText } from '../lib/gemini';
 import { resolveTimeZone, getNowDayKey } from '../utils/dayKey';
 import { isValidDayKey } from '../../domain/time/dayKey';
 import type {
@@ -332,9 +333,7 @@ Return the review as JSON matching the provided schema.`;
     };
 
     // ---- Call Gemini (structured JSON output) ----
-    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(
-      geminiApiKey.trim(),
-    )}`;
+    const geminiUrl = buildGeminiUrl(geminiApiKey.trim());
 
     const geminiResponse = await fetch(geminiUrl, {
       method: 'POST',
@@ -342,11 +341,10 @@ Return the review as JSON matching the provided schema.`;
       body: JSON.stringify({
         contents: [{ parts: [{ text: prompt }] }],
         generationConfig: {
-          temperature: 0.4,
           maxOutputTokens: 2048,
           responseMimeType: 'application/json',
           responseSchema,
-          thinkingConfig: { thinkingBudget: 0 },
+          thinkingConfig: GEMINI_THINKING_CONFIG,
         },
       }),
     });
@@ -372,12 +370,7 @@ Return the review as JSON matching the provided schema.`;
       return;
     }
 
-    const geminiData = (await geminiResponse.json()) as {
-      candidates?: Array<{ content?: { parts?: Array<{ text?: string; thought?: boolean }> } }>;
-    };
-    const parts = geminiData?.candidates?.[0]?.content?.parts || [];
-    const outputPart = parts.find((p) => !p.thought && p.text) || parts[0];
-    const rawText = outputPart?.text;
+    const rawText = extractGeminiText(await geminiResponse.json());
 
     if (!rawText) {
       res.status(502).json({

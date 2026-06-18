@@ -11,6 +11,7 @@ import type { Request, Response } from 'express';
 import { getRequestIdentity } from '../middleware/identity';
 import { getEntriesByUser, upsertEntryByTemplateAndDate } from '../repositories/journal';
 import { saveAIReport } from '../repositories/aiReportRepository';
+import { buildGeminiUrl, GEMINI_THINKING_CONFIG, extractGeminiText } from '../lib/gemini';
 import { JOURNAL_TEMPLATES, FREE_WRITE_TEMPLATE } from '../../data/journalTemplates';
 import type { JournalTemplate, JournalPrompt } from '../../data/journalTemplates';
 
@@ -133,7 +134,7 @@ ${journalLines.join('\n\n')}
 Please write the weekly journal summary now.`;
 
     // Call Gemini API
-    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(geminiApiKey.trim())}`;
+    const geminiUrl = buildGeminiUrl(geminiApiKey.trim());
 
     const geminiResponse = await fetch(geminiUrl, {
       method: 'POST',
@@ -141,9 +142,8 @@ Please write the weekly journal summary now.`;
       body: JSON.stringify({
         contents: [{ parts: [{ text: prompt }] }],
         generationConfig: {
-          temperature: 0.7,
           maxOutputTokens: 2048,
-          thinkingConfig: { thinkingBudget: 0 },
+          thinkingConfig: GEMINI_THINKING_CONFIG,
         },
       }),
     });
@@ -171,13 +171,9 @@ Please write the weekly journal summary now.`;
       return;
     }
 
-    const geminiData = await geminiResponse.json() as {
-      candidates?: Array<{ content?: { parts?: Array<{ text?: string; thought?: boolean }> } }>;
-    };
-
-    const parts = geminiData?.candidates?.[0]?.content?.parts ?? [];
-    const outputPart = parts.find(p => !p.thought && p.text) ?? parts[0];
-    const summaryText = outputPart?.text ?? 'Unable to generate journal summary. Please try again.';
+    const summaryText =
+      extractGeminiText(await geminiResponse.json()) ??
+      'Unable to generate journal summary. Please try again.';
 
     // Persist summary as a journal entry (upsert: one per day)
     const savedEntry = await upsertEntryByTemplateAndDate({
