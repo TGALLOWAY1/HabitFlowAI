@@ -213,11 +213,20 @@ export const ProgressDashboard: React.FC<ProgressDashboardProps> = ({
                 />
             )}
 
-            {/* AI Weekly Review (structured, grounded) */}
-            <WeeklyAIReviewCard />
+            {/* AI Insights — single home for AI-generated reports */}
+            <div className="space-y-4">
+                <h3 className="text-sm font-semibold uppercase tracking-wide text-neutral-500 px-1">
+                    AI Insights
+                </h3>
 
-            {/* AI Journal Summary */}
-            <JournalSummaryCard compact />
+                {/* Weekly Review — the primary AI-generated artifact */}
+                <WeeklyAIReviewCard />
+
+                {/* Journal Insights (optional) */}
+                <JournalSummaryCard compact />
+
+                {/* Sleep Insights — future feature */}
+            </div>
 
             {/* Goals at a glance */}
             <div className="bg-neutral-900/50 rounded-2xl border border-white/5 p-6 backdrop-blur-sm">
