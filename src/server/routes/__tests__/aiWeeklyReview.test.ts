@@ -115,8 +115,10 @@ describe('postWeeklyReview', () => {
     const fetchMock = vi.fn(async (_url: string, _init: RequestInit) =>
       geminiOk({
         summary: 'Solid week overall.',
+        facts: ['Logged Walk 5 of 7 days', ''], // empty string should be filtered out
+        journalThemes: ['Reflected positively on the day'],
         wins: ['Logged Walk 5 of 7 days', ''], // empty string should be filtered out
-        struggles: ['Skipped Walk on two days'],
+        areasForAttention: ['Skipped Walk on two days'],
         patterns: [
           { title: 'Sleep vs. activity', evidence: 'Fewer habits after a low sleep score', confidence: 'banana' },
         ],
@@ -160,6 +162,9 @@ describe('postWeeklyReview', () => {
 
     // Empty strings filtered, bad confidence coerced to 'low'.
     expect(review.wins).toEqual(['Logged Walk 5 of 7 days']);
+    expect(review.facts).toEqual(['Logged Walk 5 of 7 days']);
+    expect(review.areasForAttention).toEqual(['Skipped Walk on two days']);
+    expect(review.journalThemes).toEqual(['Reflected positively on the day']);
     expect(review.patterns[0].confidence).toBe('low');
 
     // Metadata reflects real aggregates (archived habit excluded).
@@ -179,8 +184,10 @@ describe('postWeeklyReview', () => {
       vi.fn(async () =>
         geminiOk({
           summary: 'Not much was tracked this week.',
+          facts: [],
+          journalThemes: [],
           wins: [],
-          struggles: [],
+          areasForAttention: [],
           patterns: [],
           recommendations: [],
           dataLimitations: ['There is not enough data this week to identify patterns confidently.'],

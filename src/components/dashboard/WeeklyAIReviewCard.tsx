@@ -8,6 +8,8 @@ import {
   Lightbulb,
   Info,
   RefreshCw,
+  ClipboardList,
+  BookOpen,
 } from 'lucide-react';
 import { hasGeminiApiKey, fetchWeeklyAIReview } from '../../lib/geminiClient';
 import type { WeeklyAIReview, ReviewConfidence } from '../../shared/weeklyAiReview';
@@ -90,9 +92,12 @@ export const WeeklyAIReviewCard: React.FC = () => {
 
   const isEmptyReview =
     review &&
+    !review.summary &&
+    review.facts.length === 0 &&
     review.wins.length === 0 &&
-    review.struggles.length === 0 &&
+    review.areasForAttention.length === 0 &&
     review.patterns.length === 0 &&
+    review.journalThemes.length === 0 &&
     review.recommendations.length === 0;
 
   return (
@@ -169,50 +174,48 @@ export const WeeklyAIReviewCard: React.FC = () => {
             </div>
           ) : (
             <>
-              {/* Summary */}
+              {/* 1. Week at a Glance */}
               {review.summary && (
-                <p className="text-sm text-neutral-200 leading-relaxed">{review.summary}</p>
+                <Section
+                  icon={<Sparkles size={15} className="text-indigo-400" />}
+                  title="Week at a Glance"
+                >
+                  <div className="space-y-2">
+                    {review.summary
+                      .split('\n')
+                      .map((para) => para.trim())
+                      .filter((para) => para.length > 0)
+                      .map((para, i) => (
+                        <p key={i} className="text-sm text-neutral-200 leading-relaxed">
+                          {para}
+                        </p>
+                      ))}
+                  </div>
+                </Section>
               )}
 
-              {/* Wins */}
-              {review.wins.length > 0 && (
+              {/* 2. Facts */}
+              {review.facts.length > 0 && (
                 <Section
-                  icon={<Trophy size={15} className="text-emerald-400" />}
-                  title="Wins"
+                  icon={<ClipboardList size={15} className="text-neutral-300" />}
+                  title="Facts"
                 >
                   <ul className="space-y-1.5">
-                    {review.wins.map((w, i) => (
+                    {review.facts.map((f, i) => (
                       <li key={i} className="flex gap-2 text-sm text-neutral-300">
-                        <span className="text-emerald-400 mt-0.5">•</span>
-                        <span>{w}</span>
+                        <span className="text-neutral-500 mt-0.5">•</span>
+                        <span>{f}</span>
                       </li>
                     ))}
                   </ul>
                 </Section>
               )}
 
-              {/* Struggles */}
-              {review.struggles.length > 0 && (
-                <Section
-                  icon={<AlertTriangle size={15} className="text-amber-400" />}
-                  title="Struggles"
-                >
-                  <ul className="space-y-1.5">
-                    {review.struggles.map((s, i) => (
-                      <li key={i} className="flex gap-2 text-sm text-neutral-300">
-                        <span className="text-amber-400 mt-0.5">•</span>
-                        <span>{s}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </Section>
-              )}
-
-              {/* Patterns */}
+              {/* 3. Patterns */}
               {review.patterns.length > 0 && (
                 <Section
                   icon={<LineChart size={15} className="text-sky-400" />}
-                  title="Patterns Detected"
+                  title="Patterns"
                 >
                   <div className="space-y-2.5">
                     {review.patterns.map((p, i) => (
@@ -235,7 +238,58 @@ export const WeeklyAIReviewCard: React.FC = () => {
                 </Section>
               )}
 
-              {/* Recommendations */}
+              {/* 4. Journal Themes */}
+              {review.journalThemes.length > 0 && (
+                <Section
+                  icon={<BookOpen size={15} className="text-purple-400" />}
+                  title="Journal Themes"
+                >
+                  <ul className="space-y-1.5">
+                    {review.journalThemes.map((t, i) => (
+                      <li key={i} className="flex gap-2 text-sm text-neutral-300">
+                        <span className="text-purple-400 mt-0.5">•</span>
+                        <span>{t}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </Section>
+              )}
+
+              {/* 5. Wins */}
+              {review.wins.length > 0 && (
+                <Section
+                  icon={<Trophy size={15} className="text-emerald-400" />}
+                  title="Wins"
+                >
+                  <ul className="space-y-1.5">
+                    {review.wins.map((w, i) => (
+                      <li key={i} className="flex gap-2 text-sm text-neutral-300">
+                        <span className="text-emerald-400 mt-0.5">•</span>
+                        <span>{w}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </Section>
+              )}
+
+              {/* 6. Areas for Attention */}
+              {review.areasForAttention.length > 0 && (
+                <Section
+                  icon={<AlertTriangle size={15} className="text-amber-400" />}
+                  title="Areas for Attention"
+                >
+                  <ul className="space-y-1.5">
+                    {review.areasForAttention.map((s, i) => (
+                      <li key={i} className="flex gap-2 text-sm text-neutral-300">
+                        <span className="text-amber-400 mt-0.5">•</span>
+                        <span>{s}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </Section>
+              )}
+
+              {/* 7. Recommendations */}
               {review.recommendations.length > 0 && (
                 <Section
                   icon={<Lightbulb size={15} className="text-indigo-400" />}

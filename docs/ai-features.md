@@ -12,10 +12,13 @@ new dependencies and no server-side keys.
 
 ## Weekly AI Review
 
-The **Weekly AI Review** turns a week of structured habit, sleep, mood, journal, and goal
-data into grounded weekly feedback. The system deliberately separates **observed facts**,
-**inferred patterns**, and **recommendations** so the model produces useful coaching without
-hallucinating advice.
+The **Weekly AI Review** is HabitFlow's single, comprehensive weekly report. It turns a week of
+structured habit, sleep, mood, journal, and goal data into a feedback artifact that both tells the
+story of the week (a human-readable **Week at a Glance** narrative) and provides grounded analysis.
+The system deliberately separates the **narrative recap**, **observed facts**, **inferred patterns**,
+**journal themes**, **wins**, **areas for attention**, and **recommendations** so the model produces
+useful coaching without hallucinating advice. (It consolidates the former standalone AI Weekly Summary,
+whose narrative recap is now the Week at a Glance section.)
 
 **Data / AI flow:**
 
@@ -29,12 +32,13 @@ Dashboard card (this week / last week)
           weekly wellbeing averages · journal consistency · active goals
       → Gemini 3.5 Flash with a JSON responseSchema + grounding rules
       → validate & normalize → typed WeeklyAIReview
-   → render: Summary · Wins · Struggles · Patterns (confidence) · Recommendations · Data Limitations
+   → render: Week at a Glance · Facts · Patterns (confidence) · Journal Themes ·
+             Wins · Areas for Attention · Recommendations · Data Limitations
 ```
 
 **Grounding guarantees:**
 - Only facts derived from the database are sent to the model — no raw collections, no free-form dumps.
-- The prompt forbids inventing data and requires every win/struggle to cite specific numbers.
+- The prompt forbids inventing data and requires facts, wins, and areas for attention to cite specific numbers.
 - The server (not the model) owns the week boundaries; a response schema enforces a stable shape.
 - Thin weeks surface honest **Data Limitations** instead of low-evidence patterns; pattern
   confidence (`low`/`medium`/`high`) is tied to how much supporting data exists.
@@ -102,7 +106,6 @@ and a polished, mobile-friendly UI — generated on demand, with no extra depend
 
 ## Other AI surfaces
 
-- **AI Weekly Summary** — general recap of habits and journal entries from the past week (Dashboard).
 - **AI Journal Summary** — auto-generated weekly journal summary shown as a dismissible banner and
   persisted as a journal entry in history.
 - **AI Variant Suggestions** — generate routine variants from a routine's title and existing steps.

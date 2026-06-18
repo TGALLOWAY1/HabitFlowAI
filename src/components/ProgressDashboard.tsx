@@ -9,7 +9,6 @@ import { DailyCheckInCard } from './dashboard/DailyCheckInCard';
 import { JournalCard } from './dashboard/JournalCard';
 import { TasksCard } from './dashboard/TasksCard';
 import { PinnedRoutinesCard } from './dashboard/PinnedRoutinesCard';
-import { WeeklySummaryCard } from './dashboard/WeeklySummaryCard';
 import { WeeklyAIReviewCard } from './dashboard/WeeklyAIReviewCard';
 import { JournalSummaryCard } from './Journal/JournalSummaryCard';
 import { SetupDashboard } from './dashboard/SetupDashboard';
@@ -214,14 +213,20 @@ export const ProgressDashboard: React.FC<ProgressDashboardProps> = ({
                 />
             )}
 
-            {/* AI Weekly Review (structured, grounded) */}
-            <WeeklyAIReviewCard />
+            {/* AI Insights — single home for AI-generated reports */}
+            <div className="space-y-4">
+                <h3 className="text-sm font-semibold uppercase tracking-wide text-neutral-500 px-1">
+                    AI Insights
+                </h3>
 
-            {/* AI Weekly Summary */}
-            <WeeklySummaryCard />
+                {/* Weekly Review — the primary AI-generated artifact */}
+                <WeeklyAIReviewCard />
 
-            {/* AI Journal Summary */}
-            <JournalSummaryCard compact />
+                {/* Journal Insights (optional) */}
+                <JournalSummaryCard compact />
+
+                {/* Sleep Insights — future feature */}
+            </div>
 
             {/* Goals at a glance */}
             <div className="bg-neutral-900/50 rounded-2xl border border-white/5 p-6 backdrop-blur-sm">

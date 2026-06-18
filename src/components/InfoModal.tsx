@@ -433,7 +433,7 @@ export function InfoModal({ isOpen, onClose }: InfoModalProps) {
                 <ul className="mt-2 space-y-2">
                   <li className="text-xs text-neutral-400 pl-2">
                     <span className="font-semibold text-neutral-300">Weekly AI Review</span>
-                    <p className="mt-0.5">A grounded, structured review of your week (this week or last week) on the Dashboard. It reads your real habit, sleep, mood, journal, and goal data and returns a Summary, Wins, Struggles, Patterns (each with a confidence level), Recommendations, and Data Limitations. It only uses your actual data and keeps facts, patterns, and suggestions separate — if a week is thin on data, it says so instead of inventing patterns.</p>
+                    <p className="mt-0.5">The single, comprehensive weekly report on the Dashboard (this week or last week). It reads your real habit, sleep, mood, journal, and goal data and returns seven sections: a Week at a Glance narrative recap, Facts, Patterns (each with a confidence level), Journal Themes, Wins, Areas for Attention, and Recommendations — plus honest Data Limitations. It only uses your actual data and keeps facts, patterns, and suggestions separate — if a week is thin on data, it says so instead of inventing patterns.</p>
                   </li>
                   <li className="text-xs text-neutral-400 pl-2">
                     <span className="font-semibold text-neutral-300">Variant Suggestions</span>

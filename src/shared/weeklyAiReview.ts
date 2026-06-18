@@ -1,11 +1,15 @@
 /**
  * Weekly AI Review — shared contract
  *
- * Used by both the server route that generates the review (Gemini BYOK)
- * and the frontend that renders it. The shape deliberately separates
- * observed facts (summary/wins/struggles), inferred patterns (with an
- * explicit confidence level), and forward-looking recommendations so the
- * UI can present grounded feedback without conflating the three.
+ * The single, comprehensive weekly AI report for HabitFlow. It both tells the
+ * story of the week (a human-readable "Week at a Glance" narrative) and provides
+ * evidence-based analysis. The shape deliberately separates the narrative recap,
+ * objective facts, inferred patterns (each with an explicit confidence level),
+ * journal themes, wins, areas for attention, and forward-looking recommendations
+ * so the UI can present grounded feedback without conflating them.
+ *
+ * Used by both the server route that generates the review (Gemini BYOK) and the
+ * frontend that renders it.
  */
 
 export type ReviewConfidence = 'low' | 'medium' | 'high';
@@ -33,15 +37,22 @@ export interface WeeklyAIReview {
   weekStart: string;
   /** Sunday of the reviewed week (YYYY-MM-DD). */
   weekEnd: string;
-  /** Short, human-readable narrative of the week. */
+  /**
+   * Section 1 — "Week at a Glance": a natural-language narrative recap of the
+   * week (1–3 short paragraphs, no recommendations). Tells the story of the week.
+   */
   summary: string;
-  /** 2–5 positive patterns grounded in the data. */
-  wins: string[];
-  /** 2–5 obstacles or weak spots grounded in the data. */
-  struggles: string[];
-  /** Inferred relationships in the data, each with a confidence level. */
+  /** Section 2 — Facts: objective, measurable observations supported by the data. */
+  facts: string[];
+  /** Section 3 — Patterns: inferred relationships in the data, each with a confidence level. */
   patterns: WeeklyReviewPattern[];
-  /** Practical, specific suggestions for next week. */
+  /** Section 4 — Journal Themes: recurring topics and emotional trends from journaling. */
+  journalThemes: string[];
+  /** Section 5 — Wins: the most meaningful accomplishments, grounded in the data. */
+  wins: string[];
+  /** Section 6 — Areas for Attention: issues, risks, or recurring challenges. */
+  areasForAttention: string[];
+  /** Section 7 — Recommendations: a small number (max 3–5) of actionable suggestions. */
   recommendations: WeeklyReviewRecommendation[];
   /** Honest notes about where data was too thin to draw conclusions. */
   dataLimitations: string[];

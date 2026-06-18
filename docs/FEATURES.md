@@ -147,8 +147,7 @@ Every feature area below is **Shipped** unless an item notes otherwise.
 ## AI Features (Gemini BYOK)
 
 - **API Key Management** — Store Gemini API key in localStorage (never persisted server-side); configure via Settings
-- **AI Weekly Summary** — General recap of habits and journal entries from the past week (Dashboard)
-- **Weekly AI Review** — Structured, grounded review of a selected week (this week / last week) on the Dashboard. Aggregates habit entries, sleep & mood from wellbeing check-ins, journal activity, and goals into observed facts, then returns a typed review: Summary, Wins, Struggles, Patterns (each with a low/medium/high confidence), Recommendations, and Data Limitations. The prompt separates observed facts from inferred patterns from suggestions and forbids inventing data; low-data weeks are reported honestly via Data Limitations rather than fabricated patterns
+- **Weekly AI Review** — The single, comprehensive weekly report for a selected week (this week / last week) on the Dashboard. It both tells the story of the week and provides evidence-based analysis. Aggregates habit entries, sleep & mood from wellbeing check-ins, journal activity, and goals into observed facts, then returns a typed review with seven sections: **Week at a Glance** (a natural-language narrative recap, 1–3 paragraphs), **Facts** (objective, measurable observations), **Patterns** (each with a low/medium/high confidence), **Journal Themes** (recurring topics and emotional trends), **Wins**, **Areas for Attention**, and **Recommendations** (max 3–5) — plus honest **Data Limitations**. The prompt separates observed facts from inferred patterns from suggestions and forbids inventing data; low-data weeks are reported honestly via Data Limitations rather than fabricated patterns. (Consolidates the former standalone AI Weekly Summary.)
 - **AI Journal Summary** — Auto-generated weekly journal summary shown as a dismissible banner; persisted as a journal entry in history
 - **AI Journal Review** — On-demand, structured review of journal entries over a user-selected date range (Journal → AI Review tab; presets for last 7/30 days plus custom range). Grounded only in the user's own entries, it returns a typed review: Overview, Emotional Themes, Recurring Stressors, and Self-Talk Patterns (each with paraphrased evidence; themes/stressors carry a low/medium/high confidence), Wins, Reflection Questions, Suggested Next Steps, and Data Limitations. The prompt separates observed evidence from inferred themes from next steps, forbids inventing facts or long quotes, and is deliberately non-clinical (no diagnoses). Empty ranges show a helpful empty state, sparse ranges show a low-data warning, and entries suggesting crisis surface a gentle support notice rather than counseling. Generated on demand (not persisted); regenerate at any time
 - **AI Variant Suggestions** — Generate routine variants based on routine title and steps
@@ -169,8 +168,8 @@ Every feature area below is **Shipped** unless an item notes otherwise.
 - **Daily Check-In Card** — Quick access to morning/evening wellbeing check-in
 - **Goals at a Glance** — Pinned goals with progress bars (configurable which goals to pin)
 - **Pinned Routines Card** — Quick-start buttons for favorite routines
-- **Weekly AI Review Card** — Generate a structured, grounded review (Summary, Wins, Struggles, Patterns with confidence, Recommendations, Data Limitations) for this week or last week
-- **AI Weekly Summary Card** — Generate AI recap of the week
+- **AI Insights Section** — A single compact section grouping the AI-generated reports: the Weekly AI Review (primary) and Journal Insights (Sleep Insights planned)
+- **Weekly AI Review Card** — Generate the comprehensive weekly report (Week at a Glance, Facts, Patterns with confidence, Journal Themes, Wins, Areas for Attention, Recommendations, Data Limitations) for this week or last week
 - **Journal Card** — Recent entries and shortcuts to Free Write / Templates / History
 - **Tasks Card** — Today's task completion status
 - **Setup Guide** — Onboarding walkthrough for new users (dismissible, re-openable from Settings)
