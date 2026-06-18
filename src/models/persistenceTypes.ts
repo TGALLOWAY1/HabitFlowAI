@@ -1462,6 +1462,7 @@ export const MONGO_COLLECTIONS = {
     HEALTH_METRICS_DAILY: 'healthMetricsDaily',
     HABIT_HEALTH_RULES: 'habitHealthRules',
     HEALTH_SUGGESTIONS: 'healthSuggestions',
+    AI_REPORTS: 'aiReports',
 } as const;
 
 /**
