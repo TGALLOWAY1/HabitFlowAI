@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { Sparkles, Loader2, X, ChevronDown, ChevronUp } from 'lucide-react';
+import { Sparkles, Loader2, X, ChevronDown, ChevronUp, Wand2, History } from 'lucide-react';
 import { hasGeminiApiKey, fetchJournalSummary } from '../../lib/geminiClient';
 import { JournalSummaryBody } from './JournalSummaryBody';
+import { AIReportHistoryModal } from '../dashboard/AIReportHistoryModal';
 
 interface JournalSummaryCardProps {
   compact?: boolean;
@@ -14,6 +15,7 @@ export function JournalSummaryCard({ compact }: JournalSummaryCardProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState(true);
+  const [showHistory, setShowHistory] = useState(false);
 
   const hasKey = hasGeminiApiKey();
 
@@ -64,6 +66,23 @@ export function JournalSummaryCard({ compact }: JournalSummaryCardProps) {
           </h3>
         </div>
         <div className="flex items-center gap-2">
+          <button
+            onClick={handleGenerate}
+            disabled={loading}
+            className="p-1.5 text-neutral-500 hover:text-white rounded-lg hover:bg-white/5 transition-colors disabled:opacity-40"
+            aria-label="Generate journal summary"
+            title="Generate summary"
+          >
+            <Wand2 size={16} />
+          </button>
+          <button
+            onClick={() => setShowHistory(true)}
+            className="p-1.5 text-neutral-500 hover:text-white rounded-lg hover:bg-white/5 transition-colors"
+            aria-label="View summary history"
+            title="History"
+          >
+            <History size={16} />
+          </button>
           {summary && (
             <button
               onClick={() => setExpanded(!expanded)}
@@ -84,6 +103,14 @@ export function JournalSummaryCard({ compact }: JournalSummaryCardProps) {
           )}
         </div>
       </div>
+
+      {showHistory && (
+        <AIReportHistoryModal
+          kind="journal_summary"
+          title="Journal Summary"
+          onClose={() => setShowHistory(false)}
+        />
+      )}
 
       {/* Idle state */}
       {!summary && !loading && !error && (

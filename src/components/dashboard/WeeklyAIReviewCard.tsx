@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { Sparkles, Loader2, RefreshCw } from 'lucide-react';
+import { Sparkles, Loader2, RefreshCw, Wand2, History } from 'lucide-react';
 import { hasGeminiApiKey, fetchWeeklyAIReview } from '../../lib/geminiClient';
 import type { WeeklyAIReview } from '../../shared/weeklyAiReview';
 import { WeeklyReviewBody } from './WeeklyReviewBody';
+import { AIReportHistoryModal } from './AIReportHistoryModal';
 
 type WeekChoice = 'this' | 'last';
 
@@ -23,6 +24,7 @@ export const WeeklyAIReviewCard: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [week, setWeek] = useState<WeekChoice>('this');
+  const [showHistory, setShowHistory] = useState(false);
 
   const hasKey = hasGeminiApiKey();
 
@@ -67,20 +69,47 @@ export const WeeklyAIReviewCard: React.FC = () => {
           <Sparkles size={18} className="text-indigo-400" />
           <h3 className="text-lg font-semibold text-white">Weekly AI Review</h3>
         </div>
-        <div className="flex items-center gap-1 rounded-lg bg-white/5 p-0.5">
-          {(['this', 'last'] as WeekChoice[]).map((choice) => (
-            <button
-              key={choice}
-              onClick={() => selectWeek(choice)}
-              className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
-                week === choice ? 'bg-indigo-600/80 text-white' : 'text-neutral-400 hover:text-white'
-              }`}
-            >
-              {choice === 'this' ? 'This week' : 'Last week'}
-            </button>
-          ))}
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 rounded-lg bg-white/5 p-0.5">
+            {(['this', 'last'] as WeekChoice[]).map((choice) => (
+              <button
+                key={choice}
+                onClick={() => selectWeek(choice)}
+                className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
+                  week === choice ? 'bg-indigo-600/80 text-white' : 'text-neutral-400 hover:text-white'
+                }`}
+              >
+                {choice === 'this' ? 'This week' : 'Last week'}
+              </button>
+            ))}
+          </div>
+          <button
+            onClick={() => handleGenerate()}
+            disabled={loading}
+            className="p-1.5 text-neutral-400 hover:text-white rounded-lg hover:bg-white/5 transition-colors disabled:opacity-40"
+            aria-label="Generate weekly review"
+            title="Generate review"
+          >
+            <Wand2 size={16} />
+          </button>
+          <button
+            onClick={() => setShowHistory(true)}
+            className="p-1.5 text-neutral-400 hover:text-white rounded-lg hover:bg-white/5 transition-colors"
+            aria-label="View review history"
+            title="History"
+          >
+            <History size={16} />
+          </button>
         </div>
       </div>
+
+      {showHistory && (
+        <AIReportHistoryModal
+          kind="weekly_review"
+          title="Weekly Review"
+          onClose={() => setShowHistory(false)}
+        />
+      )}
 
       {/* Idle / empty-of-results */}
       {!review && !loading && !error && (
