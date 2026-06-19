@@ -20,17 +20,21 @@ export const NumericInputPopover: React.FC<NumericInputPopoverProps> = ({
     unit,
     position,
 }) => {
-    const [value, setValue] = useState(initialValue.toString());
+    const [value, setValue] = useState(initialValue > 0 ? initialValue.toString() : '');
     const inputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
         if (isOpen) {
-            setValue(initialValue.toString());
-            // Double-rAF ensures DOM is painted before focus (more reliable than setTimeout on iOS)
+            // Existing values are shown for editing; new entries start blank so the
+            // placeholder ("0") shows and the first typed digit always appears.
+            setValue(initialValue > 0 ? initialValue.toString() : '');
+            // Double-rAF ensures DOM is painted before focus (more reliable than setTimeout on iOS).
+            // Selection is handled by the input's onFocus (below) rather than a delayed select()
+            // call here: on iOS a late, programmatic select() races with the on-screen keyboard
+            // and can swallow the user's first keystroke, leaving the field looking empty.
             requestAnimationFrame(() => {
                 requestAnimationFrame(() => {
                     inputRef.current?.focus();
-                    inputRef.current?.select();
                 });
             });
         }
@@ -81,6 +85,7 @@ export const NumericInputPopover: React.FC<NumericInputPopoverProps> = ({
                     pattern="[0-9]*\.?[0-9]*"
                     value={value}
                     onChange={(e) => setValue(e.target.value)}
+                    onFocus={(e) => e.currentTarget.select()}
                     className="w-full bg-neutral-900 border border-white/10 rounded-lg px-3 py-1.5 text-white text-sm focus:outline-none focus:border-emerald-500"
                     placeholder="0"
                 />
