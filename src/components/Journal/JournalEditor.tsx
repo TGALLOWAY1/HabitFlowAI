@@ -350,17 +350,21 @@ export function JournalEditor({ existingEntry, onSave, onCancel, initialTemplate
     if (minimal) {
         return (
             <div className="flex flex-col h-[calc(100vh-21rem)]">
-                <div className="flex-1 overflow-y-auto modal-scroll">
-                    {selectedTemplateId === 'free-write' ? (
-                        <div className="relative h-full">
-                            <textarea
-                                className="w-full h-full min-h-[300px] bg-white/[0.02] border border-white/5 rounded-xl p-4 sm:p-6 text-white/90 text-lg leading-relaxed focus:bg-white/[0.04] focus:border-white/10 focus:ring-0 focus:outline-none resize-none font-sans placeholder:text-white/20"
-                                placeholder="Start writing..."
-                                value={content['free-write'] || ''}
-                                onChange={(e) => handleAnswerChange('free-write', e.target.value)}
-                            />
-                        </div>
-                    ) : (
+                {selectedTemplateId === 'free-write' ? (
+                    // Free Write: the textarea is the single fill-and-scroll surface.
+                    // Wrapping it in a separate `overflow-y-auto` container (alongside
+                    // the textarea's own scroll) produced a sub-pixel overflow that
+                    // rendered a stray scroll indicator — the gray band overlapping the
+                    // right edge on mobile Safari. `flex-1 min-h-0` lets it absorb the
+                    // available height without forcing the column to overflow.
+                    <textarea
+                        className="flex-1 min-h-0 w-full bg-white/[0.02] border border-white/5 rounded-xl p-4 sm:p-6 text-white/90 text-lg leading-relaxed focus:bg-white/[0.04] focus:border-white/10 focus:ring-0 focus:outline-none resize-none font-sans placeholder:text-white/20 no-scrollbar"
+                        placeholder="Start writing..."
+                        value={content['free-write'] || ''}
+                        onChange={(e) => handleAnswerChange('free-write', e.target.value)}
+                    />
+                ) : (
+                    <div className="flex-1 overflow-y-auto modal-scroll">
                         <div className="space-y-6">
                             {prompts.map((prompt) => (
                                 <div key={prompt.id} className="group">
@@ -376,8 +380,8 @@ export function JournalEditor({ existingEntry, onSave, onCancel, initialTemplate
                                 </div>
                             ))}
                         </div>
-                    )}
-                </div>
+                    </div>
+                )}
                 <div className="flex justify-between items-center pt-3 pb-3 flex-shrink-0">
                     <button
                         onClick={handleDiscard}
