@@ -367,7 +367,7 @@ export function InfoModal({ isOpen, onClose }: InfoModalProps) {
                 <p className="text-sm text-neutral-200">
                   <span className="font-bold text-emerald-400">Sleep Analytics</span>
                 </p>
-                <p className="text-sm text-neutral-300 mt-1">A dedicated Sleep tab in Analytics built around your Apple Watch Sleep Score (overall plus bedtime, duration, and interruption sub-scores). Use the "Log Sleep" button on the morning check-in to record your score, bedtime/wake times, duration, quality, and last-night habits.</p>
+                <p className="text-sm text-neutral-300 mt-1">A dedicated Sleep tab in Analytics built around your Apple Watch Sleep Score (overall plus bedtime, duration, and interruption sub-scores). Use the "Log Sleep" button on the morning check-in to record your score, bedtime/wake times, duration, quality, and last-night habits. Forgot a night? Use the "Night of" date picker in the form — or the "Edit a night" list on the Sleep tab — to log or correct any previous day.</p>
                 <ul className="mt-1.5 space-y-1.5">
                   <li className="text-xs text-neutral-400 pl-2 flex items-start gap-1.5">
                     <Activity size={13} className="text-emerald-400 mt-0.5 shrink-0" />

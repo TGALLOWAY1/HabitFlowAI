@@ -143,6 +143,7 @@ Every feature area below is **Shipped** unless an item notes otherwise.
   - **Weekly summary & achievements** — Per-week duration/latency/on-target/aid-free/energy rollups and milestone cards
   - **Configurable targets** — User-set target bedtime / wake / duration (default 10 PM / 6 AM / 8h)
   - Data captured via a dedicated **Sleep entry form** on the Daily Check-in (morning), stored as wellbeing entries
+  - **Edit any previous night** — The sleep form has a "Night of" date picker (capped at today), and the Sleep tab shows an "Edit a night" list of recent nights; tapping a night opens the form pre-filled to log or correct that day's data
 
 ## AI Features (Gemini BYOK)
 

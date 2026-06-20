@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { X, Save, Watch, Clock, Sunrise, Moon, Settings2 } from 'lucide-react';
+import { X, Save, Watch, Clock, Sunrise, Moon, Settings2, CalendarDays } from 'lucide-react';
 import { format } from 'date-fns';
 import {
   fetchWellbeingEntries,
@@ -18,6 +18,8 @@ interface SleepEntryFormProps {
   isOpen: boolean;
   onClose: () => void;
   onSaved?: () => void;
+  /** Day to log/edit (YYYY-MM-DD). Defaults to today; used to edit previous nights. */
+  initialDayKey?: string;
 }
 
 const DEFAULT_TARGETS = { bedtimeMinutes: 600, wakeMinutes: 1080, durationMinutes: 480 };
@@ -25,8 +27,11 @@ const DEFAULT_TARGETS = { bedtimeMinutes: 600, wakeMinutes: 1080, durationMinute
 /** numeric field state stored as string for controlled inputs */
 type NumStr = string;
 
-export const SleepEntryForm: React.FC<SleepEntryFormProps> = ({ isOpen, onClose, onSaved }) => {
+export const SleepEntryForm: React.FC<SleepEntryFormProps> = ({ isOpen, onClose, onSaved, initialDayKey }) => {
   const today = format(new Date(), 'yyyy-MM-dd');
+
+  // The night being logged/edited (morning dayKey). Editable so past days can be corrected.
+  const [dayKey, setDayKey] = useState(initialDayKey ?? today);
 
   // Sleep results
   const [bedtime, setBedtime] = useState('');     // "HH:MM" 24h
@@ -55,13 +60,18 @@ export const SleepEntryForm: React.FC<SleepEntryFormProps> = ({ isOpen, onClose,
 
   const [saving, setSaving] = useState(false);
 
+  // When (re)opened, sync the editable day to the requested night.
+  useEffect(() => {
+    if (isOpen) setDayKey(initialDayKey ?? today);
+  }, [isOpen, initialDayKey, today]);
+
   useEffect(() => {
     if (!isOpen) return;
     let cancelled = false;
     (async () => {
       try {
         const [entries, prefs] = await Promise.all([
-          fetchWellbeingEntries({ startDayKey: today, endDayKey: today }),
+          fetchWellbeingEntries({ startDayKey: dayKey, endDayKey: dayKey }),
           fetchDashboardPrefs(),
         ]);
         if (cancelled) return;
@@ -69,9 +79,10 @@ export const SleepEntryForm: React.FC<SleepEntryFormProps> = ({ isOpen, onClose,
         for (const e of entries) {
           if (e.timeOfDay === 'morning' && typeof e.value === 'number') byKey.set(e.metricKey, e.value);
         }
+        // Reset every field from this day's entries so switching days never leaks stale values.
         const num = (k: string) => (byKey.has(k) ? String(byKey.get(k)) : '');
-        if (byKey.has('sleepBedtimeMinutes')) setBedtime(minutesAfterNoonToTimeString(byKey.get('sleepBedtimeMinutes')!));
-        if (byKey.has('sleepWakeMinutes')) setWake(minutesAfterNoonToTimeString(byKey.get('sleepWakeMinutes')!));
+        setBedtime(byKey.has('sleepBedtimeMinutes') ? minutesAfterNoonToTimeString(byKey.get('sleepBedtimeMinutes')!) : '');
+        setWake(byKey.has('sleepWakeMinutes') ? minutesAfterNoonToTimeString(byKey.get('sleepWakeMinutes')!) : '');
         setAppleScore(num('appleSleepScore'));
         setBedtimeScore(num('appleSleepBedtimeScore'));
         setDurationScore(num('appleSleepDurationScore'));
@@ -80,8 +91,11 @@ export const SleepEntryForm: React.FC<SleepEntryFormProps> = ({ isOpen, onClose,
           const d = byKey.get('sleepDurationMinutes')!;
           setDurationH(String(Math.floor(d / 60)));
           setDurationM(String(d % 60));
+        } else {
+          setDurationH('');
+          setDurationM('');
         }
-        if (byKey.has('sleepQuality')) setQuality(byKey.get('sleepQuality')!);
+        setQuality(byKey.has('sleepQuality') ? byKey.get('sleepQuality')! : 2);
         setAidUsed((byKey.get('sleepAidUsed') ?? 0) >= 1);
         setPhoneInBed((byKey.get('factorPhoneInBed') ?? 0) >= 1);
         setWindDown((byKey.get('factorWindDown') ?? 0) >= 1);
@@ -98,7 +112,7 @@ export const SleepEntryForm: React.FC<SleepEntryFormProps> = ({ isOpen, onClose,
       }
     })();
     return () => { cancelled = true; };
-  }, [isOpen, today]);
+  }, [isOpen, dayKey]);
 
   if (!isOpen) return null;
 
@@ -147,7 +161,7 @@ export const SleepEntryForm: React.FC<SleepEntryFormProps> = ({ isOpen, onClose,
     const entries: Array<{ dayKey: string; timeOfDay: 'morning'; metricKey: WellbeingMetricKey; value: number; source: 'checkin' }> = [];
     const push = (metricKey: WellbeingMetricKey, value: number | null) => {
       if (value === null) return;
-      entries.push({ dayKey: today, timeOfDay: 'morning', metricKey, value, source: 'checkin' });
+      entries.push({ dayKey, timeOfDay: 'morning', metricKey, value, source: 'checkin' });
     };
 
     const bedMin = timeStringToMinutesAfterNoon(bedtime);
@@ -200,7 +214,7 @@ export const SleepEntryForm: React.FC<SleepEntryFormProps> = ({ isOpen, onClose,
       <div className="bg-neutral-900 border border-white/10 rounded-2xl w-full max-w-md max-h-[90dvh] shadow-2xl overflow-hidden flex flex-col">
         <div className="flex items-center justify-between p-4 border-b border-white/5 bg-neutral-800/50">
           <h2 className="text-lg font-semibold text-white flex items-center gap-2">
-            <Moon size={18} className="text-indigo-400" /> Log Sleep
+            <Moon size={18} className="text-indigo-400" /> {dayKey === today ? 'Log Sleep' : 'Edit Sleep'}
           </h2>
           <button onClick={onClose} className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-full hover:bg-white/10 text-neutral-400 hover:text-white" aria-label="Close">
             <X size={20} />
@@ -208,6 +222,21 @@ export const SleepEntryForm: React.FC<SleepEntryFormProps> = ({ isOpen, onClose,
         </div>
 
         <div className="flex-1 overflow-y-auto modal-scroll p-5 space-y-6">
+          {/* Night being edited — change to log/correct a previous day */}
+          <div className="flex items-center justify-between gap-3">
+            <label htmlFor="sleep-day" className="text-xs text-neutral-400 flex items-center gap-1.5">
+              <CalendarDays size={14} className="text-indigo-400" /> Night of
+            </label>
+            <input
+              id="sleep-day"
+              type="date"
+              value={dayKey}
+              max={today}
+              onChange={(e) => { if (e.target.value) setDayKey(e.target.value); }}
+              className="bg-neutral-800 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-emerald-500 outline-none"
+            />
+          </div>
+
           {/* Apple Watch Sleep Score */}
           <section className="space-y-3">
             <h3 className="text-xs font-semibold text-neutral-400 uppercase tracking-wide flex items-center gap-2">
