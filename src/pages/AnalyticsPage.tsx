@@ -248,7 +248,11 @@ export const AnalyticsPage: React.FC<AnalyticsPageProps> = ({ onBack }) => {
       )}
 
       {activeTab === 'sleep' && (
-        <SleepAnalytics data={sleepData} loading={loading} />
+        <SleepAnalytics
+          data={sleepData}
+          loading={loading}
+          onReload={() => loadSleepData(getDaysFromRange(timeRange, customStart, customEnd))}
+        />
       )}
     </div>
   );
