@@ -189,7 +189,10 @@ export const ProgressDashboard: React.FC<ProgressDashboardProps> = ({
             {/* Daily Overview + Check-In — always side by side */}
             <div className="grid grid-cols-2 gap-4">
                 <DailyOverviewCard />
-                <DailyCheckInCard onOpenCheckIn={() => setIsCheckInOpen(true)} />
+                <DailyCheckInCard
+                    onOpenCheckIn={() => setIsCheckInOpen(true)}
+                    onNavigateHistory={onNavigateWellbeingHistory}
+                />
             </div>
 
             {/* Journal + Tasks — side by side */}
