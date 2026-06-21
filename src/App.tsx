@@ -123,6 +123,7 @@ function buildUrlForRoute(route: AppRoute, params: Record<string, string> = {}):
 
   // Clear any existing ID params to prevent leakage between views
   searchParams.delete("goalId");
+  searchParams.delete("tab");
 
   // Set new params
   Object.entries(params).forEach(([key, value]) => {
@@ -192,6 +193,10 @@ const HabitTrackerContent: React.FC = () => {
     const params = new URLSearchParams(window.location.search);
     return params.get("trackId");
   });
+  const [journalTab, setJournalTab] = useState<string | null>(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get("tab");
+  });
 
   // Guards against a completed goal being extended/repeated more than once if
   // the action is re-fired before navigation away — each call creates a goal.
@@ -242,6 +247,7 @@ const HabitTrackerContent: React.FC = () => {
       setView(route);
       setSelectedGoalId(params.get("goalId"));
       setSelectedTrackId(params.get("trackId"));
+      setJournalTab(params.get("tab"));
       setShowCreateGoal(false);
     };
 
@@ -255,6 +261,9 @@ const HabitTrackerContent: React.FC = () => {
   const handleNavigate = (route: AppRoute, params: Record<string, string> = {}) => {
     setShowCreateGoal(false);
     setView(route);
+
+    // Journal tab deep-link (e.g. dashboard Journal card actions)
+    setJournalTab(route === 'journal' ? (params.tab ?? null) : null);
 
     // Update ephemeral state based on route
     if (params.goalId) {
@@ -603,7 +612,7 @@ const HabitTrackerContent: React.FC = () => {
             onNavigateWellbeingHistory={() => handleNavigate('wellbeing-history')}
             onStartRoutine={(routine) => setRoutineRunnerState({ isOpen: true, routine, variantId: routine.defaultVariantId })}
             onPreviewRoutine={(routine) => setRoutinePreviewState({ isOpen: true, routine })}
-            onNavigateToJournal={() => handleNavigate('journal')}
+            onNavigateToJournal={(tab) => handleNavigate('journal', tab ? { tab } : {})}
             onNavigateToRoutines={() => handleNavigate('routines')}
             onNavigateToTasks={() => handleNavigate('tasks')}
             onNavigateToGoals={() => handleNavigate('goals')}
@@ -619,7 +628,7 @@ const HabitTrackerContent: React.FC = () => {
             onPreview={(routine) => setRoutinePreviewState({ isOpen: true, routine })}
           />
         ) : view === 'journal' ? (
-          <JournalPage />
+          <JournalPage initialTab={(journalTab as 'free' | 'templates' | 'history' | 'review' | null) ?? undefined} />
         ) : view === 'tasks' ? (
           <TasksPage />
         ) : view === 'debug-entries' ? (

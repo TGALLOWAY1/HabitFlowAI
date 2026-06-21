@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { JournalDisplay } from '../components/Journal/JournalDisplay';
 import { JournalEditor } from '../components/Journal/JournalEditor';
 import type { JournalEntry } from '../models/persistenceTypes';
@@ -6,10 +6,19 @@ import { PenLine, LayoutTemplate, History, Sparkles } from 'lucide-react';
 import { JournalSummaryBanner } from '../components/Journal/JournalSummaryBanner';
 import { JournalReviewPanel } from '../components/Journal/JournalReviewPanel';
 
-type JournalTab = 'free' | 'templates' | 'history' | 'review';
+export type JournalTab = 'free' | 'templates' | 'history' | 'review';
 
-export function JournalPage() {
-    const [activeTab, setActiveTab] = useState<JournalTab>('free');
+interface JournalPageProps {
+    initialTab?: JournalTab;
+}
+
+export function JournalPage({ initialTab }: JournalPageProps = {}) {
+    const [activeTab, setActiveTab] = useState<JournalTab>(initialTab ?? 'free');
+
+    // Honor a tab requested via navigation (e.g. the dashboard Journal card)
+    useEffect(() => {
+        if (initialTab) setActiveTab(initialTab);
+    }, [initialTab]);
     const [editingEntry, setEditingEntry] = useState<JournalEntry | undefined>(undefined);
     // If true, we are in a special "Edit Mode" that overrides the tabs
     const [isEditingExisting, setIsEditingExisting] = useState(false);

@@ -96,7 +96,7 @@ interface ProgressDashboardProps {
     onNavigateWellbeingHistory?: () => void;
     onStartRoutine?: (routine: Routine) => void;
     onPreviewRoutine?: (routine: Routine) => void;
-    onNavigateToJournal?: () => void;
+    onNavigateToJournal?: (tab?: 'free' | 'templates' | 'history' | 'review') => void;
     onNavigateToRoutines?: () => void;
     onNavigateToTasks?: () => void;
     onNavigateToGoals?: () => void;
