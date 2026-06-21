@@ -23,7 +23,7 @@ Every feature area below is **Shipped** unless an item notes otherwise.
 | Sleep Analytics | Shipped | Dedicated Sleep tab; Apple Watch sleep score, consistency, correlations |
 | AI Features (Gemini BYOK) | Shipped | Weekly Review, Journal Review, summaries, variant suggestions |
 | Apple Health Integration | Beta | Email-allowlisted users only; requires external sync bridge |
-| Dashboard | Shipped | Daily ring, pinned goals/routines, AI cards, tasks, setup guide |
+| Dashboard | Shipped | Daily habits ring, check-in & journal action cards, pinned goals/routines, tasks, setup guide |
 | Views | Shipped | Tracker grid, Day view, weekly Schedule view |
 | Settings & Account | Shipped | API key, archived habits, delete-all-data |
 
@@ -148,9 +148,9 @@ Every feature area below is **Shipped** unless an item notes otherwise.
 ## AI Features (Gemini BYOK)
 
 - **API Key Management** — Store Gemini API key in localStorage (never persisted server-side); configure via Settings
-- **Weekly AI Review** — The single, comprehensive weekly report for a selected week (this week / last week) on the Dashboard. It both tells the story of the week and provides evidence-based analysis. Aggregates habit entries, sleep & mood from wellbeing check-ins, journal activity, and goals into observed facts, then returns a typed review with seven sections: **Week at a Glance** (a natural-language narrative recap, 1–3 paragraphs), **Facts** (objective, measurable observations), **Patterns** (each with a low/medium/high confidence), **Journal Themes** (recurring topics and emotional trends), **Wins**, **Areas for Attention**, and **Recommendations** (max 3–5) — plus honest **Data Limitations**. The prompt separates observed facts from inferred patterns from suggestions and forbids inventing data; low-data weeks are reported honestly via Data Limitations rather than fabricated patterns. (Consolidates the former standalone AI Weekly Summary.)
+- **Weekly AI Review** — The single, comprehensive weekly report for a selected week (this week / last week), shown on the Habits page (Grid view, below the habit grid). It both tells the story of the week and provides evidence-based analysis. Aggregates habit entries, sleep & mood from wellbeing check-ins, journal activity, and goals into observed facts, then returns a typed review with seven sections: **Week at a Glance** (a natural-language narrative recap, 1–3 paragraphs), **Facts** (objective, measurable observations), **Patterns** (each with a low/medium/high confidence), **Journal Themes** (recurring topics and emotional trends), **Wins**, **Areas for Attention**, and **Recommendations** (max 3–5) — plus honest **Data Limitations**. The prompt separates observed facts from inferred patterns from suggestions and forbids inventing data; low-data weeks are reported honestly via Data Limitations rather than fabricated patterns. (Consolidates the former standalone AI Weekly Summary.)
 - **AI Journal Summary** — Auto-generated weekly journal summary shown as a dismissible banner; persisted as a journal entry in history
-- **AI Report History (archive)** — Every generated Weekly AI Review and Journal Summary is saved to a dedicated `aiReports` archive (scoped per user, soft-deleted). The Dashboard cards expose a wand icon to (re)generate and a clock icon that opens a browsable history of past reports by date; any saved report can be reopened in full or deleted. Reading history requires no Gemini call.
+- **AI Report History (archive)** — Every generated Weekly AI Review and Journal Summary is saved to a dedicated `aiReports` archive (scoped per user, soft-deleted). The Weekly AI Review card (Habits page) and Journal Summary card expose a wand icon to (re)generate and a clock icon that opens a browsable history of past reports by date; any saved report can be reopened in full or deleted. Reading history requires no Gemini call.
 - **AI Journal Review** — On-demand, structured review of journal entries over a user-selected date range (Journal → AI Review tab; presets for last 7/30 days plus custom range). Grounded only in the user's own entries, it returns a typed review: Overview, Emotional Themes, Recurring Stressors, and Self-Talk Patterns (each with paraphrased evidence; themes/stressors carry a low/medium/high confidence), Wins, Reflection Questions, Suggested Next Steps, and Data Limitations. The prompt separates observed evidence from inferred themes from next steps, forbids inventing facts or long quotes, and is deliberately non-clinical (no diagnoses). Empty ranges show a helpful empty state, sparse ranges show a low-data warning, and entries suggesting crisis surface a gentle support notice rather than counseling. Generated on demand (not persisted); regenerate at any time
 - **AI Variant Suggestions** — Generate routine variants based on routine title and steps
 - **Persona-Driven Journaling** — Template personas guide journaling prompts
@@ -166,15 +166,15 @@ Every feature area below is **Shipped** unless an item notes otherwise.
 
 ## Dashboard
 
-- **Daily Completion Ring** — Progress indicator showing habits done today vs. scheduled
-- **Daily Check-In Card** — Quick access to morning/evening wellbeing check-in
+- **Daily Habits Card** — Narrow status card showing the daily completion ring and count (e.g. 0/22)
+- **Evening/Morning Check-In Card** — Wide action card with a Moon/Sun header (→ check-in modal) and four actions: Entry, Details, History (→ Wellbeing History), and AI
 - **Goals at a Glance** — Pinned goals with progress bars (configurable which goals to pin)
 - **Pinned Routines Card** — Quick-start buttons for favorite routines
-- **AI Insights Section** — A single compact section grouping the AI-generated reports: the Weekly AI Review (primary) and Journal Insights (Sleep Insights planned)
-- **Weekly AI Review Card** — Generate the comprehensive weekly report (Week at a Glance, Facts, Patterns with confidence, Journal Themes, Wins, Areas for Attention, Recommendations, Data Limitations) for this week or last week. Header wand icon generates; clock icon opens the saved review history.
-- **Journal Card** — Recent entries and shortcuts to Free Write / Templates / History
-- **Tasks Card** — Today's task completion status
+- **Journal Card** — Wide action card with four actions that deep-link to the matching Journal tab: Free, Template, History, and AI (Review)
+- **Tasks Card** — Narrow status card showing today's task completion count
 - **Setup Guide** — Onboarding walkthrough for new users (dismissible, re-openable from Settings)
+
+> The Weekly AI Review and Journal Summary cards no longer appear on the Dashboard. The **Weekly AI Review** now lives on the Habits page (Grid view, below the habit grid); see Habits / AI Features.
 
 ## Views
 
