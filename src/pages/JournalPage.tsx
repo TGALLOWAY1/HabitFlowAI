@@ -6,10 +6,16 @@ import { PenLine, LayoutTemplate, History, Sparkles } from 'lucide-react';
 import { JournalSummaryBanner } from '../components/Journal/JournalSummaryBanner';
 import { JournalReviewPanel } from '../components/Journal/JournalReviewPanel';
 
-type JournalTab = 'free' | 'templates' | 'history' | 'review';
+export type JournalTab = 'free' | 'templates' | 'history' | 'review';
 
-export function JournalPage() {
-    const [activeTab, setActiveTab] = useState<JournalTab>('free');
+interface JournalPageProps {
+    initialTab?: JournalTab;
+}
+
+export function JournalPage({ initialTab }: JournalPageProps = {}) {
+    // Initial tab can be deep-linked via navigation (e.g. the dashboard Journal card).
+    // JournalPage mounts fresh on each navigation, so the initial value is sufficient.
+    const [activeTab, setActiveTab] = useState<JournalTab>(initialTab ?? 'free');
     const [editingEntry, setEditingEntry] = useState<JournalEntry | undefined>(undefined);
     // If true, we are in a special "Edit Mode" that overrides the tabs
     const [isEditingExisting, setIsEditingExisting] = useState(false);

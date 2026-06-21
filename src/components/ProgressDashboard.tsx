@@ -9,8 +9,6 @@ import { DailyCheckInCard } from './dashboard/DailyCheckInCard';
 import { JournalCard } from './dashboard/JournalCard';
 import { TasksCard } from './dashboard/TasksCard';
 import { PinnedRoutinesCard } from './dashboard/PinnedRoutinesCard';
-import { WeeklyAIReviewCard } from './dashboard/WeeklyAIReviewCard';
-import { JournalSummaryCard } from './Journal/JournalSummaryCard';
 import { SetupDashboard } from './dashboard/SetupDashboard';
 import { useSetupProgress } from '../hooks/useSetupProgress';
 import { useAuth } from '../store/AuthContext';
@@ -98,7 +96,7 @@ interface ProgressDashboardProps {
     onNavigateWellbeingHistory?: () => void;
     onStartRoutine?: (routine: Routine) => void;
     onPreviewRoutine?: (routine: Routine) => void;
-    onNavigateToJournal?: () => void;
+    onNavigateToJournal?: (tab?: 'free' | 'templates' | 'history' | 'review') => void;
     onNavigateToRoutines?: () => void;
     onNavigateToTasks?: () => void;
     onNavigateToGoals?: () => void;
@@ -188,20 +186,24 @@ export const ProgressDashboard: React.FC<ProgressDashboardProps> = ({
                 />
             )}
 
-            {/* Daily Overview + Check-In — always side by side */}
-            <div className="grid grid-cols-2 gap-4">
+            {/* Top cards: narrow status card (left) + wide action card (right).
+                Both rows share one column template so the narrow cards match
+                each other and the wide cards match each other. */}
+            <div className="grid grid-cols-[2fr_3fr] gap-3">
+                {/* Row 1: Daily Habits (narrow) + Evening Check-in (wide) */}
                 <DailyOverviewCard />
-                <DailyCheckInCard onOpenCheckIn={() => setIsCheckInOpen(true)} />
-            </div>
+                <DailyCheckInCard
+                    onOpenCheckIn={() => setIsCheckInOpen(true)}
+                    onNavigateHistory={onNavigateWellbeingHistory}
+                />
 
-            {/* Journal + Tasks — side by side */}
-            <div className="grid grid-cols-2 gap-4">
-                {onNavigateToJournal && (
-                    <JournalCard onNavigateToJournal={onNavigateToJournal} />
-                )}
-                {onNavigateToTasks && (
+                {/* Row 2: Tasks (narrow) + Journal (wide) */}
+                {onNavigateToTasks ? (
                     <TasksCard onNavigateToTasks={onNavigateToTasks} />
-                )}
+                ) : <div />}
+                {onNavigateToJournal ? (
+                    <JournalCard onNavigateToJournal={onNavigateToJournal} />
+                ) : <div />}
             </div>
 
             {/* Pinned Routines */}
@@ -212,21 +214,6 @@ export const ProgressDashboard: React.FC<ProgressDashboardProps> = ({
                     onViewAllRoutines={onNavigateToRoutines}
                 />
             )}
-
-            {/* AI Insights — single home for AI-generated reports */}
-            <div className="space-y-4">
-                <h3 className="text-sm font-semibold uppercase tracking-wide text-neutral-500 px-1">
-                    AI Insights
-                </h3>
-
-                {/* Weekly Review — the primary AI-generated artifact */}
-                <WeeklyAIReviewCard />
-
-                {/* Journal Insights (optional) */}
-                <JournalSummaryCard compact />
-
-                {/* Sleep Insights — future feature */}
-            </div>
 
             {/* Goals at a glance */}
             <div className="bg-neutral-900/50 rounded-2xl border border-white/5 p-6 backdrop-blur-sm">

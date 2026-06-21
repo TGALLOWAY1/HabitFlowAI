@@ -1,35 +1,33 @@
-import { Clock, PenLine, LayoutTemplate } from 'lucide-react';
+import { Clock, PenLine, LayoutTemplate, Sparkles } from 'lucide-react';
+
+type JournalTab = 'free' | 'templates' | 'history' | 'review';
 
 interface JournalCardProps {
-    onNavigateToJournal: () => void;
+    onNavigateToJournal: (tab?: JournalTab) => void;
 }
+
+const ACTIONS: { icon: typeof PenLine; label: string; tab: JournalTab; color: string }[] = [
+    { icon: PenLine, label: 'Free', tab: 'free', color: 'text-emerald-400' },
+    { icon: LayoutTemplate, label: 'Template', tab: 'templates', color: 'text-emerald-400' },
+    { icon: Clock, label: 'History', tab: 'history', color: 'text-emerald-400' },
+    { icon: Sparkles, label: 'AI', tab: 'review', color: 'text-purple-400' },
+];
 
 export const JournalCard: React.FC<JournalCardProps> = ({ onNavigateToJournal }) => {
     return (
-        <div className="bg-neutral-900/50 rounded-2xl border border-white/5 p-4 backdrop-blur-sm">
+        <div className="bg-neutral-900/50 rounded-2xl border border-white/5 p-4 backdrop-blur-sm flex flex-col">
             <p className="text-xs font-medium text-neutral-400 mb-3">Journal</p>
-            <div className="flex items-center justify-around">
-                <button
-                    onClick={onNavigateToJournal}
-                    className="flex flex-col items-center gap-1.5 p-2 rounded-xl hover:bg-neutral-800/50 transition-colors min-w-[48px]"
-                >
-                    <PenLine size={18} className="text-emerald-400" />
-                    <span className="text-[10px] text-neutral-500">Free</span>
-                </button>
-                <button
-                    onClick={onNavigateToJournal}
-                    className="flex flex-col items-center gap-1.5 p-2 rounded-xl hover:bg-neutral-800/50 transition-colors min-w-[48px]"
-                >
-                    <LayoutTemplate size={18} className="text-emerald-400" />
-                    <span className="text-[10px] text-neutral-500">Template</span>
-                </button>
-                <button
-                    onClick={onNavigateToJournal}
-                    className="flex flex-col items-center gap-1.5 p-2 rounded-xl hover:bg-neutral-800/50 transition-colors min-w-[48px]"
-                >
-                    <Clock size={18} className="text-emerald-400" />
-                    <span className="text-[10px] text-neutral-500">History</span>
-                </button>
+            <div className="flex items-center justify-between flex-1">
+                {ACTIONS.map(({ icon: Icon, label, tab, color }) => (
+                    <button
+                        key={label}
+                        onClick={() => onNavigateToJournal(tab)}
+                        className="flex flex-col items-center gap-1.5 px-2 py-1.5 rounded-xl hover:bg-neutral-800/50 transition-colors flex-1"
+                    >
+                        <Icon size={18} className={color} />
+                        <span className="text-[10px] text-neutral-500">{label}</span>
+                    </button>
+                ))}
             </div>
         </div>
     );

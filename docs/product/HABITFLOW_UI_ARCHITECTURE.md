@@ -40,22 +40,20 @@ HabitFlow App
 ├── Bottom Tab Bar (4 tabs)
 │   ├── Dashboard
 │   │   ├── Setup Guide (onboarding)
-│   │   ├── Daily Check-in (→ modal)
-│   │   ├── Pinned Goals (→ Goal Detail)
-│   │   ├── Category Completion
+│   │   ├── Top cards (two-column grid: narrow status card left, wide action card right)
+│   │   │   ├── Daily Habits (narrow; completion ring + count, e.g. 0/22)
+│   │   │   ├── Evening/Morning Check-in (wide; Moon/Sun + title + chevron → modal; actions: Entry, Details, History → Wellbeing History, AI)
+│   │   │   ├── Tasks Card (narrow; count → Tasks Page)
+│   │   │   └── Journal Card (wide; actions deep-link to Journal tabs: Free, Template, History, AI=Review)
 │   │   ├── Pinned Routines (→ Routine Runner)
-│   │   ├── Tasks Card (→ Tasks Page)
-│   │   ├── Journal Card (→ Journal Page)
-│   │   ├── AI Insights (section grouping the AI reports)
-│   │   │   ├── Weekly AI Review (Week at a Glance / Facts / Patterns / Journal Themes / Wins / Areas for Attention / Recommendations / Data Limitations; this-week / last-week; wand=generate, clock=history)
-│   │   │   │   └── AI Report History modal (browse / open / delete saved Weekly Reviews)
-│   │   │   └── Journal Insights (compact Journal Summary; wand=generate, clock=history)
-│   │   │       └── AI Report History modal (browse / open / delete saved Journal Summaries)
-│   │   └── Heatmap (30d / 90d / year)
+│   │   ├── Goals at a glance (Pinned Goals → Goal Detail; Manage to pin/unpin)
+│   │   └── Activity (Heatmap 30d / 90d / year; Overall / By Category)
 │   │
 │   ├── Habits (Tracker)
 │   │   ├── Category Tabs (filter)
 │   │   ├── Grid View (default)
+│   │   │   └── Weekly AI Review (Week at a Glance / Facts / Patterns / Journal Themes / Wins / Areas for Attention / Recommendations / Data Limitations; this-week / last-week; wand=generate, clock=history)
+│   │   │       └── AI Report History modal (browse / open / delete saved Weekly Reviews)
 │   │   ├── Today View (day-focused)
 │   │   ├── Weekly View (week-at-a-glance)
 │   │   ├── [+] Add Habit (→ modal)
@@ -85,11 +83,12 @@ HabitFlow App
 │       ├── Edit Goal (→ modal)
 │       └── Goal Completed Page (celebration)
 │
-├── Journal (via dashboard card or direct URL)
+├── Journal (via dashboard card or direct URL; dashboard card deep-links via `?tab=`)
 │   ├── AI Weekly Summary Banner (auto-generated, dismissible)
 │   ├── Free Write tab
 │   ├── Templates tab
-│   └── History tab
+│   ├── History tab
+│   └── AI Review tab
 │
 ├── Tasks (via dashboard card or direct URL)
 │   ├── Today column
@@ -121,7 +120,7 @@ HabitFlow App
 | Goal Track Detail | Page | Click track in Goals page | Track name, ordered goals with states, reorder, add/remove goals | Goal Tracks, Goals | Goal Detail, Goals List |
 | Create Goal (Step 1) | Modal | "+ Goal" button on Goals page | Enter goal details. For cumulative goals: title, type, **MilestoneRowList** (intermediate stages plus a pinned "Final Goal" row that holds `targetValue`), unit, deadline, category. For one-time goals: title, type, event date, category. | Goals, Categories | Create Goal Step 2 |
 | Create Goal (Step 2) | Modal | Next from Step 1 | Link habits to goal (filtered by category if selected) | Goals, Habits | Goals List (on submit) |
-| Journal | Page | Dashboard card / `?view=journal` | Free-write, templates, history tabs; auto-generated AI summary banner | Journal Entries | — |
+| Journal | Page | Dashboard card / `?view=journal` (`&tab=` deep-links Free/Template/History/AI Review) | Free-write, templates, history, and AI Review tabs; auto-generated AI summary banner | Journal Entries | — |
 | Tasks | Page | Dashboard card / `?view=tasks` | Today + Inbox columns; click a task title or pencil icon to rename inline | Tasks | — |
 | Wellbeing History | Page | Dashboard link | Historical wellbeing charts and trends | Wellbeing Entries | — |
 | Debug Entries | Page (dev) | `?view=debug-entries` | Testing entry data | Entries | — |
@@ -304,7 +303,7 @@ graph TB
 | **Category completion** | Dashboard category rows |
 | **Goal progress charts** | Goal Detail Page (cumulative, trend, weekly summary) |
 | **Wellbeing trends** | Wellbeing History Page |
-| **Weekly summary** | Dashboard weekly summary card |
+| **Weekly AI Review** | Habits page (Grid view), below the habit grid |
 | **Sleep analytics** | Analytics Page → Sleep tab (Habits / Routines / Goals / Sleep) — Apple Watch score, consistency, independence, bedtime/wake & duration trends, correlation factors, weekly summary, achievements, and an "Edit a night" list to log/correct previous nights |
 
 ### Category

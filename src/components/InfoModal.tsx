@@ -433,7 +433,7 @@ export function InfoModal({ isOpen, onClose }: InfoModalProps) {
                 <ul className="mt-2 space-y-2">
                   <li className="text-xs text-neutral-400 pl-2">
                     <span className="font-semibold text-neutral-300">Weekly AI Review</span>
-                    <p className="mt-0.5">The single, comprehensive weekly report on the Dashboard (this week or last week). It reads your real habit, sleep, mood, journal, and goal data and returns seven sections: a Week at a Glance narrative recap, Facts, Patterns (each with a confidence level), Journal Themes, Wins, Areas for Attention, and Recommendations — plus honest Data Limitations. It only uses your actual data and keeps facts, patterns, and suggestions separate — if a week is thin on data, it says so instead of inventing patterns. Use the wand icon to generate and the clock icon to browse your saved review history.</p>
+                    <p className="mt-0.5">The single, comprehensive weekly report on the Habits page (this week or last week). It reads your real habit, sleep, mood, journal, and goal data and returns seven sections: a Week at a Glance narrative recap, Facts, Patterns (each with a confidence level), Journal Themes, Wins, Areas for Attention, and Recommendations — plus honest Data Limitations. It only uses your actual data and keeps facts, patterns, and suggestions separate — if a week is thin on data, it says so instead of inventing patterns. Use the wand icon to generate and the clock icon to browse your saved review history.</p>
                   </li>
                   <li className="text-xs text-neutral-400 pl-2">
                     <span className="font-semibold text-neutral-300">Variant Suggestions</span>
@@ -441,7 +441,7 @@ export function InfoModal({ isOpen, onClose }: InfoModalProps) {
                   </li>
                   <li className="text-xs text-neutral-400 pl-2">
                     <span className="font-semibold text-neutral-300">Journal Summaries</span>
-                    <p className="mt-0.5">Auto-generated weekly summary of your journal entries with themes, highlights, actionable feedback, and follow-up reminders. Appears as a dismissible banner on the Journal page and is saved to your journal history. On the Dashboard card, use the wand icon to generate and the clock icon to browse your saved summary history.</p>
+                    <p className="mt-0.5">Auto-generated weekly summary of your journal entries with themes, highlights, actionable feedback, and follow-up reminders. Appears as a dismissible banner on the Journal page and is saved to your journal history. Use the wand icon to generate and the clock icon to browse your saved summary history.</p>
                   </li>
                   <li className="text-xs text-neutral-400 pl-2">
                     <span className="font-semibold text-neutral-300">AI Journal Review</span>
