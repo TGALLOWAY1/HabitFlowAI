@@ -186,23 +186,24 @@ export const ProgressDashboard: React.FC<ProgressDashboardProps> = ({
                 />
             )}
 
-            {/* Daily Overview + Check-In — always side by side */}
-            <div className="grid grid-cols-2 gap-4">
+            {/* Top cards: narrow status card (left) + wide action card (right).
+                Both rows share one column template so the narrow cards match
+                each other and the wide cards match each other. */}
+            <div className="grid grid-cols-[2fr_3fr] gap-3">
+                {/* Row 1: Daily Habits (narrow) + Evening Check-in (wide) */}
                 <DailyOverviewCard />
                 <DailyCheckInCard
                     onOpenCheckIn={() => setIsCheckInOpen(true)}
                     onNavigateHistory={onNavigateWellbeingHistory}
                 />
-            </div>
 
-            {/* Journal + Tasks — side by side */}
-            <div className="grid grid-cols-2 gap-4">
-                {onNavigateToJournal && (
-                    <JournalCard onNavigateToJournal={onNavigateToJournal} />
-                )}
-                {onNavigateToTasks && (
+                {/* Row 2: Tasks (narrow) + Journal (wide) */}
+                {onNavigateToTasks ? (
                     <TasksCard onNavigateToTasks={onNavigateToTasks} />
-                )}
+                ) : <div />}
+                {onNavigateToJournal ? (
+                    <JournalCard onNavigateToJournal={onNavigateToJournal} />
+                ) : <div />}
             </div>
 
             {/* Pinned Routines */}

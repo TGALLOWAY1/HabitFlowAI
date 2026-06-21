@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { JournalDisplay } from '../components/Journal/JournalDisplay';
 import { JournalEditor } from '../components/Journal/JournalEditor';
 import type { JournalEntry } from '../models/persistenceTypes';
@@ -13,12 +13,9 @@ interface JournalPageProps {
 }
 
 export function JournalPage({ initialTab }: JournalPageProps = {}) {
+    // Initial tab can be deep-linked via navigation (e.g. the dashboard Journal card).
+    // JournalPage mounts fresh on each navigation, so the initial value is sufficient.
     const [activeTab, setActiveTab] = useState<JournalTab>(initialTab ?? 'free');
-
-    // Honor a tab requested via navigation (e.g. the dashboard Journal card)
-    useEffect(() => {
-        if (initialTab) setActiveTab(initialTab);
-    }, [initialTab]);
     const [editingEntry, setEditingEntry] = useState<JournalEntry | undefined>(undefined);
     // If true, we are in a special "Edit Mode" that overrides the tabs
     const [isEditingExisting, setIsEditingExisting] = useState(false);

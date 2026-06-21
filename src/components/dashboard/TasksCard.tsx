@@ -24,22 +24,20 @@ export const TasksCard: React.FC<TasksCardProps> = ({ onNavigateToTasks }) => {
     return (
         <button
             onClick={onNavigateToTasks}
-            className="bg-neutral-900/50 rounded-2xl border border-white/5 p-4 backdrop-blur-sm text-left w-full hover:bg-neutral-800/50 transition-colors group"
+            className="bg-neutral-900/50 rounded-2xl border border-white/5 p-4 backdrop-blur-sm text-left w-full h-full flex flex-col justify-center hover:bg-neutral-800/50 transition-colors group"
         >
-            <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-xl bg-neutral-800 text-blue-400">
-                        <CheckSquare size={20} />
+            <div className="flex items-center justify-between gap-1">
+                <div className="flex items-center gap-2 min-w-0">
+                    <div className="p-2 rounded-xl bg-neutral-800 text-blue-400 shrink-0">
+                        <CheckSquare size={18} />
                     </div>
-                    <div>
-                        <p className="text-sm font-medium text-white">
-                            {totalCount === 0
-                                ? 'Tasks'
-                                : `${completedCount}/${totalCount} tasks`}
-                        </p>
-                    </div>
+                    <p className="text-sm font-medium text-white truncate">
+                        {totalCount === 0
+                            ? 'Tasks'
+                            : `${completedCount}/${totalCount} tasks`}
+                    </p>
                 </div>
-                <ChevronRight size={16} className="text-neutral-600 group-hover:text-neutral-400 transition-colors" />
+                <ChevronRight size={16} className="text-neutral-600 group-hover:text-neutral-400 transition-colors shrink-0" />
             </div>
         </button>
     );
