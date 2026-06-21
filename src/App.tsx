@@ -18,6 +18,7 @@ import { RoutineRunnerModal } from './components/RoutineRunnerModal';
 import { RoutinePreviewModal } from './components/RoutinePreviewModal';
 import { HabitHistoryModal } from './components/HabitHistoryModal';
 import { BottomTabBar } from './components/BottomTabBar';
+import { WeeklyAIReviewCard } from './components/dashboard/WeeklyAIReviewCard';
 
 import { Plus, List, CalendarDays, CalendarClock, Trophy, Route } from 'lucide-react';
 import type { Routine, Habit } from './types';
@@ -545,31 +546,37 @@ const HabitTrackerContent: React.FC = () => {
           />
         ) : view === 'tracker' ? (
           trackerViewMode === 'all' ? (
-            <TrackerGrid
-              habits={filteredHabits}
-              allHabits={habits}
-              logs={logs}
-              onToggle={toggleHabit}
-              onUpdateValue={updateLog}
-              onAddHabit={() => {
-                setEditingHabit(null);
-                setIsModalOpen(true);
-              }}
-              onEditHabit={(habit) => {
-                setEditingHabit(habit);
-                setIsBundleConvert(false);
-                setIsModalOpen(true);
-              }}
-              onConvertToBundle={(habit) => {
-                setEditingHabit(habit);
-                setIsBundleConvert(true);
-                setIsModalOpen(true);
-              }}
-              onRunRoutine={(routine) => setRoutineRunnerState({ isOpen: true, routine })}
-              onViewHistory={(habit) => setHistoryHabit(habit)}
-              potentialEvidence={potentialEvidence}
-              loading={loading}
-            />
+            <>
+              <TrackerGrid
+                habits={filteredHabits}
+                allHabits={habits}
+                logs={logs}
+                onToggle={toggleHabit}
+                onUpdateValue={updateLog}
+                onAddHabit={() => {
+                  setEditingHabit(null);
+                  setIsModalOpen(true);
+                }}
+                onEditHabit={(habit) => {
+                  setEditingHabit(habit);
+                  setIsBundleConvert(false);
+                  setIsModalOpen(true);
+                }}
+                onConvertToBundle={(habit) => {
+                  setEditingHabit(habit);
+                  setIsBundleConvert(true);
+                  setIsModalOpen(true);
+                }}
+                onRunRoutine={(routine) => setRoutineRunnerState({ isOpen: true, routine })}
+                onViewHistory={(habit) => setHistoryHabit(habit)}
+                potentialEvidence={potentialEvidence}
+                loading={loading}
+              />
+              {/* Weekly AI Review lives on the Habits page (moved off the dashboard) */}
+              <div className="mt-4">
+                <WeeklyAIReviewCard />
+              </div>
+            </>
           ) : trackerViewMode === 'schedule' ? (
             <ScheduleView />
           ) : (
