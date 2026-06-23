@@ -227,7 +227,7 @@ export const WellbeingHistoryPage: React.FC<Props> = ({ onBack }) => {
       <div className="bg-neutral-900/50 rounded-2xl border border-white/5 p-6 backdrop-blur-sm">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
           <div>
-            <h2 className="text-xl font-bold text-white">Wellbeing History</h2>
+            <h2 className="text-xl font-bold text-white">Insights</h2>
             <div className="text-xs text-neutral-500 mt-1">
               Universal view (persona-agnostic). Powered by <code className="text-neutral-400">/api/wellbeingEntries</code>.
             </div>
