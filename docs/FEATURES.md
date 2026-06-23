@@ -127,8 +127,16 @@ Every feature area below is **Shipped** unless an item notes otherwise.
   dosage timeline) with a daily "taken today" toggle. Managed from the morning check-in or the
   Health hub; stored in dedicated `medications` / `medicationLogs` collections to power future
   correlation analysis.
-- **Health Hub** (💊) — Entry point for Sleep (existing sleep entry form) and Medications.
-  Symptoms, Weight, Caffeine, Alcohol, and Supplements are planned (Phase 4).
+- **Health Hub** (💊) — Entry point for all health tracking:
+  - **Sleep** — Apple Watch sleep score & schedule (sleep entry form)
+  - **Medications** — manage medications + daily "taken today" toggle
+  - **Supplements** — user-defined supplement list (name, dose, schedule) + daily "taken today"
+    toggle; stored in dedicated `supplements` / `supplementLogs` collections
+  - **Symptoms** — user-defined symptom list + a daily 1–5 severity log; stored in dedicated
+    `symptoms` / `symptomLogs` collections
+  - **Weight** — one daily weight reading (lbs), stored as the `weight` wellbeing metric key
+  - **Caffeine** — total daily caffeine (mg) with additive drink presets, stored as the
+    `caffeineMg` wellbeing metric key
 - **Insights** (formerly "Wellbeing History") — Three visualization modes:
   - **Heatmap** — Calendar grid showing metric intensity over time
   - **Weekly Summary** — Stacked bars showing weekly proportions

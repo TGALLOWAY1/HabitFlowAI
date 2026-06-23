@@ -224,6 +224,24 @@ minutesAfterNoon = ((hour*60 + minute) - 720 + 1440) % 1440
 
 ---
 
+## Health Factor Keys (LOCKED)
+
+Added for the Health Hub (Phase 4). These are simple **once-per-day numeric** values captured
+via the Health Hub log modals and persisted as `WellbeingEntry` records with **`timeOfDay: null`**
+and `source:'checkin'`. They are **not** part of `WellbeingSession` and are **not** rendered as
+generic check-in sliders. (Symptoms and supplements are **not** here — they require user-defined
+lists and use the dedicated `symptoms`/`symptomLogs` and `supplements`/`supplementLogs`
+collections instead.)
+
+| Key | Type / encoding | Notes |
+|---|---|---|
+| `weight` | `number` lbs (decimals ok) | Body weight; one reading per day (unit is **pounds**) |
+| `caffeineMg` | `number` mg ≥ 0 | Total daily caffeine intake in milligrams (UI offers presets, e.g. brewed coffee ≈ 95mg) |
+
+- **User Input**: Yes (Health Hub). **Derived**: No. **Stability Status**: **LOCKED**.
+
+---
+
 ### Session Structure Keys
 
 #### `morning`

@@ -145,8 +145,11 @@ HabitFlow App
 | Wellbeing Overview | Modal | Wellbeing card chevron | Today's status (Morning/Evening/Sleep), 7-day trend cards, quick actions | Wellbeing Entries |
 | Morning Check-in | Modal | Wellbeing card ☀️ Morning (or Overview) | "How do I feel right now?" — 5-point sliders (Mood, Energy, Anxiety, Motivation, Focus + optional), notes, and Medications Taken Today | Wellbeing Entries, Medications, Medication Logs |
 | Evening Check-in | Modal | Wellbeing card 🌙 Evening (or Overview) | "How did today go?" — 5-point sliders (Satisfaction, Productivity, Mood, Stress, Enjoyment + optional), reflection, and day-impact tags | Wellbeing Entries |
-| Health Hub | Modal | Wellbeing card 💊 Health (or Overview) | Entry points for Sleep and Medications; symptoms/weight/caffeine/alcohol/supplements planned | Wellbeing Entries, Medications |
+| Health Hub | Modal | Wellbeing card 💊 Health (or Overview) | Entry points for Sleep, Medications, Supplements, Symptoms, Weight, and Caffeine | Wellbeing Entries, Medications, Supplements, Symptoms |
 | Medication Manager | Modal | "Manage" in morning check-in or Health hub | Add/edit/delete medications (dose, schedule, start/end dates), toggle active | Medications |
+| Supplement Manager | Modal | Health hub → Supplements | Add/edit/delete user-defined supplements (dose, schedule) + today's taken/not-taken toggle | Supplements, Supplement Logs |
+| Symptom Manager | Modal | Health hub → Symptoms | Add/edit/delete user-defined symptoms + today's 1–5 severity log | Symptoms, Symptom Logs |
+| Health Factor Log | Modal | Health hub → Weight / Caffeine | Generic once-per-day numeric logger; caffeine offers additive quick-add presets | Wellbeing Entries |
 | Log Sleep | Modal | Health hub → Sleep, or "Edit a night" list on Analytics → Sleep tab | Apple Watch sleep score + sub-scores, bedtime/wake pickers, duration, quality, last-night habit toggles, and configurable sleep targets; a "Night of" date picker (capped at today) lets any previous night be logged or corrected | Wellbeing Entries, Dashboard Prefs |
 | Edit Goal | Modal | Goal context menu "Edit" | Modify goal title, target, deadline | Goals |
 | Delete Goal Confirm | Modal | Goal context menu "Delete" | Deletion confirmation dialog | Goals |

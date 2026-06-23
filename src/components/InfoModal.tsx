@@ -373,6 +373,23 @@ export function InfoModal({ isOpen, onClose }: InfoModalProps) {
 
               <div className="border-b border-white/5" />
 
+              {/* Health Hub */}
+              <div className="pl-3 border-l-2 border-sky-500/40">
+                <p className="text-sm text-neutral-200">
+                  <span className="font-bold text-sky-400">Health Hub</span> (💊 Health)
+                </p>
+                <p className="text-sm text-neutral-300 mt-1">A single place to track health factors alongside Sleep and Medications:</p>
+                <ul className="mt-1.5 space-y-1.5 text-xs text-neutral-400 pl-2">
+                  <li><span className="font-semibold text-neutral-300">Supplements</span> — your own supplement list (name, dose, schedule) with a daily "taken today" toggle.</li>
+                  <li><span className="font-semibold text-neutral-300">Symptoms</span> — your own symptom list with a daily 1–5 severity log.</li>
+                  <li><span className="font-semibold text-neutral-300">Weight</span> — one daily reading (lbs).</li>
+                  <li><span className="font-semibold text-neutral-300">Caffeine</span> — total daily caffeine (mg) with quick-add drink presets (coffee, espresso, tea, soda, energy drink).</li>
+                </ul>
+                {renderExamples(['"Vitamin D 2000 IU — taken ✓"', '"Headache — severity 3"', '"Caffeine — 158mg today"'])}
+              </div>
+
+              <div className="border-b border-white/5" />
+
               {/* Sleep Analytics */}
               <div className="pl-3 border-l-2 border-emerald-500/40">
                 <p className="text-sm text-neutral-200">

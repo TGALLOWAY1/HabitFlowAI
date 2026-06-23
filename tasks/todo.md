@@ -25,8 +25,31 @@ analytics engine are DEFERRED to follow-up PRs. Medications use a NEW dedicated 
   mongodb-memory-server cannot download its Mongo binary in this sandbox (HTTP 403) —
   environmental, not a code regression.
 
+## Phase 4 — Health Hub (DONE)
+
+Hybrid data model (confirmed with user): simple daily numbers reuse `wellbeingEntries`
+metric keys; user-defined lists get medication-style definition+log collections.
+
+- [x] 1. Backend keys: `weight`, `caffeineMg` added to
+       `WELLBEING_METRIC_KEYS` + documented in the wellbeing key data contract.
+       (Alcohol excluded per user — not tracked.)
+- [x] 2. Symptoms backend: `symptoms`/`symptomLogs` collections, repository, routes,
+       app.ts registration, persistenceClient methods, repository test.
+- [x] 3. Supplements backend: `supplements`/`supplementLogs` (medication-style), repository,
+       routes, app.ts registration, persistenceClient methods, repository test.
+- [x] 4. Health factor UI: generic `HealthFactorLogModal` + Weight/Caffeine wired
+       into Health Hub (caffeine quick-add presets).
+- [x] 5. Symptoms UI: `SymptomManagerModal` (CRUD + 1–5 severity) wired into Health Hub.
+- [x] 6. Supplements UI: `SupplementManagerModal` (CRUD + taken toggle) wired into Health Hub;
+       all trackers live, "Coming soon" block removed.
+- [x] 7. Docs: FEATURES.md, HABITFLOW_UI_ARCHITECTURE.md, InfoModal (Advanced → Health Hub).
+
+Verification: `npm run build` GREEN; `npm run lint:beta` 0 errors (pre-existing `any`
+warnings only).
+
 ## Deferred (follow-up PRs)
-- Phase 4 Health Hub: Symptoms, Weight, Caffeine, Alcohol, Supplements collections + UI.
 - Phase 5 Insights tabs: Overview/Correlations/Habit/Medication/Predictions/AI Review.
 - Analytics service (/api/insights/*), correlations, predictions, milestone alerts,
-  personal discoveries.
+  personal discoveries. Direction (confirmed with user): simple stats (Pearson-style
+  correlations reusing the sleep correlation approach + simple linear-trend predictions)
+  plus an AI Review tab using the existing Gemini infra.

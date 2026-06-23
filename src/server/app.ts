@@ -13,6 +13,8 @@ import { getDaySummary } from './routes/daySummary';
 import { getWellbeingLogs, upsertWellbeingLogRoute, getWellbeingLogRoute, deleteWellbeingLogRoute } from './routes/wellbeingLogs';
 import { getWellbeingEntriesRoute, upsertWellbeingEntriesRoute, deleteWellbeingEntryRoute } from './routes/wellbeingEntries';
 import { getMedicationsRoute, createMedicationRoute, updateMedicationRoute, deleteMedicationRoute, getMedicationLogsRoute, setMedicationLogRoute } from './routes/medications';
+import { getSymptomsRoute, createSymptomRoute, updateSymptomRoute, deleteSymptomRoute, getSymptomLogsRoute, setSymptomLogRoute } from './routes/symptoms';
+import { getSupplementsRoute, createSupplementRoute, updateSupplementRoute, deleteSupplementRoute, getSupplementLogsRoute, setSupplementLogRoute } from './routes/supplements';
 import { seedDemoEmotionalWellbeingRoute, resetDemoEmotionalWellbeingRoute } from './routes/devDemoEmotionalWellbeing';
 import { getRoutinesRoute, getRoutineRoute, createRoutineRoute, updateRoutineRoute, deleteRoutineRoute, submitRoutineRoute, uploadRoutineImageRoute, uploadRoutineImageMiddleware, getRoutineImageRoute, deleteRoutineImageRoute } from './routes/routines';
 import { getRoutineLogs } from './routes/routineLogs';
@@ -176,6 +178,22 @@ export function createApp(): Express {
   app.delete('/api/medications/:id', deleteMedicationRoute);
   app.get('/api/medicationLogs', getMedicationLogsRoute);
   app.post('/api/medicationLogs', setMedicationLogRoute);
+
+  // Symptoms (Health Hub) — definitions + daily severity logs
+  app.get('/api/symptoms', getSymptomsRoute);
+  app.post('/api/symptoms', createSymptomRoute);
+  app.put('/api/symptoms/:id', updateSymptomRoute);
+  app.delete('/api/symptoms/:id', deleteSymptomRoute);
+  app.get('/api/symptomLogs', getSymptomLogsRoute);
+  app.post('/api/symptomLogs', setSymptomLogRoute);
+
+  // Supplements (Health Hub) — definitions + daily "taken" logs
+  app.get('/api/supplements', getSupplementsRoute);
+  app.post('/api/supplements', createSupplementRoute);
+  app.put('/api/supplements/:id', updateSupplementRoute);
+  app.delete('/api/supplements/:id', deleteSupplementRoute);
+  app.get('/api/supplementLogs', getSupplementLogsRoute);
+  app.post('/api/supplementLogs', setSupplementLogRoute);
 
   if (process.env.NODE_ENV !== 'production') {
     app.post('/api/dev/seedDemoEmotionalWellbeing', seedDemoEmotionalWellbeingRoute);
