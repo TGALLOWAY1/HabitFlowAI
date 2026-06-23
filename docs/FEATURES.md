@@ -18,7 +18,7 @@ Every feature area below is **Shipped** unless an item notes otherwise.
 | Goals & Tracks | Shipped | Cumulative/one-time, milestones, trends, achievements, ordered tracks |
 | Tasks | Shipped | Today/Inbox lists; slated to move out of primary nav (see roadmap) |
 | Journal | Shipped | Free-write + 11 persona templates, upsert-by-day, AI summary banner |
-| Wellbeing | Shipped | Morning/evening check-ins, heatmap/weekly/small-multiples views |
+| Wellbeing | Shipped | Wellbeing card (Morning/Evening/Health/Insights), redesigned check-ins, medication tracking, health hub, Insights views |
 | Analytics | Shipped | Consistency, category breakdown, heatmaps, routine/goal/sleep analytics |
 | Sleep Analytics | Shipped | Dedicated Sleep tab; Apple Watch sleep score, consistency, correlations |
 | AI Features (Gemini BYOK) | Shipped | Weekly Review, Journal Review, summaries, variant suggestions |
@@ -112,10 +112,24 @@ Every feature area below is **Shipped** unless an item notes otherwise.
 
 ## Wellbeing
 
-- **Daily Check-Ins** — Morning and evening wellness assessments
-- **Wellbeing Metrics** — Track anxiety, low mood, calm, energy, stress on simple scales
-- **Configurable Extra Metrics** — Choose additional metrics to include in check-in
-- **Wellbeing History Page** — Three visualization modes:
+- **Wellbeing Card** — Replaces the old check-in card. Shows today's status (Morning /
+  Evening / Sleep complete-or-pending) and four actions: ☀️ Morning, 🌙 Evening, 💊 Health,
+  📈 Insights. The chevron opens a **Wellbeing Overview** (today's status, 7-day trend cards,
+  quick actions).
+- **Morning Check-in** ("How do I feel right now?") — Required 5-point sliders: Mood, Energy,
+  Anxiety, Motivation, Focus. Optional: Brain Fog, Stress, Confidence, Irritability, Social
+  Battery. Plus a morning notes field and the "Medications Taken Today" list.
+- **Evening Check-in** ("How did today go?") — Required 5-point sliders: Satisfaction,
+  Productivity, Mood, Stress, Enjoyment. Optional: Social Connection, Gratitude, Fulfillment.
+  Plus reflection (best part / biggest challenge) and day-impact quick tags (Poor Sleep, Work
+  Stress, Family Stress, Illness, Travel, Social Event, Medication Change).
+- **Medication Tracking** — First-class medications (name, dose, schedule, start/end dates,
+  dosage timeline) with a daily "taken today" toggle. Managed from the morning check-in or the
+  Health hub; stored in dedicated `medications` / `medicationLogs` collections to power future
+  correlation analysis.
+- **Health Hub** (💊) — Entry point for Sleep (existing sleep entry form) and Medications.
+  Symptoms, Weight, Caffeine, Alcohol, and Supplements are planned (Phase 4).
+- **Insights** (formerly "Wellbeing History") — Three visualization modes:
   - **Heatmap** — Calendar grid showing metric intensity over time
   - **Weekly Summary** — Stacked bars showing weekly proportions
   - **Small Multiples** — Individual heatmap per metric
@@ -167,7 +181,7 @@ Every feature area below is **Shipped** unless an item notes otherwise.
 ## Dashboard
 
 - **Daily Habits Card** — Narrow status card showing the daily completion ring and count (e.g. 0/22)
-- **Evening/Morning Check-In Card** — Wide action card with a Moon/Sun header (→ check-in modal) and four actions: Entry, Details, History (→ Wellbeing History), and AI
+- **Wellbeing Card** — Wide card showing today's status (Morning / Evening / Sleep) and four actions: ☀️ Morning, 🌙 Evening, 💊 Health, 📈 Insights; chevron opens the Wellbeing Overview
 - **Goals at a Glance** — Pinned goals with progress bars (configurable which goals to pin)
 - **Pinned Routines Card** — Quick-start buttons for favorite routines
 - **Journal Card** — Wide action card with four actions that deep-link to the matching Journal tab: Free, Template, History, and AI (Review)

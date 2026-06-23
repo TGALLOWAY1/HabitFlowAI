@@ -42,7 +42,7 @@ HabitFlow App
 │   │   ├── Setup Guide (onboarding)
 │   │   ├── Top cards (two-column grid: narrow status card left, wide action card right)
 │   │   │   ├── Daily Habits (narrow; completion ring + count, e.g. 0/22)
-│   │   │   ├── Evening/Morning Check-in (wide; Moon/Sun + title + chevron → modal; actions: Entry, Details, History → Wellbeing History, AI)
+│   │   │   ├── Wellbeing (wide; status: Morning/Evening/Sleep; actions: ☀️ Morning, 🌙 Evening, 💊 Health, 📈 Insights; chevron → Wellbeing Overview)
 │   │   │   ├── Tasks Card (narrow; count → Tasks Page)
 │   │   │   └── Journal Card (wide; actions deep-link to Journal tabs: Free, Template, History, AI=Review)
 │   │   ├── Pinned Routines (→ Routine Runner)
@@ -142,8 +142,12 @@ HabitFlow App
 | Routine Editor | Modal | "+ Routine" or edit routine | Create/edit routines with variants; step list navigates to dedicated Step Editor panel | Routines, Habits |
 | Routine Runner | Modal | "Play" button on routine card | Step-by-step routine execution with timers | Routines, Habits, Entries |
 | Routine Preview | Modal | Preview button on routine card | Read-only routine view before starting | Routines |
-| Daily Check-in | Modal | Dashboard check-in card | Wellbeing metrics entry (sleep, mood, stress); morning tab has a "Log Sleep" entry point | Wellbeing Entries |
-| Log Sleep | Modal | "Log Sleep" button on Daily Check-in morning tab, or "Edit a night" list on Analytics → Sleep tab | Apple Watch sleep score + sub-scores, bedtime/wake pickers, duration, quality, last-night habit toggles, and configurable sleep targets; a "Night of" date picker (capped at today) lets any previous night be logged or corrected | Wellbeing Entries, Dashboard Prefs |
+| Wellbeing Overview | Modal | Wellbeing card chevron | Today's status (Morning/Evening/Sleep), 7-day trend cards, quick actions | Wellbeing Entries |
+| Morning Check-in | Modal | Wellbeing card ☀️ Morning (or Overview) | "How do I feel right now?" — 5-point sliders (Mood, Energy, Anxiety, Motivation, Focus + optional), notes, and Medications Taken Today | Wellbeing Entries, Medications, Medication Logs |
+| Evening Check-in | Modal | Wellbeing card 🌙 Evening (or Overview) | "How did today go?" — 5-point sliders (Satisfaction, Productivity, Mood, Stress, Enjoyment + optional), reflection, and day-impact tags | Wellbeing Entries |
+| Health Hub | Modal | Wellbeing card 💊 Health (or Overview) | Entry points for Sleep and Medications; symptoms/weight/caffeine/alcohol/supplements planned | Wellbeing Entries, Medications |
+| Medication Manager | Modal | "Manage" in morning check-in or Health hub | Add/edit/delete medications (dose, schedule, start/end dates), toggle active | Medications |
+| Log Sleep | Modal | Health hub → Sleep, or "Edit a night" list on Analytics → Sleep tab | Apple Watch sleep score + sub-scores, bedtime/wake pickers, duration, quality, last-night habit toggles, and configurable sleep targets; a "Night of" date picker (capped at today) lets any previous night be logged or corrected | Wellbeing Entries, Dashboard Prefs |
 | Edit Goal | Modal | Goal context menu "Edit" | Modify goal title, target, deadline | Goals |
 | Delete Goal Confirm | Modal | Goal context menu "Delete" | Deletion confirmation dialog | Goals |
 | Remove Habit | Modal | Trash button on a habit that is linked to one or more goals (shown after the click-twice confirm so the user sees which goals are affected) | Lists the affected goals and offers two paths: **Archive** (recommended, restorable from Settings) or **Delete permanently** (soft-delete, not restorable). For unlinked habits the trash icon archives directly without opening this modal | Habits, Goals |
@@ -179,7 +183,7 @@ graph TB
 
     subgraph "Dashboard"
         DASH["Progress Dashboard"]
-        DASH --> CHECKIN_MODAL["Daily Check-in Modal"]
+        DASH --> CHECKIN_MODAL["Wellbeing (Morning/Evening/Health/Overview)"]
         DASH --> GOAL_DETAIL
         DASH --> TAB_HABITS
         DASH --> ROUTINE_RUNNER
