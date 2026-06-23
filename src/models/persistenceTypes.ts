@@ -917,6 +917,12 @@ export const WELLBEING_METRIC_KEYS = [
     'factorWindDown',             // 0/1, completed a wind-down routine
     'factorLateNightEating',      // 0/1, ate within ~3h of bed
     'factorCaffeineAfter12',      // count of caffeinated drinks after noon, >= 0
+    // Health Hub factors (Phase 4) — simple once-per-day numeric values recorded with
+    // timeOfDay:null. Symptoms and supplements are NOT here; they use dedicated
+    // definition+log collections because they need user-defined lists.
+    'weight',                     // body weight in pounds (lbs), decimals allowed, one reading/day
+    'caffeineMg',                 // total daily caffeine intake in milligrams, >= 0
+    'alcoholDrinks',              // standard alcoholic drinks consumed that day, >= 0
 ] as const;
 
 export type WellbeingMetricKey = typeof WELLBEING_METRIC_KEYS[number];
