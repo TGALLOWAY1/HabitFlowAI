@@ -876,6 +876,24 @@ export const WELLBEING_METRIC_KEYS = [
     'focus',
     'satisfaction',
     'notes',
+    // Wellbeing redesign — additive 1-5 subjective metrics (Phase 2 morning / Phase 3 evening).
+    // All use a 1-5 scale. Existing 0-4 keys (focus/stress/satisfaction/calm/lowMood) are reused
+    // at their documented scale and rendered as uniform 5-point sliders in the new check-ins.
+    'mood',            // 1-5, overall mood (morning + evening)
+    'motivation',      // 1-5, morning
+    'brainFog',        // 1-5, morning (higher = foggier)
+    'confidence',      // 1-5, morning
+    'irritability',    // 1-5, morning (higher = more irritable)
+    'socialBattery',   // 1-5, morning (higher = more social energy)
+    'productivity',    // 1-5, evening
+    'enjoyment',       // 1-5, evening
+    'socialConnection',// 1-5, evening
+    'gratitude',       // 1-5, evening
+    'fulfillment',     // 1-5, evening
+    // Wellbeing redesign — evening reflection + day-impact tags (string values)
+    'eveningBestPart', // string, "Best part of today?"
+    'eveningChallenge',// string, "Biggest challenge today?"
+    'dayTags',         // string (comma-separated quick tags, e.g. "poorSleep,workStress")
     // Fitness Persona readiness metrics
     'readiness',
     'soreness',

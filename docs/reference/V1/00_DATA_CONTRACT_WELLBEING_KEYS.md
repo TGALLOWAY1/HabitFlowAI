@@ -137,6 +137,43 @@ These keys were added as an **additive superset** to support multiple personas w
 
 ---
 
+## Wellbeing Redesign Keys (LOCKED, additive)
+
+Added for the Wellbeing system redesign (new Morning/Evening check-ins). These are an
+**additive superset** — no existing key was renamed, repurposed, or rescaled. All new
+subjective metrics use a **1-5 scale**. The check-in UI renders every subjective slider as a
+uniform 5-point "Low → High" control; the existing 0-4 keys (`focus`, `stress`, `satisfaction`,
+`calm`, `lowMood`) are **reused at their documented 0-4 scale** (also 5 points) — they are not
+rescaled to 1-5. `energy` and `anxiety` are reused at their native 1-5 scale.
+
+### Subjective metric keys (1-5)
+
+| Key | Scale | Session | Notes |
+|---|---|---|---|
+| `mood` | 1-5 | morning + evening | Overall mood |
+| `motivation` | 1-5 | morning | |
+| `brainFog` | 1-5 | morning | Higher = foggier |
+| `confidence` | 1-5 | morning | |
+| `irritability` | 1-5 | morning | Higher = more irritable |
+| `socialBattery` | 1-5 | morning | Higher = more social energy |
+| `productivity` | 1-5 | evening | |
+| `enjoyment` | 1-5 | evening | |
+| `socialConnection` | 1-5 | evening | |
+| `gratitude` | 1-5 | evening | |
+| `fulfillment` | 1-5 | evening | |
+
+### Reflection / tag keys (string)
+
+| Key | Type | Session | Notes |
+|---|---|---|---|
+| `eveningBestPart` | `string` | evening | "Best part of today?" |
+| `eveningChallenge` | `string` | evening | "Biggest challenge today?" |
+| `dayTags` | `string` | evening | Comma-separated quick tags (e.g. `poorSleep,workStress`) |
+
+- **User Input**: Yes (Morning/Evening check-in). **Derived**: No. **Stability Status**: **LOCKED**.
+
+---
+
 ## Sleep Analytics Keys (LOCKED)
 
 Added for the Sleep Analytics dashboard. All are captured via the dedicated **SleepEntryForm**
