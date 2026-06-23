@@ -47,9 +47,30 @@ metric keys; user-defined lists get medication-style definition+log collections.
 Verification: `npm run build` GREEN; `npm run lint:beta` 0 errors (pre-existing `any`
 warnings only).
 
-## Deferred (follow-up PRs)
-- Phase 5 Insights tabs: Overview/Correlations/Habit/Medication/Predictions/AI Review.
-- Analytics service (/api/insights/*), correlations, predictions, milestone alerts,
-  personal discoveries. Direction (confirmed with user): simple stats (Pearson-style
-  correlations reusing the sleep correlation approach + simple linear-trend predictions)
-  plus an AI Review tab using the existing Gemini infra.
+## Phase 5 — Insights tabs + analytics engine (DONE)
+
+Direction (confirmed with user): all six tabs in one PR; keep the page beta-gated;
+reuse the Sleep Analytics Cohen's d correlation approach (not literal Pearson); fold
+the existing heatmap/weekly/multiples wellbeing views into the new Overview tab.
+
+- [x] 1. Backend: shared `correlationEngine.ts` (Cohen's d + present/absent split,
+       extracted from sleepAnalyticsService) + `insightsService.ts` (factor↔outcome
+       correlations across habits/medications/supplements/symptoms/behavioral factors,
+       linear-trend predictions, discoveries/milestones, medication adherence). Unit tests.
+- [x] 2. Backend: `routes/insights.ts` — GET /api/insights/{overview,correlations,habits,
+       medications,predictions}, cached via analyticsCache; registered in app.ts.
+- [x] 3. Backend: `routes/aiInsightsReview.ts` — POST /api/ai/insights-review (Gemini BYOK,
+       grounded on computed insights); registered in app.ts.
+- [x] 4. Frontend: `lib/insightsClient.ts` — typed fetch methods for all endpoints + AI review.
+- [x] 5. Frontend: tabbed Insights shell (restructured WellbeingHistoryPage, beta gate kept)
+       + Overview tab folding in the existing heatmap/weekly/multiples views.
+- [x] 6. Frontend: Correlations + Predictions tabs.
+- [x] 7. Frontend: Habits + Medications tabs (Habits reuses habit analytics summary).
+- [x] 8. Frontend: AI Review tab (BYOK flow mirroring WeeklyAIReviewCard).
+- [x] 9. Docs: FEATURES.md, HABITFLOW_UI_ARCHITECTURE.md, InfoModal (AI tab).
+
+Verification: `npm run build` (tsc -b + vite) GREEN; new unit tests pass; sleep tests
+unchanged. AI Review is generate-on-demand (not archived) for this phase.
+
+Note: "milestone alerts / personal discoveries" are surfaced as the Overview tab's
+Discoveries section (correlation/trend/coverage-milestone derived).

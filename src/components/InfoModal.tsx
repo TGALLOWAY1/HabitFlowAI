@@ -464,6 +464,10 @@ export function InfoModal({ isOpen, onClose }: InfoModalProps) {
                     <p className="mt-0.5">The single, comprehensive weekly report on the Habits page (this week or last week). It reads your real habit, sleep, mood, journal, and goal data and returns seven sections: a Week at a Glance narrative recap, Facts, Patterns (each with a confidence level), Journal Themes, Wins, Areas for Attention, and Recommendations — plus honest Data Limitations. It only uses your actual data and keeps facts, patterns, and suggestions separate — if a week is thin on data, it says so instead of inventing patterns. Use the wand icon to generate and the clock icon to browse your saved review history.</p>
                   </li>
                   <li className="text-xs text-neutral-400 pl-2">
+                    <span className="font-semibold text-neutral-300">Insights AI Review</span>
+                    <p className="mt-0.5">On the Insights page's "AI Review" tab, turn your computed correlations and trend predictions into a plain-language narrative: a Summary, Key Findings, Patterns (each with a confidence level), an Outlook on where things are heading, Recommendations, and honest Data Limitations. It reads only the numbers the app already computed, frames everything as correlation (never cause and effect), and you can regenerate anytime.</p>
+                  </li>
+                  <li className="text-xs text-neutral-400 pl-2">
                     <span className="font-semibold text-neutral-300">Variant Suggestions</span>
                     <p className="mt-0.5">AI analyzes your routine and suggests Quick/Standard/Deep variants with full step lists.</p>
                   </li>

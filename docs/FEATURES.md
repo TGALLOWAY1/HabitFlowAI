@@ -137,11 +137,26 @@ Every feature area below is **Shipped** unless an item notes otherwise.
   - **Weight** — one daily weight reading (lbs), stored as the `weight` wellbeing metric key
   - **Caffeine** — total daily caffeine (mg) with additive drink presets, stored as the
     `caffeineMg` wellbeing metric key
-- **Insights** (formerly "Wellbeing History") — Three visualization modes:
-  - **Heatmap** — Calendar grid showing metric intensity over time
-  - **Weekly Summary** — Stacked bars showing weekly proportions
-  - **Small Multiples** — Individual heatmap per metric
-- **Time Window Selection** — View 30, 90, or 180 day periods
+- **Insights** (formerly "Wellbeing History") — A tabbed analytics page (beta-gated)
+  driven by a cross-domain insights engine (`/api/insights/*`), computed from canonical
+  truth at read time. All correlations use the same statistical approach as Sleep
+  Analytics (present/absent day-group split + Cohen's d effect size) and are always
+  framed as correlation, never causation. Six tabs:
+  - **Overview** — Discoveries & milestones, a top-correlations preview, metric averages,
+    plus the original wellbeing visualizations (Heatmap, Weekly Summary, Small Multiples)
+  - **Correlations** — Factor↔outcome relationships across habits, medications, supplements,
+    symptoms, and behavioral factors vs subjective wellbeing metrics, split into "what's
+    helping" and "what's holding you back"
+  - **Habits** — Habit performance headline stats (reused from Habit Analytics) plus
+    habit↔wellbeing correlations
+  - **Medications** — Per-medication adherence (%, taken/logged days, current streak) plus
+    medication↔wellbeing correlations
+  - **Predictions** — Simple least-squares linear-trend projections per wellbeing metric
+    (current → projected, change/week, confidence) with inline sparklines
+  - **AI Review** — Gemini BYOK narrative grounded only on the computed insights
+    (correlations, predictions, adherence); structured into summary, key findings,
+    confidence-tagged patterns, outlook, recommendations, and data limitations
+- **Time Window Selection** — View 30, 90, or 180 day periods (applies to all Insights tabs)
 
 ## Analytics
 
@@ -171,6 +186,7 @@ Every feature area below is **Shipped** unless an item notes otherwise.
 
 - **API Key Management** — Store Gemini API key in localStorage (never persisted server-side); configure via Settings
 - **Weekly AI Review** — The single, comprehensive weekly report for a selected week (this week / last week), shown on the Habits page (Grid view, below the habit grid). It both tells the story of the week and provides evidence-based analysis. Aggregates habit entries, sleep & mood from wellbeing check-ins, journal activity, and goals into observed facts, then returns a typed review with seven sections: **Week at a Glance** (a natural-language narrative recap, 1–3 paragraphs), **Facts** (objective, measurable observations), **Patterns** (each with a low/medium/high confidence), **Journal Themes** (recurring topics and emotional trends), **Wins**, **Areas for Attention**, and **Recommendations** (max 3–5) — plus honest **Data Limitations**. The prompt separates observed facts from inferred patterns from suggestions and forbids inventing data; low-data weeks are reported honestly via Data Limitations rather than fabricated patterns. (Consolidates the former standalone AI Weekly Summary.)
+- **Insights AI Review** — On-demand narrative for the Insights page (AI Review tab). Computes the user's cross-domain insights (correlations, linear-trend predictions, medication adherence, metric averages) and asks Gemini to explain them in plain language. Returns a typed review: **Summary**, **Key Findings** (objective, cited from the computed numbers), **Patterns** (each with a low/medium/high confidence), **Outlook** (caveated read of the trend predictions), **Recommendations** (max 5), and **Data Limitations**. Grounded only on already-computed facts; everything framed as correlation, never causation; the window is server-owned. Generated on demand (not persisted)
 - **AI Journal Summary** — Auto-generated weekly journal summary shown as a dismissible banner; persisted as a journal entry in history
 - **AI Report History (archive)** — Every generated Weekly AI Review and Journal Summary is saved to a dedicated `aiReports` archive (scoped per user, soft-deleted). The Weekly AI Review card (Habits page) and Journal Summary card expose a wand icon to (re)generate and a clock icon that opens a browsable history of past reports by date; any saved report can be reopened in full or deleted. Reading history requires no Gemini call.
 - **AI Journal Review** — On-demand, structured review of journal entries over a user-selected date range (Journal → AI Review tab; presets for last 7/30 days plus custom range). Grounded only in the user's own entries, it returns a typed review: Overview, Emotional Themes, Recurring Stressors, and Self-Talk Patterns (each with paraphrased evidence; themes/stressors carry a low/medium/high confidence), Wins, Reflection Questions, Suggested Next Steps, and Data Limitations. The prompt separates observed evidence from inferred themes from next steps, forbids inventing facts or long quotes, and is deliberately non-clinical (no diagnoses). Empty ranges show a helpful empty state, sparse ranges show a low-data warning, and entries suggesting crisis surface a gentle support notice rather than counseling. Generated on demand (not persisted); regenerate at any time
