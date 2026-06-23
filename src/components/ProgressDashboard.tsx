@@ -1,21 +1,22 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { useProgressOverview } from '../lib/useProgressOverview';
-import { DailyCheckInModal } from './DailyCheckInModal';
+import { WellbeingCard } from './wellbeing/WellbeingCard';
+import { WellbeingCheckInModal } from './wellbeing/WellbeingCheckInModal';
+import { WellbeingOverviewModal } from './wellbeing/WellbeingOverviewModal';
+import { HealthHubModal } from './wellbeing/HealthHubModal';
+import { MedicationTakenList } from './wellbeing/MedicationTakenList';
 import { Loader2, Pin } from 'lucide-react';
 import { GoalPulseCard } from './goals/GoalPulseCard';
 import { ActivitySection } from './ActivitySection';
 import { DailyOverviewCard } from './dashboard/DailyOverviewCard';
-import { DailyCheckInCard } from './dashboard/DailyCheckInCard';
 import { JournalCard } from './dashboard/JournalCard';
 import { TasksCard } from './dashboard/TasksCard';
 import { PinnedRoutinesCard } from './dashboard/PinnedRoutinesCard';
 import { SetupDashboard } from './dashboard/SetupDashboard';
 import { useSetupProgress } from '../hooks/useSetupProgress';
-import { useAuth } from '../store/AuthContext';
 import { fetchDashboardPrefs, updateDashboardPrefs } from '../lib/persistenceClient';
 import type { Routine } from '../models/persistenceTypes';
 
-const BETA_EMAIL = 'tj.galloway1@gmail.com';
 export const PINNED_GOALS_STORAGE_KEY = 'hf_pinned_dashboard_goals';
 const SETUP_GUIDE_DISMISSED_KEY = 'hf_setup_guide_dismissed';
 
@@ -116,8 +117,6 @@ export const ProgressDashboard: React.FC<ProgressDashboardProps> = ({
     onNavigateToGoals,
     onNavigate,
 }) => {
-    const { user } = useAuth();
-    const isBetaUser = user?.email?.toLowerCase() === BETA_EMAIL;
     const { data: progressData, loading: progressLoading } = useProgressOverview();
     const goalsCount = progressData?.goalsWithProgress?.length ?? 0;
     const { setupPhase, hasHabits, hasTasks, loading: setupLoading } = useSetupProgress(goalsCount);
@@ -150,7 +149,7 @@ export const ProgressDashboard: React.FC<ProgressDashboardProps> = ({
         return () => window.removeEventListener('habitflow:reopen-setup-guide', handleReopen);
     }, []);
 
-    const [isCheckInOpen, setIsCheckInOpen] = useState(false);
+    const [wellbeingModal, setWellbeingModal] = useState<null | 'morning' | 'evening' | 'health' | 'overview'>(null);
     const { pinnedIds: pinnedGoalIds, togglePin: toggleGoalPin, isPinned: isGoalPinned } = usePinnedGoals();
     const [showGoalManage, setShowGoalManage] = useState(false);
 
@@ -192,9 +191,12 @@ export const ProgressDashboard: React.FC<ProgressDashboardProps> = ({
             <div className="grid grid-cols-[2fr_3fr] gap-3">
                 {/* Row 1: Daily Habits (narrow) + Evening Check-in (wide) */}
                 <DailyOverviewCard />
-                <DailyCheckInCard
-                    onOpenCheckIn={() => setIsCheckInOpen(true)}
-                    onNavigateHistory={onNavigateWellbeingHistory}
+                <WellbeingCard
+                    onOpenMorning={() => setWellbeingModal('morning')}
+                    onOpenEvening={() => setWellbeingModal('evening')}
+                    onOpenHealth={() => setWellbeingModal('health')}
+                    onOpenInsights={() => onNavigateWellbeingHistory?.()}
+                    onOpenOverview={() => setWellbeingModal('overview')}
                 />
 
                 {/* Row 2: Tasks (narrow) + Journal (wide) */}
@@ -316,13 +318,31 @@ export const ProgressDashboard: React.FC<ProgressDashboardProps> = ({
             {/* Activity Heatmap */}
             <ActivitySection onSelectCategory={onSelectCategory} />
 
-            <DailyCheckInModal
-                isOpen={isCheckInOpen}
-                onClose={() => setIsCheckInOpen(false)}
-                onNavigateHistory={isBetaUser ? () => {
-                    setIsCheckInOpen(false);
+            <WellbeingCheckInModal
+                isOpen={wellbeingModal === 'morning'}
+                mode="morning"
+                onClose={() => setWellbeingModal(null)}
+                medicationSection={<MedicationTakenList />}
+            />
+            <WellbeingCheckInModal
+                isOpen={wellbeingModal === 'evening'}
+                mode="evening"
+                onClose={() => setWellbeingModal(null)}
+            />
+            <HealthHubModal
+                isOpen={wellbeingModal === 'health'}
+                onClose={() => setWellbeingModal(null)}
+            />
+            <WellbeingOverviewModal
+                isOpen={wellbeingModal === 'overview'}
+                onClose={() => setWellbeingModal(null)}
+                onOpenMorning={() => setWellbeingModal('morning')}
+                onOpenEvening={() => setWellbeingModal('evening')}
+                onOpenHealth={() => setWellbeingModal('health')}
+                onOpenInsights={() => {
+                    setWellbeingModal(null);
                     onNavigateWellbeingHistory?.();
-                } : undefined}
+                }}
             />
         </div>
     );

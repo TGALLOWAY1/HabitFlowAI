@@ -876,6 +876,24 @@ export const WELLBEING_METRIC_KEYS = [
     'focus',
     'satisfaction',
     'notes',
+    // Wellbeing redesign — additive 1-5 subjective metrics (Phase 2 morning / Phase 3 evening).
+    // All use a 1-5 scale. Existing 0-4 keys (focus/stress/satisfaction/calm/lowMood) are reused
+    // at their documented scale and rendered as uniform 5-point sliders in the new check-ins.
+    'mood',            // 1-5, overall mood (morning + evening)
+    'motivation',      // 1-5, morning
+    'brainFog',        // 1-5, morning (higher = foggier)
+    'confidence',      // 1-5, morning
+    'irritability',    // 1-5, morning (higher = more irritable)
+    'socialBattery',   // 1-5, morning (higher = more social energy)
+    'productivity',    // 1-5, evening
+    'enjoyment',       // 1-5, evening
+    'socialConnection',// 1-5, evening
+    'gratitude',       // 1-5, evening
+    'fulfillment',     // 1-5, evening
+    // Wellbeing redesign — evening reflection + day-impact tags (string values)
+    'eveningBestPart', // string, "Best part of today?"
+    'eveningChallenge',// string, "Biggest challenge today?"
+    'dayTags',         // string (comma-separated quick tags, e.g. "poorSleep,workStress")
     // Fitness Persona readiness metrics
     'readiness',
     'soreness',
@@ -1463,6 +1481,8 @@ export const MONGO_COLLECTIONS = {
     HABIT_HEALTH_RULES: 'habitHealthRules',
     HEALTH_SUGGESTIONS: 'healthSuggestions',
     AI_REPORTS: 'aiReports',
+    MEDICATIONS: 'medications',
+    MEDICATION_LOGS: 'medicationLogs',
 } as const;
 
 /**
@@ -1687,6 +1707,84 @@ export interface HealthMetricDaily {
     workoutMinutes?: number | null;
     weight?: number | null;
     rawDataJson?: string;
+    createdAt: string;
+    updatedAt: string;
+}
+
+/**
+ * MedicationDosageChange — one entry in a medication's dosage timeline.
+ *
+ * Captures a dosage at a point in time so the medication timeline can power
+ * future correlation analysis (e.g. "anxiety before vs after a dose change").
+ */
+export interface MedicationDosageChange {
+    /** Dosage description, e.g. "200mg", "50mg", "1 tablet" */
+    dosage: string;
+    /** Date this dosage began (YYYY-MM-DD) */
+    startDate: string;
+    /** Optional note about the change */
+    note?: string;
+}
+
+/**
+ * Medication — a user-tracked medication or supplement definition.
+ *
+ * Storage Key: 'medications'
+ * Scope: (householdId, userId)
+ *
+ * This is a first-class wellbeing entity (NOT a wellbeing metric key). Day-to-day
+ * "taken today" logging is recorded separately as MedicationLog records, keeping the
+ * definition (name/dose/timeline) distinct from the daily adherence signal.
+ */
+export interface Medication {
+    /** Application-level ID (UUID) */
+    id: string;
+    userId: string;
+    householdId: string;
+    /** Display name, e.g. "Lamotrigine" */
+    name: string;
+    /** Current dosage description, e.g. "200mg" */
+    dosage?: string | null;
+    /** Optional freeform schedule hint, e.g. "morning", "2x daily" */
+    schedule?: string | null;
+    /** Date the user started this medication (YYYY-MM-DD) */
+    startDate?: string | null;
+    /** Date the user stopped this medication (YYYY-MM-DD); null while active */
+    endDate?: string | null;
+    /** Whether the medication is currently active (shown in the daily "taken" list) */
+    active: boolean;
+    /** Optional dosage timeline (most-recent last) */
+    dosageHistory?: MedicationDosageChange[];
+    /** Optional free text */
+    notes?: string | null;
+    createdAt: string;
+    updatedAt: string;
+    /** Soft delete timestamp (null/absent while live) */
+    deletedAt?: string | null;
+}
+
+/**
+ * MedicationLog — a daily "taken" record for a single medication.
+ *
+ * Storage Key: 'medicationLogs'
+ * Unique Key: (userId, medicationId, dayKey)
+ *
+ * Idempotent per medication per day; toggling a medication on/off for a day upserts
+ * the same record. Powers adherence history and future correlation analysis.
+ */
+export interface MedicationLog {
+    id: string;
+    userId: string;
+    householdId: string;
+    medicationId: string;
+    /** Canonical aggregation boundary (YYYY-MM-DD) */
+    dayKey: string;
+    /** Whether the medication was taken on this day */
+    taken: boolean;
+    /** Optional clock time taken, "HH:mm" (24h) */
+    timeTaken?: string | null;
+    /** ISO 8601 UTC timestamp when recorded */
+    timestampUtc: string;
     createdAt: string;
     updatedAt: string;
 }

@@ -356,8 +356,19 @@ export function InfoModal({ isOpen, onClose }: InfoModalProps) {
                 <p className="text-sm text-neutral-200">
                   <span className="font-bold text-emerald-400">Wellbeing Check-ins</span>
                 </p>
-                <p className="text-sm text-neutral-300 mt-1">Track how you feel with morning and evening check-ins. Rate subjective metrics like mood, energy, stress, focus, and sleep quality on simple scales.</p>
-                {renderExamples(['"Morning: rate sleep quality, energy, readiness"', '"Evening: rate stress, satisfaction, focus for the day"'])}
+                <p className="text-sm text-neutral-300 mt-1">The Wellbeing card shows today's status (Morning / Evening / Sleep) and four actions: ☀️ Morning, 🌙 Evening, 💊 Health, and 📈 Insights. The morning check-in ("How do I feel right now?") rates Mood, Energy, Anxiety, Motivation, and Focus on 5-point sliders; the evening check-in ("How did today go?") rates Satisfaction, Productivity, Mood, Stress, and Enjoyment, plus a short reflection and quick day-impact tags.</p>
+                {renderExamples(['"Morning: rate mood, energy, anxiety, motivation, focus"', '"Evening: rate satisfaction & productivity, then tag what impacted your day"'])}
+              </div>
+
+              <div className="border-b border-white/5" />
+
+              {/* Medication Tracking */}
+              <div className="pl-3 border-l-2 border-rose-500/40">
+                <p className="text-sm text-neutral-200">
+                  <span className="font-bold text-rose-400">Medication Tracking</span>
+                </p>
+                <p className="text-sm text-neutral-300 mt-1">Add medications with a dose, schedule, and start/end dates. Check off what you've taken each day in the morning check-in's "Medications Taken Today" list, or manage your medications from the 💊 Health hub. Your medication timeline is stored to power future correlation analysis.</p>
+                {renderExamples(['"Lamotrigine 200mg — taken ✓"', '"Pristiq 50mg — started May 15"'])}
               </div>
 
               <div className="border-b border-white/5" />
@@ -367,7 +378,7 @@ export function InfoModal({ isOpen, onClose }: InfoModalProps) {
                 <p className="text-sm text-neutral-200">
                   <span className="font-bold text-emerald-400">Sleep Analytics</span>
                 </p>
-                <p className="text-sm text-neutral-300 mt-1">A dedicated Sleep tab in Analytics built around your Apple Watch Sleep Score (overall plus bedtime, duration, and interruption sub-scores). Use the "Log Sleep" button on the morning check-in to record your score, bedtime/wake times, duration, quality, and last-night habits. Forgot a night? Use the "Night of" date picker in the form — or the "Edit a night" list on the Sleep tab — to log or correct any previous day.</p>
+                <p className="text-sm text-neutral-300 mt-1">A dedicated Sleep tab in Analytics built around your Apple Watch Sleep Score (overall plus bedtime, duration, and interruption sub-scores). Open Sleep from the 💊 Health hub (Wellbeing card) to record your score, bedtime/wake times, duration, quality, and last-night habits. Forgot a night? Use the "Night of" date picker in the form — or the "Edit a night" list on the Sleep tab — to log or correct any previous day.</p>
                 <ul className="mt-1.5 space-y-1.5">
                   <li className="text-xs text-neutral-400 pl-2 flex items-start gap-1.5">
                     <Activity size={13} className="text-emerald-400 mt-0.5 shrink-0" />
