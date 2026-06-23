@@ -7,6 +7,7 @@
 
 import type { Category, Habit, DayLog, DailyWellbeing, Goal, GoalWithProgress, GoalTrack, Routine, RoutineLog, HabitEntry } from '../models/persistenceTypes';
 import type { WellbeingEntry, WellbeingMetricKey } from '../models/persistenceTypes';
+import type { Medication, MedicationLog } from '../models/persistenceTypes';
 import type { DashboardPrefs, HouseholdUser } from '../models/persistenceTypes';
 
 import type { GoalDetail, CompletedGoal, ProgressOverview, GoalTrackWithGoals } from '../types';
@@ -328,6 +329,66 @@ export function aggregateEntriesToDailyWellbeing(entries: WellbeingEntry[]): Rec
   }
 
   return result;
+}
+
+/**
+ * Medication Persistence Functions (Wellbeing system)
+ */
+export type MedicationInput = {
+  name: string;
+  dosage?: string | null;
+  schedule?: string | null;
+  startDate?: string | null;
+  endDate?: string | null;
+  active?: boolean;
+  notes?: string | null;
+};
+
+export async function fetchMedications(): Promise<Medication[]> {
+  const response = await apiRequest<{ medications: Medication[] }>('/medications');
+  return response.medications;
+}
+
+export async function createMedication(input: MedicationInput): Promise<Medication> {
+  const response = await apiRequest<{ medication: Medication }>('/medications', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+  return response.medication;
+}
+
+export async function updateMedication(
+  id: string,
+  patch: Partial<MedicationInput>
+): Promise<Medication> {
+  const response = await apiRequest<{ medication: Medication }>(`/medications/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(patch),
+  });
+  return response.medication;
+}
+
+export async function deleteMedication(id: string): Promise<void> {
+  await apiRequest(`/medications/${id}`, { method: 'DELETE' });
+}
+
+export async function fetchMedicationLogs(dayKey: string): Promise<MedicationLog[]> {
+  const qs = new URLSearchParams({ dayKey }).toString();
+  const response = await apiRequest<{ medicationLogs: MedicationLog[] }>(`/medicationLogs?${qs}`);
+  return response.medicationLogs;
+}
+
+export async function setMedicationLog(params: {
+  medicationId: string;
+  dayKey: string;
+  taken: boolean;
+  timeTaken?: string | null;
+}): Promise<MedicationLog> {
+  const response = await apiRequest<{ medicationLog: MedicationLog }>('/medicationLogs', {
+    method: 'POST',
+    body: JSON.stringify(params),
+  });
+  return response.medicationLog;
 }
 
 /**

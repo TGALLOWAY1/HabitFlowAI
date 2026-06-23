@@ -12,6 +12,7 @@ import { getHabits, createHabitRoute, getHabit, updateHabitRoute, deleteHabitRou
 import { getDaySummary } from './routes/daySummary';
 import { getWellbeingLogs, upsertWellbeingLogRoute, getWellbeingLogRoute, deleteWellbeingLogRoute } from './routes/wellbeingLogs';
 import { getWellbeingEntriesRoute, upsertWellbeingEntriesRoute, deleteWellbeingEntryRoute } from './routes/wellbeingEntries';
+import { getMedicationsRoute, createMedicationRoute, updateMedicationRoute, deleteMedicationRoute, getMedicationLogsRoute, setMedicationLogRoute } from './routes/medications';
 import { seedDemoEmotionalWellbeingRoute, resetDemoEmotionalWellbeingRoute } from './routes/devDemoEmotionalWellbeing';
 import { getRoutinesRoute, getRoutineRoute, createRoutineRoute, updateRoutineRoute, deleteRoutineRoute, submitRoutineRoute, uploadRoutineImageRoute, uploadRoutineImageMiddleware, getRoutineImageRoute, deleteRoutineImageRoute } from './routes/routines';
 import { getRoutineLogs } from './routes/routineLogs';
@@ -167,6 +168,14 @@ export function createApp(): Express {
   app.get('/api/wellbeingEntries', getWellbeingEntriesRoute);
   app.post('/api/wellbeingEntries', upsertWellbeingEntriesRoute);
   app.delete('/api/wellbeingEntries/:id', deleteWellbeingEntryRoute);
+
+  // Medications (Wellbeing system) — definitions + daily "taken" logs
+  app.get('/api/medications', getMedicationsRoute);
+  app.post('/api/medications', createMedicationRoute);
+  app.put('/api/medications/:id', updateMedicationRoute);
+  app.delete('/api/medications/:id', deleteMedicationRoute);
+  app.get('/api/medicationLogs', getMedicationLogsRoute);
+  app.post('/api/medicationLogs', setMedicationLogRoute);
 
   if (process.env.NODE_ENV !== 'production') {
     app.post('/api/dev/seedDemoEmotionalWellbeing', seedDemoEmotionalWellbeingRoute);
