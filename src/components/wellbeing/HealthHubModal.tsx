@@ -3,6 +3,7 @@ import { X, Moon, Pill, ChevronRight, Activity, Scale, Coffee, Wine, Leaf } from
 import { SleepEntryForm } from '../SleepEntryForm';
 import { MedicationManagerModal } from './MedicationManagerModal';
 import { HealthFactorLogModal } from './HealthFactorLogModal';
+import { SymptomManagerModal } from './SymptomManagerModal';
 
 interface HealthHubModalProps {
   isOpen: boolean;
@@ -19,19 +20,20 @@ export const HealthHubModal: React.FC<HealthHubModalProps> = ({ isOpen, onClose 
   const [weightOpen, setWeightOpen] = useState(false);
   const [caffeineOpen, setCaffeineOpen] = useState(false);
   const [alcoholOpen, setAlcoholOpen] = useState(false);
+  const [symptomsOpen, setSymptomsOpen] = useState(false);
 
   if (!isOpen) return null;
 
   const liveSections = [
     { icon: Moon, color: 'text-indigo-400', label: 'Sleep', desc: 'Apple Watch score & schedule', onClick: () => setSleepOpen(true) },
     { icon: Pill, color: 'text-rose-400', label: 'Medications', desc: 'Manage medications & dosages', onClick: () => setMedsOpen(true) },
+    { icon: Activity, color: 'text-orange-400', label: 'Symptoms', desc: "Track symptoms & today's severity", onClick: () => setSymptomsOpen(true) },
     { icon: Scale, color: 'text-sky-400', label: 'Weight', desc: "Log today's weight", onClick: () => setWeightOpen(true) },
     { icon: Coffee, color: 'text-amber-400', label: 'Caffeine', desc: "Log today's caffeine intake", onClick: () => setCaffeineOpen(true) },
     { icon: Wine, color: 'text-fuchsia-400', label: 'Alcohol', desc: "Log today's drinks", onClick: () => setAlcoholOpen(true) },
   ];
 
   const comingSoon = [
-    { icon: Activity, label: 'Symptoms' },
     { icon: Leaf, label: 'Supplements' },
   ];
 
@@ -85,6 +87,7 @@ export const HealthHubModal: React.FC<HealthHubModalProps> = ({ isOpen, onClose 
 
       <SleepEntryForm isOpen={sleepOpen} onClose={() => setSleepOpen(false)} />
       <MedicationManagerModal isOpen={medsOpen} onClose={() => setMedsOpen(false)} />
+      <SymptomManagerModal isOpen={symptomsOpen} onClose={() => setSymptomsOpen(false)} />
       <HealthFactorLogModal
         isOpen={weightOpen}
         onClose={() => setWeightOpen(false)}
