@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { ArrowLeft, LayoutDashboard, GitCompareArrows, Activity, Pill, TrendingUp, Sparkles } from 'lucide-react';
 import { useAuth } from '../store/AuthContext';
 import { OverviewTab } from './insights/OverviewTab';
+import { CorrelationsTab } from './insights/CorrelationsTab';
+import { PredictionsTab } from './insights/PredictionsTab';
 
 const BETA_EMAIL = 'tj.galloway1@gmail.com';
 
@@ -97,13 +99,13 @@ export const WellbeingHistoryPage: React.FC<Props> = ({ onBack }) => {
         {tab === 'overview' ? (
           <OverviewTab days={windowDays} />
         ) : tab === 'correlations' ? (
-          <ComingSoon label="Correlations" />
+          <CorrelationsTab days={windowDays} />
         ) : tab === 'habits' ? (
           <ComingSoon label="Habits" />
         ) : tab === 'medications' ? (
           <ComingSoon label="Medications" />
         ) : tab === 'predictions' ? (
-          <ComingSoon label="Predictions" />
+          <PredictionsTab days={windowDays} />
         ) : (
           <ComingSoon label="AI Review" />
         )}
