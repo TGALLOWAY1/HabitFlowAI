@@ -384,7 +384,6 @@ export function InfoModal({ isOpen, onClose }: InfoModalProps) {
                   <li><span className="font-semibold text-neutral-300">Symptoms</span> — your own symptom list with a daily 1–5 severity log.</li>
                   <li><span className="font-semibold text-neutral-300">Weight</span> — one daily reading (lbs).</li>
                   <li><span className="font-semibold text-neutral-300">Caffeine</span> — total daily caffeine (mg) with quick-add drink presets (coffee, espresso, tea, soda, energy drink).</li>
-                  <li><span className="font-semibold text-neutral-300">Alcohol</span> — standard drinks per day.</li>
                 </ul>
                 {renderExamples(['"Vitamin D 2000 IU — taken ✓"', '"Headache — severity 3"', '"Caffeine — 158mg today"'])}
               </div>

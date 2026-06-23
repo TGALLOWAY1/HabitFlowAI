@@ -922,7 +922,6 @@ export const WELLBEING_METRIC_KEYS = [
     // definition+log collections because they need user-defined lists.
     'weight',                     // body weight in pounds (lbs), decimals allowed, one reading/day
     'caffeineMg',                 // total daily caffeine intake in milligrams, >= 0
-    'alcoholDrinks',              // standard alcoholic drinks consumed that day, >= 0
 ] as const;
 
 export type WellbeingMetricKey = typeof WELLBEING_METRIC_KEYS[number];

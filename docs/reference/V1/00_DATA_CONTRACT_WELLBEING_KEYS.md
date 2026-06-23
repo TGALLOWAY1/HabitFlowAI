@@ -237,7 +237,6 @@ collections instead.)
 |---|---|---|
 | `weight` | `number` lbs (decimals ok) | Body weight; one reading per day (unit is **pounds**) |
 | `caffeineMg` | `number` mg ≥ 0 | Total daily caffeine intake in milligrams (UI offers presets, e.g. brewed coffee ≈ 95mg) |
-| `alcoholDrinks` | `number` ≥ 0 | Standard alcoholic drinks consumed that day |
 
 - **User Input**: Yes (Health Hub). **Derived**: No. **Stability Status**: **LOCKED**.
 

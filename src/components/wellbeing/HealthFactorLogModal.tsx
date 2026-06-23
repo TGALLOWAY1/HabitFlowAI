@@ -13,15 +13,15 @@ interface HealthFactorPreset {
 interface HealthFactorLogModalProps {
   isOpen: boolean;
   onClose: () => void;
-  /** Locked wellbeingEntries metric key (weight | caffeineMg | alcoholDrinks). */
-  metricKey: Extract<WellbeingMetricKey, 'weight' | 'caffeineMg' | 'alcoholDrinks'>;
+  /** Locked wellbeingEntries metric key (weight | caffeineMg). */
+  metricKey: Extract<WellbeingMetricKey, 'weight' | 'caffeineMg'>;
   title: string;
   Icon: LucideIcon;
   iconColor: string;
-  /** Display unit, e.g. "lbs", "mg", "drinks". */
+  /** Display unit, e.g. "lbs", "mg". */
   unit: string;
   step?: number;
-  /** Optional additive quick-add buttons (caffeine/alcohol). */
+  /** Optional additive quick-add buttons (e.g. caffeine drinks). */
   presets?: HealthFactorPreset[];
   helpText?: string;
 }

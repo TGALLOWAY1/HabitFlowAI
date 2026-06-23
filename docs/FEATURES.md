@@ -137,7 +137,6 @@ Every feature area below is **Shipped** unless an item notes otherwise.
   - **Weight** — one daily weight reading (lbs), stored as the `weight` wellbeing metric key
   - **Caffeine** — total daily caffeine (mg) with additive drink presets, stored as the
     `caffeineMg` wellbeing metric key
-  - **Alcohol** — standard drinks per day, stored as the `alcoholDrinks` wellbeing metric key
 - **Insights** (formerly "Wellbeing History") — Three visualization modes:
   - **Heatmap** — Calendar grid showing metric intensity over time
   - **Weekly Summary** — Stacked bars showing weekly proportions
