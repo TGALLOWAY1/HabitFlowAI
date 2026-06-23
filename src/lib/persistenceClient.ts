@@ -7,7 +7,7 @@
 
 import type { Category, Habit, DayLog, DailyWellbeing, Goal, GoalWithProgress, GoalTrack, Routine, RoutineLog, HabitEntry } from '../models/persistenceTypes';
 import type { WellbeingEntry, WellbeingMetricKey } from '../models/persistenceTypes';
-import type { Medication, MedicationLog } from '../models/persistenceTypes';
+import type { Medication, MedicationLog, Symptom, SymptomLog } from '../models/persistenceTypes';
 import type { DashboardPrefs, HouseholdUser } from '../models/persistenceTypes';
 
 import type { GoalDetail, CompletedGoal, ProgressOverview, GoalTrackWithGoals } from '../types';
@@ -389,6 +389,59 @@ export async function setMedicationLog(params: {
     body: JSON.stringify(params),
   });
   return response.medicationLog;
+}
+
+/**
+ * Symptom Persistence Functions (Health Hub)
+ */
+export type SymptomInput = {
+  name: string;
+  active?: boolean;
+  notes?: string | null;
+};
+
+export async function fetchSymptoms(): Promise<Symptom[]> {
+  const response = await apiRequest<{ symptoms: Symptom[] }>('/symptoms');
+  return response.symptoms;
+}
+
+export async function createSymptom(input: SymptomInput): Promise<Symptom> {
+  const response = await apiRequest<{ symptom: Symptom }>('/symptoms', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+  return response.symptom;
+}
+
+export async function updateSymptom(id: string, patch: Partial<SymptomInput>): Promise<Symptom> {
+  const response = await apiRequest<{ symptom: Symptom }>(`/symptoms/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(patch),
+  });
+  return response.symptom;
+}
+
+export async function deleteSymptom(id: string): Promise<void> {
+  await apiRequest(`/symptoms/${id}`, { method: 'DELETE' });
+}
+
+export async function fetchSymptomLogs(dayKey: string): Promise<SymptomLog[]> {
+  const qs = new URLSearchParams({ dayKey }).toString();
+  const response = await apiRequest<{ symptomLogs: SymptomLog[] }>(`/symptomLogs?${qs}`);
+  return response.symptomLogs;
+}
+
+export async function setSymptomLog(params: {
+  symptomId: string;
+  dayKey: string;
+  severity: number;
+  notes?: string | null;
+}): Promise<SymptomLog> {
+  const response = await apiRequest<{ symptomLog: SymptomLog }>('/symptomLogs', {
+    method: 'POST',
+    body: JSON.stringify(params),
+  });
+  return response.symptomLog;
 }
 
 /**

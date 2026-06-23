@@ -1489,6 +1489,10 @@ export const MONGO_COLLECTIONS = {
     AI_REPORTS: 'aiReports',
     MEDICATIONS: 'medications',
     MEDICATION_LOGS: 'medicationLogs',
+    SYMPTOMS: 'symptoms',
+    SYMPTOM_LOGS: 'symptomLogs',
+    SUPPLEMENTS: 'supplements',
+    SUPPLEMENT_LOGS: 'supplementLogs',
 } as const;
 
 /**
@@ -1786,6 +1790,112 @@ export interface MedicationLog {
     /** Canonical aggregation boundary (YYYY-MM-DD) */
     dayKey: string;
     /** Whether the medication was taken on this day */
+    taken: boolean;
+    /** Optional clock time taken, "HH:mm" (24h) */
+    timeTaken?: string | null;
+    /** ISO 8601 UTC timestamp when recorded */
+    timestampUtc: string;
+    createdAt: string;
+    updatedAt: string;
+}
+
+/**
+ * Symptom — a user-tracked symptom definition (Health Hub, Phase 4).
+ *
+ * Storage Key: 'symptoms'
+ * Scope: (householdId, userId)
+ *
+ * A first-class wellbeing entity (NOT a wellbeing metric key) because the user defines
+ * their own symptom list. Day-to-day severity is recorded separately as SymptomLog records.
+ */
+export interface Symptom {
+    /** Application-level ID (UUID) */
+    id: string;
+    userId: string;
+    householdId: string;
+    /** Display name, e.g. "Headache", "Nausea" */
+    name: string;
+    /** Whether the symptom is currently tracked (shown in the daily list) */
+    active: boolean;
+    /** Optional free text */
+    notes?: string | null;
+    createdAt: string;
+    updatedAt: string;
+    /** Soft delete timestamp (null/absent while live) */
+    deletedAt?: string | null;
+}
+
+/**
+ * SymptomLog — a daily severity record for a single symptom.
+ *
+ * Storage Key: 'symptomLogs'
+ * Unique Key: (userId, symptomId, dayKey)
+ *
+ * Idempotent per symptom per day; re-logging a day upserts the same record.
+ */
+export interface SymptomLog {
+    id: string;
+    userId: string;
+    householdId: string;
+    symptomId: string;
+    /** Canonical aggregation boundary (YYYY-MM-DD) */
+    dayKey: string;
+    /** Severity on a 1-5 scale (1 = mild, 5 = severe) */
+    severity: number;
+    /** Optional free text for the day */
+    notes?: string | null;
+    /** ISO 8601 UTC timestamp when recorded */
+    timestampUtc: string;
+    createdAt: string;
+    updatedAt: string;
+}
+
+/**
+ * Supplement — a user-tracked supplement/vitamin definition (Health Hub, Phase 4).
+ *
+ * Storage Key: 'supplements'
+ * Scope: (householdId, userId)
+ *
+ * Mirrors Medication: a definition (name/dosage/schedule) distinct from the daily
+ * "taken today" adherence signal recorded as SupplementLog records.
+ */
+export interface Supplement {
+    /** Application-level ID (UUID) */
+    id: string;
+    userId: string;
+    householdId: string;
+    /** Display name, e.g. "Vitamin D", "Magnesium" */
+    name: string;
+    /** Current dosage description, e.g. "1000 IU", "400mg" */
+    dosage?: string | null;
+    /** Optional freeform schedule hint, e.g. "morning", "with food" */
+    schedule?: string | null;
+    /** Whether the supplement is currently active (shown in the daily "taken" list) */
+    active: boolean;
+    /** Optional free text */
+    notes?: string | null;
+    createdAt: string;
+    updatedAt: string;
+    /** Soft delete timestamp (null/absent while live) */
+    deletedAt?: string | null;
+}
+
+/**
+ * SupplementLog — a daily "taken" record for a single supplement.
+ *
+ * Storage Key: 'supplementLogs'
+ * Unique Key: (userId, supplementId, dayKey)
+ *
+ * Idempotent per supplement per day; toggling on/off for a day upserts the same record.
+ */
+export interface SupplementLog {
+    id: string;
+    userId: string;
+    householdId: string;
+    supplementId: string;
+    /** Canonical aggregation boundary (YYYY-MM-DD) */
+    dayKey: string;
+    /** Whether the supplement was taken on this day */
     taken: boolean;
     /** Optional clock time taken, "HH:mm" (24h) */
     timeTaken?: string | null;
