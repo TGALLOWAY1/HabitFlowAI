@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { X, Moon, Pill, ChevronRight, Activity, Scale, Coffee, Wine, Leaf } from 'lucide-react';
 import { SleepEntryForm } from '../SleepEntryForm';
 import { MedicationManagerModal } from './MedicationManagerModal';
+import { HealthFactorLogModal } from './HealthFactorLogModal';
 
 interface HealthHubModalProps {
   isOpen: boolean;
@@ -9,25 +10,28 @@ interface HealthHubModalProps {
 }
 
 /**
- * Health Hub — entry point for health tracking. Sleep and Medications are live;
- * symptoms and health factors are surfaced as "coming soon" (Phase 4).
+ * Health Hub — entry point for health tracking. Sleep, Medications, Weight, Caffeine
+ * and Alcohol are live; symptoms and supplements are surfaced as "coming soon".
  */
 export const HealthHubModal: React.FC<HealthHubModalProps> = ({ isOpen, onClose }) => {
   const [sleepOpen, setSleepOpen] = useState(false);
   const [medsOpen, setMedsOpen] = useState(false);
+  const [weightOpen, setWeightOpen] = useState(false);
+  const [caffeineOpen, setCaffeineOpen] = useState(false);
+  const [alcoholOpen, setAlcoholOpen] = useState(false);
 
   if (!isOpen) return null;
 
   const liveSections = [
     { icon: Moon, color: 'text-indigo-400', label: 'Sleep', desc: 'Apple Watch score & schedule', onClick: () => setSleepOpen(true) },
     { icon: Pill, color: 'text-rose-400', label: 'Medications', desc: 'Manage medications & dosages', onClick: () => setMedsOpen(true) },
+    { icon: Scale, color: 'text-sky-400', label: 'Weight', desc: "Log today's weight", onClick: () => setWeightOpen(true) },
+    { icon: Coffee, color: 'text-amber-400', label: 'Caffeine', desc: "Log today's caffeine intake", onClick: () => setCaffeineOpen(true) },
+    { icon: Wine, color: 'text-fuchsia-400', label: 'Alcohol', desc: "Log today's drinks", onClick: () => setAlcoholOpen(true) },
   ];
 
   const comingSoon = [
     { icon: Activity, label: 'Symptoms' },
-    { icon: Scale, label: 'Weight' },
-    { icon: Coffee, label: 'Caffeine' },
-    { icon: Wine, label: 'Alcohol' },
     { icon: Leaf, label: 'Supplements' },
   ];
 
@@ -81,6 +85,47 @@ export const HealthHubModal: React.FC<HealthHubModalProps> = ({ isOpen, onClose 
 
       <SleepEntryForm isOpen={sleepOpen} onClose={() => setSleepOpen(false)} />
       <MedicationManagerModal isOpen={medsOpen} onClose={() => setMedsOpen(false)} />
+      <HealthFactorLogModal
+        isOpen={weightOpen}
+        onClose={() => setWeightOpen(false)}
+        metricKey="weight"
+        title="Weight"
+        Icon={Scale}
+        iconColor="text-sky-400"
+        unit="lbs"
+        step={0.1}
+        helpText="Record one weight reading per day (in pounds)."
+      />
+      <HealthFactorLogModal
+        isOpen={caffeineOpen}
+        onClose={() => setCaffeineOpen(false)}
+        metricKey="caffeineMg"
+        title="Caffeine"
+        Icon={Coffee}
+        iconColor="text-amber-400"
+        unit="mg"
+        step={5}
+        presets={[
+          { label: 'Coffee (95mg)', amount: 95 },
+          { label: 'Espresso (63mg)', amount: 63 },
+          { label: 'Tea (47mg)', amount: 47 },
+          { label: 'Soda (40mg)', amount: 40 },
+          { label: 'Energy drink (80mg)', amount: 80 },
+        ]}
+        helpText="Tap a drink to add it up, or type the total milligrams for today."
+      />
+      <HealthFactorLogModal
+        isOpen={alcoholOpen}
+        onClose={() => setAlcoholOpen(false)}
+        metricKey="alcoholDrinks"
+        title="Alcohol"
+        Icon={Wine}
+        iconColor="text-fuchsia-400"
+        unit="drinks"
+        step={1}
+        presets={[{ label: '1 drink', amount: 1 }]}
+        helpText="Count standard drinks consumed today."
+      />
     </div>
   );
 };
