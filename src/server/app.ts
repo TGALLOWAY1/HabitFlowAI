@@ -14,6 +14,7 @@ import { getWellbeingLogs, upsertWellbeingLogRoute, getWellbeingLogRoute, delete
 import { getWellbeingEntriesRoute, upsertWellbeingEntriesRoute, deleteWellbeingEntryRoute } from './routes/wellbeingEntries';
 import { getMedicationsRoute, createMedicationRoute, updateMedicationRoute, deleteMedicationRoute, getMedicationLogsRoute, setMedicationLogRoute } from './routes/medications';
 import { getSymptomsRoute, createSymptomRoute, updateSymptomRoute, deleteSymptomRoute, getSymptomLogsRoute, setSymptomLogRoute } from './routes/symptoms';
+import { getSupplementsRoute, createSupplementRoute, updateSupplementRoute, deleteSupplementRoute, getSupplementLogsRoute, setSupplementLogRoute } from './routes/supplements';
 import { seedDemoEmotionalWellbeingRoute, resetDemoEmotionalWellbeingRoute } from './routes/devDemoEmotionalWellbeing';
 import { getRoutinesRoute, getRoutineRoute, createRoutineRoute, updateRoutineRoute, deleteRoutineRoute, submitRoutineRoute, uploadRoutineImageRoute, uploadRoutineImageMiddleware, getRoutineImageRoute, deleteRoutineImageRoute } from './routes/routines';
 import { getRoutineLogs } from './routes/routineLogs';
@@ -185,6 +186,14 @@ export function createApp(): Express {
   app.delete('/api/symptoms/:id', deleteSymptomRoute);
   app.get('/api/symptomLogs', getSymptomLogsRoute);
   app.post('/api/symptomLogs', setSymptomLogRoute);
+
+  // Supplements (Health Hub) — definitions + daily "taken" logs
+  app.get('/api/supplements', getSupplementsRoute);
+  app.post('/api/supplements', createSupplementRoute);
+  app.put('/api/supplements/:id', updateSupplementRoute);
+  app.delete('/api/supplements/:id', deleteSupplementRoute);
+  app.get('/api/supplementLogs', getSupplementLogsRoute);
+  app.post('/api/supplementLogs', setSupplementLogRoute);
 
   if (process.env.NODE_ENV !== 'production') {
     app.post('/api/dev/seedDemoEmotionalWellbeing', seedDemoEmotionalWellbeingRoute);

@@ -7,7 +7,7 @@
 
 import type { Category, Habit, DayLog, DailyWellbeing, Goal, GoalWithProgress, GoalTrack, Routine, RoutineLog, HabitEntry } from '../models/persistenceTypes';
 import type { WellbeingEntry, WellbeingMetricKey } from '../models/persistenceTypes';
-import type { Medication, MedicationLog, Symptom, SymptomLog } from '../models/persistenceTypes';
+import type { Medication, MedicationLog, Symptom, SymptomLog, Supplement, SupplementLog } from '../models/persistenceTypes';
 import type { DashboardPrefs, HouseholdUser } from '../models/persistenceTypes';
 
 import type { GoalDetail, CompletedGoal, ProgressOverview, GoalTrackWithGoals } from '../types';
@@ -442,6 +442,61 @@ export async function setSymptomLog(params: {
     body: JSON.stringify(params),
   });
   return response.symptomLog;
+}
+
+/**
+ * Supplement Persistence Functions (Health Hub)
+ */
+export type SupplementInput = {
+  name: string;
+  dosage?: string | null;
+  schedule?: string | null;
+  active?: boolean;
+  notes?: string | null;
+};
+
+export async function fetchSupplements(): Promise<Supplement[]> {
+  const response = await apiRequest<{ supplements: Supplement[] }>('/supplements');
+  return response.supplements;
+}
+
+export async function createSupplement(input: SupplementInput): Promise<Supplement> {
+  const response = await apiRequest<{ supplement: Supplement }>('/supplements', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+  return response.supplement;
+}
+
+export async function updateSupplement(id: string, patch: Partial<SupplementInput>): Promise<Supplement> {
+  const response = await apiRequest<{ supplement: Supplement }>(`/supplements/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(patch),
+  });
+  return response.supplement;
+}
+
+export async function deleteSupplement(id: string): Promise<void> {
+  await apiRequest(`/supplements/${id}`, { method: 'DELETE' });
+}
+
+export async function fetchSupplementLogs(dayKey: string): Promise<SupplementLog[]> {
+  const qs = new URLSearchParams({ dayKey }).toString();
+  const response = await apiRequest<{ supplementLogs: SupplementLog[] }>(`/supplementLogs?${qs}`);
+  return response.supplementLogs;
+}
+
+export async function setSupplementLog(params: {
+  supplementId: string;
+  dayKey: string;
+  taken: boolean;
+  timeTaken?: string | null;
+}): Promise<SupplementLog> {
+  const response = await apiRequest<{ supplementLog: SupplementLog }>('/supplementLogs', {
+    method: 'POST',
+    body: JSON.stringify(params),
+  });
+  return response.supplementLog;
 }
 
 /**
