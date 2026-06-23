@@ -614,6 +614,41 @@ export function computeInsightsOverview(
   };
 }
 
+/**
+ * Correlations for a full source bundle, optionally restricted to certain factor
+ * sources (e.g. ['habit'] for the Habit tab, ['medication'] for Medications).
+ */
+export function computeCorrelationsForSources(
+  sources: InsightsSources,
+  referenceDayKey: string,
+  days: number,
+  timeZone: string,
+  factorSources?: string[]
+): CorrelationResult[] {
+  const startKey = startDayKeyForRange(referenceDayKey, days);
+  const dayKeys = generateDayKeyRange(startKey, referenceDayKey);
+  const outcomes = buildOutcomeSeries(sources.wellbeingEntries, dayKeys);
+  let factors = buildFactorSeries(sources, timeZone, dayKeys);
+  if (factorSources && factorSources.length > 0) {
+    const allowed = new Set(factorSources);
+    factors = factors.filter((f) => allowed.has(f.source));
+  }
+  return computeInsightsCorrelations(factors, outcomes, dayKeys);
+}
+
+/** Linear-trend predictions for a full source bundle. */
+export function computePredictionsForSources(
+  sources: InsightsSources,
+  referenceDayKey: string,
+  days: number,
+  horizonDays = DEFAULT_PREDICTION_HORIZON_DAYS
+): MetricPrediction[] {
+  const startKey = startDayKeyForRange(referenceDayKey, days);
+  const dayKeys = generateDayKeyRange(startKey, referenceDayKey);
+  const outcomes = buildOutcomeSeries(sources.wellbeingEntries, dayKeys);
+  return computeMetricPredictions(outcomes, dayKeys, horizonDays);
+}
+
 export function computeMedicationInsights(
   sources: InsightsSources,
   referenceDayKey: string,
