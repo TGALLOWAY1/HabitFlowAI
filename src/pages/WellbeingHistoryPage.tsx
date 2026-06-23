@@ -6,6 +6,7 @@ import { CorrelationsTab } from './insights/CorrelationsTab';
 import { PredictionsTab } from './insights/PredictionsTab';
 import { HabitInsightsTab } from './insights/HabitInsightsTab';
 import { MedicationInsightsTab } from './insights/MedicationInsightsTab';
+import { AIReviewTab } from './insights/AIReviewTab';
 
 const BETA_EMAIL = 'tj.galloway1@gmail.com';
 
@@ -24,12 +25,6 @@ const TABS: Array<{ id: InsightsTab; label: string; icon: React.ComponentType<{ 
   { id: 'predictions', label: 'Predictions', icon: TrendingUp },
   { id: 'ai-review', label: 'AI Review', icon: Sparkles },
 ];
-
-const ComingSoon: React.FC<{ label: string }> = ({ label }) => (
-  <div className="rounded-xl border border-white/5 bg-neutral-900/40 p-8 text-center text-sm text-neutral-500">
-    {label} tab coming up.
-  </div>
-);
 
 export const WellbeingHistoryPage: React.FC<Props> = ({ onBack }) => {
   const { user } = useAuth();
@@ -109,7 +104,7 @@ export const WellbeingHistoryPage: React.FC<Props> = ({ onBack }) => {
         ) : tab === 'predictions' ? (
           <PredictionsTab days={windowDays} />
         ) : (
-          <ComingSoon label="AI Review" />
+          <AIReviewTab days={windowDays} />
         )}
       </div>
     </div>
