@@ -123,16 +123,19 @@ Create a `.env` in the project root. Only the Mongo variables are required for l
 | `MONGODB_DB_NAME`       | **yes**           | Database name. Use something containing `_test` when running live integration tests.            |
 | `PORT`                  | no (default 3001) | API server port.                                                                                 |
 | `NODE_ENV`              | no                | `development` \| `production`. Production enforces auth headers and restricts CORS.              |
-| `FRONTEND_ORIGIN`       | prod only         | Allowed CORS origin for the deployed frontend.                                                   |
+| `FRONTEND_ORIGIN`       | prod only         | Allowed CORS origin for the deployed frontend. Also used as the host for password-reset links when `APP_BASE_URL` is unset. |
 | `BOOTSTRAP_ADMIN_KEY`   | prod only         | Shared secret for the bootstrap admin endpoint.                                                  |
+| `RESEND_API_KEY`        | prod (email)      | [Resend](https://resend.com) API key. **Without it no password-reset email is sent** — the link is only logged to the server console. |
+| `EMAIL_FROM`            | no                | Sender for transactional email (default `HabitFlow <noreply@habitflow.ai>`). Must be a Resend-verified domain. |
+| `APP_BASE_URL`          | no                | Explicit public origin for password-reset links (e.g. `https://app.example.com`). Overrides `FRONTEND_ORIGIN`; falls back to the request origin in local dev. |
 | `ALLOW_LIVE_DB_TESTS`   | no                | Set to `true` **and** use a DB name containing `_test` to run tests against a real MongoDB.     |
 
 The **Gemini API key** for AI features is **not** an env var — it is entered in Settings and stored in `localStorage` only (BYOK, never persisted server-side).
 
 ## Deployment overview
 
-- **Backend → Render** (see `render.yaml`): Node web service, `npm install` build, `npm start`, health check `/api/health`. Requires `MONGODB_URI`, `MONGODB_DB_NAME`, `FRONTEND_ORIGIN`, `BOOTSTRAP_ADMIN_KEY` as env vars.
-- **Frontend → Vercel** (see `vercel.json`): Static build via `npm run build`, with `/api/*` rewritten to `https://habitflowai.onrender.com/api/*`.
+- **Backend → Render** (see `render.yaml`): Node web service, `npm install` build, `npm start`, health check `/api/health`. Requires `MONGODB_URI`, `MONGODB_DB_NAME`, `FRONTEND_ORIGIN`, `BOOTSTRAP_ADMIN_KEY` as env vars. Set `RESEND_API_KEY` (and optionally `EMAIL_FROM`) to enable password-reset emails.
+- **Frontend → Vercel** (see `vercel.json`): Static build via `npm run build`, with `/api/*` rewritten to `https://habitflowai.onrender.com/api/*`. All other paths fall back to `index.html` so deep links like `/reset-password` load the SPA.
 - **CI → GitHub Actions** (`.github/workflows/ci-beta.yml`): on push/PR to `main`, runs `npm ci`, `npm run build`, `npm run test:beta`, `npm run lint:beta` on Node 20.
 
 ## Screenshots

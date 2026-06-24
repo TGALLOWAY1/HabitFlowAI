@@ -298,9 +298,20 @@ export async function postBootstrapAdmin(req: Request, res: Response): Promise<v
 }
 
 function getAppBaseUrl(req: Request): string {
+  // 1. Explicit override always wins.
   const fromEnv = process.env.APP_BASE_URL;
   if (fromEnv && fromEnv.trim().length > 0) return fromEnv.replace(/\/$/, '');
-  // Fall back to the request's own origin so local dev still produces a usable link.
+
+  // 2. The reset link must point at the frontend SPA, not at this API host.
+  //    In production the request reaches us through Vercel's /api proxy, so the
+  //    request's own host is the Render backend (e.g. *.onrender.com) which
+  //    serves no SPA. FRONTEND_ORIGIN (already configured for CORS) is the
+  //    correct public origin for the emailed link.
+  const frontendOrigin = process.env.FRONTEND_ORIGIN;
+  if (frontendOrigin && frontendOrigin.trim().length > 0) return frontendOrigin.replace(/\/$/, '');
+
+  // 3. Fall back to the request's own origin so local dev still produces a
+  //    usable link (frontend and API share an origin via the Vite dev proxy).
   const proto = (req.headers['x-forwarded-proto'] as string | undefined) ?? req.protocol;
   const host = req.get('host') ?? 'localhost';
   return `${proto}://${host}`;

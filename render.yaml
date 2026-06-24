@@ -16,3 +16,14 @@ services:
         sync: false
       - key: BOOTSTRAP_ADMIN_KEY
         sync: false
+      # Transactional email (password reset). Without RESEND_API_KEY the server
+      # only logs the reset link to the console and no email is delivered.
+      - key: RESEND_API_KEY
+        sync: false
+      - key: EMAIL_FROM
+        sync: false
+      # Public origin used to build password-reset links. Optional: falls back
+      # to FRONTEND_ORIGIN when unset. Set only if the reset link host should
+      # differ from the CORS origin.
+      - key: APP_BASE_URL
+        sync: false

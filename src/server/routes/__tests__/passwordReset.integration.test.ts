@@ -97,6 +97,30 @@ describe('Password reset integration', () => {
       expect(vi.mocked(sendPasswordResetEmail)).not.toHaveBeenCalled();
     });
 
+    it('builds the reset link from FRONTEND_ORIGIN, not the request host', async () => {
+      // In production the request reaches the API on the backend host, but the
+      // emailed link must target the frontend SPA origin.
+      const prevAppBaseUrl = process.env.APP_BASE_URL;
+      const prevFrontendOrigin = process.env.FRONTEND_ORIGIN;
+      delete process.env.APP_BASE_URL;
+      process.env.FRONTEND_ORIGIN = 'https://app.habitflow.example';
+      try {
+        await seedUser('frontend@test.com');
+        await request(app())
+          .post('/api/auth/forgot-password')
+          .send({ email: 'frontend@test.com' })
+          .expect(200);
+
+        const url = vi.mocked(sendPasswordResetEmail).mock.calls[0]![1];
+        expect(url).toMatch(/^https:\/\/app\.habitflow\.example\/reset-password\?token=[0-9a-f]{64}$/);
+      } finally {
+        if (prevAppBaseUrl === undefined) delete process.env.APP_BASE_URL;
+        else process.env.APP_BASE_URL = prevAppBaseUrl;
+        if (prevFrontendOrigin === undefined) delete process.env.FRONTEND_ORIGIN;
+        else process.env.FRONTEND_ORIGIN = prevFrontendOrigin;
+      }
+    });
+
     it('replaces a prior pending token when invoked again', async () => {
       await seedUser('repeat@test.com');
       await request(app()).post('/api/auth/forgot-password').send({ email: 'repeat@test.com' }).expect(200);
