@@ -94,7 +94,13 @@ HabitFlow App
 │   ├── Today column
 │   └── Inbox column
 │
-├── Wellbeing History (via dashboard link)
+├── Insights (via Wellbeing card → 📈 Insights; beta-gated)
+│   ├── Overview tab (discoveries, top correlations, metric averages, heatmap/weekly/multiples)
+│   ├── Correlations tab (what's helping / what's holding you back)
+│   ├── Habits tab (habit stats + habit↔wellbeing correlations)
+│   ├── Medications tab (adherence + medication↔wellbeing correlations)
+│   ├── Predictions tab (linear-trend projections)
+│   └── AI Review tab (Gemini BYOK narrative)
 │
 └── Debug Entries (dev only)
 ```
@@ -122,7 +128,7 @@ HabitFlow App
 | Create Goal (Step 2) | Modal | Next from Step 1 | Link habits to goal (filtered by category if selected) | Goals, Habits | Goals List (on submit) |
 | Journal | Page | Dashboard card / `?view=journal` (`&tab=` deep-links Free/Template/History/AI Review) | Free-write, templates, history, and AI Review tabs; auto-generated AI summary banner | Journal Entries | — |
 | Tasks | Page | Dashboard card / `?view=tasks` | Today + Inbox columns; click a task title or pencil icon to rename inline | Tasks | — |
-| Wellbeing History | Page | Dashboard link | Historical wellbeing charts and trends | Wellbeing Entries | — |
+| Insights | Page | Wellbeing card → 📈 Insights (`?view=wellbeing-history`); beta-gated | Tabbed analytics: Overview, Correlations, Habits, Medications, Predictions, AI Review. Cross-domain correlations (Cohen's d), linear-trend predictions, and a Gemini AI narrative, all from canonical truth at read time | Wellbeing Entries, Habit Entries, Medication/Supplement/Symptom Logs | — |
 | Debug Entries | Page (dev) | `?view=debug-entries` | Testing entry data | Entries | — |
 | Login | Page | Default for unauthenticated users | Email + password sign in. Includes "Forgot password?" link and switch to invite redeem | — | Invite Redeem, Forgot Password |
 | Invite Redeem | Page | "Have an invite code?" link on Login | Create an account with an invite code | Users | Login |

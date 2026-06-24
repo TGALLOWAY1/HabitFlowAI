@@ -72,6 +72,7 @@ import { postWeeklyReview } from './routes/aiWeeklyReview';
 import { postSuggestVariants } from './routes/aiVariantSuggestion';
 import { postJournalSummary } from './routes/aiJournalSummary';
 import { postJournalReview } from './routes/aiJournalReview';
+import { postInsightsReview } from './routes/aiInsightsReview';
 import { getAIReportsRoute, getAIReportRoute, deleteAIReportRoute } from './routes/aiReports';
 import {
   getHabitAnalyticsSummary,
@@ -84,6 +85,13 @@ import {
   getGoalAnalyticsSummary,
   getSleepAnalyticsSummary,
 } from './routes/analytics';
+import {
+  getInsightsOverview,
+  getInsightsCorrelations,
+  getInsightsHabits,
+  getInsightsMedications,
+  getInsightsPredictions,
+} from './routes/insights';
 
 export function createApp(): Express {
   const app = express();
@@ -263,6 +271,7 @@ export function createApp(): Express {
   app.post('/api/ai/suggest-variants', postSuggestVariants);
   app.post('/api/ai/journal-summary', postJournalSummary);
   app.post('/api/ai/journal-review', postJournalReview);
+  app.post('/api/ai/insights-review', postInsightsReview);
   app.get('/api/ai/reports', getAIReportsRoute);
   app.get('/api/ai/reports/:id', getAIReportRoute);
   app.delete('/api/ai/reports/:id', deleteAIReportRoute);
@@ -275,6 +284,11 @@ export function createApp(): Express {
   app.get('/api/analytics/routines/summary', getRoutineAnalyticsSummary);
   app.get('/api/analytics/goals/summary', getGoalAnalyticsSummary);
   app.get('/api/analytics/sleep/summary', getSleepAnalyticsSummary);
+  app.get('/api/insights/overview', getInsightsOverview);
+  app.get('/api/insights/correlations', getInsightsCorrelations);
+  app.get('/api/insights/habits', getInsightsHabits);
+  app.get('/api/insights/medications', getInsightsMedications);
+  app.get('/api/insights/predictions', getInsightsPredictions);
   app.get('/api/admin/integrity-report', getIntegrityReport);
   app.post('/api/admin/dedup-habits', requireAdmin, dedupHabits);
   app.post('/api/admin/recover-habits', requireAdmin, recoverHabits);

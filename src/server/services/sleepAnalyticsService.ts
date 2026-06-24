@@ -36,6 +36,7 @@ import { parseISO, subDays, format, getISOWeek, getISOWeekYear } from 'date-fns'
 import type { Habit, HabitEntry, Category, WellbeingEntry } from '../../models/persistenceTypes';
 import { buildDayStatesByHabit } from './analyticsService';
 import { isTrackableHabit } from './scheduleEngine';
+import { cohensD, splitByFactor } from './correlationEngine';
 
 // ─── Tunable constants ─────────────────────────────────────────────────────────
 
@@ -537,42 +538,6 @@ const OUTCOMES: Array<{ key: 'appleSleepScore' | 'sleepQuality' | 'latencyMinute
   { key: 'sleepQuality', field: 'sleepQuality0to4', higherIsBetter: true, unitLabel: 'pts (0-4)' },
   { key: 'latencyMinutes', field: 'latencyMinutes', higherIsBetter: false, unitLabel: 'min' },
 ];
-
-function cohensD(a: number[], b: number[]): number {
-  if (a.length < 2 || b.length < 2) return 0;
-  const ma = a.reduce((x, y) => x + y, 0) / a.length;
-  const mb = b.reduce((x, y) => x + y, 0) / b.length;
-  const va = a.reduce((acc, v) => acc + (v - ma) ** 2, 0) / (a.length - 1);
-  const vb = b.reduce((acc, v) => acc + (v - mb) ** 2, 0) / (b.length - 1);
-  const pooled = Math.sqrt(((a.length - 1) * va + (b.length - 1) * vb) / (a.length + b.length - 2));
-  if (pooled === 0) {
-    // No within-group spread: identical means → no effect; differing means → maximal.
-    if (ma === mb) return 0;
-    return ma > mb ? 4 : -4;
-  }
-  return (ma - mb) / pooled;
-}
-
-/** Collapse a factor series into present/absent night sets via median split. */
-function splitByFactor(series: FactorSeries, dayKeys: string[]): { present: Set<string>; absent: Set<string> } {
-  const present = new Set<string>();
-  const absent = new Set<string>();
-  // boolean-like if all values are 0/1
-  const values = dayKeys.map((dk) => series.byDay.get(dk) ?? 0);
-  const isBinary = values.every((v) => v === 0 || v === 1);
-  if (isBinary) {
-    for (const dk of dayKeys) {
-      ((series.byDay.get(dk) ?? 0) >= 1 ? present : absent).add(dk);
-    }
-    return { present, absent };
-  }
-  const nonZero = values.filter((v) => v > 0).sort((a, b) => a - b);
-  const median = nonZero.length ? nonZero[Math.floor(nonZero.length / 2)] : 0;
-  for (const dk of dayKeys) {
-    ((series.byDay.get(dk) ?? 0) >= median && median > 0 ? present : absent).add(dk);
-  }
-  return { present, absent };
-}
 
 function buildFactorSeries(
   wellbeingByDay: Map<string, Record<string, number>>,
