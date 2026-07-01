@@ -81,6 +81,16 @@ The full, status-tagged feature inventory is in [`docs/FEATURES.md`](docs/FEATUR
 - **Frontend:** <!-- TODO: add live Vercel URL here (vercel.json points the API at habitflowai.onrender.com) -->
 - **API health check:** <https://habitflowai.onrender.com/api/health>
 
+No account is needed to evaluate the product:
+
+- **Take a Tour** (login screen → "Take the tour", or `?view=tour`) — an interactive guided
+  walkthrough of the live app with a Desktop/Mobile preview toggle.
+- **Live demo** (login screen → "Explore the live demo", or `/?demo=1`) — the full app,
+  read-only, on ~10 weeks of seeded realistic data. Requires `PUBLIC_DEMO_ENABLED=true` on
+  the backend; see [`docs/DEMO_ARCHITECTURE.md`](docs/DEMO_ARCHITECTURE.md).
+- **What's real vs. planned:** [`FEATURE_AUDIT.md`](FEATURE_AUDIT.md) (code-verified) and the
+  in-app Roadmap page (`?view=roadmap`).
+
 ## Local setup
 
 Prerequisites: **Node 20+** and a MongoDB instance (local or Atlas).

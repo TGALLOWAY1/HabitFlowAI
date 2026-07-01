@@ -26,6 +26,7 @@ Every feature area below is **Shipped** unless an item notes otherwise.
 | Dashboard | Shipped | Daily habits ring, check-in & journal action cards, pinned goals/routines, tasks, setup guide |
 | Views | Shipped | Tracker grid, Day view, weekly Schedule view |
 | Settings & Account | Shipped | API key, archived habits, delete-all-data |
+| Demo & Tour | Shipped | Interactive guided tour, read-only public demo (seeded data), Roadmap page |
 
 > Engineering detail for the AI features lives in [`ai-features.md`](ai-features.md).
 
@@ -235,4 +236,6 @@ Every feature area below is **Shipped** unless an item notes otherwise.
 - **Soft Deletes** — `deletedAt` timestamp pattern for truth records
 - **Optimistic UI** — Changes appear instantly with backend sync
 - **Responsive Design** — Mobile-first with bottom tab bar (Dashboard, Habits, Routines, Goals)
-- **Take a Tour** — Accessible full-page tour that orients new users to the six tracking domains, showcases the shipped Gemini BYOK AI features, and lists the AI features on the roadmap with their status. Reachable from the Compass button in the header, the new-user Setup Guide, and a "Take a tour" link on the **Login screen** (no account or invite code required). Renders in an authenticated `app` mode (CTAs jump into the app) or a pre-login `auth` mode (CTAs point to Create an account / Sign in)
+- **Take a Tour (interactive)** — A 13-stop guided walkthrough of the live product (Welcome → Dashboard → Habits → Goals → Tasks → Journal → Routines → Weekly AI Review → Journal Intelligence → Insights → Sleep → Settings → What's next). Each stop pairs a grounded narrative with a **live preview**: an embedded read-only demo of the real app on seeded data, driven between views without reloading, plus a **Desktop/Mobile toggle** that renders true responsive layouts in a real 390px viewport. Honesty cues throughout (Functional today / Beta / Roadmap badges, BYOK and sample-report callouts). Reachable from the Compass button in the header, the new-user Setup Guide, and the Login screen (no account required). Renders in `app` mode (CTAs jump into the app) or pre-login `auth` mode (CTAs: Create an account / Sign in / Roadmap)
+- **Public Demo Mode (read-only)** — Visitors can browse the entire app without an account: "Explore the live demo" on the Login screen (or `/?demo=1`). Real screens and real server-derived views scoped to a seeded demo dataset (~10 weeks across all domains, refreshed relative to today). Writes are blocked client-side (friendly toast) and server-side (403); a persistent banner states the read-only contract with an Exit demo action. The beta Analytics/Insights pages are viewable in the demo, labeled Beta. Server flag: `PUBLIC_DEMO_ENABLED`. See [`DEMO_ARCHITECTURE.md`](DEMO_ARCHITECTURE.md)
+- **Roadmap page** — Dedicated page (`?view=roadmap`, also pre-login from the tour) mirroring [`../ROADMAP.md`](../ROADMAP.md) with explicit status labels (In Development / Planned / Exploring). Future functionality appears only here, never mixed into implemented features

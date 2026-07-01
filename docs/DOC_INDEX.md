@@ -38,6 +38,8 @@ of content in exactly one home.
 - `docs/DEV_GUIDE.md` — setup, scripts, testing, and runbook.
 - `docs/FEATURES.md` — canonical feature list with status, organized by domain (habits, routines, goals, journal, AI, etc.).
 - `docs/ai-features.md` — applied-AI features: design, data flow, grounding, routes/contracts.
+- `docs/DEMO_ARCHITECTURE.md` — public read-only demo + interactive tour: identity, seeding, embed previews.
+- `FEATURE_AUDIT.md` — code-verified implemented / partial / roadmap feature audit (root).
 - `docs/VERIFICATION.md` — consistency and dashboard validation checklist.
 - `docs/maintenance/verification.md` — test suite commands and smoke test checklist.
 - `docs/semantics/daykey.md` — DayKey and timezone policy (America/New_York fallback).
