@@ -66,9 +66,10 @@ const DebugEntriesPage = lazyRetry(() => import('./pages/DebugEntriesPage').then
 const WellbeingHistoryPage = lazyRetry(() => import('./pages/WellbeingHistoryPage').then(m => ({ default: m.WellbeingHistoryPage })));
 const AnalyticsPage = lazyRetry(() => import('./pages/AnalyticsPage').then(m => ({ default: m.AnalyticsPage })));
 const AppleHealthPage = lazyRetry(() => import('./pages/AppleHealthPage').then(m => ({ default: m.AppleHealthPage })));
+const TourPage = lazyRetry(() => import('./pages/TourPage').then(m => ({ default: m.TourPage })));
 
 // Simple router state
-type AppRoute = 'tracker' | 'dashboard' | 'routines' | 'goals' | 'wins' | 'journal' | 'tasks' | 'day' | 'debug-entries' | 'wellbeing-history' | 'analytics' | 'health';
+type AppRoute = 'tracker' | 'dashboard' | 'routines' | 'goals' | 'wins' | 'journal' | 'tasks' | 'day' | 'debug-entries' | 'wellbeing-history' | 'analytics' | 'health' | 'tour';
 
 
 // Helper functions for URL syncing
@@ -106,6 +107,8 @@ function parseRouteFromLocation(location: Location): AppRoute {
       return "analytics";
     case "health":
       return "health";
+    case "tour":
+      return "tour";
     default:
 
       return "dashboard"; // default view
@@ -637,6 +640,12 @@ const HabitTrackerContent: React.FC = () => {
           <AnalyticsPage onBack={() => handleNavigate('dashboard')} />
         ) : view === 'health' ? (
           <AppleHealthPage onBack={() => handleNavigate('dashboard')} />
+        ) : view === 'tour' ? (
+          <TourPage
+            onNavigate={(route) => handleNavigate(route)}
+            onOpenSettings={() => window.dispatchEvent(new Event('habitflow:open-settings'))}
+            onBack={() => handleNavigate('dashboard')}
+          />
         ) : goalsViewMode === 'schedule' ? (
           <GoalScheduleView
             onViewGoal={(goalId) => {

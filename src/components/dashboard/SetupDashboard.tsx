@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { Sparkles, Calendar, CheckSquare, BookOpenText, Target, Check } from 'lucide-react';
+import { Sparkles, Calendar, CheckSquare, BookOpenText, Target, Check, Compass } from 'lucide-react';
 
 interface SetupStep {
   title: string;
@@ -85,6 +85,13 @@ export const SetupDashboard: React.FC<SetupDashboardProps> = ({
         <p className="text-neutral-400 text-sm">
           Let's get you set up in a few quick steps.
         </p>
+        <button
+          onClick={() => onNavigate('tour')}
+          className="mt-3 inline-flex items-center gap-1.5 text-xs font-medium text-emerald-400 hover:text-emerald-300 transition-colors"
+        >
+          <Compass size={14} aria-hidden="true" />
+          New here? Take a tour
+        </button>
       </div>
 
       {/* Progress indicator */}
