@@ -37,6 +37,7 @@ import {
 import { postCreateInvite, getInvites, postRevokeInvite } from './routes/adminInvites';
 import householdUsersRouter from './routes/householdUsers';
 import { identityMiddleware } from './middleware/identity';
+import { publicDemoIdentity, publicDemoReadOnlyGuard } from './middleware/publicDemo';
 import { sessionMiddleware } from './middleware/session';
 import { requireAdmin } from './middleware/requireAdmin';
 import { noPersonaInHabitEntryRequests } from './middleware/noPersonaInHabitEntryRequests';
@@ -113,7 +114,7 @@ export function createApp(): Express {
       : '*';
     res.header('Access-Control-Allow-Origin', origin);
     res.header('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE, OPTIONS');
-    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-User-Id, X-Household-Id, X-Bootstrap-Key');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-User-Id, X-Household-Id, X-Bootstrap-Key, X-Demo-Mode');
     if (origin !== '*') {
       res.header('Access-Control-Allow-Credentials', 'true');
     }
@@ -142,7 +143,9 @@ export function createApp(): Express {
   app.post('/api/auth/logout', postLogout); // No session required — just clears cookie
 
   app.use(sessionMiddleware);
+  app.use(publicDemoIdentity);
   app.use(identityMiddleware);
+  app.use(publicDemoReadOnlyGuard);
   app.use(noPersonaInHabitEntryRequests);
 
   app.get('/api/auth/me', getAuthMe);

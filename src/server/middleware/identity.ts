@@ -16,8 +16,11 @@ export type RequestIdentity = {
   userId: string;
 };
 
-/** How identity was set: session (from cookie), demo_headers, or bootstrap (dev only). */
-export type IdentitySource = 'session' | 'demo_headers' | 'bootstrap';
+/**
+ * How identity was set: session (from cookie), public_demo (read-only public
+ * demo header), demo_headers (dev only), or bootstrap (dev only).
+ */
+export type IdentitySource = 'session' | 'public_demo' | 'demo_headers' | 'bootstrap';
 
 export interface RequestWithIdentity extends Request {
   householdId?: string;
