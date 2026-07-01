@@ -25,11 +25,22 @@ import {
 // Routes the tour can send the user to — a subset of the app's AppRoute union.
 type TourNavRoute = 'dashboard' | 'tracker' | 'routines' | 'goals' | 'journal';
 
-interface TourPageProps {
-  onNavigate: (route: TourNavRoute) => void;
-  onOpenSettings: () => void;
-  onBack: () => void;
-}
+// The tour renders in two contexts:
+//  - 'app':  inside the authenticated app (CTAs jump into the app; opens Settings).
+//  - 'auth': on the unauthenticated auth screen (CTAs point to sign up / sign in).
+type TourPageProps =
+  | {
+      mode?: 'app';
+      onNavigate: (route: TourNavRoute) => void;
+      onOpenSettings: () => void;
+      onBack: () => void;
+    }
+  | {
+      mode: 'auth';
+      onCreateAccount: () => void;
+      onSignIn: () => void;
+      onBack: () => void;
+    };
 
 interface Feature {
   icon: React.FC<{ size?: number; className?: string }>;
@@ -171,16 +182,17 @@ const statusStyles: Record<RoadmapFeature['status'], string> = {
   Exploring: 'bg-amber-500/10 text-amber-300 border-amber-500/30',
 };
 
-export const TourPage: React.FC<TourPageProps> = ({ onNavigate, onOpenSettings, onBack }) => {
+export const TourPage: React.FC<TourPageProps> = (props) => {
+  const isAuth = props.mode === 'auth';
   return (
-    <div className="max-w-4xl mx-auto flex flex-col gap-10 pb-4">
+    <div className={`max-w-4xl mx-auto flex flex-col gap-10 pb-4 ${isAuth ? 'min-h-screen bg-neutral-900 text-white px-4 py-8' : ''}`}>
       {/* Back link */}
       <button
-        onClick={onBack}
+        onClick={props.onBack}
         className="self-start inline-flex items-center gap-1.5 text-sm text-neutral-400 hover:text-white transition-colors -mb-2"
       >
         <ArrowLeft size={16} aria-hidden="true" />
-        Back to Dashboard
+        {isAuth ? 'Back to sign in' : 'Back to Dashboard'}
       </button>
 
       {/* Hero */}
@@ -256,16 +268,23 @@ export const TourPage: React.FC<TourPageProps> = ({ onNavigate, onOpenSettings, 
         </ul>
         <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-lg px-4 py-3 flex items-start gap-2">
           <KeyRound size={16} className="text-emerald-400 shrink-0 mt-0.5" aria-hidden="true" />
-          <p className="text-sm text-neutral-300">
-            To enable AI features, add a free Gemini API key in{' '}
-            <button
-              onClick={onOpenSettings}
-              className="text-emerald-300 underline underline-offset-2 hover:text-emerald-200 transition-colors"
-            >
-              Settings
-            </button>
-            . Your key is stored only in your browser.
-          </p>
+          {props.mode === 'auth' ? (
+            <p className="text-sm text-neutral-300">
+              After you create an account, add a free Gemini API key in Settings to enable AI
+              features. Your key is stored only in your browser — never on our servers.
+            </p>
+          ) : (
+            <p className="text-sm text-neutral-300">
+              To enable AI features, add a free Gemini API key in{' '}
+              <button
+                onClick={props.onOpenSettings}
+                className="text-emerald-300 underline underline-offset-2 hover:text-emerald-200 transition-colors"
+              >
+                Settings
+              </button>
+              . Your key is stored only in your browser.
+            </p>
+          )}
         </div>
       </section>
 
@@ -311,29 +330,47 @@ export const TourPage: React.FC<TourPageProps> = ({ onNavigate, onOpenSettings, 
         <h2 id="tour-cta-heading" className="text-xl font-semibold text-white text-center">
           Ready to dive in?
         </h2>
-        <div className="flex flex-wrap justify-center gap-3">
-          <button
-            onClick={() => onNavigate('dashboard')}
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-gradient-to-r from-emerald-500 to-cyan-500 text-white font-semibold hover:from-emerald-400 hover:to-cyan-400 transition-colors shadow-lg shadow-emerald-500/20"
-          >
-            Go to Dashboard
-            <ArrowRight size={16} aria-hidden="true" />
-          </button>
-          <button
-            onClick={() => onNavigate('tracker')}
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-neutral-800 border border-white/10 text-neutral-200 font-semibold hover:bg-neutral-700 hover:text-white transition-colors"
-          >
-            <Calendar size={16} aria-hidden="true" />
-            Track Habits
-          </button>
-          <button
-            onClick={() => onNavigate('journal')}
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-neutral-800 border border-white/10 text-neutral-200 font-semibold hover:bg-neutral-700 hover:text-white transition-colors"
-          >
-            <BookOpen size={16} aria-hidden="true" />
-            Open Journal
-          </button>
-        </div>
+        {props.mode === 'auth' ? (
+          <div className="flex flex-wrap justify-center gap-3">
+            <button
+              onClick={props.onCreateAccount}
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-gradient-to-r from-emerald-500 to-cyan-500 text-white font-semibold hover:from-emerald-400 hover:to-cyan-400 transition-colors shadow-lg shadow-emerald-500/20"
+            >
+              Create an account
+              <ArrowRight size={16} aria-hidden="true" />
+            </button>
+            <button
+              onClick={props.onSignIn}
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-neutral-800 border border-white/10 text-neutral-200 font-semibold hover:bg-neutral-700 hover:text-white transition-colors"
+            >
+              Sign in
+            </button>
+          </div>
+        ) : (
+          <div className="flex flex-wrap justify-center gap-3">
+            <button
+              onClick={() => props.onNavigate('dashboard')}
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-gradient-to-r from-emerald-500 to-cyan-500 text-white font-semibold hover:from-emerald-400 hover:to-cyan-400 transition-colors shadow-lg shadow-emerald-500/20"
+            >
+              Go to Dashboard
+              <ArrowRight size={16} aria-hidden="true" />
+            </button>
+            <button
+              onClick={() => props.onNavigate('tracker')}
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-neutral-800 border border-white/10 text-neutral-200 font-semibold hover:bg-neutral-700 hover:text-white transition-colors"
+            >
+              <Calendar size={16} aria-hidden="true" />
+              Track Habits
+            </button>
+            <button
+              onClick={() => props.onNavigate('journal')}
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-neutral-800 border border-white/10 text-neutral-200 font-semibold hover:bg-neutral-700 hover:text-white transition-colors"
+            >
+              <BookOpen size={16} aria-hidden="true" />
+              Open Journal
+            </button>
+          </div>
+        )}
       </section>
     </div>
   );

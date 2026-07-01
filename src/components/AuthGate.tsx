@@ -8,7 +8,7 @@
  * the user can sign in with their new password.
  */
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, Suspense } from 'react';
 import { useAuth } from '../store/AuthContext';
 import { LoginPage } from '../pages/LoginPage';
 import { InviteRedeemPage } from '../pages/InviteRedeemPage';
@@ -16,7 +16,10 @@ import { ForgotPasswordPage } from '../pages/ForgotPasswordPage';
 import { ResetPasswordPage } from '../pages/ResetPasswordPage';
 import { Loader2 } from 'lucide-react';
 
-type AuthView = 'login' | 'invite' | 'forgot' | 'reset';
+// Lazy-loaded so the tour chunk isn't pulled into the initial auth bundle.
+const TourPage = React.lazy(() => import('../pages/TourPage').then(m => ({ default: m.TourPage })));
+
+type AuthView = 'login' | 'invite' | 'forgot' | 'reset' | 'tour';
 
 function initialView(): AuthView {
   if (typeof window !== 'undefined' && window.location.pathname === '/reset-password') {
@@ -66,10 +69,29 @@ export const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) 
         />
       );
     }
+    if (view === 'tour') {
+      return (
+        <Suspense
+          fallback={
+            <div className="min-h-screen bg-neutral-900 flex items-center justify-center">
+              <Loader2 size={32} className="text-emerald-500 animate-spin" />
+            </div>
+          }
+        >
+          <TourPage
+            mode="auth"
+            onCreateAccount={() => setView('invite')}
+            onSignIn={() => setView('login')}
+            onBack={() => setView('login')}
+          />
+        </Suspense>
+      );
+    }
     return (
       <LoginPage
         onSwitchToInvite={() => setView('invite')}
         onSwitchToForgotPassword={() => setView('forgot')}
+        onViewTour={() => setView('tour')}
         successMessage={loginNotice}
       />
     );

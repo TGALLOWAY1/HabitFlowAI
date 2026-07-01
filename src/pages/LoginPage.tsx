@@ -5,15 +5,16 @@
 
 import React, { useState } from 'react';
 import { useAuth } from '../store/AuthContext';
-import { LayoutGrid } from 'lucide-react';
+import { LayoutGrid, Compass } from 'lucide-react';
 
 interface LoginPageProps {
   onSwitchToInvite: () => void;
   onSwitchToForgotPassword?: () => void;
+  onViewTour?: () => void;
   successMessage?: string | null;
 }
 
-export const LoginPage: React.FC<LoginPageProps> = ({ onSwitchToInvite, onSwitchToForgotPassword, successMessage }) => {
+export const LoginPage: React.FC<LoginPageProps> = ({ onSwitchToInvite, onSwitchToForgotPassword, onViewTour, successMessage }) => {
   const { login, error: authError, clearError } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -139,6 +140,21 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onSwitchToInvite, onSwitch
             Create an account
           </button>
         </p>
+
+        {/* Take a tour — no account or invite code required */}
+        {onViewTour && (
+          <div className="mt-6 pt-6 border-t border-white/5 text-center">
+            <p className="text-sm text-neutral-500 mb-3">New to HabitFlow? See what it can do.</p>
+            <button
+              type="button"
+              onClick={onViewTour}
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-neutral-800 border border-white/10 text-neutral-200 text-sm font-medium hover:bg-neutral-700 hover:text-white transition-colors"
+            >
+              <Compass size={16} aria-hidden="true" />
+              Take a tour
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
