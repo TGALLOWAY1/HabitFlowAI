@@ -64,7 +64,20 @@ Architecture decisions (locked):
 - [x] Playwright smoke test (vite dev server): login CTAs render, tour renders
       13 step chips, postMessage step navigation drives the embedded preview,
       Desktop/Mobile toggle renders a real 390px viewport, Roadmap page renders
-- [ ] NOT verifiable in this sandbox (MongoDB binaries blocked by proxy):
-      live demo seeding + read/write enforcement against a running DB.
-      Verify after deploy: set PUBLIC_DEMO_ENABLED=true on the backend, check
-      /api/health reports publicDemo:true, click "Explore the live demo".
+- [x] Live end-to-end verification (second pass): MongoDB binaries are
+      proxy-blocked, so a locally-built FerretDB v1.24 (Mongo wire protocol,
+      SQLite backend) stood in — patched locally with $addToSet/$size/$ifNull
+      and two upstream fixes (per-accumulator group iterators, $-path renames
+      in $project). Sandbox-only tooling; nothing committed to the repo.
+      Verified against the running stack:
+      - startup seed runs, detects freshness, skips when fresh; --force reseeds
+      - demo-header reads return seeded data; writes 403 demoReadOnly;
+        headerless requests 401; read-only toast fires in the UI
+      - every screen renders real seeded data (dashboard ring, habits grid
+        with bundle + streaks, goal track completed→active 72%→locked,
+        milestones, tasks, journal, routines, insights, sleep)
+      - the Insights correlation engine genuinely detects the seeded
+        wind-down↔sleep/energy pattern (Cohen's d, n=30 vs 15)
+      - sample Weekly AI Review opens from history without a Gemini key
+- [ ] After production deploy (real MongoDB): set PUBLIC_DEMO_ENABLED=true,
+      confirm /api/health reports publicDemo:true, click "Explore the live demo".
