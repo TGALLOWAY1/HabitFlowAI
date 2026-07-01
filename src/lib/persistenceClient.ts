@@ -17,7 +17,7 @@ import { API_BASE_URL } from './persistenceConfig';
 import { buildHabitEntryUpsertPayload } from './habitEntryPayload';
 import { invalidateGoalDataCache, invalidateGoalCaches } from './goalDataCache';
 import { ACTIVE_USER_MODE_STORAGE_KEY, DEMO_USER_ID, type ActiveUserMode } from '../shared/demo';
-import { DEMO_WRITE_BLOCKED_EVENT, DEMO_READ_ONLY_MESSAGE } from './demoMode';
+import { DEMO_WRITE_BLOCKED_EVENT, DEMO_READ_ONLY_MESSAGE, getBootModeOverride } from './demoMode';
 import { warnIfPersonaLeaksIntoHabitEntryRequest } from '../shared/invariants/personaInvariants';
 
 
@@ -129,6 +129,9 @@ export function addKnownUserId(userId: string): void {
 
 export function getActiveUserMode(): ActiveUserMode {
   if (typeof window === 'undefined') return 'real';
+  // Embedded previews (tour iframe) carry their mode in memory, not storage.
+  const override = getBootModeOverride();
+  if (override) return override;
   const raw = localStorage.getItem(ACTIVE_USER_MODE_STORAGE_KEY);
   return raw === 'demo' ? 'demo' : 'real';
 }

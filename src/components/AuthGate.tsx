@@ -16,10 +16,11 @@ import { ForgotPasswordPage } from '../pages/ForgotPasswordPage';
 import { ResetPasswordPage } from '../pages/ResetPasswordPage';
 import { Loader2 } from 'lucide-react';
 
-// Lazy-loaded so the tour chunk isn't pulled into the initial auth bundle.
+// Lazy-loaded so the tour/roadmap chunks aren't pulled into the initial auth bundle.
 const TourPage = React.lazy(() => import('../pages/TourPage').then(m => ({ default: m.TourPage })));
+const RoadmapPage = React.lazy(() => import('../pages/RoadmapPage').then(m => ({ default: m.RoadmapPage })));
 
-type AuthView = 'login' | 'invite' | 'forgot' | 'reset' | 'tour';
+type AuthView = 'login' | 'invite' | 'forgot' | 'reset' | 'tour' | 'roadmap';
 
 function initialView(): AuthView {
   if (typeof window !== 'undefined' && window.location.pathname === '/reset-password') {
@@ -84,6 +85,19 @@ export const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) 
             onSignIn={() => setView('login')}
             onBack={() => setView('login')}
           />
+        </Suspense>
+      );
+    }
+    if (view === 'roadmap') {
+      return (
+        <Suspense
+          fallback={
+            <div className="min-h-screen bg-neutral-900 flex items-center justify-center">
+              <Loader2 size={32} className="text-emerald-500 animate-spin" />
+            </div>
+          }
+        >
+          <RoadmapPage mode="auth" onBack={() => setView('tour')} />
         </Suspense>
       );
     }

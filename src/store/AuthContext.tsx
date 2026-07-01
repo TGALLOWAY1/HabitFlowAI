@@ -8,8 +8,9 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { API_BASE_URL } from '../lib/persistenceConfig';
-import { ACTIVE_USER_MODE_STORAGE_KEY, DEMO_USER_ID, PUBLIC_DEMO_HOUSEHOLD_ID } from '../shared/demo';
+import { DEMO_USER_ID, PUBLIC_DEMO_HOUSEHOLD_ID } from '../shared/demo';
 import { exitDemoMode } from '../lib/demoMode';
+import { getActiveUserMode } from '../lib/persistenceClient';
 
 export interface AuthUser {
   householdId: string;
@@ -49,7 +50,7 @@ export function useAuth(): AuthContextValue {
  * scopes every request to the fixed, read-only demo identity.
  */
 function isDemoSession(): boolean {
-  return localStorage.getItem(ACTIVE_USER_MODE_STORAGE_KEY) === 'demo';
+  return getActiveUserMode() === 'demo';
 }
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {

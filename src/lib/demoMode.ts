@@ -14,18 +14,33 @@
  *   app listens for `habitflow-demo-navigate` postMessages from the parent.
  */
 
-import { ACTIVE_USER_MODE_STORAGE_KEY } from '../shared/demo';
+import { ACTIVE_USER_MODE_STORAGE_KEY, type ActiveUserMode } from '../shared/demo';
+
+/**
+ * Embedded previews keep their mode in memory only: persisting it would flip
+ * the parent window (which shares localStorage) into demo mode on reload.
+ */
+let bootModeOverride: ActiveUserMode | null = null;
 
 /** Read boot params and apply demo mode before the app renders. */
 export function applyDemoBootParams(): void {
   if (typeof window === 'undefined') return;
   const params = new URLSearchParams(window.location.search);
   const demo = params.get('demo');
+  if (params.get('embed') === '1') {
+    if (demo === '1') bootModeOverride = 'demo';
+    return;
+  }
   if (demo === '1') {
     localStorage.setItem(ACTIVE_USER_MODE_STORAGE_KEY, 'demo');
   } else if (demo === '0') {
     localStorage.setItem(ACTIVE_USER_MODE_STORAGE_KEY, 'real');
   }
+}
+
+/** In-memory mode override for embedded previews (null = use localStorage). */
+export function getBootModeOverride(): ActiveUserMode | null {
+  return bootModeOverride;
 }
 
 /** Whether this window is an embedded preview (inside the tour iframe). */
