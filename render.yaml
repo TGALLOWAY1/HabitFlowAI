@@ -16,3 +16,8 @@ services:
         sync: false
       - key: BOOTSTRAP_ADMIN_KEY
         sync: false
+      # Public read-only demo: seeds/refreshes the demo dataset at startup and
+      # maps X-Demo-Mode requests to the fixed demo identity (writes rejected).
+      # See docs/DEMO_ARCHITECTURE.md.
+      - key: PUBLIC_DEMO_ENABLED
+        value: "true"
