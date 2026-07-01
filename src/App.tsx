@@ -6,6 +6,7 @@ import { TaskProvider } from './context/TaskContext';
 import { ToastProvider } from './components/Toast';
 import { AuthGate } from './components/AuthGate';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { isEmbedMode, isDemoNavigateMessage } from './lib/demoMode';
 import { Layout } from './components/Layout';
 import { CategoryTabs } from './components/CategoryTabs';
 import { TrackerGrid } from './components/TrackerGrid';
@@ -67,9 +68,10 @@ const WellbeingHistoryPage = lazyRetry(() => import('./pages/WellbeingHistoryPag
 const AnalyticsPage = lazyRetry(() => import('./pages/AnalyticsPage').then(m => ({ default: m.AnalyticsPage })));
 const AppleHealthPage = lazyRetry(() => import('./pages/AppleHealthPage').then(m => ({ default: m.AppleHealthPage })));
 const TourPage = lazyRetry(() => import('./pages/TourPage').then(m => ({ default: m.TourPage })));
+const RoadmapPage = lazyRetry(() => import('./pages/RoadmapPage').then(m => ({ default: m.RoadmapPage })));
 
 // Simple router state
-type AppRoute = 'tracker' | 'dashboard' | 'routines' | 'goals' | 'wins' | 'journal' | 'tasks' | 'day' | 'debug-entries' | 'wellbeing-history' | 'analytics' | 'health' | 'tour';
+type AppRoute = 'tracker' | 'dashboard' | 'routines' | 'goals' | 'wins' | 'journal' | 'tasks' | 'day' | 'debug-entries' | 'wellbeing-history' | 'analytics' | 'health' | 'tour' | 'roadmap';
 
 
 // Helper functions for URL syncing
@@ -109,6 +111,8 @@ function parseRouteFromLocation(location: Location): AppRoute {
       return "health";
     case "tour":
       return "tour";
+    case "roadmap":
+      return "roadmap";
     default:
 
       return "dashboard"; // default view
@@ -286,8 +290,29 @@ const HabitTrackerContent: React.FC = () => {
     }
 
     const url = buildUrlForRoute(route, params);
-    window.history.pushState({ view: route, ...params }, "", url);
+    // Embedded previews (tour iframe) must not push onto the parent page's
+    // shared browser history — replace instead.
+    if (isEmbedMode()) {
+      window.history.replaceState({ view: route, ...params }, "", url);
+    } else {
+      window.history.pushState({ view: route, ...params }, "", url);
+    }
   };
+
+  // Embedded previews: let the parent tour page drive navigation via
+  // postMessage (same-origin only).
+  const handleNavigateRef = useRef(handleNavigate);
+  handleNavigateRef.current = handleNavigate;
+  useEffect(() => {
+    if (!isEmbedMode()) return;
+    const onMessage = (event: MessageEvent) => {
+      if (event.origin !== window.location.origin) return;
+      if (!isDemoNavigateMessage(event.data)) return;
+      handleNavigateRef.current(event.data.route as AppRoute, event.data.params ?? {});
+    };
+    window.addEventListener('message', onMessage);
+    return () => window.removeEventListener('message', onMessage);
+  }, []);
 
   // Detect habits that are uncategorized either by missing category linkage
   // or by the backend-managed "No Category" bucket.
@@ -642,10 +667,12 @@ const HabitTrackerContent: React.FC = () => {
           <AppleHealthPage onBack={() => handleNavigate('dashboard')} />
         ) : view === 'tour' ? (
           <TourPage
-            onNavigate={(route) => handleNavigate(route)}
+            onNavigate={(route, params) => handleNavigate(route, params)}
             onOpenSettings={() => window.dispatchEvent(new Event('habitflow:open-settings'))}
             onBack={() => handleNavigate('dashboard')}
           />
+        ) : view === 'roadmap' ? (
+          <RoadmapPage onBack={() => handleNavigate('dashboard')} />
         ) : goalsViewMode === 'schedule' ? (
           <GoalScheduleView
             onViewGoal={(goalId) => {

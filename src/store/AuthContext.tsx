@@ -8,6 +8,9 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { API_BASE_URL } from '../lib/persistenceConfig';
+import { DEMO_USER_ID, PUBLIC_DEMO_HOUSEHOLD_ID } from '../shared/demo';
+import { exitDemoMode } from '../lib/demoMode';
+import { getActiveUserMode } from '../lib/persistenceClient';
 
 export interface AuthUser {
   householdId: string;
@@ -41,12 +44,13 @@ export function useAuth(): AuthContextValue {
 }
 
 /**
- * Whether we're running in dev demo mode where session auth is optional.
- * In dev + demo mode, the backend accepts X-Household-Id / X-User-Id headers,
- * so we skip the session check and let the user through.
+ * Whether we're in demo mode, where session auth is bypassed.
+ * The demo works without an account: persistenceClient sends the X-Demo-Mode
+ * header and the server (dev: DEMO_MODE_ENABLED, prod: PUBLIC_DEMO_ENABLED)
+ * scopes every request to the fixed, read-only demo identity.
  */
-function isDevDemoMode(): boolean {
-  return import.meta.env.DEV && localStorage.getItem('habitflow_active_user_mode') === 'demo';
+function isDemoSession(): boolean {
+  return getActiveUserMode() === 'demo';
 }
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -57,10 +61,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   });
 
   const checkSession = useCallback(async () => {
-    // In dev demo mode, skip session check entirely
-    if (isDevDemoMode()) {
+    // In demo mode, skip session check entirely
+    if (isDemoSession()) {
       setState({
-        user: { householdId: 'default-household', userId: 'demo_emotional_wellbeing' },
+        user: { householdId: PUBLIC_DEMO_HOUSEHOLD_ID, userId: DEMO_USER_ID, displayName: 'Demo Explorer' },
         loading: false,
         error: null,
       });
@@ -87,9 +91,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     checkSession();
   }, [checkSession]);
 
-  // Listen for 401 events from persistenceClient
+  // Listen for 401 events from persistenceClient. In demo mode a 401 means the
+  // server's public demo is disabled — don't loop on "session expired".
   useEffect(() => {
     const handler = () => {
+      if (isDemoSession()) return;
       setState((prev) => ({ ...prev, user: null, error: 'Session expired. Please log in again.' }));
     };
     window.addEventListener('habitflow:session-expired', handler);
@@ -140,6 +146,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const logout = useCallback(async () => {
+    // Leaving the demo is a mode switch, not a session logout.
+    if (isDemoSession()) {
+      exitDemoMode();
+      return;
+    }
     try {
       await fetch(`${API_BASE_URL}/auth/logout`, {
         method: 'POST',

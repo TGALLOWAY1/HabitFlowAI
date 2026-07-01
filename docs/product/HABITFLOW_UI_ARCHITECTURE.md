@@ -129,9 +129,10 @@ HabitFlow App
 | Journal | Page | Dashboard card / `?view=journal` (`&tab=` deep-links Free/Template/History/AI Review) | Free-write, templates, history, and AI Review tabs; auto-generated AI summary banner | Journal Entries | — |
 | Tasks | Page | Dashboard card / `?view=tasks` | Today + Inbox columns; click a task title or pencil icon to rename inline | Tasks | — |
 | Insights | Page | Wellbeing card → 📈 Insights (`?view=wellbeing-history`); beta-gated | Tabbed analytics: Overview, Correlations, Habits, Medications, Predictions, AI Review. Cross-domain correlations (Cohen's d), linear-trend predictions, and a Gemini AI narrative, all from canonical truth at read time | Wellbeing Entries, Habit Entries, Medication/Supplement/Symptom Logs | — |
-| Take a Tour | Page | Compass button in header / "Take a tour" link in new-user Setup Guide / "Take a tour" link on Login (no account required) / `?view=tour` | Orientation page: what HabitFlow tracks, shipped AI features (Gemini BYOK), and AI roadmap items with status badges. Renders in two modes — `app` (authenticated: CTAs jump into the app) and `auth` (pre-login: CTAs point to Create an account / Sign in) | — | App mode: Dashboard, Tracker, Journal, Settings. Auth mode: Invite Redeem, Login |
+| Take a Tour | Page | Compass button in header / "Take a tour" link in new-user Setup Guide / "Take the tour" on Login (no account required) / `?view=tour` | Interactive 13-stop guided walkthrough. Each stop pairs a narrative panel (problem, mechanics, honesty badge: Functional today / Beta / Roadmap) with a live preview — a persistent iframe running the real app read-only at `/?demo=1&embed=1`, navigated between stops via postMessage. Desktop/Mobile toggle resizes the preview to a real 390px viewport. Renders in `app` and pre-login `auth` modes | — | App mode: Dashboard, Roadmap. Auth mode: Invite Redeem, Login, Roadmap. Both: full-screen demo (new tab) |
+| Roadmap | Page | Final tour stop → "View the Roadmap" / `?view=roadmap` (also pre-login via the auth gate) | Dedicated home for future functionality, mirrored from `ROADMAP.md` with status chips (In Development / Planned / Exploring). Honesty contract: nothing on the page exists yet; shipped features never appear on it | — | Back (Dashboard in app mode; Tour in auth mode) |
 | Debug Entries | Page (dev) | `?view=debug-entries` | Testing entry data | Entries | — |
-| Login | Page | Default for unauthenticated users | Email + password sign in. Includes "Forgot password?" link, switch to invite redeem, and a "Take a tour" link (no account required) | — | Invite Redeem, Forgot Password, Take a Tour |
+| Login | Page | Default for unauthenticated users | Email + password sign in. Includes "Forgot password?" link, switch to invite redeem, a "Take the tour" button, and an "Explore the live demo" button that enters read-only Demo Mode (no account required) | — | Invite Redeem, Forgot Password, Take a Tour, Demo Mode |
 | Invite Redeem | Page | "Have an invite code?" link on Login | Create an account with an invite code | Users | Login |
 | Forgot Password | Page | "Forgot password?" link on Login | Email input. Submitting always shows a non-committal success message; if the email matches a user, a 15-minute reset link is sent | — | Login |
 | Reset Password | Page | Emailed link (`/reset-password?token=…`) | New password + confirm. On success, returns to Login with a "Password updated" banner; all prior sessions for the user are invalidated | — | Login |
@@ -176,7 +177,22 @@ These surfaces are only visible to users with the Apple Health feature enabled (
 | Health Suggestion Banner | Inline Component | Auto-shown in Day View when pending suggestions exist | Accept/dismiss health-based habit suggestions | Health Suggestions, Habits, Entries |
 | Apple Health Page | Full Page (`?view=health`) | Settings → Apple Health | Create health-tracked habits, manage connected habits, configure rules | Habits, Health Rules |
 
-**Total: 15 pages + 17 modals + 2 feature-gated surfaces = 34 distinct UI surfaces**
+### Demo Mode (Read-Only)
+
+Entered from the Login screen ("Explore the live demo") or `/?demo=1`; exited via the banner
+or the user menu ("Exit demo"). Not a separate set of screens — the entire app renders
+normally against seeded demo data, with three chrome additions:
+
+| Surface | Type | Behavior |
+|---|---|---|
+| LIVE DEMO badge | Header chip | Shown next to the logo while in demo mode |
+| Demo banner | Inline banner above content | States the read-only contract; "Exit demo" action. Hidden in embedded tour previews (`?embed=1`) |
+| Read-only toast | Toast | Any attempted write shows "Demo mode is read-only — create an account to make changes" |
+
+The beta-gated Analytics and Insights pages are viewable in demo mode (labeled Beta).
+See `docs/DEMO_ARCHITECTURE.md` for the full mechanism.
+
+**Total: 16 pages + 17 modals + 2 feature-gated surfaces + demo chrome = 35+ distinct UI surfaces**
 
 ---
 
@@ -558,4 +574,4 @@ This document **must be updated** whenever:
 ## 10. Last Updated
 
 - **Date:** 2026-07-01
-- **Branch:** `claude/habitflow-demo-tour-page-qcsnzl`
+- **Branch:** `claude/habitflow-onboarding-demo-fmyy1v`

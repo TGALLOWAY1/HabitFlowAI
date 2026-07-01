@@ -5,7 +5,8 @@
 
 import React, { useState } from 'react';
 import { useAuth } from '../store/AuthContext';
-import { LayoutGrid, Compass } from 'lucide-react';
+import { LayoutGrid, Compass, Play } from 'lucide-react';
+import { enterDemoMode } from '../lib/demoMode';
 
 interface LoginPageProps {
   onSwitchToInvite: () => void;
@@ -141,20 +142,31 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onSwitchToInvite, onSwitch
           </button>
         </p>
 
-        {/* Take a tour — no account or invite code required */}
-        {onViewTour && (
-          <div className="mt-6 pt-6 border-t border-white/5 text-center">
-            <p className="text-sm text-neutral-500 mb-3">New to HabitFlow? See what it can do.</p>
+        {/* Tour + demo — no account or invite code required */}
+        <div className="mt-6 pt-6 border-t border-white/5 text-center">
+          <p className="text-sm text-neutral-500 mb-3">New to HabitFlow? See what it can do.</p>
+          <div className="flex flex-wrap justify-center gap-2">
+            {onViewTour && (
+              <button
+                type="button"
+                onClick={onViewTour}
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-gradient-to-r from-emerald-500 to-cyan-500 text-white text-sm font-semibold hover:from-emerald-400 hover:to-cyan-400 transition-colors shadow-lg shadow-emerald-500/20"
+              >
+                <Compass size={16} aria-hidden="true" />
+                Take the tour
+              </button>
+            )}
             <button
               type="button"
-              onClick={onViewTour}
+              onClick={enterDemoMode}
               className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-neutral-800 border border-white/10 text-neutral-200 text-sm font-medium hover:bg-neutral-700 hover:text-white transition-colors"
+              title="Browse the app read-only with realistic seeded data — no account needed"
             >
-              <Compass size={16} aria-hidden="true" />
-              Take a tour
+              <Play size={16} aria-hidden="true" />
+              Explore the live demo
             </button>
           </div>
-        )}
+        </div>
       </div>
     </div>
   );
