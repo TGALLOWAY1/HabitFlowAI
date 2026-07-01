@@ -667,7 +667,7 @@ const HabitTrackerContent: React.FC = () => {
           <AppleHealthPage onBack={() => handleNavigate('dashboard')} />
         ) : view === 'tour' ? (
           <TourPage
-            onNavigate={(route) => handleNavigate(route)}
+            onNavigate={(route, params) => handleNavigate(route, params)}
             onOpenSettings={() => window.dispatchEvent(new Event('habitflow:open-settings'))}
             onBack={() => handleNavigate('dashboard')}
           />

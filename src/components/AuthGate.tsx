@@ -84,6 +84,7 @@ export const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) 
             onCreateAccount={() => setView('invite')}
             onSignIn={() => setView('login')}
             onBack={() => setView('login')}
+            onViewRoadmap={() => setView('roadmap')}
           />
         </Suspense>
       );
