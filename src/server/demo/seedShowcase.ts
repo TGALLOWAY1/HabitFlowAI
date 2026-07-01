@@ -74,6 +74,15 @@ function round1(n: number): number {
   return Math.round(n * 10) / 10;
 }
 
+/**
+ * Round to quarter precision. Quarters are exact in binary floating point, so
+ * sums of seeded numeric entries (miles, hours) stay clean — no
+ * "100.60000000000001 / 150" artifacts in derived goal totals.
+ */
+function roundQuarter(n: number): number {
+  return Math.round(n * 4) / 4;
+}
+
 /** DayKey (YYYY-MM-DD, UTC) for `daysAgo` days before today. */
 function dayKeyDaysAgo(daysAgo: number): string {
   const d = new Date();
@@ -296,7 +305,7 @@ export async function seedDemoShowcase(options?: { force?: boolean }): Promise<S
     }
     // Run: Mon/Wed/Sat pattern with occasional swaps/misses
     if ((dow === 1 || dow === 3 || dow === 6) ? chance(0.88) : chance(0.06)) {
-      const miles = round1(between(2.2, 4.6));
+      const miles = roundQuarter(between(2.2, 4.6));
       entries.push({ habitId: run.id, value: miles });
       runMilesByDaysAgo.set(daysAgo, miles);
       if (inReportWeek) {
@@ -320,7 +329,7 @@ export async function seedDemoShowcase(options?: { force?: boolean }): Promise<S
     }
     // Deep work: weekdays only
     if (dow >= 1 && dow <= 5 && chance(0.9)) {
-      const hours = round1(between(1.2, 3.2));
+      const hours = roundQuarter(between(1.2, 3.2));
       entries.push({ habitId: deepWork.id, value: hours });
       if (inReportWeek) {
         week.deepWorkHours += hours;
@@ -345,8 +354,8 @@ export async function seedDemoShowcase(options?: { force?: boolean }): Promise<S
     }
   }
 
-  week.runMiles = round1(week.runMiles);
-  week.deepWorkHours = round1(week.deepWorkHours);
+  // Sums of quarter-precision values are exact — no rounding needed, and the
+  // report facts below match the app's own derived totals digit-for-digit.
 
   // --- Goals ----------------------------------------------------------------
   const now = new Date().toISOString();
@@ -356,7 +365,10 @@ export async function seedDemoShowcase(options?: { force?: boolean }): Promise<S
     ...(acknowledged ? { acknowledgedAt: now } : {}),
   });
 
-  // Cumulative goal with milestones (sums deep work hours; ~95h of 150 → 25/50/75 crossed)
+  // Cumulative goal with milestones (sums deep work hours; ~100h of 150 →
+  // 25/50/75/100 crossed). All seeded milestones are pre-acknowledged:
+  // celebration modals can't be dismissed in the read-only demo, so an
+  // unacknowledged crossed milestone would re-celebrate on every visit.
   const deepWorkGoal = await createGoal(
     {
       categoryId: productivity.id,
@@ -366,7 +378,7 @@ export async function seedDemoShowcase(options?: { force?: boolean }): Promise<S
       unit: 'hours',
       linkedHabitIds: [deepWork.id],
       aggregationMode: 'sum',
-      milestones: [milestone(25, true), milestone(50, true), milestone(75, true), milestone(100, false)],
+      milestones: [milestone(25, true), milestone(50, true), milestone(75, true), milestone(100, true)],
       notes: 'One focused block per workday. Quality over quantity.',
     },
     HH, UID
