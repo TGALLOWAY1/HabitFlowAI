@@ -357,8 +357,8 @@ export const TourPage: React.FC<TourPageProps> = (props) => {
           Take a Tour of HabitFlow
         </h1>
         <p className="text-neutral-400 max-w-2xl text-sm leading-relaxed">
-          Twelve short stops through the live product — about three minutes. The preview is the real
-          app in read-only demo mode; explore it freely at every stop.
+          Thirteen short stops through the live product — about three minutes. The preview is the
+          real app in read-only demo mode; explore it freely at every stop.
         </p>
       </header>
 

@@ -28,34 +28,43 @@ Architecture decisions (locked):
 
 ## Commits
 
-- [ ] 1. FEATURE_AUDIT.md — honest audit: Implemented / Partial / Roadmap
+- [x] 1. FEATURE_AUDIT.md — honest audit: Implemented / Partial / Roadmap
        (verified against code by 4 exploration passes).
-- [ ] 2. Backend: public demo identity + read-only guard middleware
+- [x] 2. Backend: public demo identity + read-only guard middleware
        (src/shared/demo.ts additions, src/server/middleware/publicDemo.ts,
        app.ts wiring, tests).
-- [ ] 3. Backend: comprehensive demo showcase seed (categories, habits incl.
+- [x] 3. Backend: comprehensive demo showcase seed (categories, habits incl.
        numeric/weekly/bundles, ~10 weeks of entries, goals + milestones + a
        track, tasks, journal, wellbeing/sleep, medications, routines + logs,
        pinned prefs, sample AI report) — idempotent, startup-invoked when
        PUBLIC_DEMO_ENABLED, plus npm run seed:showcase.
-- [ ] 4. Frontend: demo mode entry/exit + read-only UX (persistenceClient header
+- [x] 4. Frontend: demo mode entry/exit + read-only UX (persistenceClient header
        + write guard, AuthContext demo session, Layout demo banner + exit,
        LoginPage "Explore the demo" CTA, ?demo=1 / embed=1 boot params, demo
        access to beta pages).
-- [ ] 5. Frontend: interactive TourPage rewrite — step-based guided walkthrough
+- [x] 5. Frontend: interactive TourPage rewrite — step-based guided walkthrough
        (Welcome → Dashboard → Habits → Goals → Tasks → Journal → Routines →
        Weekly AI Review → Journal Intelligence → Insights/Analytics → Sleep →
        Settings → Roadmap/CTA) with live embedded demo preview and
        mobile/desktop toggle + contextual honesty callouts.
-- [ ] 6. Frontend: dedicated Roadmap page (?view=roadmap), reachable from tour,
+- [x] 6. Frontend: dedicated Roadmap page (?view=roadmap), reachable from tour,
        login screen, and app; content mirrors ROADMAP.md with status chips.
-- [ ] 7. Docs: docs/DEMO_ARCHITECTURE.md (how demo works), FEATURES.md,
+- [x] 7. Docs: docs/DEMO_ARCHITECTURE.md (how demo works), FEATURES.md,
        HABITFLOW_UI_ARCHITECTURE.md, README pointer.
 
 ## Verification
-- [ ] npm run build (tsc -b + vite build) green before push
-- [ ] npm run lint:beta
-- [ ] npm run test:beta (mongodb-memory-server may be blocked in sandbox — report honestly)
-- [ ] publicDemo middleware tests
-- [ ] Manual API verification: demo header reads succeed with seeded data;
-      writes rejected; startup seed idempotent
+- [x] npm run build (tsc -b + vite build): GREEN
+- [x] npm run lint:beta: 0 errors (pre-existing `any` warnings only)
+- [x] npm run test:beta: 4 suites / 20 tests pass; 5 suites fail ONLY because
+      mongodb-memory-server cannot download its binary in this sandbox
+      (HTTP 403 via proxy — environmental, same as previous sessions)
+- [x] publicDemo middleware tests: 17/17 pass
+- [x] Frontend component tests: pass except TrackerGrid.clearEntry (3 tests),
+      which fails identically on main — pre-existing, unrelated
+- [x] Playwright smoke test (vite dev server): login CTAs render, tour renders
+      13 step chips, postMessage step navigation drives the embedded preview,
+      Desktop/Mobile toggle renders a real 390px viewport, Roadmap page renders
+- [ ] NOT verifiable in this sandbox (MongoDB binaries blocked by proxy):
+      live demo seeding + read/write enforcement against a running DB.
+      Verify after deploy: set PUBLIC_DEMO_ENABLED=true on the backend, check
+      /api/health reports publicDemo:true, click "Explore the live demo".
