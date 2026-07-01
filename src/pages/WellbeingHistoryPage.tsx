@@ -7,8 +7,7 @@ import { PredictionsTab } from './insights/PredictionsTab';
 import { HabitInsightsTab } from './insights/HabitInsightsTab';
 import { MedicationInsightsTab } from './insights/MedicationInsightsTab';
 import { AIReviewTab } from './insights/AIReviewTab';
-
-const BETA_EMAIL = 'tj.galloway1@gmail.com';
+import { isBetaViewer } from '../lib/betaAccess';
 
 type Props = {
   onBack: () => void;
@@ -28,7 +27,7 @@ const TABS: Array<{ id: InsightsTab; label: string; icon: React.ComponentType<{ 
 
 export const WellbeingHistoryPage: React.FC<Props> = ({ onBack }) => {
   const { user } = useAuth();
-  const isAuthorized = user?.email?.toLowerCase() === BETA_EMAIL;
+  const isAuthorized = isBetaViewer(user);
 
   const [windowDays, setWindowDays] = useState<InsightsWindow>(90);
   const [tab, setTab] = useState<InsightsTab>('overview');

@@ -1,9 +1,12 @@
 import React, { useMemo, useState, useRef, useEffect } from 'react';
-import { LayoutGrid, Settings, User, LogOut, Info, Eye, EyeOff, FlaskConical, Compass } from 'lucide-react';
+import { LayoutGrid, Settings, User, LogOut, Info, Eye, EyeOff, FlaskConical, Compass, Sparkles } from 'lucide-react';
 import { useHabitStore } from '../store/HabitContext';
 import { useAuth } from '../store/AuthContext';
 import { useDashboardPrefs } from '../store/DashboardPrefsContext';
 import { getActiveUserMode, seedDemoEmotionalWellbeing, resetDemoEmotionalWellbeing } from '../lib/persistenceClient';
+import { isBetaViewer } from '../lib/betaAccess';
+import { DEMO_WRITE_BLOCKED_EVENT, DEMO_READ_ONLY_MESSAGE, exitDemoMode, isEmbedMode } from '../lib/demoMode';
+import { useToast } from './Toast';
 import { SettingsModal } from './SettingsModal';
 import { InfoModal } from './InfoModal';
 
@@ -15,9 +18,11 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
     const { refreshHabitsAndCategories } = useHabitStore();
     const { user, logout } = useAuth();
     const { hideStreaks, setHideStreaks } = useDashboardPrefs();
-    const isBetaUser = user?.email?.toLowerCase() === 'tj.galloway1@gmail.com';
+    const { showToast } = useToast();
+    const isBetaUser = isBetaViewer(user);
     const isDev = import.meta.env.DEV;
     const isDemo = getActiveUserMode() === 'demo';
+    const isEmbed = isEmbedMode();
     const [devNotice, setDevNotice] = useState<string | null>(null);
     const [userMenuOpen, setUserMenuOpen] = useState(false);
     const [settingsOpen, setSettingsOpen] = useState(false);
@@ -27,11 +32,27 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
     const demoBadge = useMemo(() => {
         if (!isDemo) return null;
         return (
-            <span className="ml-3 inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold tracking-wide bg-rose-500/15 text-rose-300 border border-rose-500/30">
-                DEMO DATA
+            <span className="ml-3 hidden sm:inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold tracking-wide bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
+                <Sparkles size={12} aria-hidden="true" />
+                LIVE DEMO
             </span>
         );
     }, [isDemo]);
+
+    // Surface a friendly toast when a write is blocked in the read-only demo
+    // (rate-limited so rapid clicks don't stack toasts).
+    const lastDemoToastRef = useRef(0);
+    useEffect(() => {
+        if (!isDemo) return;
+        const handler = () => {
+            const now = Date.now();
+            if (now - lastDemoToastRef.current < 2500) return;
+            lastDemoToastRef.current = now;
+            showToast(DEMO_READ_ONLY_MESSAGE, 'info');
+        };
+        window.addEventListener(DEMO_WRITE_BLOCKED_EVENT, handler);
+        return () => window.removeEventListener(DEMO_WRITE_BLOCKED_EVENT, handler);
+    }, [isDemo, showToast]);
 
     const handleSeedDemo = async () => {
         await seedDemoEmotionalWellbeing();
@@ -199,7 +220,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
                                         className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-neutral-400 hover:text-white hover:bg-white/5 transition-colors"
                                     >
                                         <LogOut size={14} />
-                                        Sign out
+                                        {isDemo ? 'Exit demo' : 'Sign out'}
                                     </button>
                                 </div>
                             </div>
@@ -210,6 +231,21 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
 
             {/* Main Content - safe-area for notched devices */}
             <main className="pt-[calc(4rem+env(safe-area-inset-top,0px))] px-4 pb-20 max-w-7xl mx-auto min-h-screen">
+                {/* Demo banner — persistent trust cue while exploring read-only.
+                    Hidden in the tour's embedded preview, which carries its own framing. */}
+                {isDemo && !isEmbed && (
+                    <div className="mb-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 px-4 py-2 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-center">
+                        <p className="text-xs sm:text-sm text-emerald-200">
+                            You’re exploring the read-only demo — every screen is the real, working product on seeded data.
+                        </p>
+                        <button
+                            onClick={exitDemoMode}
+                            className="text-xs sm:text-sm font-semibold text-emerald-300 underline underline-offset-2 hover:text-emerald-100 transition-colors"
+                        >
+                            Exit demo
+                        </button>
+                    </div>
+                )}
                 {children}
             </main>
             <SettingsModal

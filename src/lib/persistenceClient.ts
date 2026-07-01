@@ -17,6 +17,7 @@ import { API_BASE_URL } from './persistenceConfig';
 import { buildHabitEntryUpsertPayload } from './habitEntryPayload';
 import { invalidateGoalDataCache, invalidateGoalCaches } from './goalDataCache';
 import { ACTIVE_USER_MODE_STORAGE_KEY, DEMO_USER_ID, type ActiveUserMode } from '../shared/demo';
+import { DEMO_WRITE_BLOCKED_EVENT, DEMO_READ_ONLY_MESSAGE } from './demoMode';
 import { warnIfPersonaLeaksIntoHabitEntryRequest } from '../shared/invariants/personaInvariants';
 
 
@@ -85,12 +86,19 @@ export function setActiveHouseholdId(householdId: string): void {
 
 /**
  * Returns the identity headers to send with every API request.
+ * In demo mode this includes the public demo opt-in header, which the server
+ * (when PUBLIC_DEMO_ENABLED) maps to the fixed read-only demo identity — so
+ * the demo works in production where X-User-Id headers are ignored.
  */
 export function getIdentityHeaders(): Record<string, string> {
-  return {
+  const headers: Record<string, string> = {
     'X-Household-Id': getActiveHouseholdId(),
     'X-User-Id': getActiveUserId(),
   };
+  if (getActiveUserMode() === 'demo') {
+    headers['X-Demo-Mode'] = 'true';
+  }
+  return headers;
 }
 
 const KNOWN_USER_IDS_STORAGE_KEY = 'habitflow_known_user_ids';
@@ -169,6 +177,15 @@ async function apiRequest<T>(
   options: RequestInit = {}
 ): Promise<T> {
   const url = `${API_BASE_URL}${endpoint}`;
+
+  // Demo mode is read-only: block mutating requests before they leave the
+  // browser (the server enforces the same rule with a 403). A global event
+  // lets the UI surface a friendly "create an account" toast.
+  const method = (options.method || 'GET').toUpperCase();
+  if (method !== 'GET' && method !== 'HEAD' && getActiveUserMode() === 'demo') {
+    window.dispatchEvent(new Event(DEMO_WRITE_BLOCKED_EVENT));
+    throw new Error(DEMO_READ_ONLY_MESSAGE);
+  }
 
   try {
     // Dev-only safety rail: persona must never leak into HabitEntry data-layer calls.

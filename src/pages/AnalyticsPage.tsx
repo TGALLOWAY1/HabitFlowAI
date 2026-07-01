@@ -26,8 +26,7 @@ import { RoutineAnalytics } from '../components/analytics/RoutineAnalytics';
 import { GoalAnalytics } from '../components/analytics/GoalAnalytics';
 import { SleepAnalytics } from '../components/analytics/sleep/SleepAnalytics';
 import { ActivitySection } from '../components/ActivitySection';
-
-const BETA_EMAIL = 'tj.galloway1@gmail.com';
+import { isBetaViewer } from '../lib/betaAccess';
 
 type TimeRange = 7 | 14 | 30 | 'custom';
 type AnalyticsTab = 'habits' | 'routines' | 'goals' | 'sleep';
@@ -49,7 +48,7 @@ interface AnalyticsPageProps {
 
 export const AnalyticsPage: React.FC<AnalyticsPageProps> = ({ onBack }) => {
   const { user } = useAuth();
-  const isAuthorized = user?.email?.toLowerCase() === BETA_EMAIL;
+  const isAuthorized = isBetaViewer(user);
 
   const [activeTab, setActiveTab] = useState<AnalyticsTab>('habits');
   const [timeRange, setTimeRange] = useState<TimeRange>(7);

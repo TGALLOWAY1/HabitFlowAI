@@ -38,6 +38,7 @@ import { postCreateInvite, getInvites, postRevokeInvite } from './routes/adminIn
 import householdUsersRouter from './routes/householdUsers';
 import { identityMiddleware } from './middleware/identity';
 import { publicDemoIdentity, publicDemoReadOnlyGuard } from './middleware/publicDemo';
+import { isPublicDemoEnabled } from './config/demo';
 import { sessionMiddleware } from './middleware/session';
 import { requireAdmin } from './middleware/requireAdmin';
 import { noPersonaInHabitEntryRequests } from './middleware/noPersonaInHabitEntryRequests';
@@ -131,6 +132,7 @@ export function createApp(): Express {
       status: 'ok',
       timestamp: new Date().toISOString(),
       env: process.env.NODE_ENV ?? 'development',
+      publicDemo: isPublicDemoEnabled(),
     });
   });
 

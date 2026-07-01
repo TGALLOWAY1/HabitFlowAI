@@ -6,6 +6,7 @@ import { TaskProvider } from './context/TaskContext';
 import { ToastProvider } from './components/Toast';
 import { AuthGate } from './components/AuthGate';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { isEmbedMode, isDemoNavigateMessage } from './lib/demoMode';
 import { Layout } from './components/Layout';
 import { CategoryTabs } from './components/CategoryTabs';
 import { TrackerGrid } from './components/TrackerGrid';
@@ -286,8 +287,29 @@ const HabitTrackerContent: React.FC = () => {
     }
 
     const url = buildUrlForRoute(route, params);
-    window.history.pushState({ view: route, ...params }, "", url);
+    // Embedded previews (tour iframe) must not push onto the parent page's
+    // shared browser history — replace instead.
+    if (isEmbedMode()) {
+      window.history.replaceState({ view: route, ...params }, "", url);
+    } else {
+      window.history.pushState({ view: route, ...params }, "", url);
+    }
   };
+
+  // Embedded previews: let the parent tour page drive navigation via
+  // postMessage (same-origin only).
+  const handleNavigateRef = useRef(handleNavigate);
+  handleNavigateRef.current = handleNavigate;
+  useEffect(() => {
+    if (!isEmbedMode()) return;
+    const onMessage = (event: MessageEvent) => {
+      if (event.origin !== window.location.origin) return;
+      if (!isDemoNavigateMessage(event.data)) return;
+      handleNavigateRef.current(event.data.route as AppRoute, event.data.params ?? {});
+    };
+    window.addEventListener('message', onMessage);
+    return () => window.removeEventListener('message', onMessage);
+  }, []);
 
   // Detect habits that are uncategorized either by missing category linkage
   // or by the backend-managed "No Category" bucket.
