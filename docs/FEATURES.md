@@ -235,4 +235,4 @@ Every feature area below is **Shipped** unless an item notes otherwise.
 - **Soft Deletes** — `deletedAt` timestamp pattern for truth records
 - **Optimistic UI** — Changes appear instantly with backend sync
 - **Responsive Design** — Mobile-first with bottom tab bar (Dashboard, Habits, Routines, Goals)
-- **Take a Tour** — Accessible full-page tour (`?view=tour`, opened from the Compass button in the header) that orients new users to the six tracking domains, showcases the shipped Gemini BYOK AI features, and lists the AI features on the roadmap with their status
+- **Take a Tour** — Accessible full-page tour that orients new users to the six tracking domains, showcases the shipped Gemini BYOK AI features, and lists the AI features on the roadmap with their status. Reachable from the Compass button in the header, the new-user Setup Guide, and a "Take a tour" link on the **Login screen** (no account or invite code required). Renders in an authenticated `app` mode (CTAs jump into the app) or a pre-login `auth` mode (CTAs point to Create an account / Sign in)
