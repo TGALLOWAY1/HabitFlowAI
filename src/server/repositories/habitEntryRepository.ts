@@ -554,9 +554,12 @@ export async function aggregateHabitEntryTotals(
             $match: scopeFilter(householdId, userId, matchFilter),
         },
         {
+            // $sum ignores missing and non-numeric values, so a plain field
+            // path is equivalent to $ifNull(value, 0) — and stays compatible
+            // with Mongo-wire backends that don't implement $ifNull.
             $group: {
                 _id: '$habitId',
-                totalValue: { $sum: { $ifNull: ['$value', 0] } },
+                totalValue: { $sum: '$value' },
                 entryCount: { $sum: 1 },
                 distinctDays: { $addToSet: '$dayKey' },
             },
