@@ -7,9 +7,11 @@
 
 import './config/env'; // Load environment variables first
 import { assertMongoEnabled } from './config';
+import { isPublicDemoEnabled } from './config/demo';
 import { createApp } from './app';
 import { closeConnection } from './lib/mongoClient';
 import { runStartupMigrations } from './migrations/startup';
+import { maybeSeedDemoShowcase } from './demo/seedShowcase';
 
 assertMongoEnabled();
 
@@ -26,6 +28,11 @@ const server = app.listen(PORT, async () => {
     await runStartupMigrations();
   } catch (err) {
     console.error('Startup migrations failed (non-fatal):', err);
+  }
+
+  // Seed/refresh the read-only public demo dataset (non-fatal)
+  if (isPublicDemoEnabled()) {
+    await maybeSeedDemoShowcase();
   }
 });
 
