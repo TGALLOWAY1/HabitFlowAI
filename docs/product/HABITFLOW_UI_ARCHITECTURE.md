@@ -129,7 +129,7 @@ HabitFlow App
 | Journal | Page | Dashboard card / `?view=journal` (`&tab=` deep-links Free/Template/History/AI Review) | Free-write, templates, history, and AI Review tabs; auto-generated AI summary banner | Journal Entries | — |
 | Tasks | Page | Dashboard card / `?view=tasks` | Today + Inbox columns; click a task title or pencil icon to rename inline | Tasks | — |
 | Insights | Page | Wellbeing card → 📈 Insights (`?view=wellbeing-history`); beta-gated | Tabbed analytics: Overview, Correlations, Habits, Medications, Predictions, AI Review. Cross-domain correlations (Cohen's d), linear-trend predictions, and a Gemini AI narrative, all from canonical truth at read time | Wellbeing Entries, Habit Entries, Medication/Supplement/Symptom Logs | — |
-| Take a Tour | Page | Compass button in header / `?view=tour` | Orientation page: what HabitFlow tracks, shipped AI features (Gemini BYOK), and AI roadmap items with status badges | — | Dashboard, Tracker, Journal, Settings (via open-settings event) |
+| Take a Tour | Page | Compass button in header / "Take a tour" link in new-user Setup Guide / `?view=tour` | Orientation page: what HabitFlow tracks, shipped AI features (Gemini BYOK), and AI roadmap items with status badges | — | Dashboard, Tracker, Journal, Settings (via open-settings event) |
 | Debug Entries | Page (dev) | `?view=debug-entries` | Testing entry data | Entries | — |
 | Login | Page | Default for unauthenticated users | Email + password sign in. Includes "Forgot password?" link and switch to invite redeem | — | Invite Redeem, Forgot Password |
 | Invite Redeem | Page | "Have an invite code?" link on Login | Create an account with an invite code | Users | Login |
