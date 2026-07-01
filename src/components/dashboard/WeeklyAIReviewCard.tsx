@@ -49,15 +49,35 @@ export const WeeklyAIReviewCard: React.FC = () => {
   };
 
   if (!hasKey) {
+    // Reading archived reports never needs an API key — keep history reachable
+    // even when no key is configured (e.g. key removed, or the read-only demo).
     return (
       <div className="bg-neutral-900/50 rounded-2xl border border-white/5 p-6 backdrop-blur-sm">
-        <div className="flex items-center gap-2 mb-2">
-          <Sparkles size={18} className="text-indigo-400" />
-          <h3 className="text-lg font-semibold text-white">Weekly AI Review</h3>
+        <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
+          <div className="flex items-center gap-2">
+            <Sparkles size={18} className="text-indigo-400" />
+            <h3 className="text-lg font-semibold text-white">Weekly AI Review</h3>
+          </div>
+          <button
+            onClick={() => setShowHistory(true)}
+            className="p-1.5 text-neutral-400 hover:text-white rounded-lg hover:bg-white/5 transition-colors"
+            aria-label="View review history"
+            title="History"
+          >
+            <History size={16} />
+          </button>
         </div>
         <p className="text-sm text-neutral-400">
-          Add your Gemini API key in Settings to generate a grounded, data-driven review of your week.
+          Add your Gemini API key in Settings to generate a grounded, data-driven review of your
+          week. Past reports stay readable from the history <History size={12} className="inline" aria-hidden="true" /> at any time.
         </p>
+        {showHistory && (
+          <AIReportHistoryModal
+            kind="weekly_review"
+            title="Weekly Review"
+            onClose={() => setShowHistory(false)}
+          />
+        )}
       </div>
     );
   }
