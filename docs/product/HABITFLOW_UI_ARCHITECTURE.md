@@ -129,10 +129,10 @@ HabitFlow App
 | Journal | Page | Dashboard card / `?view=journal` (`&tab=` deep-links Free/Template/History/AI Review) | Free-write, templates, history, and AI Review tabs; auto-generated AI summary banner | Journal Entries | — |
 | Tasks | Page | Dashboard card / `?view=tasks` | Today + Inbox columns; click a task title or pencil icon to rename inline | Tasks | — |
 | Insights | Page | Wellbeing card → 📈 Insights (`?view=wellbeing-history`); beta-gated | Tabbed analytics: Overview, Correlations, Habits, Medications, Predictions, AI Review. Cross-domain correlations (Cohen's d), linear-trend predictions, and a Gemini AI narrative, all from canonical truth at read time | Wellbeing Entries, Habit Entries, Medication/Supplement/Symptom Logs | — |
-| Take a Tour | Page | Compass button in header / "Take a tour" link in new-user Setup Guide / "Take the tour" on Login (no account required) / `?view=tour` | Interactive 13-stop guided walkthrough. Each stop pairs a narrative panel (problem, mechanics, honesty badge: Functional today / Beta / Roadmap) with a live preview — a persistent iframe running the real app read-only at `/?demo=1&embed=1`, navigated between stops via postMessage. Desktop/Mobile toggle resizes the preview to a real 390px viewport. Renders in `app` and pre-login `auth` modes | — | App mode: Dashboard, Roadmap. Auth mode: Invite Redeem, Login, Roadmap. Both: full-screen demo (new tab) |
-| Roadmap | Page | Final tour stop → "View the Roadmap" / `?view=roadmap` (also pre-login via the auth gate) | Dedicated home for future functionality, mirrored from `ROADMAP.md` with status chips (In Development / Planned / Exploring). Honesty contract: nothing on the page exists yet; shipped features never appear on it | — | Back (Dashboard in app mode; Tour in auth mode) |
+| Take a Tour | Page | Compass button in header / "Take a tour" link in new-user Setup Guide / "Take a Tour" on Login (no account required) / `?view=tour` | Curated 6-stop product walkthrough (Welcome → Dashboard → AI Weekly Review → Journal Intelligence → Insights → How it's built), positioned as a recruiter-readable evaluation (~2 minutes). Each stop pairs a narrative panel with a static preview rendered from a deterministic sample dataset (`src/pages/tour/tourContent.ts`); the three AI stops show prewritten example outputs, each explicitly labeled as composed from the sample data — no iframe, no API calls, no Gemini key. Responsive (panels stack on mobile). Renders in `app` and pre-login `auth` modes | — | App mode: Dashboard, Roadmap. Auth mode: Invite Redeem, Login, Roadmap |
+| Roadmap | Page | Final tour stop → "See what's on the roadmap" / `?view=roadmap` (also pre-login via the auth gate) | Dedicated home for future functionality, mirrored from `ROADMAP.md` with status chips (In Development / Planned / Exploring). Honesty contract: nothing on the page exists yet; shipped features never appear on it | — | Back (Dashboard in app mode; Tour in auth mode) |
 | Debug Entries | Page (dev) | `?view=debug-entries` | Testing entry data | Entries | — |
-| Login | Page | Default for unauthenticated users | Email + password sign in. Includes "Forgot password?" link, switch to invite redeem, a "Take the tour" button, and an "Explore the live demo" button that enters read-only Demo Mode (no account required) | — | Invite Redeem, Forgot Password, Take a Tour, Demo Mode |
+| Login | Page | Default for unauthenticated users | Email + password sign in. Includes "Forgot password?" link, switch to invite redeem, and a "Take a Tour" button as the primary public CTA (no account required). The former "Explore the live demo" button has been removed — Demo Mode is reachable only by direct URL (`/?demo=1`) | — | Invite Redeem, Forgot Password, Take a Tour |
 | Invite Redeem | Page | "Have an invite code?" link on Login | Create an account with an invite code | Users | Login |
 | Forgot Password | Page | "Forgot password?" link on Login | Email input. Submitting always shows a non-committal success message; if the email matches a user, a 15-minute reset link is sent | — | Login |
 | Reset Password | Page | Emailed link (`/reset-password?token=…`) | New password + confirm. On success, returns to Login with a "Password updated" banner; all prior sessions for the user are invalidated | — | Login |
@@ -179,14 +179,15 @@ These surfaces are only visible to users with the Apple Health feature enabled (
 
 ### Demo Mode (Read-Only)
 
-Entered from the Login screen ("Explore the live demo") or `/?demo=1`; exited via the banner
+Entered only by direct URL (`/?demo=1`) — the Login screen's "Explore the live demo" button
+has been removed, and the tour no longer embeds or links to the demo. Exited via the banner
 or the user menu ("Exit demo"). Not a separate set of screens — the entire app renders
 normally against seeded demo data, with three chrome additions:
 
 | Surface | Type | Behavior |
 |---|---|---|
 | LIVE DEMO badge | Header chip | Shown next to the logo while in demo mode |
-| Demo banner | Inline banner above content | States the read-only contract; "Exit demo" action. Hidden in embedded tour previews (`?embed=1`) |
+| Demo banner | Inline banner above content | States the read-only contract; "Exit demo" action. Hidden in embed mode (`?embed=1`, no longer used by the tour) |
 | Read-only toast | Toast | Any attempted write shows "Demo mode is read-only — create an account to make changes" |
 
 The beta-gated Analytics and Insights pages are viewable in demo mode (labeled Beta).
