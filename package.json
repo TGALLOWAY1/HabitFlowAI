@@ -10,6 +10,8 @@
     "dev:all": "npm run dev",
     "build": "tsc -b && vite build",
     "start": "tsx src/server/index.ts",
+    "typecheck": "tsc -b",
+    "check": "npm run typecheck && npm run lint && npm run test:run && npm run build",
     "lint": "eslint .",
     "lint:beta": "eslint \"src/server/**/*.ts\" \"src/shared/**/*.ts\" \"src/domain/**/*.ts\" --ignore-pattern \"**/__tests__/**\" --ignore-pattern \"**/*.test.ts\" --max-warnings 999",
     "preview": "vite preview",

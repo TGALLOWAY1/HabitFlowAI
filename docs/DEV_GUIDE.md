@@ -46,9 +46,11 @@ npm run dev:all
 ## Build / Lint / Test
 
 ```bash
+npm run check       # typecheck + lint + tests + build
 npm run build
+npm run typecheck
 npm run lint
-npm run test
+npm run test        # watch mode
 npm run test:run
 ```
 

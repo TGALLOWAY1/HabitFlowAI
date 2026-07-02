@@ -114,13 +114,18 @@ The **Gemini API key** for AI features is **not** an env var — it is entered i
 ## Quality checks
 
 ```bash
+npm run check          # typecheck + lint + tests + build (the full gate)
 npm run build          # tsc -b + vite build — the exact gate Vercel uses
+npm run typecheck      # tsc -b only
 npm run lint           # Full ESLint
 npm run test:run       # Full Vitest run (in-memory MongoDB)
-npm run verify         # typecheck + lint + full test suite
+npm run verify         # typecheck + lint + full test suite (CI-like shell script)
 npm run test:beta      # CI beta test subset
 npm run lint:beta      # CI beta lint scope (server/shared/domain)
 ```
+
+There is no `format` script — the repo does not use Prettier; formatting is enforced only
+through ESLint rules.
 
 CI (`.github/workflows/ci-beta.yml`) runs `build`, `test:beta`, and `lint:beta` on every push/PR to `main`.
 
