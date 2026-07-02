@@ -16,8 +16,8 @@ interface LoginPageProps {
 }
 
 // Temporarily hidden while the tour is the primary public entry point.
-// The demo itself stays fully functional (tour previews, "Open full-screen
-// demo", direct /?demo=1) — flip this back to true to restore the button.
+// The demo itself stays fully functional (the tour's embedded previews,
+// direct /?demo=1) — flip this back to true to restore the button.
 const SHOW_DEMO_CTA: boolean = false;
 
 export const LoginPage: React.FC<LoginPageProps> = ({ onSwitchToInvite, onSwitchToForgotPassword, onViewTour, successMessage }) => {

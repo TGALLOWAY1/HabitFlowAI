@@ -154,13 +154,13 @@ const STEPS: TourStep[] = [
     badge: { label: 'AI · Functional today · BYOK', tone: 'ai' },
     ai: true,
     paragraphs: [
-      'A week of tracking produces more data than anyone rereads. The Weekly Review (on the Habits page you just saw, below the grid) turns it into a report you’d actually read — without inventing anything.',
+      'A week of tracking produces more data than anyone rereads. The Weekly Review — in the ✨ AI hub in the header, alongside the Wellbeing Summary and Journal Insights cards — turns it into a report you’d actually read, without inventing anything.',
       'How it works: the server first aggregates the week into observed facts — per-habit days-logged vs. cadence, sleep and mood averages, journal counts, goal progress. Only those facts go to Gemini, with a schema-constrained prompt that separates facts from inferred patterns from suggestions and forbids fabricating data.',
       'The result has seven sections: Week at a Glance, Facts, Patterns (each with a low/medium/high confidence), Journal Themes, Wins, Areas for Attention, and Recommendations — plus honest Data Limitations when a week is too thin to conclude much. Every report is archived, so rereading history never spends an API call.',
     ],
     callout:
       'AI runs on your own free Gemini API key (BYOK) — the key lives in your browser, never on the server. The archived report in this demo was composed from the demo dataset’s real numbers so you can see the format; with a key configured, reviews generate live.',
-    tryIt: 'On the Habits grid, scroll below the tracker and open the Weekly AI Review’s history (clock icon).',
+    tryIt: 'Open the ✨ AI hub in the preview’s header and check the Weekly Review card’s history (clock icon).',
     preview: { route: 'tracker' },
   },
   {
