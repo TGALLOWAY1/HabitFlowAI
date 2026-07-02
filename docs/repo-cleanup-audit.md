@@ -219,3 +219,98 @@ Left untouched by this cleanup:
 | `npm run test:beta` | CI test subset | ⚠️ in this sandbox, 5 Mongo-backed test files fail because `mongodb-memory-server` cannot download the MongoDB binary (network-restricted); 20 non-Mongo tests pass. Passes in GitHub CI. |
 | `npm run test:run` | Full Vitest suite | Same sandbox limitation |
 | `npm run verify` | typecheck + lint + full tests | Same sandbox limitation |
+
+---
+
+## Final Cleanup Summary
+
+Completed 2026-07-02 on `claude/portfolio-repo-cleanup-y4x98i`.
+
+### Changes Made
+
+1. **This audit** — full inventory before any change (`docs: add repo cleanup audit`).
+2. **Docs consolidation** — 36 working-session artifacts moved into `docs/archive/`
+   (`docs: consolidate project documentation`).
+3. **README rewrite for portfolio review** — CI badge, Tech Stack, numbered reviewer path,
+   Quality Checks; removed TODO comments and empty screenshot placeholder tables
+   (`docs: improve portfolio-ready README`).
+4. **Environment contract** — `.env.example` added and un-gitignored (README and DEV_GUIDE
+   had told users to copy a file that was never committed); DEV_GUIDE setup fixed
+   (`docs: document environment configuration`).
+5. **Quality scripts** — `typecheck` and `check` npm scripts added and documented
+   (`chore: standardize project quality scripts`).
+6. **Dead code removal** — 24 files deleted, 7 one-off scripts archived, ~3,450 lines removed
+   (`chore: remove unused code and obsolete files`).
+7. **Demo docs accuracy** — `DEMO_ARCHITECTURE.md` updated for the flag-hidden login CTA
+   (`docs: clarify demo and reviewer workflow`).
+
+### Files Deleted
+
+- Frontend components (16): `AccomplishmentsLog`, `BundleComponents`, `CalendarView`,
+  `WeeklyHabitEditModal`, `WeeklyHabitCard`, `EmptyState`, `MomentumHeader`, `ProgressRings`,
+  `day-view/DayHabitRow`, `analytics/AnalyticsHeatmap`, `goals/GoalCardStack`,
+  `goals/GoalCard`, `goals/InactivityCoachingPopup`, `goals/GoalSparkline`,
+  `Journal/JournalSummaryCard`, `icons/GratitudeJarIcon`
+- Utilities (3): `src/utils/pace.ts`, `src/utils/legacyReadWarning.ts`, `src/utils/entryMigration.ts`
+- Server (1): `src/server/middleware/auth.ts` (self-marked deprecated)
+- Assets/scratch (4): `src/assets/react.svg`, `public/vite.svg`,
+  `src/scripts/debug_delete_error.ts`, `docs/debug/mongo-inspection.json`
+- Plus the ~117-line commented-out `SortableWeeklyHabitRow` block in `TrackerGrid.tsx`,
+  its stale `vi.mock` line in `TrackerGrid.clearEntry.test.tsx`, and the dead
+  `compare:legacy-reads` npm script
+
+### Files Archived
+
+- `docs/archive/root/`: `BRANCH_CHANGES.md`, `PR_DESCRIPTION_218.md`,
+  `AllHabitsViewDesign.md`, `SCHEDULE_VIEW_BACKLOG.md` (linked from ROADMAP backlog),
+  `UI.md`, `VERIFICATION.md`
+- `docs/archive/audits/`: 13 dated/milestone audits + the 12-file `audit_v1/` set +
+  `BUNDLE_AUDIT_2026-03-30.md`
+- `docs/archive/qa/`: `routine-log-habits-qa.md`
+- `archive/old-scripts/` (new, with README; excluded from ESLint): 5 one-off migrations
+  from `src/scripts/`, `compare-legacy-vs-canonical.ts`, `remap-orphaned-categories.ts`
+
+### Documentation Updated
+
+`README.md`, `docs/DOC_INDEX.md`, `docs/DEV_GUIDE.md`, `docs/DEMO_ARCHITECTURE.md`,
+`ROADMAP.md`, `docs/decision-log/bundle-audit-fixes-2026-03-30.md`,
+`docs/audits/m2_writepaths_daykey_map.md` (archive links), plus two broken doc paths and a
+stale component reference fixed in code comments (`persistenceTypes.ts`,
+`wellbeingEntryRepository.ts`).
+
+### Scripts Updated
+
+- Added: `typecheck` (`tsc -b`), `check` (typecheck + lint + test:run + build)
+- Removed: `compare:legacy-reads` (tool archived; toggles a flag no runtime code reads)
+- Not added: `format` — Prettier is not configured; adding it would be an unnecessary
+  dependency change
+
+### Verification Results
+
+| Command | Before | After |
+|---|---|---|
+| `npm run build` | ✅ | ✅ (`✓ built in ~8s`) |
+| `npm run lint:beta` (CI gate) | 0 errors / 111 warnings | 0 errors / 111 warnings |
+| `npm run lint` (full, not CI-enforced) | 329 errors (pre-existing) | 300 errors — 29 removed with dead files, **0 new** |
+| `npm run test:beta` | 20 passed / 5 files env-blocked | identical |
+| `npm run test:run` | 457 passed / 10 failed (pre-existing) / rest env-blocked | identical failure set — confirmed by running the same tests on the pre-change tree |
+
+No cleanup-caused failures, so no verification-fix commit was needed.
+
+### Known Remaining Issues (all pre-existing)
+
+- **Sandbox test limitation:** `mongodb-memory-server` cannot download the MongoDB binary in
+  this environment, so Mongo-backed test files fail locally here; they pass in GitHub CI.
+- **Full-project lint** has 300 pre-existing errors in frontend/scripts code (the CI-enforced
+  `lint:beta` scope is clean). A follow-up lint-fix pass would be a separate change.
+- **4 genuinely failing frontend tests** predate this cleanup: 3 in
+  `TrackerGrid.clearEntry.test.tsx` ("Cell kebab not found") and 1 in `goalUtils.test.ts`
+  ("should exclude goals with invalid categoryId") — plus 6 Mongo-dependent failures that
+  are environment-only. Worth a follow-up bug-fix pass.
+
+### Manual Review Items
+
+Unchanged from the list above ("Files Requiring Manual Review"): `public/uploads/` images,
+migration `001_add_routine_variants.ts`, `src/shared/personas/`, `predefinedHabits.ts`,
+`freezeService.ts`, `habitAggregation.ts`, `devUserIdOverride.ts`, legacy `wellbeingLogs`
+route/repo, `docs/reference/V1` naming oddities.
