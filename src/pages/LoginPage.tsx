@@ -15,6 +15,11 @@ interface LoginPageProps {
   successMessage?: string | null;
 }
 
+// Temporarily hidden while the tour is the primary public entry point.
+// The demo itself stays fully functional (the tour's embedded previews,
+// direct /?demo=1) — flip this back to true to restore the button.
+const SHOW_DEMO_CTA: boolean = false;
+
 export const LoginPage: React.FC<LoginPageProps> = ({ onSwitchToInvite, onSwitchToForgotPassword, onViewTour, successMessage }) => {
   const { login, error: authError, clearError } = useAuth();
   const [email, setEmail] = useState('');
@@ -156,15 +161,17 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onSwitchToInvite, onSwitch
                 Take the tour
               </button>
             )}
-            <button
-              type="button"
-              onClick={enterDemoMode}
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-neutral-800 border border-white/10 text-neutral-200 text-sm font-medium hover:bg-neutral-700 hover:text-white transition-colors"
-              title="Browse the app read-only with realistic seeded data — no account needed"
-            >
-              <Play size={16} aria-hidden="true" />
-              Explore the live demo
-            </button>
+            {SHOW_DEMO_CTA && (
+              <button
+                type="button"
+                onClick={enterDemoMode}
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-neutral-800 border border-white/10 text-neutral-200 text-sm font-medium hover:bg-neutral-700 hover:text-white transition-colors"
+                title="Browse the app read-only with realistic seeded data — no account needed"
+              >
+                <Play size={16} aria-hidden="true" />
+                Explore the live demo
+              </button>
+            )}
           </div>
         </div>
       </div>

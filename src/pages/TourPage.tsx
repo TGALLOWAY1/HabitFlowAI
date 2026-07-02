@@ -13,6 +13,7 @@ import {
   Route as RouteIcon,
   Sparkles,
   Brain,
+  Wand2,
   GitCompareArrows,
   MoonStar,
   Settings as SettingsIcon,
@@ -39,6 +40,9 @@ import {
  * - Every step badge tells the truth: "Functional today" for shipped areas,
  *   "Beta" for the email-gated pages, and explicit callouts where the demo
  *   shows a sample AI report rather than a live Gemini generation.
+ * - AI stops (Weekly Review, Journal Review, Wellbeing Insights, Routine
+ *   Builder) are marked with `ai: true` and get a violet treatment so the
+ *   AI layer is visible at a glance in the chip nav.
  * - Roadmap items never appear as features; the final stop links to the
  *   dedicated Roadmap page instead.
  */
@@ -64,7 +68,7 @@ type TourPageProps =
       onViewRoadmap: () => void;
     };
 
-type BadgeTone = 'live' | 'beta' | 'roadmap';
+type BadgeTone = 'live' | 'beta' | 'roadmap' | 'ai';
 
 interface TourStep {
   id: string;
@@ -83,6 +87,8 @@ interface TourStep {
   callout?: string;
   /** App view the live preview shows; null = step has no preview. */
   preview: { route: string; params?: Record<string, string> } | null;
+  /** AI-powered stop — gets the violet AI treatment in the chip nav and panel. */
+  ai?: boolean;
 }
 
 const STEPS: TourStep[] = [
@@ -93,10 +99,18 @@ const STEPS: TourStep[] = [
     icon: Compass,
     badge: { label: 'Live demo — read-only', tone: 'live' },
     paragraphs: [
-      'HabitFlow is a full-stack habit system: habits, routines, goals, tasks, journaling, and wellbeing tracking in one place, with AI reviews grounded in your own data. It’s built as a TypeScript monorepo — React 19 + Vite on the front, Express 5 + MongoDB behind it.',
-      'What makes it different from a checkbox tracker is one architectural rule: entries are the single source of truth. Every streak, progress bar, correlation, and AI review is derived from raw entries at read time — there is no stored “completion state” that can drift out of sync.',
-      'The panel beside this text is not a screenshot. It’s the actual application running read-only against ten weeks of seeded demo data. Click around in it at any stop — and use the Desktop/Mobile toggle to see the real responsive layouts re-render.',
+      'HabitFlow is a full-stack habit system: habits, routines, goals, tasks, journaling, and wellbeing tracking in one place — with an AI layer woven through it. It’s built as a TypeScript monorepo: React 19 + Vite on the front, Express 5 + MongoDB behind it.',
+      'What makes it different from a checkbox tracker is one architectural rule: entries are the single source of truth. Every streak, progress bar, correlation, and AI review is derived from raw entries at read time — there is no stored “completion state” that can drift out of sync. That same rule is what makes the AI trustworthy: it only ever reasons over facts the server computed from your entries.',
+      'Four stops on this tour are AI features — look for the violet chips above:',
     ],
+    bullets: [
+      'Weekly AI Review — a grounded seven-section report on your week',
+      'AI Journal Review — themes, stressors, and self-talk patterns from your own writing',
+      'Wellbeing Insights — statistically computed correlations, narrated by AI',
+      'AI Routine Builder — Quick/Standard/Deep routine variants drafted on demand',
+    ],
+    callout:
+      'The panel beside this text is not a screenshot — it’s the actual application running read-only against ten weeks of seeded demo data. Click around at any stop.',
     tryIt: 'Toggle Desktop ↔ Mobile above the preview, then click anything inside it.',
     preview: { route: 'dashboard' },
   },
@@ -130,6 +144,23 @@ const STEPS: TourStep[] = [
       'Archiving preserves full history; restore is one click',
     ],
     tryIt: 'Switch between Grid / Today / Schedule, and expand the Wind-Down Checklist bundle.',
+    preview: { route: 'tracker' },
+  },
+  {
+    id: 'ai-weekly',
+    navLabel: 'Weekly Review',
+    title: 'AI Weekly Review — grounded, not generated fluff',
+    icon: Sparkles,
+    badge: { label: 'AI · Functional today · BYOK', tone: 'ai' },
+    ai: true,
+    paragraphs: [
+      'A week of tracking produces more data than anyone rereads. The Weekly Review — in the ✨ AI hub in the header, alongside the Wellbeing Summary and Journal Insights cards — turns it into a report you’d actually read, without inventing anything.',
+      'How it works: the server first aggregates the week into observed facts — per-habit days-logged vs. cadence, sleep and mood averages, journal counts, goal progress. Only those facts go to Gemini, with a schema-constrained prompt that separates facts from inferred patterns from suggestions and forbids fabricating data.',
+      'The result has seven sections: Week at a Glance, Facts, Patterns (each with a low/medium/high confidence), Journal Themes, Wins, Areas for Attention, and Recommendations — plus honest Data Limitations when a week is too thin to conclude much. Every report is archived, so rereading history never spends an API call.',
+    ],
+    callout:
+      'AI runs on your own free Gemini API key (BYOK) — the key lives in your browser, never on the server. The archived report in this demo was composed from the demo dataset’s real numbers so you can see the format; with a key configured, reviews generate live.',
+    tryIt: 'Open the ✨ AI hub in the preview’s header and check the Weekly Review card’s history (clock icon).',
     preview: { route: 'tracker' },
   },
   {
@@ -167,10 +198,25 @@ const STEPS: TourStep[] = [
     badge: { label: 'Functional today', tone: 'live' },
     paragraphs: [
       'Numbers can’t tell you why a week felt hard. The journal captures that context: free-write when you just need to think, or 11 templates across six categories — each voiced by a persona like “The Strategic Coach” — when you want structure.',
-      'Daily templates upsert by day (same template + same date updates the entry, so check-ins never duplicate), and 90 days of history is browsable and editable. Journal text also feeds the AI features two stops ahead.',
+      'Daily templates upsert by day (same template + same date updates the entry, so check-ins never duplicate), and 90 days of history is browsable and editable. Journal text also feeds the AI review on the next stop.',
     ],
     tryIt: 'Open Templates and preview “Morning Primer”, then browse History.',
     preview: { route: 'journal' },
+  },
+  {
+    id: 'ai-journal',
+    navLabel: 'Journal Review',
+    title: 'AI Journal Review — themes, stressors, self-talk',
+    icon: Brain,
+    badge: { label: 'AI · Functional today · BYOK', tone: 'ai' },
+    ai: true,
+    paragraphs: [
+      'Patterns in your own writing are the hardest to see from inside. The AI Journal Review reads a date range you choose (last 7/30 days or custom) and returns a structured reflection: Overview, Emotional Themes, Recurring Stressors, and Self-Talk Patterns — each backed by paraphrased evidence with a confidence level — plus Wins, Reflection Questions, and Suggested Next Steps.',
+      'It’s deliberately bounded: grounded only in your entries, paraphrase instead of long quotes, no diagnoses or medical advice, and entries suggesting crisis surface a gentle support notice instead of AI counseling. A separate weekly Journal Summary lands as a dismissible banner and is saved into your history.',
+    ],
+    callout: 'Generated on demand with your own Gemini key; empty or sparse ranges get an honest low-data notice instead of invented themes.',
+    tryIt: 'Open the AI Review tab in the Journal to see the range picker and the saved summary.',
+    preview: { route: 'journal', params: { tab: 'review' } },
   },
   {
     id: 'routines',
@@ -181,51 +227,38 @@ const STEPS: TourStep[] = [
     paragraphs: [
       'A habit records that you did something; a routine walks you through doing it. Routines are ordered steps with instructions, images, and countdown/stopwatch timers, executed in a guided runner with a progress bar.',
       'Variants let one routine flex to the day you’re having — the demo’s Morning Kickstart has a 10-minute Quick and a 25-minute Standard version. Steps link to habits, so finishing the runner auto-logs them: do the work once, tracking happens for free.',
-      'With your own Gemini API key, AI can draft Quick/Standard/Deep variants from a routine’s title and steps.',
+      'Writing good variants is real work, though — which is exactly what the next stop’s AI does for you.',
     ],
     tryIt: 'Preview “Morning Kickstart” and compare its Quick vs Standard variants.',
     preview: { route: 'routines' },
   },
   {
-    id: 'ai-weekly',
-    navLabel: 'Weekly Review',
-    title: 'AI Weekly Review — grounded, not generated fluff',
-    icon: Sparkles,
-    badge: { label: 'Functional today · BYOK', tone: 'live' },
+    id: 'ai-routines',
+    navLabel: 'Routine Builder',
+    title: 'AI Routine Builder — variants drafted from your routine',
+    icon: Wand2,
+    badge: { label: 'AI · Functional today · BYOK', tone: 'ai' },
+    ai: true,
     paragraphs: [
-      'A week of tracking produces more data than anyone rereads. The Weekly Review (on the Habits page, below the grid) turns it into a report you’d actually read — without inventing anything.',
-      'How it works: the server first aggregates the week into observed facts — per-habit days-logged vs. cadence, sleep and mood averages, journal counts, goal progress. Only those facts go to Gemini, with a schema-constrained prompt that separates facts from inferred patterns from suggestions and forbids fabricating data.',
-      'The result has seven sections: Week at a Glance, Facts, Patterns (each with a low/medium/high confidence), Journal Themes, Wins, Areas for Attention, and Recommendations — plus honest Data Limitations when a week is too thin to conclude much. Every report is archived, so rereading history never spends an API call.',
+      'Variants are what make routines survive bad days, but writing three versions of every routine by hand is tedious. In the routine editor, one “Suggest with AI” click sends the routine’s title and existing steps to Gemini, which drafts Quick, Standard, and Deep variants scaled to different amounts of time and energy.',
+      'The suggestions arrive as editable drafts — rename, retime, reorder, or delete steps before anything is saved; nothing is applied silently. And because variant steps keep their habit links, an AI-drafted routine plugs straight into the tracking system: run it and the entries log themselves.',
     ],
     callout:
-      'AI runs on your own free Gemini API key (BYOK) — the key lives in your browser, never on the server. The archived report in this demo was composed from the demo dataset’s real numbers so you can see the format; with a key configured, reviews generate live.',
-    tryIt: 'On the Habits grid, scroll below the tracker and open the Weekly AI Review’s history (clock icon).',
-    preview: { route: 'tracker' },
-  },
-  {
-    id: 'ai-journal',
-    navLabel: 'Journal AI',
-    title: 'Journal Intelligence — themes, stressors, self-talk',
-    icon: Brain,
-    badge: { label: 'Functional today · BYOK', tone: 'live' },
-    paragraphs: [
-      'Patterns in your own writing are the hardest to see from inside. The AI Journal Review reads a date range you choose (last 7/30 days or custom) and returns a structured reflection: Overview, Emotional Themes, Recurring Stressors, and Self-Talk Patterns — each backed by paraphrased evidence with a confidence level — plus Wins, Reflection Questions, and Suggested Next Steps.',
-      'It’s deliberately bounded: grounded only in your entries, paraphrase instead of long quotes, no diagnoses or medical advice, and entries suggesting crisis surface a gentle support notice instead of AI counseling. A separate weekly Journal Summary lands as a dismissible banner and is saved into your history.',
-    ],
-    callout: 'Generated on demand with your own Gemini key; empty or sparse ranges get an honest low-data notice instead of invented themes.',
-    tryIt: 'Open the AI Review tab in the Journal to see the range picker and the saved summary.',
-    preview: { route: 'journal', params: { tab: 'review' } },
+      'BYOK like all AI here: suggestions run on your own free Gemini key, so the read-only demo can’t generate drafts live. The demo’s Morning Kickstart shows the end state — a routine with the kind of Quick/Standard variants the AI drafts for you.',
+    tryIt: 'Preview “Morning Kickstart” and flip between its variants — the exact shape “Suggest with AI” produces.',
+    preview: { route: 'routines' },
   },
   {
     id: 'insights',
-    navLabel: 'Insights',
-    title: 'Insights — statistics before narrative',
+    navLabel: 'Wellbeing',
+    title: 'Wellbeing Insights — statistics before narrative',
     icon: GitCompareArrows,
-    badge: { label: 'Beta', tone: 'beta' },
+    badge: { label: 'AI · Beta', tone: 'beta' },
+    ai: true,
     paragraphs: [
-      'Does the wind-down routine actually help? Insights answers with statistics computed server-side from canonical entries: it splits days by factor (habit done vs. not, medication taken vs. not), compares wellbeing outcomes with Cohen’s d effect sizes, and only surfaces relationships with at least 5 days per group and a meaningful effect.',
-      'Six tabs: Overview, Correlations (“what’s helping / what’s holding you back”), Habits, Medications (with adherence), Predictions (simple linear-trend projections per metric), and an AI Review that narrates only these computed numbers. Everything is framed as correlation — never causation.',
-      'The demo data contains a genuine pattern to find: wind-down evenings really do precede better sleep scores. The engine detects it because it’s in the data, not because it’s scripted.',
+      'Does the wind-down routine actually help? Wellbeing Insights answers with statistics computed server-side from canonical entries: it splits days by factor (habit done vs. not, medication taken vs. not), compares wellbeing outcomes with Cohen’s d effect sizes, and only surfaces relationships with at least 5 days per group and a meaningful effect.',
+      'The AI Review tab then narrates those numbers into a readable wellbeing story — what’s helping, what’s holding you back, what to try. The AI is deliberately downstream of the statistics: it can only describe correlations the engine actually measured, so it can’t invent a pattern that isn’t in your data. Everything is framed as correlation — never causation.',
+      'Alongside it: Overview, Correlations, Habits, Medications (with adherence), and Predictions (simple linear-trend projections per metric). The demo data contains a genuine pattern to find: wind-down evenings really do precede better sleep scores. The engine detects it because it’s in the data, not because it’s scripted.',
     ],
     callout: 'Beta: in production this page is email-gated while it stabilizes; the demo unlocks it read-only. Promoting it into primary navigation is on the roadmap.',
     tryIt: 'Open the Correlations tab and look for the wind-down ↔ sleep relationship.',
@@ -277,6 +310,7 @@ const badgeStyles: Record<BadgeTone, string> = {
   live: 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30',
   beta: 'bg-amber-500/10 text-amber-300 border-amber-500/30',
   roadmap: 'bg-sky-500/10 text-sky-300 border-sky-500/30',
+  ai: 'bg-violet-500/10 text-violet-300 border-violet-500/30',
 };
 
 /** Build the embedded-preview URL for a step. */
@@ -345,8 +379,11 @@ export const TourPage: React.FC<TourPageProps> = (props) => {
           Take a Tour of HabitFlow
         </h1>
         <p className="text-neutral-400 max-w-2xl text-sm leading-relaxed">
-          Thirteen short stops through the live product — about three minutes. The preview is the
-          real app in read-only demo mode; explore it freely at every stop.
+          {STEPS.length} short stops through the live product — about four minutes. Four of them
+          are <span className="text-violet-300 font-semibold">AI features</span>: the Weekly AI
+          Review, the AI Journal Review, Wellbeing Insights, and the AI Routine Builder — all
+          grounded in your own data. The preview is the real app in read-only demo mode; explore
+          it freely at every stop.
         </p>
       </header>
 
@@ -361,15 +398,24 @@ export const TourPage: React.FC<TourPageProps> = (props) => {
               onClick={() => goTo(i)}
               className={`shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${
                 active
-                  ? 'bg-emerald-500/15 text-emerald-200 border-emerald-500/40'
+                  ? s.ai
+                    ? 'bg-violet-500/15 text-violet-200 border-violet-500/40'
+                    : 'bg-emerald-500/15 text-emerald-200 border-emerald-500/40'
                   : i < stepIndex
                     ? 'bg-neutral-800/80 text-neutral-300 border-white/10 hover:text-white'
-                    : 'bg-neutral-900/60 text-neutral-500 border-white/5 hover:text-neutral-300'
+                    : s.ai
+                      ? 'bg-violet-500/5 text-violet-300/70 border-violet-500/20 hover:text-violet-200'
+                      : 'bg-neutral-900/60 text-neutral-500 border-white/5 hover:text-neutral-300'
               }`}
               aria-current={active ? 'step' : undefined}
             >
               <ChipIcon size={13} aria-hidden="true" />
               {s.navLabel}
+              {s.ai && (
+                <span className="text-[9px] leading-none font-bold px-1 py-0.5 rounded bg-violet-500/20 text-violet-300">
+                  AI
+                </span>
+              )}
             </button>
           );
         })}
@@ -381,8 +427,14 @@ export const TourPage: React.FC<TourPageProps> = (props) => {
         <article className="bg-neutral-900/40 border border-white/5 rounded-2xl p-5 sm:p-6 flex flex-col gap-4 h-fit">
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-400/20 to-cyan-500/20 border border-emerald-500/20 flex items-center justify-center">
-                <StepIcon size={20} className="text-emerald-300" aria-hidden="true" />
+              <div
+                className={`w-10 h-10 rounded-xl border flex items-center justify-center ${
+                  step.ai
+                    ? 'bg-gradient-to-br from-violet-400/20 to-fuchsia-500/20 border-violet-500/20'
+                    : 'bg-gradient-to-br from-emerald-400/20 to-cyan-500/20 border-emerald-500/20'
+                }`}
+              >
+                <StepIcon size={20} className={step.ai ? 'text-violet-300' : 'text-emerald-300'} aria-hidden="true" />
               </div>
               <div>
                 <p className="text-[11px] uppercase tracking-wide text-neutral-500 font-semibold">
