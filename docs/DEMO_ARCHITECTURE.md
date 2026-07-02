@@ -65,8 +65,10 @@ Browser ──X-Demo-Mode: true──▶ publicDemoIdentity ──▶ identityMi
   dispatching an event that surfaces a "Demo mode is read-only" toast (`Layout.tsx`).
 - `AuthContext` treats demo mode as a session (no cookie needed); "Sign out" becomes
   "Exit demo". A persistent banner states the read-only contract and offers exit.
-- Entry points: **"Explore the live demo"** on the login screen, `/?demo=1` links, and the
-  tour's embedded preview. `/?demo=0` (or Exit demo) leaves.
+- Entry points: `/?demo=1` links and the tour's embedded preview. `/?demo=0` (or Exit
+  demo) leaves. The login screen's "Explore the live demo" button is currently hidden
+  behind the `SHOW_DEMO_CTA` flag in `src/pages/LoginPage.tsx` (set it to `true` to
+  restore); the demo itself stays fully functional.
 - The beta-gated pages (Analytics, Insights) are viewable by the demo via
   `src/lib/betaAccess.ts`, always labeled Beta.
 
@@ -92,8 +94,9 @@ Browser ──X-Demo-Mode: true──▶ publicDemoIdentity ──▶ identityMi
 ## Deployment checklist
 
 1. Set `PUBLIC_DEMO_ENABLED=true` on the backend (Render). Startup seeds/refreshes the data.
-2. No frontend config needed — the login screen's demo CTA and the tour work as soon as the
-   backend flag is on. (Without the flag, demo requests 401 and the demo appears empty.)
+2. No frontend config needed — the tour and `/?demo=1` links work as soon as the backend
+   flag is on. (Without the flag, demo requests 401 and the demo appears empty.) The
+   login-screen demo CTA is additionally gated by `SHOW_DEMO_CTA` in `src/pages/LoginPage.tsx`.
 3. `/api/health` reports `publicDemo: true|false` for smoke-testing the flag.
 
 ## Threat model notes
