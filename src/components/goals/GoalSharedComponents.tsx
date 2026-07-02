@@ -2,7 +2,6 @@
  * Shared styled components for goal-related UI.
  * 
  * Provides consistent visual language across:
- * - GoalCard (card stack)
  * - GoalDetailPage
  * - WinArchivePage tiles
  * - ProgressPage goals section

@@ -837,7 +837,7 @@ export interface DailyWellbeing {
      * TODO: These fields are read-only for backward compatibility with old data.
      * New data is only written in morning/evening session format.
      * Priority order when reading: evening → morning → legacy top-level
-     * (See ProgressRings.tsx for reading logic)
+     * Priority is applied wherever wellbeing sessions are read (e.g. DailyOverviewCard).
      * 
      * Migration consideration: After MongoDB migration is complete and all
      * users have migrated, consider deprecating these fields. They are preserved
@@ -862,7 +862,7 @@ export interface DailyWellbeing {
  * These keys are a stable data contract across personas and UI changes.
  * Do not rename or repurpose without a formal migration plan.
  *
- * See: docs/reference/00_DATA_CONTRACT_WELLBEING_KEYS.md
+ * See: docs/reference/V1/00_DATA_CONTRACT_WELLBEING_KEYS.md
  */
 export const WELLBEING_METRIC_KEYS = [
     'depression',

@@ -16,7 +16,6 @@ vi.mock('./Toast', () => ({ useToast: () => ({ showToast: vi.fn() }) }));
 vi.mock('./NumericInputPopover', () => ({ NumericInputPopover: () => null }));
 vi.mock('./HabitHistoryModal', () => ({ HabitHistoryModal: () => null }));
 vi.mock('./HabitLogModal', () => ({ HabitLogModal: () => null }));
-vi.mock('./WeeklyHabitCard', () => ({ WeeklyHabitCard: () => null }));
 
 import { useHabitStore } from '../store/HabitContext';
 import { useRoutineStore } from '../store/RoutineContext';

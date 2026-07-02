@@ -111,7 +111,7 @@ export async function createWellbeingEntries(
     }
     if (!isWellbeingMetricKey(raw.metricKey)) {
       throw new Error(
-        `Invalid metricKey: "${raw.metricKey}". Metric keys are LOCKED. See docs/reference/00_DATA_CONTRACT_WELLBEING_KEYS.md`
+        `Invalid metricKey: "${raw.metricKey}". Metric keys are LOCKED. See docs/reference/V1/00_DATA_CONTRACT_WELLBEING_KEYS.md`
       );
     }
 
