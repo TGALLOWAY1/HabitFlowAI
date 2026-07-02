@@ -195,7 +195,6 @@ export const ProgressDashboard: React.FC<ProgressDashboardProps> = ({
                     onOpenMorning={() => setWellbeingModal('morning')}
                     onOpenEvening={() => setWellbeingModal('evening')}
                     onOpenHealth={() => setWellbeingModal('health')}
-                    onOpenInsights={() => onNavigateWellbeingHistory?.()}
                     onOpenOverview={() => setWellbeingModal('overview')}
                 />
 

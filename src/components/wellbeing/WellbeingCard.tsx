@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { format } from 'date-fns';
-import { Sun, Moon, Pill, TrendingUp, ChevronRight } from 'lucide-react';
+import { Sun, Moon, Pill, ChevronRight } from 'lucide-react';
 import { useHabitStore } from '../../store/HabitContext';
 import { getWellbeingDayStatus } from './wellbeingStatus';
 
@@ -8,7 +8,6 @@ interface WellbeingCardProps {
   onOpenMorning: () => void;
   onOpenEvening: () => void;
   onOpenHealth: () => void;
-  onOpenInsights: () => void;
   onOpenOverview: () => void;
 }
 
@@ -16,7 +15,6 @@ export const WellbeingCard: React.FC<WellbeingCardProps> = ({
   onOpenMorning,
   onOpenEvening,
   onOpenHealth,
-  onOpenInsights,
   onOpenOverview,
 }) => {
   const { wellbeingLogs } = useHabitStore();
@@ -27,7 +25,6 @@ export const WellbeingCard: React.FC<WellbeingCardProps> = ({
     { icon: Sun, label: 'Morning', color: 'text-amber-400', onClick: onOpenMorning, done: status.morningDone },
     { icon: Moon, label: 'Evening', color: 'text-indigo-400', onClick: onOpenEvening, done: status.eveningDone },
     { icon: Pill, label: 'Health', color: 'text-rose-400', onClick: onOpenHealth, done: false },
-    { icon: TrendingUp, label: 'Insights', color: 'text-purple-400', onClick: onOpenInsights, done: false },
   ];
 
   return (

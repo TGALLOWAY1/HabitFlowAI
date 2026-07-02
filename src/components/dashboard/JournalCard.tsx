@@ -1,4 +1,4 @@
-import { Clock, PenLine, LayoutTemplate, Sparkles } from 'lucide-react';
+import { Clock, PenLine, LayoutTemplate } from 'lucide-react';
 
 type JournalTab = 'free' | 'templates' | 'history' | 'review';
 
@@ -10,7 +10,6 @@ const ACTIONS: { icon: typeof PenLine; label: string; tab: JournalTab; color: st
     { icon: PenLine, label: 'Free', tab: 'free', color: 'text-emerald-400' },
     { icon: LayoutTemplate, label: 'Template', tab: 'templates', color: 'text-emerald-400' },
     { icon: Clock, label: 'History', tab: 'history', color: 'text-emerald-400' },
-    { icon: Sparkles, label: 'AI', tab: 'review', color: 'text-purple-400' },
 ];
 
 export const JournalCard: React.FC<JournalCardProps> = ({ onNavigateToJournal }) => {
