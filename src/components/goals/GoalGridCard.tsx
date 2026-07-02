@@ -174,8 +174,9 @@ const CumulativeGoalCard: React.FC<GoalGridCardProps> = ({
                 </button>
             </div>
 
-            {/* Progress visualization */}
-            <div className="px-3 pb-3">
+            {/* Progress visualization — capped width so heatmap cells stay
+                a comfortable size on desktop instead of scaling up with the card */}
+            <div className="px-3 pb-3 max-w-[360px]">
                 {isLowTarget ? (
                     <div className="w-full py-1">
                         <div className="relative h-2.5 w-full bg-neutral-800 rounded-full overflow-hidden">
