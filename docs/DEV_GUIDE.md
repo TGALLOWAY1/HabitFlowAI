@@ -14,20 +14,21 @@
 npm install
 ```
 
-2. Create `.env` from `.env.example` and set values:
+2. Create `.env` from [`.env.example`](../.env.example) (the example file documents every
+   supported variable with safe placeholders). Required for local dev:
 
 - `MONGODB_URI`
 - `MONGODB_DB_NAME`
-- `USE_MONGO_PERSISTENCE` (server flag, default true unless set to `false`)
-- `VITE_USE_MONGO_PERSISTENCE` (frontend flag, default true unless set to `false`)
-- `VITE_API_BASE_URL` (optional)
+
+The full env contract (demo flags, production CORS/admin/email vars, live-DB test opt-in)
+is documented in `.env.example` and the README's "Environment variables" table.
 
 ## Run Locally
 
 - Frontend only:
 
 ```bash
-npm run dev
+npm run dev:vite
 ```
 
 - API server only:
