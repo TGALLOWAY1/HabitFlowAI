@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useRef, useEffect } from 'react';
-import { LayoutGrid, Settings, User, LogOut, Info, Eye, EyeOff, FlaskConical, Compass, Sparkles } from 'lucide-react';
+import { LayoutGrid, Settings, User, LogOut, Info, Eye, EyeOff, FlaskConical, Sparkles } from 'lucide-react';
 import { useHabitStore } from '../store/HabitContext';
 import { useAuth } from '../store/AuthContext';
 import { useDashboardPrefs } from '../store/DashboardPrefsContext';
@@ -139,20 +139,6 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
                                     </button>
                                 </div>
                     )}
-                    <button
-                        onClick={() => {
-                            const searchParams = new URLSearchParams(window.location.search);
-                            searchParams.set('view', 'tour');
-                            const url = `${window.location.pathname}?${searchParams.toString()}`;
-                            window.history.pushState({ view: 'tour' }, '', url);
-                            window.dispatchEvent(new PopStateEvent('popstate'));
-                        }}
-                        className="min-h-[44px] min-w-[44px] flex items-center justify-center hover:bg-white/5 rounded-full transition-colors text-neutral-400 hover:text-white"
-                        title="Take a Tour"
-                        aria-label="Take a Tour"
-                    >
-                        <Compass size={20} />
-                    </button>
                     <button
                         onClick={() => setInfoOpen(true)}
                         className="min-h-[44px] min-w-[44px] flex items-center justify-center hover:bg-white/5 rounded-full transition-colors text-neutral-400 hover:text-white"
