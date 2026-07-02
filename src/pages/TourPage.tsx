@@ -11,6 +11,8 @@ import {
   GitCompareArrows,
   Cpu,
   Map,
+  Monitor,
+  Smartphone,
 } from 'lucide-react';
 import {
   DataFlowPanel,
@@ -19,6 +21,10 @@ import {
   JournalIntelligencePreview,
   InsightsPreview,
   TechPanel,
+  TourDeviceProvider,
+  PhoneFrame,
+  type TourDevice,
+  type PhoneTabKey,
 } from './tour/TourPreviews';
 
 /**
@@ -69,6 +75,12 @@ interface TourStep {
   paragraphs: string[];
   /** Static preview panel for this stop. */
   panel: React.FC;
+  /**
+   * Present on stops whose preview represents an app view. Enables the
+   * Desktop/Mobile toggle; `mobileTab` highlights the matching item in the
+   * phone frame's mock bottom tab bar.
+   */
+  appPreview?: { mobileTab?: PhoneTabKey };
 }
 
 const STEPS: TourStep[] = [
@@ -92,9 +104,10 @@ const STEPS: TourStep[] = [
     paragraphs: [
       'The dashboard compresses “how is this week going?” into one view: the habit grid, wellbeing check-ins, goal progress, today’s tasks, pinned routines, and journal activity.',
       'Notice how the domains reference each other — deep-work hours feed the 150-hour goal, the wind-down routine auto-logs its habits, and mood tracks with run days. That cross-domain signal is exactly what the AI reads on the next three stops.',
-      'The panel here is a preview rendered from the tour’s sample week: a user pushing toward a Q3 launch, strong on execution, slipping on sleep.',
+      'The panel here is a preview rendered from the tour’s sample week: a user pushing toward a Q3 launch, strong on execution, slipping on sleep. Use the Desktop/Mobile toggle above it to see how the same view adapts to a phone — bottom tab bar included.',
     ],
     panel: DashboardPreview,
+    appPreview: { mobileTab: 'dashboard' },
   },
   {
     id: 'ai-weekly',
@@ -108,6 +121,7 @@ const STEPS: TourStep[] = [
       'The example beside this text was prewritten from the sample week on the previous stop. Read the Patterns section — every claim traces back to numbers you can see on the dashboard.',
     ],
     panel: WeeklyReviewPreview,
+    appPreview: { mobileTab: 'habits' },
   },
   {
     id: 'ai-journal',
@@ -121,6 +135,7 @@ const STEPS: TourStep[] = [
       'The real feature is deliberately bounded: paraphrase over long quotes, no diagnoses, and honest low-data notices when a range is too thin to analyze.',
     ],
     panel: JournalIntelligencePreview,
+    appPreview: {},
   },
   {
     id: 'insights',
@@ -134,6 +149,7 @@ const STEPS: TourStep[] = [
       'Each recommendation below cites the sample data it came from — that traceability is the design goal of every AI feature in the product.',
     ],
     panel: InsightsPreview,
+    appPreview: {},
   },
   {
     id: 'built',
@@ -151,8 +167,13 @@ const STEPS: TourStep[] = [
 export const TourPage: React.FC<TourPageProps> = (props) => {
   const isAuth = props.mode === 'auth';
   const [stepIndex, setStepIndex] = useState(0);
+  const [device, setDevice] = useState<TourDevice>('desktop');
   const step = STEPS[stepIndex];
   const isLastStep = stepIndex === STEPS.length - 1;
+  // The toggle only appears on stops that preview an app view; the choice
+  // persists across stops so a mobile-curious reader stays in mobile.
+  const showDeviceToggle = Boolean(step.appPreview);
+  const isMobilePreview = showDeviceToggle && device === 'mobile';
 
   const goTo = (index: number) => {
     setStepIndex(Math.max(0, Math.min(STEPS.length - 1, index)));
@@ -316,12 +337,50 @@ export const TourPage: React.FC<TourPageProps> = (props) => {
 
         {/* Curated preview panel */}
         <section aria-label="Preview" className="flex flex-col gap-2 min-w-0">
-          <p className="text-xs text-neutral-500">
-            {step.aiStop
-              ? 'Preview · example output from the sample dataset'
-              : 'Preview · rendered from the sample dataset'}
-          </p>
-          <Panel />
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-xs text-neutral-500">
+              {step.aiStop
+                ? 'Preview · example output from the sample dataset'
+                : 'Preview · rendered from the sample dataset'}
+            </p>
+            {showDeviceToggle && (
+              <div
+                className="inline-flex rounded-full border border-white/10 bg-neutral-900 p-0.5"
+                role="group"
+                aria-label="Preview device"
+              >
+                <button
+                  onClick={() => setDevice('desktop')}
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${
+                    device === 'desktop' ? 'bg-neutral-700 text-white' : 'text-neutral-400 hover:text-white'
+                  }`}
+                  aria-pressed={device === 'desktop'}
+                >
+                  <Monitor size={13} aria-hidden="true" />
+                  Desktop
+                </button>
+                <button
+                  onClick={() => setDevice('mobile')}
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${
+                    device === 'mobile' ? 'bg-neutral-700 text-white' : 'text-neutral-400 hover:text-white'
+                  }`}
+                  aria-pressed={device === 'mobile'}
+                >
+                  <Smartphone size={13} aria-hidden="true" />
+                  Mobile
+                </button>
+              </div>
+            )}
+          </div>
+          <TourDeviceProvider value={isMobilePreview ? 'mobile' : 'desktop'}>
+            {isMobilePreview ? (
+              <PhoneFrame activeTab={step.appPreview?.mobileTab}>
+                <Panel />
+              </PhoneFrame>
+            ) : (
+              <Panel />
+            )}
+          </TourDeviceProvider>
         </section>
       </div>
     </div>

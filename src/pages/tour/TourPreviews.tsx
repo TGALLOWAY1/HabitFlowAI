@@ -28,6 +28,9 @@ import {
   Check,
   Minus,
   X,
+  LayoutGrid,
+  LayoutDashboard,
+  Settings as SettingsIcon,
 } from 'lucide-react';
 import {
   WEEK_DAYS,
@@ -44,6 +47,64 @@ import {
   TECH_FACTS,
   type Confidence,
 } from './tourContent';
+
+// ---------------------------------------------------------------------------
+// Device context — lets the tour render the same panels as the desktop or
+// mobile layout. Tailwind breakpoints react to the viewport, not a container,
+// so the phone-framed mobile preview forces single-column layouts via this
+// context instead of relying on `sm:` classes.
+// ---------------------------------------------------------------------------
+
+export type TourDevice = 'desktop' | 'mobile';
+
+const TourDeviceContext = React.createContext<TourDevice>('desktop');
+export const TourDeviceProvider = TourDeviceContext.Provider;
+const useTourDevice = () => React.useContext(TourDeviceContext);
+
+const PHONE_TABS = [
+  { key: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { key: 'habits', label: 'Habits', icon: Calendar },
+  { key: 'routines', label: 'Routines', icon: RouteIcon },
+  { key: 'goals', label: 'Goals', icon: Target },
+] as const;
+
+export type PhoneTabKey = (typeof PHONE_TABS)[number]['key'];
+
+/**
+ * Phone bezel with the app's mobile chrome (header + bottom tab bar),
+ * mirroring the real mobile layout's navigation so the preview reads as
+ * "the app on a phone" rather than a squeezed desktop panel.
+ */
+export const PhoneFrame: React.FC<{ activeTab?: PhoneTabKey; children: React.ReactNode }> = ({
+  activeTab,
+  children,
+}) => (
+  <div className="mx-auto w-[390px] max-w-full rounded-[2.2rem] border-[6px] border-neutral-700 bg-neutral-950 overflow-hidden shadow-2xl">
+    <div className="flex items-center justify-between px-4 py-2.5 bg-neutral-900 border-b border-white/5">
+      <div className="flex items-center gap-2">
+        <div className="w-5 h-5 rounded bg-gradient-to-br from-emerald-400 to-cyan-500 flex items-center justify-center">
+          <LayoutGrid size={11} className="text-white" aria-hidden="true" />
+        </div>
+        <span className="text-xs font-bold text-white">HabitFlow</span>
+      </div>
+      <SettingsIcon size={13} className="text-neutral-500" aria-hidden="true" />
+    </div>
+    <div className="h-[540px] overflow-y-auto bg-neutral-900 p-3">{children}</div>
+    <div className="grid grid-cols-4 bg-neutral-950 border-t border-white/5 py-1.5">
+      {PHONE_TABS.map(({ key, label, icon: Icon }) => (
+        <div
+          key={key}
+          className={`flex flex-col items-center gap-0.5 py-1 text-[9px] font-medium ${
+            key === activeTab ? 'text-emerald-400' : 'text-neutral-600'
+          }`}
+        >
+          <Icon size={15} aria-hidden="true" />
+          {label}
+        </div>
+      ))}
+    </div>
+  </div>
+);
 
 // ---------------------------------------------------------------------------
 // Shared bits
@@ -166,7 +227,9 @@ const DayCell: React.FC<{ state: 'done' | 'missed' | 'off' }> = ({ state }) => (
   </span>
 );
 
-export const DashboardPreview: React.FC = () => (
+export const DashboardPreview: React.FC = () => {
+  const device = useTourDevice();
+  return (
   <div className="flex flex-col gap-3">
     {/* Habit week grid */}
     <PanelCard>
@@ -199,7 +262,7 @@ export const DashboardPreview: React.FC = () => (
       </div>
     </PanelCard>
 
-    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+    <div className={`grid grid-cols-1 gap-3 ${device === 'desktop' ? 'sm:grid-cols-2' : ''}`}>
       {/* Wellbeing */}
       <PanelCard>
         <PanelHeading icon={HeartPulse} label="Wellbeing" />
@@ -265,7 +328,8 @@ export const DashboardPreview: React.FC = () => (
       </PanelCard>
     </div>
   </div>
-);
+  );
+};
 
 // ---------------------------------------------------------------------------
 // Stop 3 — AI Weekly Review example
@@ -337,7 +401,9 @@ export const WeeklyReviewPreview: React.FC = () => (
 // Stop 4 — Journal Intelligence example
 // ---------------------------------------------------------------------------
 
-export const JournalIntelligencePreview: React.FC = () => (
+export const JournalIntelligencePreview: React.FC = () => {
+  const device = useTourDevice();
+  return (
   <div className="flex flex-col gap-3">
     <PanelCard>
       <PanelHeading icon={BookOpen} label="Journal entries (sample data)" />
@@ -370,7 +436,7 @@ export const JournalIntelligencePreview: React.FC = () => (
           ))}
         </ul>
       </ReviewSection>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div className={`grid grid-cols-1 gap-4 ${device === 'desktop' ? 'sm:grid-cols-2' : ''}`}>
         <ReviewSection label="Stressors">
           <BulletList items={JOURNAL_EXTRACTION_EXAMPLE.stressors} />
         </ReviewSection>
@@ -386,7 +452,8 @@ export const JournalIntelligencePreview: React.FC = () => (
       </div>
     </PanelCard>
   </div>
-);
+  );
+};
 
 // ---------------------------------------------------------------------------
 // Stop 5 — Behavioral insights & recommendations example
