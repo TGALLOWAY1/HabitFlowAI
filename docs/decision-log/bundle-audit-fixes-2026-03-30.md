@@ -2,7 +2,7 @@
 
 **Status:** In Progress
 **Date:** 2026-03-30
-**Related:** `docs/BUNDLE_AUDIT_2026-03-30.md`
+**Related:** `docs/archive/audits/BUNDLE_AUDIT_2026-03-30.md`
 
 ## Background
 

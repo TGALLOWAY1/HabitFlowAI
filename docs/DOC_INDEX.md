@@ -32,7 +32,7 @@ of content in exactly one home.
 - `docs/V1_PRODUCT_DIRECTION.md` — current v1 product direction (personal-use-first, practical).
 - `docs/DOMAIN_CANON.md` — minimal invariants and canonical references.
 - `docs/ARCHITECTURE.md` — system architecture, identity, dayKey policy, HabitEntries-only truth (post–M6).
-- `docs/UI.md` — page inventory and navigation map.
+- `docs/product/HABITFLOW_UI_ARCHITECTURE.md` — canonical UI screens, navigation, and user flows.
 - `docs/API.md` — backend route inventory and API contracts.
 - `docs/DATA_MODEL.md` — implemented collections and ownership boundaries (post–M6).
 - `docs/DEV_GUIDE.md` — setup, scripts, testing, and runbook.
@@ -40,8 +40,8 @@ of content in exactly one home.
 - `docs/ai-features.md` — applied-AI features: design, data flow, grounding, routes/contracts.
 - `docs/DEMO_ARCHITECTURE.md` — public read-only demo + interactive tour: identity, seeding, embed previews.
 - `FEATURE_AUDIT.md` — code-verified implemented / partial / roadmap feature audit (root).
-- `docs/VERIFICATION.md` — consistency and dashboard validation checklist.
 - `docs/maintenance/verification.md` — test suite commands and smoke test checklist.
+- `docs/repo-cleanup-audit.md` — repository cleanup audit trail (what was removed/archived and why).
 - `docs/semantics/daykey.md` — DayKey and timezone policy (America/New_York fallback).
 - `docs/migrations/README.md` — migration scripts and safe-run instructions.
 
@@ -73,6 +73,8 @@ Comprehensive system model and consistency audit produced 2026-04-04:
 ## Historical / Archived
 
 - `docs/archive/PSYCHOLOGICAL_SAFETY_V0.md` — ARCHIVED psychological-safety-first direction (preserved, not current v1 direction).
-- `docs/archive/root/` — archived root-level implementation snapshots.
+- `docs/archive/root/` — archived root-level implementation snapshots, PR descriptions, and superseded docs (`UI.md`, `VERIFICATION.md`, `SCHEDULE_VIEW_BACKLOG.md`, …).
+- `docs/archive/audits/` — historical point-in-time audits (milestone-era maps, `audit_v1/`, dated one-off audits).
+- `docs/archive/qa/` — one-off manual QA checklists.
 - `docs/reference/V0/` — historical PRDs and migration plans.
-- `docs/audits/m6_legacy_removal_map.md` — M6 legacy removal map (DayLogs/manual goal logs removed; historical).
+- `docs/archive/audits/m6_legacy_removal_map.md` — M6 legacy removal map (DayLogs/manual goal logs removed; historical).
