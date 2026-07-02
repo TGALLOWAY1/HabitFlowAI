@@ -4,6 +4,7 @@ import { hasGeminiApiKey, fetchWeeklyAIReview } from '../../lib/geminiClient';
 import type { WeeklyAIReview } from '../../shared/weeklyAiReview';
 import { WeeklyReviewBody } from './WeeklyReviewBody';
 import { AIReportHistoryModal } from './AIReportHistoryModal';
+import { LastGeneratedLine, useLastGenerated } from './lastGenerated';
 
 type WeekChoice = 'this' | 'last';
 
@@ -25,8 +26,10 @@ export const WeeklyAIReviewCard: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [week, setWeek] = useState<WeekChoice>('this');
   const [showHistory, setShowHistory] = useState(false);
+  const [genCount, setGenCount] = useState(0);
 
   const hasKey = hasGeminiApiKey();
+  const lastGenerated = useLastGenerated('weekly_review', genCount);
 
   const handleGenerate = async (choice: WeekChoice = week) => {
     setLoading(true);
@@ -35,6 +38,7 @@ export const WeeklyAIReviewCard: React.FC = () => {
       const weekStart = mondayOf(choice === 'this' ? 0 : 1);
       const result = await fetchWeeklyAIReview(weekStart);
       setReview(result.review);
+      setGenCount((n) => n + 1);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to generate weekly review');
     } finally {
@@ -67,7 +71,8 @@ export const WeeklyAIReviewCard: React.FC = () => {
             <History size={16} />
           </button>
         </div>
-        <p className="text-sm text-neutral-400">
+        <LastGeneratedLine createdAt={lastGenerated} />
+        <p className="text-sm text-neutral-400 mt-1">
           Add your Gemini API key in Settings to generate a grounded, data-driven review of your
           week. Past reports stay readable from the history <History size={12} className="inline" aria-hidden="true" /> at any time.
         </p>
@@ -122,6 +127,8 @@ export const WeeklyAIReviewCard: React.FC = () => {
           </button>
         </div>
       </div>
+
+      <LastGeneratedLine createdAt={lastGenerated} />
 
       {showHistory && (
         <AIReportHistoryModal

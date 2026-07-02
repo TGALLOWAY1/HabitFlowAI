@@ -9,11 +9,15 @@ import type {
   AIReport,
   AIReportKind,
   AIReportListItem,
+  InsightsReviewPayload,
+  JournalReviewPayload,
   JournalSummaryPayload,
   WeeklyReviewPayload,
 } from '../../shared/aiReport';
 import { WeeklyReviewBody } from './WeeklyReviewBody';
 import { JournalSummaryBody } from '../Journal/JournalSummaryBody';
+import { InsightsReviewBody } from '../insights/InsightsReviewBody';
+import { JournalReviewBody } from '../Journal/JournalReviewBody';
 
 interface AIReportHistoryModalProps {
   kind: AIReportKind;
@@ -131,6 +135,10 @@ export const AIReportHistoryModal: React.FC<AIReportHistoryModalProps> = ({
               </div>
             ) : selected.kind === 'weekly_review' ? (
               <WeeklyReviewBody review={(selected.payload as WeeklyReviewPayload).review} />
+            ) : selected.kind === 'insights_review' ? (
+              <InsightsReviewBody review={(selected.payload as InsightsReviewPayload).review} />
+            ) : selected.kind === 'journal_review' ? (
+              <JournalReviewBody review={(selected.payload as JournalReviewPayload).review} />
             ) : (
               <JournalSummaryBody summary={(selected.payload as JournalSummaryPayload).summary} />
             )

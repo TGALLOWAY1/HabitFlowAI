@@ -19,7 +19,6 @@ import { RoutineRunnerModal } from './components/RoutineRunnerModal';
 import { RoutinePreviewModal } from './components/RoutinePreviewModal';
 import { HabitHistoryModal } from './components/HabitHistoryModal';
 import { BottomTabBar } from './components/BottomTabBar';
-import { WeeklyAIReviewCard } from './components/dashboard/WeeklyAIReviewCard';
 
 import { Plus, List, CalendarDays, CalendarClock, Trophy, Route } from 'lucide-react';
 import type { Routine, Habit } from './types';
@@ -609,10 +608,6 @@ const HabitTrackerContent: React.FC = () => {
                 potentialEvidence={potentialEvidence}
                 loading={loading}
               />
-              {/* Weekly AI Review lives on the Habits page (moved off the dashboard) */}
-              <div className="mt-4">
-                <WeeklyAIReviewCard />
-              </div>
             </>
           ) : trackerViewMode === 'schedule' ? (
             <ScheduleView />

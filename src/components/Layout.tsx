@@ -9,6 +9,7 @@ import { DEMO_WRITE_BLOCKED_EVENT, DEMO_READ_ONLY_MESSAGE, exitDemoMode, isEmbed
 import { useToast } from './Toast';
 import { SettingsModal } from './SettingsModal';
 import { InfoModal } from './InfoModal';
+import { AIStudioModal } from './dashboard/AIStudioModal';
 
 interface LayoutProps {
     children: React.ReactNode;
@@ -27,6 +28,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
     const [userMenuOpen, setUserMenuOpen] = useState(false);
     const [settingsOpen, setSettingsOpen] = useState(false);
     const [infoOpen, setInfoOpen] = useState(false);
+    const [aiOpen, setAiOpen] = useState(false);
     const userMenuRef = useRef<HTMLDivElement>(null);
 
     const demoBadge = useMemo(() => {
@@ -140,6 +142,14 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
                                 </div>
                     )}
                     <button
+                        onClick={() => setAiOpen(true)}
+                        className="min-h-[44px] min-w-[44px] flex items-center justify-center hover:bg-white/5 rounded-full transition-colors text-neutral-400 hover:text-white"
+                        title="AI"
+                        aria-label="AI"
+                    >
+                        <Sparkles size={20} />
+                    </button>
+                    <button
                         onClick={() => setInfoOpen(true)}
                         className="min-h-[44px] min-w-[44px] flex items-center justify-center hover:bg-white/5 rounded-full transition-colors text-neutral-400 hover:text-white"
                         title="How HabitFlow Works"
@@ -247,6 +257,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
                 isOpen={infoOpen}
                 onClose={() => setInfoOpen(false)}
             />
+            {aiOpen && <AIStudioModal onClose={() => setAiOpen(false)} />}
         </div>
     );
 };

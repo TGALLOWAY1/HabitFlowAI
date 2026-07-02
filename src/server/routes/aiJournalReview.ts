@@ -29,6 +29,7 @@ import { JOURNAL_TEMPLATES, FREE_WRITE_TEMPLATE } from '../../data/journalTempla
 import type { JournalTemplate, JournalPrompt } from '../../data/journalTemplates';
 import { isValidDayKey } from '../../domain/time/dayKey';
 import { GEMINI_MODEL, buildGeminiUrl, GEMINI_THINKING_CONFIG, extractGeminiText } from '../lib/gemini';
+import { saveAIReport } from '../repositories/aiReportRepository';
 import type {
   AIJournalReview,
   EmotionalTheme,
@@ -120,7 +121,7 @@ export async function postJournalReview(req: Request, res: Response): Promise<vo
     // Server owns the range boundaries; normalize order so start <= end.
     const [startDate, endDate] = rangeStart <= rangeEnd ? [rangeStart, rangeEnd] : [rangeEnd, rangeStart];
 
-    const { userId } = getRequestIdentity(req);
+    const { userId, householdId } = getRequestIdentity(req);
 
     const allEntries = await getEntriesByUser(userId, { startDate, endDate });
     const entries = allEntries.filter((e) => !EXCLUDED_TEMPLATE_IDS.has(e.templateId));
@@ -428,6 +429,18 @@ Return the review as JSON matching the provided schema.`;
       dataLimitations: strArray(parsed.dataLimitations),
       ...(crisisNotice.length > 0 ? { crisisNotice } : {}),
     };
+
+    // Archive the report for history (best-effort; never block the response).
+    try {
+      await saveAIReport(householdId, userId, {
+        kind: 'journal_review',
+        periodStart: startDate,
+        periodEnd: endDate,
+        payload: { review },
+      });
+    } catch (saveErr) {
+      console.error('[AI Journal Review] Failed to archive report:', saveErr);
+    }
 
     res.status(200).json({
       review,

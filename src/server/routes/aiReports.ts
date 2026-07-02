@@ -18,7 +18,12 @@ import {
 } from '../repositories/aiReportRepository';
 import type { AIReportKind } from '../../shared/aiReport';
 
-const VALID_KINDS: AIReportKind[] = ['weekly_review', 'journal_summary'];
+const VALID_KINDS: AIReportKind[] = [
+  'weekly_review',
+  'journal_summary',
+  'insights_review',
+  'journal_review',
+];
 
 function parseKind(value: unknown): AIReportKind | undefined {
   return typeof value === 'string' && (VALID_KINDS as string[]).includes(value)

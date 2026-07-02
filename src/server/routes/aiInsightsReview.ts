@@ -34,6 +34,7 @@ import {
   type InsightsSources,
 } from '../services/insightsService';
 import { GEMINI_MODEL, buildGeminiUrl, GEMINI_THINKING_CONFIG, extractGeminiText } from '../lib/gemini';
+import { saveAIReport } from '../repositories/aiReportRepository';
 import type { ReviewConfidence } from '../../shared/weeklyAiReview';
 import type {
   InsightsAIReview,
@@ -303,6 +304,18 @@ Return the review as JSON matching the provided schema.`;
       recommendations,
       dataLimitations: strArray(parsed.dataLimitations),
     };
+
+    // Archive the report for history (best-effort; never block the response).
+    try {
+      await saveAIReport(householdId, userId, {
+        kind: 'insights_review',
+        periodStart: rangeStart,
+        periodEnd: referenceDayKey,
+        payload: { review },
+      });
+    } catch (saveErr) {
+      console.error('[AI Insights Review] Failed to archive report:', saveErr);
+    }
 
     res.status(200).json({
       review,
