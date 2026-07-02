@@ -5,8 +5,7 @@
 
 import React, { useState } from 'react';
 import { useAuth } from '../store/AuthContext';
-import { LayoutGrid, Compass, Play } from 'lucide-react';
-import { enterDemoMode } from '../lib/demoMode';
+import { LayoutGrid, Compass } from 'lucide-react';
 
 interface LoginPageProps {
   onSwitchToInvite: () => void;
@@ -142,31 +141,25 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onSwitchToInvite, onSwitch
           </button>
         </p>
 
-        {/* Tour + demo — no account or invite code required */}
-        <div className="mt-6 pt-6 border-t border-white/5 text-center">
-          <p className="text-sm text-neutral-500 mb-3">New to HabitFlow? See what it can do.</p>
-          <div className="flex flex-wrap justify-center gap-2">
-            {onViewTour && (
-              <button
-                type="button"
-                onClick={onViewTour}
-                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-gradient-to-r from-emerald-500 to-cyan-500 text-white text-sm font-semibold hover:from-emerald-400 hover:to-cyan-400 transition-colors shadow-lg shadow-emerald-500/20"
-              >
-                <Compass size={16} aria-hidden="true" />
-                Take the tour
-              </button>
-            )}
+        {/* Tour — the primary public entry point; no account or invite code required.
+            The read-only demo still exists (/?demo=1) but is intentionally not
+            surfaced here — the curated tour is the public-facing walkthrough. */}
+        {onViewTour && (
+          <div className="mt-6 pt-6 border-t border-white/5 text-center">
+            <p className="text-sm text-neutral-500 mb-3">
+              New to HabitFlow? See the product — and its AI features — in about two minutes.
+            </p>
             <button
               type="button"
-              onClick={enterDemoMode}
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-neutral-800 border border-white/10 text-neutral-200 text-sm font-medium hover:bg-neutral-700 hover:text-white transition-colors"
-              title="Browse the app read-only with realistic seeded data — no account needed"
+              onClick={onViewTour}
+              className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-full bg-gradient-to-r from-emerald-500 to-cyan-500 text-white text-sm font-semibold hover:from-emerald-400 hover:to-cyan-400 transition-colors shadow-lg shadow-emerald-500/20"
             >
-              <Play size={16} aria-hidden="true" />
-              Explore the live demo
+              <Compass size={16} aria-hidden="true" />
+              Take a Tour
             </button>
+            <p className="text-xs text-neutral-600 mt-2">No account needed.</p>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );
