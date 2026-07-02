@@ -1,18 +1,25 @@
 /**
  * AI Report — shared contract
  *
- * A persisted, browsable record of an AI-generated insight (Weekly Review or
- * Journal Summary). Unlike derived views, these are genuine generated artifacts:
- * each generation is archived so the user can revisit past reports ("history")
- * without spending another Gemini call.
+ * A persisted, browsable record of an AI-generated insight (Weekly Review,
+ * Journal Summary, Insights AI Review, or AI Journal Review). Unlike derived
+ * views, these are genuine generated artifacts: each generation is archived so
+ * the user can revisit past reports ("history") without spending another Gemini
+ * call.
  *
  * Used by the server routes that persist reports and the frontend history UI.
  */
 
 import type { WeeklyAIReview } from './weeklyAiReview';
+import type { InsightsAIReview } from './insightsAiReview';
+import type { AIJournalReview } from './aiJournalReview';
 
 /** The kinds of AI report we archive. */
-export type AIReportKind = 'weekly_review' | 'journal_summary';
+export type AIReportKind =
+  | 'weekly_review'
+  | 'journal_summary'
+  | 'insights_review'
+  | 'journal_review';
 
 /** Kind-specific payloads. */
 export interface WeeklyReviewPayload {
@@ -25,7 +32,21 @@ export interface JournalSummaryPayload {
   journalEntriesCount: number;
 }
 
-export type AIReportPayload = WeeklyReviewPayload | JournalSummaryPayload;
+/** Insights AI Review (cross-domain correlations + trends) payload. */
+export interface InsightsReviewPayload {
+  review: InsightsAIReview;
+}
+
+/** AI Journal Review (emotional themes across journal entries) payload. */
+export interface JournalReviewPayload {
+  review: AIJournalReview;
+}
+
+export type AIReportPayload =
+  | WeeklyReviewPayload
+  | JournalSummaryPayload
+  | InsightsReviewPayload
+  | JournalReviewPayload;
 
 /** A full, persisted AI report (with its kind-specific payload). */
 export interface AIReport {
@@ -63,6 +84,14 @@ export function buildReportPreview(kind: AIReportKind, payload: AIReportPayload)
   if (kind === 'weekly_review') {
     const review = (payload as WeeklyReviewPayload).review;
     return clamp(review.summary || review.facts[0] || 'Weekly review');
+  }
+  if (kind === 'insights_review') {
+    const review = (payload as InsightsReviewPayload).review;
+    return clamp(review.summary || review.keyFindings[0] || 'Insights review');
+  }
+  if (kind === 'journal_review') {
+    const review = (payload as JournalReviewPayload).review;
+    return clamp(review.overview || review.emotionalThemes[0]?.theme || 'Journal review');
   }
   return clamp((payload as JournalSummaryPayload).summary || 'Journal summary');
 }
