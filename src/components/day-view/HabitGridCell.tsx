@@ -160,26 +160,24 @@ export const HabitGridCell = ({
         }
     };
 
-    // Render quantity progress ring on checkbox
+    // Render checkbox. Numeric habits turn green with a check once any value
+    // is entered (currentValue > 0) — no percentage ring. The entered value
+    // is surfaced elsewhere (grid/tracker view and the expanded metadata).
     const renderCheckbox = () => {
-        if (isQuantity && habitStatus && habitStatus.targetValue > 0) {
-            const pct = Math.min(100, habitStatus.progressPercent);
+        if (isQuantity && habitStatus) {
+            const hasValue = habitStatus.currentValue > 0;
             return (
                 <button
                     onClick={handleCheckboxClick}
                     className={cn(
-                        "flex-shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all duration-300 relative",
-                        isCompleted
+                        "flex-shrink-0 w-5 h-5 rounded-full border flex items-center justify-center transition-all duration-300",
+                        hasValue
                             ? "bg-emerald-500/10 border-emerald-500 text-emerald-500"
                             : "border-white/20 text-transparent hover:border-emerald-500/50"
                     )}
-                    title={`${habitStatus.currentValue}/${habitStatus.targetValue} ${habit.goal?.unit ?? ''}`}
+                    title={`${habitStatus.currentValue}${habit.goal?.unit ? ` ${habit.goal.unit}` : ''}`}
                 >
-                    {isCompleted ? (
-                        <Check size={12} strokeWidth={3} />
-                    ) : pct > 0 ? (
-                        <span className="text-[8px] font-bold text-neutral-400">{Math.round(pct)}%</span>
-                    ) : null}
+                    {hasValue && <Check size={12} strokeWidth={3} />}
                 </button>
             );
         }
