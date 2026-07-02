@@ -458,14 +458,15 @@ export function InfoModal({ isOpen, onClose }: InfoModalProps) {
                   <span className="font-bold text-emerald-400">AI Features</span>
                 </p>
                 <p className="text-sm text-neutral-300 mt-1">AI-powered tools to enhance your experience (uses your own API key):</p>
+                <p className="text-xs text-neutral-400 mt-1">The three primary AI artifacts — Wellbeing Summary, Weekly Review, and Journal Insights — all live together in the <span className="font-semibold text-neutral-300">AI hub</span>, opened from the sparkle <span className="font-semibold text-neutral-300">AI</span> icon in the top header. Each shows a short explanation, the date it was last generated, and a history <span className="font-semibold text-neutral-300">clock</span> icon for browsing past reports.</p>
                 <ul className="mt-2 space-y-2">
                   <li className="text-xs text-neutral-400 pl-2">
-                    <span className="font-semibold text-neutral-300">Weekly AI Review</span>
-                    <p className="mt-0.5">The single, comprehensive weekly report on the Habits page (this week or last week). It reads your real habit, sleep, mood, journal, and goal data and returns seven sections: a Week at a Glance narrative recap, Facts, Patterns (each with a confidence level), Journal Themes, Wins, Areas for Attention, and Recommendations — plus honest Data Limitations. It only uses your actual data and keeps facts, patterns, and suggestions separate — if a week is thin on data, it says so instead of inventing patterns. Use the wand icon to generate and the clock icon to browse your saved review history.</p>
+                    <span className="font-semibold text-neutral-300">Weekly Review</span>
+                    <p className="mt-0.5">The single, comprehensive weekly report in the header AI hub (this week or last week). It reads your real habit, sleep, mood, journal, and goal data and returns seven sections: a Week at a Glance narrative recap, Facts, Patterns (each with a confidence level), Journal Themes, Wins, Areas for Attention, and Recommendations — plus honest Data Limitations. It only uses your actual data and keeps facts, patterns, and suggestions separate — if a week is thin on data, it says so instead of inventing patterns. Use the wand icon to generate and the clock icon to browse your saved review history.</p>
                   </li>
                   <li className="text-xs text-neutral-400 pl-2">
-                    <span className="font-semibold text-neutral-300">Insights AI Review</span>
-                    <p className="mt-0.5">On the Insights page's "AI Review" tab, turn your computed correlations and trend predictions into a plain-language narrative: a Summary, Key Findings, Patterns (each with a confidence level), an Outlook on where things are heading, Recommendations, and honest Data Limitations. It reads only the numbers the app already computed, frames everything as correlation (never cause and effect), and you can regenerate anytime.</p>
+                    <span className="font-semibold text-neutral-300">Wellbeing Summary</span>
+                    <p className="mt-0.5">In the header AI hub (also on the Insights page's "AI Review" tab), turn your computed correlations and trend predictions into a plain-language narrative: a Summary, Key Findings, Patterns (each with a confidence level), an Outlook on where things are heading, Recommendations, and honest Data Limitations. It reads only the numbers the app already computed, frames everything as correlation (never cause and effect), and saves each generation to history so you can revisit it or regenerate anytime.</p>
                   </li>
                   <li className="text-xs text-neutral-400 pl-2">
                     <span className="font-semibold text-neutral-300">Variant Suggestions</span>
@@ -476,8 +477,8 @@ export function InfoModal({ isOpen, onClose }: InfoModalProps) {
                     <p className="mt-0.5">Auto-generated weekly summary of your journal entries with themes, highlights, actionable feedback, and follow-up reminders. Appears as a dismissible banner on the Journal page and is saved to your journal history. Use the wand icon to generate and the clock icon to browse your saved summary history.</p>
                   </li>
                   <li className="text-xs text-neutral-400 pl-2">
-                    <span className="font-semibold text-neutral-300">AI Journal Review</span>
-                    <p className="mt-0.5">On the Journal page's "AI Review" tab, pick a date range (last 7/30 days or custom) and generate a structured, grounded review of your entries: an Overview, Emotional Themes, Recurring Stressors, Wins, Self-Talk Patterns, Reflection Questions, Suggested Next Steps, and honest Data Limitations. It reads only your own writing, separates evidence from interpretation from suggestions, and stays supportive and non-clinical (no diagnoses). Empty ranges and sparse data are flagged, and you can regenerate anytime.</p>
+                    <span className="font-semibold text-neutral-300">Journal Insights</span>
+                    <p className="mt-0.5">In the header AI hub (also on the Journal page's "AI Review" tab), pick a date range (last 7/30 days or custom) and generate a structured, grounded review of your entries: an Overview, Emotional Themes, Recurring Stressors, Wins, Self-Talk Patterns, Reflection Questions, Suggested Next Steps, and honest Data Limitations. It reads only your own writing, separates evidence from interpretation from suggestions, and stays supportive and non-clinical (no diagnoses). Empty ranges and sparse data are flagged, each generation is saved to history, and you can regenerate anytime.</p>
                   </li>
                   <li className="text-xs text-neutral-400 pl-2">
                     <span className="font-semibold text-neutral-300">Persona-Driven Insights</span>

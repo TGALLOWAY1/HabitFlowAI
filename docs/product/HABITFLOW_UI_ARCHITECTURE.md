@@ -33,6 +33,8 @@ Secondary domains are accessed through the dashboard or header:
 HabitFlow App
 ├── Header (global)
 │   ├── Logo / Branding
+│   ├── AI Hub (✨ modal: Wellbeing Summary + Weekly Review + Journal Insights cards; each with explanation, last-generated date, wand=generate, clock=history)
+│   │   └── AI Report History modal (per kind: browse / open / delete saved reports)
 │   ├── Settings (modal)
 │   ├── Info / Tutorial (modal)
 │   └── User Menu (dropdown: sign out, hide streaks)
@@ -42,18 +44,16 @@ HabitFlow App
 │   │   ├── Setup Guide (onboarding)
 │   │   ├── Top cards (two-column grid: narrow status card left, wide action card right)
 │   │   │   ├── Daily Habits (narrow; completion ring + count, e.g. 0/22)
-│   │   │   ├── Wellbeing (wide; status: Morning/Evening/Sleep; actions: ☀️ Morning, 🌙 Evening, 💊 Health, 📈 Insights; chevron → Wellbeing Overview)
+│   │   │   ├── Wellbeing (wide; status: Morning/Evening/Sleep; actions: ☀️ Morning, 🌙 Evening, 💊 Health; chevron → Wellbeing Overview → 📈 Insights page)
 │   │   │   ├── Tasks Card (narrow; count → Tasks Page)
-│   │   │   └── Journal Card (wide; actions deep-link to Journal tabs: Free, Template, History, AI=Review)
+│   │   │   └── Journal Card (wide; actions deep-link to Journal tabs: Free, Template, History)
 │   │   ├── Pinned Routines (→ Routine Runner)
 │   │   ├── Goals at a glance (Pinned Goals → Goal Detail; Manage to pin/unpin)
 │   │   └── Activity (Heatmap 30d / 90d / year; Overall / By Category)
 │   │
 │   ├── Habits (Tracker)
 │   │   ├── Category Tabs (filter)
-│   │   ├── Grid View (default)
-│   │   │   └── Weekly AI Review (Week at a Glance / Facts / Patterns / Journal Themes / Wins / Areas for Attention / Recommendations / Data Limitations; this-week / last-week; wand=generate, clock=history)
-│   │   │       └── AI Report History modal (browse / open / delete saved Weekly Reviews)
+│   │   ├── Grid View (default) — habit grid only (Weekly Review moved to the header AI hub)
 │   │   ├── Today View (day-focused)
 │   │   ├── Weekly View (week-at-a-glance)
 │   │   ├── [+] Add Habit (→ modal)
@@ -164,6 +164,7 @@ HabitFlow App
 | Remove Habit | Modal | Trash button on a habit that is linked to one or more goals (shown after the click-twice confirm so the user sees which goals are affected) | Lists the affected goals and offers two paths: **Archive** (recommended, restorable from Settings) or **Delete permanently** (soft-delete, not restorable). For unlinked habits the trash icon archives directly without opening this modal | Habits, Goals |
 | Archived Habits | Modal | Settings → "View archived habits" | Lists archived habits with Restore and Delete-permanently actions; empty state explains archive preserves entries | Habits |
 | Completed Habits | Modal | Routine runner completion | Summary of habits logged during routine | Habits, Entries |
+| AI Hub | Modal | Header ✨ AI icon | Stacks the three AI artifacts as inline generators (Wellbeing Summary, Weekly Review, Journal Insights); each shows an explanation, last-generated date, and a history icon | AI Reports |
 | Settings | Modal | Header settings icon | Preferences, API keys, data management | User config |
 | Info / Tutorial | Modal | Header info icon | App tutorial and feature explanations | — |
 | Habit Creation Inline | Modal | Quick-add in certain contexts | Lightweight inline habit creation | Habits |
@@ -257,6 +258,7 @@ graph TB
     end
 
     subgraph "Global (Header)"
+        AIHUB["AI Hub Modal"]
         SETTINGS["Settings Modal"]
         INFO["Info Modal"]
     end
@@ -333,7 +335,7 @@ graph TB
 | **Category completion** | Dashboard category rows |
 | **Goal progress charts** | Goal Detail Page (cumulative, trend, weekly summary) |
 | **Wellbeing trends** | Wellbeing History Page |
-| **Weekly AI Review** | Habits page (Grid view), below the habit grid |
+| **Weekly Review** | Header AI hub (✨ AI icon) |
 | **Sleep analytics** | Analytics Page → Sleep tab (Habits / Routines / Goals / Sleep) — Apple Watch score, consistency, independence, bedtime/wake & duration trends, correlation factors, weekly summary, achievements, and an "Edit a night" list to log/correct previous nights |
 
 ### Category
@@ -528,7 +530,7 @@ graph TB
 ### Navigation Gaps
 
 1. **Journal and Tasks not in bottom tab bar** — Only accessible via Dashboard cards or direct URL. Users must know to look on the Dashboard or type the URL. Could be hard to discover.
-2. **Wellbeing History buried** — Only reachable from a Dashboard link. No tab bar entry, no header shortcut.
+2. **Wellbeing History / Insights buried** — The Insights page is now reachable via the Wellbeing card's overview modal (chevron → 📈 Insights); its AI Review is also surfaced in the header AI hub as the Wellbeing Summary. The analytics tabs (Correlations, Predictions, etc.) still have no bottom-tab entry.
 3. **Win Archive discovery** — Accessed via the "Achievements" tab on Goals page or the Goal Completed flow.
 
 ### Modal vs Page Inconsistency
