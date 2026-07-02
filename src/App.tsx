@@ -668,7 +668,6 @@ const HabitTrackerContent: React.FC = () => {
         ) : view === 'tour' ? (
           <TourPage
             onNavigate={(route, params) => handleNavigate(route, params)}
-            onOpenSettings={() => window.dispatchEvent(new Event('habitflow:open-settings'))}
             onBack={() => handleNavigate('dashboard')}
           />
         ) : view === 'roadmap' ? (
