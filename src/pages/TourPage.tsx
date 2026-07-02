@@ -23,7 +23,6 @@ import {
   CheckCircle2,
   FlaskConical,
   FileText,
-  ExternalLink,
 } from 'lucide-react';
 
 /**
@@ -338,17 +337,6 @@ export const TourPage: React.FC<TourPageProps> = (props) => {
           <ArrowLeft size={16} aria-hidden="true" />
           {isAuth ? 'Back to sign in' : 'Back to Dashboard'}
         </button>
-        <a
-          href="/?demo=1"
-          target="_blank"
-          rel="noreferrer"
-          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-neutral-800 border border-white/10 text-neutral-200 text-sm font-medium hover:bg-neutral-700 hover:text-white transition-colors"
-          title="Open the read-only demo full-screen in a new tab"
-        >
-          <Play size={14} aria-hidden="true" />
-          Open full-screen demo
-          <ExternalLink size={12} aria-hidden="true" className="text-neutral-500" />
-        </a>
       </div>
 
       {/* Hero (kept tight so the tour starts immediately) */}
