@@ -27,6 +27,7 @@ import { DEMO_USER_ID } from '../config/demo';
 import { PUBLIC_DEMO_HOUSEHOLD_ID } from '../../shared/demo';
 import { MONGO_COLLECTIONS, type GoalMilestone, type RoutineVariant } from '../../models/persistenceTypes';
 import type { WeeklyAIReview } from '../../shared/weeklyAiReview';
+import type { AIJournalReview } from '../../shared/aiJournalReview';
 import { createCategory } from '../repositories/categoryRepository';
 import { createHabit } from '../repositories/habitRepository';
 import { upsertHabitEntry } from '../repositories/habitEntryRepository';
@@ -857,6 +858,130 @@ export async function seedDemoShowcase(options?: { force?: boolean }): Promise<S
         'You already know your best days start before 9am. Consider writing tomorrow’s one priority the night before, as part of the wind-down checklist.',
       journalEntriesCount: 10,
     },
+  });
+
+  // AI Journal Review — the "AI Review" tab reads its content from saved
+  // journal_review reports (the read-only demo has no Gemini key to generate
+  // live), so without this the tour's Journal Review stop shows nothing.
+  // Composed from the ten seeded journal entries above; every claim is
+  // grounded in something an entry actually says. Range is the last 30 days,
+  // matching the panel's "Last 30 days" preset, so all ten entries are covered.
+  const journalReviewStart = dayKeyDaysAgo(29);
+  const journalReviewEnd = dayKeyDaysAgo(0);
+  const journalReview: AIJournalReview = {
+    rangeStart: journalReviewStart,
+    rangeEnd: journalReviewEnd,
+    overview:
+      'Across about ten entries this month, your writing keeps circling two threads: protecting the ' +
+      'morning for focus — walk, meditate, then deep work before any inputs — and a recurring tug-of-war ' +
+      'with screens before bed. The retrospectives lean constructive: most challenges end with a concrete ' +
+      'pivot rather than self-criticism.',
+    emotionalThemes: [
+      {
+        theme: 'Determined despite friction',
+        evidence:
+          'Several entries describe a hard start — heavy legs before a run, a day that "filled up" — ' +
+          'followed by getting the thing done anyway.',
+        confidence: 'high',
+      },
+      {
+        theme: 'Calmer, more grounded mornings',
+        evidence:
+          'The quiet early hour and the "space" after meditation are named repeatedly as setting the ' +
+          'tone for the rest of the day.',
+        confidence: 'medium',
+      },
+      {
+        theme: 'Growing awareness of your own patterns',
+        evidence:
+          'You name habits directly — the before-bed phone habit is described as "getting hard to ignore".',
+        confidence: 'high',
+      },
+    ],
+    recurringStressors: [
+      {
+        stressor: 'Screens and poor sleep at night',
+        evidence:
+          'A skipped wind-down and late scrolling is tied to sleeping badly and a sluggish, "wading ' +
+          'through syrup" morning.',
+        confidence: 'high',
+      },
+      {
+        stressor: 'Afternoon fragmentation and deadline pressure',
+        evidence:
+          'Meetings after 2pm breaking up the day, and a mid-afternoon stress spike around a deadline, ' +
+          'both recur.',
+        confidence: 'medium',
+      },
+      {
+        stressor: 'Late caffeine',
+        evidence: 'One entry notes being able to feel late coffee at bedtime.',
+        confidence: 'low',
+      },
+    ],
+    wins: [
+      {
+        title: 'An easy 4-mile run',
+        evidence: 'A 4.2-mile run that "felt easy for the first time in weeks."',
+      },
+      {
+        title: 'A full wind-down that worked',
+        evidence: 'Keeping the complete wind-down checklist and falling asleep in minutes.',
+      },
+      {
+        title: 'A meditation streak forming',
+        evidence:
+          'Three consecutive mornings of meditation, described as putting a little space before the ' +
+          'first stressful thing.',
+      },
+    ],
+    selfTalkPatterns: [
+      {
+        pattern: 'Constructive and forward-looking',
+        evidence:
+          'Retrospective "challenges" almost always end with a specific pivot rather than blame.',
+        suggestion: 'Keep pairing each challenge with one small next action — it is clearly working for you.',
+      },
+      {
+        pattern: 'Gently honest about slips',
+        evidence:
+          'You acknowledge skipping the wind-down or having late caffeine without harsh language.',
+      },
+    ],
+    reflectionQuestions: [
+      'What makes the ten minutes before a run or a deep-work block the hardest part, and what would lower that friction?',
+      'On the nights you kept the full wind-down, what was different earlier in the evening?',
+      'Which single change to your afternoons would most protect your focus and mood?',
+      'When a deadline stress spike hits, what would "flagging it early" actually look like in the moment?',
+    ],
+    suggestedNextSteps: [
+      {
+        title: 'Anchor meditation to the morning walk',
+        rationale: 'Meditation slips "when there is time" but sticks when attached to an existing habit.',
+        action: 'Sit for ten minutes right after the morning walk, before opening any screen.',
+      },
+      {
+        title: 'Make the wind-down non-negotiable on work nights',
+        rationale: 'The nights you skipped it line up with bad sleep and a sluggish next morning.',
+        action: 'Put the phone on the kitchen charger at 10pm as the first wind-down step.',
+      },
+      {
+        title: 'Set an explicit caffeine cutoff',
+        rationale: 'You could feel late caffeine at bedtime on at least one night.',
+        action: 'Last coffee before noon on run days; switch to decaf after.',
+      },
+    ],
+    dataLimitations: [
+      'This range covers about ten entries over a month, so the themes are directional rather than conclusive.',
+      'Entries skew toward mornings and retrospectives, so mid-day experiences are under-represented.',
+    ],
+  };
+
+  await saveAIReport(HH, UID, {
+    kind: 'journal_review',
+    periodStart: journalReviewStart,
+    periodEnd: journalReviewEnd,
+    payload: { review: journalReview },
   });
 
   return { seeded: true, reason: hadData ? 'reseeded' : 'seeded' };

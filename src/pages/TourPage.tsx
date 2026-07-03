@@ -215,7 +215,7 @@ const STEPS: TourStep[] = [
       'It’s deliberately bounded: grounded only in your entries, paraphrase instead of long quotes, no diagnoses or medical advice, and entries suggesting crisis surface a gentle support notice instead of AI counseling. A separate weekly Journal Summary lands as a dismissible banner and is saved into your history.',
     ],
     callout: 'Generated on demand with your own Gemini key; empty or sparse ranges get an honest low-data notice instead of invented themes.',
-    tryIt: 'Open the AI Review tab in the Journal to see the range picker and the saved summary.',
+    tryIt: 'Open the AI Review tab in the Journal, then the history (clock icon) to read a saved review.',
     preview: { route: 'journal', params: { tab: 'review' } },
   },
   {
