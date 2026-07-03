@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { X, Plus, Copy, Loader2, Image as ImageIcon, Sparkles } from 'lucide-react';
-import { uploadRoutineImage, deleteRoutineImage, suggestVariants } from '../lib/persistenceClient';
+import { uploadRoutineImage, deleteRoutineImage, suggestVariants, getActiveUserMode } from '../lib/persistenceClient';
 import { getGeminiApiKey, hasGeminiApiKey } from '../lib/geminiClient';
+import { getDemoSuggestedVariants } from '../lib/demoRoutineSuggestions';
 import { useRoutineStore } from '../store/RoutineContext';
 import { useHabitStore } from '../store/HabitContext';
 import { computeVariantLinkedHabits } from '../lib/routineVariantUtils';
@@ -183,7 +184,10 @@ export const RoutineEditorModal: React.FC<RoutineEditorModalProps> = ({
 
     // AI Suggest Variants
     const handleSuggestVariants = async () => {
-        if (!hasGeminiApiKey()) {
+        // The read-only demo is BYOK and can't call Gemini, so it shows
+        // pre-authored sample drafts instead — see demoRoutineSuggestions.
+        const isDemo = getActiveUserMode() === 'demo';
+        if (!isDemo && !hasGeminiApiKey()) {
             setAiError('No Gemini API key configured. Add your key in Settings.');
             return;
         }
@@ -196,16 +200,18 @@ export const RoutineEditorModal: React.FC<RoutineEditorModalProps> = ({
         setAiError(null);
         try {
             const activeVariant = variants[activeVariantIndex];
-            const result = await suggestVariants({
-                routineTitle: title.trim(),
-                categoryId,
-                existingSteps: (activeVariant?.steps || []).map(s => ({
-                    title: s.title,
-                    instruction: s.instruction,
-                    timerSeconds: s.timerSeconds,
-                })),
-                geminiApiKey: getGeminiApiKey(),
-            });
+            const result = isDemo
+                ? await getDemoSuggestedVariants(title.trim())
+                : await suggestVariants({
+                    routineTitle: title.trim(),
+                    categoryId,
+                    existingSteps: (activeVariant?.steps || []).map(s => ({
+                        title: s.title,
+                        instruction: s.instruction,
+                        timerSeconds: s.timerSeconds,
+                    })),
+                    geminiApiKey: getGeminiApiKey(),
+                });
 
             if (result.suggestedVariants && result.suggestedVariants.length > 0) {
                 const newVariants = result.suggestedVariants.map((sv, idx) => ({
@@ -437,7 +443,7 @@ export const RoutineEditorModal: React.FC<RoutineEditorModalProps> = ({
                         <div className="space-y-4">
                             {!isEditingStep && <><div className="flex items-center justify-between">
                                 <label className="text-sm font-medium text-neutral-400">Variants</label>
-                                {hasGeminiApiKey() && (
+                                {(hasGeminiApiKey() || getActiveUserMode() === 'demo') && (
                                     <button
                                         type="button"
                                         onClick={handleSuggestVariants}
