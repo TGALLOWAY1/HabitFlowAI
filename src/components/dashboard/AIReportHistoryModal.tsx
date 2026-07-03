@@ -85,11 +85,11 @@ export const AIReportHistoryModal: React.FC<AIReportHistoryModalProps> = ({
 
   return (
     <div
-      className="modal-overlay fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4"
+      className="modal-overlay fixed inset-0 bg-black/70 flex items-stretch sm:items-center justify-center z-[60] p-0 sm:p-4"
       onClick={onClose}
     >
       <div
-        className="bg-neutral-900 border border-white/10 rounded-xl shadow-2xl w-full max-w-lg max-h-[85dvh] flex flex-col"
+        className="bg-neutral-900 border border-white/10 rounded-none sm:rounded-xl shadow-2xl w-full max-w-3xl h-[100dvh] sm:h-[90dvh] flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
