@@ -149,7 +149,26 @@ async function resetDemoShowcaseData(): Promise<void> {
   }
 }
 
-/** True when the demo dataset exists and its newest entry is recent. */
+/**
+ * The archived AI reports the seed is expected to produce. When a deploy adds a
+ * new report kind (e.g. the Journal Review / Insights Review), an already-seeded
+ * demo whose entries are still recent would otherwise look "fresh" and skip the
+ * reseed — leaving those reports permanently missing. Requiring every kind to be
+ * present makes freshness track completeness, not just recency, so the new
+ * content lands on the next server start.
+ */
+const EXPECTED_REPORT_KINDS: readonly string[] = [
+  'weekly_review',
+  'journal_summary',
+  'journal_review',
+  'insights_review',
+];
+
+/**
+ * True when the demo dataset exists, its newest entry is recent, AND every
+ * expected AI report kind is archived. Any missing piece is treated as stale so
+ * the dataset is reseeded from the current code.
+ */
 async function isDemoDataFresh(): Promise<boolean> {
   const db = await getDb();
   const newest = await db
@@ -160,7 +179,15 @@ async function isDemoDataFresh(): Promise<boolean> {
     .toArray();
   if (newest.length === 0) return false;
   const newestDayKey = (newest[0] as { dayKey?: string }).dayKey ?? '';
-  return newestDayKey >= dayKeyDaysAgo(1);
+  if (newestDayKey < dayKeyDaysAgo(1)) return false;
+
+  // Reseed if any expected AI report is absent (new report kinds added since the
+  // dataset was last seeded, or a partial/failed prior seed).
+  const presentKinds = await db
+    .collection(MONGO_COLLECTIONS.AI_REPORTS)
+    .distinct('kind', { userId: UID, deletedAt: { $exists: false } });
+  const present = new Set(presentKinds as string[]);
+  return EXPECTED_REPORT_KINDS.every((kind) => present.has(kind));
 }
 
 // ---------------------------------------------------------------------------
