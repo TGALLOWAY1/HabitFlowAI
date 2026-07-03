@@ -33,8 +33,8 @@ Secondary domains are accessed through the dashboard or header:
 HabitFlow App
 ├── Header (global)
 │   ├── Logo / Branding
-│   ├── AI Hub (✨ modal: Wellbeing Summary + Weekly Review + Journal Insights cards; each with explanation, last-generated date, wand=generate, clock=history)
-│   │   └── AI Report History modal (per kind: browse / open / delete saved reports)
+│   ├── AI Hub (✨ modal: Wellbeing Summary + Weekly Review + Journal Insights cards; each with explanation, last-generated date, wand=generate, clock=history. Without a key each card surfaces the latest archived report inline — readable with no key, so the read-only demo shows real AI output)
+│   │   └── AI Report History modal (per kind: browse / open / delete saved reports; full-height page-style view)
 │   ├── Settings (modal)
 │   ├── Info / Tutorial (modal)
 │   └── User Menu (dropdown: sign out, hide streaks)
@@ -164,7 +164,7 @@ HabitFlow App
 | Remove Habit | Modal | Trash button on a habit that is linked to one or more goals (shown after the click-twice confirm so the user sees which goals are affected) | Lists the affected goals and offers two paths: **Archive** (recommended, restorable from Settings) or **Delete permanently** (soft-delete, not restorable). For unlinked habits the trash icon archives directly without opening this modal | Habits, Goals |
 | Archived Habits | Modal | Settings → "View archived habits" | Lists archived habits with Restore and Delete-permanently actions; empty state explains archive preserves entries | Habits |
 | Completed Habits | Modal | Routine runner completion | Summary of habits logged during routine | Habits, Entries |
-| AI Hub | Modal | Header ✨ AI icon | Stacks the three AI artifacts as inline generators (Wellbeing Summary, Weekly Review, Journal Insights); each shows an explanation, last-generated date, and a history icon | AI Reports |
+| AI Hub | Modal | Header ✨ AI icon | Stacks the three AI artifacts as inline generators (Wellbeing Summary, Weekly Review, Journal Insights); each shows an explanation, last-generated date, and a history icon. When no Gemini key is configured, each card renders the latest archived report inline (readable without a key), so the read-only demo shows real AI output instead of an empty prompt | AI Reports |
 | Settings | Modal | Header settings icon | Preferences, API keys, data management | User config |
 | Info / Tutorial | Modal | Header info icon | App tutorial and feature explanations | — |
 | Habit Creation Inline | Modal | Quick-add in certain contexts | Lightweight inline habit creation | Habits |
