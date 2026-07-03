@@ -2,9 +2,11 @@ import React, { useState } from 'react';
 import { Sparkles, Loader2, RefreshCw, Wand2, History } from 'lucide-react';
 import { hasGeminiApiKey, fetchWeeklyAIReview } from '../../lib/geminiClient';
 import type { WeeklyAIReview } from '../../shared/weeklyAiReview';
+import type { WeeklyReviewPayload } from '../../shared/aiReport';
 import { WeeklyReviewBody } from './WeeklyReviewBody';
 import { AIReportHistoryModal } from './AIReportHistoryModal';
 import { LastGeneratedLine, useLastGenerated } from './lastGenerated';
+import { useLatestReport } from './useLatestReport';
 
 type WeekChoice = 'this' | 'last';
 
@@ -30,6 +32,7 @@ export const WeeklyAIReviewCard: React.FC = () => {
 
   const hasKey = hasGeminiApiKey();
   const lastGenerated = useLastGenerated('weekly_review', genCount);
+  const archived = useLatestReport('weekly_review', genCount);
 
   const handleGenerate = async (choice: WeekChoice = week) => {
     setLoading(true);
@@ -72,10 +75,21 @@ export const WeeklyAIReviewCard: React.FC = () => {
           </button>
         </div>
         <LastGeneratedLine createdAt={lastGenerated} />
-        <p className="text-sm text-neutral-400 mt-1">
-          Add your Gemini API key in Settings to generate a grounded, data-driven review of your
-          week. Past reports stay readable from the history <History size={12} className="inline" aria-hidden="true" /> at any time.
-        </p>
+        {archived.loading ? (
+          <div className="flex items-center gap-3 py-4">
+            <Loader2 size={18} className="text-indigo-400 animate-spin" />
+            <span className="text-sm text-neutral-400">Loading latest review…</span>
+          </div>
+        ) : archived.report ? (
+          <div className="mt-3">
+            <WeeklyReviewBody review={(archived.report.payload as WeeklyReviewPayload).review} />
+          </div>
+        ) : (
+          <p className="text-sm text-neutral-400 mt-1">
+            Add your Gemini API key in Settings to generate a grounded, data-driven review of your
+            week. Past reports stay readable from the history <History size={12} className="inline" aria-hidden="true" /> at any time.
+          </p>
+        )}
         {showHistory && (
           <AIReportHistoryModal
             kind="weekly_review"

@@ -3,9 +3,11 @@ import { Sparkles, Loader2, RefreshCw, Wand2, History } from 'lucide-react';
 import { hasGeminiApiKey } from '../../lib/geminiClient';
 import { fetchInsightsAIReview } from '../../lib/insightsClient';
 import type { InsightsAIReview } from '../../shared/insightsAiReview';
+import type { InsightsReviewPayload } from '../../shared/aiReport';
 import { InsightsReviewBody } from '../insights/InsightsReviewBody';
 import { AIReportHistoryModal } from './AIReportHistoryModal';
 import { LastGeneratedLine, useLastGenerated } from './lastGenerated';
+import { useLatestReport } from './useLatestReport';
 
 /** Days of cross-domain data the review analyzes. */
 const REVIEW_WINDOW_DAYS = 90;
@@ -23,6 +25,7 @@ export const InsightsAIReviewCard: React.FC = () => {
 
   const hasKey = hasGeminiApiKey();
   const lastGenerated = useLastGenerated('insights_review', genCount);
+  const archived = useLatestReport('insights_review', genCount);
 
   const handleGenerate = async () => {
     setLoading(true);
@@ -82,11 +85,22 @@ export const InsightsAIReviewCard: React.FC = () => {
       <div className="bg-neutral-900/50 rounded-2xl border border-white/5 p-6 backdrop-blur-sm">
         {header}
         <LastGeneratedLine createdAt={lastGenerated} />
-        <p className="text-sm text-neutral-400 mt-1">
-          Add your Gemini API key in Settings to generate a grounded summary of your correlations,
-          trends, and wellbeing patterns. Past summaries stay readable from the history{' '}
-          <History size={12} className="inline" aria-hidden="true" /> at any time.
-        </p>
+        {archived.loading ? (
+          <div className="flex items-center gap-3 py-4">
+            <Loader2 size={18} className="text-indigo-400 animate-spin" />
+            <span className="text-sm text-neutral-400">Loading latest summary…</span>
+          </div>
+        ) : archived.report ? (
+          <div className="mt-3">
+            <InsightsReviewBody review={(archived.report.payload as InsightsReviewPayload).review} />
+          </div>
+        ) : (
+          <p className="text-sm text-neutral-400 mt-1">
+            Add your Gemini API key in Settings to generate a grounded summary of your correlations,
+            trends, and wellbeing patterns. Past summaries stay readable from the history{' '}
+            <History size={12} className="inline" aria-hidden="true" /> at any time.
+          </p>
+        )}
         {historyModal}
       </div>
     );
