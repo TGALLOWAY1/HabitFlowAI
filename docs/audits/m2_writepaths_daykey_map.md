@@ -94,10 +94,10 @@ Internal map of all HabitEntry mutation routes and dayKey/timezone logic for M2 
 
 ## 6. Known failing tests / TODOs (habitEntries.dayKey, TrackerGrid)
 
-- **docs/audits/audit_v1/10_OPEN_QUESTIONS.md**  
+- **docs/archive/audits/audit_v1/10_OPEN_QUESTIONS.md**  
   - RQ-03: Validate duplicate HabitEntry creation under concurrent writes (non-atomic upsert + no unique (userId, habitId, dayKey)).  
   - RQ-04: Reproduce day-boundary errors near midnight/DST (daySummary default range, normalization UTC fallback).
-- **docs/audits/audit_v1/09_PRIORITIZED_SURGICAL_PLAN.md**  
+- **docs/archive/audits/audit_v1/09_PRIORITIZED_SURGICAL_PLAN.md**  
   - Add unique active index on habitEntries for (userId, habitId, dayKey) with soft-delete-aware strategy; run `habitEntries.dayKey.test.ts`; add concurrent upsert collision test.
 - **src/server/services/truthQuery.ts**  
   - TODO (≈250): Add routineExecutionId when available in HabitEntry schema.

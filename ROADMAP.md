@@ -34,6 +34,7 @@ Status values: **Planned** · **In Progress** · **Needs Verification** · **Exp
 | Skills / skill tree | Exploring | Engagement | Deferred from the V1 iOS prioritization. See [`docs/reference/iOS release V1/Feature_Prioritization.md`](docs/reference/iOS%20release%20V1/Feature_Prioritization.md). |
 | Persona switching UX | Exploring | Personalization | Deferred from V1 prioritization. |
 | Identity prompts & coaching | Exploring | Coaching | Deferred from V1 prioritization; preserved psychological-safety direction in [`docs/archive/PSYCHOLOGICAL_SAFETY_V0.md`](docs/archive/PSYCHOLOGICAL_SAFETY_V0.md). |
+| Schedule view enhancements | Exploring | Goals/Schedule | Deferred Schedule-view ideas (forecasting, milestones, Gantt/iCal). Full list preserved in [`docs/archive/root/SCHEDULE_VIEW_BACKLOG.md`](docs/archive/root/SCHEDULE_VIEW_BACKLOG.md). |
 
 ---
 
