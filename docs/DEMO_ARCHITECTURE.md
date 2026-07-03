@@ -16,6 +16,8 @@ How the public, no-login demo and the interactive product tour work. Related:
    server. A visitor can never mutate demo data or reach any other user's data.
 4. **Honest by construction.** Roadmap items are confined to the Roadmap page; sample AI
    reports are composed from the seeded dataset's actual numbers and labeled as samples.
+   Where the read-only demo can't call a BYOK model live (e.g. the Routine Builder), it
+   shows pre-authored sample drafts in the real UI, and the tour callout says so.
 
 ## The three pieces
 
@@ -33,7 +35,10 @@ Browser ──X-Demo-Mode: true──▶ publicDemoIdentity ──▶ identityMi
   arbitrary user, and a real session cookie always wins.
 - `publicDemoReadOnlyGuard` rejects every non-GET/HEAD/OPTIONS request for that identity
   with `403 { demoReadOnly: true }`. This also blocks the AI generation endpoints (POST),
-  which is correct: live generation requires a user's own Gemini key.
+  which is correct: live generation requires a user's own Gemini key. Where an AI feature
+  would otherwise be invisible without a key, the client shows pre-authored sample output
+  instead of calling the endpoint — e.g. the Routine Builder's "Suggest with AI" injects
+  demo variant drafts (`src/lib/demoRoutineSuggestions.ts`) rather than POSTing.
 - Distinct from the **dev-only** `DEMO_MODE_ENABLED` flag (header-based identity for local
   debugging, writable, never active in production). If both flags are set in dev, requests
   with the demo header get the read-only public path.

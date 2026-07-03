@@ -244,8 +244,8 @@ const STEPS: TourStep[] = [
       'The suggestions arrive as editable drafts — rename, retime, reorder, or delete steps before anything is saved; nothing is applied silently. And because variant steps keep their habit links, an AI-drafted routine plugs straight into the tracking system: run it and the entries log themselves.',
     ],
     callout:
-      'BYOK like all AI here: suggestions run on your own free Gemini key, so the read-only demo can’t generate drafts live. The demo’s Morning Kickstart shows the end state — a routine with the kind of Quick/Standard variants the AI drafts for you.',
-    tryIt: 'Preview “Morning Kickstart” and flip between its variants — the exact shape “Suggest with AI” produces.',
+      'BYOK like all AI here: live suggestions run on your own free Gemini key. So you can see the flow without one, the read-only demo fills in representative sample drafts instead of calling Gemini — the same editable Quick/Standard/Deep shape the model produces.',
+    tryIt: 'Open “Morning Kickstart”, hit Edit, then click ✨ Suggest with AI — the Quick/Standard/Deep drafts appear as editable variant tabs.',
     preview: { route: 'routines' },
   },
   {
