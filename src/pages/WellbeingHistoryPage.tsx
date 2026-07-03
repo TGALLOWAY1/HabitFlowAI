@@ -17,12 +17,12 @@ export type InsightsTab = 'overview' | 'correlations' | 'habits' | 'medications'
 export type InsightsWindow = 30 | 90 | 180;
 
 const TABS: Array<{ id: InsightsTab; label: string; icon: React.ComponentType<{ size?: number; className?: string }> }> = [
+  { id: 'ai-review', label: 'AI Review', icon: Sparkles },
   { id: 'overview', label: 'Overview', icon: LayoutDashboard },
   { id: 'correlations', label: 'Correlations', icon: GitCompareArrows },
   { id: 'habits', label: 'Habits', icon: Activity },
   { id: 'medications', label: 'Medications', icon: Pill },
   { id: 'predictions', label: 'Predictions', icon: TrendingUp },
-  { id: 'ai-review', label: 'AI Review', icon: Sparkles },
 ];
 
 export const WellbeingHistoryPage: React.FC<Props> = ({ onBack }) => {
@@ -30,7 +30,7 @@ export const WellbeingHistoryPage: React.FC<Props> = ({ onBack }) => {
   const isAuthorized = isBetaViewer(user);
 
   const [windowDays, setWindowDays] = useState<InsightsWindow>(90);
-  const [tab, setTab] = useState<InsightsTab>('overview');
+  const [tab, setTab] = useState<InsightsTab>('ai-review');
 
   useEffect(() => {
     if (!isAuthorized) onBack();
