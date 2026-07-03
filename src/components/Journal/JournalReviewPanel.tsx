@@ -2,9 +2,11 @@ import React, { useState } from 'react';
 import { Sparkles, Loader2, RefreshCw, History } from 'lucide-react';
 import { hasGeminiApiKey, fetchJournalReview } from '../../lib/geminiClient';
 import type { AIJournalReview } from '../../shared/aiJournalReview';
+import type { JournalReviewPayload } from '../../shared/aiReport';
 import { JournalReviewBody } from './JournalReviewBody';
 import { AIReportHistoryModal } from '../dashboard/AIReportHistoryModal';
 import { LastGeneratedLine, useLastGenerated } from '../dashboard/lastGenerated';
+import { useLatestReport } from '../dashboard/useLatestReport';
 
 /** Local YYYY-MM-DD for today, optionally going back `daysAgo` days. */
 function dayKey(daysAgo = 0): string {
@@ -33,6 +35,7 @@ export const JournalReviewPanel: React.FC = () => {
 
   const hasKey = hasGeminiApiKey();
   const lastGenerated = useLastGenerated('journal_review', genCount);
+  const archived = useLatestReport('journal_review', genCount);
 
   const applyPreset = (next: RangePreset) => {
     setPreset(next);
@@ -98,11 +101,22 @@ export const JournalReviewPanel: React.FC = () => {
           {historyButton}
         </div>
         <LastGeneratedLine createdAt={lastGenerated} />
-        <p className="text-sm text-neutral-400 mt-1">
-          Add your Gemini API key in Settings to generate a grounded, supportive review of your
-          journal entries over any date range. Past reviews stay readable from the history{' '}
-          <History size={12} className="inline" aria-hidden="true" /> at any time.
-        </p>
+        {archived.loading ? (
+          <div className="flex items-center gap-3 py-4">
+            <Loader2 size={18} className="text-indigo-400 animate-spin" />
+            <span className="text-sm text-neutral-400">Loading latest review…</span>
+          </div>
+        ) : archived.report ? (
+          <div className="mt-3">
+            <JournalReviewBody review={(archived.report.payload as JournalReviewPayload).review} />
+          </div>
+        ) : (
+          <p className="text-sm text-neutral-400 mt-1">
+            Add your Gemini API key in Settings to generate a grounded, supportive review of your
+            journal entries over any date range. Past reviews stay readable from the history{' '}
+            <History size={12} className="inline" aria-hidden="true" /> at any time.
+          </p>
+        )}
         {historyModal}
       </div>
     );
