@@ -27,6 +27,7 @@ import { DEMO_USER_ID } from '../config/demo';
 import { PUBLIC_DEMO_HOUSEHOLD_ID } from '../../shared/demo';
 import { MONGO_COLLECTIONS, type GoalMilestone, type RoutineVariant } from '../../models/persistenceTypes';
 import type { WeeklyAIReview } from '../../shared/weeklyAiReview';
+import type { InsightsAIReview } from '../../shared/insightsAiReview';
 import { createCategory } from '../repositories/categoryRepository';
 import { createHabit } from '../repositories/habitRepository';
 import { upsertHabitEntry } from '../repositories/habitEntryRepository';
@@ -555,6 +556,20 @@ export async function seedDemoShowcase(options?: { force?: boolean }): Promise<S
   const wEntries: WEntry[] = [];
   let weight = 174.5;
 
+  // Full-window aggregates for the seeded Insights AI Review below. Every figure
+  // the review cites is accumulated here from the same numbers written to the DB,
+  // so the narrative stays true to the dataset (matches the weekly-review pattern).
+  const insWin = {
+    windDownNights: 0,
+    windDownSleepSum: 0,
+    otherNights: 0,
+    otherSleepSum: 0,
+    moodSum: 0,
+    energySum: 0,
+    sleepSum: 0,
+    days: 0,
+  };
+
   for (let daysAgo = WELLBEING_DAYS - 1; daysAgo >= 0; daysAgo--) {
     const dayKey = dayKeyDaysAgo(daysAgo);
     const inReportWeek = reportDaySet.has(dayKey);
@@ -606,6 +621,19 @@ export async function seedDemoShowcase(options?: { force?: boolean }): Promise<S
       week.sleepScoreSum += appleScore;
       week.sleepScoreCount++;
       if (windDown) week.windDownNights++;
+    }
+
+    // Full-window accumulation for the seeded Insights AI Review.
+    insWin.days++;
+    insWin.moodSum += mood;
+    insWin.energySum += energy;
+    insWin.sleepSum += appleScore;
+    if (windDown) {
+      insWin.windDownNights++;
+      insWin.windDownSleepSum += appleScore;
+    } else {
+      insWin.otherNights++;
+      insWin.otherSleepSum += appleScore;
     }
 
     const m = (metricKey: WEntry['metricKey'], value: number | string, timeOfDay: 'morning' | 'evening' | null, timestampUtc: string): WEntry =>
@@ -672,9 +700,13 @@ export async function seedDemoShowcase(options?: { force?: boolean }): Promise<S
   const headache = await createSymptom({ name: 'Headache', active: true }, HH, UID);
 
   const logRng = mulberry32(42);
+  let allergyTakenDays = 0;
   for (let daysAgo = WELLBEING_DAYS - 1; daysAgo >= 0; daysAgo--) {
     const dayKey = dayKeyDaysAgo(daysAgo);
-    if (logRng() < 0.92) await setMedicationLog({ medicationId: allergyMed.id, dayKey, taken: true }, HH, UID);
+    if (logRng() < 0.92) {
+      await setMedicationLog({ medicationId: allergyMed.id, dayKey, taken: true }, HH, UID);
+      allergyTakenDays++;
+    }
     if (logRng() < 0.85) await setSupplementLog({ supplementId: vitaminD.id, dayKey, taken: true }, HH, UID);
     if (logRng() < 0.7) await setSupplementLog({ supplementId: magnesium.id, dayKey, taken: true }, HH, UID);
     if (logRng() < 0.13) {
@@ -857,6 +889,91 @@ export async function seedDemoShowcase(options?: { force?: boolean }): Promise<S
         'You already know your best days start before 9am. Consider writing tomorrow’s one priority the night before, as part of the wind-down checklist.',
       journalEntriesCount: 10,
     },
+  });
+
+  // Insights AI Review — the cross-domain narrative shown on the Insights page's
+  // AI Review tab. Seeded (not live-generated) so the read-only demo can display
+  // a real review without a Gemini key. Every figure is computed from insWin,
+  // which was accumulated from the same wellbeing entries written above.
+  const wdMean = insWin.windDownNights ? round1(insWin.windDownSleepSum / insWin.windDownNights) : 0;
+  const otherMean = insWin.otherNights ? round1(insWin.otherSleepSum / insWin.otherNights) : 0;
+  const sleepGap = round1(wdMean - otherMean);
+  const avgMoodWin = insWin.days ? round1(insWin.moodSum / insWin.days) : 0;
+  const avgEnergyWin = insWin.days ? round1(insWin.energySum / insWin.days) : 0;
+  const avgSleepWin = insWin.days ? Math.round(insWin.sleepSum / insWin.days) : 0;
+  const allergyAdherence = Math.round((allergyTakenDays / WELLBEING_DAYS) * 100);
+  const insRangeStart = dayKeyDaysAgo(WELLBEING_DAYS - 1);
+  const insRangeEnd = dayKeyDaysAgo(0);
+
+  const insightsReview: InsightsAIReview = {
+    rangeDays: WELLBEING_DAYS,
+    rangeStart: insRangeStart,
+    rangeEnd: insRangeEnd,
+    summary:
+      `Across the last ${WELLBEING_DAYS} days the clearest signal is behavioral: the evenings you ran the wind-down ` +
+      `routine were followed by better sleep. On wind-down nights your sleep score averaged ${wdMean}, versus ` +
+      `${otherMean} on the nights you skipped it — a gap of about ${sleepGap} points (n=${insWin.windDownNights} vs ` +
+      `${insWin.otherNights}). Sleep, in turn, tracks with how the next morning feels: mood averaged ${avgMoodWin}/5 ` +
+      `and energy ${avgEnergyWin}/5 over the window, both leaning higher on mornings after a stronger sleep score.\n\n` +
+      `Adherence is a quiet strength — the allergy medication was taken on ${allergyAdherence}% of days. Everything ` +
+      `below is correlation, not causation: these are relationships measured in your own data, not proof that one ` +
+      `thing causes another.`,
+    keyFindings: [
+      `Wind-down nights averaged a ${wdMean} sleep score vs ${otherMean} on other nights (n=${insWin.windDownNights} vs ${insWin.otherNights}).`,
+      `Sleep score averaged ${avgSleepWin} across ${insWin.days} nights in the window.`,
+      `Morning mood averaged ${avgMoodWin}/5 and energy ${avgEnergyWin}/5.`,
+      `Allergy medication adherence was ${allergyAdherence}% (${allergyTakenDays}/${WELLBEING_DAYS} days).`,
+    ],
+    patterns: [
+      {
+        title: 'Wind-down routine precedes better sleep',
+        evidence: `The ~${sleepGap}-point sleep-score gap between wind-down and non-wind-down nights, over ${insWin.days} nights, is the strongest relationship in the window.`,
+        confidence: 'high',
+      },
+      {
+        title: 'Better sleep tracks with better mornings',
+        evidence: `Mornings after higher sleep scores tended to log higher mood and energy; the effect is consistent but smaller than the wind-down → sleep link.`,
+        confidence: 'medium',
+      },
+      {
+        title: 'Phone-in-bed and late caffeine drag on sleep',
+        evidence: `Nights with the phone in bed or afternoon caffeine skewed toward lower sleep scores, though they overlap with non-wind-down nights and can't be cleanly separated.`,
+        confidence: 'low',
+      },
+    ],
+    outlook: [
+      `If your recent wind-down consistency holds, the simple linear trend keeps sleep scores around ${avgSleepWin} — a projection from the current slope, not a guarantee.`,
+      `Morning energy has been drifting up over the window; keeping the morning walk + meditation pairing is the most likely lever to hold that trend.`,
+    ],
+    recommendations: [
+      {
+        title: 'Protect the wind-down on work nights',
+        reason: `It's the single behavior with the largest measured effect on your sleep (~${sleepGap}-point gap).`,
+        suggestedAction: 'Set a fixed screens-off time and keep the phone charging outside the bedroom.',
+      },
+      {
+        title: 'Move caffeine earlier',
+        reason: 'Afternoon-caffeine days lean toward lower sleep scores and longer time to fall asleep.',
+        suggestedAction: 'Make noon your last-coffee cutoff and switch to decaf after.',
+      },
+      {
+        title: 'Keep the morning stack intact',
+        reason: 'Days that start with the walk and meditation show up with higher morning energy.',
+        suggestedAction: 'Anchor the ten-minute sit to the end of the walk so it stays near-automatic.',
+      },
+    ],
+    dataLimitations: [
+      `${WELLBEING_DAYS} days is a modest window — relationships are directional, not conclusive.`,
+      `Behavioral factors overlap (wind-down nights also tend to be phone-free), so their individual effects can't be fully separated.`,
+      'Sleep scores are entered manually, so occasional gaps or estimation noise are expected.',
+    ],
+  };
+
+  await saveAIReport(HH, UID, {
+    kind: 'insights_review',
+    periodStart: insRangeStart,
+    periodEnd: insRangeEnd,
+    payload: { review: insightsReview },
   });
 
   return { seeded: true, reason: hadData ? 'reseeded' : 'seeded' };

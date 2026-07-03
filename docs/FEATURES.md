@@ -142,7 +142,12 @@ Every feature area below is **Shipped** unless an item notes otherwise.
   driven by a cross-domain insights engine (`/api/insights/*`), computed from canonical
   truth at read time. All correlations use the same statistical approach as Sleep
   Analytics (present/absent day-group split + Cohen's d effect size) and are always
-  framed as correlation, never causation. Six tabs:
+  framed as correlation, never causation. Six tabs (AI Review is first and the default):
+  - **AI Review** (default tab) — Gemini BYOK narrative grounded only on the computed insights
+    (correlations, predictions, adherence); structured into summary, key findings,
+    confidence-tagged patterns, outlook, recommendations, and data limitations. The tab loads
+    the latest archived review on open, so a previously generated review (and the demo's seeded
+    review) is readable without a Gemini key; generating/regenerating still requires BYOK
   - **Overview** — Discoveries & milestones, a top-correlations preview, metric averages,
     plus the original wellbeing visualizations (Heatmap, Weekly Summary, Small Multiples)
   - **Correlations** — Factor↔outcome relationships across habits, medications, supplements,
@@ -154,9 +159,6 @@ Every feature area below is **Shipped** unless an item notes otherwise.
     medication↔wellbeing correlations
   - **Predictions** — Simple least-squares linear-trend projections per wellbeing metric
     (current → projected, change/week, confidence) with inline sparklines
-  - **AI Review** — Gemini BYOK narrative grounded only on the computed insights
-    (correlations, predictions, adherence); structured into summary, key findings,
-    confidence-tagged patterns, outlook, recommendations, and data limitations
 - **Time Window Selection** — View 30, 90, or 180 day periods (applies to all Insights tabs)
 
 ## Analytics
