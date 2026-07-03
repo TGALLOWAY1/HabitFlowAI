@@ -863,8 +863,9 @@ export async function seedDemoShowcase(options?: { force?: boolean }): Promise<S
   // AI Journal Review — the "AI Review" tab reads its content from saved
   // journal_review reports (the read-only demo has no Gemini key to generate
   // live), so without this the tour's Journal Review stop shows nothing.
-  // Composed from the ten seeded journal entries above; every claim is
-  // grounded in something an entry actually says. Range is the last 30 days,
+  // This is a genuine Gemini (gemini-3.5-flash) generation over the ten seeded
+  // journal entries above, produced with the same prompt/schema the live route
+  // uses — so it reflects the real output shape. Range is the last 30 days,
   // matching the panel's "Last 30 days" preset, so all ten entries are covered.
   const journalReviewStart = dayKeyDaysAgo(29);
   const journalReviewEnd = dayKeyDaysAgo(0);
@@ -872,108 +873,97 @@ export async function seedDemoShowcase(options?: { force?: boolean }): Promise<S
     rangeStart: journalReviewStart,
     rangeEnd: journalReviewEnd,
     overview:
-      'Across about ten entries this month, your writing keeps circling two threads: protecting the ' +
-      'morning for focus — walk, meditate, then deep work before any inputs — and a recurring tug-of-war ' +
-      'with screens before bed. The retrospectives lean constructive: most challenges end with a concrete ' +
-      'pivot rather than self-criticism.',
+      "Over the past month, your entries show a consistent focus on optimizing morning routines, managing deep work blocks, and protecting sleep quality. You have actively observed friction points—such as evening phone use and afternoon schedule fragmentation—and repeatedly used your reflections to propose practical, forward-looking adjustments.",
     emotionalThemes: [
       {
-        theme: 'Determined despite friction',
+        theme: "Appreciation for quiet, structured mornings",
         evidence:
-          'Several entries describe a hard start — heavy legs before a run, a day that "filled up" — ' +
-          'followed by getting the thing done anyway.',
-        confidence: 'high',
+          "Noted feeling grateful for early hours with coffee and no digital inputs, which helps set a positive tone for the day.",
+        confidence: "high",
       },
       {
-        theme: 'Calmer, more grounded mornings',
+        theme: "Satisfaction from physical activity and mindfulness",
         evidence:
-          'The quiet early hour and the "space" after meditation are named repeatedly as setting the ' +
-          'tone for the rest of the day.',
-        confidence: 'medium',
-      },
-      {
-        theme: 'Growing awareness of your own patterns',
-        evidence:
-          'You name habits directly — the before-bed phone habit is described as "getting hard to ignore".',
-        confidence: 'high',
+          "Described running as feeling easy after weeks of effort, and noted that consecutive days of meditation provided helpful mental space from stress.",
+        confidence: "medium",
       },
     ],
     recurringStressors: [
       {
-        stressor: 'Screens and poor sleep at night',
+        stressor: "Afternoon schedule fragmentation and deadlines",
         evidence:
-          'A skipped wind-down and late scrolling is tied to sleeping badly and a sluggish, "wading ' +
-          'through syrup" morning.',
-        confidence: 'high',
+          "Mentioned meetings breaking up the afternoon and experienced a specific mid-afternoon stress spike around a project deadline.",
+        confidence: "high",
       },
       {
-        stressor: 'Afternoon fragmentation and deadline pressure',
+        stressor: "Evening digital distractions impacting sleep",
         evidence:
-          'Meetings after 2pm breaking up the day, and a mid-afternoon stress spike around a deadline, ' +
-          'both recur.',
-        confidence: 'medium',
-      },
-      {
-        stressor: 'Late caffeine',
-        evidence: 'One entry notes being able to feel late coffee at bedtime.',
-        confidence: 'low',
+          "Scrolling instead of following a wind-down routine led to poor sleep and a sluggish morning.",
+        confidence: "medium",
       },
     ],
     wins: [
       {
-        title: 'An easy 4-mile run',
-        evidence: 'A 4.2-mile run that "felt easy for the first time in weeks."',
-      },
-      {
-        title: 'A full wind-down that worked',
-        evidence: 'Keeping the complete wind-down checklist and falling asleep in minutes.',
-      },
-      {
-        title: 'A meditation streak forming',
+        title: "Successful Deep Work Blocks",
         evidence:
-          'Three consecutive mornings of meditation, described as putting a little space before the ' +
-          'first stressful thing.',
+          "Completed a proposal draft by protecting morning hours, separating from the phone, and utilizing structured 90-minute focus sessions.",
+      },
+      {
+        title: "Building a Mindfulness Habit",
+        evidence:
+          "Achieved consecutive days of morning meditation, noting its positive effect on creating a buffer against daily stressors.",
+      },
+      {
+        title: "Improving Sleep Hygiene",
+        evidence:
+          "Successfully followed a wind-down checklist to fall asleep quickly and learned to cut off caffeine by noon to protect rest.",
       },
     ],
     selfTalkPatterns: [
       {
-        pattern: 'Constructive and forward-looking',
+        pattern: "Problem-solving and forward-looking",
         evidence:
-          'Retrospective "challenges" almost always end with a specific pivot rather than blame.',
-        suggestion: 'Keep pairing each challenge with one small next action — it is clearly working for you.',
+          "Frequently ends reflections with specific adjustments for the next day, such as moving meetings to the afternoon or changing the time of meditation.",
+        suggestion:
+          "Continue this highly pragmatic approach, but consider occasionally taking an extra moment to explicitly celebrate the days when the plan works perfectly.",
       },
       {
-        pattern: 'Gently honest about slips',
+        pattern: "Self-observant without harsh judgment",
         evidence:
-          'You acknowledge skipping the wind-down or having late caffeine without harsh language.',
+          "Noticed resistance to starting a run or skipping a wind-down routine by neutrally describing the pattern rather than using self-critical labels.",
       },
     ],
     reflectionQuestions: [
-      'What makes the ten minutes before a run or a deep-work block the hardest part, and what would lower that friction?',
-      'On the nights you kept the full wind-down, what was different earlier in the evening?',
-      'Which single change to your afternoons would most protect your focus and mood?',
-      'When a deadline stress spike hits, what would "flagging it early" actually look like in the moment?',
+      "What is the biggest difference in how your day feels when you successfully leave your phone in another room versus when you keep it nearby?",
+      "You noticed that starting a run is the hardest part; how might you apply that 'just get out the door' realization to other areas where you feel resistance?",
+      "Since afternoon deadlines and meetings cause stress spikes, how can you build a small, calming transition ritual into your midday routine?",
+      "You found that early meditation puts space between you and stressors. What does that 'space' feel like, and how can you intentionally protect it?",
     ],
     suggestedNextSteps: [
       {
-        title: 'Anchor meditation to the morning walk',
-        rationale: 'Meditation slips "when there is time" but sticks when attached to an existing habit.',
-        action: 'Sit for ten minutes right after the morning walk, before opening any screen.',
+        title: "Schedule a midday transition walk",
+        rationale:
+          "Since afternoons tend to bring schedule fragmentation and stress spikes, a physical break might help reset focus.",
+        action:
+          "Add a 10-minute walk right after lunch before tackling your afternoon meetings.",
       },
       {
-        title: 'Make the wind-down non-negotiable on work nights',
-        rationale: 'The nights you skipped it line up with bad sleep and a sluggish next morning.',
-        action: 'Put the phone on the kitchen charger at 10pm as the first wind-down step.',
+        title: "Standardize the evening wind-down alarm",
+        rationale:
+          "Doom-scrolling occasionally derails sleep, while the checklist proves highly effective when utilized.",
+        action:
+          "Set a daily recurring alarm 45 minutes before bed that prompts you to put the phone away and start the wind-down checklist.",
       },
       {
-        title: 'Set an explicit caffeine cutoff',
-        rationale: 'You could feel late caffeine at bedtime on at least one night.',
-        action: 'Last coffee before noon on run days; switch to decaf after.',
+        title: "Anchor meditation to an existing habit",
+        rationale:
+          "You noted that meditating 'when there is time' doesn't work as well as doing it systematically.",
+        action:
+          "Commit to doing your meditation immediately after your morning walk or first cup of coffee to lock it in.",
       },
     ],
     dataLimitations: [
-      'This range covers about ten entries over a month, so the themes are directional rather than conclusive.',
-      'Entries skew toward mornings and retrospectives, so mid-day experiences are under-represented.',
+      "This review is based on a limited set of 10 entries. It primarily captures work habits and morning routines, offering less visibility into evening or weekend experiences.",
     ],
   };
 
