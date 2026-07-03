@@ -56,7 +56,7 @@ Every feature area below is **Shipped** unless an item notes otherwise.
 - **Create/Edit Routines** — Build multi-step routines with title, category, and description
 - **Routine Variants** — Create multiple versions (e.g., Quick, Standard, Deep) with different steps and durations
 - **Variant Copy** — Duplicate an existing variant as a starting point
-- **AI Variant Suggestions** — Generate variant ideas via Gemini AI based on routine title and existing steps
+- **AI Variant Suggestions** — Generate variant ideas via Gemini AI based on routine title and existing steps. In the read-only demo (no key), "Suggest with AI" injects pre-authored sample Quick/Standard/Deep drafts so visitors can see the flow
 - **Steps** — Ordered steps with title, instruction text, and optional timer
 - **Step Timers** — Countdown timer or stopwatch mode per step
 - **Step Images** — Upload images for visual guidance (JPEG, PNG, WebP, max 5MB)

@@ -147,7 +147,7 @@ HabitFlow App
 | Bundle Picker | Modal | Habit context menu "Add to Bundle" | Select existing bundle for habit membership | Habits, Bundles |
 | Convert to Bundle Confirm | Modal | "Convert to Bundle" action | Confirmation before converting habit to bundle | Habits, Bundles |
 | Category Picker | Modal | "Move to Category" action | Change habit's category | Habits, Categories |
-| Routine Editor | Modal | "+ Routine" or edit routine | Create/edit routines with variants; step list navigates to dedicated Step Editor panel | Routines, Habits |
+| Routine Editor | Modal | "+ Routine" or edit routine | Create/edit routines with variants; step list navigates to dedicated Step Editor panel. "Suggest with AI" (Gemini BYOK) drafts Quick/Standard/Deep variants; shown when a key is present, and also in the read-only demo where it injects pre-authored sample drafts instead of calling the model | Routines, Habits |
 | Routine Runner | Modal | "Play" button on routine card | Step-by-step routine execution with timers | Routines, Habits, Entries |
 | Routine Preview | Modal | Preview button on routine card | Read-only routine view before starting | Routines |
 | Wellbeing Overview | Modal | Wellbeing card chevron | Today's status (Morning/Evening/Sleep), 7-day trend cards, quick actions | Wellbeing Entries |
