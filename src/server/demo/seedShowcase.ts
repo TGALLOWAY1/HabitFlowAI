@@ -27,6 +27,7 @@ import { DEMO_USER_ID } from '../config/demo';
 import { PUBLIC_DEMO_HOUSEHOLD_ID } from '../../shared/demo';
 import { MONGO_COLLECTIONS, type GoalMilestone, type RoutineVariant } from '../../models/persistenceTypes';
 import type { WeeklyAIReview } from '../../shared/weeklyAiReview';
+import type { AIJournalReview } from '../../shared/aiJournalReview';
 import type { InsightsAIReview } from '../../shared/insightsAiReview';
 import { createCategory } from '../repositories/categoryRepository';
 import { createHabit } from '../repositories/habitRepository';
@@ -891,6 +892,113 @@ export async function seedDemoShowcase(options?: { force?: boolean }): Promise<S
     },
   });
 
+  // AI Journal Review — the "AI Review" tab reads its content from saved
+  // journal_review reports (the read-only demo has no Gemini key to generate
+  // live), so without this the tour's Journal Review stop shows nothing.
+  // This is a genuine Gemini (gemini-3.5-flash) generation over the ten seeded
+  // journal entries above, produced with the same prompt/schema the live route
+  // uses — so it reflects the real output shape. Range is the last 30 days,
+  // matching the panel's "Last 30 days" preset, so all ten entries are covered.
+  const journalReviewStart = dayKeyDaysAgo(29);
+  const journalReviewEnd = dayKeyDaysAgo(0);
+  const journalReview: AIJournalReview = {
+    rangeStart: journalReviewStart,
+    rangeEnd: journalReviewEnd,
+    overview:
+      "Over the past month, your entries show a consistent focus on optimizing morning routines, managing deep work blocks, and protecting sleep quality. You have actively observed friction points—such as evening phone use and afternoon schedule fragmentation—and repeatedly used your reflections to propose practical, forward-looking adjustments.",
+    emotionalThemes: [
+      {
+        theme: "Appreciation for quiet, structured mornings",
+        evidence:
+          "Noted feeling grateful for early hours with coffee and no digital inputs, which helps set a positive tone for the day.",
+        confidence: "high",
+      },
+      {
+        theme: "Satisfaction from physical activity and mindfulness",
+        evidence:
+          "Described running as feeling easy after weeks of effort, and noted that consecutive days of meditation provided helpful mental space from stress.",
+        confidence: "medium",
+      },
+    ],
+    recurringStressors: [
+      {
+        stressor: "Afternoon schedule fragmentation and deadlines",
+        evidence:
+          "Mentioned meetings breaking up the afternoon and experienced a specific mid-afternoon stress spike around a project deadline.",
+        confidence: "high",
+      },
+      {
+        stressor: "Evening digital distractions impacting sleep",
+        evidence:
+          "Scrolling instead of following a wind-down routine led to poor sleep and a sluggish morning.",
+        confidence: "medium",
+      },
+    ],
+    wins: [
+      {
+        title: "Successful Deep Work Blocks",
+        evidence:
+          "Completed a proposal draft by protecting morning hours, separating from the phone, and utilizing structured 90-minute focus sessions.",
+      },
+      {
+        title: "Building a Mindfulness Habit",
+        evidence:
+          "Achieved consecutive days of morning meditation, noting its positive effect on creating a buffer against daily stressors.",
+      },
+      {
+        title: "Improving Sleep Hygiene",
+        evidence:
+          "Successfully followed a wind-down checklist to fall asleep quickly and learned to cut off caffeine by noon to protect rest.",
+      },
+    ],
+    selfTalkPatterns: [
+      {
+        pattern: "Problem-solving and forward-looking",
+        evidence:
+          "Frequently ends reflections with specific adjustments for the next day, such as moving meetings to the afternoon or changing the time of meditation.",
+        suggestion:
+          "Continue this highly pragmatic approach, but consider occasionally taking an extra moment to explicitly celebrate the days when the plan works perfectly.",
+      },
+      {
+        pattern: "Self-observant without harsh judgment",
+        evidence:
+          "Noticed resistance to starting a run or skipping a wind-down routine by neutrally describing the pattern rather than using self-critical labels.",
+      },
+    ],
+    reflectionQuestions: [
+      "What is the biggest difference in how your day feels when you successfully leave your phone in another room versus when you keep it nearby?",
+      "You noticed that starting a run is the hardest part; how might you apply that 'just get out the door' realization to other areas where you feel resistance?",
+      "Since afternoon deadlines and meetings cause stress spikes, how can you build a small, calming transition ritual into your midday routine?",
+      "You found that early meditation puts space between you and stressors. What does that 'space' feel like, and how can you intentionally protect it?",
+    ],
+    suggestedNextSteps: [
+      {
+        title: "Schedule a midday transition walk",
+        rationale:
+          "Since afternoons tend to bring schedule fragmentation and stress spikes, a physical break might help reset focus.",
+        action:
+          "Add a 10-minute walk right after lunch before tackling your afternoon meetings.",
+      },
+      {
+        title: "Standardize the evening wind-down alarm",
+        rationale:
+          "Doom-scrolling occasionally derails sleep, while the checklist proves highly effective when utilized.",
+        action:
+          "Set a daily recurring alarm 45 minutes before bed that prompts you to put the phone away and start the wind-down checklist.",
+      },
+      {
+        title: "Anchor meditation to an existing habit",
+        rationale:
+          "You noted that meditating 'when there is time' doesn't work as well as doing it systematically.",
+        action:
+          "Commit to doing your meditation immediately after your morning walk or first cup of coffee to lock it in.",
+      },
+    ],
+    dataLimitations: [
+      "This review is based on a limited set of 10 entries. It primarily captures work habits and morning routines, offering less visibility into evening or weekend experiences.",
+    ],
+  };
+
   // Insights AI Review — the cross-domain narrative shown on the Insights page's
   // AI Review tab. Seeded (not live-generated) so the read-only demo can display
   // a real review without a Gemini key. Every figure is computed from insWin,
@@ -968,6 +1076,13 @@ export async function seedDemoShowcase(options?: { force?: boolean }): Promise<S
       'Sleep scores are entered manually, so occasional gaps or estimation noise are expected.',
     ],
   };
+
+  await saveAIReport(HH, UID, {
+    kind: 'journal_review',
+    periodStart: journalReviewStart,
+    periodEnd: journalReviewEnd,
+    payload: { review: journalReview },
+  });
 
   await saveAIReport(HH, UID, {
     kind: 'insights_review',
