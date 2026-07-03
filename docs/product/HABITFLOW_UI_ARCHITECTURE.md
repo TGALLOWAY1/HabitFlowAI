@@ -95,12 +95,12 @@ HabitFlow App
 │   └── Inbox column
 │
 ├── Insights (via Wellbeing card → 📈 Insights; beta-gated)
+│   ├── AI Review tab (default; Gemini BYOK narrative — shows the latest archived review, no key needed to read)
 │   ├── Overview tab (discoveries, top correlations, metric averages, heatmap/weekly/multiples)
 │   ├── Correlations tab (what's helping / what's holding you back)
 │   ├── Habits tab (habit stats + habit↔wellbeing correlations)
 │   ├── Medications tab (adherence + medication↔wellbeing correlations)
-│   ├── Predictions tab (linear-trend projections)
-│   └── AI Review tab (Gemini BYOK narrative)
+│   └── Predictions tab (linear-trend projections)
 │
 └── Debug Entries (dev only)
 ```
@@ -128,7 +128,7 @@ HabitFlow App
 | Create Goal (Step 2) | Modal | Next from Step 1 | Link habits to goal (filtered by category if selected) | Goals, Habits | Goals List (on submit) |
 | Journal | Page | Dashboard card / `?view=journal` (`&tab=` deep-links Free/Template/History/AI Review) | Free-write, templates, history, and AI Review tabs; auto-generated AI summary banner | Journal Entries | — |
 | Tasks | Page | Dashboard card / `?view=tasks` | Today + Inbox columns; click a task title or pencil icon to rename inline | Tasks | — |
-| Insights | Page | Wellbeing card → 📈 Insights (`?view=wellbeing-history`); beta-gated | Tabbed analytics: Overview, Correlations, Habits, Medications, Predictions, AI Review. Cross-domain correlations (Cohen's d), linear-trend predictions, and a Gemini AI narrative, all from canonical truth at read time | Wellbeing Entries, Habit Entries, Medication/Supplement/Symptom Logs | — |
+| Insights | Page | Wellbeing card → 📈 Insights (`?view=wellbeing-history`); beta-gated | Tabbed analytics: AI Review (default), Overview, Correlations, Habits, Medications, Predictions. Cross-domain correlations (Cohen's d), linear-trend predictions, and a Gemini AI narrative, all from canonical truth at read time. The AI Review tab loads the latest archived review (readable without a Gemini key; the demo ships a seeded one) | Wellbeing Entries, Habit Entries, Medication/Supplement/Symptom Logs | — |
 | Take a Tour | Page | "Take the tour" on Login (no account required) / `?view=tour` | Interactive 14-stop guided walkthrough with the four AI features as first-class stops (violet "AI" chips/badges): Weekly AI Review follows Habits, AI Journal Review follows Journal, the AI Routine Builder follows Routines, and Wellbeing Insights leads with its AI Review narration. Each stop pairs a narrative panel (problem, mechanics, honesty badge: Functional today / Beta / AI · BYOK / Roadmap) with a live preview — a persistent iframe running the real app read-only at `/?demo=1&embed=1`, navigated between stops via postMessage. Desktop/Mobile toggle resizes the preview to a real 390px viewport. Renders in `app` and pre-login `auth` modes | — | App mode: Dashboard, Roadmap. Auth mode: Invite Redeem, Login, Roadmap |
 | Roadmap | Page | Final tour stop → "View the Roadmap" / `?view=roadmap` (also pre-login via the auth gate) | Dedicated home for future functionality, mirrored from `ROADMAP.md` with status chips (In Development / Planned / Exploring). Honesty contract: nothing on the page exists yet; shipped features never appear on it | — | Back (Dashboard in app mode; Tour in auth mode) |
 | Debug Entries | Page (dev) | `?view=debug-entries` | Testing entry data | Entries | — |
