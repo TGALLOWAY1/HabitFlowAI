@@ -90,7 +90,7 @@ function renderExamples(examples: Example[]) {
 }
 
 export function InfoModal({ isOpen, onClose }: InfoModalProps) {
-  const [activeTab, setActiveTab] = useState<'basics' | 'advanced' | 'ai' | 'health'>('basics');
+  const [activeTab, setActiveTab] = useState<'basics' | 'advanced' | 'ai'>('basics');
 
   if (!isOpen) return null;
 
@@ -155,17 +155,6 @@ export function InfoModal({ isOpen, onClose }: InfoModalProps) {
             >
               <Brain size={14} className={activeTab === 'ai' ? 'text-emerald-400' : ''} />
               AI
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab('health')}
-              className={`flex items-center gap-1.5 pb-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${activeTab === 'health'
-                ? 'border-emerald-400 text-emerald-400'
-                : 'border-transparent text-neutral-500 hover:text-neutral-300'}`}
-            >
-              <Activity size={14} className={activeTab === 'health' ? 'text-emerald-400' : ''} />
-              Health
-              <span className="text-[9px] uppercase tracking-wide bg-amber-500/20 text-amber-400 px-1 py-0.5 rounded font-semibold">Beta</span>
             </button>
           </div>
 
@@ -473,63 +462,8 @@ export function InfoModal({ isOpen, onClose }: InfoModalProps) {
                     <p className="mt-0.5">AI analyzes your routine and suggests Quick/Standard/Deep variants with full step lists.</p>
                   </li>
                   <li className="text-xs text-neutral-400 pl-2">
-                    <span className="font-semibold text-neutral-300">Journal Summaries</span>
-                    <p className="mt-0.5">Auto-generated weekly summary of your journal entries with themes, highlights, actionable feedback, and follow-up reminders. Appears as a dismissible banner on the Journal page and is saved to your journal history. Use the wand icon to generate and the clock icon to browse your saved summary history.</p>
-                  </li>
-                  <li className="text-xs text-neutral-400 pl-2">
                     <span className="font-semibold text-neutral-300">Journal Insights</span>
                     <p className="mt-0.5">In the header AI hub (also on the Journal page's "AI Review" tab), pick a date range (last 7/30 days or custom) and generate a structured, grounded review of your entries: an Overview, Emotional Themes, Recurring Stressors, Wins, Self-Talk Patterns, Reflection Questions, Suggested Next Steps, and honest Data Limitations. It reads only your own writing, separates evidence from interpretation from suggestions, and stays supportive and non-clinical (no diagnoses). Empty ranges and sparse data are flagged, each generation is saved to history, and you can regenerate anytime.</p>
-                  </li>
-                  <li className="text-xs text-neutral-400 pl-2">
-                    <span className="font-semibold text-neutral-300">Persona-Driven Insights</span>
-                    <p className="mt-0.5">Choose an AI persona (like "The Strategic Coach") to guide your journaling prompts.</p>
-                  </li>
-                </ul>
-              </div>
-            </div>
-          )}
-
-          {/* Health tab */}
-          {activeTab === 'health' && (
-            <div className="p-4 space-y-5">
-              <div className="bg-amber-500/5 border border-amber-500/20 rounded-lg px-3 py-2.5">
-                <p className="text-xs text-amber-400 uppercase tracking-wide font-semibold">Beta Feature</p>
-                <p className="text-xs text-neutral-400 mt-1">Apple Health integration is currently available to select users.</p>
-              </div>
-
-              <div className="pl-3 border-l-2 border-emerald-500/40">
-                <p className="text-sm text-neutral-200">
-                  <span className="font-bold text-emerald-400">Apple Health Integration</span>
-                </p>
-                <p className="text-sm text-neutral-300 mt-1">Sync health data from Apple Health to automatically track habits based on real-world activity.</p>
-
-                <ul className="mt-2 space-y-2">
-                  <li className="text-xs text-neutral-400 pl-2">
-                    <span className="font-semibold text-neutral-300">Getting Started</span>
-                    <p className="mt-0.5">Go to Settings &rarr; Apple Health to connect metrics and create health-tracked habits from a dedicated page.</p>
-                  </li>
-                  <li className="text-xs text-neutral-400 pl-2">
-                    <span className="font-semibold text-neutral-300">Supported Metrics</span>
-                    <p className="mt-0.5">Steps, active calories, sleep hours, workout minutes, and weight.</p>
-                  </li>
-                  <li className="text-xs text-neutral-400 pl-2">
-                    <span className="font-semibold text-neutral-300">Health Rules</span>
-                    <p className="mt-0.5">Define rules that auto-log habits when health data meets a threshold (e.g., auto-log "Walk" when steps exceed 8,000).</p>
-                  </li>
-                  <li className="text-xs text-neutral-400 pl-2">
-                    <span className="font-semibold text-neutral-300">Suggestions</span>
-                    <p className="mt-0.5">Receive suggestions to log habits based on your health data. Accept or dismiss each suggestion.</p>
-                  </li>
-                  <li className="text-xs text-neutral-400 pl-2">
-                    <span className="font-semibold text-neutral-300">Backfill</span>
-                    <p className="mt-0.5">When creating a health-tracked habit, pick a backfill window of 7, 30, or 90 days (or none). Backfill reads Apple Health data already synced into HabitFlow and creates entries for qualifying days in the window. It never overwrites existing entries and is capped at 365 days.</p>
-                  </li>
-                  <li className="text-xs text-neutral-400 pl-2">
-                    <span className="font-semibold text-neutral-300">Auto-Logged Entries</span>
-                    <div className="flex items-center gap-1.5 mt-0.5">
-                      <Activity size={11} className="text-emerald-500/70 shrink-0" />
-                      <span>Entries from Apple Health are marked with this icon in the tracker.</span>
-                    </div>
                   </li>
                 </ul>
               </div>
