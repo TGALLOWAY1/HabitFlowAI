@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useRef, useEffect } from 'react';
-import { LayoutGrid, Settings, User, LogOut, Info, Eye, EyeOff, FlaskConical, Sparkles } from 'lucide-react';
+import { LayoutGrid, Settings, User, LogOut, Eye, EyeOff, FlaskConical, Sparkles } from 'lucide-react';
 import { useHabitStore } from '../store/HabitContext';
 import { useAuth } from '../store/AuthContext';
 import { useDashboardPrefs } from '../store/DashboardPrefsContext';
@@ -8,7 +8,6 @@ import { isBetaViewer } from '../lib/betaAccess';
 import { DEMO_WRITE_BLOCKED_EVENT, DEMO_READ_ONLY_MESSAGE, exitDemoMode, isEmbedMode } from '../lib/demoMode';
 import { useToast } from './Toast';
 import { SettingsModal } from './SettingsModal';
-import { InfoModal } from './InfoModal';
 import { AIStudioModal } from './dashboard/AIStudioModal';
 
 interface LayoutProps {
@@ -27,7 +26,6 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
     const [devNotice, setDevNotice] = useState<string | null>(null);
     const [userMenuOpen, setUserMenuOpen] = useState(false);
     const [settingsOpen, setSettingsOpen] = useState(false);
-    const [infoOpen, setInfoOpen] = useState(false);
     const [aiOpen, setAiOpen] = useState(false);
     const userMenuRef = useRef<HTMLDivElement>(null);
 
@@ -150,13 +148,6 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
                         <Sparkles size={20} />
                     </button>
                     <button
-                        onClick={() => setInfoOpen(true)}
-                        className="min-h-[44px] min-w-[44px] flex items-center justify-center hover:bg-white/5 rounded-full transition-colors text-neutral-400 hover:text-white"
-                        title="How HabitFlow Works"
-                    >
-                        <Info size={20} />
-                    </button>
-                    <button
                         onClick={() => setSettingsOpen(true)}
                         className="min-h-[44px] min-w-[44px] flex items-center justify-center hover:bg-white/5 rounded-full transition-colors text-neutral-400 hover:text-white"
                         title="Settings"
@@ -252,10 +243,6 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
                     window.history.pushState({ view: route }, '', url);
                     window.dispatchEvent(new PopStateEvent('popstate'));
                 }}
-            />
-            <InfoModal
-                isOpen={infoOpen}
-                onClose={() => setInfoOpen(false)}
             />
             {aiOpen && <AIStudioModal onClose={() => setAiOpen(false)} />}
         </div>

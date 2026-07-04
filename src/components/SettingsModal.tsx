@@ -3,8 +3,9 @@ import { useAuth } from '../store/AuthContext';
 import { useHabitStore } from '../store/HabitContext';
 import { getGeminiApiKey, setGeminiApiKey } from '../lib/geminiClient';
 import { deleteAllUserData, isHealthFeatureEnabled } from '../lib/persistenceClient';
-import { Eye, EyeOff, Sparkles, Activity, ChevronRight, Archive } from 'lucide-react';
+import { Eye, EyeOff, Sparkles, Activity, ChevronRight, Archive, Info } from 'lucide-react';
 import { ArchivedHabitsModal } from './ArchivedHabitsModal';
+import { InfoModal } from './InfoModal';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -21,6 +22,7 @@ export function SettingsModal({ isOpen, onClose, onNavigate }: SettingsModalProp
   const [showGeminiKey, setShowGeminiKey] = useState(false);
   const [geminiKeySaved, setGeminiKeySaved] = useState(false);
   const [showArchivedHabits, setShowArchivedHabits] = useState(false);
+  const [showInfo, setShowInfo] = useState(false);
   const archivedCount = habits.filter(h => h.archived === true && !h.deletedAt).length;
   const handleReopenGuide = useCallback(() => {
     try { localStorage.removeItem('hf_setup_guide_dismissed'); } catch { /* noop */ }
@@ -88,6 +90,14 @@ export function SettingsModal({ isOpen, onClose, onNavigate }: SettingsModalProp
               >
                 <Sparkles size={16} className="text-emerald-400 flex-shrink-0" />
                 Reopen setup guide
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowInfo(true)}
+                className="w-full mt-3 px-4 py-2.5 rounded-lg bg-neutral-800 text-neutral-200 border border-white/10 hover:bg-neutral-700 text-sm text-left flex items-center gap-2"
+              >
+                <Info size={16} className="text-emerald-400 flex-shrink-0" />
+                How HabitFlow works
               </button>
             </section>
 
@@ -263,6 +273,10 @@ export function SettingsModal({ isOpen, onClose, onNavigate }: SettingsModalProp
       <ArchivedHabitsModal
         isOpen={showArchivedHabits}
         onClose={() => setShowArchivedHabits(false)}
+      />
+      <InfoModal
+        isOpen={showInfo}
+        onClose={() => setShowInfo(false)}
       />
     </div>
   );
