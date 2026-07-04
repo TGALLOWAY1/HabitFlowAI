@@ -36,7 +36,7 @@ HabitFlow App
 │   ├── AI Hub (✨ modal: Wellbeing Summary + Weekly Review + Journal Insights cards; each with explanation, last-generated date, wand=generate, clock=history. Without a key each card surfaces the latest archived report inline — readable with no key, so the read-only demo shows real AI output)
 │   │   └── AI Report History modal (per kind: browse / open / delete saved reports; full-height page-style view)
 │   ├── Settings (modal)
-│   ├── Info / Tutorial (modal)
+│   │   └── Info / Tutorial "How HabitFlow works" (modal, opened from Settings)
 │   └── User Menu (dropdown: sign out, hide streaks)
 │
 ├── Bottom Tab Bar (4 tabs)
@@ -166,7 +166,7 @@ HabitFlow App
 | Completed Habits | Modal | Routine runner completion | Summary of habits logged during routine | Habits, Entries |
 | AI Hub | Modal | Header ✨ AI icon | Stacks the three AI artifacts as inline generators (Wellbeing Summary, Weekly Review, Journal Insights); each shows an explanation, last-generated date, and a history icon. When no Gemini key is configured, each card renders the latest archived report inline (readable without a key), so the read-only demo shows real AI output instead of an empty prompt | AI Reports |
 | Settings | Modal | Header settings icon | Preferences, API keys, data management | User config |
-| Info / Tutorial | Modal | Header info icon | App tutorial and feature explanations | — |
+| Info / Tutorial ("How HabitFlow works") | Modal | Settings → "How HabitFlow works" (below "Reopen setup guide") | App tutorial and feature explanations across Basics, Advanced, and AI tabs | — |
 | Habit Creation Inline | Modal | Quick-add in certain contexts | Lightweight inline habit creation | Habits |
 
 ### Apple Health Integration (Feature-Gated)
@@ -262,13 +262,14 @@ graph TB
     subgraph "Global (Header)"
         AIHUB["AI Hub Modal"]
         SETTINGS["Settings Modal"]
-        INFO["Info Modal"]
+        INFO["Info Modal (How HabitFlow works)"]
     end
 
     TAB_DASH --> DASH
     TAB_HABITS --> TRACKER
     TAB_ROUTINES --> ROUTINE_LIST
     TAB_GOALS --> GOALS_LIST
+    SETTINGS --> INFO
 ```
 
 ---
