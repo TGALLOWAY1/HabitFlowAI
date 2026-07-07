@@ -106,8 +106,9 @@ and a polished, mobile-friendly UI — generated on demand, with no extra depend
 
 ## Other AI surfaces
 
-- **AI Journal Summary** — auto-generated weekly journal summary shown as a dismissible banner and
-  persisted as a journal entry in history.
+- **AI Journal Summary** — user-requested weekly journal summary shown as a dismissible banner and
+  persisted as a journal entry in history. Generated on demand via a "Generate weekly summary" button —
+  never fetched automatically on page load.
 - **AI Report History** — generated Weekly Reviews and Journal Summaries are archived to the
   `aiReports` collection (per-user, soft-deleted). The Dashboard cards expose a wand icon to
   generate and a clock icon to browse, reopen, or delete past reports. Routes:

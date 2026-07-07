@@ -52,18 +52,18 @@ export function JournalPage({ initialTab }: JournalPageProps = {}) {
     ];
 
     return (
-        <div className="px-3 sm:px-4 pb-0 max-w-4xl mx-auto">
+        <div className="px-3 sm:px-4 pb-0 max-w-4xl mx-auto w-full min-w-0">
             {/* AI Weekly Summary Banner */}
             {!isEditingExisting && <JournalSummaryBanner />}
 
             {/* Tab Navigation (Hidden when editing an existing entry to focus) */}
             {!isEditingExisting && (
-                <div className="flex gap-4 border-b border-white/5 mb-4">
+                <div className="flex gap-4 border-b border-white/5 mb-4 overflow-x-auto no-scrollbar">
                     {tabs.map(({ id, label, icon: Icon }) => (
                         <button
                             key={id}
                             onClick={() => setActiveTab(id)}
-                            className={`pb-3 px-3 text-sm font-medium transition-colors relative ${activeTab === id ? 'text-emerald-400' : 'text-white/40 hover:text-white/60'}`}
+                            className={`pb-3 px-3 text-sm font-medium transition-colors relative whitespace-nowrap shrink-0 ${activeTab === id ? 'text-emerald-400' : 'text-white/40 hover:text-white/60'}`}
                         >
                             <div className="flex items-center gap-2">
                                 <Icon size={16} />

@@ -34,40 +34,44 @@ export function JournalSummaryBanner() {
     let cancelled = false;
 
     async function init() {
-      // Check for existing recent summary
+      // Show an existing recent summary if we have one — never generate on mount.
       try {
         const existing = await fetchLatestJournalSummaryEntry();
         if (cancelled) return;
 
         if (existing) {
-          // Already have a recent summary — show it (unless dismissed)
           if (dismissedDate === existing.date) {
             setDismissed(true);
             return;
           }
           populateFromEntry(existing);
-          return;
         }
-
-        // No recent summary — auto-generate
-        setLoading(true);
-        const result = await fetchJournalSummary();
-        if (cancelled) return;
-        setSummary(result.summary);
-        setPeriod(result.period);
-        setEntryCount(result.journalEntriesCount);
-        setSummaryDate(result.period.end);
       } catch (err) {
         if (cancelled) return;
-        setError(err instanceof Error ? err.message : 'Failed to generate journal summary');
-      } finally {
-        if (!cancelled) setLoading(false);
+        setError(err instanceof Error ? err.message : 'Failed to load journal summary');
       }
     }
 
     init();
     return () => { cancelled = true; };
   }, [hasKey, populateFromEntry]);
+
+  const handleGenerate = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const result = await fetchJournalSummary();
+      setSummary(result.summary);
+      setPeriod(result.period);
+      setEntryCount(result.journalEntriesCount);
+      setSummaryDate(result.period.end);
+      setDismissed(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to generate journal summary');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleDismiss = () => {
     if (summaryDate) {
@@ -76,9 +80,8 @@ export function JournalSummaryBanner() {
     setDismissed(true);
   };
 
-  // Don't render if: no API key, dismissed, or nothing to show yet (no loading/error/summary)
-  if (!hasKey || (dismissed && !loading)) return null;
-  if (!loading && !error && !summary) return null;
+  // Don't render if: no API key, or the user dismissed this week's summary
+  if (!hasKey || dismissed) return null;
 
   return (
     <div className="bg-neutral-900/50 rounded-2xl border border-purple-500/20 p-4 sm:p-5 backdrop-blur-sm mb-4">
@@ -117,10 +120,29 @@ export function JournalSummaryBanner() {
         </div>
       )}
 
+      {/* No summary yet — user must request generation */}
+      {!summary && !loading && !error && (
+        <button
+          onClick={handleGenerate}
+          className="flex items-center gap-2 px-3 py-2 rounded-lg bg-purple-600/20 text-purple-300 hover:bg-purple-600/30 hover:text-purple-200 text-sm font-medium transition-colors"
+        >
+          <Sparkles size={14} />
+          Generate weekly summary
+        </button>
+      )}
+
       {/* Error */}
       {error && !loading && (
-        <div className="rounded-lg bg-red-500/10 border border-red-500/20 p-3">
-          <p className="text-sm text-red-300">{error}</p>
+        <div className="space-y-2">
+          <div className="rounded-lg bg-red-500/10 border border-red-500/20 p-3">
+            <p className="text-sm text-red-300">{error}</p>
+          </div>
+          <button
+            onClick={handleGenerate}
+            className="text-xs text-purple-400 hover:text-purple-300 transition-colors"
+          >
+            Try again
+          </button>
         </div>
       )}
 
