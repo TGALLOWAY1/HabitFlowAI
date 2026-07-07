@@ -84,7 +84,7 @@ HabitFlow App
 │       └── Goal Completed Page (celebration)
 │
 ├── Journal (via dashboard card or direct URL; dashboard card deep-links via `?tab=`)
-│   ├── AI Weekly Summary Banner (auto-generated, dismissible)
+│   ├── AI Weekly Summary Banner (user-requested via button, dismissible)
 │   ├── Free Write tab
 │   ├── Templates tab
 │   ├── History tab
