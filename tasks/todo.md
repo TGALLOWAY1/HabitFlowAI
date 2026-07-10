@@ -81,3 +81,42 @@ Architecture decisions (locked):
       - sample Weekly AI Review opens from history without a Gemini key
 - [ ] After production deploy (real MongoDB): set PUBLIC_DEMO_ENABLED=true,
       confirm /api/health reports publicDemo:true, click "Explore the live demo".
+
+## Tour section deep-links (trust fix)
+
+Problem: several tour stops didn't land on the section they named — Weekly
+Review (AI) dropped visitors on the Habits tracker instead of a completed
+review, Settings pointed at the gear icon, Sleep landed on the Analytics
+Habits tab, and Journal→AI Review tab switches were ignored by the persistent
+iframe.
+
+- [x] Embedded demo navigation supports section deep-links: `modal: 'ai'|'settings'`
+      (+ `focus` for the AI hub card), `routineEditor: '<title>'`, and `tab`
+      for Analytics; overlays from the previous stop close on every step change
+- [x] Journal/Analytics keyed by tab so `?tab=` deep-links apply even when the
+      page is already mounted (fixes tour step Journal → AI Journal Review)
+- [x] Tour stops updated: Weekly Review opens the AI hub with the completed
+      archived review on top; Routine Builder opens the Morning Kickstart
+      editor; Sleep opens the Sleep tab; Settings opens the Settings modal
+- [x] Docs: HABITFLOW_UI_ARCHITECTURE.md + FEATURES.md tour entries updated
+- [x] Verified: `npm run build` green; aiCardsArchived tests pass; demo seeds
+      an archived weekly_review report so the card renders it without a key
+
+## Merge with tour-streamline PR (#512/#513)
+
+Main independently removed the Routine Builder/Sleep/Settings tour stops
+while this branch was in flight. Resolved by merge:
+- [x] Kept main's stop removal (11 stops, 3 AI stops)
+- [x] Kept this branch's routineEditor deep-link, applied to the surviving
+      Routines stop — it now opens Morning Kickstart in the editor directly
+      (main's version only pointed at the routines list)
+- [x] docs/FEATURES.md + HABITFLOW_UI_ARCHITECTURE.md rewritten to match
+      the final 11-stop tour and its deep-links
+- [x] Verified: tsc -b + vite build green; Playwright smoke against the
+      merged tour (mocking /api/routines + /api/routineLogs, since this
+      sandbox has no MongoDB backend) confirms all 12 checks pass —
+      11 chips, Weekly Review opens AI hub with review on top, Journal
+      lands on History, Journal Review on the AI tab, Routines opens the
+      Morning Kickstart editor with Suggest with AI visible, Wellbeing
+      deep-links correctly, Sleep/Settings chips are gone, and overlays
+      close when moving to the next stop

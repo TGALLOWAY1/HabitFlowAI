@@ -156,8 +156,8 @@ const STEPS: TourStep[] = [
     ],
     callout:
       'AI runs on your own free Gemini API key (BYOK) — the key lives in your browser, never on the server. The archived report in this demo was composed from the demo dataset’s real numbers so you can see the format; with a key configured, reviews generate live.',
-    tryIt: 'Open the ✨ AI hub in the preview’s header and check the Weekly Review card’s history (clock icon).',
-    preview: { route: 'tracker' },
+    tryIt: 'The ✨ AI hub is open with a completed Weekly Review on top — read the seven sections, then open its history (clock icon).',
+    preview: { route: 'dashboard', params: { modal: 'ai', focus: 'weekly' } },
   },
   {
     id: 'goals',
@@ -227,9 +227,9 @@ const STEPS: TourStep[] = [
       'Writing good variants by hand is tedious, so the routine editor can draft them for you: one “Suggest with AI” click sends the routine’s title and existing steps to Gemini, which returns editable Quick, Standard, and Deep variants scaled to different amounts of time and energy. The drafts arrive as editable variant tabs — rename, retime, reorder, or delete steps before anything is saved; nothing is applied silently. And because AI-drafted variant steps keep their habit links, an AI-built routine plugs straight into the tracking system: run it and the entries log themselves.',
     ],
     callout:
-      'AI variant suggestions are BYOK like all AI here — live drafts run on your own free Gemini key. So you can see the flow without one, the read-only demo fills in representative sample Quick/Standard/Deep drafts instead of calling Gemini.',
-    tryIt: 'Preview “Morning Kickstart” and compare its Quick vs Standard variants, then hit Edit and click ✨ Suggest with AI.',
-    preview: { route: 'routines' },
+      'AI variant suggestions are BYOK like all AI here — live drafts run on your own free Gemini key. So you can see the flow without one, the read-only demo fills in representative sample Quick/Standard/Deep drafts instead of calling Gemini — the same editable Quick/Standard/Deep shape the model produces.',
+    tryIt: 'The Morning Kickstart editor is open — click ✨ Suggest with AI and the Quick/Standard/Deep drafts appear as editable variant tabs.',
+    preview: { route: 'routines', params: { routineEditor: 'Morning Kickstart' } },
   },
   {
     id: 'insights',

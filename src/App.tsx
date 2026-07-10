@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef, Suspense } from 'react';
 import { AuthProvider } from './store/AuthContext';
 import { HabitProvider, useHabitStore } from './store/HabitContext';
-import { RoutineProvider } from './store/RoutineContext';
+import { RoutineProvider, useRoutineStore } from './store/RoutineContext';
 import { TaskProvider } from './context/TaskContext';
 import { ToastProvider } from './components/Toast';
 import { AuthGate } from './components/AuthGate';
@@ -142,6 +142,7 @@ function buildUrlForRoute(route: AppRoute, params: Record<string, string> = {}):
 
 const HabitTrackerContent: React.FC = () => {
   const { categories, habits, logs, toggleHabit, updateLog, lastPersistenceError, clearPersistenceError, potentialEvidence, loading } = useHabitStore();
+  const { routines } = useRoutineStore();
   const [activeCategoryId, setActiveCategoryId] = useState<string>('');
   const UNCATEGORIZED_ID = '__uncategorized__';
 
@@ -199,7 +200,8 @@ const HabitTrackerContent: React.FC = () => {
     const params = new URLSearchParams(window.location.search);
     return params.get("trackId");
   });
-  const [journalTab, setJournalTab] = useState<string | null>(() => {
+  // Tab deep-link for tab-aware views (journal tabs, analytics tabs)
+  const [viewTab, setViewTab] = useState<string | null>(() => {
     const params = new URLSearchParams(window.location.search);
     return params.get("tab");
   });
@@ -253,7 +255,7 @@ const HabitTrackerContent: React.FC = () => {
       setView(route);
       setSelectedGoalId(params.get("goalId"));
       setSelectedTrackId(params.get("trackId"));
-      setJournalTab(params.get("tab"));
+      setViewTab(params.get("tab"));
       setShowCreateGoal(false);
     };
 
@@ -268,8 +270,8 @@ const HabitTrackerContent: React.FC = () => {
     setShowCreateGoal(false);
     setView(route);
 
-    // Journal tab deep-link (e.g. dashboard Journal card actions)
-    setJournalTab(route === 'journal' ? (params.tab ?? null) : null);
+    // Tab deep-link (e.g. dashboard Journal card actions, tour preview stops)
+    setViewTab(route === 'journal' || route === 'analytics' ? (params.tab ?? null) : null);
 
     // Update ephemeral state based on route
     if (params.goalId) {
@@ -299,7 +301,12 @@ const HabitTrackerContent: React.FC = () => {
   };
 
   // Embedded previews: let the parent tour page drive navigation via
-  // postMessage (same-origin only).
+  // postMessage (same-origin only). Beyond routes, the tour can deep-link into
+  // sections that live behind UI state — header modals (`modal: 'ai' |
+  // 'settings'`, with `focus` picking an AI hub card) and the routine editor
+  // (`routineEditor: '<routine title>'`) — so every stop lands exactly on the
+  // screen it describes instead of asking the visitor to find it.
+  const [pendingRoutineEditor, setPendingRoutineEditor] = useState<string | null>(null);
   const handleNavigateRef = useRef(handleNavigate);
   handleNavigateRef.current = handleNavigate;
   useEffect(() => {
@@ -307,11 +314,35 @@ const HabitTrackerContent: React.FC = () => {
     const onMessage = (event: MessageEvent) => {
       if (event.origin !== window.location.origin) return;
       if (!isDemoNavigateMessage(event.data)) return;
-      handleNavigateRef.current(event.data.route as AppRoute, event.data.params ?? {});
+      const { modal, focus, routineEditor, ...navParams } = event.data.params ?? {};
+      // Reset overlays left open by the previous tour stop so each stop starts clean.
+      setIsModalOpen(false);
+      setHistoryHabit(null);
+      setRoutineEditorState((s) => ({ ...s, isOpen: false }));
+      setRoutinePreviewState({ isOpen: false, routine: undefined });
+      setRoutineRunnerState({ isOpen: false });
+      window.dispatchEvent(new Event('habitflow:close-overlays'));
+      handleNavigateRef.current(event.data.route as AppRoute, navParams);
+      if (modal === 'ai') {
+        window.dispatchEvent(new CustomEvent('habitflow:open-ai', { detail: { focus } }));
+      } else if (modal === 'settings') {
+        window.dispatchEvent(new Event('habitflow:open-settings'));
+      }
+      setPendingRoutineEditor(routineEditor ?? null);
     };
     window.addEventListener('message', onMessage);
     return () => window.removeEventListener('message', onMessage);
   }, []);
+
+  // Open the routine editor requested by a tour stop once routines have
+  // loaded (the request can arrive before the initial fetch resolves).
+  useEffect(() => {
+    if (!pendingRoutineEditor || routines.length === 0) return;
+    const wanted = pendingRoutineEditor.toLowerCase();
+    const routine = routines.find((r) => r.title.toLowerCase() === wanted) ?? routines[0];
+    setRoutineEditorState({ isOpen: true, mode: 'edit', routine });
+    setPendingRoutineEditor(null);
+  }, [pendingRoutineEditor, routines]);
 
   // Detect habits that are uncategorized either by missing category linkage
   // or by the backend-managed "No Category" bucket.
@@ -651,13 +682,22 @@ const HabitTrackerContent: React.FC = () => {
             onPreview={(routine) => setRoutinePreviewState({ isOpen: true, routine })}
           />
         ) : view === 'journal' ? (
-          <JournalPage initialTab={(journalTab as 'free' | 'templates' | 'history' | 'review' | null) ?? undefined} />
+          // Keyed by tab so tab deep-links apply even when the page is already
+          // mounted (e.g. the tour's persistent preview stepping Journal → AI Review).
+          <JournalPage
+            key={viewTab ?? 'default'}
+            initialTab={(viewTab as 'free' | 'templates' | 'history' | 'review' | null) ?? undefined}
+          />
         ) : view === 'tasks' ? (
           <TasksPage />
         ) : view === 'debug-entries' ? (
           <DebugEntriesPage />
         ) : view === 'analytics' ? (
-          <AnalyticsPage onBack={() => handleNavigate('dashboard')} />
+          <AnalyticsPage
+            key={viewTab ?? 'default'}
+            onBack={() => handleNavigate('dashboard')}
+            initialTab={(['habits', 'routines', 'goals', 'sleep'] as const).find((t) => t === viewTab)}
+          />
         ) : view === 'health' ? (
           <AppleHealthPage onBack={() => handleNavigate('dashboard')} />
         ) : view === 'tour' ? (

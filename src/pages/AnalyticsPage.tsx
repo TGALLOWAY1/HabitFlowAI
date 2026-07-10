@@ -44,13 +44,15 @@ function getDaysFromRange(range: TimeRange, customStart: string, customEnd: stri
 
 interface AnalyticsPageProps {
   onBack: () => void;
+  /** Tab to open on mount — deep-linked via `?tab=` (e.g. the tour's Sleep stop). */
+  initialTab?: AnalyticsTab;
 }
 
-export const AnalyticsPage: React.FC<AnalyticsPageProps> = ({ onBack }) => {
+export const AnalyticsPage: React.FC<AnalyticsPageProps> = ({ onBack, initialTab }) => {
   const { user } = useAuth();
   const isAuthorized = isBetaViewer(user);
 
-  const [activeTab, setActiveTab] = useState<AnalyticsTab>('habits');
+  const [activeTab, setActiveTab] = useState<AnalyticsTab>(initialTab ?? 'habits');
   const [timeRange, setTimeRange] = useState<TimeRange>(7);
   const [loading, setLoading] = useState(true);
   const [customStart, setCustomStart] = useState('');
