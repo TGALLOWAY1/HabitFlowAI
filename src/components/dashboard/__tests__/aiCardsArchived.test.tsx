@@ -101,4 +101,33 @@ describe('AI hub cards render the latest archived report inline (keyless demo)',
     render(<JournalReviewPanel />);
     expect(await screen.findByText(/JOURNAL_MARKER/)).toBeInTheDocument();
   });
+
+  it('Journal Review shows the archived review in demo mode even when a Gemini key is stored', async () => {
+    // The tour iframe shares localStorage with the parent origin, so a visitor
+    // with a key stored must still get the read-only saved review — not the
+    // generate UI — while browsing the demo.
+    localStorage.setItem('habitflow_gemini_api_key', 'test-key');
+    localStorage.setItem('habitflow_active_user_mode', 'demo');
+
+    const report = archived('journal_review', {
+      review: {
+        rangeStart: '2026-06-01',
+        rangeEnd: '2026-06-30',
+        overview: 'JOURNAL_DEMO_MARKER a month of protecting mornings.',
+        emotionalThemes: [],
+        recurringStressors: [],
+        wins: [],
+        selfTalkPatterns: [],
+        reflectionQuestions: [],
+        suggestedNextSteps: [],
+        dataLimitations: [],
+      },
+    });
+    listAIReports.mockResolvedValue([{ id: report.id, kind: report.kind, periodStart: report.periodStart, periodEnd: report.periodEnd, preview: report.preview, createdAt: report.createdAt }]);
+    getAIReport.mockResolvedValue(report);
+
+    render(<JournalReviewPanel />);
+    expect(await screen.findByText(/JOURNAL_DEMO_MARKER/)).toBeInTheDocument();
+    expect(screen.queryByText('Generate Review')).not.toBeInTheDocument();
+  });
 });

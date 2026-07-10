@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Sparkles, Loader2, RefreshCw, History } from 'lucide-react';
 import { hasGeminiApiKey, fetchJournalReview } from '../../lib/geminiClient';
+import { getActiveUserMode } from '../../lib/persistenceClient';
 import type { AIJournalReview } from '../../shared/aiJournalReview';
 import type { JournalReviewPayload } from '../../shared/aiReport';
 import { JournalReviewBody } from './JournalReviewBody';
@@ -33,7 +34,12 @@ export const JournalReviewPanel: React.FC = () => {
   const [showHistory, setShowHistory] = useState(false);
   const [genCount, setGenCount] = useState(0);
 
-  const hasKey = hasGeminiApiKey();
+  // The read-only demo always shows the saved (seeded) review — never the
+  // generate UI. The tour iframe shares localStorage with the parent origin,
+  // so a visitor (or the owner) with a Gemini key stored would otherwise see
+  // an empty generator instead of the review content.
+  const isDemo = getActiveUserMode() === 'demo';
+  const hasKey = hasGeminiApiKey() && !isDemo;
   const lastGenerated = useLastGenerated('journal_review', genCount);
   const archived = useLatestReport('journal_review', genCount);
 
@@ -89,7 +95,7 @@ export const JournalReviewPanel: React.FC = () => {
     />
   );
 
-  // ---- No API key ----
+  // ---- No API key (or read-only demo): surface the latest saved review ----
   if (!hasKey) {
     return (
       <div className="bg-neutral-900/50 rounded-2xl border border-white/5 p-6 backdrop-blur-sm">
@@ -108,8 +114,16 @@ export const JournalReviewPanel: React.FC = () => {
           </div>
         ) : archived.report ? (
           <div className="mt-3">
+            {isDemo && (
+              <p className="text-xs text-neutral-500 mb-3">
+                A real Gemini review of the demo&rsquo;s journal entries, served from history — with
+                your own key, reviews generate live over any date range.
+              </p>
+            )}
             <JournalReviewBody review={(archived.report.payload as JournalReviewPayload).review} />
           </div>
+        ) : isDemo ? (
+          <p className="text-sm text-neutral-400 mt-1">No saved review is available in this demo.</p>
         ) : (
           <p className="text-sm text-neutral-400 mt-1">
             Add your Gemini API key in Settings to generate a grounded, supportive review of your

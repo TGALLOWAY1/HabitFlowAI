@@ -196,8 +196,8 @@ const STEPS: TourStep[] = [
       'Numbers can’t tell you why a week felt hard. The journal captures that context: free-write when you just need to think, or 11 templates across six categories — each voiced by a persona like “The Strategic Coach” — when you want structure.',
       'Daily templates upsert by day (same template + same date updates the entry, so check-ins never duplicate), and 90 days of history is browsable and editable. Journal text also feeds the AI review on the next stop.',
     ],
-    tryIt: 'Open Templates and preview “Morning Primer”, then browse History.',
-    preview: { route: 'journal' },
+    tryIt: 'You’re looking at real seeded entries in History — open one, then check Templates and preview “Morning Primer”.',
+    preview: { route: 'journal', params: { tab: 'history' } },
   },
   {
     id: 'ai-journal',
@@ -210,8 +210,9 @@ const STEPS: TourStep[] = [
       'Patterns in your own writing are the hardest to see from inside. The AI Journal Review reads a date range you choose (last 7/30 days or custom) and returns a structured reflection: Overview, Emotional Themes, Recurring Stressors, and Self-Talk Patterns — each backed by paraphrased evidence with a confidence level — plus Wins, Reflection Questions, and Suggested Next Steps.',
       'It’s deliberately bounded: grounded only in your entries, paraphrase instead of long quotes, no diagnoses or medical advice, and entries suggesting crisis surface a gentle support notice instead of AI counseling. A separate weekly Journal Summary lands as a dismissible banner and is saved into your history.',
     ],
-    callout: 'Generated on demand with your own Gemini key; empty or sparse ranges get an honest low-data notice instead of invented themes.',
-    tryIt: 'Open the AI Review tab in the Journal, then the history (clock icon) to read a saved review.',
+    callout:
+      'The review in the preview is a real Gemini generation over the journal entries from the last stop, served from history. Live generation runs on your own Gemini key; empty or sparse ranges get an honest low-data notice instead of invented themes.',
+    tryIt: 'The saved review is already open — scroll it and notice every theme cites paraphrased evidence with a confidence level.',
     preview: { route: 'journal', params: { tab: 'review' } },
   },
   {
