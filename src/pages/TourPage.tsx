@@ -13,10 +13,7 @@ import {
   Route as RouteIcon,
   Sparkles,
   Brain,
-  Wand2,
   GitCompareArrows,
-  MoonStar,
-  Settings as SettingsIcon,
   Map,
   Monitor,
   Smartphone,
@@ -40,9 +37,9 @@ import {
  * - Every step badge tells the truth: "Functional today" for shipped areas,
  *   "Beta" for the email-gated pages, and explicit callouts where the demo
  *   shows a sample AI report rather than a live Gemini generation.
- * - AI stops (Weekly Review, Journal Review, Wellbeing Insights, Routine
- *   Builder) are marked with `ai: true` and get a violet treatment so the
- *   AI layer is visible at a glance in the chip nav.
+ * - AI stops (Weekly Review, Journal Review, Wellbeing Insights) are marked
+ *   with `ai: true` and get a violet treatment so the AI layer is visible at
+ *   a glance in the chip nav.
  * - Roadmap items never appear as features; the final stop links to the
  *   dedicated Roadmap page instead.
  */
@@ -101,13 +98,12 @@ const STEPS: TourStep[] = [
     paragraphs: [
       'HabitFlow is a full-stack habit system: habits, routines, goals, tasks, journaling, and wellbeing tracking in one place — with an AI layer woven through it. It’s built as a TypeScript monorepo: React 19 + Vite on the front, Express 5 + MongoDB behind it.',
       'What makes it different from a checkbox tracker is one architectural rule: entries are the single source of truth. Every streak, progress bar, correlation, and AI review is derived from raw entries at read time — there is no stored “completion state” that can drift out of sync. That same rule is what makes the AI trustworthy: it only ever reasons over facts the server computed from your entries.',
-      'Four stops on this tour are AI features — look for the violet chips above:',
+      'Three stops on this tour are AI features — look for the violet chips above:',
     ],
     bullets: [
       'Weekly AI Review — a grounded seven-section report on your week',
       'AI Journal Review — themes, stressors, and self-talk patterns from your own writing',
       'Wellbeing Insights — statistically computed correlations, narrated by AI',
-      'AI Routine Builder — Quick/Standard/Deep routine variants drafted on demand',
     ],
     callout:
       'The panel beside this text is not a screenshot — it’s the actual application running read-only against ten weeks of seeded demo data. Click around at any stop.',
@@ -200,8 +196,8 @@ const STEPS: TourStep[] = [
       'Numbers can’t tell you why a week felt hard. The journal captures that context: free-write when you just need to think, or 11 templates across six categories — each voiced by a persona like “The Strategic Coach” — when you want structure.',
       'Daily templates upsert by day (same template + same date updates the entry, so check-ins never duplicate), and 90 days of history is browsable and editable. Journal text also feeds the AI review on the next stop.',
     ],
-    tryIt: 'Open Templates and preview “Morning Primer”, then browse History.',
-    preview: { route: 'journal' },
+    tryIt: 'You’re looking at real seeded entries in History — open one, then check Templates and preview “Morning Primer”.',
+    preview: { route: 'journal', params: { tab: 'history' } },
   },
   {
     id: 'ai-journal',
@@ -214,8 +210,9 @@ const STEPS: TourStep[] = [
       'Patterns in your own writing are the hardest to see from inside. The AI Journal Review reads a date range you choose (last 7/30 days or custom) and returns a structured reflection: Overview, Emotional Themes, Recurring Stressors, and Self-Talk Patterns — each backed by paraphrased evidence with a confidence level — plus Wins, Reflection Questions, and Suggested Next Steps.',
       'It’s deliberately bounded: grounded only in your entries, paraphrase instead of long quotes, no diagnoses or medical advice, and entries suggesting crisis surface a gentle support notice instead of AI counseling. A separate weekly Journal Summary lands as a dismissible banner and is saved into your history.',
     ],
-    callout: 'Generated on demand with your own Gemini key; empty or sparse ranges get an honest low-data notice instead of invented themes.',
-    tryIt: 'Open the AI Review tab in the Journal, then the history (clock icon) to read a saved review.',
+    callout:
+      'The review in the preview is a real Gemini generation over the journal entries from the last stop, served from history. Live generation runs on your own Gemini key; empty or sparse ranges get an honest low-data notice instead of invented themes.',
+    tryIt: 'The saved review is already open — scroll it and notice every theme cites paraphrased evidence with a confidence level.',
     preview: { route: 'journal', params: { tab: 'review' } },
   },
   {
@@ -227,24 +224,10 @@ const STEPS: TourStep[] = [
     paragraphs: [
       'A habit records that you did something; a routine walks you through doing it. Routines are ordered steps with instructions, images, and countdown/stopwatch timers, executed in a guided runner with a progress bar.',
       'Variants let one routine flex to the day you’re having — the demo’s Morning Kickstart has a 10-minute Quick and a 25-minute Standard version. Steps link to habits, so finishing the runner auto-logs them: do the work once, tracking happens for free.',
-      'Writing good variants is real work, though — which is exactly what the next stop’s AI does for you.',
-    ],
-    tryIt: 'Preview “Morning Kickstart” and compare its Quick vs Standard variants.',
-    preview: { route: 'routines' },
-  },
-  {
-    id: 'ai-routines',
-    navLabel: 'Routine Builder',
-    title: 'AI Routine Builder — variants drafted from your routine',
-    icon: Wand2,
-    badge: { label: 'AI · Functional today · BYOK', tone: 'ai' },
-    ai: true,
-    paragraphs: [
-      'Variants are what make routines survive bad days, but writing three versions of every routine by hand is tedious. In the routine editor, one “Suggest with AI” click sends the routine’s title and existing steps to Gemini, which drafts Quick, Standard, and Deep variants scaled to different amounts of time and energy.',
-      'The suggestions arrive as editable drafts — rename, retime, reorder, or delete steps before anything is saved; nothing is applied silently. And because variant steps keep their habit links, an AI-drafted routine plugs straight into the tracking system: run it and the entries log themselves.',
+      'Writing good variants by hand is tedious, so the routine editor can draft them for you: one “Suggest with AI” click sends the routine’s title and existing steps to Gemini, which returns editable Quick, Standard, and Deep variants scaled to different amounts of time and energy. The drafts arrive as editable variant tabs — rename, retime, reorder, or delete steps before anything is saved; nothing is applied silently. And because AI-drafted variant steps keep their habit links, an AI-built routine plugs straight into the tracking system: run it and the entries log themselves.',
     ],
     callout:
-      'BYOK like all AI here: live suggestions run on your own free Gemini key. So you can see the flow without one, the read-only demo fills in representative sample drafts instead of calling Gemini — the same editable Quick/Standard/Deep shape the model produces.',
+      'AI variant suggestions are BYOK like all AI here — live drafts run on your own free Gemini key. So you can see the flow without one, the read-only demo fills in representative sample Quick/Standard/Deep drafts instead of calling Gemini — the same editable Quick/Standard/Deep shape the model produces.',
     tryIt: 'The Morning Kickstart editor is open — click ✨ Suggest with AI and the Quick/Standard/Deep drafts appear as editable variant tabs.',
     preview: { route: 'routines', params: { routineEditor: 'Morning Kickstart' } },
   },
@@ -263,34 +246,6 @@ const STEPS: TourStep[] = [
     callout: 'Beta: in production this page is email-gated while it stabilizes; the demo unlocks it read-only. Promoting it into primary navigation is on the roadmap.',
     tryIt: 'Open the Correlations tab and look for the wind-down ↔ sleep relationship.',
     preview: { route: 'wellbeing-history' },
-  },
-  {
-    id: 'sleep',
-    navLabel: 'Sleep',
-    title: 'Sleep — consistency, independence, and causes',
-    icon: MoonStar,
-    badge: { label: 'Beta', tone: 'beta' },
-    paragraphs: [
-      'Sleep gets a dedicated analytics tab built around one question: am I becoming more consistent at sleeping well? Each morning check-in can log bedtime, wake time, duration, quality, a manually-entered Apple Watch sleep score, and whether a sleep aid was used.',
-      'From those entries it derives headline metrics with trends, a consistency score (circular standard deviation of bed/wake clock times — rewarding regularity, not just duration), sleep-aid independence streaks, and charts against your configurable targets. Its correlation engine ranks behaviors — phone in bed, late caffeine, wind-down, any habit — by measured effect on sleep outcomes.',
-    ],
-    callout:
-      'Beta: lives on the email-gated Analytics page (unlocked read-only in the demo). Apple Watch scores are entered manually today — automatic Apple Health sync exists but is allowlisted behind an external sync bridge, so the tour doesn’t present it as generally available.',
-    tryIt: 'You’re on the Sleep tab — check the consistency score and how behaviors rank against sleep outcomes.',
-    preview: { route: 'analytics', params: { tab: 'sleep' } },
-  },
-  {
-    id: 'settings',
-    navLabel: 'Settings',
-    title: 'Settings — your keys, your data',
-    icon: SettingsIcon,
-    badge: { label: 'Functional today', tone: 'live' },
-    paragraphs: [
-      'Settings is small on purpose, but two choices in it define the product’s posture. First: AI is bring-your-own-key — you paste a free Gemini API key and it’s stored only in your browser’s localStorage, sent per-request, never persisted server-side. No key, no AI; everything else works without it.',
-      'Second: data control. Archived habits can be reviewed and restored (nothing is hard-deleted behind your back — truth records soft-delete), the new-user setup guide can be reopened anytime, and Delete All Data is a real, permanent, confirmed wipe.',
-    ],
-    tryIt: 'Settings is open in the preview — find the Gemini key field and the archived-habits manager.',
-    preview: { route: 'dashboard', params: { modal: 'settings' } },
   },
   {
     id: 'next',
@@ -379,11 +334,10 @@ export const TourPage: React.FC<TourPageProps> = (props) => {
           Take a Tour of HabitFlow
         </h1>
         <p className="text-neutral-400 max-w-2xl text-sm leading-relaxed">
-          {STEPS.length} short stops through the live product — about four minutes. Four of them
+          {STEPS.length} short stops through the live product — about four minutes. Three of them
           are <span className="text-violet-300 font-semibold">AI features</span>: the Weekly AI
-          Review, the AI Journal Review, Wellbeing Insights, and the AI Routine Builder — all
-          grounded in your own data. The preview is the real app in read-only demo mode; explore
-          it freely at every stop.
+          Review, the AI Journal Review, and Wellbeing Insights — all grounded in your own data.
+          The preview is the real app in read-only demo mode; explore it freely at every stop.
         </p>
       </header>
 

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Sparkles, Loader2, X, ChevronDown, ChevronUp } from 'lucide-react';
 import { hasGeminiApiKey, fetchJournalSummary, fetchLatestJournalSummaryEntry } from '../../lib/geminiClient';
+import { getActiveUserMode } from '../../lib/persistenceClient';
 import type { JournalEntry } from '../../models/persistenceTypes';
 
 const DISMISSED_KEY = 'hf_summary_banner_dismissed';
@@ -15,7 +16,10 @@ export function JournalSummaryBanner() {
   const [dismissed, setDismissed] = useState(false);
   const [summaryDate, setSummaryDate] = useState<string | null>(null);
 
-  const hasKey = hasGeminiApiKey();
+  // In the read-only demo the banner would only offer a generate button that
+  // can't run (and it visually duplicates the AI Review card on the tour's
+  // Journal stops), so it is hidden there even if the browser has a key.
+  const hasKey = hasGeminiApiKey() && getActiveUserMode() !== 'demo';
 
   const populateFromEntry = useCallback((entry: JournalEntry) => {
     setSummary(entry.content.summary ?? null);
