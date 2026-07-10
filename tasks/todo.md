@@ -81,3 +81,23 @@ Architecture decisions (locked):
       - sample Weekly AI Review opens from history without a Gemini key
 - [ ] After production deploy (real MongoDB): set PUBLIC_DEMO_ENABLED=true,
       confirm /api/health reports publicDemo:true, click "Explore the live demo".
+
+## Tour section deep-links (trust fix)
+
+Problem: several tour stops didn't land on the section they named — Weekly
+Review (AI) dropped visitors on the Habits tracker instead of a completed
+review, Settings pointed at the gear icon, Sleep landed on the Analytics
+Habits tab, and Journal→AI Review tab switches were ignored by the persistent
+iframe.
+
+- [x] Embedded demo navigation supports section deep-links: `modal: 'ai'|'settings'`
+      (+ `focus` for the AI hub card), `routineEditor: '<title>'`, and `tab`
+      for Analytics; overlays from the previous stop close on every step change
+- [x] Journal/Analytics keyed by tab so `?tab=` deep-links apply even when the
+      page is already mounted (fixes tour step Journal → AI Journal Review)
+- [x] Tour stops updated: Weekly Review opens the AI hub with the completed
+      archived review on top; Routine Builder opens the Morning Kickstart
+      editor; Sleep opens the Sleep tab; Settings opens the Settings modal
+- [x] Docs: HABITFLOW_UI_ARCHITECTURE.md + FEATURES.md tour entries updated
+- [x] Verified: `npm run build` green; aiCardsArchived tests pass; demo seeds
+      an archived weekly_review report so the card renders it without a key
