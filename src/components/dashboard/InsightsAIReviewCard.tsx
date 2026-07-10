@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Sparkles, Loader2, RefreshCw, Wand2, History } from 'lucide-react';
 import { hasGeminiApiKey } from '../../lib/geminiClient';
 import { fetchInsightsAIReview } from '../../lib/insightsClient';
+import { getActiveUserMode } from '../../lib/persistenceClient';
 import type { InsightsAIReview } from '../../shared/insightsAiReview';
 import type { InsightsReviewPayload } from '../../shared/aiReport';
 import { InsightsReviewBody } from '../insights/InsightsReviewBody';
@@ -23,7 +24,12 @@ export const InsightsAIReviewCard: React.FC = () => {
   const [showHistory, setShowHistory] = useState(false);
   const [genCount, setGenCount] = useState(0);
 
-  const hasKey = hasGeminiApiKey();
+  // The read-only demo always shows the saved (seeded) summary — never the
+  // generate UI. The tour iframe shares localStorage with the parent origin,
+  // so a visitor (or the owner) with a Gemini key stored would otherwise see
+  // an empty generator instead of the summary content.
+  const isDemo = getActiveUserMode() === 'demo';
+  const hasKey = hasGeminiApiKey() && !isDemo;
   const lastGenerated = useLastGenerated('insights_review', genCount);
   const archived = useLatestReport('insights_review', genCount);
 
