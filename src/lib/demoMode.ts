@@ -61,7 +61,15 @@ export function exitDemoMode(): void {
   window.location.href = '/?demo=0';
 }
 
-/** Message type the tour posts into the embedded preview iframe. */
+/**
+ * Message type the tour posts into the embedded preview iframe.
+ *
+ * Besides plain route params (e.g. `tab`), the app recognizes control params
+ * so tour stops can land inside UI state, not just on a route:
+ * - `modal: 'ai' | 'settings'` — open the corresponding header modal
+ * - `focus: 'wellbeing' | 'weekly' | 'journal'` — AI hub card to surface first
+ * - `routineEditor: '<routine title>'` — open that routine in the editor
+ */
 export interface DemoNavigateMessage {
   type: 'habitflow-demo-navigate';
   route: string;

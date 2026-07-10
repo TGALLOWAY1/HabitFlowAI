@@ -8,7 +8,7 @@ import { isBetaViewer } from '../lib/betaAccess';
 import { DEMO_WRITE_BLOCKED_EVENT, DEMO_READ_ONLY_MESSAGE, exitDemoMode, isEmbedMode } from '../lib/demoMode';
 import { useToast } from './Toast';
 import { SettingsModal } from './SettingsModal';
-import { AIStudioModal } from './dashboard/AIStudioModal';
+import { AIStudioModal, type AIStudioFocus } from './dashboard/AIStudioModal';
 
 interface LayoutProps {
     children: React.ReactNode;
@@ -27,6 +27,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
     const [userMenuOpen, setUserMenuOpen] = useState(false);
     const [settingsOpen, setSettingsOpen] = useState(false);
     const [aiOpen, setAiOpen] = useState(false);
+    const [aiFocus, setAiFocus] = useState<AIStudioFocus | undefined>(undefined);
     const userMenuRef = useRef<HTMLDivElement>(null);
 
     const demoBadge = useMemo(() => {
@@ -77,11 +78,28 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
         window.dispatchEvent(new Event('habitflow:demo-data-changed'));
     };
 
-    // Listen for requests to open settings from other components
+    // Listen for requests to open/close header modals from other components
+    // (settings shortcuts, and the tour's embedded preview deep-links).
     useEffect(() => {
         const handleOpenSettings = () => setSettingsOpen(true);
+        const handleOpenAi = (event: Event) => {
+            const detail = (event as CustomEvent).detail as { focus?: AIStudioFocus } | undefined;
+            setAiFocus(detail?.focus);
+            setAiOpen(true);
+        };
+        const handleCloseOverlays = () => {
+            setSettingsOpen(false);
+            setAiOpen(false);
+            setUserMenuOpen(false);
+        };
         window.addEventListener('habitflow:open-settings', handleOpenSettings);
-        return () => window.removeEventListener('habitflow:open-settings', handleOpenSettings);
+        window.addEventListener('habitflow:open-ai', handleOpenAi);
+        window.addEventListener('habitflow:close-overlays', handleCloseOverlays);
+        return () => {
+            window.removeEventListener('habitflow:open-settings', handleOpenSettings);
+            window.removeEventListener('habitflow:open-ai', handleOpenAi);
+            window.removeEventListener('habitflow:close-overlays', handleCloseOverlays);
+        };
     }, []);
 
     // Close user menu when clicking outside
@@ -140,7 +158,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
                                 </div>
                     )}
                     <button
-                        onClick={() => setAiOpen(true)}
+                        onClick={() => { setAiFocus(undefined); setAiOpen(true); }}
                         className="min-h-[44px] min-w-[44px] flex items-center justify-center hover:bg-white/5 rounded-full transition-colors text-neutral-400 hover:text-white"
                         title="AI"
                         aria-label="AI"
@@ -244,7 +262,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
                     window.dispatchEvent(new PopStateEvent('popstate'));
                 }}
             />
-            {aiOpen && <AIStudioModal onClose={() => setAiOpen(false)} />}
+            {aiOpen && <AIStudioModal onClose={() => setAiOpen(false)} focus={aiFocus} />}
         </div>
     );
 };

@@ -4,8 +4,13 @@ import { InsightsAIReviewCard } from './InsightsAIReviewCard';
 import { WeeklyAIReviewCard } from './WeeklyAIReviewCard';
 import { JournalReviewPanel } from '../Journal/JournalReviewPanel';
 
+/** Which AI hub card a deep-link wants front and center. */
+export type AIStudioFocus = 'wellbeing' | 'weekly' | 'journal';
+
 interface AIStudioModalProps {
   onClose: () => void;
+  /** Card to surface first — used by deep-links (e.g. the tour's Weekly Review stop). */
+  focus?: AIStudioFocus;
 }
 
 /**
@@ -15,8 +20,16 @@ interface AIStudioModalProps {
  *   2. Weekly Review
  *   3. Journal Insights (AI Journal Review)
  * Each card carries its own explanation, last-generated date, and history.
+ * A `focus` moves that card to the top so deep-links land directly on it.
  */
-export const AIStudioModal: React.FC<AIStudioModalProps> = ({ onClose }) => {
+export const AIStudioModal: React.FC<AIStudioModalProps> = ({ onClose, focus }) => {
+  const defaultOrder: AIStudioFocus[] = ['wellbeing', 'weekly', 'journal'];
+  const order = focus ? [focus, ...defaultOrder.filter((k) => k !== focus)] : defaultOrder;
+  const cards: Record<AIStudioFocus, React.ReactNode> = {
+    wellbeing: <InsightsAIReviewCard key="wellbeing" />,
+    weekly: <WeeklyAIReviewCard key="weekly" />,
+    journal: <JournalReviewPanel key="journal" />,
+  };
   return (
     <div
       className="modal-overlay fixed inset-0 bg-black/60 flex items-start justify-center z-50 p-4 overflow-y-auto"
@@ -41,11 +54,9 @@ export const AIStudioModal: React.FC<AIStudioModalProps> = ({ onClose }) => {
           </button>
         </div>
 
-        {/* Body — the three artifact cards */}
+        {/* Body — the three artifact cards, focused card first */}
         <div className="flex-1 overflow-y-auto p-5 space-y-4">
-          <InsightsAIReviewCard />
-          <WeeklyAIReviewCard />
-          <JournalReviewPanel />
+          {order.map((k) => cards[k])}
         </div>
       </div>
     </div>
