@@ -101,3 +101,22 @@ iframe.
 - [x] Docs: HABITFLOW_UI_ARCHITECTURE.md + FEATURES.md tour entries updated
 - [x] Verified: `npm run build` green; aiCardsArchived tests pass; demo seeds
       an archived weekly_review report so the card renders it without a key
+
+## Merge with tour-streamline PR (#512/#513)
+
+Main independently removed the Routine Builder/Sleep/Settings tour stops
+while this branch was in flight. Resolved by merge:
+- [x] Kept main's stop removal (11 stops, 3 AI stops)
+- [x] Kept this branch's routineEditor deep-link, applied to the surviving
+      Routines stop — it now opens Morning Kickstart in the editor directly
+      (main's version only pointed at the routines list)
+- [x] docs/FEATURES.md + HABITFLOW_UI_ARCHITECTURE.md rewritten to match
+      the final 11-stop tour and its deep-links
+- [x] Verified: tsc -b + vite build green; Playwright smoke against the
+      merged tour (mocking /api/routines + /api/routineLogs, since this
+      sandbox has no MongoDB backend) confirms all 12 checks pass —
+      11 chips, Weekly Review opens AI hub with review on top, Journal
+      lands on History, Journal Review on the AI tab, Routines opens the
+      Morning Kickstart editor with Suggest with AI visible, Wellbeing
+      deep-links correctly, Sleep/Settings chips are gone, and overlays
+      close when moving to the next stop
