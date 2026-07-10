@@ -160,8 +160,8 @@ const STEPS: TourStep[] = [
     ],
     callout:
       'AI runs on your own free Gemini API key (BYOK) — the key lives in your browser, never on the server. The archived report in this demo was composed from the demo dataset’s real numbers so you can see the format; with a key configured, reviews generate live.',
-    tryIt: 'Open the ✨ AI hub in the preview’s header and check the Weekly Review card’s history (clock icon).',
-    preview: { route: 'tracker' },
+    tryIt: 'The ✨ AI hub is open with a completed Weekly Review on top — read the seven sections, then open its history (clock icon).',
+    preview: { route: 'dashboard', params: { modal: 'ai', focus: 'weekly' } },
   },
   {
     id: 'goals',
@@ -245,8 +245,8 @@ const STEPS: TourStep[] = [
     ],
     callout:
       'BYOK like all AI here: live suggestions run on your own free Gemini key. So you can see the flow without one, the read-only demo fills in representative sample drafts instead of calling Gemini — the same editable Quick/Standard/Deep shape the model produces.',
-    tryIt: 'Open “Morning Kickstart”, hit Edit, then click ✨ Suggest with AI — the Quick/Standard/Deep drafts appear as editable variant tabs.',
-    preview: { route: 'routines' },
+    tryIt: 'The Morning Kickstart editor is open — click ✨ Suggest with AI and the Quick/Standard/Deep drafts appear as editable variant tabs.',
+    preview: { route: 'routines', params: { routineEditor: 'Morning Kickstart' } },
   },
   {
     id: 'insights',
@@ -276,8 +276,8 @@ const STEPS: TourStep[] = [
     ],
     callout:
       'Beta: lives on the email-gated Analytics page (unlocked read-only in the demo). Apple Watch scores are entered manually today — automatic Apple Health sync exists but is allowlisted behind an external sync bridge, so the tour doesn’t present it as generally available.',
-    tryIt: 'Open the Sleep tab on the Analytics page and check the consistency score.',
-    preview: { route: 'analytics' },
+    tryIt: 'You’re on the Sleep tab — check the consistency score and how behaviors rank against sleep outcomes.',
+    preview: { route: 'analytics', params: { tab: 'sleep' } },
   },
   {
     id: 'settings',
@@ -289,8 +289,8 @@ const STEPS: TourStep[] = [
       'Settings is small on purpose, but two choices in it define the product’s posture. First: AI is bring-your-own-key — you paste a free Gemini API key and it’s stored only in your browser’s localStorage, sent per-request, never persisted server-side. No key, no AI; everything else works without it.',
       'Second: data control. Archived habits can be reviewed and restored (nothing is hard-deleted behind your back — truth records soft-delete), the new-user setup guide can be reopened anytime, and Delete All Data is a real, permanent, confirmed wipe.',
     ],
-    tryIt: 'Click the gear icon in the preview’s header to open Settings.',
-    preview: { route: 'dashboard' },
+    tryIt: 'Settings is open in the preview — find the Gemini key field and the archived-habits manager.',
+    preview: { route: 'dashboard', params: { modal: 'settings' } },
   },
   {
     id: 'next',
