@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Sparkles, Loader2, RefreshCw, Wand2, History } from 'lucide-react';
 import { hasGeminiApiKey, fetchWeeklyAIReview } from '../../lib/geminiClient';
+import { getActiveUserMode } from '../../lib/persistenceClient';
 import type { WeeklyAIReview } from '../../shared/weeklyAiReview';
 import type { WeeklyReviewPayload } from '../../shared/aiReport';
 import { WeeklyReviewBody } from './WeeklyReviewBody';
@@ -30,7 +31,12 @@ export const WeeklyAIReviewCard: React.FC = () => {
   const [showHistory, setShowHistory] = useState(false);
   const [genCount, setGenCount] = useState(0);
 
-  const hasKey = hasGeminiApiKey();
+  // The read-only demo always shows the saved (seeded) review — never the
+  // generate UI. The tour iframe shares localStorage with the parent origin,
+  // so a visitor (or the owner) with a Gemini key stored would otherwise see
+  // an empty generator instead of the review content.
+  const isDemo = getActiveUserMode() === 'demo';
+  const hasKey = hasGeminiApiKey() && !isDemo;
   const lastGenerated = useLastGenerated('weekly_review', genCount);
   const archived = useLatestReport('weekly_review', genCount);
 
