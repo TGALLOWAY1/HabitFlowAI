@@ -74,7 +74,7 @@ export interface Habit {
     durationMinutes?: number;
 
     // Push Reminder Fields
-    reminderTime?: string; // HH:mm, device-local; unset = no reminder
+    reminderTime?: string | null; // HH:mm, device-local; null/unset = no reminder (null clears on PATCH)
     reminderEnabled?: boolean; // absent = enabled when reminderTime is set
 
     // Non-Negotiable Fields
