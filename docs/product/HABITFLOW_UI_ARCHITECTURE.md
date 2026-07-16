@@ -292,6 +292,8 @@ graph TB
 | **Archive** | Tracker → trash icon (click twice). Goal-linked habits open the Remove Habit modal first |
 | **Restore** | Settings → View archived habits → Restore |
 | **Delete permanently** | Goal-linked: Remove Habit modal → "Delete permanently". Archived habit: Settings → View archived habits → trash icon → confirm |
+| **Set Reminder** | Add Habit Modal (create/edit) → Schedule & Streak section → Reminder time input + "Send push reminder" toggle (hidden for bundles) |
+| **Enable Notifications (per device)** | Settings → Notifications → "Enable habit reminders" (permission prompt; test-send + turn-off once enabled). Hidden in demo mode or when the server has push disabled. iPhone/iPad: requires Add to Home Screen first (iOS 16.4+) — the section shows install guidance until then |
 
 ### Routine
 

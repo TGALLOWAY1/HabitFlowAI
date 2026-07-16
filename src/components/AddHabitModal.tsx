@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, Shield, CheckCircle2, Calculator, Layers, CheckSquare, ChevronDown, ChevronRight, ChevronUp, Search, Trophy, Calendar } from 'lucide-react';
+import { X, Shield, CheckCircle2, Calculator, Layers, CheckSquare, ChevronDown, ChevronRight, ChevronUp, Search, Trophy, Calendar, Bell } from 'lucide-react';
 import { DayChipSelector } from './DayChipSelector';
 import { NumberChipSelector } from './NumberChipSelector';
 import { useHabitStore } from '../store/HabitContext';
@@ -68,6 +68,8 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
     const [durationMinutes, setDurationMinutes] = useState('30');
     const [scheduledDays, setScheduledDays] = useState<number[]>([0, 1, 2, 3, 4, 5, 6]);
     const [requiredDaysPerWeek, setRequiredDaysPerWeek] = useState<number>(7);
+    const [reminderTime, setReminderTime] = useState('');
+    const [reminderEnabled, setReminderEnabled] = useState(true);
 
     // Metadata
     const [description, setDescription] = useState('');
@@ -114,6 +116,8 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                 setTarget(initialData.goal.target ? String(initialData.goal.target) : '');
                 setUnit(initialData.goal.unit || '');
                 setScheduledTime(initialData.scheduledTime || '');
+                setReminderTime(initialData.reminderTime || '');
+                setReminderEnabled(initialData.reminderEnabled !== false);
                 setLinkedGoalId(initialData.linkedGoalId || null);
                 setLinkedRoutineIds(initialData.linkedRoutineIds || []);
                 setDurationMinutes(initialData.durationMinutes?.toString() || '30');
@@ -145,6 +149,8 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                 setTarget('');
                 setUnit('');
                 setScheduledTime('');
+                setReminderTime('');
+                setReminderEnabled(true);
                 setLinkedGoalId(null);
                 setIsCreateGoalOpen(false);
                 setLinkedRoutineIds([]);
@@ -243,6 +249,10 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                 goal: goalConfig,
                 assignedDays: scheduledDays,
                 scheduledTime: scheduledTime || undefined,
+                // Bundles are containers (never trackable) — no reminders.
+                // null clears a previously set time on edit.
+                reminderTime: habitType === 'bundle' || !reminderTime ? null : reminderTime,
+                reminderEnabled,
                 durationMinutes: durationMinutes ? Number(durationMinutes) : undefined,
                 linkedGoalId: linkedGoalId || undefined,
                 linkedRoutineIds: linkedRoutineIds.length > 0 ? linkedRoutineIds : undefined,
@@ -1156,6 +1166,49 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                                 </p>
                             )}
                         </div>
+
+                        {/* Reminder — bundles are containers, never trackable, so no reminders */}
+                        {habitType !== 'bundle' && (
+                            <div className="space-y-2">
+                                <label htmlFor="reminder-time" className="text-xs font-medium text-neutral-400 uppercase flex items-center gap-1">
+                                    <Bell size={12} /> Reminder
+                                </label>
+                                <div className="flex items-center gap-2">
+                                    <input
+                                        id="reminder-time"
+                                        type="time"
+                                        value={reminderTime}
+                                        onChange={(e) => setReminderTime(e.target.value)}
+                                        className="px-3 py-2 rounded-lg bg-neutral-800 text-neutral-200 border border-white/10 text-base focus:outline-none focus:ring-1 focus:ring-emerald-500/50 [color-scheme:dark]"
+                                    />
+                                    {reminderTime && (
+                                        <button
+                                            type="button"
+                                            onClick={() => setReminderTime('')}
+                                            className="min-h-[44px] min-w-[44px] flex items-center justify-center text-neutral-500 hover:text-neutral-300 rounded-lg hover:bg-white/5"
+                                            aria-label="Clear reminder time"
+                                        >
+                                            <X size={16} />
+                                        </button>
+                                    )}
+                                </div>
+                                {reminderTime && (
+                                    <label className="flex items-center gap-2 text-sm text-neutral-300 cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            checked={reminderEnabled}
+                                            onChange={(e) => setReminderEnabled(e.target.checked)}
+                                            className="w-4 h-4 rounded border-white/20 bg-neutral-800 accent-emerald-500"
+                                        />
+                                        Send push reminder
+                                    </label>
+                                )}
+                                <p className="text-[11px] text-neutral-500">
+                                    Reminders go to devices where you've enabled notifications
+                                    (Settings → Notifications). Skipped on days the habit is already done.
+                                </p>
+                            </div>
+                        )}
                     </div>
 
                     {/* Add to Bundle action — for regular habits not already in a bundle */}

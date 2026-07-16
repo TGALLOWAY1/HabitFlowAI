@@ -170,6 +170,20 @@ export interface Habit {
     scheduledTime?: string;
 
     /**
+     * Optional: Push reminder time ("HH:mm"), interpreted in each subscribed
+     * device's local timezone. Reminders fire only on assignedDays (or every
+     * day when unset) and skip habits already completed that day.
+     * null clears the reminder on PATCH (and may round-trip from storage).
+     */
+    reminderTime?: string | null;
+
+    /**
+     * Optional: Toggle push reminders without losing the configured time.
+     * Absent means enabled when reminderTime is set.
+     */
+    reminderEnabled?: boolean;
+
+    /**
      * Optional: Duration in minutes for the habit (default: 30).
      * Used for calendar visualization.
      */
@@ -1492,7 +1506,34 @@ export const MONGO_COLLECTIONS = {
     SYMPTOM_LOGS: 'symptomLogs',
     SUPPLEMENTS: 'supplements',
     SUPPLEMENT_LOGS: 'supplementLogs',
+    PUSH_SUBSCRIPTIONS: 'pushSubscriptions',
+    PUSH_SEND_LOG: 'pushSendLog',
 } as const;
+
+/**
+ * Web Push device subscription (operational data, NOT truth data).
+ *
+ * One document per device/browser a user has enabled notifications on.
+ * Stored scoped by householdId + userId (stripped on read like other repos).
+ * `timeZone` is per-device and refreshed on every subscribe call so reminders
+ * fire in the device's local time. `disabledAt` marks endpoints the push
+ * service reported gone (404/410); re-subscribing revives the document.
+ */
+export interface PushSubscriptionDoc {
+  id: string;
+  endpoint: string;
+  keys: {
+    p256dh: string;
+    auth: string;
+  };
+  /** IANA timezone captured at subscribe time, refreshed on each sync. */
+  timeZone: string;
+  userAgent?: string;
+  createdAt: string;
+  lastSeenAt: string;
+  /** Set when the push service reports the endpoint gone; cleared on re-subscribe. */
+  disabledAt?: string;
+}
 
 /**
  * Household user registry (lightweight; no passwords/auth).

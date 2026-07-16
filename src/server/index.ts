@@ -12,11 +12,15 @@ import { createApp } from './app';
 import { closeConnection } from './lib/mongoClient';
 import { runStartupMigrations } from './migrations/startup';
 import { maybeSeedDemoShowcase } from './demo/seedShowcase';
+import { isPushConfigured } from './lib/webPush';
+import { startReminderScheduler, type ReminderSchedulerHandle } from './services/reminderScheduler';
 
 assertMongoEnabled();
 
 const app = createApp();
 const PORT = process.env.PORT || 3001;
+
+let schedulerHandle: ReminderSchedulerHandle | null = null;
 
 const server = app.listen(PORT, async () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);
@@ -34,10 +38,18 @@ const server = app.listen(PORT, async () => {
   if (isPublicDemoEnabled()) {
     await maybeSeedDemoShowcase();
   }
+
+  // Web Push reminder scheduler (in-process; requires an always-on instance)
+  if (isPushConfigured()) {
+    schedulerHandle = startReminderScheduler();
+  } else {
+    console.log('🔕 Push reminders disabled (PUSH_REMINDERS_ENABLED/VAPID keys not configured)');
+  }
 });
 
 process.on('SIGTERM', async () => {
   console.log('SIGTERM received, shutting down gracefully...');
+  schedulerHandle?.stop();
   server.close(async () => {
     await closeConnection();
     process.exit(0);
@@ -46,6 +58,7 @@ process.on('SIGTERM', async () => {
 
 process.on('SIGINT', async () => {
   console.log('SIGINT received, shutting down gracefully...');
+  schedulerHandle?.stop();
   server.close(async () => {
     await closeConnection();
     process.exit(0);

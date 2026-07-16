@@ -34,6 +34,13 @@ import { invalidateUserCaches } from '../lib/cacheInstances';
 const recoveredUsers = new Set<string>();
 const selfHealedUsers = new Set<string>();
 
+// 24h "HH:mm" — the format stored for reminderTime.
+const REMINDER_TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/;
+
+function isValidReminderTime(value: unknown): value is string {
+  return typeof value === 'string' && REMINDER_TIME_PATTERN.test(value);
+}
+
 /**
  * Get all habits for the current user.
  *
@@ -149,8 +156,20 @@ export async function createHabitRoute(req: Request, res: Response): Promise<voi
       bundleType, bundleOptions,
       pinned, timeEstimate,
       linkedGoalId, linkedRoutineIds,
-      requiredDaysPerWeek
+      requiredDaysPerWeek,
+      reminderTime, reminderEnabled
     } = req.body;
+
+    // null is treated as "no reminder" so create and PATCH share one contract
+    if (reminderTime !== undefined && reminderTime !== null && !isValidReminderTime(reminderTime)) {
+      res.status(400).json({
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'reminderTime must be a 24h "HH:mm" string (e.g. "09:00")',
+        },
+      });
+      return;
+    }
 
     if (!name || typeof name !== 'string' || name.trim().length === 0) {
       res.status(400).json({
@@ -207,6 +226,8 @@ export async function createHabitRoute(req: Request, res: Response): Promise<voi
         linkedGoalId,
         linkedRoutineIds,
         requiredDaysPerWeek,
+        reminderTime: reminderTime ?? undefined,
+        reminderEnabled: reminderEnabled === undefined ? undefined : !!reminderEnabled,
       },
       householdId,
       userId
@@ -299,7 +320,8 @@ export async function updateHabitRoute(req: Request, res: Response): Promise<voi
       bundleType, bundleOptions,
       pinned, timeEstimate,
       linkedGoalId, linkedRoutineIds,
-      requiredDaysPerWeek
+      requiredDaysPerWeek,
+      reminderTime, reminderEnabled
     } = req.body;
 
     if (!id) {
@@ -335,6 +357,20 @@ export async function updateHabitRoute(req: Request, res: Response): Promise<voi
     if (linkedGoalId !== undefined) patch.linkedGoalId = linkedGoalId;
     if (linkedRoutineIds !== undefined) patch.linkedRoutineIds = linkedRoutineIds;
     if (requiredDaysPerWeek !== undefined) patch.requiredDaysPerWeek = requiredDaysPerWeek;
+    // Clear with null, set with a valid "HH:mm" string (same contract as archivedAt).
+    if (reminderTime !== undefined) {
+      if (reminderTime !== null && !isValidReminderTime(reminderTime)) {
+        res.status(400).json({
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: 'reminderTime must be a 24h "HH:mm" string (e.g. "09:00")',
+          },
+        });
+        return;
+      }
+      patch.reminderTime = reminderTime === null ? undefined : reminderTime;
+    }
+    if (reminderEnabled !== undefined) patch.reminderEnabled = !!reminderEnabled;
 
     if (Object.keys(patch).length === 0) {
       res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'At least one field must be provided for update' } });

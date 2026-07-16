@@ -21,3 +21,15 @@ services:
       # See docs/DEMO_ARCHITECTURE.md.
       - key: PUBLIC_DEMO_ENABLED
         value: "true"
+      # Web Push habit reminders. The scheduler is an in-process 60s timer, so
+      # it only fires reliably on an always-on instance (no idle sleep). Keys
+      # via: npx web-push generate-vapid-keys — rotating them invalidates all
+      # existing device subscriptions.
+      - key: PUSH_REMINDERS_ENABLED
+        value: "false"
+      - key: VAPID_PUBLIC_KEY
+        sync: false
+      - key: VAPID_PRIVATE_KEY
+        sync: false
+      - key: VAPID_SUBJECT
+        sync: false
