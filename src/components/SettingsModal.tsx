@@ -1,11 +1,149 @@
-import { useState, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../store/AuthContext';
 import { useHabitStore } from '../store/HabitContext';
 import { getGeminiApiKey, setGeminiApiKey } from '../lib/geminiClient';
-import { deleteAllUserData, isHealthFeatureEnabled } from '../lib/persistenceClient';
-import { Eye, EyeOff, Sparkles, Activity, ChevronRight, Archive, Info } from 'lucide-react';
+import { deleteAllUserData, isHealthFeatureEnabled, getPushPublicKey, sendTestPush, getActiveUserMode } from '../lib/persistenceClient';
+import { getPushStatus, enablePush, disablePush, type PushStatus } from '../lib/pushClient';
+import { Eye, EyeOff, Sparkles, Activity, ChevronRight, Archive, Info, Bell, BellOff } from 'lucide-react';
 import { ArchivedHabitsModal } from './ArchivedHabitsModal';
 import { InfoModal } from './InfoModal';
+
+/**
+ * Per-device push reminder controls. Mounted only while the modal is open;
+ * hidden entirely when the server has push disabled or in demo mode.
+ */
+function NotificationsSection() {
+  const [serverEnabled, setServerEnabled] = useState<boolean | null>(null);
+  const [publicKey, setPublicKey] = useState<string | null>(null);
+  const [status, setStatus] = useState<PushStatus | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const key = await getPushPublicKey();
+        if (cancelled) return;
+        setServerEnabled(key.enabled);
+        setPublicKey(key.publicKey);
+        if (key.enabled) {
+          const current = await getPushStatus();
+          if (!cancelled) setStatus(current);
+        }
+      } catch {
+        if (!cancelled) setServerEnabled(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  if (getActiveUserMode() === 'demo' || serverEnabled === false || serverEnabled === null) {
+    return null;
+  }
+
+  const rowClass = 'w-full px-4 py-2.5 rounded-lg bg-neutral-800 text-neutral-200 border border-white/10 hover:bg-neutral-700 text-sm text-left flex items-center gap-2';
+
+  const handleEnable = async () => {
+    setBusy(true);
+    setNotice(null);
+    try {
+      // Direct call in the click stack — iOS requires the permission prompt
+      // inside a user gesture (publicKey prefetched above).
+      await enablePush(publicKey ?? undefined);
+      setStatus('enabled');
+      setNotice('Reminders enabled on this device.');
+    } catch (err) {
+      setNotice(err instanceof Error ? err.message : 'Could not enable notifications.');
+      setStatus(await getPushStatus());
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleDisable = async () => {
+    setBusy(true);
+    setNotice(null);
+    try {
+      await disablePush();
+      setStatus('disabled');
+      setNotice('Reminders turned off on this device.');
+    } catch {
+      setNotice('Could not turn off notifications.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleTest = async () => {
+    setBusy(true);
+    setNotice(null);
+    try {
+      const result = await sendTestPush();
+      setNotice(result.sent > 0 ? 'Test notification sent.' : 'No active devices received the test.');
+    } catch {
+      setNotice('Could not send the test notification.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <section>
+      <h3 className="text-xs font-medium text-neutral-500 uppercase tracking-wider mb-2">
+        Notifications
+      </h3>
+      {status === 'needs-install' && (
+        <p className="text-[11px] text-neutral-500 px-1">
+          On iPhone and iPad, first add HabitFlow to your Home Screen
+          (Share <span aria-hidden="true">→</span> Add to Home Screen), then enable
+          reminders from the installed app. Requires iOS 16.4 or later.
+        </p>
+      )}
+      {status === 'unsupported' && (
+        <p className="text-[11px] text-neutral-500 px-1">
+          This browser does not support push notifications.
+        </p>
+      )}
+      {status === 'denied' && (
+        <p className="text-[11px] text-neutral-500 px-1">
+          Notifications are blocked for HabitFlow. Re-enable them in your device
+          or browser settings, then come back here.
+        </p>
+      )}
+      {status === 'disabled' && (
+        <button type="button" onClick={handleEnable} disabled={busy} className={rowClass}>
+          <Bell size={16} className="text-emerald-400 flex-shrink-0" />
+          <span className="flex-1">{busy ? 'Enabling…' : 'Enable habit reminders'}</span>
+        </button>
+      )}
+      {status === 'enabled' && (
+        <div className="space-y-2">
+          <div className="px-4 py-2.5 rounded-lg bg-neutral-800/60 border border-white/10 text-sm text-neutral-300 flex items-center gap-2">
+            <Bell size={16} className="text-emerald-400 flex-shrink-0" />
+            <span className="flex-1">Reminders on this device: On</span>
+          </div>
+          <div className="flex gap-2">
+            <button type="button" onClick={handleTest} disabled={busy} className={`${rowClass} flex-1`}>
+              Send test notification
+            </button>
+            <button type="button" onClick={handleDisable} disabled={busy} className={`${rowClass} flex-1 text-neutral-400`}>
+              <BellOff size={14} className="flex-shrink-0" />
+              Turn off
+            </button>
+          </div>
+        </div>
+      )}
+      {notice && <p className="text-[11px] text-neutral-400 mt-2 px-1">{notice}</p>}
+      {status === 'disabled' && (
+        <p className="text-[11px] text-neutral-500 mt-2 px-1">
+          Get a push notification when a habit with a reminder time is due.
+          Set times per habit when creating or editing it.
+        </p>
+      )}
+    </section>
+  );
+}
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -119,6 +257,9 @@ export function SettingsModal({ isOpen, onClose, onNavigate }: SettingsModalProp
                 <ChevronRight size={16} className="text-neutral-500" />
               </button>
             </section>
+
+            {/* Notifications (push reminders) */}
+            <NotificationsSection />
 
             {/* Apple Health Integration */}
             {isHealthFeatureEnabled(user?.email) && (

@@ -465,6 +465,52 @@ export async function setSymptomLog(params: {
 }
 
 /**
+ * Web Push Persistence Functions
+ */
+export type PushPublicKeyResponse = {
+  enabled: boolean;
+  publicKey: string | null;
+};
+
+export type SavedPushSubscription = {
+  id: string;
+  endpoint: string;
+  timeZone: string;
+  createdAt: string;
+  lastSeenAt: string;
+};
+
+export async function getPushPublicKey(): Promise<PushPublicKeyResponse> {
+  return apiRequest<PushPublicKeyResponse>('/push/public-key');
+}
+
+export async function savePushSubscription(input: {
+  subscription: { endpoint: string; keys: { p256dh: string; auth: string } };
+  timeZone: string;
+  userAgent?: string;
+}): Promise<SavedPushSubscription> {
+  const response = await apiRequest<{ subscription: SavedPushSubscription }>('/push/subscriptions', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+  return response.subscription;
+}
+
+export async function deletePushSubscription(endpoint: string): Promise<boolean> {
+  const response = await apiRequest<{ deleted: boolean }>('/push/subscriptions', {
+    method: 'DELETE',
+    body: JSON.stringify({ endpoint }),
+  });
+  return response.deleted;
+}
+
+export async function sendTestPush(): Promise<{ sent: number; gone: number; errors: number }> {
+  return apiRequest<{ sent: number; gone: number; errors: number }>('/push/test', {
+    method: 'POST',
+  });
+}
+
+/**
  * Supplement Persistence Functions (Health Hub)
  */
 export type SupplementInput = {
