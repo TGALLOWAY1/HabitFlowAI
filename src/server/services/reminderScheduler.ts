@@ -30,6 +30,8 @@ import { tryClaimSend, markSendResult, releaseClaim } from '../repositories/push
 import { findReminderHabitsForScopes } from '../repositories/habitRepository';
 import { getHabitEntriesForDay } from '../repositories/habitEntryRepository';
 import { isHabitScheduledOnDay } from './scheduleEngine';
+import { resolveChildIdsForDay } from './dayViewService';
+import { evaluateChecklistSuccess } from './checklistSuccessService';
 import { getDayKeyForDate } from '../utils/dayKey';
 import { sendPush, isPushConfigured } from '../lib/webPush';
 
@@ -54,6 +56,43 @@ export function formatLocalHHmm(date: Date, timeZone: string): string {
 interface MinuteCandidate {
   hhmm: string;
   dayKey: string;
+}
+
+/**
+ * Is this habit already "done" for the day, making its reminder unnecessary?
+ *
+ * Regular habits: ≥1 non-deleted entry for the dayKey (entries are truth).
+ * Bundles never have their own entries — completion is derived from the
+ * children active that day (temporal memberships, subHabitIds fallback):
+ * choice = any child done, checklist = its success rule. Children are
+ * checked by same-day entries only; a weekly-quota child satisfied earlier
+ * in the week still counts as not-done-today, which errs toward sending
+ * the reminder rather than wrongly suppressing it.
+ */
+async function deriveReminderCompletion(
+  habit: Habit & { householdId: string; userId: string },
+  dayKey: string
+): Promise<boolean> {
+  if (habit.type !== 'bundle') {
+    const entries = await getHabitEntriesForDay(habit.id, dayKey, habit.householdId, habit.userId);
+    return entries.length > 0;
+  }
+
+  const childIds = await resolveChildIdsForDay(habit, dayKey, habit.householdId, habit.userId);
+  if (childIds.length === 0) return false;
+
+  let completedCount = 0;
+  for (const childId of childIds) {
+    const entries = await getHabitEntriesForDay(childId, dayKey, habit.householdId, habit.userId);
+    if (entries.length > 0) completedCount++;
+  }
+
+  if (habit.bundleType === 'checklist') {
+    return evaluateChecklistSuccess(completedCount, childIds.length, habit.checklistSuccessRule)
+      .meetsSuccessRule;
+  }
+  // Choice bundles: any child complete = bundle complete
+  return completedCount > 0;
 }
 
 /**
@@ -107,8 +146,7 @@ export async function runReminderTick(now: Date): Promise<void> {
     const cacheKey = `${habit.id}|${dayKey}`;
     const cached = completionCache.get(cacheKey);
     if (cached !== undefined) return cached;
-    const entries = await getHabitEntriesForDay(habit.id, dayKey, habit.householdId, habit.userId);
-    const completed = entries.length > 0;
+    const completed = await deriveReminderCompletion(habit, dayKey);
     completionCache.set(cacheKey, completed);
     return completed;
   }
