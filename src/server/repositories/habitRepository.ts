@@ -53,6 +53,40 @@ function normalizeHabit(habit: Habit): Habit {
   return habit;
 }
 
+/**
+ * SCHEDULER-ONLY: cross-scope query for habits with a reminder due at one of
+ * the given "HH:mm" times, restricted to the scopes that actually have active
+ * push subscriptions. Returns habits WITH their scope fields so the scheduler
+ * can match them to subscriptions — a deliberate exception to the per-request
+ * scoping rule; never call this from a request handler.
+ */
+export async function findReminderHabitsForScopes(
+  scopes: Array<{ householdId: string; userId: string }>,
+  times: string[]
+): Promise<Array<Habit & { householdId: string; userId: string }>> {
+  if (scopes.length === 0 || times.length === 0) return [];
+
+  const db = await getDb();
+  const collection = db.collection(COLLECTION_NAME);
+
+  const docs = await collection
+    .find({
+      $or: scopes.map((s) => ({ householdId: s.householdId, userId: s.userId })),
+      reminderTime: { $in: times },
+      reminderEnabled: { $ne: false },
+      deletedAt: { $exists: false },
+      archived: { $ne: true },
+      // Mirrors isTrackableHabit (scheduleEngine): bundles are containers, not trackable
+      type: { $ne: 'bundle' },
+    })
+    .toArray();
+
+  return docs.map((doc) => {
+    const { householdId, userId } = doc as any;
+    return { ...stripScope(doc), householdId, userId };
+  });
+}
+
 export async function createHabit(
   data: Omit<Habit, 'id' | 'createdAt' | 'archived'>,
   householdId: string,
