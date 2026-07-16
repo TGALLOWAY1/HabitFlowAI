@@ -1492,7 +1492,34 @@ export const MONGO_COLLECTIONS = {
     SYMPTOM_LOGS: 'symptomLogs',
     SUPPLEMENTS: 'supplements',
     SUPPLEMENT_LOGS: 'supplementLogs',
+    PUSH_SUBSCRIPTIONS: 'pushSubscriptions',
+    PUSH_SEND_LOG: 'pushSendLog',
 } as const;
+
+/**
+ * Web Push device subscription (operational data, NOT truth data).
+ *
+ * One document per device/browser a user has enabled notifications on.
+ * Stored scoped by householdId + userId (stripped on read like other repos).
+ * `timeZone` is per-device and refreshed on every subscribe call so reminders
+ * fire in the device's local time. `disabledAt` marks endpoints the push
+ * service reported gone (404/410); re-subscribing revives the document.
+ */
+export interface PushSubscriptionDoc {
+  id: string;
+  endpoint: string;
+  keys: {
+    p256dh: string;
+    auth: string;
+  };
+  /** IANA timezone captured at subscribe time, refreshed on each sync. */
+  timeZone: string;
+  userAgent?: string;
+  createdAt: string;
+  lastSeenAt: string;
+  /** Set when the push service reports the endpoint gone; cleared on re-subscribe. */
+  disabledAt?: string;
+}
 
 /**
  * Household user registry (lightweight; no passwords/auth).
