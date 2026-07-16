@@ -38,6 +38,15 @@ reset-password, bootstrap-admin) are rate-limited via `authRateLimiter`.
 - `PATCH /habits/:id`
 - `DELETE /habits/:id`
 
+Habit create/PATCH accept `reminderTime` (24h `"HH:mm"`; `null` clears) and `reminderEnabled` (boolean; absent = enabled when a time is set) for Web Push reminders.
+
+## Push Notifications (Web Push Reminders)
+
+- `GET /push/public-key` — `{ enabled, publicKey }`; `enabled: false` when `PUSH_REMINDERS_ENABLED`/VAPID keys are not configured (clients hide push UI)
+- `POST /push/subscriptions` — body `{ subscription: { endpoint, keys: { p256dh, auth } }, timeZone, userAgent? }`; idempotent per-device upsert (refreshes keys/timezone/lastSeenAt, revives disabled endpoints); `501 PUSH_DISABLED` when unconfigured
+- `DELETE /push/subscriptions` — body `{ endpoint }` → `{ deleted }`
+- `POST /push/test` — sends a test notification to the caller's active devices → `{ sent, gone, errors }`; endpoints reported gone (404/410) are disabled
+
 ## Habit Entries (Canonical Behavioral Truth)
 
 - `GET /entries`

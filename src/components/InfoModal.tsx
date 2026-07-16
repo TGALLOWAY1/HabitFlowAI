@@ -225,6 +225,23 @@ export function InfoModal({ isOpen, onClose }: InfoModalProps) {
                 </div>
               ))}
 
+              {/* Reminders */}
+              <div className="pl-3 border-l-2 border-emerald-500/40">
+                <p className="text-sm text-neutral-200">
+                  <span className="font-bold text-emerald-400">Reminders</span>
+                </p>
+                <p className="text-sm text-neutral-300 mt-1">
+                  Give any habit a reminder time (when creating or editing it) and HabitFlow
+                  sends a push notification at that time on the habit's scheduled days —
+                  skipped automatically once the habit is done for the day. Turn notifications
+                  on per device in <span className="text-neutral-200">Settings → Notifications</span>.
+                </p>
+                <p className="text-xs text-neutral-500 mt-1.5">
+                  iPhone/iPad: add HabitFlow to your Home Screen first (Share → Add to Home
+                  Screen), then enable reminders from the installed app. Requires iOS 16.4+.
+                </p>
+              </div>
+
               {/* Link to advanced tab */}
               <div className="pt-2 border-t border-white/5">
                 <button

@@ -30,6 +30,8 @@ Defined in `src/models/persistenceTypes.ts` (`MONGO_COLLECTIONS`). **Current** c
 - `habitHealthRules` (habit ↔ health data rule mappings)
 - `healthSuggestions` (pending suggestions from health rule evaluation)
 - `aiReports` (archived AI-generated insights — Weekly Review, Journal Summary — for history; generated artifacts, not derived truth; soft-deleted)
+- `pushSubscriptions` (Web Push device registrations — operational device data, NOT truth; one doc per user+device endpoint with per-device IANA `timeZone`; unique index on `householdId+userId+endpoint`; gone endpoints soft-disabled via `disabledAt`, revived on re-subscribe; hard-deleted on user unsubscribe)
+- `pushSendLog` (reminder send-dedup ledger — operational, NOT truth; unique index on `habitId+dayKey+endpoint` makes scheduler sends at-most-once; rows expire via 48h TTL on `sentAt`)
 
 **Removed / no longer used:** `dayLogs`, `goalManualLogs`. Do not reference these in new code or docs.
 
