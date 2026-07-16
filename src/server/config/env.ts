@@ -64,6 +64,21 @@ export function getMongoDbName(): string {
   return process.env.MONGODB_DB_NAME || '';
 }
 
+// Web Push (VAPID) configuration. Generate keys with: npx web-push generate-vapid-keys
+// The public key is safe to expose to clients; the private key is server-only.
+export function getVapidPublicKey(): string {
+  return process.env.VAPID_PUBLIC_KEY || '';
+}
+
+export function getVapidPrivateKey(): string {
+  return process.env.VAPID_PRIVATE_KEY || '';
+}
+
+export function getVapidSubject(): string {
+  // Contact URI sent to push services (mailto: or https:), required by VAPID.
+  return process.env.VAPID_SUBJECT || '';
+}
+
 // For backward compatibility, also export as constants (but they read from process.env)
 // Note: These will be evaluated at import time, so set env vars before importing
 export const MONGODB_URI = getMongoDbUri();
