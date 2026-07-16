@@ -26,6 +26,12 @@ import { getEntriesRoute, createEntryRoute, upsertEntryByKeyRoute, getEntryRoute
 import { getTasksRoute, createTaskRoute, updateTaskRoute, deleteTaskRoute } from './routes/tasks';
 import { getDashboardPrefsRoute, updateDashboardPrefsRoute } from './routes/dashboardPrefs';
 import {
+  getPushPublicKeyRoute,
+  savePushSubscriptionRoute,
+  deletePushSubscriptionRoute,
+  sendTestPushRoute,
+} from './routes/pushSubscriptions';
+import {
   getAuthMe,
   postInviteRedeem,
   postLogin,
@@ -169,6 +175,12 @@ export function createApp(): Express {
   app.post('/api/habits/:id/convert-to-bundle', convertToBundleRoute);
   app.post('/api/habits/:id/archive', archiveHabitRoute);
   app.post('/api/habits/:id/unarchive', unarchiveHabitRoute);
+
+  // Web Push reminders (subscription management; behind identity + demo guard)
+  app.get('/api/push/public-key', getPushPublicKeyRoute);
+  app.post('/api/push/subscriptions', savePushSubscriptionRoute);
+  app.delete('/api/push/subscriptions', deletePushSubscriptionRoute);
+  app.post('/api/push/test', sendTestPushRoute);
 
   // Apple Health integration (feature-gated)
   app.use('/api/health', requireHealthFeature, healthRoutes);
