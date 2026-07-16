@@ -73,6 +73,10 @@ export interface Habit {
     scheduledTime?: string; // HH:mm
     durationMinutes?: number;
 
+    // Push Reminder Fields
+    reminderTime?: string; // HH:mm, device-local; unset = no reminder
+    reminderEnabled?: boolean; // absent = enabled when reminderTime is set
+
     // Non-Negotiable Fields
     nonNegotiable?: boolean;
     nonNegotiableDays?: number[]; // 0=Sun, 6=Sat

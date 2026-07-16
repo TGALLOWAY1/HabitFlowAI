@@ -170,6 +170,19 @@ export interface Habit {
     scheduledTime?: string;
 
     /**
+     * Optional: Push reminder time ("HH:mm"), interpreted in each subscribed
+     * device's local timezone. Reminders fire only on assignedDays (or every
+     * day when unset) and skip habits already completed that day.
+     */
+    reminderTime?: string;
+
+    /**
+     * Optional: Toggle push reminders without losing the configured time.
+     * Absent means enabled when reminderTime is set.
+     */
+    reminderEnabled?: boolean;
+
+    /**
      * Optional: Duration in minutes for the habit (default: 30).
      * Used for calendar visualization.
      */
