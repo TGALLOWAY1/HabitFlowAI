@@ -150,10 +150,9 @@ describe('reminderScheduler', () => {
     expect(vi.mocked(sendPush).mock.calls[0][1].title).toBe('ThursdayHabit');
   });
 
-  it('skips reminderEnabled=false, archived, and bundle habits', async () => {
+  it('skips reminderEnabled=false and archived habits', async () => {
     await subscribe();
     await makeHabit({ name: 'Disabled', reminderEnabled: false });
-    await makeHabit({ name: 'Bundle', type: 'bundle' });
     const db = await getTestDb();
     await makeHabit({ name: 'Archived' });
     await db.collection('habits').updateOne({ name: 'Archived' }, { $set: { archived: true } });
@@ -161,6 +160,76 @@ describe('reminderScheduler', () => {
     await runReminderTick(utc('2026-07-16T12:00:10Z'));
 
     expect(vi.mocked(sendPush)).not.toHaveBeenCalled();
+  });
+
+  describe('bundle reminders (completion derived from children)', () => {
+    async function makeBundle(bundleType: 'choice' | 'checklist', childNames: string[]) {
+      const children = [];
+      for (const name of childNames) {
+        // Children carry no reminder of their own — only the bundle reminds
+        children.push(await makeHabit({ name, reminderTime: null }));
+      }
+      const bundle = await makeHabit({
+        name: `${bundleType} bundle`,
+        type: 'bundle',
+        bundleType,
+        subHabitIds: children.map((c) => c.id),
+      });
+      return { bundle, children };
+    }
+
+    async function completeChild(childId: string, dayKey = '2026-07-16') {
+      const db = await getTestDb();
+      await db.collection('habitEntries').insertOne({
+        id: `entry-${childId}-${dayKey}`,
+        householdId: HH,
+        userId: USER,
+        habitId: childId,
+        dayKey,
+        createdAt: new Date().toISOString(),
+      });
+    }
+
+    it('sends for a bundle with no completed children', async () => {
+      await subscribe();
+      const { bundle } = await makeBundle('choice', ['Child A', 'Child B']);
+
+      await runReminderTick(utc('2026-07-16T12:00:10Z'));
+
+      expect(vi.mocked(sendPush)).toHaveBeenCalledTimes(1);
+      expect(vi.mocked(sendPush).mock.calls[0][1].title).toBe(bundle.name);
+    });
+
+    it('skips a choice bundle once any child is done', async () => {
+      await subscribe();
+      const { children } = await makeBundle('choice', ['Child A', 'Child B']);
+      await completeChild(children[0].id);
+
+      await runReminderTick(utc('2026-07-16T12:00:10Z'));
+
+      expect(vi.mocked(sendPush)).not.toHaveBeenCalled();
+    });
+
+    it('still sends for a checklist bundle (default rule: all) when only some children are done', async () => {
+      await subscribe();
+      const { children } = await makeBundle('checklist', ['Child A', 'Child B']);
+      await completeChild(children[0].id);
+
+      await runReminderTick(utc('2026-07-16T12:00:10Z'));
+
+      expect(vi.mocked(sendPush)).toHaveBeenCalledTimes(1);
+    });
+
+    it('skips a checklist bundle once all children are done', async () => {
+      await subscribe();
+      const { children } = await makeBundle('checklist', ['Child A', 'Child B']);
+      await completeChild(children[0].id);
+      await completeChild(children[1].id);
+
+      await runReminderTick(utc('2026-07-16T12:00:10Z'));
+
+      expect(vi.mocked(sendPush)).not.toHaveBeenCalled();
+    });
   });
 
   it('skips habits already completed for the local day', async () => {

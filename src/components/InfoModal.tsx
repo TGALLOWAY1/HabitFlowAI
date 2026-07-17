@@ -231,10 +231,12 @@ export function InfoModal({ isOpen, onClose }: InfoModalProps) {
                   <span className="font-bold text-emerald-400">Reminders</span>
                 </p>
                 <p className="text-sm text-neutral-300 mt-1">
-                  Give any habit a reminder time (when creating or editing it) and HabitFlow
-                  sends a push notification at that time on the habit's scheduled days —
-                  skipped automatically once the habit is done for the day. Turn notifications
-                  on per device in <span className="text-neutral-200">Settings → Notifications</span>.
+                  Give any habit — including bundles — a reminder time (when creating or
+                  editing it) and HabitFlow sends a push notification at that time on the
+                  habit's scheduled days, skipped automatically once it's done for the day
+                  (for bundles, once the children satisfy the bundle's rule). Turn
+                  notifications on per device in{' '}
+                  <span className="text-neutral-200">Settings → Notifications</span>.
                 </p>
                 <p className="text-xs text-neutral-500 mt-1.5">
                   iPhone/iPad: add HabitFlow to your Home Screen first (Share → Add to Home

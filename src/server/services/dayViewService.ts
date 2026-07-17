@@ -179,7 +179,7 @@ function deriveWeeklyProgress(
  * @param userId - User ID for scoping
  * @returns Array of child habit IDs active on this day
  */
-async function resolveChildIdsForDay(
+export async function resolveChildIdsForDay(
   bundleHabit: Habit,
   dayKey: DayKey,
   householdId: string,

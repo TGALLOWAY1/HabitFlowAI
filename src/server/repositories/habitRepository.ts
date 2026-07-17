@@ -76,8 +76,9 @@ export async function findReminderHabitsForScopes(
       reminderEnabled: { $ne: false },
       deletedAt: { $exists: false },
       archived: { $ne: true },
-      // Mirrors isTrackableHabit (scheduleEngine): bundles are containers, not trackable
-      type: { $ne: 'bundle' },
+      // Bundles are included: they carry their own reminderTime, and the
+      // scheduler derives their completion from children when deciding
+      // whether the reminder is still needed.
     })
     .toArray();
 
