@@ -168,34 +168,33 @@ This document defines the invariant rules that govern HabitFlowAI's behavior. An
 
 ### R20: Daily Streak Calculation
 
-- Count consecutive completed/frozen days walking backward from today.
-- If completed today: start from today.
-- If not completed today: start from yesterday.
-- Frozen days (`isFrozen`) count as valid -- they prevent streak breakage.
-- `atRisk = currentStreak > 0 && !completedToday`.
-- **Source:** `streakService.ts:calculateDailyMetrics()`
+- Count consecutive protected scheduled opportunities through the reference DayKey.
+- Days when the habit is not scheduled neither advance nor break the streak.
+- An unfinished opportunity on the current reference day preserves the prior streak and marks it at risk.
+- Frozen days protect continuity but are not reported as completed days.
+- **Source:** `streakService.ts:calculateOpportunityMetrics()`
 
 ### R21: Weekly Streak Calculation
 
 - Count consecutive "satisfied" weeks walking backward from current week.
-- A week is satisfied if weekly progress >= target (`timesPerWeek` or `goal.target`).
+- A week is satisfied if distinct completed scheduled days meet the configured quota.
 - If current week satisfied: include it; if not: start from previous week.
-- For quantity habits: sum values; for frequency: count distinct days.
+- Numeric quantity only completes its individual day after reaching the daily numeric target; quantity does not inflate the number of completed occurrences.
 - `atRisk = currentStreak > 0 && !currentWeek.satisfied && daysLeftInWeek <= 2`.
 - **Source:** `streakService.ts:calculateWeeklyMetrics()`
 
 ### R22: Scheduled-Daily Streak Calculation
 
-- For habits with `assignedDays` + `requiredDaysPerWeek`.
-- Uses weekly windows: week satisfied if completions (on ANY day) >= `requiredDaysPerWeek`.
-- Note: completions on non-assigned days still count toward the week.
-- **Source:** `streakService.ts:calculateScheduledDailyMetrics()`
+- A strict schedule has `requiredDaysPerWeek === assignedDays.length`; it uses scheduled-opportunity streaks measured in days/occurrences.
+- A flexible schedule has `requiredDaysPerWeek < assignedDays.length`; it uses satisfied-week streaks.
+- Completions on non-assigned days do not advance either mode.
+- **Source:** `schedule.ts:usesWeeklyQuotaStreak()`, `streakService.ts`
 
 ### R23: Streak Mode Selection
 
-- If `habit.timesPerWeek > 0` -> weekly streak (`calculateWeeklyMetrics`).
-- Else if `habit.assignedDays?.length && habit.requiredDaysPerWeek` -> scheduled-daily streak (`calculateScheduledDailyMetrics`).
-- Else -> daily streak (`calculateDailyMetrics`).
+- If `habit.timesPerWeek > 0` -> weekly streak.
+- Else if `requiredDaysPerWeek < assignedDays.length` -> flexible weekly streak.
+- Else -> scheduled-opportunity streak.
 - **Source:** `streakService.ts:calculateHabitStreakMetrics()`
 
 ---

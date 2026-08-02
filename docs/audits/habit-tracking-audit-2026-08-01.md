@@ -56,6 +56,7 @@ No streak value is persisted. Historical entry edits/deletes and habit definitio
 - A scheduled opportunity cannot precede the habit's creation DayKey in the supplied user timezone.
 - Assigned weekdays are the only eligible days when present. Unassigned days neither advance nor break a streak; an off-schedule completion does not satisfy a weekly quota.
 - A daily current streak is the consecutive sequence of protected scheduled opportunities through the reference day. An unfinished opportunity on the still-open reference day preserves the prior current streak and marks it at risk.
+- A strict assigned-day schedule (`requiredDaysPerWeek === assignedDays.length`) uses that daily opportunity streak. A flexible schedule with grace days uses week-level satisfaction, as do explicit `timesPerWeek` habits.
 - A weekly current streak is consecutive satisfied ISO Monday–Sunday weeks. An open, unsatisfied current week preserves the preceding streak until the week closes.
 - Longest streak is the largest completed historical sequence of scheduled daily opportunities or satisfied weekly periods.
 - Future entries, invalid DayKeys, and entries before creation do not affect current streak, longest streak, or last-completed date.
