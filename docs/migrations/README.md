@@ -144,7 +144,7 @@ npx tsx scripts/migrations/backfillDayKey.ts --apply --i-understand-this-will-mo
 
 Reports are saved to `docs/migrations/backfill-dayKey-<timestamp>.json`.
 
-**2. Then run dedupe** (below) if multiple entries end up with the same (userId, habitId, dayKey).
+**2. Then run dedupe** (below) if multiple entries end up with the same `(householdId, userId, habitId, dayKey)`.
 
 **3. Restart the server** so index assurance runs again; the unique index should then be created.
 
@@ -152,7 +152,9 @@ Reports are saved to `docs/migrations/backfill-dayKey-<timestamp>.json`.
 
 ### HabitEntries deduplication (before enabling unique index)
 
-Before enabling the unique index on `(userId, habitId, dayKey)` in production, duplicate active entries must be removed. Use the dedupe script (soft-deletes losers) and then the verify script.
+Before enabling the unique index on `(householdId, userId, habitId, dayKey)` in production, every duplicate index key must be resolved, including documents already marked deleted. The index is full (not partial), so soft-deleting a loser does not remove the conflict.
+
+On apply, the dedupe script selects an active winner when possible, copies every loser to `habitEntryDedupeArchive` with recovery metadata, and then removes the loser from `habitEntries`. Backfill missing `dayKey` values first; the dedupe script refuses to invent a key from legacy fields because verification must exactly match the index.
 
 **Dedupe — dry-run (read-only, writes report only):**
 
@@ -168,13 +170,13 @@ npx tsx scripts/migrations/dedupeHabitEntries.ts --apply --i-understand-this-wil
 
 Reports are saved to `docs/migrations/dedupe-habitEntries-<timestamp>.json`.
 
-**Verify no duplicate active entries remain (read-only):**
+**Verify no duplicate index keys remain (read-only):**
 
 ```bash
 npx tsx scripts/migrations/verifyNoDuplicateHabitEntries.ts
 ```
 
-Exits 0 if no duplicates, 1 if any duplicate groups exist.
+Exits 0 if no duplicates across all documents, 1 if any duplicate groups exist. After a successful apply and verify, restart the server so startup index assurance can create the unique index.
 
 ---
 
