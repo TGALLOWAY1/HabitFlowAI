@@ -154,7 +154,7 @@ Reports are saved to `docs/migrations/backfill-dayKey-<timestamp>.json`.
 
 Before enabling the unique index on `(householdId, userId, habitId, dayKey)` in production, every duplicate index key must be resolved, including documents already marked deleted. The index is full (not partial), so soft-deleting a loser does not remove the conflict.
 
-On apply, the dedupe script selects an active winner when possible, copies every loser to `habitEntryDedupeArchive` with recovery metadata, and then removes the loser from `habitEntries`. Backfill missing `dayKey` values first; the dedupe script refuses to invent a key from legacy fields because verification must exactly match the index.
+On apply, the dedupe script plans a history-preserving resolution for every group. It copies every original document (including the retained winner) to `habitEntryDedupeArchive` before changing anything, refuses to run if a mixed freeze/choice/unknown-value group needs manual review, removes only redundant documents, and then creates the canonical unique index. Numeric active duplicates are consolidated to the same summed value the application already derives; boolean duplicates retain entry-existence completion. Backfill missing `dayKey` values first; the script refuses to invent a key from legacy fields because verification must exactly match the index.
 
 **Dedupe — dry-run (read-only, writes report only):**
 
@@ -176,7 +176,7 @@ Reports are saved to `docs/migrations/dedupe-habitEntries-<timestamp>.json`.
 npx tsx scripts/migrations/verifyNoDuplicateHabitEntries.ts
 ```
 
-Exits 0 if no duplicates across all documents, 1 if any duplicate groups exist. After a successful apply and verify, restart the server so startup index assurance can create the unique index.
+Exits 0 only if no duplicates remain and the canonical unique index is active. After a successful apply and verify, no server restart is required for index creation.
 
 ---
 

@@ -35,7 +35,7 @@ This document defines the invariant rules that govern HabitFlowAI's behavior. An
 
 - Truth records (HabitEntry, WellbeingEntry) use a `deletedAt` timestamp for soft delete.
 - Queries must filter `deletedAt` unless explicitly including deleted records.
-- Habits use `archived: true` instead of deletion.
+- Habit archive is reversible; permanent habit removal sets `deletedAt` while retaining the document and its entries for historical/goal resolution.
 
 ### R5: Identity Scoping
 
@@ -52,24 +52,24 @@ This document defines the invariant rules that govern HabitFlowAI's behavior. An
 
 ### R6: Daily Boolean Habit Completion
 
-- Complete if: at least one non-deleted `HabitEntry` exists for `(habitId, dayKey)`.
+- Complete if: at least one active, non-freeze `HabitEntry` exists for `(habitId, dayKey)`.
 - Value is ignored for boolean habits -- any entry means complete.
-- **Source:** `dayViewService.ts:deriveDailyCompletion()` -- returns `true` when `entryViews.some(entry => entry.habitId === habitId && entry.dayKey === dayKey && !entry.deletedAt)`.
+- **Source:** `src/domain/habits/completion.ts:deriveDailyHabitCompletion()`.
 
 ### R7: Daily Numeric Habit Completion
 
-- Complete if: sum of entry values for `(habitId, dayKey)` >= `habit.goal.target`.
-- Multiple entries per day are summed.
-- **Source:** `dayViewService.ts` -- numeric completion is derived by summing `entry.value` across all non-deleted entries for the day.
+- Complete if: the non-negative finite value for `(habitId, dayKey)` reaches the positive target effective on that DayKey.
+- Below-target values are partial progress, never completion. Zero/empty is no progress; negative/non-finite writes are rejected.
+- The uniqueness key permits one canonical document per habit/day. Derivation still sums defensively if legacy input contains more than one record.
+- **Source:** `src/domain/habits/completion.ts:deriveDailyHabitCompletion()`.
 
 ### R8: Weekly Habit Completion
 
 - Week window: Monday to Sunday (`weekStartsOn: 1`).
-- Three sub-types determined by `deriveWeeklyProgress()`:
-  - **Quantity weekly** (`habit.goal.type === 'number'`): sum of entry values in week >= `timesPerWeek` / `goal.target`.
-  - **Frequency weekly** (`!isQuantity && target > 1`): count of distinct `dayKeys` with entries in week >= target.
-  - **Binary weekly** (single entry suffices): any non-deleted entry in week = complete.
-- **Source:** `dayViewService.ts:deriveWeeklyProgress()`
+- A weekly quota is satisfied when the count of distinct scheduled DayKeys that reached daily completion meets `timesPerWeek` or the flexible `requiredDaysPerWeek` rule.
+- Numeric quantity completes its own day only after reaching that day's target; raw quantity never inflates occurrence count.
+- Off-schedule entries do not satisfy the quota.
+- **Source:** `src/domain/habits/weeklyProgress.ts`, `src/server/services/streakService.ts`.
 
 ### R9: Checklist Bundle Completion
 
@@ -101,18 +101,17 @@ This document defines the invariant rules that govern HabitFlowAI's behavior. An
 - Frozen days count as valid for streak calculations (they prevent streak breakage).
 - Detection: `parseFreezeType(entry.note)` in progress utilities.
 - Freeze inventory: `habit.freezeCount`, max 3.
-- Auto-freeze: applied for yesterday only, consumes 1 inventory, only if day-2 had an entry (protecting an active streak).
+- Automatic freeze generation is disabled until the legacy service uses canonical completion and schedule rules.
 - **Source:** `src/server/services/freezeService.ts`
 
 ---
 
 ## 4. Scheduling Rules
 
-### R13: assignedDays Controls Visibility, Not Completion
+### R13: assignedDays Controls Opportunities
 
 - `assignedDays` determines which days a habit appears in the Day View and Schedule View.
-- A habit can still be completed on non-assigned days (entries are always accepted).
-- Completing on a non-assigned day still counts toward streaks and goals.
+- An off-schedule entry can remain in history and goal aggregation, but it does not advance a strict occurrence streak or satisfy a flexible weekly quota.
 
 ### R14: Scheduling Logic
 
@@ -168,35 +167,58 @@ This document defines the invariant rules that govern HabitFlowAI's behavior. An
 
 ### R20: Daily Streak Calculation
 
-- Count consecutive completed/frozen days walking backward from today.
-- If completed today: start from today.
-- If not completed today: start from yesterday.
-- Frozen days (`isFrozen`) count as valid -- they prevent streak breakage.
-- `atRisk = currentStreak > 0 && !completedToday`.
-- **Source:** `streakService.ts:calculateDailyMetrics()`
+- Count consecutive protected scheduled opportunities through the reference DayKey.
+- Days when the habit is not scheduled neither advance nor break the streak.
+- An unfinished opportunity on the current reference day preserves the prior streak and marks it at risk.
+- Frozen days protect continuity but are not reported as completed days.
+- **Source:** `streakService.ts:calculateOpportunityMetrics()`
 
 ### R21: Weekly Streak Calculation
 
 - Count consecutive "satisfied" weeks walking backward from current week.
-- A week is satisfied if weekly progress >= target (`timesPerWeek` or `goal.target`).
+- A week is satisfied if distinct completed scheduled days meet the configured quota.
 - If current week satisfied: include it; if not: start from previous week.
-- For quantity habits: sum values; for frequency: count distinct days.
+- Numeric quantity only completes its individual day after reaching the daily numeric target; quantity does not inflate the number of completed occurrences.
 - `atRisk = currentStreak > 0 && !currentWeek.satisfied && daysLeftInWeek <= 2`.
 - **Source:** `streakService.ts:calculateWeeklyMetrics()`
 
 ### R22: Scheduled-Daily Streak Calculation
 
-- For habits with `assignedDays` + `requiredDaysPerWeek`.
-- Uses weekly windows: week satisfied if completions (on ANY day) >= `requiredDaysPerWeek`.
-- Note: completions on non-assigned days still count toward the week.
-- **Source:** `streakService.ts:calculateScheduledDailyMetrics()`
+- A strict schedule has `requiredDaysPerWeek === assignedDays.length`; it uses scheduled-opportunity streaks measured in days/occurrences.
+- A flexible schedule has `requiredDaysPerWeek < assignedDays.length`; it uses satisfied-week streaks.
+- Completions on non-assigned days do not advance either mode.
+- **Source:** `schedule.ts:usesWeeklyQuotaStreak()`, `streakService.ts`
 
 ### R23: Streak Mode Selection
 
-- If `habit.timesPerWeek > 0` -> weekly streak (`calculateWeeklyMetrics`).
-- Else if `habit.assignedDays?.length && habit.requiredDaysPerWeek` -> scheduled-daily streak (`calculateScheduledDailyMetrics`).
-- Else -> daily streak (`calculateDailyMetrics`).
+- If `habit.timesPerWeek > 0` -> weekly streak.
+- Else if `requiredDaysPerWeek < assignedDays.length` -> flexible weekly streak.
+- Else -> scheduled-opportunity streak.
 - **Source:** `streakService.ts:calculateHabitStreakMetrics()`
+
+### R23A: Tracking Rule History
+
+- Target and schedule edits are effective from a canonical local DayKey.
+- The habit document keeps only tracking-relevant revisions: goal, assigned weekdays, and weekly quota fields.
+- Completion and scheduling resolve the revision effective on the historical DayKey; HabitEntries are not rewritten.
+- Repeated edits on one DayKey replace that revision.
+- A change between occurrence and weekly streak units starts a new comparable streak segment.
+- **Source:** `trackingHistory.ts`, `completion.ts`, `schedule.ts`, `streakService.ts`
+
+### R23B: Archive/Restore Opportunities
+
+- User archive preserves the archive day and starts an inactive interval the following local day.
+- Restore ends the inactive interval the previous local day, so the restore day is active.
+- Inactive daily opportunities do not advance or break a streak.
+- Weekly periods touched by an inactive interval are excused as a whole period.
+- **Source:** `habitRepository.ts`, `schedule.ts`, `streakService.ts`
+
+### R23C: Backdated and Imported History
+
+- `createdAt` prevents unevidenced missed opportunities before a habit existed.
+- If a real entry predates `createdAt`, the earliest such DayKey starts evidenced streak/statistics history.
+- The entry must still match the historical weekday rule; no opportunities are invented before it.
+- **Source:** `schedule.ts:matchesHabitScheduleOnDay()`, `streakService.ts`, `analyticsService.ts`.
 
 ---
 
@@ -240,7 +262,8 @@ This document defines the invariant rules that govern HabitFlowAI's behavior. An
 - Daily with `assignedDays`: 1 opportunity per assigned day in range.
 - Weekly habits with `assignedDays`: count assigned days in range.
 - Weekly without `assignedDays`: count distinct weeks in range.
-- **Source:** `scheduleEngine.ts:getExpectedOpportunitiesInRange()`
+- Before `createdAt`, count no opportunity unless a real entry exists on that matching schedule day; that evidenced day is included.
+- **Source:** `scheduleEngine.ts:getExpectedOpportunitiesInRange()`, `analyticsService.ts:isHabitAnalyticsOpportunityOnDay()`
 
 ---
 
@@ -248,7 +271,7 @@ This document defines the invariant rules that govern HabitFlowAI's behavior. An
 
 ### R29: Canonical Data Flow
 
-1. User action -> Frontend writes `HabitEntry` via `POST /api/entries`.
+1. User action -> Frontend upserts or clears a `HabitEntry` via the canonical entry API.
 2. Backend validates dayKey/timezone.
 3. Backend stores entry in `habitEntries` collection.
 4. Derived views computed from entries at read time (`GET /api/day-view`, `GET /api/progress`, etc.).
@@ -260,6 +283,7 @@ This document defines the invariant rules that govern HabitFlowAI's behavior. An
 - `timezone` must be valid IANA timezone.
 - Forbidden fields: stored completion status (completion is always derived).
 - `source` is validated against allowed values: `manual`, `routine`, `quick`, `import`, `apple_health`, `test`.
+- Numeric values must be finite and non-negative; numeric habits require a value.
 
 ---
 

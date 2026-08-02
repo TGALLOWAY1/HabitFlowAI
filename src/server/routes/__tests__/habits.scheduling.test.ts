@@ -14,6 +14,8 @@ import {
   getHabits,
   createHabitRoute,
   updateHabitRoute,
+  archiveHabitRoute,
+  unarchiveHabitRoute,
 } from '../habits';
 import {
   createCategoryRoute,
@@ -40,6 +42,8 @@ describe('Habit Scheduling (assignedDays + requiredDaysPerWeek)', () => {
     app.get('/api/habits', getHabits);
     app.post('/api/habits', createHabitRoute);
     app.patch('/api/habits/:id', updateHabitRoute);
+    app.post('/api/habits/:id/archive', archiveHabitRoute);
+    app.post('/api/habits/:id/unarchive', unarchiveHabitRoute);
     app.post('/api/categories', createCategoryRoute);
   });
 
@@ -244,5 +248,96 @@ describe('Habit Scheduling (assignedDays + requiredDaysPerWeek)', () => {
       .patch(`/api/habits/${createRes.body.habit.id}`)
       .send({ goal: { type: 'number', frequency: 'daily', target: -3 } });
     expect(invalidTarget.status).toBe(400);
+  });
+
+  it('records lightweight rule revisions instead of reinterpreting old entries', async () => {
+    const createRes = await request(app)
+      .post('/api/habits')
+      .send({
+        name: 'Historical pages',
+        categoryId: category.id,
+        goal: { type: 'number', frequency: 'daily', target: 10, unit: 'pages' },
+        assignedDays: [1, 3, 5],
+        requiredDaysPerWeek: 3,
+      });
+    expect(createRes.status).toBe(201);
+
+    const testDb = await getTestDb();
+    await testDb.collection('habits').updateOne(
+      { id: createRes.body.habit.id },
+      { $set: { createdAt: '2026-01-01T12:00:00.000Z' } },
+    );
+
+    const updateRes = await request(app)
+      .patch(`/api/habits/${createRes.body.habit.id}`)
+      .send({
+        goal: { type: 'number', frequency: 'daily', target: 20, unit: 'pages' },
+        assignedDays: [1, 2, 3, 4, 5],
+        requiredDaysPerWeek: 5,
+        trackingEffectiveDayKey: '2026-08-01',
+        timeZone: 'America/New_York',
+      });
+
+    expect(updateRes.status).toBe(200);
+    expect(updateRes.body.habit.trackingRevisions).toEqual([
+      {
+        effectiveFromDayKey: '2026-01-01',
+        goal: { type: 'number', frequency: 'daily', target: 10, unit: 'pages' },
+        assignedDays: [1, 3, 5],
+        requiredDaysPerWeek: 3,
+      },
+      {
+        effectiveFromDayKey: '2026-08-01',
+        goal: { type: 'number', frequency: 'daily', target: 20, unit: 'pages' },
+        assignedDays: [1, 2, 3, 4, 5],
+        requiredDaysPerWeek: 5,
+      },
+    ]);
+  });
+
+  it('records archive gaps without modifying existing HabitEntries', async () => {
+    const createRes = await request(app)
+      .post('/api/habits')
+      .send({
+        name: 'Pause-safe habit',
+        categoryId: category.id,
+        goal: { type: 'boolean', frequency: 'daily' },
+      });
+    expect(createRes.status).toBe(201);
+
+    const testDb = await getTestDb();
+    const storedEntry = {
+      id: 'history-entry-1',
+      householdId: TEST_HOUSEHOLD_ID,
+      userId: TEST_USER_ID,
+      habitId: createRes.body.habit.id,
+      dayKey: '2026-02-10',
+      timestamp: '2026-02-10T12:00:00.000Z',
+      value: 1,
+      source: 'manual',
+      createdAt: '2026-02-10T12:00:00.000Z',
+      updatedAt: '2026-02-10T12:00:00.000Z',
+    };
+    await testDb.collection('habitEntries').insertOne(storedEntry);
+    const beforeEntry = await testDb.collection('habitEntries').findOne({ id: storedEntry.id });
+
+    const archiveRes = await request(app)
+      .post(`/api/habits/${createRes.body.habit.id}/archive`)
+      .send({ trackingEffectiveDayKey: '2026-02-10', timeZone: 'UTC' });
+    expect(archiveRes.status).toBe(200);
+    expect(archiveRes.body.habit.inactivePeriods).toEqual([
+      { startDayKey: '2026-02-11' },
+    ]);
+
+    const restoreRes = await request(app)
+      .post(`/api/habits/${createRes.body.habit.id}/unarchive`)
+      .send({ trackingEffectiveDayKey: '2026-02-15', timeZone: 'UTC' });
+    expect(restoreRes.status).toBe(200);
+    expect(restoreRes.body.habit.inactivePeriods).toEqual([
+      { startDayKey: '2026-02-11', endDayKey: '2026-02-14' },
+    ]);
+
+    const afterEntry = await testDb.collection('habitEntries').findOne({ id: storedEntry.id });
+    expect(afterEntry).toEqual(beforeEntry);
   });
 });

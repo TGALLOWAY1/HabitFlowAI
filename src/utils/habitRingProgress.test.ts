@@ -12,6 +12,7 @@ import { describe, it, expect } from 'vitest';
 import {
     getRootHabits,
     isHabitComplete,
+    isHabitCompleteOnDay,
     getDailyHabitRingProgress,
     getTodayHabitStats,
     getBundleChildIds,
@@ -410,6 +411,24 @@ describe('Edge cases', () => {
         ];
         const result = getDailyHabitRingProgress(habits, {}, DATE);
         expect(result.total).toBe(3); // daily + timesPerWeek + total
+    });
+
+    it('distinguishes weekly quota status from activity on a specific day', () => {
+        const habit = makeHabit({
+            id: 'h-weekly',
+            name: 'Weekly quota habit',
+            timesPerWeek: 3,
+        });
+        const logs = Object.fromEntries([
+            makeLog(habit.id, '2026-03-23', true),
+            makeLog(habit.id, '2026-03-24', true),
+            makeLog(habit.id, '2026-03-25', true),
+        ]);
+
+        // Saturday shares the satisfied week, but no habit entry occurred then.
+        expect(isHabitComplete(habit, logs, DATE)).toBe(true);
+        expect(isHabitCompleteOnDay(habit, logs, DATE)).toBe(false);
+        expect(isHabitCompleteOnDay(habit, logs, '2026-03-24')).toBe(true);
     });
 
     // --- assignedDays schedule filtering ---

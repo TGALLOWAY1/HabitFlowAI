@@ -8,20 +8,7 @@ vi.mock('../../middleware/identity', () => ({
 }));
 
 // --- Mock data sources ---
-const habitsData = [
-  {
-    id: 'h-walk',
-    name: 'Walk',
-    archived: false,
-    timesPerWeek: undefined,
-    assignedDays: undefined,
-  },
-  {
-    id: 'h-archived',
-    name: 'Old Habit',
-    archived: true,
-  },
-];
+let habitsData: Array<Record<string, unknown>> = [];
 
 // dayKeys for the reviewed week, filled in beforeEach from the resolved Monday.
 let weekDays: string[] = [];
@@ -29,14 +16,12 @@ let habitEntriesData: Array<Record<string, unknown>> = [];
 let wellbeingData: Array<Record<string, unknown>> = [];
 let journalData: Array<Record<string, unknown>> = [];
 
-vi.mock('../../lib/mongoClient', () => ({
-  getDb: vi.fn(async () => ({
-    collection: (name: string) => ({
-      find: () => ({
-        toArray: async () => (name === 'habits' ? habitsData : habitEntriesData),
-      }),
-    }),
-  })),
+vi.mock('../../repositories/habitRepository', () => ({
+  getHabitsByUser: vi.fn(async () => habitsData),
+}));
+
+vi.mock('../../repositories/habitEntryRepository', () => ({
+  getHabitEntriesByUserInRange: vi.fn(async () => habitEntriesData),
 }));
 
 vi.mock('../../repositories/journal', () => ({
@@ -51,6 +36,10 @@ vi.mock('../../repositories/goalRepository', () => ({
   getGoalsByUser: vi.fn(async () => [
     { id: 'g-1', title: 'Run a 10k', type: 'onetime', linkedHabitIds: ['h-walk'], completedAt: null },
   ]),
+}));
+
+vi.mock('../../repositories/aiReportRepository', () => ({
+  saveAIReport: vi.fn(async () => undefined),
 }));
 
 import { postWeeklyReview } from '../aiWeeklyReview';
@@ -76,6 +65,25 @@ function geminiOk(modelOutput: unknown) {
 
 describe('postWeeklyReview', () => {
   beforeEach(() => {
+    habitsData = [
+      {
+        id: 'h-walk',
+        categoryId: 'cat-1',
+        name: 'Walk',
+        archived: false,
+        createdAt: '2026-01-01T12:00:00.000Z',
+        goal: { type: 'boolean', frequency: 'daily' },
+      },
+      {
+        id: 'h-archived',
+        categoryId: 'cat-1',
+        name: 'Old Habit',
+        archived: true,
+        createdAt: '2026-01-01T12:00:00.000Z',
+        goal: { type: 'boolean', frequency: 'daily' },
+      },
+    ];
+
     const monday = startOfWeek(parseISO(REQUESTED_WEEK), { weekStartsOn: 1 });
     weekDays = Array.from({ length: 7 }, (_, i) => {
       const d = new Date(monday);
@@ -112,8 +120,10 @@ describe('postWeeklyReview', () => {
   });
 
   it('sends only grounded observed facts to Gemini and returns a normalized review', async () => {
-    const fetchMock = vi.fn(async (_url: string, _init: RequestInit) =>
-      geminiOk({
+    const fetchMock = vi.fn(async (url: string, init: RequestInit) => {
+      void url;
+      void init;
+      return geminiOk({
         summary: 'Solid week overall.',
         facts: ['Logged Walk 5 of 7 days', ''], // empty string should be filtered out
         journalThemes: ['Reflected positively on the day'],
@@ -127,8 +137,8 @@ describe('postWeeklyReview', () => {
         ],
         dataLimitations: ['Only two days of sleep data this week'],
         // Note: model does NOT supply weekStart/weekEnd — the server must own them.
-      }),
-    );
+      });
+    });
     vi.stubGlobal('fetch', fetchMock);
 
     const res = createRes();
@@ -143,7 +153,7 @@ describe('postWeeklyReview', () => {
     const promptBody = JSON.parse(vi.mocked(fetchMock).mock.calls[0][1].body as string);
     const promptText = promptBody.contents[0].parts[0].text as string;
     expect(promptText).toContain('Walk');
-    expect(promptText).toContain('daysLogged');
+    expect(promptText).toContain('daysCompleted');
     expect(promptText).toContain('Sleep score'); // friendly wellbeing label
     expect(promptText).toContain('Run a 10k'); // active goal
     expect(promptText).not.toContain('Old Habit'); // archived habit excluded
@@ -178,6 +188,53 @@ describe('postWeeklyReview', () => {
     expect(body.meta.daysWithHabitData).toBe(5);
     expect(body.meta.journalEntries).toBe(1);
     expect(body.meta.wellbeingDaysRecorded).toBe(2);
+  });
+
+  it('counts only target-reaching numeric entries as completed days', async () => {
+    habitsData.push({
+      id: 'h-water',
+      categoryId: 'cat-1',
+      name: 'Water',
+      archived: false,
+      createdAt: '2026-01-01T12:00:00.000Z',
+      goal: { type: 'number', frequency: 'daily', target: 8, unit: 'glasses' },
+    });
+    habitEntriesData.push(
+      { id: 'water-partial', habitId: 'h-water', dayKey: weekDays[0], value: 3 },
+      { id: 'water-complete', habitId: 'h-water', dayKey: weekDays[1], value: 8 },
+    );
+
+    const fetchMock = vi.fn(async (url: string, init: RequestInit) => {
+      void url;
+      void init;
+      return geminiOk({
+        summary: 'Review.',
+        facts: [],
+        journalThemes: [],
+        wins: [],
+        areasForAttention: [],
+        patterns: [],
+        recommendations: [],
+        dataLimitations: [],
+      });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const res = createRes();
+    await postWeeklyReview(
+      { body: { geminiApiKey: 'a-valid-key-123', weekStart: REQUESTED_WEEK, timeZone: 'UTC' } } as unknown as Request,
+      res,
+    );
+
+    const promptBody = JSON.parse(vi.mocked(fetchMock).mock.calls[0][1].body as string);
+    const promptText = promptBody.contents[0].parts[0].text as string;
+    const observedJson = promptText.split('OBSERVED FACTS (JSON):\n')[1].split('\n\nNotes for interpretation:')[0];
+    const observedFacts = JSON.parse(observedJson);
+    const water = observedFacts.habits.find((habit: { name: string }) => habit.name === 'Water');
+
+    expect(water).toMatchObject({ daysCompleted: 1, targetDays: 7 });
+    expect(observedFacts.dayByDay[0].habitsCompleted).toBe(1); // Walk only; Water is partial.
+    expect(observedFacts.dayByDay[1].habitsCompleted).toBe(2);
   });
 
   it('returns a well-formed review even when Gemini reports only data limitations', async () => {

@@ -18,6 +18,7 @@ import { MongoClient } from 'mongodb';
 import { getMongoDbUri, getMongoDbName } from '../../src/server/config/env';
 
 const COLLECTION = 'habitEntries';
+const UNIQUE_INDEX_NAME = 'idx_habitEntries_user_habit_dayKey_active_unique';
 async function main(): Promise<void> {
   const uri = getMongoDbUri();
   const dbName = getMongoDbName();
@@ -59,7 +60,15 @@ async function main(): Promise<void> {
       process.exit(1);
     }
 
-    console.log('OK: No duplicate habit-entry index keys (per householdId, userId, habitId, dayKey).');
+    const indexes = await coll.indexes();
+    const uniqueIndex = indexes.find(index => index.name === UNIQUE_INDEX_NAME);
+    const expectedKey = JSON.stringify({ householdId: 1, userId: 1, habitId: 1, dayKey: 1 });
+    if (!uniqueIndex || uniqueIndex.unique !== true || JSON.stringify(uniqueIndex.key) !== expectedKey) {
+      console.error(`FAIL: Expected unique index ${UNIQUE_INDEX_NAME} is missing or has the wrong definition.`);
+      process.exit(1);
+    }
+
+    console.log('OK: No duplicate habit-entry keys and the canonical unique index is active.');
   } finally {
     await client.close();
   }

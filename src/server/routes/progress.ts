@@ -13,6 +13,7 @@ import { getAllMembershipsByUser } from '../repositories/bundleMembershipReposit
 import { computeGoalsWithProgressFromData } from '../utils/goalProgressUtilsV2';
 import { calculateGlobalMomentum, calculateCategoryMomentum, getMomentumCopy } from '../services/momentumService';
 import { calculateHabitStreakMetrics, type HabitDayState } from '../services/streakService';
+import { usesWeeklyQuotaStreak } from '../../domain/habits/schedule';
 import { resolveTimeZone, getNowDayKey, getCanonicalDayKeyFromEntry } from '../utils/dayKey';
 import type { MomentumState } from '../../types';
 import type { CompletionRecord } from '../services/momentumService';
@@ -22,6 +23,7 @@ import { evaluateChecklistSuccess } from '../services/checklistSuccessService';
 import type { Habit } from '../../models/persistenceTypes';
 import { buildUserScopedCacheKey, progressCache } from '../lib/cacheInstances';
 import { deriveDailyHabitCompletion, type CompletionEntry } from '../../domain/habits/completion';
+import { resolveHabitTrackingForDay } from '../../domain/habits/trackingHistory';
 
 function parseFreezeType(entry: { freezeType?: string; note?: string }): 'manual' | 'auto' | 'soft' | undefined {
   // Prefer dedicated field; fall back to legacy note parsing
@@ -106,6 +108,7 @@ export async function getProgressOverview(req: Request, res: Response): Promise<
         const completion = deriveDailyHabitCompletion(
           habit,
           completionEntriesByHabitDay.get(`${habitId}|${state.dayKey}`) ?? [],
+          state.dayKey,
         );
         state.value = completion.currentValue;
         state.completed = completion.isComplete;
@@ -154,7 +157,7 @@ export async function getProgressOverview(req: Request, res: Response): Promise<
         }))
     );
 
-    const globalMomentum = calculateGlobalMomentum(completionLogs);
+    const globalMomentum = calculateGlobalMomentum(completionLogs, todayDate);
 
     // Group habits by category for Category Momentum
     const categoryHabitMap: Record<string, string[]> = {};
@@ -165,7 +168,7 @@ export async function getProgressOverview(req: Request, res: Response): Promise<
 
     const categoryMomentum: Record<string, MomentumState> = {};
     Object.keys(categoryHabitMap).forEach(catId => {
-      const result = calculateCategoryMomentum(completionLogs, categoryHabitMap[catId]);
+      const result = calculateCategoryMomentum(completionLogs, categoryHabitMap[catId], todayDate);
       categoryMomentum[catId] = result.state;
     });
 
@@ -187,11 +190,11 @@ export async function getProgressOverview(req: Request, res: Response): Promise<
       );
 
       const completed = streakMetrics.completedToday;
-      const value = habit.goal.type === 'number' && todayState ? todayState.value : undefined;
+      const todayTracking = resolveHabitTrackingForDay(habit, todayDate);
+      const value = todayTracking.goal.type === 'number' && todayState ? todayState.value : undefined;
       const streak = streakMetrics.currentStreak;
 
-      const isWeeklyStreak = (habit.timesPerWeek != null && habit.timesPerWeek > 0) ||
-        (habit.assignedDays?.length && habit.requiredDaysPerWeek);
+      const isWeeklyStreak = usesWeeklyQuotaStreak(habit, todayDate);
       const formattedStreak = isWeeklyStreak
         ? `${streak} ${streak === 1 ? 'week' : 'weeks'}`
         : `${streak} ${streak === 1 ? 'day' : 'days'}`;

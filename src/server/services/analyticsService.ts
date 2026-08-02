@@ -10,7 +10,7 @@ import type { Habit, HabitEntry, Category, Routine, RoutineLog, Goal } from '../
 import type { BundleMembershipRecord } from '../domain/canonicalTypes';
 import { calculateHabitStreakMetrics, type HabitDayState } from './streakService';
 import { getCanonicalDayKeyFromEntry } from '../utils/dayKey';
-import { isHabitScheduledOnDay, isTrackableHabit, getScheduledHabitsForDay } from './scheduleEngine';
+import { isHabitScheduledOnDay, isTrackableHabit, matchesHabitScheduleOnDay } from './scheduleEngine';
 import { deriveDailyHabitCompletion, type CompletionEntry } from '../../domain/habits/completion';
 import { addDaysToDayKey, differenceInDayKeys } from '../../domain/time/dayKey';
 
@@ -159,6 +159,7 @@ export function buildDayStatesByHabit(
       const completion = deriveDailyHabitCompletion(
         habit,
         completionEntriesByHabitDay.get(`${habitId}|${state.dayKey}`) ?? [],
+        state.dayKey,
       );
       state.value = completion.currentValue;
       state.completed = completion.isComplete;
@@ -182,14 +183,42 @@ function generateDayKeyRange(startDayKey: string, endDayKey: string): string[] {
   return days;
 }
 
-// getScheduledHabitsForDay and isTrackableHabit are imported from scheduleEngine.ts
-// (shared with streakService and progress views for consistent opportunity counting)
+// Canonical schedule predicates are imported from scheduleEngine.ts and then
+// augmented only for evidenced pre-creation history below.
 
 /**
  * Filter to trackable habits using the shared schedule engine predicate.
  */
 function getTrackableHabits(habits: Habit[]): Habit[] {
   return habits.filter(isTrackableHabit);
+}
+
+/**
+ * Do not invent missed opportunities before a habit document existed, but do
+ * honor a real backdated/imported entry on its own matching schedule day.
+ */
+function isHabitAnalyticsOpportunityOnDay(
+  habit: Habit,
+  dayKey: string,
+  dayStatesByHabit: Map<string, Map<string, HabitDayState>>,
+  timeZone?: string,
+): boolean {
+  return isHabitScheduledOnDay(habit, dayKey, timeZone)
+    || (
+      dayStatesByHabit.get(habit.id)?.has(dayKey) === true
+      && matchesHabitScheduleOnDay(habit, dayKey)
+    );
+}
+
+function getScheduledHabitsForAnalyticsDay(
+  habits: Habit[],
+  dayKey: string,
+  dayStatesByHabit: Map<string, Map<string, HabitDayState>>,
+  timeZone?: string,
+): Habit[] {
+  return habits.filter(habit => (
+    isHabitAnalyticsOpportunityOnDay(habit, dayKey, dayStatesByHabit, timeZone)
+  ));
 }
 
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -207,7 +236,7 @@ function computeDayOfWeekStats(
   const stats = Array.from({ length: 7 }, () => ({ scheduled: 0, completed: 0 }));
   for (const dk of dayKeys) {
     const dow = new Date(dk + 'T12:00:00Z').getUTCDay();
-    const scheduled = getScheduledHabitsForDay(trackable, dk, timeZone);
+    const scheduled = getScheduledHabitsForAnalyticsDay(trackable, dk, dayStatesByHabit, timeZone);
     stats[dow].scheduled += scheduled.length;
     for (const habit of scheduled) {
       if (dayStatesByHabit.get(habit.id)?.get(dk)?.completed) {
@@ -239,7 +268,7 @@ function groupByWeek(
     const weekNum = getISOWeek(date);
     const weekLabel = `${weekYear}-W${String(weekNum).padStart(2, '0')}`;
     const existing = weekMap.get(weekLabel) ?? { completions: 0, scheduled: 0 };
-    const scheduled = getScheduledHabitsForDay(trackable, dk, timeZone);
+    const scheduled = getScheduledHabitsForAnalyticsDay(trackable, dk, dayStatesByHabit, timeZone);
     existing.scheduled += scheduled.length;
     for (const habit of scheduled) {
       if (dayStatesByHabit.get(habit.id)?.get(dk)?.completed) existing.completions++;
@@ -263,7 +292,7 @@ function computeTrendDirection(
   const computeRangeRate = (keys: string[]) => {
     let s = 0, c = 0;
     for (const dk of keys) {
-      const scheduled = getScheduledHabitsForDay(trackable, dk, timeZone);
+      const scheduled = getScheduledHabitsForAnalyticsDay(trackable, dk, dayStatesByHabit, timeZone);
       s += scheduled.length;
       for (const habit of scheduled) {
         if (dayStatesByHabit.get(habit.id)?.get(dk)?.completed) c++;
@@ -426,7 +455,11 @@ export function computeHabitAnalyticsSummary(
     const habit = trackableById.get(habitId);
     if (!habit) continue;
     for (const [dk, state] of dayMap) {
-      if (state.completed && dayKeySet.has(dk) && isHabitScheduledOnDay(habit, dk, timeZone)) {
+      if (
+        state.completed
+        && dayKeySet.has(dk)
+        && isHabitAnalyticsOpportunityOnDay(habit, dk, dayStatesByHabit, timeZone)
+      ) {
         daysWithCompletion.add(dk);
       }
     }
@@ -437,7 +470,7 @@ export function computeHabitAnalyticsSummary(
   let totalScheduled = 0;
   let totalCompleted = 0;
   for (const dk of dayKeys) {
-    const scheduled = getScheduledHabitsForDay(trackable, dk, timeZone);
+    const scheduled = getScheduledHabitsForAnalyticsDay(trackable, dk, dayStatesByHabit, timeZone);
     totalScheduled += scheduled.length;
     for (const habit of scheduled) {
       const dayMap = dayStatesByHabit.get(habit.id);
@@ -471,7 +504,7 @@ export function computeHabitAnalyticsSummary(
       if (
         dayKeySet.has(dayKey)
         && state.completed
-        && isHabitScheduledOnDay(habit, dayKey, timeZone)
+        && isHabitAnalyticsOpportunityOnDay(habit, dayKey, dayStatesByHabit, timeZone)
       ) totalCompletions++;
     }
   }
@@ -494,7 +527,7 @@ export function computeHabitAnalyticsSummary(
   let daysSinceLastMissed = 0;
   for (let i = dayKeys.length - 1; i >= 0; i--) {
     const dk = dayKeys[i];
-    const scheduled = getScheduledHabitsForDay(trackable, dk, timeZone);
+    const scheduled = getScheduledHabitsForAnalyticsDay(trackable, dk, dayStatesByHabit, timeZone);
     let allCompleted = scheduled.length > 0;
     for (const habit of scheduled) {
       if (!dayStatesByHabit.get(habit.id)?.get(dk)?.completed) {
@@ -530,7 +563,7 @@ export function computeHabitAnalyticsSummary(
   for (const dk of dayKeys) {
     const dow = new Date(dk + 'T12:00:00Z').getUTCDay();
     const isWeekend = dow === 0 || dow === 6;
-    const scheduled = getScheduledHabitsForDay(trackable, dk, timeZone);
+    const scheduled = getScheduledHabitsForAnalyticsDay(trackable, dk, dayStatesByHabit, timeZone);
     for (const habit of scheduled) {
       if (isWeekend) {
         weekendScheduled++;
@@ -558,7 +591,7 @@ export function computeHabitAnalyticsSummary(
         if (
           state.completed
           && dayKeySet.has(dk)
-          && isHabitScheduledOnDay(habit, dk, timeZone)
+          && isHabitAnalyticsOpportunityOnDay(habit, dk, dayStatesByHabit, timeZone)
         ) existing.completions++;
       }
     }
@@ -651,7 +684,7 @@ export function computeHeatmapData(
   const dayKeys = generateDayKeyRange(startDayKey, referenceDayKey);
 
   const dataPoints = dayKeys.map(dk => {
-    const scheduled = getScheduledHabitsForDay(trackable, dk, timeZone);
+    const scheduled = getScheduledHabitsForAnalyticsDay(trackable, dk, dayStatesByHabit, timeZone);
     const scheduledCount = scheduled.length;
     let completedCount = 0;
     for (const habit of scheduled) {
@@ -751,7 +784,7 @@ export function computeTrendData(
     let totalScheduled = 0;
     let totalCompleted = 0;
     for (const dk of weekDayKeys) {
-      const scheduled = getScheduledHabitsForDay(trackable, dk, timeZone);
+      const scheduled = getScheduledHabitsForAnalyticsDay(trackable, dk, dayStatesByHabit, timeZone);
       totalScheduled += scheduled.length;
       for (const habit of scheduled) {
         const dayMap = dayStatesByHabit.get(habit.id);
@@ -803,7 +836,7 @@ export function computeCategoryBreakdown(
   const computeCatRate = (catHabits: Habit[], keys: string[]) => {
     let s = 0, c = 0;
     for (const dk of keys) {
-      const scheduledHabits = getScheduledHabitsForDay(catHabits, dk, timeZone);
+      const scheduledHabits = getScheduledHabitsForAnalyticsDay(catHabits, dk, dayStatesByHabit, timeZone);
       s += scheduledHabits.length;
       for (const habit of scheduledHabits) {
         if (dayStatesByHabit.get(habit.id)?.get(dk)?.completed) c++;
@@ -818,7 +851,7 @@ export function computeCategoryBreakdown(
     let totalCompleted = 0;
 
     for (const dk of dayKeys) {
-      const scheduledHabits = getScheduledHabitsForDay(catHabits, dk, timeZone);
+      const scheduledHabits = getScheduledHabitsForAnalyticsDay(catHabits, dk, dayStatesByHabit, timeZone);
       totalScheduled += scheduledHabits.length;
       for (const habit of scheduledHabits) {
         if (dayStatesByHabit.get(habit.id)?.get(dk)?.completed) totalCompleted++;
@@ -877,7 +910,7 @@ export function computeInsights(
   const dayOfWeekStats = new Array(7).fill(null).map(() => ({ scheduled: 0, completed: 0 }));
   for (const dk of dayKeys) {
     const dow = new Date(dk + 'T12:00:00Z').getUTCDay();
-    const scheduled = getScheduledHabitsForDay(trackable, dk, timeZone);
+    const scheduled = getScheduledHabitsForAnalyticsDay(trackable, dk, dayStatesByHabit, timeZone);
     dayOfWeekStats[dow].scheduled += scheduled.length;
     for (const habit of scheduled) {
       if (dayStatesByHabit.get(habit.id)?.get(dk)?.completed) {
@@ -916,7 +949,7 @@ export function computeInsights(
     let scheduled = 0;
     let completed = 0;
     for (const dk of dayKeys) {
-      if (getScheduledHabitsForDay([habit], dk, timeZone).length > 0) {
+      if (getScheduledHabitsForAnalyticsDay([habit], dk, dayStatesByHabit, timeZone).length > 0) {
         scheduled++;
         if (dayStatesByHabit.get(habit.id)?.get(dk)?.completed) completed++;
       }
@@ -950,7 +983,7 @@ export function computeInsights(
     let consecutiveZeroDays = 0;
     for (let i = dayKeys.length - 1; i >= 0; i--) {
       const dk = dayKeys[i];
-      if (getScheduledHabitsForDay([habit], dk, timeZone).length === 0) continue;
+      if (getScheduledHabitsForAnalyticsDay([habit], dk, dayStatesByHabit, timeZone).length === 0) continue;
       if (dayMap?.get(dk)?.completed) break;
       consecutiveZeroDays++;
     }
@@ -998,7 +1031,7 @@ export function computeInsights(
   for (const dk of dayKeys) {
     const dow = new Date(dk + 'T12:00:00Z').getUTCDay();
     const isWeekend = dow === 0 || dow === 6;
-    const scheduled = getScheduledHabitsForDay(trackable, dk, timeZone);
+    const scheduled = getScheduledHabitsForAnalyticsDay(trackable, dk, dayStatesByHabit, timeZone);
     for (const habit of scheduled) {
       if (isWeekend) {
         weekendScheduled++;
@@ -1037,7 +1070,7 @@ export function computeInsights(
     const computeRangeRate = (keys: string[]) => {
       let s = 0, c = 0;
       for (const dk of keys) {
-        const scheduled = getScheduledHabitsForDay(trackable, dk, timeZone);
+        const scheduled = getScheduledHabitsForAnalyticsDay(trackable, dk, dayStatesByHabit, timeZone);
         s += scheduled.length;
         for (const habit of scheduled) {
           if (dayStatesByHabit.get(habit.id)?.get(dk)?.completed) c++;
@@ -1164,7 +1197,7 @@ export function computeRoutineAnalytics(
   const computeHabitRate = (keys: string[]) => {
     let s = 0, c = 0;
     for (const dk of keys) {
-      const scheduled = getScheduledHabitsForDay(trackable, dk, timeZone);
+      const scheduled = getScheduledHabitsForAnalyticsDay(trackable, dk, dayStatesByHabit, timeZone);
       s += scheduled.length;
       for (const habit of scheduled) {
         if (dayStatesByHabit.get(habit.id)?.get(dk)?.completed) c++;

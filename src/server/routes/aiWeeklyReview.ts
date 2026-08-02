@@ -4,7 +4,7 @@
  * POST /api/ai/weekly-review
  *
  * Gathers a single week of the user's real data (habit entries, sleep & mood
- * from wellbeing check-ins, journal activity, and goals), aggregates it into
+ * from wellbeing check-ins, journal entries, and goals), aggregates it into
  * a compact set of *observed facts*, and asks Gemini to produce a grounded,
  * structured weekly review.
  *
@@ -19,14 +19,21 @@
 import type { Request, Response } from 'express';
 import { startOfWeek, endOfWeek, parseISO, format, getDay } from 'date-fns';
 import { getRequestIdentity } from '../middleware/identity';
-import { getDb } from '../lib/mongoClient';
 import { getEntriesByUser } from '../repositories/journal';
 import { getWellbeingEntries } from '../repositories/wellbeingEntryRepository';
 import { getGoalsByUser } from '../repositories/goalRepository';
+import { getHabitsByUser } from '../repositories/habitRepository';
+import { getHabitEntriesByUserInRange } from '../repositories/habitEntryRepository';
 import { saveAIReport } from '../repositories/aiReportRepository';
 import { GEMINI_MODEL, buildGeminiUrl, GEMINI_THINKING_CONFIG, extractGeminiText } from '../lib/gemini';
 import { resolveTimeZone, getNowDayKey } from '../utils/dayKey';
 import { isValidDayKey } from '../../domain/time/dayKey';
+import {
+  getWeeklyQuotaTargetOnDay,
+  isHabitScheduledOnDay,
+  matchesHabitScheduleOnDay,
+} from '../../domain/habits/schedule';
+import { buildDayStatesByHabit } from '../services/analyticsService';
 import type {
   WeeklyAIReview,
   WeeklyReviewPattern,
@@ -103,49 +110,48 @@ export async function postWeeklyReview(req: Request, res: Response): Promise<voi
     }
 
     // ---- Collect raw data for the week ----
-    const db = await getDb();
     const [habits, habitEntries, allJournal, wellbeingEntries, goals] = await Promise.all([
-      db.collection('habits').find({ userId, householdId }).toArray(),
-      db
-        .collection('habitEntries')
-        .find({
-          userId,
-          householdId,
-          dayKey: { $gte: startDayKey, $lte: endDayKey },
-          deletedAt: { $exists: false },
-        })
-        .toArray(),
+      getHabitsByUser(householdId, userId),
+      getHabitEntriesByUserInRange(householdId, userId, startDayKey, endDayKey),
       getEntriesByUser(userId, { startDate: startDayKey, endDate: endDayKey }),
       getWellbeingEntries({ userId, startDayKey, endDayKey }),
       getGoalsByUser(householdId, userId),
     ]);
 
-    const activeHabits = habits.filter((h) => !h.archived && !h.deletedAt);
+    const activeHabits = habits.filter((habit) => !habit.archived && !habit.deletedAt);
     const habitNameMap = new Map<string, string>();
     for (const h of habits) habitNameMap.set(h.id, h.name);
 
-    // ---- Per-habit weekly aggregation (days logged vs. target) ----
-    const daysLoggedByHabit = new Map<string, Set<string>>();
-    for (const entry of habitEntries) {
-      if (!daysLoggedByHabit.has(entry.habitId)) daysLoggedByHabit.set(entry.habitId, new Set());
-      daysLoggedByHabit.get(entry.habitId)!.add(entry.dayKey);
-    }
+    // ---- Per-habit weekly aggregation (canonical completed days vs. target) ----
+    // Bundle parents are derived from children and do not own entries. The
+    // review reports leaf habits so a parent is not falsely described as 0/7.
+    const dayStatesByHabit = buildDayStatesByHabit(habitEntries, activeHabits, timeZone);
+    const isReviewOpportunity = (habit: typeof activeHabits[number], dayKey: string) => (
+      isHabitScheduledOnDay(habit, dayKey, timeZone)
+      || (
+        dayStatesByHabit.get(habit.id)?.has(dayKey) === true
+        && matchesHabitScheduleOnDay(habit, dayKey)
+      )
+    );
+    const reviewHabits = activeHabits.filter((habit) => {
+      if (habit.type === 'bundle') return false;
+      return weekDayKeys.some(dayKey => isReviewOpportunity(habit, dayKey));
+    });
 
-    const habitFacts = activeHabits.map((h) => {
-      const daysLogged = daysLoggedByHabit.get(h.id)?.size ?? 0;
-      // Target days this week: weekly habits use timesPerWeek; otherwise daily (7) or assigned days.
-      let targetDays = 7;
-      if (typeof h.timesPerWeek === 'number' && h.timesPerWeek > 0) targetDays = h.timesPerWeek;
-      else if (Array.isArray(h.assignedDays) && h.assignedDays.length > 0)
-        targetDays = h.assignedDays.length;
+    const habitFacts = reviewHabits.map((habit) => {
+      const completedDays = weekDayKeys.filter(dayKey => (
+        isReviewOpportunity(habit, dayKey)
+        && dayStatesByHabit.get(habit.id)?.get(dayKey)?.completed
+      ));
+      const weekEndQuota = getWeeklyQuotaTargetOnDay(habit, endDayKey);
+      const targetDays = weekEndQuota ?? weekDayKeys.filter(
+        dayKey => isReviewOpportunity(habit, dayKey),
+      ).length;
       return {
-        name: h.name as string,
-        daysLogged,
+        name: habit.name,
+        daysCompleted: completedDays.length,
         targetDays,
-        cadence:
-          typeof h.timesPerWeek === 'number' && h.timesPerWeek > 0
-            ? `${h.timesPerWeek}x/week`
-            : 'daily',
+        cadence: weekEndQuota != null ? `${weekEndQuota}x/week` : 'scheduled days',
       };
     });
 
@@ -161,15 +167,27 @@ export async function postWeeklyReview(req: Request, res: Response): Promise<voi
       m.get(w.metricKey)!.push(w.value);
     }
 
-    const habitDaysByDay = new Map<string, Set<string>>();
+    const completedHabitIdsByDay = new Map<string, Set<string>>();
+    for (const habit of reviewHabits) {
+      const dayMap = dayStatesByHabit.get(habit.id);
+      if (!dayMap) continue;
+      for (const dayKey of weekDayKeys) {
+        if (!isReviewOpportunity(habit, dayKey)) continue;
+        if (!dayMap.get(dayKey)?.completed) continue;
+        const completedHabitIds = completedHabitIdsByDay.get(dayKey) ?? new Set<string>();
+        completedHabitIds.add(habit.id);
+        completedHabitIdsByDay.set(dayKey, completedHabitIds);
+      }
+    }
+
+    const habitDataDays = new Set<string>();
     for (const entry of habitEntries) {
-      if (!habitDaysByDay.has(entry.dayKey)) habitDaysByDay.set(entry.dayKey, new Set());
-      habitDaysByDay.get(entry.dayKey)!.add(entry.habitId);
+      if (isValidDayKey(entry.dayKey)) habitDataDays.add(entry.dayKey);
     }
 
     const dayBreakdown = weekDayKeys.map((dayKey) => {
       const weekday = WEEKDAY_NAMES[getDay(parseISO(dayKey))];
-      const habitsCompleted = habitDaysByDay.get(dayKey)?.size ?? 0;
+      const habitsCompleted = completedHabitIdsByDay.get(dayKey)?.size ?? 0;
       const metrics: Record<string, number> = {};
       const dayMetrics = wellbeingByDay.get(dayKey);
       if (dayMetrics) {
@@ -236,8 +254,8 @@ export async function postWeeklyReview(req: Request, res: Response): Promise<voi
       journal: journalFacts,
       goals: goalFacts,
       totals: {
-        activeHabits: activeHabits.length,
-        daysWithHabitData: habitDaysByDay.size,
+        activeHabits: reviewHabits.length,
+        daysWithHabitData: habitDataDays.size,
         journalEntries: journalFacts.length,
         wellbeingDaysRecorded,
       },
@@ -279,7 +297,7 @@ OBSERVED FACTS (JSON):
 ${JSON.stringify(observedFacts, null, 2)}
 
 Notes for interpretation:
-- "daysLogged" vs "targetDays" reflects how often each habit was completed relative to its cadence this week.
+- "daysCompleted" vs "targetDays" reflects how often each habit reached its completion target on a scheduled day this week. Partial numeric progress is not completion.
 - "dayByDay" lets you look for relationships (e.g. sleep score vs. next-day habits completed, mood vs. journaling).
 - Wellbeing values are on the user's own check-in scales; treat them as relative within this week, not absolute.
 - "journal[].snippet" holds short excerpts of what the user wrote; use these for "journalThemes" only.
@@ -456,8 +474,8 @@ Return the review as JSON matching the provided schema.`;
       meta: {
         weekStart: startDayKey,
         weekEnd: endDayKey,
-        habitsTracked: activeHabits.length,
-        daysWithHabitData: habitDaysByDay.size,
+        habitsTracked: reviewHabits.length,
+        daysWithHabitData: habitDataDays.size,
         journalEntries: journalFacts.length,
         wellbeingDaysRecorded,
       },

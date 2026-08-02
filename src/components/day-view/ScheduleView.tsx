@@ -4,17 +4,13 @@ import { DayCategorySection } from './DayCategorySection';
 import { CategoryPickerModal } from '../CategoryPickerModal';
 import { format, startOfWeek, endOfWeek, addDays, subWeeks, addWeeks } from 'date-fns';
 import { Calendar, ChevronLeft, ChevronRight, ChevronDown, ChevronUp } from 'lucide-react';
-import { fetchDayView, getLocalTimeZone } from '../../lib/persistenceClient';
-import { useEffect } from 'react';
+import { getLocalTimeZone } from '../../lib/persistenceClient';
 
 import type { Habit } from '../../types';
 import { resolveLocalHabitStatuses, type DayViewHabitStatus } from './habitStatusResolution';
 import { isHabitScheduledOnDay } from '../../domain/habits/schedule';
-
-interface DayViewData {
-    dayKey: string;
-    habits: DayViewHabitStatus[];
-}
+import { resolveHabitTrackingForDay } from '../../domain/habits/trackingHistory';
+import { useDayViewData } from './useDayViewData';
 
 export const ScheduleView = () => {
     const {
@@ -47,29 +43,9 @@ export const ScheduleView = () => {
     const selectedDate = weekDays[selectedDayIndex];
     const selectedDayKey = format(selectedDate, 'yyyy-MM-dd');
 
-    const [dayViewData, setDayViewData] = useState<DayViewData | null>(null);
-    const [dayViewLoading, setDayViewLoading] = useState(true);
-    const [dayViewError, setDayViewError] = useState<string | null>(null);
+    const { dayViewData, dayViewLoading, dayViewError, refreshDayView } = useDayViewData(selectedDayKey, habits);
     const [categoryPickerHabit, setCategoryPickerHabit] = useState<Habit | null>(null);
     const [showDailyHabits, setShowDailyHabits] = useState(false);
-
-    const loadDayView = useCallback(async () => {
-            setDayViewLoading(true);
-            setDayViewError(null);
-            try {
-                const data = await fetchDayView(selectedDayKey, getLocalTimeZone());
-                setDayViewData(data);
-            } catch (err) {
-                console.error('Failed to load day view:', err);
-                setDayViewError(err instanceof Error ? err.message : 'Failed to load day view');
-            } finally {
-                setDayViewLoading(false);
-            }
-    }, [selectedDayKey]);
-
-    useEffect(() => {
-        void loadDayView();
-    }, [loadDayView, habits]);
 
     const habitStatusMap = useMemo(() => {
         if (!dayViewData) return new Map<string, DayViewHabitStatus>();
@@ -97,8 +73,9 @@ export const ScheduleView = () => {
             if (childIds.has(h.id)) return;
             if (!isHabitScheduledOnDay(h, selectedDayKey, getLocalTimeZone())) return;
 
-            const hasAssignedDays = h.assignedDays && h.assignedDays.length > 0;
-            const hasTimesPerWeek = h.timesPerWeek != null && h.timesPerWeek > 0;
+            const tracking = resolveHabitTrackingForDay(h, selectedDayKey);
+            const hasAssignedDays = !!tracking.assignedDays?.length;
+            const hasTimesPerWeek = tracking.timesPerWeek != null && tracking.timesPerWeek > 0;
 
             // Habits with specific days or weekly quota are "scheduled"
             if (hasAssignedDays || hasTimesPerWeek) {
@@ -138,7 +115,7 @@ export const ScheduleView = () => {
 
     // Group habits by category
     const UNCATEGORIZED_ID = '__uncategorized__';
-    const groupByCategory = (habitList: Habit[]) => {
+    const groupByCategory = useCallback((habitList: Habit[]) => {
         const groups = new Map<string, Habit[]>();
         categories.forEach(c => groups.set(c.id, []));
 
@@ -152,24 +129,24 @@ export const ScheduleView = () => {
             }
         });
         return groups;
-    };
+    }, [categories]);
 
-    const scheduledGrouped = useMemo(() => groupByCategory(scheduledHabits), [scheduledHabits, categories]);
-    const dailyGrouped = useMemo(() => groupByCategory(dailyHabits), [dailyHabits, categories]);
+    const scheduledGrouped = useMemo(() => groupByCategory(scheduledHabits), [scheduledHabits, groupByCategory]);
+    const dailyGrouped = useMemo(() => groupByCategory(dailyHabits), [dailyHabits, groupByCategory]);
 
     const handleToggle = async (habitId: string) => {
         await toggleHabit(habitId, selectedDayKey);
-        await loadDayView();
+        await refreshDayView();
     };
 
     const handleUpsertHabitEntry = async (habitId: string, dayKey: string, data: unknown) => {
         await upsertHabitEntry(habitId, dayKey, data);
-        await loadDayView();
+        await refreshDayView();
     };
 
     const handleDeleteHabitEntry = async (habitId: string, dayKey: string) => {
         await deleteHabitEntryByKey(habitId, dayKey);
-        await loadDayView();
+        await refreshDayView();
     };
 
     const handlePin = async (habitId: string) => {

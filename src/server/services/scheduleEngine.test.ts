@@ -4,6 +4,7 @@ import {
   isHabitScheduledOnDay,
   getScheduledHabitsForDay,
   getExpectedOpportunitiesInRange,
+  usesWeeklyQuotaStreak,
 } from './scheduleEngine';
 import type { Habit } from '../../models/persistenceTypes';
 
@@ -36,6 +37,20 @@ describe('isTrackableHabit', () => {
   });
 });
 
+describe('usesWeeklyQuotaStreak', () => {
+  const cases: Array<[string, Partial<Habit>, boolean]> = [
+    ['explicit weekly quota', { timesPerWeek: 3 }, true],
+    ['strict every-day schedule', { assignedDays: [0, 1, 2, 3, 4, 5, 6], requiredDaysPerWeek: 7 }, false],
+    ['strict custom weekdays', { assignedDays: [1, 3, 5], requiredDaysPerWeek: 3 }, false],
+    ['flexible schedule with a grace day', { assignedDays: [1, 2, 3, 4, 5], requiredDaysPerWeek: 4 }, true],
+    ['assigned days without a weekly requirement', { assignedDays: [1, 3, 5] }, false],
+  ];
+
+  it.each(cases)('classifies %s', (_label, schedule, expected) => {
+    expect(usesWeeklyQuotaStreak(makeHabit(schedule))).toBe(expected);
+  });
+});
+
 describe('isHabitScheduledOnDay', () => {
   describe('daily habit, no assignedDays', () => {
     const habit = makeHabit();
@@ -59,6 +74,39 @@ describe('isHabitScheduledOnDay', () => {
 
     expect(isHabitScheduledOnDay(habit, '2026-03-31', 'America/New_York')).toBe(true);
     expect(isHabitScheduledOnDay(habit, '2026-03-31', 'UTC')).toBe(false);
+  });
+
+  it('uses the schedule revision effective on each historical day', () => {
+    const habit = makeHabit({
+      assignedDays: [2],
+      trackingRevisions: [
+        {
+          effectiveFromDayKey: '2026-01-01',
+          goal: { type: 'boolean', frequency: 'daily' },
+          assignedDays: [1],
+        },
+        {
+          effectiveFromDayKey: '2026-04-01',
+          goal: { type: 'boolean', frequency: 'daily' },
+          assignedDays: [2],
+        },
+      ],
+    });
+
+    expect(isHabitScheduledOnDay(habit, '2026-03-30')).toBe(true); // old Monday rule
+    expect(isHabitScheduledOnDay(habit, '2026-04-06')).toBe(false);
+    expect(isHabitScheduledOnDay(habit, '2026-04-07')).toBe(true); // new Tuesday rule
+  });
+
+  it('excludes inactive archive intervals without deleting history', () => {
+    const habit = makeHabit({
+      inactivePeriods: [{ startDayKey: '2026-04-01', endDayKey: '2026-04-03' }],
+    });
+
+    expect(isHabitScheduledOnDay(habit, '2026-03-31')).toBe(true);
+    expect(isHabitScheduledOnDay(habit, '2026-04-01')).toBe(false);
+    expect(isHabitScheduledOnDay(habit, '2026-04-03')).toBe(false);
+    expect(isHabitScheduledOnDay(habit, '2026-04-04')).toBe(true);
   });
 
   describe('daily habit with assignedDays', () => {

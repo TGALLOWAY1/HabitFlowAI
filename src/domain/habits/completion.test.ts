@@ -63,4 +63,23 @@ describe('deriveDailyHabitCompletion', () => {
     );
     expect(result).toMatchObject({ currentValue: 3, isComplete: false, isPartial: true });
   });
+
+  it('uses the target that was effective on the historical day', () => {
+    const config = {
+      goal: { type: 'number' as const, target: 20, frequency: 'daily' as const },
+      trackingRevisions: [
+        {
+          effectiveFromDayKey: '2026-01-01',
+          goal: { type: 'number' as const, target: 10, frequency: 'daily' as const },
+        },
+        {
+          effectiveFromDayKey: '2026-08-01',
+          goal: { type: 'number' as const, target: 20, frequency: 'daily' as const },
+        },
+      ],
+    };
+
+    expect(deriveDailyHabitCompletion(config, [{ value: 10 }], '2026-07-31').isComplete).toBe(true);
+    expect(deriveDailyHabitCompletion(config, [{ value: 10 }], '2026-08-01').isComplete).toBe(false);
+  });
 });

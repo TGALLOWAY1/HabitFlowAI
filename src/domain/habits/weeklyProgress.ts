@@ -1,6 +1,8 @@
 import type { Habit } from '../../models/persistenceTypes';
-import { addDaysToDayKey, getDayOfWeekForDayKey, type DayKey } from '../time/dayKey';
+import { addDaysToDayKey, type DayKey } from '../time/dayKey';
 import { deriveDailyHabitCompletion } from './completion';
+import { isHabitScheduledOnDay } from './schedule';
+import { resolveHabitTrackingForDay } from './trackingHistory';
 
 export interface WeeklyProgressEntry {
   habitId: string;
@@ -27,7 +29,7 @@ export function deriveWeeklyHabitProgress(
   weekEndDayKey: DayKey,
   entries: WeeklyProgressEntry[],
 ): WeeklyHabitProgress {
-  const targetValue = habit.timesPerWeek ?? 1;
+  const targetValue = resolveHabitTrackingForDay(habit, weekEndDayKey).timesPerWeek ?? 1;
   const entriesByDay = new Map<DayKey, WeeklyProgressEntry[]>();
 
   for (const entry of entries) {
@@ -37,7 +39,7 @@ export function deriveWeeklyHabitProgress(
       || entry.dayKey > weekEndDayKey
       || entry.deletedAt
       || entry.note?.startsWith('freeze:')
-      || (habit.assignedDays?.length && !habit.assignedDays.includes(getDayOfWeekForDayKey(entry.dayKey)))
+      || !isHabitScheduledOnDay(habit, entry.dayKey)
     ) {
       continue;
     }
@@ -48,7 +50,7 @@ export function deriveWeeklyHabitProgress(
   }
 
   const currentValue = Array.from(entriesByDay.values())
-    .filter(dayEntries => deriveDailyHabitCompletion(habit, dayEntries).isComplete)
+    .filter(dayEntries => deriveDailyHabitCompletion(habit, dayEntries, dayEntries[0]?.dayKey).isComplete)
     .length;
 
   return {

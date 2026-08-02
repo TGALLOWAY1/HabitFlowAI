@@ -11,6 +11,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { NumericInputPopover } from './NumericInputPopover';
+import { getSafeNumericPopoverPosition } from './numericPopoverPosition';
 
 const baseProps = {
     isOpen: true,
@@ -20,6 +21,14 @@ const baseProps = {
 };
 
 describe('NumericInputPopover', () => {
+    it.each([
+        ['right edge', { top: 200, left: 333 }, { top: 200, left: 190 }],
+        ['left edge', { top: 200, left: -20 }, { top: 200, left: 8 }],
+        ['bottom edge', { top: 820, left: 100 }, { top: 772, left: 100 }],
+    ])('clamps the popover at the %s of a mobile viewport', (_label, position, expected) => {
+        expect(getSafeNumericPopoverPosition(position, { width: 390, height: 844 })).toEqual(expected);
+    });
+
     it('displays the existing value when opened for an entry that has one', () => {
         render(<NumericInputPopover {...baseProps} initialValue={40} />);
         const input = screen.getByRole('textbox') as HTMLInputElement;
@@ -38,6 +47,23 @@ describe('NumericInputPopover', () => {
         const input = screen.getByRole('textbox') as HTMLInputElement;
         fireEvent.change(input, { target: { value: '7' } });
         expect(input.value).toBe('7');
+        expect(input).toHaveClass('min-w-0', 'flex-1');
+    });
+
+    it('uses the clamped mobile position when the trigger is near the right edge', () => {
+        const originalWidth = window.innerWidth;
+        const originalHeight = window.innerHeight;
+        Object.defineProperty(window, 'innerWidth', { configurable: true, value: 390 });
+        Object.defineProperty(window, 'innerHeight', { configurable: true, value: 844 });
+
+        const { container } = render(
+            <NumericInputPopover {...baseProps} position={{ top: 200, left: 333 }} />,
+        );
+        const positionedContainer = container.firstElementChild as HTMLElement;
+        expect(positionedContainer.style.left).toBe('190px');
+
+        Object.defineProperty(window, 'innerWidth', { configurable: true, value: originalWidth });
+        Object.defineProperty(window, 'innerHeight', { configurable: true, value: originalHeight });
     });
 
     it('submits the typed numeric value', () => {
@@ -54,6 +80,16 @@ describe('NumericInputPopover', () => {
         render(<NumericInputPopover {...baseProps} initialValue={0} onSubmit={onSubmit} />);
         const input = screen.getByRole('textbox') as HTMLInputElement;
         fireEvent.change(input, { target: { value: '-2' } });
+        fireEvent.submit(input.closest('form')!);
+
+        expect(onSubmit).not.toHaveBeenCalled();
+    });
+
+    it('does not partially parse malformed input', () => {
+        const onSubmit = vi.fn();
+        render(<NumericInputPopover {...baseProps} initialValue={0} onSubmit={onSubmit} />);
+        const input = screen.getByRole('textbox') as HTMLInputElement;
+        fireEvent.change(input, { target: { value: '12oops' } });
         fireEvent.submit(input.closest('form')!);
 
         expect(onSubmit).not.toHaveBeenCalled();

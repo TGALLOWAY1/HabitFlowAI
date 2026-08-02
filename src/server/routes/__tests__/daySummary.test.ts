@@ -253,6 +253,55 @@ describe('getDaySummary', () => {
     }
   });
 
+  it('derives historical log values with the goal type effective on each day', async () => {
+    const habit: Habit = {
+      id: 'habit-changed-type',
+      categoryId: 'cat-1',
+      name: 'Changed type',
+      goal: { type: 'boolean', frequency: 'daily' },
+      trackingRevisions: [
+        {
+          effectiveFromDayKey: '2026-01-01',
+          goal: { type: 'number', frequency: 'daily', target: 10, unit: 'pages' },
+        },
+        {
+          effectiveFromDayKey: '2026-02-01',
+          goal: { type: 'boolean', frequency: 'daily' },
+        },
+      ],
+      archived: false,
+      createdAt: '2026-01-01T00:00:00.000Z',
+    };
+    vi.mocked(getHabitsByUser).mockResolvedValue([habit]);
+    vi.mocked(getHabitEntriesByUser).mockResolvedValue([
+      createEntry({
+        id: 'historical-partial',
+        habitId: habit.id,
+        dayKey: '2026-01-15',
+        timestamp: '2026-01-15T12:00:00.000Z',
+        source: 'manual',
+        value: 5,
+      }),
+    ]);
+
+    const req = {
+      householdId: 'test-household',
+      userId: 'test-user',
+      query: {
+        startDayKey: '2026-01-15',
+        endDayKey: '2026-01-15',
+        timeZone: 'UTC',
+      },
+    } as unknown as Request;
+    const res = createRes();
+
+    await getDaySummary(req, res);
+
+    expect(vi.mocked(res.json).mock.calls[0][0].logs['habit-changed-type-2026-01-15']).toEqual(
+      expect.objectContaining({ completed: false, value: 5 }),
+    );
+  });
+
   it('derived bundle parent respects membership daysOfWeek filter', async () => {
     // 2026-01-07 is a Wednesday (day-of-week = 3).
     // 2026-01-08 is a Thursday (day-of-week = 4).

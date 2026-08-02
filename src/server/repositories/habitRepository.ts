@@ -9,6 +9,8 @@ import type { ClientSession } from 'mongodb';
 import { getDb } from '../lib/mongoClient';
 import { scopeFilter, requireScope } from '../lib/scoping';
 import { MONGO_COLLECTIONS, type Habit, type Goal } from '../../models/persistenceTypes';
+import { addDaysToDayKey } from '../../domain/time/dayKey';
+import { getDayKeyForTimestamp } from '../utils/dayKey';
 
 const COLLECTION_NAME = 'habits';
 const GOALS_COLLECTION = MONGO_COLLECTIONS.GOALS;
@@ -236,10 +238,25 @@ export async function updateHabit(
 export async function archiveHabit(
   id: string,
   householdId: string,
-  userId: string
+  userId: string,
+  archiveDayKey: string,
 ): Promise<Habit | null> {
   const db = await getDb();
   const collection = db.collection(COLLECTION_NAME);
+
+  const existingDocument = await collection.findOne(
+    scopeFilter(householdId, userId, { id, deletedAt: { $exists: false } }),
+  );
+  if (!existingDocument) return null;
+  const existingHabit = stripScope(existingDocument);
+  if (existingHabit.archived) return existingHabit;
+
+  // The archive day remains part of history. Missed opportunities begin the
+  // following local day, so a completion already recorded today is untouched.
+  const inactivePeriods = [
+    ...(existingHabit.inactivePeriods ?? []),
+    { startDayKey: addDaysToDayKey(archiveDayKey, 1) },
+  ];
 
   const result = await collection.findOneAndUpdate(
     scopeFilter(householdId, userId, { id, deletedAt: { $exists: false } }),
@@ -248,6 +265,7 @@ export async function archiveHabit(
         archived: true,
         archivedAt: new Date().toISOString(),
         archivedReason: 'user',
+        inactivePeriods,
       },
     },
     { returnDocument: 'after' }
@@ -264,15 +282,58 @@ export async function archiveHabit(
 export async function unarchiveHabit(
   id: string,
   householdId: string,
-  userId: string
+  userId: string,
+  restoreDayKey: string,
+  timeZone?: string,
 ): Promise<Habit | null> {
   const db = await getDb();
   const collection = db.collection(COLLECTION_NAME);
 
+  const existingDocument = await collection.findOne(
+    scopeFilter(householdId, userId, { id, deletedAt: { $exists: false } }),
+  );
+  if (!existingDocument) return null;
+  const existingHabit = stripScope(existingDocument);
+  if (!existingHabit.archived) return existingHabit;
+
+  const inactivePeriods = [...(existingHabit.inactivePeriods ?? [])];
+  const restorePreviousDayKey = addDaysToDayKey(restoreDayKey, -1);
+  let openPeriodIndex = -1;
+  for (let index = inactivePeriods.length - 1; index >= 0; index--) {
+    if (!inactivePeriods[index].endDayKey) {
+      openPeriodIndex = index;
+      break;
+    }
+  }
+  if (openPeriodIndex >= 0) {
+    const openPeriod = inactivePeriods[openPeriodIndex];
+    if (openPeriod.startDayKey <= restorePreviousDayKey) {
+      inactivePeriods[openPeriodIndex] = {
+        ...openPeriod,
+        endDayKey: restorePreviousDayKey,
+      };
+    } else {
+      inactivePeriods.splice(openPeriodIndex, 1);
+    }
+  } else if (existingHabit.archivedAt) {
+    // A currently archived pre-change habit has no open interval yet. Recover
+    // the one interval we can infer without guessing about older archive cycles.
+    const inferredStartDayKey = addDaysToDayKey(
+      getDayKeyForTimestamp(existingHabit.archivedAt, timeZone),
+      1,
+    );
+    if (inferredStartDayKey <= restorePreviousDayKey) {
+      inactivePeriods.push({
+        startDayKey: inferredStartDayKey,
+        endDayKey: restorePreviousDayKey,
+      });
+    }
+  }
+
   const result = await collection.findOneAndUpdate(
     scopeFilter(householdId, userId, { id, deletedAt: { $exists: false } }),
     {
-      $set: { archived: false },
+      $set: { archived: false, inactivePeriods },
       $unset: { archivedAt: '', archivedReason: '' },
     },
     { returnDocument: 'after' }

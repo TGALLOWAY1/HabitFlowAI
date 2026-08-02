@@ -1,3 +1,5 @@
+import type { HabitInactivePeriod, HabitTrackingRevision } from '../shared/habitTracking';
+
 /**
  * Explicit Data Models for Persistent Entities
  * 
@@ -66,7 +68,8 @@ export interface HabitGoal {
 
     /**
      * Tracking frequency: 'daily' or 'total' (cumulative goal)
-     * 'total' means the goal is cumulative across all time (e.g., "Run 100 miles total")
+     * 'total' means linked-goal aggregation is cumulative across all time.
+     * Habit-day completion still evaluates each DayKey against this target.
      * Note: 'weekly' was removed — use timesPerWeek on the Habit instead.
      */
     frequency: 'daily' | 'total';
@@ -133,6 +136,12 @@ export interface Habit {
      * by category deletion (which is auto-recovered on the next session).
      */
     archivedReason?: 'user' | 'category_deleted';
+
+    /** Historical completion/schedule rules, recorded only when those rules change. */
+    trackingRevisions?: HabitTrackingRevision[];
+
+    /** Closed/open local-day ranges excluded from restored-habit opportunities. */
+    inactivePeriods?: HabitInactivePeriod[];
 
     /**
      * Soft delete marker (ISO 8601). When set, the habit is removed from
@@ -1990,4 +1999,3 @@ export interface HealthSuggestion {
     createdAt: string;
     updatedAt: string;
 }
-

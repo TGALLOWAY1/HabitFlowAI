@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import type { Habit } from '../../types';
 import { HabitGridCell } from './HabitGridCell';
@@ -58,5 +58,49 @@ describe('HabitGridCell numeric completion state', () => {
         expect(checkbox).toHaveAttribute('aria-checked', 'true');
         expect(within(checkbox).getByTestId('numeric-complete-check')).toBeInTheDocument();
         expect(screen.getByText('Read pages')).toHaveClass('line-through');
+    });
+
+    it('uses the goal type and unit that applied on the displayed historical day', () => {
+        const onToggle = vi.fn();
+        const onNumericClick = vi.fn();
+        const changedHabit: Habit = {
+            ...numericHabit,
+            goal: { type: 'boolean', frequency: 'daily' },
+            trackingRevisions: [
+                {
+                    effectiveFromDayKey: '2026-01-01',
+                    goal: { type: 'number', frequency: 'daily', target: 10, unit: 'pages' },
+                },
+                {
+                    effectiveFromDayKey: '2026-02-01',
+                    goal: { type: 'boolean', frequency: 'daily' },
+                },
+            ],
+        };
+
+        render(
+            <HabitGridCell
+                habit={changedHabit}
+                dayKey="2026-01-15"
+                isCompleted={false}
+                isExpanded={false}
+                onToggle={onToggle}
+                onExpand={vi.fn()}
+                onPin={vi.fn()}
+                onNumericClick={onNumericClick}
+                habitStatus={{
+                    habit: changedHabit,
+                    isComplete: false,
+                    currentValue: 5,
+                    targetValue: 10,
+                    progressPercent: 50,
+                }}
+            />,
+        );
+
+        const checkbox = screen.getByRole('checkbox', { name: /5 of 10 pages/i });
+        fireEvent.click(checkbox);
+        expect(onNumericClick).toHaveBeenCalledOnce();
+        expect(onToggle).not.toHaveBeenCalled();
     });
 });

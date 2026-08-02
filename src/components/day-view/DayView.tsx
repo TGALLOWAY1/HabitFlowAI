@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState, useEffect } from 'react';
+import { useMemo, useState } from 'react';
 import { useHabitStore } from '../../store/HabitContext';
 import { getTodayHabitStats } from '../../utils/habitUtils';
 import { evaluateChecklistSuccess } from '../../shared/checklistSuccessRule';
@@ -8,7 +8,6 @@ import { CategoryPickerModal } from '../CategoryPickerModal';
 import { BundlePickerModal } from '../BundlePickerModal';
 import { format } from 'date-fns';
 import { Plus } from 'lucide-react';
-import { fetchDayView, getLocalTimeZone } from '../../lib/persistenceClient';
 import { HealthSuggestionBanner } from '../HealthSuggestionBanner';
 import { deriveDailyHabitCompletion } from '../../domain/habits/completion';
 import { resolveLocalHabitStatuses, type DayViewHabitStatus } from './habitStatusResolution';
@@ -32,11 +31,7 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 
 import type { Habit } from '../../types';
-
-interface DayViewData {
-    dayKey: string;
-    habits: DayViewHabitStatus[];
-}
+import { useDayViewData } from './useDayViewData';
 
 interface SortableCategoryWrapperProps {
     id: string;
@@ -112,31 +107,11 @@ export const DayView = ({ onAddHabit, onEditHabit, onViewHistory }: DayViewProps
     const dateStr = format(today, 'yyyy-MM-dd');
     const displayDate = format(today, 'EEEE · MMM d');
 
-    // Day View state (from truthQuery)
-    const [dayViewData, setDayViewData] = useState<DayViewData | null>(null);
-    const [dayViewLoading, setDayViewLoading] = useState(true);
-    const [dayViewError, setDayViewError] = useState<string | null>(null);
+    // Day View state (from truthQuery). Refreshes keep existing UI mounted so
+    // entry mutations never bounce the user through a blocking loading screen.
+    const { dayViewData, dayViewLoading, dayViewError, refreshDayView } = useDayViewData(dateStr, habits);
     const [categoryPickerHabit, setCategoryPickerHabit] = useState<Habit | null>(null);
     const [bundlePickerHabit, setBundlePickerHabit] = useState<Habit | null>(null);
-
-    // Fetch day view from truthQuery endpoint
-    const loadDayView = useCallback(async () => {
-            setDayViewLoading(true);
-            setDayViewError(null);
-            try {
-                const data = await fetchDayView(dateStr, getLocalTimeZone());
-                setDayViewData(data);
-            } catch (err) {
-                console.error('Failed to load day view:', err);
-                setDayViewError(err instanceof Error ? err.message : 'Failed to load day view');
-            } finally {
-                setDayViewLoading(false);
-            }
-    }, [dateStr]);
-
-    useEffect(() => {
-        void loadDayView();
-    }, [loadDayView, habits]);
 
     // Create lookup map for habit statuses (from API)
     const habitStatusMap = useMemo(() => {
@@ -177,7 +152,7 @@ export const DayView = ({ onAddHabit, onEditHabit, onViewHistory }: DayViewProps
             if (existing) {
                 map.set(habit.id, { ...existing, isComplete });
             } else {
-                const completion = deriveDailyHabitCompletion(habit, []);
+                const completion = deriveDailyHabitCompletion(habit, [], dateStr);
                 map.set(habit.id, {
                     habit,
                     isComplete,
@@ -247,17 +222,17 @@ export const DayView = ({ onAddHabit, onEditHabit, onViewHistory }: DayViewProps
     // Handlers
     const handleToggle = async (habitId: string) => {
         await toggleHabit(habitId, dateStr);
-        await loadDayView();
+        await refreshDayView();
     };
 
     const handleUpsertHabitEntry = async (habitId: string, dayKey: string, data: unknown) => {
         await upsertHabitEntry(habitId, dayKey, data);
-        await loadDayView();
+        await refreshDayView();
     };
 
     const handleDeleteHabitEntry = async (habitId: string, dayKey: string) => {
         await deleteHabitEntryByKey(habitId, dayKey);
-        await loadDayView();
+        await refreshDayView();
     };
 
     const handlePin = async (habitId: string) => {

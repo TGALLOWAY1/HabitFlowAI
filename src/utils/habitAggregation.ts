@@ -1,6 +1,7 @@
 import type { Habit, HabitEntry } from '../models/persistenceTypes';
 import { evaluateChecklistSuccess } from '../shared/checklistSuccessRule';
 import { deriveDailyHabitCompletion } from '../domain/habits/completion';
+import { hasExplicitWeeklyQuotaOnDay } from '../domain/habits/schedule';
 import { deriveWeeklyHabitProgress, getIsoWeekEndDayKey } from '../domain/habits/weeklyProgress';
 import { getIsoWeekStartDayKey } from '../domain/time/dayKey';
 
@@ -41,7 +42,7 @@ export function computeHabitStatus(
     const activeEntries = allEntries.filter(entry => !entry.deletedAt && !entry.note?.startsWith('freeze:'));
 
     // 1. Weekly-quota Habit Logic
-    if (habit.timesPerWeek != null && habit.timesPerWeek > 0) {
+    if (hasExplicitWeeklyQuotaOnDay(habit, dateKey)) {
         const weekStartDayKey = getIsoWeekStartDayKey(dateKey);
         return deriveWeeklyHabitProgress(
             habit,
@@ -86,7 +87,7 @@ export function computeHabitStatus(
             // Legacy in-memory schemas may omit the required goal object.
             // Persisted habits are validated and always use canonical derivation.
             const childComplete = child.goal
-                ? deriveDailyHabitCompletion(child, childEntries).isComplete
+                ? deriveDailyHabitCompletion(child, childEntries, dateKey).isComplete
                 : childEntries.length > 0;
             if (childComplete) completedCount++;
         });
@@ -114,5 +115,6 @@ export function computeHabitStatus(
     return deriveDailyHabitCompletion(
         habit,
         activeEntries.filter(entry => entry.habitId === habit.id && entry.dateKey === dateKey),
+        dateKey,
     );
 }

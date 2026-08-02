@@ -4,6 +4,7 @@ import type { Category, Habit } from '../../types';
 import { HabitGridCell } from './HabitGridCell';
 import { NumericInputPopover } from '../NumericInputPopover';
 import { cn } from '../../utils/cn';
+import { resolveHabitTrackingForDay } from '../../domain/habits/trackingHistory';
 
 interface DayViewHabitStatus {
     habit: Habit;
@@ -30,7 +31,7 @@ interface DayCategorySectionProps {
     /** Whether HabitGridCells in this section show the trash/archive button. */
     showRemove?: boolean;
     allHabitsLookup: Map<string, Habit>;
-    onUpdateHabitEntry: (habitId: string, dateKey: string, data: any) => Promise<void>;
+    onUpdateHabitEntry: (habitId: string, dateKey: string, data: unknown) => Promise<void>;
     deleteHabitEntryByKey: (habitId: string, dateKey: string) => Promise<void>;
     dragHandleProps?: Record<string, unknown>;
 }
@@ -98,11 +99,12 @@ export const DayCategorySection = ({
     const handleNumericClick = (e: React.MouseEvent, habit: Habit) => {
         const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
         const status = habitStatusMap.get(habit.id);
+        const tracking = resolveHabitTrackingForDay(habit, dateStr);
         setPopover({
             isOpen: true,
             habitId: habit.id,
             initialValue: status?.currentValue ?? 0,
-            unit: habit.goal?.unit,
+            unit: tracking.goal.unit,
             position: { top: rect.bottom + 4, left: rect.left }
         });
     };
@@ -212,6 +214,7 @@ export const DayCategorySection = ({
                                 subHabitStatuses={subHabitStatuses}
                                 habitStatus={status}
                                 childStatusMap={habit.type === 'bundle' && habit.bundleType === 'choice' ? habitStatusMap : undefined}
+                                dayKey={dateStr}
                                 onSubHabitToggle={async (subHabitId) => {
                                     if (pendingMutation) return;
                                     setPendingMutation(true);
@@ -224,7 +227,10 @@ export const DayCategorySection = ({
                                 onChoiceSelect={async (optionKey, e) => {
                                     if (pendingMutation) return;
                                     const childHabit = allHabitsLookup.get(optionKey);
-                                    const isNumeric = childHabit?.goal?.type === 'number';
+                                    const childTracking = childHabit
+                                        ? resolveHabitTrackingForDay(childHabit, dateStr)
+                                        : null;
+                                    const isNumeric = childTracking?.goal.type === 'number';
 
                                     // Numeric children: open popover for quantity input
                                     if (isNumeric) {
@@ -234,7 +240,7 @@ export const DayCategorySection = ({
                                             isOpen: true,
                                             habitId: optionKey,
                                             initialValue: childStatus?.currentValue ?? 0,
-                                            unit: childHabit?.goal?.unit,
+                                            unit: childTracking?.goal.unit,
                                             position: { top: rect.bottom + 4, left: rect.left }
                                         });
                                         return;

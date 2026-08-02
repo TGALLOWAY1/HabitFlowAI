@@ -2,7 +2,11 @@
 export {
   getHabitCreatedDayKey,
   getExpectedOpportunitiesInRange,
+  getWeeklyQuotaTargetOnDay,
   getScheduledHabitsForDay,
+  hasExplicitWeeklyQuotaOnDay,
   isHabitScheduledOnDay,
   isTrackableHabit,
+  matchesHabitScheduleOnDay,
+  usesWeeklyQuotaStreak,
 } from '../../domain/habits/schedule';

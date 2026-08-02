@@ -1,4 +1,6 @@
 import type { Habit } from '../../models/persistenceTypes';
+import type { HabitTrackingRevision } from '../../shared/habitTracking';
+import { resolveHabitTrackingForDay } from './trackingHistory';
 
 export interface CompletionEntry {
   value?: number | null;
@@ -13,20 +15,22 @@ export interface HabitCompletionState {
   progressPercent: number;
 }
 
-type HabitWithGoal = Pick<Habit, 'goal'>;
+type HabitWithGoal = Pick<Habit, 'goal'> & { trackingRevisions?: HabitTrackingRevision[] };
 
 /** A numeric habit cannot have a meaningful completion state without a positive target. */
-export function hasValidNumericTarget(habit: HabitWithGoal): boolean {
-  return habit.goal.type === 'number'
-    && typeof habit.goal.target === 'number'
-    && Number.isFinite(habit.goal.target)
-    && habit.goal.target > 0;
+export function hasValidNumericTarget(habit: HabitWithGoal, dayKey?: string): boolean {
+  const { goal } = resolveHabitTrackingForDay(habit, dayKey);
+  return goal.type === 'number'
+    && typeof goal.target === 'number'
+    && Number.isFinite(goal.target)
+    && goal.target > 0;
 }
 
 /** Value used when an interaction explicitly means "complete this habit". */
-export function getCompletionEntryValue(habit: HabitWithGoal): number | null {
-  if (habit.goal.type === 'boolean') return 1;
-  return hasValidNumericTarget(habit) ? habit.goal.target! : null;
+export function getCompletionEntryValue(habit: HabitWithGoal, dayKey?: string): number | null {
+  const { goal } = resolveHabitTrackingForDay(habit, dayKey);
+  if (goal.type === 'boolean') return 1;
+  return hasValidNumericTarget(habit, dayKey) ? goal.target! : null;
 }
 
 function sumNonNegativeFiniteValues(entries: readonly CompletionEntry[]): number {
@@ -49,8 +53,11 @@ function sumNonNegativeFiniteValues(entries: readonly CompletionEntry[]): number
 export function deriveDailyHabitCompletion(
   habit: HabitWithGoal,
   entries: readonly CompletionEntry[],
+  dayKey?: string,
 ): HabitCompletionState {
-  if (habit.goal.type === 'boolean') {
+  const { goal } = resolveHabitTrackingForDay(habit, dayKey);
+
+  if (goal.type === 'boolean') {
     const isComplete = entries.length > 0;
     return {
       currentValue: isComplete ? 1 : 0,
@@ -63,7 +70,7 @@ export function deriveDailyHabitCompletion(
   }
 
   const currentValue = sumNonNegativeFiniteValues(entries);
-  const targetValue = hasValidNumericTarget(habit) ? habit.goal.target! : 0;
+  const targetValue = hasValidNumericTarget(habit, dayKey) ? goal.target! : 0;
   const isComplete = targetValue > 0 && currentValue >= targetValue;
   const hasProgress = currentValue > 0;
 

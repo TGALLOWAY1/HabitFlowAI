@@ -6,7 +6,13 @@ import {
   getIsoWeekStartDayKey,
   isValidDayKey,
 } from '../../domain/time/dayKey';
-import { getHabitCreatedDayKey, isHabitScheduledOnDay } from './scheduleEngine';
+import {
+  getHabitCreatedDayKey,
+  getWeeklyQuotaTargetOnDay,
+  matchesHabitScheduleOnDay,
+  usesWeeklyQuotaStreak,
+} from './scheduleEngine';
+import { isHabitInactiveOnDay } from '../../domain/habits/trackingHistory';
 
 export interface HabitDayState {
   dayKey: string;
@@ -31,6 +37,7 @@ export interface HabitStreakMetrics {
 type WeeklyProgress = {
   progress: number;
   satisfied: boolean;
+  target: number;
 };
 
 function dateToLocalDayKey(date: Date): string {
@@ -40,36 +47,26 @@ function dateToLocalDayKey(date: Date): string {
   return `${year}-${month}-${day}`;
 }
 
-function filterStatesToHabitLifetime(
+function filterStatesToReferenceDay(
   dayStates: HabitDayState[],
-  createdDayKey: string | null,
   referenceDayKey: string,
 ): HabitDayState[] {
   return dayStates.filter(state => (
     isValidDayKey(state.dayKey)
     && state.dayKey <= referenceDayKey
-    && (!createdDayKey || state.dayKey >= createdDayKey)
   ));
 }
 
-function calculateBestConsecutiveSpan(dayKeys: string[], stepInDays: number): number {
-  if (dayKeys.length === 0) return 0;
-
-  const sorted = [...new Set(dayKeys)].sort();
-  let best = 1;
-  let current = 1;
-
-  for (let i = 1; i < sorted.length; i++) {
-    const difference = differenceInDayKeys(sorted[i], sorted[i - 1]);
-    if (difference === stepInDays) {
-      current += 1;
-      best = Math.max(best, current);
-    } else if (difference > stepInDays) {
-      current = 1;
-    }
+function getTrackingStartDayKey(
+  createdDayKey: string | null,
+  dayStates: HabitDayState[],
+  referenceDayKey: string,
+): string {
+  const earliestRecordedDayKey = dayStates.map(state => state.dayKey).sort()[0];
+  if (createdDayKey && earliestRecordedDayKey) {
+    return createdDayKey < earliestRecordedDayKey ? createdDayKey : earliestRecordedDayKey;
   }
-
-  return best;
+  return createdDayKey ?? earliestRecordedDayKey ?? referenceDayKey;
 }
 
 function qualifiesForStreak(state: HabitDayState): boolean {
@@ -84,6 +81,22 @@ function getLastCompletedDayKey(dayStates: HabitDayState[]): string | null {
   return completedDayKeys.at(-1) ?? null;
 }
 
+/** A daily↔weekly streak-unit change starts a new comparable streak segment. */
+function getCurrentStreakModeStartDayKey(
+  habit: Habit,
+  createdDayKey: string,
+  referenceDayKey: string,
+): string {
+  const currentUsesWeeklyQuota = usesWeeklyQuotaStreak(habit, referenceDayKey);
+  let cursor = referenceDayKey;
+  while (cursor > createdDayKey) {
+    const previousDayKey = addDaysToDayKey(cursor, -1);
+    if (usesWeeklyQuotaStreak(habit, previousDayKey) !== currentUsesWeeklyQuota) break;
+    cursor = previousDayKey;
+  }
+  return cursor < createdDayKey ? createdDayKey : cursor;
+}
+
 /**
  * Daily streaks count scheduled opportunities, not adjacent calendar days.
  * A freeze protects an opportunity but is not itself reported as completion.
@@ -95,7 +108,7 @@ function calculateOpportunityMetrics(
   timeZone?: string,
 ): HabitStreakMetrics {
   const createdDayKey = getHabitCreatedDayKey(habit, timeZone);
-  const eligibleStates = filterStatesToHabitLifetime(dayStates, createdDayKey, referenceDayKey);
+  const eligibleStates = filterStatesToReferenceDay(dayStates, referenceDayKey);
   const protectedDayKeys = new Set(
     eligibleStates
       .filter(state => qualifiesForStreak(state) || state.isFrozen)
@@ -105,14 +118,24 @@ function calculateOpportunityMetrics(
     eligibleStates.filter(state => state.completed).map(state => state.dayKey),
   );
 
-  const effectiveCreatedDayKey = createdDayKey
-    ?? eligibleStates.map(state => state.dayKey).sort()[0]
-    ?? referenceDayKey;
+  // A real backdated/imported entry is evidence that tracking started before
+  // the habit document was created. Start at the earlier boundary, but never
+  // invent missed opportunities before the first such record.
+  const lifetimeStartDayKey = getTrackingStartDayKey(
+    createdDayKey,
+    eligibleStates,
+    referenceDayKey,
+  );
+  const effectiveCreatedDayKey = getCurrentStreakModeStartDayKey(
+    habit,
+    lifetimeStartDayKey,
+    referenceDayKey,
+  );
   const opportunityDayKeys: string[] = [];
   const totalCalendarDays = differenceInDayKeys(referenceDayKey, effectiveCreatedDayKey) + 1;
   for (let offset = 0; offset < totalCalendarDays; offset++) {
     const dayKey = addDaysToDayKey(effectiveCreatedDayKey, offset);
-    if (isHabitScheduledOnDay(habit, dayKey, timeZone)) opportunityDayKeys.push(dayKey);
+    if (matchesHabitScheduleOnDay(habit, dayKey)) opportunityDayKeys.push(dayKey);
   }
 
   let bestStreak = 0;
@@ -154,14 +177,12 @@ function calculateOpportunityMetrics(
 function buildWeeklyProgressMap(
   dayStates: HabitDayState[],
   habit: Habit,
-  target: number,
-  timeZone?: string,
 ): Map<string, WeeklyProgress> {
   const protectedDaysByWeek = new Map<string, Set<string>>();
 
   for (const dayState of dayStates) {
     if (!(qualifiesForStreak(dayState) || dayState.isFrozen)) continue;
-    if (!dayState.isFrozen && !isHabitScheduledOnDay(habit, dayState.dayKey, timeZone)) continue;
+    if (!dayState.isFrozen && !matchesHabitScheduleOnDay(habit, dayState.dayKey)) continue;
     const weekKey = getIsoWeekStartDayKey(dayState.dayKey);
     const protectedDays = protectedDaysByWeek.get(weekKey) ?? new Set<string>();
     protectedDays.add(dayState.dayKey);
@@ -171,45 +192,90 @@ function buildWeeklyProgressMap(
   const weeklyMap = new Map<string, WeeklyProgress>();
   for (const [weekKey, protectedDays] of protectedDaysByWeek) {
     const progress = protectedDays.size;
-    weeklyMap.set(weekKey, { progress, satisfied: progress >= target });
+    const target = getWeeklyQuotaTargetOnDay(habit, addDaysToDayKey(weekKey, 6)) ?? 1;
+    weeklyMap.set(weekKey, { progress, satisfied: progress >= target, target });
   }
   return weeklyMap;
+}
+
+function getEligibleWeeklyPeriodKeys(
+  habit: Habit,
+  createdWeekKey: string,
+  currentWeekKey: string,
+): string[] {
+  const eligible: string[] = [];
+  for (let weekKey = createdWeekKey; weekKey <= currentWeekKey; weekKey = addDaysToDayKey(weekKey, 7)) {
+    const weekEndDayKey = addDaysToDayKey(weekKey, 6);
+    if (!usesWeeklyQuotaStreak(habit, weekEndDayKey)) continue;
+
+    let hasScheduledDay = false;
+    let intersectsInactivePeriod = false;
+    for (let offset = 0; offset < 7; offset++) {
+      const dayKey = addDaysToDayKey(weekKey, offset);
+      if (isHabitInactiveOnDay(habit, dayKey)) intersectsInactivePeriod = true;
+      if (matchesHabitScheduleOnDay(habit, dayKey)) hasScheduledDay = true;
+    }
+
+    // A week touched by an archive/restore interval is excused as one unit.
+    if (hasScheduledDay && !intersectsInactivePeriod) eligible.push(weekKey);
+  }
+  return eligible;
 }
 
 function calculateWeeklyMetrics(
   dayStates: HabitDayState[],
   habit: Habit,
   referenceDayKey: string,
-  target: number,
   timeZone?: string,
 ): HabitStreakMetrics {
   const createdDayKey = getHabitCreatedDayKey(habit, timeZone);
-  const eligibleStates = filterStatesToHabitLifetime(dayStates, createdDayKey, referenceDayKey);
-  const weeklyProgressMap = buildWeeklyProgressMap(eligibleStates, habit, target, timeZone);
+  const eligibleStates = filterStatesToReferenceDay(dayStates, referenceDayKey);
   const currentWeekKey = getIsoWeekStartDayKey(referenceDayKey);
-  const createdWeekKey = getIsoWeekStartDayKey(createdDayKey ?? referenceDayKey);
-  const currentWeek = weeklyProgressMap.get(currentWeekKey) ?? { progress: 0, satisfied: false };
+  const lifetimeStartDayKey = getTrackingStartDayKey(
+    createdDayKey,
+    eligibleStates,
+    referenceDayKey,
+  );
+  const modeStartDayKey = getCurrentStreakModeStartDayKey(
+    habit,
+    lifetimeStartDayKey,
+    referenceDayKey,
+  );
+  const modeEligibleStates = eligibleStates.filter(state => state.dayKey >= modeStartDayKey);
+  const weeklyProgressMap = buildWeeklyProgressMap(modeEligibleStates, habit);
+  const createdWeekKey = getIsoWeekStartDayKey(modeStartDayKey);
+  const currentTarget = getWeeklyQuotaTargetOnDay(habit, addDaysToDayKey(currentWeekKey, 6)) ?? 1;
+  const currentWeek = weeklyProgressMap.get(currentWeekKey) ?? {
+    progress: 0,
+    satisfied: false,
+    target: currentTarget,
+  };
+  const eligibleWeekKeys = getEligibleWeeklyPeriodKeys(
+    habit,
+    createdWeekKey,
+    currentWeekKey,
+  );
+  const currentWeekIndex = eligibleWeekKeys.indexOf(currentWeekKey);
 
   let currentStreak = 0;
-  let cursorWeekKey = currentWeek.satisfied
-    ? currentWeekKey
-    : addDaysToDayKey(currentWeekKey, -7);
-  while (
-    cursorWeekKey >= createdWeekKey
-    && weeklyProgressMap.get(cursorWeekKey)?.satisfied
-  ) {
+  let cursorIndex = currentWeekIndex >= 0
+    ? currentWeekIndex - (currentWeek.satisfied ? 0 : 1)
+    : eligibleWeekKeys.length - 1;
+  while (cursorIndex >= 0 && weeklyProgressMap.get(eligibleWeekKeys[cursorIndex])?.satisfied) {
     currentStreak += 1;
-    cursorWeekKey = addDaysToDayKey(cursorWeekKey, -7);
+    cursorIndex -= 1;
   }
 
-  const satisfiedWeekKeys = [...weeklyProgressMap.entries()]
-    .filter(([weekKey, value]) => (
-      weekKey >= createdWeekKey
-      && weekKey <= currentWeekKey
-      && value.satisfied
-    ))
-    .map(([weekKey]) => weekKey);
-  const bestStreak = calculateBestConsecutiveSpan(satisfiedWeekKeys, 7);
+  let bestStreak = 0;
+  let span = 0;
+  for (const weekKey of eligibleWeekKeys) {
+    if (weeklyProgressMap.get(weekKey)?.satisfied) {
+      span += 1;
+      bestStreak = Math.max(bestStreak, span);
+    } else {
+      span = 0;
+    }
+  }
 
   const completedToday = eligibleStates.some(
     state => state.dayKey === referenceDayKey && state.completed,
@@ -221,17 +287,18 @@ function calculateWeeklyMetrics(
     bestStreak,
     lastCompletedDayKey: getLastCompletedDayKey(eligibleStates),
     completedToday,
-    atRisk: currentStreak > 0 && !currentWeek.satisfied && daysLeftInWeek <= 2,
+    atRisk: currentStreak > 0 && currentWeekIndex >= 0 && !currentWeek.satisfied && daysLeftInWeek <= 2,
     weekSatisfied: currentWeek.satisfied,
     weekProgress: currentWeek.progress,
-    weekTarget: target,
+    weekTarget: currentWeek.target,
   };
 }
 
 /**
  * Calculate canonical streak metrics from day-level completion derived from
  * HabitEntries. The caller-supplied DayKey is the calendar boundary; future
- * states and states before habit creation are excluded.
+ * states are excluded. A backdated/imported state may precede `createdAt` and
+ * becomes the first evidenced opportunity instead of being discarded.
  */
 export function calculateHabitStreakMetrics(
   habit: Habit,
@@ -243,16 +310,11 @@ export function calculateHabitStreakMetrics(
   const referenceDay = referenceDayKey
     ?? (timeZone ? formatDayKeyFromDate(referenceDate, timeZone) : dateToLocalDayKey(referenceDate));
 
-  if (habit.timesPerWeek != null && habit.timesPerWeek > 0) {
-    return calculateWeeklyMetrics(dayStates, habit, referenceDay, habit.timesPerWeek, timeZone);
-  }
-
-  if (habit.assignedDays?.length && habit.requiredDaysPerWeek != null) {
+  if (usesWeeklyQuotaStreak(habit, referenceDay)) {
     return calculateWeeklyMetrics(
       dayStates,
       habit,
       referenceDay,
-      habit.requiredDaysPerWeek,
       timeZone,
     );
   }

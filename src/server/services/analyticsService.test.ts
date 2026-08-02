@@ -256,6 +256,19 @@ describe('computeHeatmapData', () => {
     expect(result.dataPoints[0].completedCount).toBe(1);
     expect(result.dataPoints[0].scheduledCount).toBe(2);
   });
+
+  it('shows a real backdated completion without inventing earlier opportunities', () => {
+    const habit = createHabit({ createdAt: '2026-04-02T12:00:00.000Z' });
+    const entries = [createEntry(habit.id, '2026-04-01')];
+
+    const result = computeHeatmapData([habit], entries, '2026-04-02', 3, 'UTC');
+
+    expect(result.dataPoints).toEqual([
+      expect.objectContaining({ dayKey: '2026-03-31', scheduledCount: 0, completedCount: 0 }),
+      expect.objectContaining({ dayKey: '2026-04-01', scheduledCount: 1, completedCount: 1 }),
+      expect.objectContaining({ dayKey: '2026-04-02', scheduledCount: 1, completedCount: 0 }),
+    ]);
+  });
 });
 
 // ─── Trends Tests ────────────────────────────────────────────────────────────

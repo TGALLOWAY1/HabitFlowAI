@@ -109,7 +109,7 @@ describe('streakService', () => {
     expect(metrics.completedToday).toBe(false);
   });
 
-  it('does not include records from before the habit was created', () => {
+  it('lets a real backdated entry start history without inventing earlier misses', () => {
     const habit = createHabit({ createdAt: '2026-02-10T18:00:00.000Z' });
     const dayStates: HabitDayState[] = [
       { dayKey: '2026-02-08', value: 1, completed: true },
@@ -119,12 +119,62 @@ describe('streakService', () => {
 
     const metrics = calculateHabitStreakMetrics(habit, dayStates, parseISO('2026-02-11'), '2026-02-11');
 
-    expect(metrics.currentStreak).toBe(1);
-    expect(metrics.bestStreak).toBe(1);
+    expect(metrics.currentStreak).toBe(3);
+    expect(metrics.bestStreak).toBe(3);
     expect(metrics.lastCompletedDayKey).toBe('2026-02-10');
   });
 
   describe('scheduled daily habits (assignedDays + requiredDaysPerWeek)', () => {
+    it('counts strict all-day schedules as consecutive daily opportunities', () => {
+      const habit = createHabit({
+        goal: { type: 'boolean', frequency: 'daily', target: 1 },
+        assignedDays: [0, 1, 2, 3, 4, 5, 6],
+        requiredDaysPerWeek: 7,
+      });
+      const dayStates: HabitDayState[] = Array.from({ length: 10 }, (_, index) => ({
+        dayKey: `2026-02-${String(index + 10).padStart(2, '0')}`,
+        value: 1,
+        completed: true,
+      }));
+
+      const metrics = calculateHabitStreakMetrics(
+        habit,
+        dayStates,
+        parseISO('2026-02-19'),
+        '2026-02-19',
+      );
+
+      expect(metrics.currentStreak).toBe(10);
+      expect(metrics.bestStreak).toBe(10);
+      expect(metrics.weekSatisfied).toBeUndefined();
+      expect(metrics.weekProgress).toBeUndefined();
+    });
+
+    it('counts strict custom schedules by scheduled occurrence, not calendar adjacency', () => {
+      const habit = createHabit({
+        goal: { type: 'boolean', frequency: 'daily', target: 1 },
+        assignedDays: [1, 3, 5],
+        requiredDaysPerWeek: 3,
+      });
+      const dayStates: HabitDayState[] = [
+        { dayKey: '2026-02-09', value: 1, completed: true }, // Monday
+        { dayKey: '2026-02-11', value: 1, completed: true }, // Wednesday
+        { dayKey: '2026-02-13', value: 1, completed: true }, // Friday
+        { dayKey: '2026-02-16', value: 1, completed: true }, // Monday
+      ];
+
+      const metrics = calculateHabitStreakMetrics(
+        habit,
+        dayStates,
+        parseISO('2026-02-17'),
+        '2026-02-17',
+      );
+
+      expect(metrics.currentStreak).toBe(4);
+      expect(metrics.bestStreak).toBe(4);
+      expect(metrics.weekSatisfied).toBeUndefined();
+    });
+
     it('counts consecutive weeks where completions >= requiredDaysPerWeek', () => {
       const habit = createHabit({
         goal: { type: 'boolean', frequency: 'daily', target: 1 },
@@ -153,7 +203,7 @@ describe('streakService', () => {
       expect(metrics.weekTarget).toBe(2);
     });
 
-    it('does not count completions on non-assigned days toward the weekly threshold', () => {
+    it('does not count completions on non-assigned days for a strict schedule', () => {
       const habit = createHabit({
         goal: { type: 'boolean', frequency: 'daily', target: 1 },
         assignedDays: [0], // Sunday only
@@ -167,8 +217,9 @@ describe('streakService', () => {
       const metrics = calculateHabitStreakMetrics(habit, dayStates, parseISO('2026-02-20'));
 
       expect(metrics.currentStreak).toBe(0);
-      expect(metrics.weekSatisfied).toBe(false);
-      expect(metrics.weekProgress).toBe(0);
+      expect(metrics.bestStreak).toBe(0);
+      expect(metrics.weekSatisfied).toBeUndefined();
+      expect(metrics.weekProgress).toBeUndefined();
     });
 
     it('breaks streak when a week has no completions', () => {
@@ -249,7 +300,7 @@ describe('streakService', () => {
     it('marks atRisk when streak active but current week unsatisfied with <= 2 days left', () => {
       const habit = createHabit({
         goal: { type: 'boolean', frequency: 'daily', target: 1 },
-        assignedDays: [1, 3, 5],
+        assignedDays: [1, 2, 3, 4, 5],
         requiredDaysPerWeek: 3,
       });
       const dayStates: HabitDayState[] = [
@@ -349,6 +400,130 @@ describe('streakService', () => {
     expect(metrics.lastCompletedDayKey).toBe('2026-02-24');
     expect(metrics.completedToday).toBe(false);
     expect(metrics.atRisk).toBe(true);
+  });
+
+  it('skips restored-habit inactive days without breaking the daily streak', () => {
+    const habit = createHabit({
+      createdAt: '2026-02-23T12:00:00.000Z',
+      inactivePeriods: [{ startDayKey: '2026-02-24', endDayKey: '2026-02-25' }],
+    });
+    const dayStates: HabitDayState[] = [
+      { dayKey: '2026-02-23', value: 1, completed: true },
+      { dayKey: '2026-02-26', value: 1, completed: true },
+    ];
+
+    const metrics = calculateHabitStreakMetrics(
+      habit,
+      dayStates,
+      parseISO('2026-02-27'),
+      '2026-02-27',
+    );
+
+    expect(metrics.currentStreak).toBe(2);
+    expect(metrics.bestStreak).toBe(2);
+    expect(metrics.atRisk).toBe(true);
+  });
+
+  it('skips a paused weekly period without breaking a weekly streak', () => {
+    const habit = createHabit({
+      createdAt: '2026-02-02T12:00:00.000Z',
+      timesPerWeek: 2,
+      inactivePeriods: [{ startDayKey: '2026-02-09', endDayKey: '2026-02-15' }],
+    });
+    const dayStates: HabitDayState[] = [
+      { dayKey: '2026-02-02', value: 1, completed: true },
+      { dayKey: '2026-02-03', value: 1, completed: true },
+      { dayKey: '2026-02-16', value: 1, completed: true },
+      { dayKey: '2026-02-17', value: 1, completed: true },
+    ];
+
+    const metrics = calculateHabitStreakMetrics(
+      habit,
+      dayStates,
+      parseISO('2026-02-20'),
+      '2026-02-20',
+    );
+
+    expect(metrics.currentStreak).toBe(2);
+    expect(metrics.bestStreak).toBe(2);
+    expect(metrics.weekSatisfied).toBe(true);
+  });
+
+  it('uses the quota target that applied to each historical week', () => {
+    const habit = createHabit({
+      createdAt: '2026-02-02T12:00:00.000Z',
+      timesPerWeek: 3,
+      trackingRevisions: [
+        {
+          effectiveFromDayKey: '2026-02-02',
+          goal: { type: 'boolean', frequency: 'daily' },
+          timesPerWeek: 2,
+        },
+        {
+          effectiveFromDayKey: '2026-02-16',
+          goal: { type: 'boolean', frequency: 'daily' },
+          timesPerWeek: 3,
+        },
+      ],
+    });
+    const dayStates: HabitDayState[] = [
+      { dayKey: '2026-02-02', value: 1, completed: true },
+      { dayKey: '2026-02-03', value: 1, completed: true },
+      { dayKey: '2026-02-09', value: 1, completed: true },
+      { dayKey: '2026-02-10', value: 1, completed: true },
+      { dayKey: '2026-02-16', value: 1, completed: true },
+      { dayKey: '2026-02-17', value: 1, completed: true },
+      { dayKey: '2026-02-18', value: 1, completed: true },
+    ];
+
+    const metrics = calculateHabitStreakMetrics(
+      habit,
+      dayStates,
+      parseISO('2026-02-20'),
+      '2026-02-20',
+    );
+
+    expect(metrics.currentStreak).toBe(3);
+    expect(metrics.bestStreak).toBe(3);
+    expect(metrics.weekTarget).toBe(3);
+  });
+
+  it('starts a new comparable streak segment when the streak unit changes', () => {
+    const habit = createHabit({
+      createdAt: '2026-02-02T12:00:00.000Z',
+      timesPerWeek: 2,
+      trackingRevisions: [
+        {
+          effectiveFromDayKey: '2026-02-02',
+          goal: { type: 'boolean', frequency: 'daily' },
+        },
+        {
+          effectiveFromDayKey: '2026-02-16',
+          goal: { type: 'boolean', frequency: 'daily' },
+          timesPerWeek: 2,
+        },
+      ],
+    });
+    const dayStates: HabitDayState[] = [
+      ...Array.from({ length: 10 }, (_, index) => ({
+        dayKey: `2026-02-${String(index + 2).padStart(2, '0')}`,
+        value: 1,
+        completed: true,
+      })),
+      { dayKey: '2026-02-16', value: 1, completed: true },
+      { dayKey: '2026-02-17', value: 1, completed: true },
+    ];
+
+    const metrics = calculateHabitStreakMetrics(
+      habit,
+      dayStates,
+      parseISO('2026-02-20'),
+      '2026-02-20',
+    );
+
+    expect(metrics.currentStreak).toBe(1);
+    expect(metrics.bestStreak).toBe(1);
+    expect(metrics.weekTarget).toBe(2);
   });
 
   it('does not let future completions satisfy the current weekly quota', () => {

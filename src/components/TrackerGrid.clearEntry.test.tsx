@@ -1,17 +1,18 @@
-/**
- * Tests for the explicit clear-entry control (touch and keyboard accessible).
- * Double-click delete has been removed; clear is only via the control or delete mode.
- */
+/** Clear-entry regression coverage for the All grid. */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { format } from 'date-fns';
+import { format, subDays } from 'date-fns';
 import { TrackerGrid } from './TrackerGrid';
 import type { Habit, DayLog } from '../types';
 
 vi.mock('../store/HabitContext', () => ({ useHabitStore: vi.fn() }));
 vi.mock('../store/RoutineContext', () => ({ useRoutineStore: vi.fn() }));
 vi.mock('../lib/useProgressOverview', () => ({ useProgressOverview: vi.fn() }));
+vi.mock('../lib/useGoalsWithProgress', () => ({ useGoalsWithProgress: vi.fn() }));
+vi.mock('../store/DashboardPrefsContext', () => ({
+    useDashboardPrefs: () => ({ hideStreaks: false }),
+}));
 vi.mock('./Toast', () => ({ useToast: () => ({ showToast: vi.fn() }) }));
 vi.mock('./NumericInputPopover', () => ({ NumericInputPopover: () => null }));
 vi.mock('./HabitHistoryModal', () => ({ HabitHistoryModal: () => null }));
@@ -20,8 +21,9 @@ vi.mock('./HabitLogModal', () => ({ HabitLogModal: () => null }));
 import { useHabitStore } from '../store/HabitContext';
 import { useRoutineStore } from '../store/RoutineContext';
 import { useProgressOverview } from '../lib/useProgressOverview';
+import { useGoalsWithProgress } from '../lib/useGoalsWithProgress';
 
-describe('TrackerGrid clear entry (explicit menu)', () => {
+describe('TrackerGrid clear entry', () => {
     const mockDeleteHabitEntryByKey = vi.fn().mockResolvedValue({ dayLog: null });
     const mockUpsertHabitEntry = vi.fn();
     const mockDeleteHabit = vi.fn();
@@ -47,18 +49,29 @@ describe('TrackerGrid clear entry (explicit menu)', () => {
 
     beforeEach(() => {
         vi.clearAllMocks();
-        (useHabitStore as any).mockReturnValue({
+        vi.mocked(useHabitStore).mockReturnValue({
             deleteHabit: mockDeleteHabit,
             reorderHabits: mockReorderHabits,
             upsertHabitEntry: mockUpsertHabitEntry,
             deleteHabitEntryByKey: mockDeleteHabitEntryByKey,
             toggleHabit: mockToggleHabit,
+        } as unknown as ReturnType<typeof useHabitStore>);
+        vi.mocked(useRoutineStore).mockReturnValue({ routines: [] } as unknown as ReturnType<typeof useRoutineStore>);
+        vi.mocked(useProgressOverview).mockReturnValue({
+            data: undefined,
+            loading: false,
+            error: undefined,
+            refresh: mockRefreshProgress,
         });
-        (useRoutineStore as any).mockReturnValue({ routines: [] });
-        (useProgressOverview as any).mockReturnValue({ data: null, refresh: mockRefreshProgress });
+        vi.mocked(useGoalsWithProgress).mockReturnValue({
+            data: [],
+            loading: false,
+            error: null,
+            refetch: vi.fn(),
+        });
     });
 
-    it('should render grid with habit row and no double-click delete on cells', () => {
+    it('does not overlay tiny trash controls on completed cells', () => {
         const habitId = 'habit-1';
         const today = new Date();
         const dayKey = format(today, 'yyyy-MM-dd');
@@ -80,10 +93,10 @@ describe('TrackerGrid clear entry (explicit menu)', () => {
         );
 
         expect(screen.getByText('Morning Meditation')).toBeInTheDocument();
-        expect(container.querySelector('button[title="Clear entry"]')).toBeTruthy();
+        expect(container.querySelector('button[aria-label^="Clear entry for"]')).toBeNull();
     });
 
-    it('should call deleteHabitEntryByKey when the Clear entry control is clicked', async () => {
+    it('does not expose a global delete-mode trash control', async () => {
         const habitId = 'habit-1';
         const today = new Date();
         const dayKey = format(today, 'yyyy-MM-dd');
@@ -104,16 +117,17 @@ describe('TrackerGrid clear entry (explicit menu)', () => {
             />
         );
 
-        const clearButton = container.querySelector('button[title="Clear entry"]');
-        if (!clearButton) {
-            throw new Error('Clear entry control not found');
-        }
-        fireEvent.click(clearButton);
+        expect(screen.queryByTitle('Enter Delete Mode (mobile-friendly)')).not.toBeInTheDocument();
+        const cellButtons = Array.from(container.querySelectorAll('button')).filter(
+            btn => btn.className.includes('rounded-lg') && !btn.className.includes('p-1.5') && btn.closest('.w-16')
+        );
+        expect(cellButtons.length).toBeGreaterThan(0);
+        fireEvent.click(cellButtons[0]);
 
         await waitFor(() => {
-            expect(mockDeleteHabitEntryByKey).toHaveBeenCalledWith(habitId, dayKey);
+            expect(mockToggleHabit).toHaveBeenCalledWith(habitId, dayKey);
         });
-        await waitFor(() => expect(mockRefreshProgress).toHaveBeenCalled());
+        expect(mockDeleteHabitEntryByKey).not.toHaveBeenCalled();
     });
 
     it('should NOT delete when double-clicking a cell (double-click delete removed)', async () => {
@@ -148,7 +162,7 @@ describe('TrackerGrid clear entry (explicit menu)', () => {
         expect(mockDeleteHabitEntryByKey).not.toHaveBeenCalled();
     });
 
-    it('should use canonical dayKey (YYYY-MM-DD) when clearing via menu', async () => {
+    it('uses a canonical dayKey (YYYY-MM-DD) when toggling an existing entry', async () => {
         const habitId = 'habit-3';
         const today = new Date();
         const dayKey = format(today, 'yyyy-MM-dd');
@@ -169,15 +183,54 @@ describe('TrackerGrid clear entry (explicit menu)', () => {
             />
         );
 
-        const clearButton = container.querySelector('button[title="Clear entry"]');
-        if (!clearButton) throw new Error('Clear entry control not found');
-        fireEvent.click(clearButton);
+        const cellButtons = Array.from(container.querySelectorAll('button')).filter(
+            btn => btn.className.includes('rounded-lg') && !btn.className.includes('p-1.5') && btn.closest('.w-16')
+        );
+        expect(cellButtons.length).toBeGreaterThan(0);
+        fireEvent.click(cellButtons[0]);
 
-        await waitFor(() => expect(mockDeleteHabitEntryByKey).toHaveBeenCalled());
-        const [id, date] = mockDeleteHabitEntryByKey.mock.calls[0];
+        await waitFor(() => expect(mockToggleHabit).toHaveBeenCalled());
+        const [id, date] = mockToggleHabit.mock.calls[0];
         expect(id).toBe(habitId);
         expect(date).toBe(dayKey);
         expect(date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    });
+
+    it('renders an older entry with the goal type that applied on that day', () => {
+        const today = new Date();
+        const todayKey = format(today, 'yyyy-MM-dd');
+        const historicalDayKey = format(subDays(today, 1), 'yyyy-MM-dd');
+        const habit: Habit = {
+            ...createBooleanHabit('changed-habit', 'Changed habit'),
+            trackingRevisions: [
+                {
+                    effectiveFromDayKey: '2025-01-01',
+                    goal: { type: 'number', frequency: 'daily', target: 10, unit: 'pages' },
+                },
+                {
+                    effectiveFromDayKey: todayKey,
+                    goal: { type: 'boolean', frequency: 'daily' },
+                },
+            ],
+        };
+
+        const { container } = render(
+            <TrackerGrid
+                habits={[habit]}
+                logs={{
+                    [`${habit.id}-${historicalDayKey}`]: createDayLog(habit.id, historicalDayKey, false, 5),
+                }}
+                onAddHabit={() => {}}
+                onEditHabit={() => {}}
+                onViewHistory={() => {}}
+                onToggle={async () => {}}
+                onUpdateValue={async () => {}}
+            />
+        );
+
+        const historicalValueCell = Array.from(container.querySelectorAll('.w-16 button'))
+            .find(button => button.textContent === '5');
+        expect(historicalValueCell).toBeTruthy();
     });
 
     it('delegates checklist parent completion as one canonical bundle action', async () => {

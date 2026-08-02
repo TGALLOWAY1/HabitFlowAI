@@ -54,31 +54,62 @@ instead of a primary “non-negotiable” toggle.
 
 ---
 
-## Decision 3: Streaks for scheduled habits are week-satisfaction based; users can globally hide streak indicators
+## Decision 3: Strict schedules use occurrence streaks; flexible schedules use week streaks
 
-- **Date:** 2026-03-30
-- **Status:** Accepted (with policy clarification pending)
+- **Date:** 2026-03-30; clarified 2026-08-02
+- **Status:** Accepted
 
 ### Decision
-- Scheduled daily habit streaks are calculated by weekly satisfaction against `requiredDaysPerWeek`.
+- A strict schedule (`requiredDaysPerWeek === assignedDays.length`) counts consecutive completed scheduled occurrences. For example, ten completed days on an every-day habit is a ten-day streak.
+- A flexible schedule (`requiredDaysPerWeek < assignedDays.length`) counts consecutive ISO weeks that meet the required number of scheduled completions.
+- Explicit `timesPerWeek` habits remain week-based.
 - A user-level dashboard preference (`hideStreaks`) controls whether streak indicators are shown across UI surfaces.
 
 ### Reasoning
-- Weekly satisfaction provides flexibility and reduces punitive streak breaks.
+- Weekly satisfaction provides flexibility when grace days are configured, while strict schedules preserve the user's visible day-by-day run.
 - A hide-streaks preference supports users who find streak signals distracting or counterproductive.
 
 ### Implications
-- Streak semantics for scheduled habits are less rigid than strict day-specific adherence.
+- Streak units are derived from the schedule mode and must agree across the service and UI formatting.
 - Multiple components must respect a single preference source of truth.
 - Preference hydration/state sync quality becomes critical.
 
 ### Follow-up actions / open questions
-- Clarify product policy: should off-schedule completions count toward weekly requirement in all cases?
+- Off-schedule completions do not satisfy either strict opportunities or flexible weekly requirements.
 - Add regression coverage for dashboard preference hydration and cross-surface consistency.
 
 ---
 
-## Decision 4: Bundle completion remains child-entry driven, with stronger temporal membership handling
+## Decision 4: Preserve habit history with lightweight rule and inactive-day metadata
+
+- **Date:** 2026-08-02
+- **Status:** Accepted
+
+### Decision
+
+Keep revisions and archive gaps on the existing habit document rather than introducing a version collection or rewriting HabitEntries.
+
+- The first target/schedule edit records the current rule at creation and the new rule at the local effective DayKey.
+- Historical completion and scheduling resolve the rule effective on that date.
+- Archive begins an inactive range on the following day; restore closes it on the preceding day.
+- Switching between occurrence and weekly streak units starts a new comparable segment.
+- `goal.frequency: total` changes cumulative goal aggregation only; habit-day completion remains target-based.
+- A real backdated/imported entry may start evidenced history before the habit document's `createdAt`; no missed opportunities are inferred before that entry.
+
+### Reasoning
+
+HabitFlowAI has one real user. This preserves entry history and streak meaning with a small, testable data shape while avoiding multi-user migration and compatibility infrastructure.
+
+### Implications
+- Existing entries and historical DayKeys remain unchanged.
+- Metadata is added lazily only when a rule changes or a user archive starts.
+
+### Follow-up actions / open questions
+- Pre-change rule edits and completed archive cycles cannot be reconstructed without source timestamps.
+
+---
+
+## Decision 5: Bundle completion remains child-entry driven, with stronger temporal membership handling
 
 - **Date:** 2026-03-30
 - **Status:** Accepted (ongoing hardening)
@@ -103,7 +134,7 @@ instead of a primary “non-negotiable” toggle.
 
 ---
 
-## Decision 5: Preserve visibility and integrity across archive/delete linkage operations
+## Decision 6: Preserve visibility and integrity across archive/delete linkage operations
 
 - **Date:** 2026-03-30
 - **Status:** Accepted
