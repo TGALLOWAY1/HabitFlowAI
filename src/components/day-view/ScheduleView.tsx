@@ -8,6 +8,7 @@ import { fetchDayView, getLocalTimeZone } from '../../lib/persistenceClient';
 import { useEffect } from 'react';
 
 import type { Habit } from '../../types';
+import { deriveDailyHabitCompletion } from '../../domain/habits/completion';
 
 interface DayViewHabitStatus {
     habit: Habit;
@@ -137,19 +138,23 @@ export const ScheduleView = () => {
             const key = `${habit.id}-${selectedDayKey}`;
             const log = logs[key];
             if (log !== undefined) {
-                const isComplete = habit.goal?.type === 'number'
-                    ? (habit.goal.target ? ((log.value ?? 0) >= habit.goal.target) : (log.value ?? 0) > 0)
-                    : !!log.completed;
+                const completion = deriveDailyHabitCompletion(habit, [{ value: log.value }]);
                 const existing = map.get(habit.id);
                 if (existing) {
-                    map.set(habit.id, { ...existing, isComplete, currentValue: log.value ?? 0 });
+                    map.set(habit.id, {
+                        ...existing,
+                        isComplete: completion.isComplete,
+                        currentValue: completion.currentValue,
+                        targetValue: completion.targetValue,
+                        progressPercent: completion.progressPercent,
+                    });
                 } else {
                     map.set(habit.id, {
                         habit,
-                        isComplete,
-                        currentValue: log.value ?? 0,
-                        targetValue: habit.goal?.target ?? 0,
-                        progressPercent: habit.goal?.target ? Math.min(100, ((log.value ?? 0) / habit.goal.target) * 100) : 0
+                        isComplete: completion.isComplete,
+                        currentValue: completion.currentValue,
+                        targetValue: completion.targetValue,
+                        progressPercent: completion.progressPercent,
                     });
                 }
             }

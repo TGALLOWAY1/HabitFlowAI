@@ -28,10 +28,11 @@ import {
     fetchPotentialEvidence,
     upsertHabitEntry,
     deleteHabitEntryByKey,
+    batchCreateEntries,
 } from '../lib/persistenceClient';
 import type { WellbeingMetricKey } from '../models/persistenceTypes';
 import { WELLBEING_METRIC_KEYS } from '../models/persistenceTypes';
-import { deriveDailyHabitCompletion } from '../domain/habits/completion';
+import { deriveDailyHabitCompletion, getCompletionEntryValue } from '../domain/habits/completion';
 
 interface HabitContextType {
     categories: Category[];
@@ -401,51 +402,66 @@ export const HabitProvider: React.FC<{
         // Checklist bundle parent: toggle all children instead of the parent itself
         if (habit?.type === 'bundle' && habit.bundleType === 'checklist' && habit.subHabitIds?.length) {
             const childIds = habit.subHabitIds;
-            // Determine direction: if all children are complete, toggle off; otherwise toggle on
-            const allComplete = childIds.every(id => logs[`${id}-${date}`]);
+            const childHabits = childIds.map(id => habits.find(candidate => candidate.id === id));
+            if (childHabits.some(child => !child)) {
+                setLastPersistenceError('This bundle contains a missing habit and cannot be updated.');
+                return;
+            }
+            const allComplete = childHabits.every(child => {
+                const childLog = logs[`${child!.id}-${date}`];
+                return deriveDailyHabitCompletion(
+                    child!,
+                    childLog ? [{ value: childLog.value }] : [],
+                ).isComplete;
+            });
+            const completionValues = new Map<string, number>();
+            for (const child of childHabits) {
+                const value = getCompletionEntryValue(child!);
+                if (value === null) {
+                    setLastPersistenceError(`"${child!.name}" needs a valid numeric target before the bundle can be completed.`);
+                    return;
+                }
+                completionValues.set(child!.id, value);
+            }
             const previousLogs = logs;
 
             // Optimistic update for all children
-            let updatedLogs = { ...logs };
+            const updatedLogs = { ...logs };
             for (const childId of childIds) {
                 const childKey = `${childId}-${date}`;
                 if (allComplete) {
                     delete updatedLogs[childKey];
-                } else if (!updatedLogs[childKey]) {
-                    updatedLogs[childKey] = { habitId: childId, date, value: 1, completed: true };
+                } else {
+                    updatedLogs[childKey] = {
+                        habitId: childId,
+                        date,
+                        value: completionValues.get(childId)!,
+                        completed: true,
+                    };
                 }
             }
             setLogs(updatedLogs);
 
             try {
-                const results = await Promise.all(
-                    childIds.map(childId => {
-                        const childKey = `${childId}-${date}`;
-                        const childLog = previousLogs[childKey];
-                        if (allComplete) {
-                            return clearHabitEntriesForDay(childId, date);
-                        } else if (!childLog) {
-                            return createHabitEntry({ habitId: childId, date, value: 1, source: 'manual' });
-                        }
-                        return Promise.resolve(null);
-                    })
-                );
+                const results = allComplete
+                    ? await Promise.all(childIds.map(childId => clearHabitEntriesForDay(childId, date)))
+                    : [await batchCreateEntries({
+                        habitIds: childIds,
+                        dayKey: date,
+                        source: 'manual',
+                        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+                    })];
 
                 // Apply server truth
                 setLogs(prev => {
                     const next = { ...prev };
                     childIds.forEach((childId, i) => {
                         const childKey = `${childId}-${date}`;
-                        const result = results[i];
-                        if (!result) return;
                         if (allComplete) {
+                            const result = results[i];
                             if (!result.dayLog) {
                                 delete next[childKey];
                             } else {
-                                next[childKey] = result.dayLog;
-                            }
-                        } else {
-                            if (result.dayLog) {
                                 next[childKey] = result.dayLog;
                             }
                         }
@@ -454,9 +470,7 @@ export const HabitProvider: React.FC<{
                 });
                 // Surface any goal that just hit 100% from these creates.
                 for (const result of results) {
-                    if (result && 'completedGoalIds' in result) {
-                        notifyGoalCompletion(result.completedGoalIds);
-                    }
+                    if ('completedGoalIds' in result) notifyGoalCompletion(result.completedGoalIds);
                 }
                 scheduleBackgroundSync();
             } catch (error) {
@@ -552,13 +566,9 @@ export const HabitProvider: React.FC<{
         setLogs(updatedLogs);
 
         try {
-            // 1. Clear existing entries to enforce "Set Value" semantics
-            await clearHabitEntriesForDay(habitId, date);
-
-            // 2. Create new entry with total value
-            const { dayLog, completedGoalIds } = await createHabitEntry({
-                habitId,
-                date,
+            // A day has one canonical entry, so upsert provides atomic set-value
+            // semantics without a destructive delete/create gap.
+            const { dayLog, completedGoalIds } = await upsertHabitEntry(habitId, date, {
                 value,
                 source: 'manual'
             });

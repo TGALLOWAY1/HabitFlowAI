@@ -601,6 +601,7 @@ export async function batchCreateEntriesRoute(req: Request, res: Response): Prom
             habitId: string;
             routineId?: string;
             value: number;
+            source: 'manual' | 'routine';
         }> = [];
         const seenHabitIds = new Set<string>();
 
@@ -629,7 +630,16 @@ export async function batchCreateEntriesRoute(req: Request, res: Response): Prom
                 res.status(400).json({ error: `${habit.name}: numeric habit has no valid completion target` });
                 return;
             }
-            const validation = validateHabitEntryPayload(habit, { value, source: 'routine' });
+            const source = item.source === undefined || item.source === 'routine'
+                ? 'routine'
+                : item.source === 'manual'
+                    ? 'manual'
+                    : null;
+            if (!source) {
+                res.status(400).json({ error: 'Batch entry source must be "manual" or "routine"' });
+                return;
+            }
+            const validation = validateHabitEntryPayload(habit, { value, source });
             if (!validation.valid) {
                 res.status(400).json({ error: `${habit.name}: ${validation.error}` });
                 return;
@@ -637,7 +647,10 @@ export async function batchCreateEntriesRoute(req: Request, res: Response): Prom
             preparedEntries.push({
                 habitId,
                 value,
-                routineId: typeof item.routineId === 'string' ? item.routineId : undefined,
+                source,
+                routineId: source === 'routine' && typeof item.routineId === 'string'
+                    ? item.routineId
+                    : undefined,
             });
         }
 
@@ -651,7 +664,7 @@ export async function batchCreateEntriesRoute(req: Request, res: Response): Prom
             const { habitId } = item;
             const existing = await getHabitEntriesForDay(habitId, dayKey, householdId, userId);
             const entry = await upsertHabitEntry(habitId, dayKey, householdId, userId, {
-                source: 'routine',
+                source: item.source,
                 routineId: item.routineId,
                 value: item.value,
                 timestamp: now,

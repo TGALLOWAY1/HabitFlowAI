@@ -219,4 +219,20 @@ describe('POST /api/entries/batch', () => {
     expect(res.status).toBe(400);
     expect(res.body.error).toContain('Duplicate habitId');
   });
+
+  it('supports a manual completion batch for checklist children', async () => {
+    const dayKey = '2025-02-13';
+    const res = await request(app).post('/api/entries/batch').send({
+      dayKey,
+      entries: [
+        { habitId: habitId1, source: 'manual' },
+        { habitId: habitId2, source: 'manual' },
+      ],
+    });
+
+    expect(res.status).toBe(200);
+    const entries = await getHabitEntriesForDay(habitId1, dayKey, HOUSEHOLD_ID, USER_A);
+    expect(entries[0].source).toBe('manual');
+    expect(entries[0].routineId).toBeUndefined();
+  });
 });

@@ -10,6 +10,7 @@ import { format } from 'date-fns';
 import { Plus } from 'lucide-react';
 import { fetchDayView, getLocalTimeZone } from '../../lib/persistenceClient';
 import { HealthSuggestionBanner } from '../HealthSuggestionBanner';
+import { deriveDailyHabitCompletion } from '../../domain/habits/completion';
 import {
     DndContext,
     closestCenter,
@@ -175,14 +176,13 @@ export const DayView = ({ onAddHabit, onEditHabit, onViewHistory }: DayViewProps
             const key = `${habit.id}-${dateStr}`;
             const log = logs[key];
             if (log !== undefined) {
-                const currentValue = log.value ?? 0;
-                const targetValue = habit.goal?.target ?? (habit.goal?.type === 'number' ? 1 : 1);
-                const isComplete = habit.goal?.type === 'number'
-                    ? (habit.goal.target ? (currentValue >= habit.goal.target) : currentValue > 0)
-                    : !!log.completed;
-                const progressPercent = habit.goal?.target
-                    ? Math.min(100, Math.round((currentValue / habit.goal.target) * 100))
-                    : (isComplete ? 100 : 0);
+                const completion = deriveDailyHabitCompletion(habit, [{ value: log.value }]);
+                const {
+                    currentValue,
+                    targetValue,
+                    isComplete,
+                    progressPercent,
+                } = completion;
                 const existing = map.get(habit.id);
                 if (existing) {
                     map.set(habit.id, { ...existing, isComplete, currentValue, targetValue, progressPercent });
