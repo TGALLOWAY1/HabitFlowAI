@@ -23,6 +23,7 @@ export interface EntryView {
   timestampUtc: string;
   value: number | null;
   unit?: string;
+  note?: string;
   source: 'manual' | 'routine' | 'quick' | 'import' | 'apple_health' | 'legacy' | 'test';
   provenance: {
     routineId?: string;
@@ -183,6 +184,7 @@ function mapEntryToView(entry: HabitEntry, timeZone: string): EntryView {
     timestampUtc: entry.timestamp || new Date().toISOString(),
     value: entry.value ?? null,
     unit: entry.unitSnapshot,
+    note: entry.note,
     source,
     provenance,
     deletedAt: entry.deletedAt ?? null,

@@ -31,6 +31,7 @@ import {
 } from '../lib/persistenceClient';
 import type { WellbeingMetricKey } from '../models/persistenceTypes';
 import { WELLBEING_METRIC_KEYS } from '../models/persistenceTypes';
+import { deriveDailyHabitCompletion } from '../domain/habits/completion';
 
 interface HabitContextType {
     categories: Category[];
@@ -540,7 +541,7 @@ export const HabitProvider: React.FC<{
         const habit = habits.find(h => h.id === habitId);
         if (!habit) return;
 
-        const completed = habit.goal.target ? value >= habit.goal.target : value > 0;
+        const completed = deriveDailyHabitCompletion(habit, [{ value }]).isComplete;
 
         const logToSave: DayLog = { habitId, date, value, completed };
         const updatedLogs = {
@@ -855,7 +856,9 @@ export const HabitProvider: React.FC<{
         if (data.value !== undefined) {
             const habit = habits.find(h => h.id === habitId);
             const value = data.value;
-            const completed = habit?.goal?.target ? value >= habit.goal.target : value > 0;
+            const completed = habit
+                ? deriveDailyHabitCompletion(habit, [{ value }]).isComplete
+                : false;
             setLogs(prev => ({
                 ...prev,
                 [`${habitId}-${dateKey}`]: {

@@ -139,6 +139,7 @@ export const HabitGridCell = ({
             return (
                 <button
                     onClick={(e) => { e.stopPropagation(); onNumericClick?.(e); }}
+                    aria-label={`Edit quantity for ${habit.name}`}
                     className="flex items-center gap-1 text-[10px] font-medium text-sky-400 hover:text-sky-300 transition-colors"
                 >
                     <Hash size={12} />
@@ -160,24 +161,28 @@ export const HabitGridCell = ({
         }
     };
 
-    // Render checkbox. Numeric habits turn green with a check once any value
-    // is entered (currentValue > 0) — no percentage ring. The entered value
-    // is surfaced elsewhere (grid/tracker view and the expanded metadata).
+    // Completion styling and semantics always use the canonical isCompleted
+    // state. Positive below-target values remain visible as partial progress.
     const renderCheckbox = () => {
         if (isQuantity && habitStatus) {
-            const hasValue = habitStatus.currentValue > 0;
+            const isPartial = habitStatus.currentValue > 0 && !isCompleted;
             return (
                 <button
                     onClick={handleCheckboxClick}
+                    role="checkbox"
+                    aria-checked={isCompleted}
+                    aria-label={`${habit.name}: ${habitStatus.currentValue} of ${habitStatus.targetValue}${habit.goal?.unit ? ` ${habit.goal.unit}` : ''}`}
                     className={cn(
                         "flex-shrink-0 w-5 h-5 rounded-full border flex items-center justify-center transition-all duration-300",
-                        hasValue
+                        isCompleted
                             ? "bg-emerald-500/10 border-emerald-500 text-emerald-500"
+                            : isPartial
+                                ? "bg-sky-500/10 border-sky-500 text-transparent"
                             : "border-white/20 text-transparent hover:border-emerald-500/50"
                     )}
                     title={`${habitStatus.currentValue}${habit.goal?.unit ? ` ${habit.goal.unit}` : ''}`}
                 >
-                    {hasValue && <Check size={12} strokeWidth={3} />}
+                    {isCompleted && <Check data-testid="numeric-complete-check" size={12} strokeWidth={3} />}
                 </button>
             );
         }
@@ -185,6 +190,9 @@ export const HabitGridCell = ({
         return (
             <button
                 onClick={handleCheckboxClick}
+                role="checkbox"
+                aria-checked={isCompleted}
+                aria-label={habit.name}
                 className={cn(
                     "flex-shrink-0 w-5 h-5 rounded-full border flex items-center justify-center transition-all duration-300",
                     isCompleted

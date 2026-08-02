@@ -201,7 +201,7 @@ describe('dayViewService', () => {
       expect(result.habits[0].progressPercent).toBe(100);
     });
 
-    it('should derive weekly quantity completion (sum of values)', async () => {
+    it('should count completed numeric days toward a weekly occurrence quota', async () => {
       const habit: Habit = {
         id: 'habit-1',
         categoryId: 'cat-1',
@@ -212,7 +212,7 @@ describe('dayViewService', () => {
           target: 10,
           unit: 'miles',
         },
-        timesPerWeek: 10,
+        timesPerWeek: 2,
         archived: false,
         createdAt: '2025-01-01T00:00:00.000Z',
       };
@@ -223,7 +223,7 @@ describe('dayViewService', () => {
           habitId: 'habit-1',
           dayKey: '2025-01-13',
           timestampUtc: '2025-01-13T10:00:00.000Z',
-          value: 3,
+          value: 10,
           source: 'manual',
           provenance: {},
           deletedAt: null,
@@ -243,7 +243,7 @@ describe('dayViewService', () => {
           habitId: 'habit-1',
           dayKey: '2025-01-15',
           timestampUtc: '2025-01-15T10:00:00.000Z',
-          value: 3,
+          value: 10,
           source: 'manual',
           provenance: {},
           deletedAt: null,
@@ -257,8 +257,8 @@ describe('dayViewService', () => {
       const result = await computeDayView('household-1', userId, dayKey, timeZone);
 
       expect(result.habits[0].isComplete).toBe(true);
-      expect(result.habits[0].currentValue).toBe(10); // 3 + 4 + 3
-      expect(result.habits[0].targetValue).toBe(10);
+      expect(result.habits[0].currentValue).toBe(2); // Monday and Wednesday met the daily target
+      expect(result.habits[0].targetValue).toBe(2);
       expect(result.habits[0].progressPercent).toBe(100);
     });
 

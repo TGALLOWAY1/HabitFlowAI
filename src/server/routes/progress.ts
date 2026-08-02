@@ -21,6 +21,7 @@ import { getRequestIdentity } from '../middleware/identity';
 import { evaluateChecklistSuccess } from '../services/checklistSuccessService';
 import type { Habit } from '../../models/persistenceTypes';
 import { progressCache } from '../lib/cacheInstances';
+import { deriveDailyHabitCompletion, type CompletionEntry } from '../../domain/habits/completion';
 
 function parseFreezeType(entry: { freezeType?: string; note?: string }): 'manual' | 'auto' | 'soft' | undefined {
   // Prefer dedicated field; fall back to legacy note parsing
@@ -55,10 +56,13 @@ export async function getProgressOverview(req: Request, res: Response): Promise<
     ]);
 
     const activeHabits = habits.filter(h => !h.archived);
+    const activeHabitById = new Map(activeHabits.map(habit => [habit.id, habit]));
 
     // Aggregate entries by habit + dayKey for canonical completion/value derivation (dayKey only in prod; legacy fallback in dev with log)
     const dayStatesByHabit = new Map<string, Map<string, HabitDayState>>();
+    const completionEntriesByHabitDay = new Map<string, CompletionEntry[]>();
     habitEntries.forEach(entry => {
+      if (entry.deletedAt) return;
       const dayKey = getCanonicalDayKeyFromEntry(entry, { timeZone: requestedTimeZone });
       if (!dayKey) {
         if (process.env.NODE_ENV !== 'production') {
@@ -78,13 +82,29 @@ export async function getProgressOverview(req: Request, res: Response): Promise<
       if (freezeType) {
         existing.isFrozen = true;
       } else {
-        existing.completed = true;
-        existing.value += typeof entry.value === 'number' ? entry.value : 1;
+        const completionKey = `${entry.habitId}|${dayKey}`;
+        const completionEntries = completionEntriesByHabitDay.get(completionKey) ?? [];
+        completionEntries.push({ value: entry.value });
+        completionEntriesByHabitDay.set(completionKey, completionEntries);
       }
 
       habitDayMap.set(dayKey, existing);
       dayStatesByHabit.set(entry.habitId, habitDayMap);
     });
+
+    // Canonicalize every non-bundle day before deriving parents or streaks.
+    for (const [habitId, dayMap] of dayStatesByHabit) {
+      const habit = activeHabitById.get(habitId);
+      if (!habit || habit.type === 'bundle') continue;
+      for (const state of dayMap.values()) {
+        const completion = deriveDailyHabitCompletion(
+          habit,
+          completionEntriesByHabitDay.get(`${habitId}|${state.dayKey}`) ?? [],
+        );
+        state.value = completion.currentValue;
+        state.completed = completion.isComplete;
+      }
+    }
 
     // Derive bundle parent dayStates from children using temporal membership
     const bundleParents = activeHabits.filter(
@@ -113,34 +133,6 @@ export async function getProgressOverview(req: Request, res: Response): Promise<
 
       if (parentDayMap.size > 0) {
         dayStatesByHabit.set(parent.id, parentDayMap);
-      }
-    }
-
-    // Fix completed flag for numeric habits: respect goal target.
-    // The entry aggregation loop sets completed=true for any non-freeze entry,
-    // but pure-daily numeric habits require value >= target to be truly complete.
-    //
-    // Weekly-quota habits (timesPerWeek or requiredDaysPerWeek) are exempt:
-    // for these, a log entry means "I did it today" regardless of value, and
-    // weekly satisfaction is evaluated by streakService.buildWeeklyProgressMap
-    // from distinct completed days.
-    for (const habit of activeHabits) {
-      const hasWeeklyQuota =
-        habit.requiredDaysPerWeek != null ||
-        (habit.timesPerWeek != null && habit.timesPerWeek > 0);
-      if (
-        habit.goal.type === 'number' &&
-        habit.goal.target != null &&
-        habit.goal.target > 0 &&
-        !hasWeeklyQuota
-      ) {
-        const dayMap = dayStatesByHabit.get(habit.id);
-        if (!dayMap) continue;
-        for (const state of dayMap.values()) {
-          if (!state.isFrozen) {
-            state.completed = state.value >= habit.goal.target;
-          }
-        }
       }
     }
 

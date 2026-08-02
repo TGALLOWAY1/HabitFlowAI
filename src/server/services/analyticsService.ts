@@ -11,6 +11,7 @@ import type { BundleMembershipRecord } from '../domain/canonicalTypes';
 import { calculateHabitStreakMetrics, type HabitDayState } from './streakService';
 import { getCanonicalDayKeyFromEntry } from '../utils/dayKey';
 import { isTrackableHabit, getScheduledHabitsForDay } from './scheduleEngine';
+import { deriveDailyHabitCompletion, type CompletionEntry } from '../../domain/habits/completion';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -122,11 +123,15 @@ function parseFreezeType(note?: string): boolean {
  */
 export function buildDayStatesByHabit(
   entries: HabitEntry[],
+  habits: Habit[],
   timeZone?: string
 ): Map<string, Map<string, HabitDayState>> {
   const dayStatesByHabit = new Map<string, Map<string, HabitDayState>>();
+  const completionEntriesByHabitDay = new Map<string, CompletionEntry[]>();
+  const habitById = new Map(habits.map(habit => [habit.id, habit]));
 
   for (const entry of entries) {
+    if (entry.deletedAt) continue;
     const dayKey = getCanonicalDayKeyFromEntry(entry, { timeZone });
     if (!dayKey) continue;
 
@@ -136,12 +141,27 @@ export function buildDayStatesByHabit(
     if (parseFreezeType(entry.note)) {
       existing.isFrozen = true;
     } else {
-      existing.completed = true;
-      existing.value += typeof entry.value === 'number' ? entry.value : 1;
+      const completionKey = `${entry.habitId}|${dayKey}`;
+      const completionEntries = completionEntriesByHabitDay.get(completionKey) ?? [];
+      completionEntries.push({ value: entry.value });
+      completionEntriesByHabitDay.set(completionKey, completionEntries);
     }
 
     habitDayMap.set(dayKey, existing);
     dayStatesByHabit.set(entry.habitId, habitDayMap);
+  }
+
+  for (const [habitId, dayMap] of dayStatesByHabit) {
+    const habit = habitById.get(habitId);
+    if (!habit) continue;
+    for (const state of dayMap.values()) {
+      const completion = deriveDailyHabitCompletion(
+        habit,
+        completionEntriesByHabitDay.get(`${habitId}|${state.dayKey}`) ?? [],
+      );
+      state.value = completion.currentValue;
+      state.completed = completion.isComplete;
+    }
   }
 
   return dayStatesByHabit;
@@ -389,7 +409,7 @@ export function computeHabitAnalyticsSummary(
   lifetimeTotals?: Array<{ habitId: string; entryCount: number }>,
 ): HabitAnalyticsSummary {
   const trackable = getTrackableHabits(habits);
-  const dayStatesByHabit = buildDayStatesByHabit(entries, timeZone);
+  const dayStatesByHabit = buildDayStatesByHabit(entries, habits, timeZone);
 
   const startDayKey = format(subDays(parseISO(referenceDayKey), days - 1), 'yyyy-MM-dd');
   const dayKeys = generateDayKeyRange(startDayKey, referenceDayKey);
@@ -438,11 +458,16 @@ export function computeHabitAnalyticsSummary(
     maxBestStreak = Math.max(maxBestStreak, metrics.bestStreak);
   }
 
-  // Total completions (non-freeze entries in range)
-  const totalCompletions = entries.filter(e => {
-    const dk = getCanonicalDayKeyFromEntry(e, { timeZone });
-    return dk && dayKeySet.has(dk) && !parseFreezeType(e.note);
-  }).length;
+  // Completed habit-days in range. Partial entries and duplicate writes for
+  // the same habit/day do not inflate this metric.
+  const trackableIds = new Set(trackable.map(habit => habit.id));
+  let totalCompletions = 0;
+  for (const [habitId, dayMap] of dayStatesByHabit) {
+    if (!trackableIds.has(habitId)) continue;
+    for (const [dayKey, state] of dayMap) {
+      if (dayKeySet.has(dayKey) && state.completed) totalCompletions++;
+    }
+  }
 
   // Graduated habits count
   const graduatedHabits = memberships.filter(m => m.graduatedAt !== null).length;
@@ -610,7 +635,7 @@ export function computeHeatmapData(
   timeZone?: string
 ): HeatmapResponse {
   const trackable = getTrackableHabits(habits);
-  const dayStatesByHabit = buildDayStatesByHabit(entries, timeZone);
+  const dayStatesByHabit = buildDayStatesByHabit(entries, habits, timeZone);
   const startDayKey = format(subDays(parseISO(referenceDayKey), days - 1), 'yyyy-MM-dd');
   const dayKeys = generateDayKeyRange(startDayKey, referenceDayKey);
 
@@ -694,7 +719,7 @@ export function computeTrendData(
   timeZone?: string
 ): TrendDataPoint[] {
   const trackable = getTrackableHabits(habits);
-  const dayStatesByHabit = buildDayStatesByHabit(entries, timeZone);
+  const dayStatesByHabit = buildDayStatesByHabit(entries, habits, timeZone);
   const startDayKey = format(subDays(parseISO(referenceDayKey), days - 1), 'yyyy-MM-dd');
   const dayKeys = generateDayKeyRange(startDayKey, referenceDayKey);
 
@@ -744,7 +769,7 @@ export function computeCategoryBreakdown(
   timeZone?: string
 ): CategoryBreakdownItem[] {
   const trackable = getTrackableHabits(habits);
-  const dayStatesByHabit = buildDayStatesByHabit(entries, timeZone);
+  const dayStatesByHabit = buildDayStatesByHabit(entries, habits, timeZone);
   const startDayKey = format(subDays(parseISO(referenceDayKey), days - 1), 'yyyy-MM-dd');
   const dayKeys = generateDayKeyRange(startDayKey, referenceDayKey);
 
@@ -838,7 +863,7 @@ export function computeInsights(
   const trackable = getTrackableHabits(habits);
   if (trackable.length === 0) return [];
 
-  const dayStatesByHabit = buildDayStatesByHabit(entries, timeZone);
+  const dayStatesByHabit = buildDayStatesByHabit(entries, habits, timeZone);
   const startDayKey = format(subDays(parseISO(referenceDayKey), days - 1), 'yyyy-MM-dd');
   const dayKeys = generateDayKeyRange(startDayKey, referenceDayKey);
   const insights: Insight[] = [];
@@ -1118,7 +1143,7 @@ export function computeRoutineAnalytics(
 
   // ─── Routine Effectiveness: habit completion on routine days vs non-routine days
   const trackable = getTrackableHabits(habits);
-  const dayStatesByHabit = buildDayStatesByHabit(entries, timeZone);
+  const dayStatesByHabit = buildDayStatesByHabit(entries, habits, timeZone);
 
   // Build per-routine day sets
   const routineDaySets = new Map<string, Set<string>>();

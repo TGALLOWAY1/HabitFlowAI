@@ -1,8 +1,10 @@
 import type { Habit, HabitEntry } from '../models/persistenceTypes';
 import { evaluateChecklistSuccess } from '../shared/checklistSuccessRule';
+import { deriveDailyHabitCompletion } from '../domain/habits/completion';
 
 export interface HabitStatus {
     isComplete: boolean;
+    isPartial: boolean;
     currentValue: number;
     targetValue: number;
     // For Choice Bundles
@@ -34,15 +36,26 @@ export function computeHabitStatus(
     schema?: { habits: Habit[] } // Needed for looking up bundle children
 ): HabitStatus {
 
+    const activeEntries = allEntries.filter(entry => !entry.deletedAt && !entry.note?.startsWith('freeze:'));
+
     // 1. Weekly-quota Habit Logic
     if (habit.timesPerWeek != null && habit.timesPerWeek > 0) {
-        // Caller should pass entries filtered to the week range.
-        const weekDistinctDays = new Set(allEntries.map(e => e.dateKey)).size;
+        // A weekly quota counts completed occurrences, never raw quantity.
+        const entriesByDay = new Map<string, HabitEntry[]>();
+        for (const entry of activeEntries.filter(entry => entry.habitId === habit.id)) {
+            const dayEntries = entriesByDay.get(entry.dateKey) ?? [];
+            dayEntries.push(entry);
+            entriesByDay.set(entry.dateKey, dayEntries);
+        }
+        const completedDays = Array.from(entriesByDay.values())
+            .filter(entries => deriveDailyHabitCompletion(habit, entries).isComplete)
+            .length;
 
         return {
-            isComplete: weekDistinctDays >= habit.timesPerWeek,
-            currentValue: weekDistinctDays,
-            targetValue: habit.timesPerWeek
+            isComplete: completedDays >= habit.timesPerWeek,
+            isPartial: completedDays > 0 && completedDays < habit.timesPerWeek,
+            currentValue: completedDays,
+            targetValue: habit.timesPerWeek,
         };
     }
 
@@ -53,6 +66,7 @@ export function computeHabitStatus(
             const option = habit.bundleOptions.find(o => o.key === entry.optionKey);
             return {
                 isComplete: true,
+                isPartial: false,
                 currentValue: 1,
                 targetValue: 1,
                 selectedOption: option ? { ...option, key: option.key || '' } : undefined
@@ -60,6 +74,7 @@ export function computeHabitStatus(
         }
         return {
             isComplete: !!entry, // Fallback if no optionKey (shouldn't happen in strict mode)
+            isPartial: false,
             currentValue: entry ? 1 : 0,
             targetValue: 1
         };
@@ -68,13 +83,20 @@ export function computeHabitStatus(
     // 3. Checklist Bundle Logic (Daily Only)
     if (habit.bundleType === 'checklist') {
         if (!schema || !habit.subHabitIds || habit.subHabitIds.length === 0) {
-            return { isComplete: false, currentValue: 0, targetValue: 0 };
+            return { isComplete: false, isPartial: false, currentValue: 0, targetValue: 0 };
         }
 
         let completedCount = 0;
         habit.subHabitIds.forEach(childId => {
-            const childHasEntry = allEntries.some(e => e.habitId === childId && e.dateKey === dateKey);
-            if (childHasEntry) completedCount++;
+            const child = schema.habits.find(candidate => candidate.id === childId);
+            if (!child) return;
+            const childEntries = activeEntries.filter(entry => entry.habitId === childId && entry.dateKey === dateKey);
+            // Legacy in-memory schemas may omit the required goal object.
+            // Persisted habits are validated and always use canonical derivation.
+            const childComplete = child.goal
+                ? deriveDailyHabitCompletion(child, childEntries).isComplete
+                : childEntries.length > 0;
+            if (childComplete) completedCount++;
         });
 
         const totalCount = habit.subHabitIds.length;
@@ -86,6 +108,7 @@ export function computeHabitStatus(
 
         return {
             isComplete: meetsSuccessRule,
+            isPartial: completedCount > 0 && !meetsSuccessRule,
             currentValue: completedCount,
             targetValue: totalCount,
             completedChildrenCount: completedCount,
@@ -96,12 +119,8 @@ export function computeHabitStatus(
     }
 
     // 4. Standard Daily Habit Logic
-    // Single Entry Constraint: Any entry for this dateKey means complete.
-    const entry = allEntries.find(e => e.dateKey === dateKey);
-
-    return {
-        isComplete: !!entry,
-        currentValue: entry ? 1 : 0,
-        targetValue: 1
-    };
+    return deriveDailyHabitCompletion(
+        habit,
+        activeEntries.filter(entry => entry.habitId === habit.id && entry.dateKey === dateKey),
+    );
 }

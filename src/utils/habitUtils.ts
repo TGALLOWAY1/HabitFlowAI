@@ -1,5 +1,6 @@
 import type { Habit, DayLog } from '../types';
 import { evaluateChecklistSuccess } from '../shared/checklistSuccessRule';
+import { deriveDailyHabitCompletion } from '../domain/habits/completion';
 
 
 export interface FlattenedHabitItem {
@@ -281,20 +282,9 @@ export function isHabitComplete(
 
     const log = logs[`${habit.id}-${date}`];
     if (!log) return false;
+    if (log.isFrozen) return false;
 
-    if (habit.goal?.type === 'number') {
-        const currentValue = log.value ?? 0;
-        const targetValue = habit.goal?.target;
-        return typeof targetValue === 'number' && targetValue > 0
-            ? currentValue >= targetValue
-            : currentValue > 0;
-    }
-
-    // For boolean habits, prefer explicit completion; fallback to value > 0 for legacy entries.
-    if (typeof log.completed === 'boolean') {
-        return log.completed;
-    }
-    return (log.value ?? 0) > 0;
+    return deriveDailyHabitCompletion(habit, [{ value: log.value }]).isComplete;
 }
 
 export interface TodayHabitStats {

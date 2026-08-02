@@ -273,7 +273,7 @@ export function buildFactorSeries(
   }
 
   // (b) tracked habits
-  const dayStates = buildDayStatesByHabit(sources.habitEntries, timeZone);
+  const dayStates = buildDayStatesByHabit(sources.habitEntries, sources.habits, timeZone);
   for (const habit of sources.habits.filter(isTrackableHabit)) {
     const states = dayStates.get(habit.id);
     if (!states) continue;
