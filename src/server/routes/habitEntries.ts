@@ -625,7 +625,7 @@ export async function batchCreateEntriesRoute(req: Request, res: Response): Prom
                 return;
             }
 
-            const value = getCompletionEntryValue(habit);
+            const value = getCompletionEntryValue(habit, dayKey);
             if (value === null) {
                 res.status(400).json({ error: `${habit.name}: numeric habit has no valid completion target` });
                 return;

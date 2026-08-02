@@ -17,6 +17,7 @@ import { evaluateChecklistSuccess } from './checklistSuccessService';
 import { startOfWeek, endOfWeek, parseISO, format } from 'date-fns';
 import { deriveDailyHabitCompletion } from '../../domain/habits/completion';
 import { deriveWeeklyHabitProgress } from '../../domain/habits/weeklyProgress';
+import { hasExplicitWeeklyQuotaOnDay } from './scheduleEngine';
 
 /**
  * Day View Habit Status
@@ -113,6 +114,7 @@ function deriveDailyCompletion(
         !entry.deletedAt &&
         !entry.note?.startsWith('freeze:'),
     ),
+    dayKey,
   );
 }
 
@@ -216,7 +218,7 @@ function deriveBundleCompletion(
   for (const childHabit of childHabits) {
     let childComplete = false;
 
-    if (childHabit.timesPerWeek != null && childHabit.timesPerWeek > 0) {
+    if (hasExplicitWeeklyQuotaOnDay(childHabit, dayKey)) {
       // Weekly child: check if week is complete
       if (weekStartDayKey && weekEndDayKey) {
         const weekProgress = deriveWeeklyProgress(
@@ -336,7 +338,7 @@ export async function computeDayView(
         completedChildrenCount: bundleStatus.completedChildrenCount,
         totalChildrenCount: bundleStatus.totalChildrenCount,
       };
-    } else if (habit.timesPerWeek != null && habit.timesPerWeek > 0) {
+    } else if (hasExplicitWeeklyQuotaOnDay(habit, dayKey)) {
       // Weekly habit: derive week progress
       const weekProgress = deriveWeeklyProgress(
         habit,

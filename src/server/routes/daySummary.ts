@@ -9,6 +9,7 @@ import { evaluateChecklistSuccess } from '../services/checklistSuccessService';
 import { resolveTimeZone, getNowDayKey, getDayKeyForDate, getCanonicalDayKeyFromEntry } from '../utils/dayKey';
 import { getRequestIdentity } from '../middleware/identity';
 import { deriveDailyHabitCompletion } from '../../domain/habits/completion';
+import { resolveHabitTrackingForDay } from '../../domain/habits/trackingHistory';
 
 type AggregatedDayEntry = {
   habitId: string;
@@ -152,16 +153,17 @@ export async function getDaySummary(req: Request, res: Response): Promise<void> 
       if (!habit) continue;
 
       const isFrozen = aggregate.hasFreeze && aggregate.count === 0;
+      const tracking = resolveHabitTrackingForDay(habit, aggregate.dayKey);
 
       const completionEntries = isFrozen || aggregate.count === 0
         ? []
-        : habit.goal.type === 'number'
+        : tracking.goal.type === 'number'
           ? [{ value: aggregate.valueSum }]
           : [{}];
-      const completion = deriveDailyHabitCompletion(habit, completionEntries);
+      const completion = deriveDailyHabitCompletion(habit, completionEntries, aggregate.dayKey);
       const value = habit.bundleType === 'choice'
         ? undefined
-        : habit.goal.type === 'number'
+        : tracking.goal.type === 'number'
           ? completion.currentValue
           : (isFrozen ? 0 : (aggregate.valueSum > 0 ? aggregate.valueSum : aggregate.count));
       const completed = completion.isComplete;

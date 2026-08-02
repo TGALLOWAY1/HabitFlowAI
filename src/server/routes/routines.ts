@@ -1007,7 +1007,7 @@ export async function submitRoutineRoute(req: Request, res: Response): Promise<v
         res.status(404).json({ error: { code: 'NOT_FOUND', message: `Active habit not found: ${habitId}` } });
         return;
       }
-      const value = getCompletionEntryValue(habit);
+      const value = getCompletionEntryValue(habit, logDate);
       if (value === null) {
         res.status(400).json({
           error: { code: 'VALIDATION_ERROR', message: `${habit.name} has no valid numeric completion target` },

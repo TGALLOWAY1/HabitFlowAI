@@ -166,6 +166,42 @@ describe('getProgressOverview', () => {
     expect(habitToday.weekSatisfied).toBeUndefined();
   });
 
+  it('keeps pre-edit numeric completions in the streak under their historical target', async () => {
+    vi.setSystemTime(new Date('2026-03-02T12:00:00.000Z'));
+
+    const habit: Habit = {
+      ...dailyHabit('habit-revised-target'),
+      goal: { type: 'number', frequency: 'daily', target: 20, unit: 'pages' },
+      createdAt: '2026-02-27T00:00:00.000Z',
+      trackingRevisions: [
+        {
+          effectiveFromDayKey: '2026-02-27',
+          goal: { type: 'number', frequency: 'daily', target: 10, unit: 'pages' },
+        },
+        {
+          effectiveFromDayKey: '2026-03-01',
+          goal: { type: 'number', frequency: 'daily', target: 20, unit: 'pages' },
+        },
+      ],
+    };
+    vi.mocked(getHabitsByUser).mockResolvedValue([habit]);
+    vi.mocked(getHabitEntriesByUser).mockResolvedValue([
+      entry(habit.id, '2026-02-27', 10),
+      entry(habit.id, '2026-02-28', 10),
+      entry(habit.id, '2026-03-01', 20),
+      entry(habit.id, '2026-03-02', 20),
+    ]);
+
+    const req = createReq();
+    const res = createRes();
+    await getProgressOverview(req, res);
+
+    const habitToday = vi.mocked(res.json).mock.calls[0][0].habitsToday[0];
+    expect(habitToday.currentStreak).toBe(4);
+    expect(habitToday.bestStreak).toBe(4);
+    expect(habitToday.completed).toBe(true);
+  });
+
   it('computes weekly streak and atRisk from weekly progress', async () => {
     vi.setSystemTime(new Date('2026-02-20T12:00:00.000Z'));
 

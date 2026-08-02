@@ -1,5 +1,6 @@
 import type { GlobalMomentumState, CategoryMomentumState } from '../../types';
-import { subDays, parseISO, isSameDay } from 'date-fns';
+import { format } from 'date-fns';
+import { addDaysToDayKey, isValidDayKey } from '../../domain/time/dayKey';
 
 /** Minimal record for momentum calculations — replaces deprecated DayLog dependency. */
 export interface CompletionRecord {
@@ -22,17 +23,25 @@ export interface CompletionRecord {
  * Calculates the number of "Active Days" in the last 7 days.
  * An active day is any day where at least one habit was completed.
  */
-function calculateActiveDays(logs: CompletionRecord[], windowSize: number = 7, referenceDate: Date = new Date(), filterFn?: (log: CompletionRecord) => boolean): number {
+function calculateActiveDays(
+    logs: CompletionRecord[],
+    windowSize: number = 7,
+    referenceDayKey?: string,
+    filterFn?: (log: CompletionRecord) => boolean,
+): number {
     let activeDaysCount = 0;
+    const reference = referenceDayKey && isValidDayKey(referenceDayKey)
+        ? referenceDayKey
+        : format(new Date(), 'yyyy-MM-dd');
 
     for (let i = 0; i < windowSize; i++) {
-        const dateToCheck = subDays(referenceDate, i);
+        const dayKeyToCheck = addDaysToDayKey(reference, -i);
 
         // Find if any log exists for this day that is completed
         // And matches the filter (e.g. specific category) if provided
         const hasLogs = logs.some(log => {
             if (log.completed !== true) return false;
-            if (!isSameDay(parseISO(log.date), dateToCheck)) return false;
+            if (log.date !== dayKeyToCheck) return false;
 
             if (filterFn) {
                 return filterFn(log);
@@ -48,8 +57,11 @@ function calculateActiveDays(logs: CompletionRecord[], windowSize: number = 7, r
     return activeDaysCount;
 }
 
-export const calculateGlobalMomentum = (logs: CompletionRecord[]): { state: GlobalMomentumState; activeDays: number } => {
-    const activeDays = calculateActiveDays(logs);
+export const calculateGlobalMomentum = (
+    logs: CompletionRecord[],
+    referenceDayKey?: string,
+): { state: GlobalMomentumState; activeDays: number } => {
+    const activeDays = calculateActiveDays(logs, 7, referenceDayKey);
 
     let state: GlobalMomentumState = 'Ready';
 
@@ -64,10 +76,16 @@ export const calculateGlobalMomentum = (logs: CompletionRecord[]): { state: Glob
 
 export const calculateCategoryMomentum = (
     logs: CompletionRecord[],
-    categoryHabitIds: string[]
+    categoryHabitIds: string[],
+    referenceDayKey?: string,
 ): { state: CategoryMomentumState; activeDays: number } => {
 
-    const activeDays = calculateActiveDays(logs, 7, new Date(), (log) => categoryHabitIds.includes(log.habitId));
+    const activeDays = calculateActiveDays(
+        logs,
+        7,
+        referenceDayKey,
+        (log) => categoryHabitIds.includes(log.habitId),
+    );
 
     let state: CategoryMomentumState = 'Paused';
 

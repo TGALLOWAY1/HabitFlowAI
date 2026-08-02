@@ -77,7 +77,7 @@ async function deriveReminderCompletion(
   if (habit.type !== 'bundle') {
     const entries = await getHabitEntriesForDay(habit.id, dayKey, habit.householdId, habit.userId);
     const activeEntries = entries.filter(entry => !entry.note?.startsWith('freeze:'));
-    return deriveDailyHabitCompletion(habit, activeEntries).isComplete;
+    return deriveDailyHabitCompletion(habit, activeEntries, dayKey).isComplete;
   }
 
   const childIds = await resolveChildIdsForDay(habit, dayKey, habit.householdId, habit.userId);
@@ -91,7 +91,7 @@ async function deriveReminderCompletion(
     ]);
     if (!child) continue;
     const activeEntries = entries.filter(entry => !entry.note?.startsWith('freeze:'));
-    if (deriveDailyHabitCompletion(child, activeEntries).isComplete) completedCount++;
+    if (deriveDailyHabitCompletion(child, activeEntries, dayKey).isComplete) completedCount++;
   }
 
   if (habit.bundleType === 'checklist') {
