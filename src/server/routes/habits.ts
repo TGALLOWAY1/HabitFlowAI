@@ -27,6 +27,7 @@ import { convertHabitToBundle, ConversionError } from '../services/habitConversi
 import type { Habit } from '../../models/persistenceTypes';
 import { getRequestIdentity } from '../middleware/identity';
 import { invalidateUserCaches } from '../lib/cacheInstances';
+import { validateHabitDefinition } from '../../domain/habits/definitionValidation';
 
 // One-time recovery: track which users have been recovered to avoid repeated DB calls.
 // Both recovery layers run at most once per user per server process to avoid
@@ -156,7 +157,8 @@ export async function createHabitRoute(req: Request, res: Response): Promise<voi
       bundleType, bundleOptions,
       pinned, timeEstimate,
       linkedGoalId, linkedRoutineIds,
-      requiredDaysPerWeek,
+      requiredDaysPerWeek, timesPerWeek,
+      checklistSuccessRule, streakType,
       reminderTime, reminderEnabled
     } = req.body;
 
@@ -201,17 +203,19 @@ export async function createHabitRoute(req: Request, res: Response): Promise<voi
       return;
     }
 
-    const { householdId, userId } = getRequestIdentity(req);
+    if (description !== undefined && typeof description !== 'string') {
+      res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Description must be a string' } });
+      return;
+    }
 
-    const habit = await createHabit(
-      {
+    const habitData = {
         name: name.trim(),
         categoryId,
         goal,
-        description: description?.trim(),
+        description: description?.trim() || undefined,
         assignedDays,
         scheduledTime,
-        durationMinutes: durationMinutes || 30, // Default to 30 mins if not provided
+        durationMinutes: durationMinutes ?? 30,
         nonNegotiable,
         nonNegotiableDays,
         deadline,
@@ -221,17 +225,34 @@ export async function createHabitRoute(req: Request, res: Response): Promise<voi
         order,
         bundleType,
         bundleOptions,
+        checklistSuccessRule,
+        streakType,
         pinned,
         timeEstimate,
         linkedGoalId,
         linkedRoutineIds,
         requiredDaysPerWeek,
+        timesPerWeek,
         reminderTime: reminderTime ?? undefined,
         reminderEnabled: reminderEnabled === undefined ? undefined : !!reminderEnabled,
-      },
-      householdId,
-      userId
-    );
+      };
+
+    const definitionValidation = validateHabitDefinition(habitData);
+    if (!definitionValidation.valid) {
+      res.status(400).json({
+        error: { code: 'VALIDATION_ERROR', message: definitionValidation.error },
+      });
+      return;
+    }
+
+    const { householdId, userId } = getRequestIdentity(req);
+    const category = await getCategoryById(categoryId, householdId, userId);
+    if (!category) {
+      res.status(400).json({ error: { code: 'INVALID_CATEGORY', message: 'Target category does not exist' } });
+      return;
+    }
+
+    const habit = await createHabit(habitData, householdId, userId);
 
     // Sync goal's linkedHabitIds when habit is created with a goal link
     if (linkedGoalId) {
@@ -320,7 +341,8 @@ export async function updateHabitRoute(req: Request, res: Response): Promise<voi
       bundleType, bundleOptions,
       pinned, timeEstimate,
       linkedGoalId, linkedRoutineIds,
-      requiredDaysPerWeek,
+      requiredDaysPerWeek, timesPerWeek,
+      checklistSuccessRule, streakType,
       reminderTime, reminderEnabled
     } = req.body;
 
@@ -331,10 +353,22 @@ export async function updateHabitRoute(req: Request, res: Response): Promise<voi
 
     const patch: Partial<Omit<Habit, 'id' | 'createdAt'>> = {};
 
-    if (name !== undefined) patch.name = name.trim();
+    if (name !== undefined) {
+      if (typeof name !== 'string' || name.trim().length === 0) {
+        res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Habit name must be a non-empty string' } });
+        return;
+      }
+      patch.name = name.trim();
+    }
     if (categoryId !== undefined) patch.categoryId = categoryId;
     if (goal !== undefined) patch.goal = goal;
-    if (description !== undefined) patch.description = description;
+    if (description !== undefined) {
+      if (description !== null && typeof description !== 'string') {
+        res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Description must be a string' } });
+        return;
+      }
+      patch.description = description === null ? undefined : description.trim();
+    }
     if (archived !== undefined) patch.archived = archived;
     // Allow callers to clear archive metadata by sending null, or set it by
     // sending an ISO string / valid reason. Undefined means "leave as-is".
@@ -352,11 +386,14 @@ export async function updateHabitRoute(req: Request, res: Response): Promise<voi
     if (order !== undefined) patch.order = order;
     if (bundleType !== undefined) patch.bundleType = bundleType;
     if (bundleOptions !== undefined) patch.bundleOptions = bundleOptions;
+    if (checklistSuccessRule !== undefined) patch.checklistSuccessRule = checklistSuccessRule;
+    if (streakType !== undefined) patch.streakType = streakType;
     if (pinned !== undefined) patch.pinned = !!pinned;
     if (timeEstimate !== undefined) patch.timeEstimate = timeEstimate;
     if (linkedGoalId !== undefined) patch.linkedGoalId = linkedGoalId;
     if (linkedRoutineIds !== undefined) patch.linkedRoutineIds = linkedRoutineIds;
     if (requiredDaysPerWeek !== undefined) patch.requiredDaysPerWeek = requiredDaysPerWeek;
+    if (timesPerWeek !== undefined) patch.timesPerWeek = timesPerWeek;
     // Clear with null, set with a valid "HH:mm" string (same contract as archivedAt).
     if (reminderTime !== undefined) {
       if (reminderTime !== null && !isValidReminderTime(reminderTime)) {
@@ -379,6 +416,20 @@ export async function updateHabitRoute(req: Request, res: Response): Promise<voi
 
     const { householdId, userId } = getRequestIdentity(req);
 
+    const existingHabit = await getHabitById(id, householdId, userId);
+    if (!existingHabit) {
+      res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Habit not found' } });
+      return;
+    }
+
+    const definitionValidation = validateHabitDefinition({ ...existingHabit, ...patch });
+    if (!definitionValidation.valid) {
+      res.status(400).json({
+        error: { code: 'VALIDATION_ERROR', message: definitionValidation.error },
+      });
+      return;
+    }
+
     if (patch.categoryId) {
       const targetCategory = await getCategoryById(patch.categoryId, householdId, userId);
       if (!targetCategory) {
@@ -393,11 +444,9 @@ export async function updateHabitRoute(req: Request, res: Response): Promise<voi
     }
 
     // If linkedGoalId is changing, fetch old habit to know previous goal link
-    let oldLinkedGoalId: string | null | undefined;
-    if (linkedGoalId !== undefined) {
-      const oldHabit = await getHabitById(id, householdId, userId);
-      oldLinkedGoalId = oldHabit?.linkedGoalId ?? null;
-    }
+    const oldLinkedGoalId = linkedGoalId !== undefined
+      ? existingHabit.linkedGoalId ?? null
+      : undefined;
 
     const habit = await updateHabit(id, householdId, userId, patch);
 

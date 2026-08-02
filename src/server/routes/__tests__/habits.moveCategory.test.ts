@@ -20,6 +20,7 @@ import {
 } from '../categories';
 
 const TEST_USER_ID = 'test-move-user';
+const TEST_HOUSEHOLD_ID = 'test-move-household';
 
 describe('Habit Move-to-Category', () => {
   let app: Express;
@@ -33,6 +34,7 @@ describe('Habit Move-to-Category', () => {
     app = express();
     app.use(express.json());
     app.use((req, _res, next) => {
+      (req as any).householdId = TEST_HOUSEHOLD_ID;
       (req as any).userId = TEST_USER_ID;
       next();
     });
