@@ -333,6 +333,22 @@ describe('computeCategoryBreakdown', () => {
     expect(result[0].completionRate).toBe(1);
     expect(result[1].completionRate).toBe(0);
   });
+
+  it('does not count pre-creation days as scheduled category opportunities', () => {
+    const habits = [createHabit({ createdAt: '2026-04-01T01:00:00.000Z' })];
+    const categories = [createCategory('cat-1', 'Fitness')];
+
+    const result = computeCategoryBreakdown(
+      habits,
+      [],
+      categories,
+      '2026-03-31',
+      2,
+      'America/New_York',
+    );
+
+    expect(result[0].totalScheduled).toBe(1);
+  });
 });
 
 // ─── Insights Tests ──────────────────────────────────────────────────────────

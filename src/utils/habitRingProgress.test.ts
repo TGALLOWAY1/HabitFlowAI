@@ -443,6 +443,18 @@ describe('Edge cases', () => {
         expect(getHabitsForDate(habits, DATE).length).toBe(1);         // Saturday
     });
 
+    it('excludes days before the habit was created in the user timezone', () => {
+        const habits = [makeHabit({
+            id: 'h1',
+            name: 'Just created',
+            createdAt: '2026-04-01T01:00:00.000Z',
+        })];
+
+        expect(getHabitsForDate(habits, '2026-03-31', 'America/New_York')).toHaveLength(1);
+        expect(getHabitsForDate(habits, '2026-03-30', 'America/New_York')).toHaveLength(0);
+        expect(getHabitsForDate(habits, '2026-03-31', 'UTC')).toHaveLength(0);
+    });
+
     it('ring progress excludes unscheduled habits from total', () => {
         const habits = [
             makeHabit({ id: 'h1', name: 'MWF', assignedDays: [1, 3, 5] }),

@@ -9,7 +9,7 @@ import { getRequestIdentity } from '../middleware/identity';
 import { resolveTimeZone, getNowDayKey } from '../utils/dayKey';
 import { getHabitsByUser } from '../repositories/habitRepository';
 import { getHabitEntriesByUser, getHabitEntriesByUserInRange, aggregateHabitEntryTotals } from '../repositories/habitEntryRepository';
-import { subDays, parseISO, format } from 'date-fns';
+import { addDaysToDayKey } from '../../domain/time/dayKey';
 import { getCategoriesByUser } from '../repositories/categoryRepository';
 import { getAllMembershipsByUser } from '../repositories/bundleMembershipRepository';
 import { getRoutines } from '../repositories/routineRepository';
@@ -29,7 +29,7 @@ import {
 import { computeSleepAnalytics, DEFAULT_SLEEP_TARGETS } from '../services/sleepAnalyticsService';
 import { getWellbeingEntries } from '../repositories/wellbeingEntryRepository';
 import { getDashboardPrefs } from '../repositories/dashboardPrefsRepository';
-import { analyticsCache } from '../lib/cacheInstances';
+import { analyticsCache, buildUserScopedCacheKey } from '../lib/cacheInstances';
 
 function parseDays(query: unknown, defaultDays = 90): number {
   const raw = typeof query === 'string' ? parseInt(query, 10) : NaN;
@@ -39,7 +39,7 @@ function parseDays(query: unknown, defaultDays = 90): number {
 
 /** Compute the start dayKey for a date-range query: referenceDayKey minus (days - 1). */
 function startDayKeyForRange(referenceDayKey: string, days: number): string {
-  return format(subDays(parseISO(referenceDayKey), days - 1), 'yyyy-MM-dd');
+  return addDaysToDayKey(referenceDayKey, -(days - 1));
 }
 
 export async function getHabitAnalyticsSummary(req: Request, res: Response): Promise<void> {
@@ -188,7 +188,15 @@ export async function getAllHabitAnalytics(req: Request, res: Response): Promise
     const referenceDayKey = getNowDayKey(timeZone);
 
     // Check cache before computing
-    const cacheKey = `${userId}:${days}:${heatmapDays}`;
+    const cacheKey = buildUserScopedCacheKey(
+      userId,
+      householdId,
+      timeZone,
+      referenceDayKey,
+      'habit-analytics',
+      days,
+      heatmapDays,
+    );
     const cached = analyticsCache.get(cacheKey);
     if (cached) {
       res.json(cached);
@@ -241,8 +249,14 @@ export async function getSleepAnalyticsSummary(req: Request, res: Response): Pro
     const days = parseDays(req.query.days, 30);
     const referenceDayKey = getNowDayKey(timeZone);
 
-    // Cache key is prefixed with `${userId}:` so invalidateUserCaches() clears it.
-    const cacheKey = `${userId}:sleep:${days}`;
+    const cacheKey = buildUserScopedCacheKey(
+      userId,
+      householdId,
+      timeZone,
+      referenceDayKey,
+      'sleep',
+      days,
+    );
     const cached = analyticsCache.get(cacheKey);
     if (cached) {
       res.json(cached);

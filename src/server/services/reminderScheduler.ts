@@ -165,7 +165,7 @@ export async function runReminderTick(now: Date): Promise<void> {
       if (habit.householdId !== sub.householdId || habit.userId !== sub.userId) continue;
       const candidate = candidates.find((c) => c.hhmm === habit.reminderTime);
       if (!candidate) continue;
-      if (!isHabitScheduledOnDay(habit, candidate.dayKey)) continue;
+      if (!isHabitScheduledOnDay(habit, candidate.dayKey, sub.timeZone)) continue;
       if (await isCompleted(habit, candidate.dayKey)) continue;
 
       // 4. Claim-then-send: the unique dedup index makes this at-most-once.

@@ -54,6 +54,13 @@ describe('isHabitScheduledOnDay', () => {
     expect(isHabitScheduledOnDay(habit, '2026-04-01')).toBe(true);
   });
 
+  it('uses the user timezone for the creation-day boundary', () => {
+    const habit = makeHabit({ createdAt: '2026-04-01T01:00:00.000Z' });
+
+    expect(isHabitScheduledOnDay(habit, '2026-03-31', 'America/New_York')).toBe(true);
+    expect(isHabitScheduledOnDay(habit, '2026-03-31', 'UTC')).toBe(false);
+  });
+
   describe('daily habit with assignedDays', () => {
     // Mon=1, Wed=3, Fri=5
     const habit = makeHabit({ assignedDays: [1, 3, 5] });
@@ -197,5 +204,17 @@ describe('getExpectedOpportunitiesInRange', () => {
   it('does not count opportunities before habit creation', () => {
     const habit = makeHabit({ createdAt: '2026-04-03T18:00:00Z' });
     expect(getExpectedOpportunitiesInRange(habit, '2026-03-30', '2026-04-05')).toBe(3);
+  });
+
+  it('applies the user-local creation day when counting opportunities', () => {
+    const habit = makeHabit({ createdAt: '2026-04-01T01:00:00.000Z' });
+    expect(
+      getExpectedOpportunitiesInRange(
+        habit,
+        '2026-03-31',
+        '2026-04-01',
+        'America/New_York',
+      ),
+    ).toBe(2);
   });
 });

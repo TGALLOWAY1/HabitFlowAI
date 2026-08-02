@@ -2,10 +2,11 @@ import type { Habit } from '../../models/persistenceTypes';
 import {
   addDaysToDayKey,
   differenceInDayKeys,
+  formatDayKeyFromDate,
   getIsoWeekStartDayKey,
   isValidDayKey,
 } from '../../domain/time/dayKey';
-import { isHabitScheduledOnDay } from './scheduleEngine';
+import { getHabitCreatedDayKey, isHabitScheduledOnDay } from './scheduleEngine';
 
 export interface HabitDayState {
   dayKey: string;
@@ -39,17 +40,11 @@ function dateToLocalDayKey(date: Date): string {
   return `${year}-${month}-${day}`;
 }
 
-function getCreatedDayKey(habit: Habit): string | null {
-  const candidate = habit.createdAt?.slice(0, 10);
-  return candidate && isValidDayKey(candidate) ? candidate : null;
-}
-
 function filterStatesToHabitLifetime(
   dayStates: HabitDayState[],
-  habit: Habit,
+  createdDayKey: string | null,
   referenceDayKey: string,
 ): HabitDayState[] {
-  const createdDayKey = getCreatedDayKey(habit);
   return dayStates.filter(state => (
     isValidDayKey(state.dayKey)
     && state.dayKey <= referenceDayKey
@@ -97,8 +92,10 @@ function calculateOpportunityMetrics(
   dayStates: HabitDayState[],
   habit: Habit,
   referenceDayKey: string,
+  timeZone?: string,
 ): HabitStreakMetrics {
-  const eligibleStates = filterStatesToHabitLifetime(dayStates, habit, referenceDayKey);
+  const createdDayKey = getHabitCreatedDayKey(habit, timeZone);
+  const eligibleStates = filterStatesToHabitLifetime(dayStates, createdDayKey, referenceDayKey);
   const protectedDayKeys = new Set(
     eligibleStates
       .filter(state => qualifiesForStreak(state) || state.isFrozen)
@@ -108,14 +105,14 @@ function calculateOpportunityMetrics(
     eligibleStates.filter(state => state.completed).map(state => state.dayKey),
   );
 
-  const createdDayKey = getCreatedDayKey(habit)
+  const effectiveCreatedDayKey = createdDayKey
     ?? eligibleStates.map(state => state.dayKey).sort()[0]
     ?? referenceDayKey;
   const opportunityDayKeys: string[] = [];
-  const totalCalendarDays = differenceInDayKeys(referenceDayKey, createdDayKey) + 1;
+  const totalCalendarDays = differenceInDayKeys(referenceDayKey, effectiveCreatedDayKey) + 1;
   for (let offset = 0; offset < totalCalendarDays; offset++) {
-    const dayKey = addDaysToDayKey(createdDayKey, offset);
-    if (isHabitScheduledOnDay(habit, dayKey)) opportunityDayKeys.push(dayKey);
+    const dayKey = addDaysToDayKey(effectiveCreatedDayKey, offset);
+    if (isHabitScheduledOnDay(habit, dayKey, timeZone)) opportunityDayKeys.push(dayKey);
   }
 
   let bestStreak = 0;
@@ -156,12 +153,15 @@ function calculateOpportunityMetrics(
 /** Weekly quotas always count distinct protected habit-days, never quantity. */
 function buildWeeklyProgressMap(
   dayStates: HabitDayState[],
+  habit: Habit,
   target: number,
+  timeZone?: string,
 ): Map<string, WeeklyProgress> {
   const protectedDaysByWeek = new Map<string, Set<string>>();
 
   for (const dayState of dayStates) {
     if (!(qualifiesForStreak(dayState) || dayState.isFrozen)) continue;
+    if (!dayState.isFrozen && !isHabitScheduledOnDay(habit, dayState.dayKey, timeZone)) continue;
     const weekKey = getIsoWeekStartDayKey(dayState.dayKey);
     const protectedDays = protectedDaysByWeek.get(weekKey) ?? new Set<string>();
     protectedDays.add(dayState.dayKey);
@@ -181,11 +181,13 @@ function calculateWeeklyMetrics(
   habit: Habit,
   referenceDayKey: string,
   target: number,
+  timeZone?: string,
 ): HabitStreakMetrics {
-  const eligibleStates = filterStatesToHabitLifetime(dayStates, habit, referenceDayKey);
-  const weeklyProgressMap = buildWeeklyProgressMap(eligibleStates, target);
+  const createdDayKey = getHabitCreatedDayKey(habit, timeZone);
+  const eligibleStates = filterStatesToHabitLifetime(dayStates, createdDayKey, referenceDayKey);
+  const weeklyProgressMap = buildWeeklyProgressMap(eligibleStates, habit, target, timeZone);
   const currentWeekKey = getIsoWeekStartDayKey(referenceDayKey);
-  const createdWeekKey = getIsoWeekStartDayKey(getCreatedDayKey(habit) ?? referenceDayKey);
+  const createdWeekKey = getIsoWeekStartDayKey(createdDayKey ?? referenceDayKey);
   const currentWeek = weeklyProgressMap.get(currentWeekKey) ?? { progress: 0, satisfied: false };
 
   let currentStreak = 0;
@@ -236,11 +238,13 @@ export function calculateHabitStreakMetrics(
   dayStates: HabitDayState[],
   referenceDate: Date = new Date(),
   referenceDayKey?: string,
+  timeZone?: string,
 ): HabitStreakMetrics {
-  const referenceDay = referenceDayKey ?? dateToLocalDayKey(referenceDate);
+  const referenceDay = referenceDayKey
+    ?? (timeZone ? formatDayKeyFromDate(referenceDate, timeZone) : dateToLocalDayKey(referenceDate));
 
   if (habit.timesPerWeek != null && habit.timesPerWeek > 0) {
-    return calculateWeeklyMetrics(dayStates, habit, referenceDay, habit.timesPerWeek);
+    return calculateWeeklyMetrics(dayStates, habit, referenceDay, habit.timesPerWeek, timeZone);
   }
 
   if (habit.assignedDays?.length && habit.requiredDaysPerWeek != null) {
@@ -249,8 +253,9 @@ export function calculateHabitStreakMetrics(
       habit,
       referenceDay,
       habit.requiredDaysPerWeek,
+      timeZone,
     );
   }
 
-  return calculateOpportunityMetrics(dayStates, habit, referenceDay);
+  return calculateOpportunityMetrics(dayStates, habit, referenceDay, timeZone);
 }

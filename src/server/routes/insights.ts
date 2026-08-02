@@ -30,7 +30,7 @@ import {
   startDayKeyForRange,
   type InsightsSources,
 } from '../services/insightsService';
-import { analyticsCache } from '../lib/cacheInstances';
+import { analyticsCache, buildUserScopedCacheKey } from '../lib/cacheInstances';
 
 function parseDays(query: unknown, defaultDays = 90): number {
   const raw = typeof query === 'string' ? parseInt(query, 10) : NaN;
@@ -103,10 +103,22 @@ async function cached<T>(key: string, compute: () => Promise<T>): Promise<T> {
   return result;
 }
 
+function insightsCacheKey(r: ResolvedRequest, kind: string): string {
+  return buildUserScopedCacheKey(
+    r.userId,
+    r.householdId,
+    r.timeZone,
+    r.referenceDayKey,
+    'insights',
+    kind,
+    r.days,
+  );
+}
+
 export async function getInsightsOverview(req: Request, res: Response): Promise<void> {
   try {
     const r = resolve(req, 90);
-    const result = await cached(`${r.userId}:insights:overview:${r.days}`, async () => {
+    const result = await cached(insightsCacheKey(r, 'overview'), async () => {
       const sources = await loadSources(r);
       return computeInsightsOverview(sources, r.referenceDayKey, r.days, r.timeZone);
     });
@@ -120,7 +132,7 @@ export async function getInsightsOverview(req: Request, res: Response): Promise<
 export async function getInsightsCorrelations(req: Request, res: Response): Promise<void> {
   try {
     const r = resolve(req, 90);
-    const result = await cached(`${r.userId}:insights:correlations:${r.days}`, async () => {
+    const result = await cached(insightsCacheKey(r, 'correlations'), async () => {
       const sources = await loadSources(r);
       return { correlations: computeCorrelationsForSources(sources, r.referenceDayKey, r.days, r.timeZone), rangeDays: r.days };
     });
@@ -134,7 +146,7 @@ export async function getInsightsCorrelations(req: Request, res: Response): Prom
 export async function getInsightsHabits(req: Request, res: Response): Promise<void> {
   try {
     const r = resolve(req, 90);
-    const result = await cached(`${r.userId}:insights:habits:${r.days}`, async () => {
+    const result = await cached(insightsCacheKey(r, 'habits'), async () => {
       const sources = await loadSources(r);
       return {
         correlations: computeCorrelationsForSources(sources, r.referenceDayKey, r.days, r.timeZone, ['habit']),
@@ -151,7 +163,7 @@ export async function getInsightsHabits(req: Request, res: Response): Promise<vo
 export async function getInsightsMedications(req: Request, res: Response): Promise<void> {
   try {
     const r = resolve(req, 90);
-    const result = await cached(`${r.userId}:insights:medications:${r.days}`, async () => {
+    const result = await cached(insightsCacheKey(r, 'medications'), async () => {
       const sources = await loadSources(r);
       return computeMedicationInsights(sources, r.referenceDayKey, r.days, r.timeZone);
     });
@@ -165,7 +177,7 @@ export async function getInsightsMedications(req: Request, res: Response): Promi
 export async function getInsightsPredictions(req: Request, res: Response): Promise<void> {
   try {
     const r = resolve(req, 90);
-    const result = await cached(`${r.userId}:insights:predictions:${r.days}`, async () => {
+    const result = await cached(insightsCacheKey(r, 'predictions'), async () => {
       const sources = await loadSources(r);
       return { predictions: computePredictionsForSources(sources, r.referenceDayKey, r.days), rangeDays: r.days };
     });

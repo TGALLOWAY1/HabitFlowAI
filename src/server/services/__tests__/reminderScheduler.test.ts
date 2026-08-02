@@ -22,6 +22,7 @@ import { sendPush } from '../../lib/webPush';
 import { runReminderTick, formatLocalHHmm } from '../reminderScheduler';
 import { upsertPushSubscription, getActivePushSubscriptions } from '../../repositories/pushSubscriptionRepository';
 import { createHabit } from '../../repositories/habitRepository';
+import type { Habit } from '../../../models/persistenceTypes';
 
 const HH = 'sched-household';
 const USER = 'sched-user';
@@ -46,17 +47,23 @@ async function subscribe(overrides: Partial<{ endpoint: string; timeZone: string
 }
 
 async function makeHabit(overrides: Partial<Record<string, unknown>> = {}, userId = USER) {
-  return createHabit(
-    {
-      name: (overrides.name as string) ?? 'Meditate',
-      categoryId: 'cat-1',
-      goal: { type: 'boolean', frequency: 'daily' },
-      reminderTime: '08:00',
-      ...overrides,
-    } as any,
+  const data = {
+    name: (overrides.name as string) ?? 'Meditate',
+    categoryId: 'cat-1',
+    goal: { type: 'boolean', frequency: 'daily' },
+    reminderTime: '08:00',
+    ...overrides,
+  } as Omit<Habit, 'id' | 'createdAt' | 'archived'>;
+  const habit = await createHabit(
+    data,
     HH,
     userId
   );
+  // Keep the fixed July 2026 scenarios independent of the machine clock.
+  const createdAt = '2026-07-01T12:00:00.000Z';
+  const db = await getTestDb();
+  await db.collection('habits').updateOne({ id: habit.id }, { $set: { createdAt } });
+  return { ...habit, createdAt };
 }
 
 describe('reminderScheduler', () => {

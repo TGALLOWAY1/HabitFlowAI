@@ -3,6 +3,7 @@ import { evaluateChecklistSuccess } from '../shared/checklistSuccessRule';
 import { deriveDailyHabitCompletion } from '../domain/habits/completion';
 import { deriveWeeklyHabitProgress, getIsoWeekEndDayKey } from '../domain/habits/weeklyProgress';
 import { getIsoWeekStartDayKey } from '../domain/time/dayKey';
+import { isHabitScheduledOnDay } from '../domain/habits/schedule';
 
 
 export interface FlattenedHabitItem {
@@ -391,13 +392,11 @@ export function getDailyHabitRingProgress(
 
 export function getHabitsForDate(
     habits: Habit[],
-    dayKey: string
+    dayKey: string,
+    timeZone: string = Intl.DateTimeFormat().resolvedOptions().timeZone,
 ): Habit[] {
     // Identify child IDs to exclude them from root list
     const childIds = getBundleChildIds(habits);
-    // Day-of-week using noon UTC to avoid DST edge cases (matches scheduleEngine convention)
-    const dow = new Date(dayKey + 'T12:00:00Z').getUTCDay();
-
     return habits.filter(h => {
         // 1. Must not be archived
         if (h.archived) return false;
@@ -405,22 +404,6 @@ export function getHabitsForDate(
         // 2. Must be a root habit (not a child)
         if (childIds.has(h.id)) return false;
 
-        // 3. Frequency Logic
-        // 'total' (cumulative) habits also appear daily — they track daily contributions toward a cumulative goal.
-
-        // Weekly-quota habits: show on assigned days if set, otherwise every day
-        if (h.timesPerWeek != null && h.timesPerWeek > 0) {
-            if (h.assignedDays && h.assignedDays.length > 0) {
-                return h.assignedDays.includes(dow);
-            }
-            return true;
-        }
-
-        // 4. If habit has specific assigned days, only show on those days
-        if (h.assignedDays && h.assignedDays.length > 0) {
-            return h.assignedDays.includes(dow);
-        }
-
-        return true;
+        return isHabitScheduledOnDay(h, dayKey, timeZone);
     });
 }

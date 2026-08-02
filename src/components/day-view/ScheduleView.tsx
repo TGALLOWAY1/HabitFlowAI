@@ -9,6 +9,7 @@ import { useEffect } from 'react';
 
 import type { Habit } from '../../types';
 import { resolveLocalHabitStatuses, type DayViewHabitStatus } from './habitStatusResolution';
+import { isHabitScheduledOnDay } from '../../domain/habits/schedule';
 
 interface DayViewData {
     dayKey: string;
@@ -86,9 +87,6 @@ export const ScheduleView = () => {
         return ids;
     }, [habits]);
 
-    // Get day-of-week for selected day (0=Sun..6=Sat)
-    const selectedDow = selectedDate.getDay();
-
     // Separate scheduled habits vs daily habits
     const { scheduledHabits, dailyHabits } = useMemo(() => {
         const scheduled: Habit[] = [];
@@ -97,14 +95,13 @@ export const ScheduleView = () => {
         habits.forEach(h => {
             if (h.archived) return;
             if (childIds.has(h.id)) return;
+            if (!isHabitScheduledOnDay(h, selectedDayKey, getLocalTimeZone())) return;
 
             const hasAssignedDays = h.assignedDays && h.assignedDays.length > 0;
             const hasTimesPerWeek = h.timesPerWeek != null && h.timesPerWeek > 0;
 
             // Habits with specific days or weekly quota are "scheduled"
             if (hasAssignedDays || hasTimesPerWeek) {
-                // Only show if scheduled on this day
-                if (hasAssignedDays && !h.assignedDays!.includes(selectedDow)) return;
                 scheduled.push(h);
             } else {
                 // Pure daily habits (every day, no special scheduling)
@@ -113,7 +110,7 @@ export const ScheduleView = () => {
         });
 
         return { scheduledHabits: scheduled, dailyHabits: daily };
-    }, [habits, childIds, selectedDow]);
+    }, [habits, childIds, selectedDayKey]);
 
     const allHabitsLookup = useMemo(() => {
         return new Map(habits.map(h => [h.id, h]));

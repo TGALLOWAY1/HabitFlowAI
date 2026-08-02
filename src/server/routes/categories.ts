@@ -17,6 +17,7 @@ import {
 import { uncategorizeHabitsByCategory } from '../repositories/habitRepository';
 import type { Category } from '../../models/persistenceTypes';
 import { getRequestIdentity } from '../middleware/identity';
+import { invalidateUserCaches } from '../lib/cacheInstances';
 
 /** Normalize category name for duplicate check: trim, collapse spaces, lowercase. */
 function normalizeCategoryName(name: string): string {
@@ -96,6 +97,7 @@ export async function createCategoryRoute(req: Request, res: Response): Promise<
       return;
     }
     const category = await createCategory({ name: trimmedName, color: color.trim() }, householdId, userId);
+    invalidateUserCaches(userId);
 
     res.status(201).json({
       category,
@@ -157,6 +159,7 @@ export async function getCategory(req: Request, res: Response): Promise<void> {
       });
       return;
     }
+    invalidateUserCaches(userId);
 
     res.status(200).json({
       category,
@@ -301,6 +304,7 @@ export async function deleteCategoryRoute(req: Request, res: Response): Promise<
       });
       return;
     }
+    invalidateUserCaches(userId);
 
     res.status(200).json({
       message: 'Category deleted successfully',
@@ -375,6 +379,7 @@ export async function reorderCategoriesRoute(req: Request, res: Response): Promi
     // TODO: Extract userId from authentication token/session
     const { householdId, userId } = getRequestIdentity(req);
     const updatedCategories = await reorderCategories(householdId, userId, categories as Category[]);
+    invalidateUserCaches(userId);
 
     res.status(200).json({
       categories: updatedCategories,
@@ -391,4 +396,3 @@ export async function reorderCategoriesRoute(req: Request, res: Response): Promi
     });
   }
 }
-

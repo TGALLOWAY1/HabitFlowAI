@@ -20,7 +20,7 @@ import type { BundleMembershipRecord } from '../domain/canonicalTypes';
 import { getRequestIdentity } from '../middleware/identity';
 import { evaluateChecklistSuccess } from '../services/checklistSuccessService';
 import type { Habit } from '../../models/persistenceTypes';
-import { progressCache } from '../lib/cacheInstances';
+import { buildUserScopedCacheKey, progressCache } from '../lib/cacheInstances';
 import { deriveDailyHabitCompletion, type CompletionEntry } from '../../domain/habits/completion';
 
 function parseFreezeType(entry: { freezeType?: string; note?: string }): 'manual' | 'auto' | 'soft' | undefined {
@@ -41,7 +41,13 @@ export async function getProgressOverview(req: Request, res: Response): Promise<
     const todayDate = getNowDayKey(requestedTimeZone);
 
     // Check cache before computing
-    const cacheKey = `${userId}:${todayDate}`;
+    const cacheKey = buildUserScopedCacheKey(
+      userId,
+      householdId,
+      requestedTimeZone,
+      todayDate,
+      'progress',
+    );
     const cached = progressCache.get(cacheKey);
     if (cached) {
       res.status(200).json(cached);
@@ -172,7 +178,13 @@ export async function getProgressOverview(req: Request, res: Response): Promise<
     for (const habit of activeHabits) {
       const dayStates = Array.from(dayStatesByHabit.get(habit.id)?.values() ?? []);
       const todayState = dayStatesByHabit.get(habit.id)?.get(todayDate);
-      const streakMetrics = calculateHabitStreakMetrics(habit, dayStates, referenceDate, todayDate);
+      const streakMetrics = calculateHabitStreakMetrics(
+        habit,
+        dayStates,
+        referenceDate,
+        todayDate,
+        requestedTimeZone,
+      );
 
       const completed = streakMetrics.completedToday;
       const value = habit.goal.type === 'number' && todayState ? todayState.value : undefined;
