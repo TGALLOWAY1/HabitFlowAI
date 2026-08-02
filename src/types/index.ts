@@ -1,3 +1,5 @@
+import type { HabitInactivePeriod, HabitTrackingRevision } from '../shared/habitTracking';
+
 export interface Category {
     id: string;
     name: string;
@@ -42,7 +44,7 @@ export interface HabitGoal {
     type: 'boolean' | 'number';
     target?: number; // e.g., 8 (hours), 2000 (calories)
     unit?: string; // e.g., 'hrs', 'kcal'
-    frequency: 'daily' | 'total';
+    frequency: 'daily' | 'total'; // 'total' affects cumulative goal aggregation; habit-day completion stays target-based
 }
 
 export interface Habit {
@@ -58,6 +60,10 @@ export interface Habit {
     archivedAt?: string;
     /** Why the habit is archived. 'user' = user-driven (persists); 'category_deleted' = system (auto-recovered). */
     archivedReason?: 'user' | 'category_deleted';
+    /** Historical completion/schedule rules, recorded only when those rules change. */
+    trackingRevisions?: HabitTrackingRevision[];
+    /** Closed/open local-day ranges excluded from restored-habit opportunities. */
+    inactivePeriods?: HabitInactivePeriod[];
     /** Soft delete marker. Backend filters these out of the active list, so frontend rarely sees it set. */
     deletedAt?: string;
     createdAt: string;

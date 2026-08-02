@@ -6,6 +6,8 @@ import {
   getIsoWeekStartDayKey,
   isValidDayKey,
 } from '../time/dayKey';
+import type { HabitInactivePeriod, HabitTrackingGoal, HabitTrackingRevision } from '../../shared/habitTracking';
+import { isHabitInactiveOnDay, resolveHabitTrackingForDay } from './trackingHistory';
 
 export interface SchedulableHabit {
   archived?: boolean;
@@ -15,6 +17,9 @@ export interface SchedulableHabit {
   timesPerWeek?: number;
   assignedDays?: number[];
   requiredDaysPerWeek?: number;
+  goal: HabitTrackingGoal;
+  trackingRevisions?: HabitTrackingRevision[];
+  inactivePeriods?: HabitInactivePeriod[];
 }
 
 /**
@@ -23,14 +28,41 @@ export interface SchedulableHabit {
  * streak is expressed in completed scheduled days rather than collapsing a
  * long daily run into a single week.
  */
-export function usesWeeklyQuotaStreak(habit: SchedulableHabit): boolean {
-  if (habit.timesPerWeek != null && habit.timesPerWeek > 0) return true;
+export function usesWeeklyQuotaStreak(habit: SchedulableHabit, dayKey?: string): boolean {
+  const tracking = resolveHabitTrackingForDay(habit, dayKey);
+  if (tracking.timesPerWeek != null && tracking.timesPerWeek > 0) return true;
 
   return !!(
-    habit.assignedDays?.length
-    && habit.requiredDaysPerWeek != null
-    && habit.requiredDaysPerWeek < habit.assignedDays.length
+    tracking.assignedDays?.length
+    && tracking.requiredDaysPerWeek != null
+    && tracking.requiredDaysPerWeek < tracking.assignedDays.length
   );
+}
+
+export function getWeeklyQuotaTargetOnDay(
+  habit: SchedulableHabit,
+  dayKey: string,
+): number | null {
+  const tracking = resolveHabitTrackingForDay(habit, dayKey);
+  if (tracking.timesPerWeek != null && tracking.timesPerWeek > 0) {
+    return tracking.timesPerWeek;
+  }
+  if (
+    tracking.assignedDays?.length
+    && tracking.requiredDaysPerWeek != null
+    && tracking.requiredDaysPerWeek < tracking.assignedDays.length
+  ) {
+    return tracking.requiredDaysPerWeek;
+  }
+  return null;
+}
+
+export function hasExplicitWeeklyQuotaOnDay(
+  habit: SchedulableHabit,
+  dayKey: string,
+): boolean {
+  const tracking = resolveHabitTrackingForDay(habit, dayKey);
+  return tracking.timesPerWeek != null && tracking.timesPerWeek > 0;
 }
 
 export function getHabitCreatedDayKey(habit: SchedulableHabit, timeZone?: string): string | null {
@@ -53,6 +85,19 @@ export function isTrackableHabit(habit: SchedulableHabit): boolean {
   return !habit.archived && !habit.deletedAt && habit.type !== 'bundle';
 }
 
+/** Match schedule rules without applying the habit document creation boundary. */
+export function matchesHabitScheduleOnDay(
+  habit: SchedulableHabit,
+  dayKey: string,
+): boolean {
+  if (isHabitInactiveOnDay(habit, dayKey)) return false;
+
+  const tracking = resolveHabitTrackingForDay(habit, dayKey);
+  const dayOfWeek = getDayOfWeekForDayKey(dayKey);
+  if (tracking.assignedDays?.length) return tracking.assignedDays.includes(dayOfWeek);
+  return true;
+}
+
 export function isHabitScheduledOnDay(
   habit: SchedulableHabit,
   dayKey: string,
@@ -60,10 +105,7 @@ export function isHabitScheduledOnDay(
 ): boolean {
   const createdDayKey = getHabitCreatedDayKey(habit, timeZone);
   if (createdDayKey && dayKey < createdDayKey) return false;
-
-  const dayOfWeek = getDayOfWeekForDayKey(dayKey);
-  if (habit.assignedDays?.length) return habit.assignedDays.includes(dayOfWeek);
-  return true;
+  return matchesHabitScheduleOnDay(habit, dayKey);
 }
 
 export function getScheduledHabitsForDay<T extends SchedulableHabit>(
@@ -88,22 +130,17 @@ export function getExpectedOpportunitiesInRange(
 
   if (totalDays <= 0) return 0;
 
-  if (habit.timesPerWeek != null && habit.timesPerWeek > 0 && !habit.assignedDays?.length) {
-    const weeks = new Set<string>();
-    for (let offset = 0; offset < totalDays; offset++) {
-      weeks.add(getIsoWeekStartDayKey(addDaysToDayKey(effectiveStartDayKey, offset)));
+  const quotaWeeks = new Set<string>();
+  let dailyOpportunities = 0;
+  for (let offset = 0; offset < totalDays; offset++) {
+    const dayKey = addDaysToDayKey(effectiveStartDayKey, offset);
+    if (!isHabitScheduledOnDay(habit, dayKey, timeZone)) continue;
+    const tracking = resolveHabitTrackingForDay(habit, dayKey);
+    if (tracking.timesPerWeek != null && tracking.timesPerWeek > 0 && !tracking.assignedDays?.length) {
+      quotaWeeks.add(getIsoWeekStartDayKey(dayKey));
+    } else {
+      dailyOpportunities += 1;
     }
-    return weeks.size;
   }
-
-  if (habit.assignedDays?.length) {
-    let count = 0;
-    for (let offset = 0; offset < totalDays; offset++) {
-      const dayOfWeek = getDayOfWeekForDayKey(addDaysToDayKey(effectiveStartDayKey, offset));
-      if (habit.assignedDays.includes(dayOfWeek)) count++;
-    }
-    return count;
-  }
-
-  return totalDays;
+  return dailyOpportunities + quotaWeeks.size;
 }
