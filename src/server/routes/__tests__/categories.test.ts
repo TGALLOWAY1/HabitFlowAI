@@ -8,6 +8,7 @@ import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import express, { type Express } from 'express';
 import request from 'supertest';
 import { setupTestMongo, teardownTestMongo, getTestDb } from '../../../test/mongoTestHelper';
+import type { RequestWithIdentity } from '../../middleware/identity';
 import {
   getCategories,
   createCategoryRoute,
@@ -18,6 +19,7 @@ import {
 } from '../categories';
 
 const TEST_USER_ID = 'test-user-123';
+const TEST_HOUSEHOLD_ID = 'test-household-123';
 
 describe('Category Routes', () => {
   let app: Express;
@@ -28,9 +30,11 @@ describe('Category Routes', () => {
     app = express();
     app.use(express.json());
 
-    // Add userId to request (simulating auth middleware)
+    // Add the complete scoped identity supplied by authentication middleware.
     app.use((req, _res, next) => {
-      (req as any).userId = TEST_USER_ID;
+      const identityRequest = req as RequestWithIdentity;
+      identityRequest.householdId = TEST_HOUSEHOLD_ID;
+      identityRequest.userId = TEST_USER_ID;
       next();
     });
 
@@ -367,4 +371,3 @@ describe('Category Routes', () => {
     });
   });
 });
-
