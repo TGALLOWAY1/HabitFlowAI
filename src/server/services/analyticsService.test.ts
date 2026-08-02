@@ -60,6 +60,20 @@ describe('computeHabitAnalyticsSummary', () => {
     expect(result.currentStreak).toBe(3);
   });
 
+  it('does not count partial numeric progress as a completion', () => {
+    const habits = [createHabit({
+      goal: { type: 'number', frequency: 'daily', target: 10, unit: 'pages' },
+    })];
+    const entries = [createEntry('habit-1', '2026-03-31', { value: 5 })];
+
+    const result = computeHabitAnalyticsSummary(habits, entries, [], [], '2026-03-31', 1);
+
+    expect(result.totalCompletions).toBe(0);
+    expect(result.completionRate).toBe(0);
+    expect(result.currentStreak).toBe(0);
+    expect(result.longestStreak).toBe(0);
+  });
+
   it('counts graduated habits from memberships', () => {
     const habits = [createHabit()];
     const memberships: BundleMembershipRecord[] = [

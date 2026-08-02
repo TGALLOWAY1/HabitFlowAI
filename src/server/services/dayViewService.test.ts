@@ -12,7 +12,12 @@ vi.mock('./truthQuery', () => ({
   getEntryViewsForHabits: vi.fn(),
 }));
 
+vi.mock('../repositories/bundleMembershipRepository', () => ({
+  getMembershipsForDay: vi.fn().mockResolvedValue([]),
+}));
+
 import { getHabitsByUser } from '../repositories/habitRepository';
+import { getMembershipsForDay } from '../repositories/bundleMembershipRepository';
 import { getEntryViewsForHabits } from './truthQuery';
 
 describe('dayViewService', () => {
@@ -22,6 +27,7 @@ describe('dayViewService', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(getMembershipsForDay).mockResolvedValue([]);
   });
 
   describe('computeDayView', () => {
@@ -318,6 +324,47 @@ describe('dayViewService', () => {
       expect(bundleStatus?.completedChildrenCount).toBe(1);
       expect(bundleStatus?.totalChildrenCount).toBe(2);
       expect(bundleStatus?.progressPercent).toBe(50);
+    });
+
+    it('does not treat partial numeric child progress as bundle completion', async () => {
+      const numericChild: Habit = {
+        id: 'numeric-child',
+        categoryId: 'cat-1',
+        name: 'Read pages',
+        goal: { type: 'number', frequency: 'daily', target: 10, unit: 'pages' },
+        archived: false,
+        createdAt: '2025-01-01T00:00:00.000Z',
+      };
+      const bundleHabit: Habit = {
+        id: 'bundle-1',
+        categoryId: 'cat-1',
+        name: 'Evening routine',
+        type: 'bundle',
+        bundleType: 'choice',
+        subHabitIds: ['numeric-child'],
+        goal: { type: 'boolean', frequency: 'daily' },
+        archived: false,
+        createdAt: '2025-01-01T00:00:00.000Z',
+      };
+      const partialEntry: EntryView = {
+        habitId: numericChild.id,
+        dayKey,
+        timestampUtc: '2025-01-15T10:00:00.000Z',
+        value: 5,
+        source: 'manual',
+        provenance: {},
+        deletedAt: null,
+        conflict: false,
+      };
+
+      vi.mocked(getHabitsByUser).mockResolvedValue([bundleHabit, numericChild]);
+      vi.mocked(getEntryViewsForHabits).mockResolvedValue([partialEntry]);
+
+      const result = await computeDayView('household-1', userId, dayKey, timeZone);
+      const bundleStatus = result.habits.find(status => status.habit.id === bundleHabit.id);
+
+      expect(bundleStatus?.isComplete).toBe(false);
+      expect(bundleStatus?.completedChildrenCount).toBe(0);
     });
 
     it('requests a week window (Mon-Sun) of dayKeys from truthQuery for the given dayKey', async () => {

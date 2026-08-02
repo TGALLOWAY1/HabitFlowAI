@@ -250,6 +250,29 @@ describe('reminderScheduler', () => {
     expect(vi.mocked(sendPush)).not.toHaveBeenCalled();
   });
 
+  it('still reminds when a numeric habit only has partial progress', async () => {
+    await subscribe();
+    const habit = await makeHabit({
+      name: 'Read pages',
+      goal: { type: 'number', frequency: 'daily', target: 10, unit: 'pages' },
+    });
+    const db = await getTestDb();
+    await db.collection('habitEntries').insertOne({
+      id: 'partial-numeric-entry',
+      householdId: HH,
+      userId: USER,
+      habitId: habit.id,
+      dayKey: '2026-07-16',
+      value: 5,
+      createdAt: new Date().toISOString(),
+    });
+
+    await runReminderTick(utc('2026-07-16T12:00:10Z'));
+
+    expect(vi.mocked(sendPush)).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(sendPush).mock.calls[0][1].title).toBe('Read pages');
+  });
+
   it('disables the subscription when the push service reports it gone', async () => {
     await subscribe();
     await makeHabit();

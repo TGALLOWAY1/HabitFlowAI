@@ -23,7 +23,7 @@ function makeChecklistBundle(overrides?: Partial<Habit>): Habit {
   } as Habit;
 }
 
-function makeEntry(habitId: string, dateKey: string): HabitEntry {
+function makeEntry(habitId: string, dateKey: string, overrides: Partial<HabitEntry> = {}): HabitEntry {
   return {
     id: `entry-${habitId}-${dateKey}`,
     habitId,
@@ -31,6 +31,7 @@ function makeEntry(habitId: string, dateKey: string): HabitEntry {
     timestamp: `${dateKey}T12:00:00Z`,
     createdAt: `${dateKey}T12:00:00Z`,
     source: 'manual',
+    ...overrides,
   } as HabitEntry;
 }
 
@@ -41,6 +42,50 @@ const schema = {
     { id: 'child-3', name: 'C' },
   ] as Habit[],
 };
+
+describe('computeHabitStatus — numeric completion', () => {
+  const dateKey = '2026-03-29';
+  const numericHabit = {
+    id: 'numeric-1',
+    categoryId: 'cat-1',
+    name: 'Drink water',
+    goal: { type: 'number', frequency: 'daily', target: 10, unit: 'glasses' },
+    archived: false,
+    createdAt: '2026-01-01T00:00:00Z',
+  } as Habit;
+
+  it.each([
+    { value: 0, isComplete: false, isPartial: false },
+    { value: 5, isComplete: false, isPartial: true },
+    { value: 10, isComplete: true, isPartial: false },
+    { value: 12.5, isComplete: true, isPartial: false },
+  ])('derives $value against the configured target', ({ value, isComplete, isPartial }) => {
+    const entries = value === 0 ? [] : [makeEntry(numericHabit.id, dateKey, { value })];
+    const result = computeHabitStatus(numericHabit, entries, dateKey, { habits: [numericHabit] });
+
+    expect(result.currentValue).toBe(value);
+    expect(result.targetValue).toBe(10);
+    expect(result.isComplete).toBe(isComplete);
+    expect(result.isPartial).toBe(isPartial);
+  });
+
+  it('does not invent completion when a numeric target is missing', () => {
+    const habit = {
+      ...numericHabit,
+      id: 'numeric-without-target',
+      goal: { type: 'number', frequency: 'daily', unit: 'pages' },
+    } as Habit;
+    const result = computeHabitStatus(
+      habit,
+      [makeEntry(habit.id, dateKey, { value: 5 })],
+      dateKey,
+      { habits: [habit] },
+    );
+
+    expect(result.isComplete).toBe(false);
+    expect(result.isPartial).toBe(true);
+  });
+});
 
 describe('computeHabitStatus — checklist bundle', () => {
   const dateKey = '2026-03-29';
