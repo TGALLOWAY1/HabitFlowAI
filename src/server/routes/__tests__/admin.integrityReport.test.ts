@@ -76,7 +76,10 @@ describe('getIntegrityReport', () => {
 
     vi.mocked(getDb).mockResolvedValue(createMockDb(dataset) as unknown as Awaited<ReturnType<typeof getDb>>);
 
-    const req = { userId: 'test-user' } as unknown as Request;
+    const req = {
+      householdId: 'test-household',
+      userId: 'test-user',
+    } as unknown as Request;
     const res = createRes();
 
     await getIntegrityReport(req, res);
