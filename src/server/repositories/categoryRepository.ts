@@ -11,6 +11,25 @@ import { scopeFilter, requireScope } from '../lib/scoping';
 import type { Category } from '../../models/persistenceTypes';
 
 const COLLECTION_NAME = 'categories';
+const SORT_ORDER_FIELD = 'sortOrder';
+
+export class CategoryReorderValidationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'CategoryReorderValidationError';
+  }
+}
+
+function toCategory(document: Record<string, unknown>): Category {
+  const {
+    _id,
+    userId: _userId,
+    householdId: _householdId,
+    [SORT_ORDER_FIELD]: _sortOrder,
+    ...category
+  } = document;
+  return category as unknown as Category;
+}
 
 /**
  * Create a new category.
@@ -36,6 +55,9 @@ export async function createCategory(
         ...data,
         householdId: scope.householdId,
         userId: scope.userId,
+        // Legacy categories retain insertion order until the first reorder;
+        // categories created later sort after normalized integer positions.
+        [SORT_ORDER_FIELD]: Date.now(),
       },
     },
     { upsert: true, returnDocument: 'after' }
@@ -45,8 +67,7 @@ export async function createCategory(
     throw new Error(`Failed to create or find category '${data.name}'`);
   }
 
-  const { _id, userId: _, householdId: __, ...category } = result as any;
-  return category as Category;
+  return toCategory(result as Record<string, unknown>);
 }
 
 /**
@@ -58,12 +79,10 @@ export async function getCategoriesByUser(householdId: string, userId: string): 
 
   const documents = await collection
     .find(scopeFilter(householdId, userId))
+    .sort({ [SORT_ORDER_FIELD]: 1, _id: 1 })
     .toArray();
 
-  return documents.map((doc: any) => {
-    const { _id, userId: _, householdId: __, ...category } = doc;
-    return category as Category;
-  });
+  return documents.map((document) => toCategory(document));
 }
 
 /**
@@ -81,8 +100,7 @@ export async function getCategoryById(
 
   if (!document) return null;
 
-  const { _id, userId: _, householdId: __, ...category } = document as any;
-  return category as Category;
+  return toCategory(document);
 }
 
 /**
@@ -105,8 +123,7 @@ export async function updateCategory(
 
   if (!result) return null;
 
-  const { _id, userId: _, householdId: __, ...category } = result as any;
-  return category as Category;
+  return toCategory(result as Record<string, unknown>);
 }
 
 /**
@@ -134,18 +151,33 @@ export async function reorderCategories(
 ): Promise<Category[]> {
   const db = await getDb();
   const collection = db.collection(COLLECTION_NAME);
+  const existingDocuments = await collection
+    .find(scopeFilter(householdId, userId), { projection: { id: 1 } })
+    .toArray();
+  const existingIds = new Set(existingDocuments.map((document) => document.id as string));
+  const requestedIds = categories.map((category) => category.id);
+  const requestedIdSet = new Set(requestedIds);
 
-  await collection.deleteMany(scopeFilter(householdId, userId));
-
-  const documents = categories.map(category => ({
-    ...category,
-    householdId,
-    userId,
-  }));
-
-  if (documents.length > 0) {
-    await collection.insertMany(documents);
+  if (
+    requestedIds.length !== requestedIdSet.size
+    || requestedIdSet.size !== existingIds.size
+    || requestedIds.some((id) => !existingIds.has(id))
+  ) {
+    throw new CategoryReorderValidationError(
+      'Category reorder must contain every existing category exactly once',
+    );
   }
 
-  return categories;
+  if (requestedIds.length > 0) {
+    await collection.bulkWrite(
+      requestedIds.map((id, sortOrder) => ({
+        updateOne: {
+          filter: scopeFilter(householdId, userId, { id }),
+          update: { $set: { [SORT_ORDER_FIELD]: sortOrder } },
+        },
+      })),
+    );
+  }
+
+  return getCategoriesByUser(householdId, userId);
 }

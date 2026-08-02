@@ -13,6 +13,7 @@ import {
   updateCategory,
   deleteCategory,
   reorderCategories,
+  CategoryReorderValidationError,
 } from '../repositories/categoryRepository';
 import { uncategorizeHabitsByCategory } from '../repositories/habitRepository';
 import type { Category } from '../../models/persistenceTypes';
@@ -386,6 +387,15 @@ export async function reorderCategoriesRoute(req: Request, res: Response): Promi
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     console.error('Error reordering categories:', errorMessage);
+    if (error instanceof CategoryReorderValidationError) {
+      res.status(400).json({
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: errorMessage,
+        },
+      });
+      return;
+    }
     res.status(500).json({
       error: {
         code: 'INTERNAL_SERVER_ERROR',

@@ -327,6 +327,26 @@ describe('Category Routes', () => {
 
       expect(response.body.error.code).toBe('VALIDATION_ERROR');
     });
+
+    it('should reject a stale partial order without deleting categories', async () => {
+      const first = await request(app)
+        .post('/api/categories')
+        .send({ name: 'Category 1', color: 'bg-red-500' })
+        .expect(201);
+
+      await request(app)
+        .post('/api/categories')
+        .send({ name: 'Category 2', color: 'bg-blue-500' })
+        .expect(201);
+
+      await request(app)
+        .patch('/api/categories/reorder')
+        .send({ categories: [first.body.category] })
+        .expect(400);
+
+      const response = await request(app).get('/api/categories').expect(200);
+      expect(response.body.categories).toHaveLength(2);
+    });
   });
 
   describe('Feature Flag - 501 Response', () => {
