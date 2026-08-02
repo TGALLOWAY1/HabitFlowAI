@@ -21,6 +21,27 @@ import { resolveTimeZone, getNowDayKey } from '../utils/dayKey';
 import { getRequestIdentity } from '../middleware/identity';
 import { invalidateUserCaches } from '../lib/cacheInstances';
 import { checkAndCompleteLinkedGoals } from '../services/goalAutoCompletion';
+import type { HabitEntry } from '../../models/persistenceTypes';
+import { getCompletionEntryValue } from '../../domain/habits/completion';
+
+const ENTRY_MUTATION_FIELDS = new Set([
+    'value', 'bundleOptionId', 'choiceChildHabitId', 'bundleOptionLabel', 'unitSnapshot',
+    'source', 'routineId', 'variantId', 'dayKey', 'date', 'timestamp', 'note', 'freezeType',
+    'optionKey', 'sourceRuleId', 'importedMetricValue', 'importedMetricType', 'timeZone',
+]);
+
+function sanitizeEntryMutationPayload(payload: Record<string, unknown>): Partial<HabitEntry> & { timeZone?: string } {
+    const sanitized: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(payload)) {
+        if (ENTRY_MUTATION_FIELDS.has(key)) sanitized[key] = value;
+    }
+    return sanitized as Partial<HabitEntry> & { timeZone?: string };
+}
+
+function hasImmutableEntryField(payload: Record<string, unknown>): boolean {
+    return ['id', 'habitId', 'householdId', 'userId', 'createdAt', 'updatedAt', 'deletedAt']
+        .some(field => field in payload);
+}
 
 /**
  * Get entry views for a habit (via truthQuery).
@@ -39,10 +60,8 @@ export async function getHabitEntriesRoute(req: Request, res: Response): Promise
             return;
         }
 
-        // Use canonical default (America/New_York) when timeZone missing or invalid
+        // Missing or invalid timezone uses the documented canonical fallback.
         const userTimeZone = resolveTimeZone(timeZone && typeof timeZone === 'string' ? timeZone : undefined);
-
-        // Validate timeZone (resolution already produced a valid TZ; assert for consistency)
         const timeZoneValidation = assertTimeZone(userTimeZone);
         if (!timeZoneValidation.valid) {
             res.status(400).json({ error: timeZoneValidation.error });
@@ -88,38 +107,30 @@ export async function getHabitEntriesRoute(req: Request, res: Response): Promise
 export async function createHabitEntryRoute(req: Request, res: Response): Promise<void> {
     try {
         const { householdId, userId } = getRequestIdentity(req);
-        const entryData = req.body;
-
-        if (!entryData.habitId || !entryData.date || entryData.value === undefined) {
-            // For choice habits, value CAN be undefined if metric is none.
-            // But traditionally, for legacy habits, value was required. 
-            // Logic below handles choice specifically.
-            // If we strict check value here, we break choice with metric=none.
-            // We should relax this check and rely on validation utils.
-            // But wait, existing code expects value.
-            // Let's rely on validation mostly.
-        }
+        const rawEntryData = req.body as Record<string, unknown>;
 
         // Validate payload structure (canonical invariants)
-        const structureValidation = validateHabitEntryPayloadStructure(entryData);
+        const structureValidation = validateHabitEntryPayloadStructure(rawEntryData);
         if (!structureValidation.valid) {
             res.status(400).json({ error: structureValidation.error });
             return;
         }
 
         // Ensure no stored completion flags
-        const noCompletionValidation = assertNoStoredCompletion(entryData);
+        const noCompletionValidation = assertNoStoredCompletion(rawEntryData);
         if (!noCompletionValidation.valid) {
             res.status(400).json({ error: noCompletionValidation.error });
             return;
         }
 
         // Normalize dayKey from various inputs (dayKey, date, or timestamp + timeZone)
+        const entryData = sanitizeEntryMutationPayload(rawEntryData);
+        const habitId = rawEntryData.habitId;
         const userTimeZone = resolveTimeZone(entryData.timeZone && typeof entryData.timeZone === 'string' ? entryData.timeZone : undefined);
 
         let normalizedPayload;
         try {
-            normalizedPayload = normalizeHabitEntryPayload(entryData, userTimeZone);
+            normalizedPayload = normalizeHabitEntryPayload({ ...entryData, habitId }, userTimeZone);
         } catch (error) {
             res.status(400).json({
                 error: error instanceof Error ? error.message : 'Failed to normalize dayKey'
@@ -127,26 +138,26 @@ export async function createHabitEntryRoute(req: Request, res: Response): Promis
             return;
         }
 
-        if (!entryData.habitId) {
+        if (!habitId || typeof habitId !== 'string') {
             res.status(400).json({ error: 'Missing required field: habitId' });
             return;
         }
 
-        const habit = await getHabitById(entryData.habitId, householdId, userId);
+        const habit = await getHabitById(habitId, householdId, userId);
         if (!habit) {
             res.status(404).json({ error: 'Habit not found' });
             return;
         }
 
-        const validation = validateHabitEntryPayload(habit, entryData);
+        const validation = validateHabitEntryPayload(habit, { ...entryData, habitId });
         if (!validation.valid) {
             res.status(400).json({ error: validation.error });
             return;
         }
 
-        const { date: _d, habitId: _h, dayKey: _k, ...rest } = entryData;
+        const { date: _d, dayKey: _k, timeZone: _tz, ...rest } = entryData;
         const newEntry = await upsertHabitEntry(
-            entryData.habitId,
+            habitId,
             normalizedPayload.dayKey,
             householdId,
             userId,
@@ -279,12 +290,21 @@ export async function updateHabitEntryRoute(req: Request, res: Response): Promis
     try {
         const { householdId, userId } = getRequestIdentity(req);
         const { id } = req.params;
-        const patch = req.body;
+        const rawPatch = req.body as Record<string, unknown>;
 
         // Ensure no stored completion flags
-        const noCompletionValidation = assertNoStoredCompletion(patch);
+        const noCompletionValidation = assertNoStoredCompletion(rawPatch);
         if (!noCompletionValidation.valid) {
             res.status(400).json({ error: noCompletionValidation.error });
+            return;
+        }
+        if (hasImmutableEntryField(rawPatch)) {
+            res.status(400).json({ error: 'Entry identity and ownership fields are immutable' });
+            return;
+        }
+        const patch = sanitizeEntryMutationPayload(rawPatch);
+        if (Object.keys(patch).length === 0) {
+            res.status(400).json({ error: 'At least one editable entry field is required' });
             return;
         }
 
@@ -301,6 +321,12 @@ export async function updateHabitEntryRoute(req: Request, res: Response): Promis
 
         const oldDayKey = oldEntry.dayKey || oldEntry.date;
         const habitId = oldEntry.habitId;
+
+        const habit = await getHabitById(habitId, householdId, userId);
+        if (!habit) {
+            res.status(404).json({ error: 'Habit not found' });
+            return;
+        }
 
         // Normalize dayKey if date/dayKey/timestamp is being updated
         if (patch.date || patch.dayKey || patch.timestamp) {
@@ -325,7 +351,21 @@ export async function updateHabitEntryRoute(req: Request, res: Response): Promis
             }
         }
 
-        const updatedEntry = await updateHabitEntry(id, householdId, userId, patch);
+        const mergedPayload = { ...oldEntry, ...patch, habitId };
+        const structureValidation = validateHabitEntryPayloadStructure(mergedPayload);
+        if (!structureValidation.valid) {
+            res.status(400).json({ error: structureValidation.error });
+            return;
+        }
+        const habitValidation = validateHabitEntryPayload(habit, mergedPayload);
+        if (!habitValidation.valid) {
+            res.status(400).json({ error: habitValidation.error });
+            return;
+        }
+
+        const { timeZone: _timeZone, ...persistencePatch } = patch;
+
+        const updatedEntry = await updateHabitEntry(id, householdId, userId, persistencePatch);
 
         if (!updatedEntry) {
             res.status(404).json({ error: 'Entry not found' });
@@ -421,6 +461,11 @@ export async function deleteHabitEntriesForDayRoute(req: Request, res: Response)
         // 1. Bulk Delete
         // Normalize date to dayKey (both are YYYY-MM-DD format)
         const dayKey = date;
+        const dayKeyValidation = validateDayKey(dayKey);
+        if (!dayKeyValidation.valid) {
+            res.status(400).json({ error: dayKeyValidation.error });
+            return;
+        }
         await deleteHabitEntriesForDay(habitId, dayKey, householdId, userId);
 
         const updatedDayLog = await recomputeDayLogForHabit(habitId, dayKey, householdId, userId);
@@ -449,12 +494,34 @@ export async function deleteHabitEntriesForDayRoute(req: Request, res: Response)
 export async function upsertHabitEntryRoute(req: Request, res: Response): Promise<void> {
     try {
         const { householdId, userId } = getRequestIdentity(req);
-        const { habitId, dateKey, ...data } = req.body;
+        const { habitId, dateKey, ...rawData } = req.body;
 
         if (!habitId || !dateKey) {
             res.status(400).json({ error: 'habitId and dateKey are required' });
             return;
         }
+        if (typeof habitId !== 'string') {
+            res.status(400).json({ error: 'habitId must be a string' });
+            return;
+        }
+        if (typeof dateKey !== 'string') {
+            res.status(400).json({ error: 'dateKey must be a YYYY-MM-DD string' });
+            return;
+        }
+
+        const structureValidation = validateHabitEntryPayloadStructure({ habitId, dayKey: dateKey, ...rawData });
+        if (!structureValidation.valid) {
+            res.status(400).json({ error: structureValidation.error });
+            return;
+        }
+        const noCompletionValidation = assertNoStoredCompletion(rawData);
+        if (!noCompletionValidation.valid) {
+            res.status(400).json({ error: noCompletionValidation.error });
+            return;
+        }
+        const data = sanitizeEntryMutationPayload(rawData);
+        delete data.dayKey;
+        delete data.date;
 
         const { upsertHabitEntry } = await import('../repositories/habitEntryRepository');
 
@@ -471,7 +538,8 @@ export async function upsertHabitEntryRoute(req: Request, res: Response): Promis
             return;
         }
 
-        const entry = await upsertHabitEntry(habitId, dateKey, householdId, userId, data);
+        const { timeZone: _upsertTimeZone, ...persistenceData } = data;
+        const entry = await upsertHabitEntry(habitId, dateKey, householdId, userId, persistenceData);
 
         const updatedDayLog = await recomputeDayLogForHabit(habitId, dateKey, householdId, userId);
 
@@ -529,30 +597,76 @@ export async function batchCreateEntriesRoute(req: Request, res: Response): Prom
             return;
         }
 
-        let created = 0;
-        let updated = 0;
-        const results: { habitId: string; dayKey: string; id: string }[] = [];
-        const now = new Date().toISOString();
-        const touchedHabitIds = new Set<string>();
+        const preparedEntries: Array<{
+            habitId: string;
+            routineId?: string;
+            value: number;
+            source: 'manual' | 'routine';
+        }> = [];
+        const seenHabitIds = new Set<string>();
 
+        // Validate the complete batch before the first write so a bad later
+        // item cannot leave a partially applied routine completion.
         for (const item of entries) {
             const habitId = item?.habitId;
             if (!habitId || typeof habitId !== 'string') {
                 res.status(400).json({ error: 'Each entry must have a non-empty habitId string' });
                 return;
             }
+            if (seenHabitIds.has(habitId)) {
+                res.status(400).json({ error: `Duplicate habitId in batch: ${habitId}` });
+                return;
+            }
+            seenHabitIds.add(habitId);
 
             const habit = await getHabitById(habitId, householdId, userId);
-            if (!habit) {
-                res.status(404).json({ error: `Habit not found: ${habitId}` });
+            if (!habit || habit.archived || habit.deletedAt) {
+                res.status(404).json({ error: `Active habit not found: ${habitId}` });
                 return;
             }
 
+            const value = getCompletionEntryValue(habit);
+            if (value === null) {
+                res.status(400).json({ error: `${habit.name}: numeric habit has no valid completion target` });
+                return;
+            }
+            const source = item.source === undefined || item.source === 'routine'
+                ? 'routine'
+                : item.source === 'manual'
+                    ? 'manual'
+                    : null;
+            if (!source) {
+                res.status(400).json({ error: 'Batch entry source must be "manual" or "routine"' });
+                return;
+            }
+            const validation = validateHabitEntryPayload(habit, { value, source });
+            if (!validation.valid) {
+                res.status(400).json({ error: `${habit.name}: ${validation.error}` });
+                return;
+            }
+            preparedEntries.push({
+                habitId,
+                value,
+                source,
+                routineId: source === 'routine' && typeof item.routineId === 'string'
+                    ? item.routineId
+                    : undefined,
+            });
+        }
+
+        let created = 0;
+        let updated = 0;
+        const results: { habitId: string; dayKey: string; id: string }[] = [];
+        const now = new Date().toISOString();
+        const touchedHabitIds = new Set<string>();
+
+        for (const item of preparedEntries) {
+            const { habitId } = item;
             const existing = await getHabitEntriesForDay(habitId, dayKey, householdId, userId);
             const entry = await upsertHabitEntry(habitId, dayKey, householdId, userId, {
-                source: 'routine',
-                routineId: typeof item.routineId === 'string' ? item.routineId : undefined,
-                value: 1,
+                source: item.source,
+                routineId: item.routineId,
+                value: item.value,
                 timestamp: now,
             });
             if (existing.length === 0) created += 1;
@@ -595,10 +709,9 @@ export async function deleteHabitEntryByKeyRoute(req: Request, res: Response): P
             return;
         }
 
-        // Validate dayKey format (YYYY-MM-DD)
-        const dayKeyPattern = /^\d{4}-\d{2}-\d{2}$/;
-        if (!dayKeyPattern.test(dateKey)) {
-            res.status(400).json({ error: 'dateKey must be in YYYY-MM-DD format' });
+        const dayKeyValidation = validateDayKey(dateKey);
+        if (!dayKeyValidation.valid) {
+            res.status(400).json({ error: dayKeyValidation.error });
             return;
         }
 

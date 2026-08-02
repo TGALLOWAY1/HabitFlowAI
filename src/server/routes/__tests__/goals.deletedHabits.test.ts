@@ -3,7 +3,7 @@
  *
  * Verifies that:
  * 1. Entries from deleted habits still count toward goal progress
- * 2. Entries that were cascade-soft-deleted (legacy) still count
+ * 2. Soft-deleted entries do not count, even when produced by a legacy cascade
  * 3. All goal progress endpoints agree
  */
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
@@ -169,7 +169,7 @@ describe('Goal progress with deleted habits', () => {
     expect(progressRes.body.progress.percent).toBe(7); // 2/30 ≈ 6.67 → rounds to 7
   });
 
-  it('cascade-soft-deleted entries (legacy) still count toward goal progress', async () => {
+  it('cascade-soft-deleted entries (legacy) stay excluded from goal progress', async () => {
     const cat = await createCategory({ name: 'Exercise', color: '#FF0000' }, TEST_HOUSEHOLD, TEST_USER);
     const habit = await createHabit(
       {
@@ -214,14 +214,14 @@ describe('Goal progress with deleted habits', () => {
     // Hard-delete the habit (simulating legacy behavior)
     await deleteHabit(habit.id, TEST_HOUSEHOLD, TEST_USER);
 
-    // Goal progress should STILL include the cascade-soft-deleted entries
+    // Entry deletion has one meaning everywhere: deleted truth does not count.
     const progressRes = await request(app).get(`/api/goals/${goal.id}/progress`).query({ timeZone: 'UTC' });
-    expect(progressRes.body.progress.currentValue).toBe(50);
-    expect(progressRes.body.progress.percent).toBe(5); // 50/1000
+    expect(progressRes.body.progress.currentValue).toBe(0);
+    expect(progressRes.body.progress.percent).toBe(0);
 
     const gwpRes = await request(app).get('/api/goals-with-progress').query({ timeZone: 'UTC' });
     const gwpGoal = gwpRes.body.goals.find((g: any) => g.goal.id === goal.id);
-    expect(gwpGoal.progress.currentValue).toBe(50);
+    expect(gwpGoal.progress.currentValue).toBe(0);
   });
 
   it('extending a goal whose linked habit was deleted succeeds (POST /api/goals)', async () => {

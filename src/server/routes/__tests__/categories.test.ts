@@ -8,6 +8,7 @@ import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import express, { type Express } from 'express';
 import request from 'supertest';
 import { setupTestMongo, teardownTestMongo, getTestDb } from '../../../test/mongoTestHelper';
+import type { RequestWithIdentity } from '../../middleware/identity';
 import {
   getCategories,
   createCategoryRoute,
@@ -18,6 +19,7 @@ import {
 } from '../categories';
 
 const TEST_USER_ID = 'test-user-123';
+const TEST_HOUSEHOLD_ID = 'test-household-123';
 
 describe('Category Routes', () => {
   let app: Express;
@@ -28,9 +30,11 @@ describe('Category Routes', () => {
     app = express();
     app.use(express.json());
 
-    // Add userId to request (simulating auth middleware)
+    // Add the complete scoped identity supplied by authentication middleware.
     app.use((req, _res, next) => {
-      (req as any).userId = TEST_USER_ID;
+      const identityRequest = req as RequestWithIdentity;
+      identityRequest.householdId = TEST_HOUSEHOLD_ID;
+      identityRequest.userId = TEST_USER_ID;
       next();
     });
 
@@ -323,6 +327,26 @@ describe('Category Routes', () => {
 
       expect(response.body.error.code).toBe('VALIDATION_ERROR');
     });
+
+    it('should reject a stale partial order without deleting categories', async () => {
+      const first = await request(app)
+        .post('/api/categories')
+        .send({ name: 'Category 1', color: 'bg-red-500' })
+        .expect(201);
+
+      await request(app)
+        .post('/api/categories')
+        .send({ name: 'Category 2', color: 'bg-blue-500' })
+        .expect(201);
+
+      await request(app)
+        .patch('/api/categories/reorder')
+        .send({ categories: [first.body.category] })
+        .expect(400);
+
+      const response = await request(app).get('/api/categories').expect(200);
+      expect(response.body.categories).toHaveLength(2);
+    });
   });
 
   describe('Feature Flag - 501 Response', () => {
@@ -367,4 +391,3 @@ describe('Category Routes', () => {
     });
   });
 });
-

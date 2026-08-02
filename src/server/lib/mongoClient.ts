@@ -17,7 +17,7 @@ let indexesEnsuredForDbName: string | null = null;
 
 const HABIT_ENTRIES_UNIQUE_INDEX_NAME = 'idx_habitEntries_user_habit_dayKey_active_unique';
 const DEDUPE_INSTRUCTIONS =
-  'Run the dedupe script to collapse duplicate active entries (see docs/audits/m2_writepaths_daykey_map.md or docs/debug/db-config.md).';
+  'Backfill missing dayKey values, then run the dedupe script to archive and remove duplicate index keys (see docs/migrations/README.md).';
 
 function isTestEnv(): boolean {
   return (
@@ -27,18 +27,22 @@ function isTestEnv(): boolean {
   );
 }
 
-/** Returns count of (householdId, userId, habitId, dayKey) groups that have more than one active doc. */
-async function countDuplicateActiveHabitEntryKeys(database: Db): Promise<number> {
+/**
+ * Count duplicate keys exactly as MongoDB's full unique index sees them.
+ * Deleted documents remain in the indexed collection, so excluding them (or
+ * falling back from dayKey to date) can incorrectly report that index creation
+ * is safe.
+ */
+export async function countDuplicateHabitEntryKeys(database: Db): Promise<number> {
   const coll = database.collection('habitEntries');
   const cursor = coll.aggregate<{ count: number }>([
-    { $match: { deletedAt: { $exists: false } } },
     {
       $group: {
         _id: {
-          householdId: { $ifNull: ['$householdId', ''] },
+          householdId: '$householdId',
           userId: '$userId',
           habitId: '$habitId',
-          dayKey: { $ifNull: ['$dayKey', '$date'] },
+          dayKey: '$dayKey',
         },
         n: { $sum: 1 },
       },
@@ -55,9 +59,9 @@ async function ensureHabitEntriesUniqueIndex(database: Db): Promise<void> {
 
   // In test, skip duplicate check (aggregation) to avoid slowness; in dev/prod detect duplicates and warn (do not create unique index until deduped).
   if (!isTestEnv()) {
-    const duplicateCount = await countDuplicateActiveHabitEntryKeys(database);
+    const duplicateCount = await countDuplicateHabitEntryKeys(database);
     if (duplicateCount > 0) {
-      const msg = `[MongoDB] Duplicate active habit entries detected (${duplicateCount} duplicate keys). ${DEDUPE_INSTRUCTIONS}`;
+      const msg = `[MongoDB] Duplicate habit-entry index keys detected (${duplicateCount} duplicate keys). ${DEDUPE_INSTRUCTIONS}`;
       console.warn(msg);
       return;
     }

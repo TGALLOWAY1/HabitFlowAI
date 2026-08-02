@@ -9,13 +9,13 @@
 
 ## Definition (Locked)
 
-A **HabitEntry** is the atomic, canonical record that a user performed (or logged) a habit on a specific day and time.
+A **HabitEntry** is the atomic, canonical record that a user logged habit activity (or an excused/frozen opportunity) on a specific calendar day and time.
 
 HabitEntries are the **single source of truth** for all historical data in HabitFlow.
 
 Everything else — daily completion, weekly progress, streaks, momentum, goals, charts, analytics — is **derived** from HabitEntries.
 
-There is no such thing as completion without an entry.
+There is no such thing as completion without qualifying entry data. An entry can represent partial numeric progress or a freeze and therefore does not necessarily mean completion.
 
 ---
 
@@ -35,7 +35,7 @@ There is no such thing as completion without an entry.
 - Canonical default constraint:
 
 ```ts
-UNIQUE (habitId, dayKey)
+UNIQUE (householdId, userId, habitId, dayKey)
 ````
 
 * This applies to **daily tracking views**.
@@ -129,16 +129,13 @@ HabitEntries are **read once, interpreted many times**.
 
 ### Daily Completion (Daily Habits)
 
-A daily habit is complete on `dayKey` **iff**:
+- **Boolean:** complete when at least one valid, active, non-freeze entry exists for the habit and DayKey.
+- **Numeric:** sum valid active values for the habit and DayKey; complete only when the sum is at least the habit's finite positive target.
+- A positive value below target is partial progress, not completion.
+- Zero/empty is no progress. Negative and non-finite values are invalid.
+- A freeze protects streak continuity but does not complete the habit.
 
-```ts
-exists HabitEntry
-where habitId == X
-  and dayKey == Y
-  and deletedAt == null
-```
-
-No other signal may mark a habit complete.
+No other signal may mark a habit complete. Every UI and analytical status must call the canonical completion derivation rather than infer completion from entry existence or a truthy value.
 
 ---
 
@@ -150,10 +147,9 @@ Weekly habits aggregate entries whose DayKeys fall within the week window.
   `count(entries) >= 1`
 
 * **Frequency**
-  `count(entries) >= weeklyTarget`
+  `count(distinct scheduled DayKeys completed by the daily rule) >= weeklyTarget`
 
-* **Quantity**
-  `sum(entry.value) >= weeklyTarget`
+Weekly quotas count completed occurrences, not raw event count or numeric quantity. Off-schedule entries do not satisfy the quota.
 
 Weekly state is always derived — never stored.
 
@@ -161,8 +157,8 @@ Weekly state is always derived — never stored.
 
 ### Bundles
 
-* Bundle parents do **not** have entries.
-* Parent completion is derived from child habit entries.
+* Bundle parents do **not** have authoritative entries.
+* Parent completion is derived from the children active under temporal membership on that DayKey.
 * Child entries remain canonical.
 
 ---
@@ -172,6 +168,8 @@ Weekly state is always derived — never stored.
 * Goals aggregate from HabitEntries only.
 * Attribution should be preserved where possible.
 * Goal-side counters or logs are forbidden.
+* Active historical entries remain attributable after their Habit is deleted.
+* A soft-deleted entry never contributes, regardless of whether its Habit still exists.
 
 ---
 

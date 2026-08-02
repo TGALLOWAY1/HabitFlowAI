@@ -48,4 +48,33 @@ describe('NumericInputPopover', () => {
         fireEvent.submit(input.closest('form')!);
         expect(onSubmit).toHaveBeenCalledWith(12);
     });
+
+    it('does not submit a negative quantity', () => {
+        const onSubmit = vi.fn();
+        render(<NumericInputPopover {...baseProps} initialValue={0} onSubmit={onSubmit} />);
+        const input = screen.getByRole('textbox') as HTMLInputElement;
+        fireEvent.change(input, { target: { value: '-2' } });
+        fireEvent.submit(input.closest('form')!);
+
+        expect(onSubmit).not.toHaveBeenCalled();
+    });
+
+    it('treats zero as clearing the entry instead of storing redundant progress', () => {
+        const onSubmit = vi.fn();
+        const onClear = vi.fn();
+        render(
+            <NumericInputPopover
+                {...baseProps}
+                initialValue={4}
+                onSubmit={onSubmit}
+                onClear={onClear}
+            />
+        );
+        const input = screen.getByRole('textbox') as HTMLInputElement;
+        fireEvent.change(input, { target: { value: '0' } });
+        fireEvent.submit(input.closest('form')!);
+
+        expect(onClear).toHaveBeenCalledOnce();
+        expect(onSubmit).not.toHaveBeenCalled();
+    });
 });

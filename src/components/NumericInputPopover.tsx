@@ -60,9 +60,13 @@ export const NumericInputPopover: React.FC<NumericInputPopoverProps> = ({
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         const numValue = parseFloat(value);
-        if (!isNaN(numValue)) {
-            onSubmit(numValue);
+        if (!Number.isFinite(numValue) || numValue < 0) return;
+        if (numValue === 0 && onClear) {
+            onClear();
+            onClose();
+            return;
         }
+        onSubmit(numValue);
         onClose();
     };
 
@@ -88,10 +92,12 @@ export const NumericInputPopover: React.FC<NumericInputPopoverProps> = ({
                     onFocus={(e) => e.currentTarget.select()}
                     className="w-full bg-neutral-900 border border-white/10 rounded-lg px-3 py-1.5 text-white text-sm focus:outline-none focus:border-emerald-500"
                     placeholder="0"
+                    aria-label={`Quantity${unit ? ` in ${unit}` : ''}`}
                 />
                 {unit && <span className="text-xs text-neutral-500 font-medium">{unit}</span>}
                 <button
                     type="submit"
+                    aria-label="Save quantity"
                     className="p-1.5 bg-emerald-500 text-neutral-900 rounded-lg hover:bg-emerald-400 transition-colors"
                 >
                     <Check size={14} strokeWidth={3} />

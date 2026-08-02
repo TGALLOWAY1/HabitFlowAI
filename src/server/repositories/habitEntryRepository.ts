@@ -301,17 +301,38 @@ export async function upsertHabitEntry(
     const setFields: Record<string, unknown> = {
         dayKey,
         updatedAt: now,
-        value: updates.value ?? undefined,
         timestamp: updates.timestamp || now,
         source: updates.source || 'manual',
         ...updatesCopy,
     };
+    const unsetFields: Record<string, ''> = { deletedAt: '' };
+
+    // Mongo serializes undefined inconsistently across driver options. Treat an
+    // explicitly undefined mutation field as a clear and never persist it as
+    // null/stale provenance.
+    for (const [field, value] of Object.entries(setFields)) {
+        if (value === undefined) {
+            delete setFields[field];
+            unsetFields[field] = '';
+        }
+    }
+    if (updates.value === undefined) unsetFields.value = '';
+    if (setFields.source !== 'routine') {
+        delete setFields.routineId;
+        unsetFields.routineId = '';
+    }
+    if (setFields.source !== 'apple_health') {
+        for (const field of ['sourceRuleId', 'importedMetricValue', 'importedMetricType']) {
+            delete setFields[field];
+            unsetFields[field] = '';
+        }
+    }
 
     const result = await collection.findOneAndUpdate(
         scopeFilter(householdId, userId, { habitId, dayKey }),
         {
             $set: setFields,
-            $unset: { deletedAt: '' },
+            $unset: unsetFields,
             $setOnInsert: {
                 id: randomUUID(),
                 createdAt: now,

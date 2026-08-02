@@ -56,6 +56,25 @@ describe('truthQuery', () => {
       expect(views).toHaveLength(0);
     });
 
+    it('preserves freeze metadata needed by completion consumers', async () => {
+      const dayKey = '2025-01-15';
+      vi.mocked(getHabitEntriesByHabit).mockResolvedValue([{
+        id: 'freeze-1',
+        habitId,
+        dayKey,
+        timestamp: '2025-01-15T10:00:00.000Z',
+        value: 0,
+        note: 'freeze:manual',
+        source: 'manual',
+        createdAt: '2025-01-15T10:00:00.000Z',
+        updatedAt: '2025-01-15T10:00:00.000Z',
+      }]);
+
+      const views = await getEntryViewsForHabit(habitId, householdId, userId, { timeZone });
+
+      expect(views[0].note).toBe('freeze:manual');
+    });
+
     it('should sort by dayKey then timestampUtc', async () => {
       const dayKey1 = '2025-01-15';
       const dayKey2 = '2025-01-16';

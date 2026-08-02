@@ -3,6 +3,7 @@ import type { Request, Response } from 'express';
 import { deleteGoalRoute } from '../goals';
 
 vi.mock('../../repositories/goalRepository', () => ({
+  getGoalById: vi.fn(),
   deleteGoal: vi.fn(),
 }));
 
@@ -11,7 +12,7 @@ vi.mock('../../repositories/habitRepository', () => ({
   getHabitsByUser: vi.fn(),
 }));
 
-import { deleteGoal } from '../../repositories/goalRepository';
+import { deleteGoal, getGoalById } from '../../repositories/goalRepository';
 import { unlinkHabitsFromGoal } from '../../repositories/habitRepository';
 
 function createRes(): Response {
@@ -24,9 +25,13 @@ function createRes(): Response {
 describe('deleteGoalRoute', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(getGoalById).mockResolvedValue(null);
   });
 
   it('clears linkedGoalId from habits when goal is deleted', async () => {
+    vi.mocked(getGoalById).mockResolvedValue(
+      { id: 'goal-1' } as NonNullable<Awaited<ReturnType<typeof getGoalById>>>,
+    );
     vi.mocked(deleteGoal).mockResolvedValue(true);
     vi.mocked(unlinkHabitsFromGoal).mockResolvedValue(2);
 

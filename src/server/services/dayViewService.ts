@@ -15,6 +15,8 @@ import type { EntryView } from './truthQuery';
 import type { DayKey } from '../../domain/time/dayKey';
 import { evaluateChecklistSuccess } from './checklistSuccessService';
 import { startOfWeek, endOfWeek, parseISO, format } from 'date-fns';
+import { deriveDailyHabitCompletion } from '../../domain/habits/completion';
+import { deriveWeeklyHabitProgress } from '../../domain/habits/weeklyProgress';
 
 /**
  * Day View Habit Status
@@ -27,6 +29,9 @@ export interface DayViewHabitStatus {
 
   /** Whether the habit is complete for the requested day */
   isComplete: boolean;
+
+  /** Whether positive progress exists below the completion threshold */
+  isPartial: boolean;
 
   /** Current progress value (for weekly habits, this is the week's progress) */
   currentValue: number;
@@ -95,15 +100,19 @@ function getWeekWindow(dayKey: DayKey): { startDayKey: DayKey; endDayKey: DayKey
  * @returns True if complete
  */
 function deriveDailyCompletion(
-  habitId: string,
+  habit: Habit,
   dayKey: DayKey,
   entryViews: EntryView[]
-): boolean {
-  return entryViews.some(
-    entry =>
-      entry.habitId === habitId &&
-      entry.dayKey === dayKey &&
-      !entry.deletedAt
+): ReturnType<typeof deriveDailyHabitCompletion> {
+  return deriveDailyHabitCompletion(
+    habit,
+    entryViews.filter(
+      entry =>
+        entry.habitId === habit.id &&
+        entry.dayKey === dayKey &&
+        !entry.deletedAt &&
+        !entry.note?.startsWith('freeze:'),
+    ),
   );
 }
 
@@ -126,44 +135,7 @@ function deriveWeeklyProgress(
   currentValue: number;
   targetValue: number;
 } {
-  // Filter entries to this week and exclude deleted
-  const weekEntries = entryViews.filter(
-    entry =>
-      entry.habitId === habit.id &&
-      entry.dayKey >= weekStartDayKey &&
-      entry.dayKey <= weekEndDayKey &&
-      !entry.deletedAt
-  );
-
-  const target = habit.timesPerWeek ?? habit.goal.target ?? 1;
-
-  // Determine weekly type
-  const isQuantity = habit.goal.type === 'number';
-  const isFrequency = !isQuantity && target > 1;
-
-  let currentValue: number;
-  let isComplete: boolean;
-
-  if (isQuantity) {
-    // Quantity weekly: sum of entry values
-    currentValue = weekEntries.reduce((sum, entry) => sum + (entry.value ?? 0), 0);
-    isComplete = currentValue >= target;
-  } else if (isFrequency) {
-    // Frequency weekly: count distinct dayKeys
-    const distinctDays = new Set(weekEntries.map(e => e.dayKey)).size;
-    currentValue = distinctDays;
-    isComplete = distinctDays >= target;
-  } else {
-    // Binary weekly: any entry in week
-    currentValue = weekEntries.length > 0 ? 1 : 0;
-    isComplete = weekEntries.length > 0;
-  }
-
-  return {
-    isComplete,
-    currentValue,
-    targetValue: target,
-  };
+  return deriveWeeklyHabitProgress(habit, weekStartDayKey, weekEndDayKey, entryViews);
 }
 
 /**
@@ -257,7 +229,7 @@ function deriveBundleCompletion(
       }
     } else {
       // Daily child: check if complete on dayKey
-      childComplete = deriveDailyCompletion(childHabit.id, dayKey, entryViews);
+      childComplete = deriveDailyCompletion(childHabit, dayKey, entryViews).isComplete;
     }
 
     if (childComplete) {
@@ -354,6 +326,7 @@ export async function computeDayView(
       status = {
         habit,
         isComplete: bundleStatus.isComplete,
+        isPartial: (bundleStatus.completedChildrenCount ?? 0) > 0 && !bundleStatus.isComplete,
         currentValue: bundleStatus.completedChildrenCount ?? 0,
         targetValue: bundleStatus.totalChildrenCount ?? 0,
         progressPercent:
@@ -375,6 +348,7 @@ export async function computeDayView(
       status = {
         habit,
         isComplete: weekProgress.isComplete,
+        isPartial: weekProgress.currentValue > 0 && !weekProgress.isComplete,
         currentValue: weekProgress.currentValue,
         targetValue: weekProgress.targetValue,
         progressPercent:
@@ -383,32 +357,12 @@ export async function computeDayView(
             : 0,
         weekComplete: weekProgress.isComplete,
       };
-    } else if (habit.goal.type === 'number') {
-      // Daily quantity habit: sum entry values for this day
-      const dayEntries = habitEntries.filter(
-        entry => entry.habitId === habit.id && entry.dayKey === dayKey && !entry.deletedAt
-      );
-      const currentValue = dayEntries.reduce((sum, entry) => sum + (entry.value ?? 0), 0);
-      const target = habit.goal.target ?? 1;
-      const isComplete = currentValue >= target;
-
-      status = {
-        habit,
-        isComplete,
-        currentValue,
-        targetValue: target,
-        progressPercent: target > 0 ? Math.min(100, Math.round((currentValue / target) * 100)) : 0,
-      };
     } else {
-      // Daily boolean habit: derive daily completion
-      const isComplete = deriveDailyCompletion(habit.id, dayKey, habitEntries);
+      const completion = deriveDailyCompletion(habit, dayKey, habitEntries);
 
       status = {
         habit,
-        isComplete,
-        currentValue: isComplete ? 1 : 0,
-        targetValue: 1,
-        progressPercent: isComplete ? 100 : 0,
+        ...completion,
       };
     }
 

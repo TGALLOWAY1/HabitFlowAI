@@ -11,6 +11,7 @@ import { getActiveRulesByUser } from '../repositories/habitHealthRuleRepository'
 import { getHabitEntriesForDay, upsertHabitEntry } from '../repositories/habitEntryRepository';
 import { getHabitById } from '../repositories/habitRepository';
 import { createSuggestion, suggestionExistsForDayAndHabit } from '../repositories/healthSuggestionRepository';
+import { validateHabitEntryPayload } from '../utils/habitValidation';
 
 export interface ProcessSyncResult {
   autoLogged: string[];   // habit IDs that were auto-logged
@@ -58,6 +59,8 @@ export async function processHealthSync(
       if (existing.length > 0) continue;
 
       const value = resolveEntryValue(habit, evaluation.metricValue);
+      const validation = validateHabitEntryPayload(habit, { value, source: 'apple_health' });
+      if (!validation.valid) continue;
       await upsertHabitEntry(
         rule.habitId, dayKey, householdId, userId,
         {

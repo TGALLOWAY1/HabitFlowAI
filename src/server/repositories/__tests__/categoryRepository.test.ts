@@ -248,15 +248,16 @@ describe('CategoryRepository', () => {
       expect(allCategories[0].id).toBe(cat3.id);
     });
 
-    it('should handle empty array', async () => {
+    it('should reject an incomplete order without deleting categories', async () => {
       await createCategory({ name: 'Category 1', color: 'bg-red-500' }, TEST_HOUSEHOLD_ID, TEST_USER_ID);
 
-      const result = await reorderCategories(TEST_HOUSEHOLD_ID, TEST_USER_ID, []);
-
-      expect(result).toEqual([]);
+      await expect(
+        reorderCategories(TEST_HOUSEHOLD_ID, TEST_USER_ID, [])
+      ).rejects.toThrow('every existing category exactly once');
 
       const allCategories = await getCategoriesByUser(TEST_HOUSEHOLD_ID, TEST_USER_ID);
-      expect(allCategories).toEqual([]);
+      expect(allCategories).toHaveLength(1);
+      expect(allCategories[0].name).toBe('Category 1');
     });
   });
 
@@ -275,4 +276,3 @@ describe('CategoryRepository', () => {
     });
   });
 });
-

@@ -72,23 +72,28 @@ export function validateHabitEntryPayloadStructure(payload: Partial<HabitEntryPa
         return { valid: false, error: 'habitId is required and must be a string' };
     }
 
-    // dayKey or date (legacy) is required - but we'll normalize later, so just check format if provided
-    if (payload.dayKey && typeof payload.dayKey === 'string') {
+    if (payload.dayKey !== undefined && typeof payload.dayKey !== 'string') {
+        return { valid: false, error: 'dayKey must be a YYYY-MM-DD string' };
+    }
+    if (payload.dayKey !== undefined) {
         const dayKeyValidation = validateDayKey(payload.dayKey);
         if (!dayKeyValidation.valid) {
             return dayKeyValidation;
         }
     }
 
-    if (payload.date && typeof payload.date === 'string') {
+    if (payload.date !== undefined && typeof payload.date !== 'string') {
+        return { valid: false, error: 'date must be a YYYY-MM-DD string' };
+    }
+    if (payload.date !== undefined) {
         const dayKeyValidation = validateDayKey(payload.date);
         if (!dayKeyValidation.valid) {
             return { valid: false, error: `Invalid date format (legacy): ${dayKeyValidation.error}` };
         }
     }
 
-    // If neither dayKey nor date is provided, we'll check for timestamp + timeZone in normalization
-    // Don't fail here - let normalization handle it
+    // dayKey takes precedence when both aliases are present. If neither is
+    // supplied, normalization derives the day from timestamp (or now).
 
     // Validate source if provided
     if (payload.source !== undefined) {
@@ -103,8 +108,10 @@ export function validateHabitEntryPayloadStructure(payload: Partial<HabitEntryPa
     }
 
     // Validate value if provided (must be number or null)
-    if (payload.value !== undefined && payload.value !== null && typeof payload.value !== 'number') {
-        return { valid: false, error: 'value must be a number or null' };
+    if (payload.value !== undefined && payload.value !== null && (
+        typeof payload.value !== 'number' || !Number.isFinite(payload.value)
+    )) {
+        return { valid: false, error: 'value must be a finite number or null' };
     }
 
     // Validate timestamp if provided (must be ISO 8601)
@@ -165,4 +172,3 @@ export function validateGoalLinkAggregation(
 
     return { valid: true };
 }
-

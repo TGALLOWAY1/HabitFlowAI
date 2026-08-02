@@ -212,6 +212,7 @@ interface HabitRowContentProps {
     onCellPointerDown?: (habitId: string, dateStr: string, e: React.PointerEvent) => void;
     onCellPointerUp?: () => void;
     onCellPointerMove?: () => void;
+    onClearEntry?: (habitId: string, dateStr: string) => Promise<void>;
 }
 
 const HabitRowContent = ({
@@ -245,6 +246,7 @@ const HabitRowContent = ({
     onCellPointerDown,
     onCellPointerUp,
     onCellPointerMove,
+    onClearEntry,
 }: HabitRowContentProps) => {
 
     const { hideStreaks } = useDashboardPrefs();
@@ -369,7 +371,9 @@ const HabitRowContent = ({
                     }
 
                     const isPartial = hasValue && !isCompleted;
-                    const hasExistingEntry = isCompleted || hasValue;
+                    const hasExistingEntry = habit.type === 'bundle'
+                        ? isCompleted || hasValue
+                        : !!log;
 
                     const isInteractive = true; // Bundles are now interactive
 
@@ -379,30 +383,16 @@ const HabitRowContent = ({
                     const handleBundleClick = (e: React.MouseEvent) => {
                         e.stopPropagation();
                         if (habit.type !== 'bundle') return;
-
-                        const stats = getBundleStats(habit, logs, dateStr);
-                        const childrenToToggle = habit.subHabitIds || [];
-                        const allDone = stats.isAllDone;
-
-                        // Toggle Logic: If ALL done, clear all. Else, complete remaining.
-                        childrenToToggle.forEach(childId => {
-                            const childLog = logs[`${childId}-${dateStr}`];
-                            const isChildDone = childLog?.completed;
-
-                            if (allDone) {
-                                // Turn OFF if on
-                                if (isChildDone) onToggle(childId, dateStr);
-                            } else {
-                                // Turn ON if off
-                                if (!isChildDone) onToggle(childId, dateStr);
-                            }
-                        });
+                        // The store preflights every child and uses canonical
+                        // numeric targets, so bundle completion is one coherent
+                        // action instead of a series of child toggles.
+                        void onToggle(habit.id, dateStr);
                     };
 
                     return (
                         <div
                             key={dateStr}
-                            className="w-16 flex-shrink-0 border-r border-white/5 flex items-center justify-center p-2"
+                            className="relative w-16 flex-shrink-0 border-r border-white/5 flex items-center justify-center p-2"
                         >
                             <button
                                 onClick={habit.type === 'bundle' && habit.bundleType !== 'choice' ? handleBundleClick : (isInteractive ? (e) => handleCellClick(e, habit, dateStr, log) : undefined)}
@@ -473,6 +463,20 @@ const HabitRowContent = ({
                                     )
                                 )}
                             </button>
+                            {habit.type !== 'bundle' && hasExistingEntry && onClearEntry && (
+                                <button
+                                    type="button"
+                                    onClick={(event) => {
+                                        event.stopPropagation();
+                                        void onClearEntry(habit.id, dateStr);
+                                    }}
+                                    className="absolute top-0.5 right-0.5 z-10 w-4 h-4 rounded-full bg-neutral-950/90 text-neutral-400 hover:text-red-300 hover:bg-red-500/20 flex items-center justify-center border border-white/10"
+                                    title="Clear entry"
+                                    aria-label={`Clear entry for ${habit.name} on ${dateStr}`}
+                                >
+                                    <Trash2 size={9} aria-hidden="true" />
+                                </button>
+                            )}
                         </div>
                     );
                 })}
@@ -505,6 +509,7 @@ const SortableHabitRow = ({
     onCellPointerDown,
     onCellPointerUp,
     onCellPointerMove,
+    onClearEntry,
 }: {
     habit: Habit;
     allHabits: Habit[];
@@ -530,6 +535,7 @@ const SortableHabitRow = ({
     onCellPointerDown?: (habitId: string, dateStr: string, e: React.PointerEvent) => void;
     onCellPointerUp?: () => void;
     onCellPointerMove?: () => void;
+    onClearEntry?: (habitId: string, dateStr: string) => Promise<void>;
 }) => {
     const {
         attributes,
@@ -626,6 +632,7 @@ const SortableHabitRow = ({
                 onCellPointerDown={onCellPointerDown}
                 onCellPointerUp={onCellPointerUp}
                 onCellPointerMove={onCellPointerMove}
+                onClearEntry={onClearEntry}
             />
 
             {/* Child Rows - Rendered when expanded */}
@@ -654,6 +661,7 @@ const SortableHabitRow = ({
                     onCellPointerDown={onCellPointerDown}
                     onCellPointerUp={onCellPointerUp}
                     onCellPointerMove={onCellPointerMove}
+                    onClearEntry={onClearEntry}
                 />
             ))}
         </div>
@@ -1070,7 +1078,7 @@ export const TrackerGrid = ({
         }
 
         // Standard habit: delete mode clears entry on click
-        const hasExistingEntry = log?.completed || (log?.value !== undefined && log.value > 0);
+        const hasExistingEntry = !!log;
         if (deleteMode) {
             if (hasExistingEntry) {
                 try {
@@ -1193,6 +1201,7 @@ export const TrackerGrid = ({
                                                 onCellPointerDown={onCellPointerDown}
                                                 onCellPointerUp={onCellPointerUp}
                                                 onCellPointerMove={onCellPointerMove}
+                                                onClearEntry={handleClearEntry}
                                             />
                                         ))}
                                     </SortableContext>

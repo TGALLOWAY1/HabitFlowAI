@@ -6,10 +6,26 @@
 
 import { TTLCache } from './cache.js';
 
-/** Progress overview responses — 30s TTL. Key: `${userId}:${dayKey}` */
+/**
+ * Build a cache key that keeps the userId first so invalidateUserCaches()
+ * remains efficient while isolating household, timezone, and calendar day.
+ */
+export function buildUserScopedCacheKey(
+  userId: string,
+  householdId: string,
+  timeZone: string,
+  referenceDayKey: string,
+  ...segments: Array<string | number>
+): string {
+  return [userId, householdId, timeZone, referenceDayKey, ...segments]
+    .map(part => encodeURIComponent(String(part)))
+    .join(':');
+}
+
+/** Progress overview responses — 30s TTL. */
 export const progressCache = new TTLCache<unknown>(30_000);
 
-/** Consolidated analytics responses — 60s TTL. Key: `${userId}:${days}:${heatmapDays}` */
+/** Consolidated analytics responses — 60s TTL. */
 export const analyticsCache = new TTLCache<unknown>(60_000);
 
 /**

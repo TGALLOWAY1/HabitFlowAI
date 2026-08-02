@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from 'react';
+import { useCallback, useMemo, useState, useEffect } from 'react';
 import { useHabitStore } from '../../store/HabitContext';
 import { getTodayHabitStats } from '../../utils/habitUtils';
 import { evaluateChecklistSuccess } from '../../shared/checklistSuccessRule';
@@ -10,6 +10,8 @@ import { format } from 'date-fns';
 import { Plus } from 'lucide-react';
 import { fetchDayView, getLocalTimeZone } from '../../lib/persistenceClient';
 import { HealthSuggestionBanner } from '../HealthSuggestionBanner';
+import { deriveDailyHabitCompletion } from '../../domain/habits/completion';
+import { resolveLocalHabitStatuses, type DayViewHabitStatus } from './habitStatusResolution';
 import {
     DndContext,
     closestCenter,
@@ -30,17 +32,6 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 
 import type { Habit } from '../../types';
-
-interface DayViewHabitStatus {
-    habit: Habit;
-    isComplete: boolean;
-    currentValue: number;
-    targetValue: number;
-    progressPercent: number;
-    weekComplete?: boolean;
-    completedChildrenCount?: number;
-    totalChildrenCount?: number;
-}
 
 interface DayViewData {
     dayKey: string;
@@ -129,8 +120,7 @@ export const DayView = ({ onAddHabit, onEditHabit, onViewHistory }: DayViewProps
     const [bundlePickerHabit, setBundlePickerHabit] = useState<Habit | null>(null);
 
     // Fetch day view from truthQuery endpoint
-    useEffect(() => {
-        const loadDayView = async () => {
+    const loadDayView = useCallback(async () => {
             setDayViewLoading(true);
             setDayViewError(null);
             try {
@@ -142,10 +132,11 @@ export const DayView = ({ onAddHabit, onEditHabit, onViewHistory }: DayViewProps
             } finally {
                 setDayViewLoading(false);
             }
-        };
-
-        loadDayView();
     }, [dateStr]);
+
+    useEffect(() => {
+        void loadDayView();
+    }, [loadDayView, habits]);
 
     // Create lookup map for habit statuses (from API)
     const habitStatusMap = useMemo(() => {
@@ -168,56 +159,31 @@ export const DayView = ({ onAddHabit, onEditHabit, onViewHistory }: DayViewProps
 
     // Merge with context logs so toggles from Today view update UI immediately
     const resolvedHabitStatusMap = useMemo(() => {
-        const map = new Map(habitStatusMap);
+        const habitsToResolve = [...todaysHabits];
+        todaysHabits.forEach(habit => habit.subHabitIds?.forEach(subId => {
+            const subHabit = allHabitsLookup.get(subId);
+            if (subHabit) habitsToResolve.push(subHabit);
+        }));
+        const map = resolveLocalHabitStatuses({
+            baseStatuses: habitStatusMap,
+            habits: habitsToResolve,
+            logs,
+            dayKey: dateStr,
+        });
 
-        // Helper to merge a single habit's log into the map
-        const mergeHabitLog = (habit: Habit) => {
-            const key = `${habit.id}-${dateStr}`;
-            const log = logs[key];
-            if (log !== undefined) {
-                const currentValue = log.value ?? 0;
-                const targetValue = habit.goal?.target ?? (habit.goal?.type === 'number' ? 1 : 1);
-                const isComplete = habit.goal?.type === 'number'
-                    ? (habit.goal.target ? (currentValue >= habit.goal.target) : currentValue > 0)
-                    : !!log.completed;
-                const progressPercent = habit.goal?.target
-                    ? Math.min(100, Math.round((currentValue / habit.goal.target) * 100))
-                    : (isComplete ? 100 : 0);
-                const existing = map.get(habit.id);
-                if (existing) {
-                    map.set(habit.id, { ...existing, isComplete, currentValue, targetValue, progressPercent });
-                } else {
-                    map.set(habit.id, {
-                        habit,
-                        isComplete,
-                        currentValue,
-                        targetValue,
-                        progressPercent,
-                    });
-                }
-            }
-        };
-
-        // Merge root habits + shared completion semantics
         todaysHabits.forEach(habit => {
-            if (habit.type === 'bundle' && habit.subHabitIds) {
-                habit.subHabitIds.forEach(subId => {
-                    const subHabit = allHabitsLookup.get(subId);
-                    if (subHabit) mergeHabitLog(subHabit);
-                });
-            }
-
             const existing = map.get(habit.id);
             const isComplete = todayHabitStats.habitCompletionStates[habit.id] ?? false;
             if (existing) {
                 map.set(habit.id, { ...existing, isComplete });
             } else {
+                const completion = deriveDailyHabitCompletion(habit, []);
                 map.set(habit.id, {
                     habit,
                     isComplete,
-                    currentValue: 0,
-                    targetValue: 1,
-                    progressPercent: isComplete ? 100 : 0,
+                    currentValue: completion.currentValue,
+                    targetValue: completion.targetValue,
+                    progressPercent: completion.progressPercent,
                 });
             }
         });
@@ -281,6 +247,17 @@ export const DayView = ({ onAddHabit, onEditHabit, onViewHistory }: DayViewProps
     // Handlers
     const handleToggle = async (habitId: string) => {
         await toggleHabit(habitId, dateStr);
+        await loadDayView();
+    };
+
+    const handleUpsertHabitEntry = async (habitId: string, dayKey: string, data: unknown) => {
+        await upsertHabitEntry(habitId, dayKey, data);
+        await loadDayView();
+    };
+
+    const handleDeleteHabitEntry = async (habitId: string, dayKey: string) => {
+        await deleteHabitEntryByKey(habitId, dayKey);
+        await loadDayView();
     };
 
     const handlePin = async (habitId: string) => {
@@ -427,8 +404,8 @@ export const DayView = ({ onAddHabit, onEditHabit, onViewHistory }: DayViewProps
                                                 onEditHabit={onEditHabit}
                                     showRemove
                                                 allHabitsLookup={allHabitsLookup}
-                                                onUpdateHabitEntry={upsertHabitEntry}
-                                                deleteHabitEntryByKey={deleteHabitEntryByKey}
+                                                onUpdateHabitEntry={handleUpsertHabitEntry}
+                                                deleteHabitEntryByKey={handleDeleteHabitEntry}
                                                 dragHandleProps={dragHandleProps}
                                             />
                                         )}
@@ -450,8 +427,8 @@ export const DayView = ({ onAddHabit, onEditHabit, onViewHistory }: DayViewProps
                                     onEditHabit={onEditHabit}
                                     showRemove
                                     allHabitsLookup={allHabitsLookup}
-                                    onUpdateHabitEntry={upsertHabitEntry}
-                                    deleteHabitEntryByKey={deleteHabitEntryByKey}
+                                    onUpdateHabitEntry={handleUpsertHabitEntry}
+                                    deleteHabitEntryByKey={handleDeleteHabitEntry}
                                 />
                             )}
                         </div>

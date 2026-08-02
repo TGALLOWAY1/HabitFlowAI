@@ -27,13 +27,14 @@ import {
   disablePushSubscriptionByEndpoint,
 } from '../repositories/pushSubscriptionRepository';
 import { tryClaimSend, markSendResult, releaseClaim } from '../repositories/pushSendLogRepository';
-import { findReminderHabitsForScopes } from '../repositories/habitRepository';
+import { findReminderHabitsForScopes, getHabitById } from '../repositories/habitRepository';
 import { getHabitEntriesForDay } from '../repositories/habitEntryRepository';
 import { isHabitScheduledOnDay } from './scheduleEngine';
 import { resolveChildIdsForDay } from './dayViewService';
 import { evaluateChecklistSuccess } from './checklistSuccessService';
 import { getDayKeyForDate } from '../utils/dayKey';
 import { sendPush, isPushConfigured } from '../lib/webPush';
+import { deriveDailyHabitCompletion } from '../../domain/habits/completion';
 
 const TICK_MS = 60_000;
 /** How many recent minutes each tick re-checks; dedup makes overlap safe. */
@@ -61,7 +62,7 @@ interface MinuteCandidate {
 /**
  * Is this habit already "done" for the day, making its reminder unnecessary?
  *
- * Regular habits: ≥1 non-deleted entry for the dayKey (entries are truth).
+ * Regular habits: canonical daily completion for the habit type and target.
  * Bundles never have their own entries — completion is derived from the
  * children active that day (temporal memberships, subHabitIds fallback):
  * choice = any child done, checklist = its success rule. Children are
@@ -75,7 +76,8 @@ async function deriveReminderCompletion(
 ): Promise<boolean> {
   if (habit.type !== 'bundle') {
     const entries = await getHabitEntriesForDay(habit.id, dayKey, habit.householdId, habit.userId);
-    return entries.length > 0;
+    const activeEntries = entries.filter(entry => !entry.note?.startsWith('freeze:'));
+    return deriveDailyHabitCompletion(habit, activeEntries).isComplete;
   }
 
   const childIds = await resolveChildIdsForDay(habit, dayKey, habit.householdId, habit.userId);
@@ -83,8 +85,13 @@ async function deriveReminderCompletion(
 
   let completedCount = 0;
   for (const childId of childIds) {
-    const entries = await getHabitEntriesForDay(childId, dayKey, habit.householdId, habit.userId);
-    if (entries.length > 0) completedCount++;
+    const [child, entries] = await Promise.all([
+      getHabitById(childId, habit.householdId, habit.userId),
+      getHabitEntriesForDay(childId, dayKey, habit.householdId, habit.userId),
+    ]);
+    if (!child) continue;
+    const activeEntries = entries.filter(entry => !entry.note?.startsWith('freeze:'));
+    if (deriveDailyHabitCompletion(child, activeEntries).isComplete) completedCount++;
   }
 
   if (habit.bundleType === 'checklist') {
@@ -158,7 +165,7 @@ export async function runReminderTick(now: Date): Promise<void> {
       if (habit.householdId !== sub.householdId || habit.userId !== sub.userId) continue;
       const candidate = candidates.find((c) => c.hhmm === habit.reminderTime);
       if (!candidate) continue;
-      if (!isHabitScheduledOnDay(habit, candidate.dayKey)) continue;
+      if (!isHabitScheduledOnDay(habit, candidate.dayKey, sub.timeZone)) continue;
       if (await isCompleted(habit, candidate.dayKey)) continue;
 
       // 4. Claim-then-send: the unique dedup index makes this at-most-once.

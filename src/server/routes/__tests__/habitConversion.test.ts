@@ -30,6 +30,15 @@ vi.mock('../../repositories/categoryRepository', () => ({
   getCategoryById: vi.fn(),
 }));
 
+vi.mock('../../lib/mongoClient', () => ({
+  getClient: vi.fn(async () => ({
+    startSession: () => ({
+      withTransaction: async (operation: () => Promise<void>) => operation(),
+      endSession: vi.fn(),
+    }),
+  })),
+}));
+
 import { getHabitById, createHabit, updateHabit } from '../../repositories/habitRepository';
 import { reassignEntries } from '../../repositories/habitEntryRepository';
 import { createMembership } from '../../repositories/bundleMembershipRepository';
@@ -157,7 +166,13 @@ describe('convertToBundleRoute', () => {
 
     // Entries were reassigned twice (first to __pending__, then to legacy child)
     expect(reassignEntries).toHaveBeenCalledTimes(2);
-    expect(reassignEntries).toHaveBeenCalledWith('habit-1', '__pending__', HOUSEHOLD, USER);
+    expect(reassignEntries).toHaveBeenCalledWith(
+      'habit-1',
+      '__pending__',
+      HOUSEHOLD,
+      USER,
+      expect.objectContaining({ withTransaction: expect.any(Function) }),
+    );
   });
 
   it('converts without legacy child when no entries exist', async () => {

@@ -16,6 +16,8 @@ import {
   deactivateHealthRule,
 } from '../repositories/habitHealthRuleRepository';
 import { runBackfill } from '../services/healthBackfillService';
+import { checkAndCompleteLinkedGoals } from '../services/goalAutoCompletion';
+import { invalidateUserCaches } from '../lib/cacheInstances';
 import { getNowDayKey, resolveTimeZone } from '../utils/dayKey';
 import type { HealthMetricType, HealthRuleOperator, HealthRuleBehavior } from '../../models/persistenceTypes';
 
@@ -267,7 +269,12 @@ router.post('/backfill', async (req: Request, res: Response) => {
 
     const result = await runBackfill(habit, rule, startDayKey, endDayKey, householdId, userId);
 
-    res.status(200).json({ ...result, days });
+    const completedGoalIds = result.created > 0
+      ? await checkAndCompleteLinkedGoals([habit.id], householdId, userId, userTimeZone)
+      : [];
+    if (result.created > 0) invalidateUserCaches(userId);
+
+    res.status(200).json({ ...result, days, completedGoalIds });
   } catch (error) {
     console.error('[Health Backfill] Error:', error);
     const message = error instanceof Error ? error.message : 'Internal server error';

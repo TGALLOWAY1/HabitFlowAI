@@ -1078,13 +1078,14 @@ export async function batchCreateEntries(payload: {
   routineId?: string;
   timezone?: string;
   dayKey?: string;
+  source?: 'manual' | 'routine';
 }): Promise<BatchCreateEntriesResponse> {
-  const { habitIds, routineId, timezone, dayKey } = payload;
-  const body: { timezone?: string; dayKey?: string; entries: Array<{ habitId: string; source: 'routine'; routineId?: string }> } = {
+  const { habitIds, routineId, timezone, dayKey, source = 'routine' } = payload;
+  const body: { timezone?: string; dayKey?: string; entries: Array<{ habitId: string; source: 'manual' | 'routine'; routineId?: string }> } = {
     entries: habitIds.map((habitId) => ({
       habitId,
-      source: 'routine' as const,
-      ...(routineId ? { routineId } : {}),
+      source,
+      ...(source === 'routine' && routineId ? { routineId } : {}),
     })),
   };
   if (timezone != null) body.timezone = timezone;

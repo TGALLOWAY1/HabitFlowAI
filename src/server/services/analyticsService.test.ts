@@ -60,6 +60,20 @@ describe('computeHabitAnalyticsSummary', () => {
     expect(result.currentStreak).toBe(3);
   });
 
+  it('does not count partial numeric progress as a completion', () => {
+    const habits = [createHabit({
+      goal: { type: 'number', frequency: 'daily', target: 10, unit: 'pages' },
+    })];
+    const entries = [createEntry('habit-1', '2026-03-31', { value: 5 })];
+
+    const result = computeHabitAnalyticsSummary(habits, entries, [], [], '2026-03-31', 1);
+
+    expect(result.totalCompletions).toBe(0);
+    expect(result.completionRate).toBe(0);
+    expect(result.currentStreak).toBe(0);
+    expect(result.longestStreak).toBe(0);
+  });
+
   it('counts graduated habits from memberships', () => {
     const habits = [createHabit()];
     const memberships: BundleMembershipRecord[] = [
@@ -318,6 +332,22 @@ describe('computeCategoryBreakdown', () => {
     expect(result[0].categoryId).toBe('cat-1');
     expect(result[0].completionRate).toBe(1);
     expect(result[1].completionRate).toBe(0);
+  });
+
+  it('does not count pre-creation days as scheduled category opportunities', () => {
+    const habits = [createHabit({ createdAt: '2026-04-01T01:00:00.000Z' })];
+    const categories = [createCategory('cat-1', 'Fitness')];
+
+    const result = computeCategoryBreakdown(
+      habits,
+      [],
+      categories,
+      '2026-03-31',
+      2,
+      'America/New_York',
+    );
+
+    expect(result[0].totalScheduled).toBe(1);
   });
 });
 

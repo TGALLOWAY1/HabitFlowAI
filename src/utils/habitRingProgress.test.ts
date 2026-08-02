@@ -129,7 +129,8 @@ describe('Case A — standalone habits only', () => {
     it('checking/unchecking a today habit updates shared completedCount', () => {
         const habits = [makeHabit({ id: 'h1', name: 'Meditate' })];
         const checkedLogs = Object.fromEntries([makeLog('h1', DATE, true)]);
-        const uncheckedLogs = Object.fromEntries([makeLog('h1', DATE, false)]);
+        // Boolean completion is entry-existence based; unchecking deletes the entry.
+        const uncheckedLogs: Record<string, DayLog> = {};
 
         expect(getTodayHabitStats(habits, checkedLogs, DATE).completedCount).toBe(1);
         expect(getTodayHabitStats(habits, uncheckedLogs, DATE).completedCount).toBe(0);
@@ -440,6 +441,18 @@ describe('Edge cases', () => {
         expect(getHabitsForDate(habits, '2026-03-23').length).toBe(1); // Monday
         expect(getHabitsForDate(habits, '2026-03-26').length).toBe(1); // Thursday
         expect(getHabitsForDate(habits, DATE).length).toBe(1);         // Saturday
+    });
+
+    it('excludes days before the habit was created in the user timezone', () => {
+        const habits = [makeHabit({
+            id: 'h1',
+            name: 'Just created',
+            createdAt: '2026-04-01T01:00:00.000Z',
+        })];
+
+        expect(getHabitsForDate(habits, '2026-03-31', 'America/New_York')).toHaveLength(1);
+        expect(getHabitsForDate(habits, '2026-03-30', 'America/New_York')).toHaveLength(0);
+        expect(getHabitsForDate(habits, '2026-03-31', 'UTC')).toHaveLength(0);
     });
 
     it('ring progress excludes unscheduled habits from total', () => {

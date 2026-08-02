@@ -8,6 +8,7 @@ import type { BundleMembershipRecord } from '../domain/canonicalTypes';
 import { evaluateChecklistSuccess } from '../services/checklistSuccessService';
 import { resolveTimeZone, getNowDayKey, getDayKeyForDate, getCanonicalDayKeyFromEntry } from '../utils/dayKey';
 import { getRequestIdentity } from '../middleware/identity';
+import { deriveDailyHabitCompletion } from '../../domain/habits/completion';
 
 type AggregatedDayEntry = {
   habitId: string;
@@ -150,21 +151,20 @@ export async function getDaySummary(req: Request, res: Response): Promise<void> 
       const habit = habitById.get(aggregate.habitId);
       if (!habit) continue;
 
-      let value: number | undefined;
-      let completed = false;
       const isFrozen = aggregate.hasFreeze && aggregate.count === 0;
 
-      if (habit.bundleType === 'choice') {
-        value = undefined;
-        completed = aggregate.count > 0;
-      } else if (habit.goal.type === 'number') {
-        value = isFrozen ? 0 : aggregate.valueSum;
-        const target = habit.goal.target ?? 0;
-        completed = !isFrozen && aggregate.valueSum >= target;
-      } else {
-        value = isFrozen ? 0 : (aggregate.valueSum > 0 ? aggregate.valueSum : aggregate.count);
-        completed = !isFrozen && value > 0;
-      }
+      const completionEntries = isFrozen || aggregate.count === 0
+        ? []
+        : habit.goal.type === 'number'
+          ? [{ value: aggregate.valueSum }]
+          : [{}];
+      const completion = deriveDailyHabitCompletion(habit, completionEntries);
+      const value = habit.bundleType === 'choice'
+        ? undefined
+        : habit.goal.type === 'number'
+          ? completion.currentValue
+          : (isFrozen ? 0 : (aggregate.valueSum > 0 ? aggregate.valueSum : aggregate.count));
+      const completed = completion.isComplete;
 
       const completedOptions =
         Object.keys(aggregate.completedOptions).length > 0 ? aggregate.completedOptions : undefined;

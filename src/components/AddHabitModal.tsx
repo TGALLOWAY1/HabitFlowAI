@@ -85,6 +85,7 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
     // Routine Linking
     const [linkedRoutineIds, setLinkedRoutineIds] = useState<string[]>([]);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [formError, setFormError] = useState<string | null>(null);
 
     // Inline Goal Creation
     const [isCreateGoalOpen, setIsCreateGoalOpen] = useState(false);
@@ -98,10 +99,17 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
     const [showBundlePicker, setShowBundlePicker] = useState(false);
     const [showConvertConfirm, setShowConvertConfirm] = useState(false);
     const pendingSubmitRef = useRef<(() => Promise<void>) | null>(null);
+    const categoriesRef = useRef(categories);
+
+    useEffect(() => {
+        categoriesRef.current = categories;
+    }, [categories]);
 
     // Initialize/Reset
     useEffect(() => {
         if (isOpen) {
+            const availableCategories = categoriesRef.current;
+            setFormError(null);
             if (initialData) {
                 // Edit Mode
                 setName(initialData.name);
@@ -139,7 +147,7 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                 setName('');
                 setHabitType('regular');
                 setBundleMode(null);
-                setIsCreatingCategory(categories.length === 0);
+                setIsCreatingCategory(availableCategories.length === 0);
                 setNewCategoryName('');
 
                 setSubHabitIds([]);
@@ -160,19 +168,19 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                 setDescription('');
 
                 // Robust Category Selection Default
-                if (categoryId && categories.some(c => c.id === categoryId)) {
+                if (categoryId && availableCategories.some(c => c.id === categoryId)) {
                     // 1. Use passed categoryId if it exists in the list
                     setSelectedCategoryId(categoryId);
-                } else if (categories.length > 0) {
+                } else if (availableCategories.length > 0) {
                     // 2. Default to first category if passed ID is invalid or missing
-                    setSelectedCategoryId(categories[0].id);
+                    setSelectedCategoryId(availableCategories[0].id);
                 } else {
                     // 3. Fallback (shouldn't happen if categories exist)
                     setSelectedCategoryId('');
                 }
             }
         }
-    }, [isOpen, initialData, categoryId, categories]);
+    }, [isOpen, initialData, categoryId]);
 
     // Handle Escape key to close
     useEffect(() => {
@@ -207,7 +215,11 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!name.trim()) return;
+        setFormError(null);
+        if (!name.trim()) {
+            setFormError('Habit name is required.');
+            return;
+        }
 
         // Show confirmation when converting an existing regular habit to a bundle
         const isConversion = initialData && initialData.type !== 'bundle' && habitType === 'bundle';
@@ -221,6 +233,26 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
     };
 
     const doSubmit = async () => {
+        if (habitType === 'regular' && goalType === 'number') {
+            const numericTarget = Number(target);
+            if (!target || !Number.isFinite(numericTarget) || numericTarget <= 0) {
+                setFormError('Numeric habits require a target greater than zero.');
+                return;
+            }
+        }
+        const invalidPendingNumeric = pendingSubHabits.some(pending => (
+            pending.goalType === 'number'
+            && (!pending.target || !Number.isFinite(Number(pending.target)) || Number(pending.target) <= 0)
+        ));
+        const invalidModifiedNumeric = Object.values(modifiedLinkedHabits).some(modified => (
+            modified.goalType === 'number'
+            && (!modified.target || !Number.isFinite(Number(modified.target)) || Number(modified.target) <= 0)
+        ));
+        if (invalidPendingNumeric || invalidModifiedNumeric) {
+            setFormError('Every numeric bundle item requires a target greater than zero.');
+            return;
+        }
+
         setIsSubmitting(true);
         try {
             // Ensure target is set correctly based on type
@@ -394,6 +426,7 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
             onClose();
         } catch (error) {
             console.error('Failed to save habit:', error);
+            setFormError(error instanceof Error ? error.message : 'Failed to save habit. Please try again.');
         } finally {
             setIsSubmitting(false);
         }
@@ -535,6 +568,17 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
     );
 
     const isEditMode = !!initialData;
+    const numericTarget = Number(target);
+    const hasInvalidNumericTarget = habitType === 'regular'
+        && goalType === 'number'
+        && (!target || !Number.isFinite(numericTarget) || numericTarget <= 0);
+    const hasInvalidBundleNumericTarget = pendingSubHabits.some(pending => (
+        pending.goalType === 'number'
+        && (!pending.target || !Number.isFinite(Number(pending.target)) || Number(pending.target) <= 0)
+    )) || Object.values(modifiedLinkedHabits).some(modified => (
+        modified.goalType === 'number'
+        && (!modified.target || !Number.isFinite(Number(modified.target)) || Number(modified.target) <= 0)
+    ));
 
     return (
         <div className="modal-overlay fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
@@ -925,13 +969,26 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                                             </div>
 
                                             {newHabitGoalType === 'number' && (
-                                                <input
-                                                    type="text"
-                                                    value={newHabitUnit}
-                                                    onChange={(e) => setNewHabitUnit(e.target.value)}
-                                                    placeholder="Unit (e.g. miles)"
-                                                    className="bg-neutral-900 border border-white/10 rounded px-2 py-1.5 text-xs text-white w-24 animate-in fade-in slide-in-from-left-2"
-                                                />
+                                                <>
+                                                    <input
+                                                        type="number"
+                                                        value={newHabitTarget}
+                                                        onChange={(e) => setNewHabitTarget(e.target.value)}
+                                                        placeholder="Target"
+                                                        min="0.01"
+                                                        step="any"
+                                                        aria-label="Child habit target"
+                                                        className="bg-neutral-900 border border-white/10 rounded px-2 py-1.5 text-xs text-white w-20 animate-in fade-in slide-in-from-left-2"
+                                                    />
+                                                    <input
+                                                        type="text"
+                                                        value={newHabitUnit}
+                                                        onChange={(e) => setNewHabitUnit(e.target.value)}
+                                                        placeholder="Unit"
+                                                        aria-label="Child habit unit"
+                                                        className="bg-neutral-900 border border-white/10 rounded px-2 py-1.5 text-xs text-white w-24 animate-in fade-in slide-in-from-left-2"
+                                                    />
+                                                </>
                                             )}
                                         </div>
                                     )}
@@ -1107,7 +1164,7 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                             <div className="grid grid-cols-2 gap-4 pt-2 border-t border-white/5">
                                 <div>
                                     <label className="block text-sm font-medium text-neutral-400 mb-1">
-                                        Target Amount <span className="text-xs opacity-50 font-normal">(Optional)</span>
+                                        Target Amount <span className="text-red-400">*</span>
                                     </label>
                                     <input
                                         type="number"
@@ -1115,6 +1172,9 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                                         onChange={(e) => setTarget(e.target.value)}
                                         className="w-full bg-neutral-800 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-emerald-500"
                                         placeholder="e.g. 10"
+                                        min="0.01"
+                                        step="any"
+                                        required
                                     />
                                 </div>
                                 {goalType === 'number' && (
@@ -1226,6 +1286,11 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                     )}
 
                     {/* Actions */}
+                    {formError && (
+                        <p role="alert" className="text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">
+                            {formError}
+                        </p>
+                    )}
                     <div className="sticky bottom-0 pt-2 pb-1 bg-neutral-900 flex justify-end gap-3">
                         <button
                             type="button"
@@ -1238,7 +1303,10 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                             type="submit"
                             disabled={
                                 !name.trim() ||
+                                !selectedCategoryId ||
                                 isSubmitting ||
+                                hasInvalidNumericTarget ||
+                                hasInvalidBundleNumericTarget ||
                                 (habitType === 'bundle' && bundleMode === 'checklist' && subHabitIds.length === 0 && pendingSubHabits.length === 0) ||
                                 (habitType === 'bundle' && bundleMode === 'choice' && (subHabitIds.length + pendingSubHabits.length) < 1)
                             }

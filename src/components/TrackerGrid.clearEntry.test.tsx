@@ -1,6 +1,6 @@
 /**
- * Tests for explicit clear-entry via cell kebab menu (touch-safe).
- * Double-click delete has been removed; clear is only via menu or delete mode.
+ * Tests for the explicit clear-entry control (touch and keyboard accessible).
+ * Double-click delete has been removed; clear is only via the control or delete mode.
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
@@ -27,6 +27,7 @@ describe('TrackerGrid clear entry (explicit menu)', () => {
     const mockDeleteHabit = vi.fn();
     const mockReorderHabits = vi.fn();
     const mockRefreshProgress = vi.fn();
+    const mockToggleHabit = vi.fn().mockResolvedValue(undefined);
 
     const createBooleanHabit = (id: string, name: string): Habit => ({
         id,
@@ -51,6 +52,7 @@ describe('TrackerGrid clear entry (explicit menu)', () => {
             reorderHabits: mockReorderHabits,
             upsertHabitEntry: mockUpsertHabitEntry,
             deleteHabitEntryByKey: mockDeleteHabitEntryByKey,
+            toggleHabit: mockToggleHabit,
         });
         (useRoutineStore as any).mockReturnValue({ routines: [] });
         (useProgressOverview as any).mockReturnValue({ data: null, refresh: mockRefreshProgress });
@@ -78,12 +80,10 @@ describe('TrackerGrid clear entry (explicit menu)', () => {
         );
 
         expect(screen.getByText('Morning Meditation')).toBeInTheDocument();
-        // Cell kebab (Clear entry) is present when cell has entry - find by title or aria-label
-        const kebab = container.querySelector('button[title="Clear entry"]') ?? container.querySelector('button[aria-label*="Options for entry"]');
-        expect(kebab).toBeTruthy();
+        expect(container.querySelector('button[title="Clear entry"]')).toBeTruthy();
     });
 
-    it('should call deleteHabitEntryByKey when Clear entry is clicked from cell menu', async () => {
+    it('should call deleteHabitEntryByKey when the Clear entry control is clicked', async () => {
         const habitId = 'habit-1';
         const today = new Date();
         const dayKey = format(today, 'yyyy-MM-dd');
@@ -104,22 +104,16 @@ describe('TrackerGrid clear entry (explicit menu)', () => {
             />
         );
 
-        const kebab = container.querySelector('button[title="Clear entry"]') ?? container.querySelector('button[aria-label*="Options for entry"]');
-        if (!kebab) {
-            throw new Error('Cell kebab not found - ensure grid renders a completed cell for today');
+        const clearButton = container.querySelector('button[title="Clear entry"]');
+        if (!clearButton) {
+            throw new Error('Clear entry control not found');
         }
-        fireEvent.click(kebab);
-
-        await waitFor(() => {
-            expect(screen.getByRole('menu')).toBeInTheDocument();
-        });
-        const clearButton = screen.getByRole('menuitem', { name: /clear entry/i });
         fireEvent.click(clearButton);
 
         await waitFor(() => {
             expect(mockDeleteHabitEntryByKey).toHaveBeenCalledWith(habitId, dayKey);
         });
-        expect(mockRefreshProgress).toHaveBeenCalled();
+        await waitFor(() => expect(mockRefreshProgress).toHaveBeenCalled());
     });
 
     it('should NOT delete when double-clicking a cell (double-click delete removed)', async () => {
@@ -175,16 +169,51 @@ describe('TrackerGrid clear entry (explicit menu)', () => {
             />
         );
 
-        const kebab = container.querySelector('button[title="Clear entry"]') ?? container.querySelector('button[aria-label*="Options for entry"]');
-        if (!kebab) throw new Error('Cell kebab not found');
-        fireEvent.click(kebab);
-        await waitFor(() => expect(screen.getByRole('menu')).toBeInTheDocument());
-        fireEvent.click(screen.getByRole('menuitem', { name: /clear entry/i }));
+        const clearButton = container.querySelector('button[title="Clear entry"]');
+        if (!clearButton) throw new Error('Clear entry control not found');
+        fireEvent.click(clearButton);
 
         await waitFor(() => expect(mockDeleteHabitEntryByKey).toHaveBeenCalled());
         const [id, date] = mockDeleteHabitEntryByKey.mock.calls[0];
         expect(id).toBe(habitId);
         expect(date).toBe(dayKey);
         expect(date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    });
+
+    it('delegates checklist parent completion as one canonical bundle action', async () => {
+        const dayKey = format(new Date(), 'yyyy-MM-dd');
+        const parent: Habit = {
+            ...createBooleanHabit('bundle-1', 'Morning bundle'),
+            type: 'bundle',
+            bundleType: 'checklist',
+            subHabitIds: ['numeric-child'],
+        };
+        const child: Habit = {
+            ...createBooleanHabit('numeric-child', 'Drink water'),
+            bundleParentId: parent.id,
+            goal: { type: 'number', frequency: 'daily', target: 8, unit: 'glasses' },
+        };
+
+        const { container } = render(
+            <TrackerGrid
+                habits={[parent, child]}
+                allHabits={[parent, child]}
+                logs={{
+                    [`${child.id}-${dayKey}`]: createDayLog(child.id, dayKey, false, 2),
+                }}
+                onAddHabit={() => {}}
+                onEditHabit={() => {}}
+                onViewHistory={() => {}}
+                onToggle={async () => {}}
+                onUpdateValue={async () => {}}
+            />
+        );
+
+        const parentCell = container.querySelector('button[title="Click to toggle all sub-habits"]');
+        expect(parentCell).toBeTruthy();
+        fireEvent.click(parentCell!);
+
+        await waitFor(() => expect(mockToggleHabit).toHaveBeenCalledWith(parent.id, dayKey));
+        expect(mockToggleHabit).not.toHaveBeenCalledWith(child.id, dayKey);
     });
 });

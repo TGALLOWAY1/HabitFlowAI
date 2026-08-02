@@ -265,6 +265,40 @@ describe('Routine Submit Route', () => {
         })
         .expect(400);
     });
+
+    it('completes a numeric habit at its configured target', async () => {
+      const db = await getTestDb();
+      const category = await db.collection('categories').findOne({ userId: TEST_USER_ID });
+      const numericHabit = await createHabit(
+        {
+          name: 'Walk',
+          categoryId: category!.id,
+          goal: { type: 'number', target: 3.5, unit: 'miles', frequency: 'daily' },
+        },
+        TEST_HOUSEHOLD_ID,
+        TEST_USER_ID
+      );
+      const numericRoutine = await createRoutine(TEST_HOUSEHOLD_ID, TEST_USER_ID, {
+        title: 'Walking Routine',
+        linkedHabitIds: [numericHabit.id],
+        steps: [{ id: 'walk', title: 'Walk' }],
+      });
+      const dayKey = '2025-02-13';
+
+      const response = await request(app)
+        .post(`/api/routines/${numericRoutine.id}/submit`)
+        .send({ habitIdsToComplete: [numericHabit.id], dateOverride: dayKey })
+        .expect(200);
+
+      expect(response.body.completedHabitIds).toEqual([numericHabit.id]);
+      const entries = await getHabitEntriesForDay(
+        numericHabit.id,
+        dayKey,
+        TEST_HOUSEHOLD_ID,
+        TEST_USER_ID
+      );
+      expect(entries).toHaveLength(1);
+      expect(entries[0].value).toBe(3.5);
+    });
   });
 });
-

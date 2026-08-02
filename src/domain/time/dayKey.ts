@@ -34,14 +34,47 @@ export function isValidDayKey(dayKey: string): boolean {
 
   // Parse the date parts to ensure it's a valid calendar date
   const [year, month, day] = dayKey.split('-').map(Number);
-  const date = new Date(year, month - 1, day);
+  const date = new Date(Date.UTC(year, month - 1, day));
   
   // Check if the date is valid and matches the input
   return (
-    date.getFullYear() === year &&
-    date.getMonth() === month - 1 &&
-    date.getDate() === day
+    date.getUTCFullYear() === year &&
+    date.getUTCMonth() === month - 1 &&
+    date.getUTCDate() === day
   );
+}
+
+/** Convert a validated DayKey to a timezone-neutral UTC calendar date. */
+export function dayKeyToUtcDate(dayKey: DayKey): Date {
+  assertDayKey(dayKey);
+  const [year, month, day] = dayKey.split('-').map(Number);
+  return new Date(Date.UTC(year, month - 1, day));
+}
+
+/** Add calendar days without involving the process timezone or DST. */
+export function addDaysToDayKey(dayKey: DayKey, amount: number): DayKey {
+  const date = dayKeyToUtcDate(dayKey);
+  date.setUTCDate(date.getUTCDate() + amount);
+  return date.toISOString().slice(0, 10);
+}
+
+/** Calendar-day distance from start to end. */
+export function differenceInDayKeys(endDayKey: DayKey, startDayKey: DayKey): number {
+  return Math.round(
+    (dayKeyToUtcDate(endDayKey).getTime() - dayKeyToUtcDate(startDayKey).getTime()) / 86_400_000,
+  );
+}
+
+/** Day of week for a DayKey (0=Sunday ... 6=Saturday). */
+export function getDayOfWeekForDayKey(dayKey: DayKey): number {
+  return dayKeyToUtcDate(dayKey).getUTCDay();
+}
+
+/** Monday DayKey for the ISO week containing dayKey. */
+export function getIsoWeekStartDayKey(dayKey: DayKey): DayKey {
+  const dayOfWeek = getDayOfWeekForDayKey(dayKey);
+  const daysSinceMonday = (dayOfWeek + 6) % 7;
+  return addDaysToDayKey(dayKey, -daysSinceMonday);
 }
 
 /**
@@ -118,4 +151,3 @@ export function formatDayKeyFromDate(date: Date, timeZone: string): DayKey {
 export function getNowDayKey(timeZone: string): DayKey {
   return formatDayKeyFromDate(new Date(), timeZone);
 }
-

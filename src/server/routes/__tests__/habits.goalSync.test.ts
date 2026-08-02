@@ -46,6 +46,7 @@ vi.mock('../../middleware/identity', () => ({
 }));
 
 import { createHabit, getHabitById, updateHabit } from '../../repositories/habitRepository';
+import { getCategoryById } from '../../repositories/categoryRepository';
 import { addHabitToGoalLinkedIds, removeHabitFromGoalLinkedIds } from '../../repositories/goalRepository';
 
 function createRes(): Response {
@@ -58,6 +59,15 @@ function createRes(): Response {
 describe('Habit-Goal bidirectional sync', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(getCategoryById).mockResolvedValue({ id: 'cat-1', name: 'Test', color: 'bg-blue-500' });
+    vi.mocked(getHabitById).mockResolvedValue({
+      id: 'habit-1',
+      name: 'Test Habit',
+      categoryId: 'cat-1',
+      goal: { type: 'boolean', frequency: 'daily' },
+      archived: false,
+      createdAt: '2026-01-01T00:00:00Z',
+    } as any);
   });
 
   describe('createHabitRoute', () => {
@@ -120,6 +130,11 @@ describe('Habit-Goal bidirectional sync', () => {
     it('syncs both old and new goal when linkedGoalId changes', async () => {
       vi.mocked(getHabitById).mockResolvedValue({
         id: 'habit-1',
+        name: 'Test Habit',
+        categoryId: 'cat-1',
+        goal: { type: 'boolean', frequency: 'daily' },
+        archived: false,
+        createdAt: '2026-01-01T00:00:00Z',
         linkedGoalId: 'old-goal',
       } as any);
       vi.mocked(updateHabit).mockResolvedValue({
@@ -145,6 +160,11 @@ describe('Habit-Goal bidirectional sync', () => {
     it('only removes from old goal when linkedGoalId is cleared', async () => {
       vi.mocked(getHabitById).mockResolvedValue({
         id: 'habit-1',
+        name: 'Test Habit',
+        categoryId: 'cat-1',
+        goal: { type: 'boolean', frequency: 'daily' },
+        archived: false,
+        createdAt: '2026-01-01T00:00:00Z',
         linkedGoalId: 'old-goal',
       } as any);
       vi.mocked(updateHabit).mockResolvedValue({
@@ -169,6 +189,11 @@ describe('Habit-Goal bidirectional sync', () => {
     it('only adds to new goal when previously unlinked', async () => {
       vi.mocked(getHabitById).mockResolvedValue({
         id: 'habit-1',
+        name: 'Test Habit',
+        categoryId: 'cat-1',
+        goal: { type: 'boolean', frequency: 'daily' },
+        archived: false,
+        createdAt: '2026-01-01T00:00:00Z',
         linkedGoalId: null,
       } as any);
       vi.mocked(updateHabit).mockResolvedValue({
@@ -206,7 +231,7 @@ describe('Habit-Goal bidirectional sync', () => {
 
       await updateHabitRoute(req, res);
 
-      expect(getHabitById).not.toHaveBeenCalled();
+      expect(getHabitById).toHaveBeenCalledOnce();
       expect(addHabitToGoalLinkedIds).not.toHaveBeenCalled();
       expect(removeHabitFromGoalLinkedIds).not.toHaveBeenCalled();
     });

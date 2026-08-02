@@ -563,7 +563,7 @@ function buildFactorSeries(
   }
 
   // (b) any other tracked habits (generic over type)
-  const dayStates = buildDayStatesByHabit(habitEntries, timeZone);
+  const dayStates = buildDayStatesByHabit(habitEntries, habits, timeZone);
   for (const habit of habits.filter(isTrackableHabit)) {
     const states = dayStates.get(habit.id);
     if (!states) continue;

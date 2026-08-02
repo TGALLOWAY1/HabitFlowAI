@@ -20,6 +20,7 @@ import {
 } from '../categories';
 
 const TEST_USER_ID = 'test-scheduling-user';
+const TEST_HOUSEHOLD_ID = 'test-scheduling-household';
 
 describe('Habit Scheduling (assignedDays + requiredDaysPerWeek)', () => {
   let app: Express;
@@ -31,6 +32,7 @@ describe('Habit Scheduling (assignedDays + requiredDaysPerWeek)', () => {
     app = express();
     app.use(express.json());
     app.use((req, _res, next) => {
+      (req as any).householdId = TEST_HOUSEHOLD_ID;
       (req as any).userId = TEST_USER_ID;
       next();
     });
@@ -165,6 +167,82 @@ describe('Habit Scheduling (assignedDays + requiredDaysPerWeek)', () => {
 
     expect(res.status).toBe(201);
     // Fields should be undefined (backward compatible)
-    expect(res.body.habit.requiredDaysPerWeek).toBeUndefined();
+    expect(res.body.habit.requiredDaysPerWeek ?? undefined).toBeUndefined();
+  });
+
+  it('persists weekly occurrence and checklist streak configuration', async () => {
+    const weeklyRes = await request(app)
+      .post('/api/habits')
+      .send({
+        name: 'Run twice',
+        categoryId: category.id,
+        goal: { type: 'boolean', frequency: 'daily' },
+        timesPerWeek: 2,
+      });
+    expect(weeklyRes.status).toBe(201);
+    expect(weeklyRes.body.habit.timesPerWeek).toBe(2);
+
+    const bundleRes = await request(app)
+      .post('/api/habits')
+      .send({
+        name: 'Morning checklist',
+        categoryId: category.id,
+        type: 'bundle',
+        bundleType: 'checklist',
+        subHabitIds: ['child-1', 'child-2'],
+        goal: { type: 'boolean', frequency: 'daily' },
+        checklistSuccessRule: { type: 'threshold', threshold: 1 },
+        streakType: 'full',
+      });
+    expect(bundleRes.status).toBe(201);
+    expect(bundleRes.body.habit.checklistSuccessRule).toEqual({ type: 'threshold', threshold: 1 });
+    expect(bundleRes.body.habit.streakType).toBe('full');
+  });
+
+  it.each([
+    ['missing numeric target', { goal: { type: 'number', frequency: 'daily' } }],
+    ['zero numeric target', { goal: { type: 'number', frequency: 'daily', target: 0 } }],
+    ['negative numeric target', { goal: { type: 'number', frequency: 'daily', target: -1 } }],
+    ['duplicate scheduled days', { assignedDays: [1, 1, 3] }],
+    ['out-of-range scheduled day', { assignedDays: [1, 7] }],
+    ['empty schedule', { assignedDays: [] }],
+    ['quota larger than schedule', { assignedDays: [1, 3], requiredDaysPerWeek: 3 }],
+    ['zero weekly occurrence target', { timesPerWeek: 0 }],
+    ['fractional weekly occurrence target', { timesPerWeek: 2.5 }],
+  ])('rejects invalid habit definition: %s', async (_label, override) => {
+    const res = await request(app)
+      .post('/api/habits')
+      .send({
+        name: `Invalid ${_label}`,
+        categoryId: category.id,
+        goal: { type: 'boolean', frequency: 'daily' },
+        ...override,
+      });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe('VALIDATION_ERROR');
+  });
+
+  it('validates the merged habit when a schedule or target is edited', async () => {
+    const createRes = await request(app)
+      .post('/api/habits')
+      .send({
+        name: 'Read pages',
+        categoryId: category.id,
+        goal: { type: 'number', frequency: 'daily', target: 10 },
+        assignedDays: [1, 3, 5],
+        requiredDaysPerWeek: 2,
+      });
+    expect(createRes.status).toBe(201);
+
+    const invalidSchedule = await request(app)
+      .patch(`/api/habits/${createRes.body.habit.id}`)
+      .send({ assignedDays: [1] });
+    expect(invalidSchedule.status).toBe(400);
+
+    const invalidTarget = await request(app)
+      .patch(`/api/habits/${createRes.body.habit.id}`)
+      .send({ goal: { type: 'number', frequency: 'daily', target: -3 } });
+    expect(invalidTarget.status).toBe(400);
   });
 });

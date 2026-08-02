@@ -13,10 +13,12 @@ import {
   updateCategory,
   deleteCategory,
   reorderCategories,
+  CategoryReorderValidationError,
 } from '../repositories/categoryRepository';
 import { uncategorizeHabitsByCategory } from '../repositories/habitRepository';
 import type { Category } from '../../models/persistenceTypes';
 import { getRequestIdentity } from '../middleware/identity';
+import { invalidateUserCaches } from '../lib/cacheInstances';
 
 /** Normalize category name for duplicate check: trim, collapse spaces, lowercase. */
 function normalizeCategoryName(name: string): string {
@@ -96,6 +98,7 @@ export async function createCategoryRoute(req: Request, res: Response): Promise<
       return;
     }
     const category = await createCategory({ name: trimmedName, color: color.trim() }, householdId, userId);
+    invalidateUserCaches(userId);
 
     res.status(201).json({
       category,
@@ -157,7 +160,6 @@ export async function getCategory(req: Request, res: Response): Promise<void> {
       });
       return;
     }
-
     res.status(200).json({
       category,
     });
@@ -247,6 +249,7 @@ export async function updateCategoryRoute(req: Request, res: Response): Promise<
       });
       return;
     }
+    invalidateUserCaches(userId);
 
     res.status(200).json({
       category,
@@ -301,6 +304,7 @@ export async function deleteCategoryRoute(req: Request, res: Response): Promise<
       });
       return;
     }
+    invalidateUserCaches(userId);
 
     res.status(200).json({
       message: 'Category deleted successfully',
@@ -375,6 +379,7 @@ export async function reorderCategoriesRoute(req: Request, res: Response): Promi
     // TODO: Extract userId from authentication token/session
     const { householdId, userId } = getRequestIdentity(req);
     const updatedCategories = await reorderCategories(householdId, userId, categories as Category[]);
+    invalidateUserCaches(userId);
 
     res.status(200).json({
       categories: updatedCategories,
@@ -382,6 +387,15 @@ export async function reorderCategoriesRoute(req: Request, res: Response): Promi
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     console.error('Error reordering categories:', errorMessage);
+    if (error instanceof CategoryReorderValidationError) {
+      res.status(400).json({
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: errorMessage,
+        },
+      });
+      return;
+    }
     res.status(500).json({
       error: {
         code: 'INTERNAL_SERVER_ERROR',
@@ -391,4 +405,3 @@ export async function reorderCategoriesRoute(req: Request, res: Response): Promi
     });
   }
 }
-

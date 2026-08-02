@@ -22,6 +22,7 @@ import { sendPush } from '../../lib/webPush';
 import { runReminderTick, formatLocalHHmm } from '../reminderScheduler';
 import { upsertPushSubscription, getActivePushSubscriptions } from '../../repositories/pushSubscriptionRepository';
 import { createHabit } from '../../repositories/habitRepository';
+import type { Habit } from '../../../models/persistenceTypes';
 
 const HH = 'sched-household';
 const USER = 'sched-user';
@@ -46,17 +47,23 @@ async function subscribe(overrides: Partial<{ endpoint: string; timeZone: string
 }
 
 async function makeHabit(overrides: Partial<Record<string, unknown>> = {}, userId = USER) {
-  return createHabit(
-    {
-      name: (overrides.name as string) ?? 'Meditate',
-      categoryId: 'cat-1',
-      goal: { type: 'boolean', frequency: 'daily' },
-      reminderTime: '08:00',
-      ...overrides,
-    } as any,
+  const data = {
+    name: (overrides.name as string) ?? 'Meditate',
+    categoryId: 'cat-1',
+    goal: { type: 'boolean', frequency: 'daily' },
+    reminderTime: '08:00',
+    ...overrides,
+  } as Omit<Habit, 'id' | 'createdAt' | 'archived'>;
+  const habit = await createHabit(
+    data,
     HH,
     userId
   );
+  // Keep the fixed July 2026 scenarios independent of the machine clock.
+  const createdAt = '2026-07-01T12:00:00.000Z';
+  const db = await getTestDb();
+  await db.collection('habits').updateOne({ id: habit.id }, { $set: { createdAt } });
+  return { ...habit, createdAt };
 }
 
 describe('reminderScheduler', () => {
@@ -248,6 +255,29 @@ describe('reminderScheduler', () => {
     await runReminderTick(utc('2026-07-16T12:00:10Z'));
 
     expect(vi.mocked(sendPush)).not.toHaveBeenCalled();
+  });
+
+  it('still reminds when a numeric habit only has partial progress', async () => {
+    await subscribe();
+    const habit = await makeHabit({
+      name: 'Read pages',
+      goal: { type: 'number', frequency: 'daily', target: 10, unit: 'pages' },
+    });
+    const db = await getTestDb();
+    await db.collection('habitEntries').insertOne({
+      id: 'partial-numeric-entry',
+      householdId: HH,
+      userId: USER,
+      habitId: habit.id,
+      dayKey: '2026-07-16',
+      value: 5,
+      createdAt: new Date().toISOString(),
+    });
+
+    await runReminderTick(utc('2026-07-16T12:00:10Z'));
+
+    expect(vi.mocked(sendPush)).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(sendPush).mock.calls[0][1].title).toBe('Read pages');
   });
 
   it('disables the subscription when the push service reports it gone', async () => {
