@@ -2,7 +2,7 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { format } from 'date-fns';
+import { format, subDays } from 'date-fns';
 import { TrackerGrid } from './TrackerGrid';
 import type { Habit, DayLog } from '../types';
 
@@ -96,7 +96,7 @@ describe('TrackerGrid clear entry', () => {
         expect(container.querySelector('button[aria-label^="Clear entry for"]')).toBeNull();
     });
 
-    it('clears an entry through the existing delete mode', async () => {
+    it('does not expose a global delete-mode trash control', async () => {
         const habitId = 'habit-1';
         const today = new Date();
         const dayKey = format(today, 'yyyy-MM-dd');
@@ -117,7 +117,7 @@ describe('TrackerGrid clear entry', () => {
             />
         );
 
-        fireEvent.click(screen.getByTitle('Enter Delete Mode (mobile-friendly)'));
+        expect(screen.queryByTitle('Enter Delete Mode (mobile-friendly)')).not.toBeInTheDocument();
         const cellButtons = Array.from(container.querySelectorAll('button')).filter(
             btn => btn.className.includes('rounded-lg') && !btn.className.includes('p-1.5') && btn.closest('.w-16')
         );
@@ -125,9 +125,9 @@ describe('TrackerGrid clear entry', () => {
         fireEvent.click(cellButtons[0]);
 
         await waitFor(() => {
-            expect(mockDeleteHabitEntryByKey).toHaveBeenCalledWith(habitId, dayKey);
+            expect(mockToggleHabit).toHaveBeenCalledWith(habitId, dayKey);
         });
-        await waitFor(() => expect(mockRefreshProgress).toHaveBeenCalled());
+        expect(mockDeleteHabitEntryByKey).not.toHaveBeenCalled();
     });
 
     it('should NOT delete when double-clicking a cell (double-click delete removed)', async () => {
@@ -162,7 +162,7 @@ describe('TrackerGrid clear entry', () => {
         expect(mockDeleteHabitEntryByKey).not.toHaveBeenCalled();
     });
 
-    it('uses a canonical dayKey (YYYY-MM-DD) when clearing in delete mode', async () => {
+    it('uses a canonical dayKey (YYYY-MM-DD) when toggling an existing entry', async () => {
         const habitId = 'habit-3';
         const today = new Date();
         const dayKey = format(today, 'yyyy-MM-dd');
@@ -183,18 +183,54 @@ describe('TrackerGrid clear entry', () => {
             />
         );
 
-        fireEvent.click(screen.getByTitle('Enter Delete Mode (mobile-friendly)'));
         const cellButtons = Array.from(container.querySelectorAll('button')).filter(
             btn => btn.className.includes('rounded-lg') && !btn.className.includes('p-1.5') && btn.closest('.w-16')
         );
         expect(cellButtons.length).toBeGreaterThan(0);
         fireEvent.click(cellButtons[0]);
 
-        await waitFor(() => expect(mockDeleteHabitEntryByKey).toHaveBeenCalled());
-        const [id, date] = mockDeleteHabitEntryByKey.mock.calls[0];
+        await waitFor(() => expect(mockToggleHabit).toHaveBeenCalled());
+        const [id, date] = mockToggleHabit.mock.calls[0];
         expect(id).toBe(habitId);
         expect(date).toBe(dayKey);
         expect(date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    });
+
+    it('renders an older entry with the goal type that applied on that day', () => {
+        const today = new Date();
+        const todayKey = format(today, 'yyyy-MM-dd');
+        const historicalDayKey = format(subDays(today, 1), 'yyyy-MM-dd');
+        const habit: Habit = {
+            ...createBooleanHabit('changed-habit', 'Changed habit'),
+            trackingRevisions: [
+                {
+                    effectiveFromDayKey: '2025-01-01',
+                    goal: { type: 'number', frequency: 'daily', target: 10, unit: 'pages' },
+                },
+                {
+                    effectiveFromDayKey: todayKey,
+                    goal: { type: 'boolean', frequency: 'daily' },
+                },
+            ],
+        };
+
+        const { container } = render(
+            <TrackerGrid
+                habits={[habit]}
+                logs={{
+                    [`${habit.id}-${historicalDayKey}`]: createDayLog(habit.id, historicalDayKey, false, 5),
+                }}
+                onAddHabit={() => {}}
+                onEditHabit={() => {}}
+                onViewHistory={() => {}}
+                onToggle={async () => {}}
+                onUpdateValue={async () => {}}
+            />
+        );
+
+        const historicalValueCell = Array.from(container.querySelectorAll('.w-16 button'))
+            .find(button => button.textContent === '5');
+        expect(historicalValueCell).toBeTruthy();
     });
 
     it('delegates checklist parent completion as one canonical bundle action', async () => {

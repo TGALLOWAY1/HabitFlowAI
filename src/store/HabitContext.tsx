@@ -412,11 +412,12 @@ export const HabitProvider: React.FC<{
                 return deriveDailyHabitCompletion(
                     child!,
                     childLog ? [{ value: childLog.value }] : [],
+                    date,
                 ).isComplete;
             });
             const completionValues = new Map<string, number>();
             for (const child of childHabits) {
-                const value = getCompletionEntryValue(child!);
+                const value = getCompletionEntryValue(child!, date);
                 if (value === null) {
                     setLastPersistenceError(`"${child!.name}" needs a valid numeric target before the bundle can be completed.`);
                     return;
@@ -549,7 +550,7 @@ export const HabitProvider: React.FC<{
         const habit = habits.find(h => h.id === habitId);
         if (!habit) return;
 
-        const completed = deriveDailyHabitCompletion(habit, [{ value }]).isComplete;
+        const completed = deriveDailyHabitCompletion(habit, [{ value }], date).isComplete;
 
         const logToSave: DayLog = { habitId, date, value, completed };
         const updatedLogs = {
@@ -861,7 +862,7 @@ export const HabitProvider: React.FC<{
             const habit = habits.find(h => h.id === habitId);
             const value = data.value;
             const completed = habit
-                ? deriveDailyHabitCompletion(habit, [{ value }]).isComplete
+                ? deriveDailyHabitCompletion(habit, [{ value }], dateKey).isComplete
                 : false;
             setLogs(prev => ({
                 ...prev,

@@ -2,6 +2,7 @@ import type { DayLog, Habit } from '../../types';
 import { deriveDailyHabitCompletion } from '../../domain/habits/completion';
 import { getIsoWeekStartDayKey } from '../../domain/time/dayKey';
 import { deriveWeeklyHabitProgress, getIsoWeekEndDayKey } from '../../domain/habits/weeklyProgress';
+import { hasExplicitWeeklyQuotaOnDay } from '../../domain/habits/schedule';
 
 export interface DayViewHabitStatus {
   habit: Habit;
@@ -41,7 +42,7 @@ export function resolveLocalHabitStatuses({
     const existing = resolved.get(habit.id);
     const currentDayLog = logs[`${habit.id}-${dayKey}`];
 
-    if (habit.timesPerWeek != null && habit.timesPerWeek > 0) {
+    if (hasExplicitWeeklyQuotaOnDay(habit, dayKey)) {
       // Recompute only when the local cache has evidence for this week or the
       // server has not returned the newly-created habit yet.
       const weekStartDayKey = getIsoWeekStartDayKey(dayKey);
@@ -69,6 +70,7 @@ export function resolveLocalHabitStatuses({
       const completion = deriveDailyHabitCompletion(
         habit,
         currentDayLog ? [{ value: currentDayLog.value }] : [],
+        dayKey,
       );
       resolved.set(habit.id, {
         ...(existing ?? { habit }),

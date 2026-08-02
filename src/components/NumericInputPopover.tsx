@@ -52,7 +52,7 @@ const NumericInputPopoverContent: React.FC<NumericInputPopoverContentProps> = ({
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        const numValue = parseFloat(value);
+        const numValue = value.trim() === '' ? Number.NaN : Number(value);
         if (!Number.isFinite(numValue) || numValue < 0) return;
         if (numValue === 0 && onClear) {
             onClear();
@@ -111,6 +111,7 @@ const NumericInputPopoverContent: React.FC<NumericInputPopoverContentProps> = ({
                         }}
                         className="shrink-0 p-1.5 text-red-400 hover:bg-red-500/20 rounded-lg transition-colors"
                         title="Clear entry"
+                        aria-label="Clear entry"
                     >
                         <Trash2 size={14} />
                     </button>

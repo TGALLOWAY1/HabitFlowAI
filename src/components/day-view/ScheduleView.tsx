@@ -9,6 +9,7 @@ import { getLocalTimeZone } from '../../lib/persistenceClient';
 import type { Habit } from '../../types';
 import { resolveLocalHabitStatuses, type DayViewHabitStatus } from './habitStatusResolution';
 import { isHabitScheduledOnDay } from '../../domain/habits/schedule';
+import { resolveHabitTrackingForDay } from '../../domain/habits/trackingHistory';
 import { useDayViewData } from './useDayViewData';
 
 export const ScheduleView = () => {
@@ -72,8 +73,9 @@ export const ScheduleView = () => {
             if (childIds.has(h.id)) return;
             if (!isHabitScheduledOnDay(h, selectedDayKey, getLocalTimeZone())) return;
 
-            const hasAssignedDays = h.assignedDays && h.assignedDays.length > 0;
-            const hasTimesPerWeek = h.timesPerWeek != null && h.timesPerWeek > 0;
+            const tracking = resolveHabitTrackingForDay(h, selectedDayKey);
+            const hasAssignedDays = !!tracking.assignedDays?.length;
+            const hasTimesPerWeek = tracking.timesPerWeek != null && tracking.timesPerWeek > 0;
 
             // Habits with specific days or weekly quota are "scheduled"
             if (hasAssignedDays || hasTimesPerWeek) {

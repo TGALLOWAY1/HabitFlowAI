@@ -23,6 +23,7 @@ import {
 } from 'date-fns';
 import { ChevronLeft, ChevronRight, Plus, Trash2, Pencil, X } from 'lucide-react';
 import { cn } from '../utils/cn';
+import { resolveHabitTrackingForDay } from '../domain/habits/trackingHistory';
 
 interface HabitHistoryModalProps {
     habitId: string;
@@ -40,8 +41,8 @@ export const HabitHistoryModal: React.FC<HabitHistoryModalProps> = ({ habitId, o
     const [currentMonth, setCurrentMonth] = useState(new Date());
     const [selectedDate, setSelectedDate] = useState<string | null>(null);
     const [editingId, setEditingId] = useState<string | null>(null);
-    const [editValue, setEditValue] = useState<number>(0);
-    const [newEntryValue, setNewEntryValue] = useState<number>(1);
+    const [editValue, setEditValue] = useState('');
+    const [newEntryValue, setNewEntryValue] = useState('1');
     const [showNewEntry, setShowNewEntry] = useState(false);
     const [saving, setSaving] = useState(false);
 
@@ -114,19 +115,25 @@ export const HabitHistoryModal: React.FC<HabitHistoryModalProps> = ({ habitId, o
 
     const handleStartEdit = (entry: HabitEntry) => {
         setEditingId(entry.id);
-        setEditValue(entry.value || 0);
+        setEditValue(typeof entry.value === 'number' ? String(entry.value) : '');
         setShowNewEntry(false);
     };
 
     const handleSaveEdit = async (entry: HabitEntry) => {
-        if (!Number.isFinite(editValue) || editValue < 0) {
+        const parsedValue = editValue.trim() === '' ? Number.NaN : Number(editValue);
+        if (!Number.isFinite(parsedValue) || parsedValue < 0) {
             alert('Quantity must be zero or greater.');
             return;
         }
         setSaving(true);
         try {
-            await updateHabitEntry(entry.id, { value: editValue });
-            setEntries(prev => prev.map(e => e.id === entry.id ? { ...e, value: editValue } : e));
+            if (parsedValue === 0) {
+                await deleteHabitEntry(entry.id);
+                setEntries(prev => prev.filter(e => e.id !== entry.id));
+            } else {
+                const result = await updateHabitEntry(entry.id, { value: parsedValue });
+                setEntries(prev => prev.map(e => e.id === entry.id ? result.entry : e));
+            }
             setEditingId(null);
             await refreshDayLogs();
         } catch (error) {
@@ -139,8 +146,9 @@ export const HabitHistoryModal: React.FC<HabitHistoryModalProps> = ({ habitId, o
 
     const handleCreateEntry = async () => {
         if (!selectedDate) return;
-        if (!Number.isFinite(newEntryValue) || newEntryValue < 0) {
-            alert('Quantity must be zero or greater.');
+        const parsedValue = newEntryValue.trim() === '' ? Number.NaN : Number(newEntryValue);
+        if (!Number.isFinite(parsedValue) || parsedValue <= 0) {
+            alert('Quantity must be greater than zero.');
             return;
         }
         setSaving(true);
@@ -148,13 +156,18 @@ export const HabitHistoryModal: React.FC<HabitHistoryModalProps> = ({ habitId, o
             const result = await createHabitEntry({
                 habitId,
                 dayKey: selectedDate,
-                value: newEntryValue,
+                value: parsedValue,
                 source: 'manual',
                 timestamp: new Date().toISOString(),
             });
-            setEntries(prev => [...prev, result.entry]);
+            // Storage is canonical at one document per habit/day. Replace a
+            // stale same-day item if one appeared while this request was open.
+            setEntries(prev => [
+                ...prev.filter(entry => (entry.dayKey || entry.date) !== selectedDate),
+                result.entry,
+            ]);
             setShowNewEntry(false);
-            setNewEntryValue(1);
+            setNewEntryValue('1');
             await refreshDayLogs();
         } catch (error) {
             console.error('Failed to create entry', error);
@@ -166,7 +179,8 @@ export const HabitHistoryModal: React.FC<HabitHistoryModalProps> = ({ habitId, o
 
     if (!habit) return null;
 
-    const isQuantity = habit.goal?.type === 'number';
+    const selectedTracking = resolveHabitTrackingForDay(habit, selectedDate ?? undefined);
+    const selectedUnit = selectedTracking.goal.unit;
     const selectedEntries = selectedDate ? (entriesByDay.get(selectedDate) || []) : [];
 
     return (
@@ -201,6 +215,7 @@ export const HabitHistoryModal: React.FC<HabitHistoryModalProps> = ({ habitId, o
                                     <button
                                         onClick={() => setCurrentMonth(prev => subMonths(prev, 1))}
                                         className="p-1.5 rounded-lg hover:bg-white/5 text-neutral-400 hover:text-white transition-colors"
+                                        aria-label="Previous month"
                                     >
                                         <ChevronLeft size={18} />
                                     </button>
@@ -211,6 +226,7 @@ export const HabitHistoryModal: React.FC<HabitHistoryModalProps> = ({ habitId, o
                                         onClick={() => setCurrentMonth(prev => addMonths(prev, 1))}
                                         className="p-1.5 rounded-lg hover:bg-white/5 text-neutral-400 hover:text-white transition-colors"
                                         disabled={isSameMonth(currentMonth, today)}
+                                        aria-label="Next month"
                                     >
                                         <ChevronRight size={18} className={isSameMonth(currentMonth, today) ? 'opacity-30' : ''} />
                                     </button>
@@ -236,12 +252,14 @@ export const HabitHistoryModal: React.FC<HabitHistoryModalProps> = ({ habitId, o
                                         const isSelected = selectedDate === dayKey;
                                         const dayEntries = entriesByDay.get(dayKey) || [];
                                         const dayTotal = dayEntries.reduce((sum, e) => sum + (e.value || 0), 0);
+                                        const dayIsQuantity = resolveHabitTrackingForDay(habit, dayKey).goal.type === 'number';
 
                                         return (
                                             <button
                                                 key={dayKey}
                                                 onClick={() => handleDateClick(day)}
                                                 disabled={isFuture}
+                                                aria-label={`${format(day, 'EEEE, MMMM d, yyyy')}${hasEntries ? ', has entry' : ', no entry'}`}
                                                 className={cn(
                                                     "relative flex flex-col items-center justify-center py-1.5 rounded-lg text-xs transition-all",
                                                     !inMonth && "opacity-30",
@@ -260,7 +278,7 @@ export const HabitHistoryModal: React.FC<HabitHistoryModalProps> = ({ habitId, o
                                                         "mt-0.5 text-[8px] font-bold leading-none",
                                                         isSelected ? "text-emerald-400" : "text-emerald-500"
                                                     )}>
-                                                        {isQuantity ? dayTotal : '●'}
+                                                        {dayIsQuantity ? dayTotal : '●'}
                                                     </span>
                                                 )}
                                             </button>
@@ -280,29 +298,32 @@ export const HabitHistoryModal: React.FC<HabitHistoryModalProps> = ({ habitId, o
                                             <h3 className="text-sm font-semibold text-neutral-200">
                                                 {format(new Date(selectedDate + 'T12:00:00'), 'EEEE, MMM d, yyyy')}
                                             </h3>
-                                            <button
-                                                onClick={() => { setShowNewEntry(true); setEditingId(null); }}
-                                                className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10 rounded-md transition-colors"
-                                            >
-                                                <Plus size={14} />
-                                                Add Entry
-                                            </button>
+                                            {selectedEntries.length === 0 && (
+                                                <button
+                                                    onClick={() => { setShowNewEntry(true); setEditingId(null); }}
+                                                    className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10 rounded-md transition-colors"
+                                                >
+                                                    <Plus size={14} />
+                                                    Add Entry
+                                                </button>
+                                            )}
                                         </div>
 
                                         {/* New Entry Form */}
                                         {showNewEntry && (
                                             <div className="flex items-center gap-2 mb-3 p-3 bg-emerald-500/5 border border-emerald-500/20 rounded-lg">
                                                 <input
-                                                    type="number"
-                                                    min="0"
-                                                    step="any"
+                                                    type="text"
+                                                    inputMode="decimal"
+                                                    pattern="[0-9]*\.?[0-9]*"
                                                     value={newEntryValue}
-                                                    onChange={e => setNewEntryValue(Number(e.target.value))}
+                                                    onChange={e => setNewEntryValue(e.target.value)}
                                                     className="w-20 px-2 py-1.5 text-sm bg-neutral-800 border border-white/10 rounded-md text-neutral-200 focus:outline-none focus:border-emerald-500/50"
                                                     autoFocus
+                                                    aria-label="New entry quantity"
                                                 />
-                                                {habit.goal?.unit && (
-                                                    <span className="text-xs text-neutral-500">{habit.goal.unit}</span>
+                                                {selectedUnit && (
+                                                    <span className="text-xs text-neutral-500">{selectedUnit}</span>
                                                 )}
                                                 <div className="ml-auto flex gap-2">
                                                     <button
@@ -332,16 +353,17 @@ export const HabitHistoryModal: React.FC<HabitHistoryModalProps> = ({ habitId, o
                                                         {editingId === entry.id ? (
                                                             <div className="flex items-center gap-2 flex-1">
                                                                 <input
-                                                                    type="number"
-                                                                    min="0"
-                                                                    step="any"
+                                                                    type="text"
+                                                                    inputMode="decimal"
+                                                                    pattern="[0-9]*\.?[0-9]*"
                                                                     value={editValue}
-                                                                    onChange={e => setEditValue(Number(e.target.value))}
+                                                                    onChange={e => setEditValue(e.target.value)}
                                                                     className="w-20 px-2 py-1.5 text-sm bg-neutral-800 border border-white/10 rounded-md text-neutral-200 focus:outline-none focus:border-emerald-500/50"
                                                                     autoFocus
+                                                                    aria-label="Entry quantity"
                                                                 />
-                                                                {habit.goal?.unit && (
-                                                                    <span className="text-xs text-neutral-500">{habit.goal.unit}</span>
+                                                                {selectedUnit && (
+                                                                    <span className="text-xs text-neutral-500">{selectedUnit}</span>
                                                                 )}
                                                                 <div className="ml-auto flex gap-2">
                                                                     <button
@@ -366,8 +388,8 @@ export const HabitHistoryModal: React.FC<HabitHistoryModalProps> = ({ habitId, o
                                                                         <span className="font-mono font-bold text-neutral-200 text-sm">
                                                                             {entry.value ?? '—'}
                                                                         </span>
-                                                                        {habit.goal?.unit && (
-                                                                            <span className="text-xs text-neutral-500">{habit.goal.unit}</span>
+                                                                        {selectedUnit && (
+                                                                            <span className="text-xs text-neutral-500">{selectedUnit}</span>
                                                                         )}
                                                                     </div>
                                                                     <div className="text-[10px] text-neutral-600 mt-0.5">
@@ -388,6 +410,7 @@ export const HabitHistoryModal: React.FC<HabitHistoryModalProps> = ({ habitId, o
                                                                         onClick={() => handleStartEdit(entry)}
                                                                         className="p-1.5 rounded-md text-neutral-500 hover:text-neutral-300 hover:bg-white/5 transition-colors"
                                                                         title="Edit"
+                                                                        aria-label={`Edit entry for ${selectedDate}`}
                                                                     >
                                                                         <Pencil size={14} />
                                                                     </button>
@@ -395,6 +418,7 @@ export const HabitHistoryModal: React.FC<HabitHistoryModalProps> = ({ habitId, o
                                                                         onClick={() => handleDelete(entry.id)}
                                                                         className="p-1.5 rounded-md text-neutral-500 hover:text-red-400 hover:bg-white/5 transition-colors"
                                                                         title="Delete"
+                                                                        aria-label={`Delete entry for ${selectedDate}`}
                                                                     >
                                                                         <Trash2 size={14} />
                                                                     </button>
@@ -420,6 +444,7 @@ export const HabitHistoryModal: React.FC<HabitHistoryModalProps> = ({ habitId, o
                                                     const dayEntries = entriesByDay.get(dayKey) || [];
                                                     const total = dayEntries.reduce((sum, e) => sum + (e.value || 0), 0);
                                                     const count = dayEntries.length;
+                                                    const historicalGoal = resolveHabitTrackingForDay(habit, dayKey).goal;
                                                     return (
                                                         <button
                                                             key={dayKey}
@@ -430,10 +455,10 @@ export const HabitHistoryModal: React.FC<HabitHistoryModalProps> = ({ habitId, o
                                                                 {format(new Date(dayKey + 'T12:00:00'), 'EEE, MMM d, yyyy')}
                                                             </span>
                                                             <div className="flex items-center gap-2">
-                                                                {isQuantity && (
+                                                                {historicalGoal.type === 'number' && (
                                                                     <span className="font-mono text-sm font-bold text-neutral-200">
                                                                         {total}
-                                                                        {habit.goal?.unit && <span className="text-xs text-neutral-500 ml-0.5">{habit.goal.unit}</span>}
+                                                                        {historicalGoal.unit && <span className="text-xs text-neutral-500 ml-0.5">{historicalGoal.unit}</span>}
                                                                     </span>
                                                                 )}
                                                                 {count > 1 && (

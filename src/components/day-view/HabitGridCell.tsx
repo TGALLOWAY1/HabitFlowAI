@@ -5,6 +5,7 @@ import { cn } from '../../utils/cn';
 import { useHabitStore } from '../../store/HabitContext';
 import { useGoalsWithProgress } from '../../lib/useGoalsWithProgress';
 import { DeleteHabitConfirmModal } from '../DeleteHabitConfirmModal';
+import { resolveHabitTrackingForDay } from '../../domain/habits/trackingHistory';
 
 interface DayViewHabitStatus {
     habit: Habit;
@@ -49,6 +50,8 @@ interface HabitGridCellProps {
     habitStatus?: DayViewHabitStatus;
     onNumericClick?: (e: React.MouseEvent) => void;
     childStatusMap?: Map<string, DayViewHabitStatus>;
+    /** Calendar day whose historical target, unit, and cadence should be displayed. */
+    dayKey?: string;
 }
 
 export const HabitGridCell = ({
@@ -71,7 +74,8 @@ export const HabitGridCell = ({
     habitStatus,
     onNumericClick,
     log,
-    childStatusMap
+    childStatusMap,
+    dayKey,
 }: HabitGridCellProps) => {
     const { archiveHabit, deleteHabit } = useHabitStore();
     const { data: goalsWithProgress } = useGoalsWithProgress();
@@ -96,7 +100,8 @@ export const HabitGridCell = ({
 
     const isChecklistBundle = habit.type === 'bundle' && habit.bundleType === 'checklist';
     const isChoiceBundle = habit.type === 'bundle' && habit.bundleType === 'choice';
-    const isQuantity = habit.goal?.type === 'number';
+    const tracking = resolveHabitTrackingForDay(habit, dayKey);
+    const isQuantity = tracking.goal.type === 'number';
     const hasSubHabits = subHabits && subHabits.length > 0;
 
     // Compute local checklist progress from sub-habit statuses
@@ -171,7 +176,7 @@ export const HabitGridCell = ({
                     onClick={handleCheckboxClick}
                     role="checkbox"
                     aria-checked={isCompleted}
-                    aria-label={`${habit.name}: ${habitStatus.currentValue} of ${habitStatus.targetValue}${habit.goal?.unit ? ` ${habit.goal.unit}` : ''}`}
+                    aria-label={`${habit.name}: ${habitStatus.currentValue} of ${habitStatus.targetValue}${tracking.goal.unit ? ` ${tracking.goal.unit}` : ''}`}
                     className={cn(
                         "flex-shrink-0 w-5 h-5 rounded-full border flex items-center justify-center transition-all duration-300",
                         isCompleted
@@ -180,7 +185,7 @@ export const HabitGridCell = ({
                                 ? "bg-sky-500/10 border-sky-500 text-transparent"
                             : "border-white/20 text-transparent hover:border-emerald-500/50"
                     )}
-                    title={`${habitStatus.currentValue}${habit.goal?.unit ? ` ${habit.goal.unit}` : ''}`}
+                    title={`${habitStatus.currentValue}${tracking.goal.unit ? ` ${tracking.goal.unit}` : ''}`}
                 >
                     {isCompleted && <Check data-testid="numeric-complete-check" size={12} strokeWidth={3} />}
                 </button>
@@ -289,27 +294,31 @@ export const HabitGridCell = ({
 
             {isChoiceBundle && hasSubHabits && (
                 <div className="flex flex-wrap gap-1.5 px-3 pb-2.5 pt-0.5">
-                    {subHabits!.map(option => (
-                        <button
-                            key={option.id}
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                onChoiceSelect?.(option.id, e);
-                            }}
-                            className={cn(
-                                "px-2 py-1 rounded text-[10px] font-medium border transition-all",
-                                selectedChoices?.has(option.id)
-                                    ? "bg-amber-500/20 text-amber-300 border-amber-500/50"
-                                    : "bg-neutral-800 text-neutral-400 border-white/5 hover:border-white/20 hover:text-white"
-                            )}
-                        >
-                            {option.name}
-                            {option.goal?.type === 'number' && childStatusMap?.get(option.id)?.currentValue
-                                ? ` (${childStatusMap.get(option.id)!.currentValue}${option.goal.unit ? ` ${option.goal.unit}` : ''})`
-                                : null}
-                            {option.linkedGoalId && <Trophy size={10} className="flex-shrink-0 text-amber-500" />}
-                        </button>
-                    ))}
+                    {subHabits!.map(option => {
+                        const optionGoal = resolveHabitTrackingForDay(option, dayKey).goal;
+                        const optionValue = childStatusMap?.get(option.id)?.currentValue;
+                        return (
+                            <button
+                                key={option.id}
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    onChoiceSelect?.(option.id, e);
+                                }}
+                                className={cn(
+                                    "px-2 py-1 rounded text-[10px] font-medium border transition-all",
+                                    selectedChoices?.has(option.id)
+                                        ? "bg-amber-500/20 text-amber-300 border-amber-500/50"
+                                        : "bg-neutral-800 text-neutral-400 border-white/5 hover:border-white/20 hover:text-white"
+                                )}
+                            >
+                                {option.name}
+                                {optionGoal.type === 'number' && optionValue
+                                    ? ` (${optionValue}${optionGoal.unit ? ` ${optionGoal.unit}` : ''})`
+                                    : null}
+                                {option.linkedGoalId && <Trophy size={10} className="flex-shrink-0 text-amber-500" />}
+                            </button>
+                        );
+                    })}
                 </div>
             )}
 
@@ -319,7 +328,7 @@ export const HabitGridCell = ({
                     <div className="h-px w-full bg-white/5 mb-1" />
 
                     {/* Habit Metadata */}
-                    {(habit.timeEstimate || habit.timesPerWeek || habit.nonNegotiable || (isQuantity && habitStatus) || habit.assignedDays) && (
+                    {(habit.timeEstimate || tracking.timesPerWeek || habit.nonNegotiable || (isQuantity && habitStatus) || tracking.assignedDays) && (
                         <div className="flex flex-wrap gap-2">
                             {habit.timeEstimate && (
                                 <span className="flex items-center gap-1 text-[10px] text-neutral-500 bg-white/5 px-2 py-0.5 rounded-full">
@@ -330,13 +339,13 @@ export const HabitGridCell = ({
                             {isQuantity && habitStatus && (
                                 <span className="flex items-center gap-1 text-[10px] text-neutral-500 bg-white/5 px-2 py-0.5 rounded-full">
                                     <Target size={10} />
-                                    {habitStatus.currentValue}/{habitStatus.targetValue} {habit.goal?.unit || ''}
+                                    {habitStatus.currentValue}/{habitStatus.targetValue} {tracking.goal.unit || ''}
                                 </span>
                             )}
-                            {habit.timesPerWeek != null && habit.timesPerWeek > 0 && (
+                            {tracking.timesPerWeek != null && tracking.timesPerWeek > 0 && (
                                 <span className="flex items-center gap-1 text-[10px] text-neutral-500 bg-white/5 px-2 py-0.5 rounded-full">
                                     <Repeat size={10} />
-                                    {habit.timesPerWeek}x/week
+                                    {tracking.timesPerWeek}x/week
                                 </span>
                             )}
                             {habit.nonNegotiable && (
@@ -345,10 +354,10 @@ export const HabitGridCell = ({
                                     Non-negotiable
                                 </span>
                             )}
-                            {habit.assignedDays && habit.assignedDays.length > 0 && habit.assignedDays.length < 7 && (
+                            {tracking.assignedDays && tracking.assignedDays.length > 0 && tracking.assignedDays.length < 7 && (
                                 <span className="flex items-center gap-1 text-[10px] text-neutral-500 bg-white/5 px-2 py-0.5 rounded-full">
                                     <Calendar size={10} />
-                                    {habit.assignedDays.map(d => ['Su','Mo','Tu','We','Th','Fr','Sa'][d]).join(', ')}
+                                    {tracking.assignedDays.map(d => ['Su','Mo','Tu','We','Th','Fr','Sa'][d]).join(', ')}
                                 </span>
                             )}
                         </div>

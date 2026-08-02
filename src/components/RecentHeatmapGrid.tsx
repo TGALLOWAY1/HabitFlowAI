@@ -38,7 +38,9 @@ export const RecentHeatmapGrid: React.FC<RecentHeatmapGridProps> = React.memo(({
 
         const processedDays = dateInterval.map(date => {
             const dateStr = format(date, 'yyyy-MM-dd');
-            const activeHabits = habits.filter(h => new Date(h.createdAt) <= date && !h.archived && !childIds.has(h.id));
+            // This is an activity view, so an actual completion is sufficient
+            // evidence even when it was backdated or occurred on creation day.
+            const activeHabits = habits.filter(h => !h.archived && !childIds.has(h.id));
 
             let completionCount = 0;
             const categoryIds = new Set<string>();

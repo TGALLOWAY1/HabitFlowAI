@@ -16,6 +16,7 @@ import { useRoutineStore } from '../store/RoutineContext';
 import { useProgressOverview } from '../lib/useProgressOverview';
 import { useGoalsWithProgress } from '../lib/useGoalsWithProgress';
 import { useDashboardPrefs } from '../store/DashboardPrefsContext';
+import { resolveHabitTrackingForDay } from '../domain/habits/trackingHistory';
 
 
 
@@ -205,7 +206,6 @@ interface HabitRowContentProps {
     onViewHistory: (habit: Habit) => void;
     potentialEvidence?: HabitPotentialEvidence[];
     onContextMenu: (e: React.MouseEvent, habit: Habit) => void;
-    isDeleteMode: boolean;
     onMoveToCategory?: (habit: Habit) => void;
     onAddToBundle?: (habit: Habit) => void;
 
@@ -239,7 +239,6 @@ const HabitRowContent = ({
     onViewHistory,
     potentialEvidence,
     onContextMenu,
-    isDeleteMode,
     onMoveToCategory,
     onAddToBundle,
     onCellPointerDown,
@@ -348,6 +347,8 @@ const HabitRowContent = ({
             <div className="flex relative z-0">
                 {dates.map((date) => {
                     const dateStr = format(date, 'yyyy-MM-dd');
+                    const tracking = resolveHabitTrackingForDay(habit, dateStr);
+                    const isNumericForDay = tracking.goal.type === 'number';
 
                     // Logic:
                     // If bundle, current status is computed from children.
@@ -364,7 +365,7 @@ const HabitRowContent = ({
                         hasValue = value > 0;
                     } else {
                         isCompleted = log?.completed || false;
-                        hasValue = habit.goal.type === 'number' && typeof log?.value === 'number' && log.value > 0;
+                        hasValue = isNumericForDay && typeof log?.value === 'number' && log.value > 0;
                         value = log?.value || 0;
                     }
 
@@ -413,7 +414,6 @@ const HabitRowContent = ({
                                                     : "bg-neutral-800/50 text-transparent hover:bg-neutral-800 hover:text-neutral-600 border border-white/5 hover:border-white/10",
                                     !isInteractive && isCompleted && "opacity-80 cursor-default",
                                     !isInteractive && "cursor-default hover:bg-neutral-800/50 hover:text-transparent",
-                                    isDeleteMode && hasExistingEntry && "ring-1 ring-red-500/60"
                                 )}
                                 title={
                                     habit.type === 'bundle'
@@ -454,7 +454,7 @@ const HabitRowContent = ({
                                         </span>
                                     </>
                                 ) : (
-                                    habit.goal.type === 'number' && value > 0 ? (
+                                    isNumericForDay && value > 0 ? (
                                         <span className="text-xs font-bold">{value}</span>
                                     ) : (
                                         <Check size={20} strokeWidth={3} className={cn("transition-transform duration-200", isCompleted ? "scale-100" : isFrozen ? "scale-100 opacity-50" : "scale-50")} />
@@ -487,7 +487,6 @@ const SortableHabitRow = ({
     onViewHistory,
     potentialEvidence,
     onContextMenu,
-    isDeleteMode,
     onMoveToCategory,
     onAddToBundle,
     onCellPointerDown,
@@ -511,7 +510,6 @@ const SortableHabitRow = ({
     onViewHistory: (habit: Habit) => void;
     potentialEvidence?: HabitPotentialEvidence[];
     onContextMenu: (e: React.MouseEvent, habit: Habit) => void;
-    isDeleteMode: boolean;
     onMoveToCategory?: (habit: Habit) => void;
     onAddToBundle?: (habit: Habit) => void;
 
@@ -608,7 +606,6 @@ const SortableHabitRow = ({
                 onViewHistory={onViewHistory}
                 potentialEvidence={potentialEvidence}
                 onContextMenu={onContextMenu}
-                isDeleteMode={isDeleteMode}
                 onMoveToCategory={onMoveToCategory}
                 onAddToBundle={onAddToBundle}
                 onCellPointerDown={onCellPointerDown}
@@ -638,7 +635,6 @@ const SortableHabitRow = ({
                     onViewHistory={onViewHistory}
                     potentialEvidence={potentialEvidence}
                     onContextMenu={onContextMenu}
-                    isDeleteMode={isDeleteMode}
                     onCellPointerDown={onCellPointerDown}
                     onCellPointerUp={onCellPointerUp}
                     onCellPointerMove={onCellPointerMove}
@@ -745,7 +741,6 @@ export const TrackerGrid = ({
     });
 
     const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
-    const [deleteMode, setDeleteMode] = useState(false);
     // Pending confirmation for removing a habit that is linked to one or more
     // goals. Shown via the Remove Habit modal after the user clicks trash twice —
     // the modal surfaces affected goals and offers Archive (default) or Delete
@@ -978,12 +973,13 @@ export const TrackerGrid = ({
 
     const handleOpenPopover = (e: React.MouseEvent, habit: Habit, date: string, val: number) => {
         const position = getPopoverPosition(e);
+        const tracking = resolveHabitTrackingForDay(habit, date);
         setPopoverState({
             isOpen: true,
             habitId: habit.id,
             date: date,
             initialValue: val,
-            unit: habit.goal.unit,
+            unit: tracking.goal.unit,
             position,
         });
     };
@@ -993,6 +989,7 @@ export const TrackerGrid = ({
         const last = lastHandledCellRef.current;
         if (last && last.habitId === habit.id && last.dateStr === dateStr && now - last.t < 400) return;
         lastHandledCellRef.current = { habitId: habit.id, dateStr, t: now };
+        const tracking = resolveHabitTrackingForDay(habit, dateStr);
 
         // Handle Unified Choice Children (Real Habits)
         // Write entries on the CHILD habit, not the parent. Parent completion is derived.
@@ -1003,7 +1000,7 @@ export const TrackerGrid = ({
                 const isCompleted = !!childLog?.completed;
 
                 if (isCompleted) {
-                    if (habit.goal.type === 'number') {
+                    if (tracking.goal.type === 'number') {
                         handleOpenPopover(e, habit, dateStr, childLog?.value || 0);
                     } else {
                         // Toggle off: delete child entry
@@ -1025,7 +1022,7 @@ export const TrackerGrid = ({
             const currentOptionValue = parentLog?.completedOptions?.[habit.associatedOptionId];
             const isOptionCompleted = currentOptionValue !== undefined && currentOptionValue !== null;
 
-            if (habit.goal.type === 'boolean') {
+            if (tracking.goal.type === 'boolean') {
                 if (isOptionCompleted) {
                     await deleteHabitEntryByKey(habit.bundleParentId, dateStr);
                 } else {
@@ -1043,7 +1040,7 @@ export const TrackerGrid = ({
                     habitId: habit.bundleParentId,
                     date: dateStr,
                     initialValue: typeof currentOptionValue === 'number' ? currentOptionValue : 0,
-                    unit: habit.goal.unit,
+                    unit: tracking.goal.unit,
                     bundleOptionId: habit.associatedOptionId,
                     position,
                 });
@@ -1057,22 +1054,8 @@ export const TrackerGrid = ({
             return;
         }
 
-        // Standard habit: delete mode clears entry on click
-        const hasExistingEntry = !!log;
-        if (deleteMode) {
-            if (hasExistingEntry) {
-                try {
-                    await deleteHabitEntryByKey(habit.id, dateStr);
-                    debouncedRefreshProgress();
-                } catch (error) {
-                    console.error('Failed to delete habit entry in delete mode:', error);
-                }
-            }
-            return;
-        }
-
         // Single tap: toggle (boolean) or open popover (numeric). Clear entry is via cell kebab menu.
-        if (habit.goal.type === 'boolean') {
+        if (tracking.goal.type === 'boolean') {
             handleToggle(habit.id, dateStr);
         } else {
             const position = getPopoverPosition(e);
@@ -1081,7 +1064,7 @@ export const TrackerGrid = ({
                 habitId: habit.id,
                 date: dateStr,
                 initialValue: log?.value || 0,
-                unit: habit.goal.unit,
+                unit: tracking.goal.unit,
                 position,
             });
         }
@@ -1103,22 +1086,8 @@ export const TrackerGrid = ({
                         <div className="w-max min-w-full">
                             {/* Header */}
                             <div className="sticky top-0 z-30 flex border-b border-white/5 bg-neutral-900 shadow-md">
-                                <div className="w-64 flex-shrink-0 p-4 font-medium text-emerald-400 border-r border-white/5 flex items-center justify-between bg-neutral-900 sticky left-0 z-40 group after:pointer-events-none after:absolute after:right-[-1px] after:top-0 after:h-full after:w-px after:bg-white/10">
+                                <div className="w-64 flex-shrink-0 p-4 font-medium text-emerald-400 border-r border-white/5 flex items-center bg-neutral-900 sticky left-0 z-40 group after:pointer-events-none after:absolute after:right-[-1px] after:top-0 after:h-full after:w-px after:bg-white/10">
                                     <span>Daily Habits</span>
-                                    <div className="flex items-center gap-1">
-                                        <button
-                                            onClick={() => setDeleteMode(prev => !prev)}
-                                            className={cn(
-                                                "p-1.5 rounded-lg transition-colors",
-                                                deleteMode
-                                                    ? "bg-red-500/20 text-red-400"
-                                                    : "hover:bg-neutral-800 text-neutral-500 hover:text-red-400"
-                                            )}
-                                            title={deleteMode ? 'Exit Delete Mode' : 'Enter Delete Mode (mobile-friendly)'}
-                                        >
-                                            <Trash2 size={16} />
-                                        </button>
-                                    </div>
                                 </div>
                                 <div className="flex bg-neutral-900">
                                     {dates.map((date) => (
@@ -1142,11 +1111,6 @@ export const TrackerGrid = ({
                             </div>
 
                             {/* Daily Rows */}
-                            {deleteMode && (
-                                <div className="px-4 py-2 text-xs text-red-300 bg-red-500/10 border-b border-red-500/20">
-                                    Delete mode active: tap any filled cell to remove that day&apos;s entry.
-                                </div>
-                            )}
                             <div className="flex-col">
                                 {loading ? (
                                     <div className="flex items-center justify-center p-12 text-neutral-500 text-sm">Loading habits…</div>
@@ -1175,7 +1139,6 @@ export const TrackerGrid = ({
                                                 onViewHistory={(h) => setHistoryModalHabitId(h.id)}
                                                 potentialEvidence={potentialEvidence}
                                                 onContextMenu={handleContextMenu}
-                                                isDeleteMode={deleteMode}
                                                 onMoveToCategory={(h) => setCategoryPickerHabit(h)}
                                                 onAddToBundle={(h) => setBundlePickerHabit(h)}
                                                 onCellPointerDown={onCellPointerDown}

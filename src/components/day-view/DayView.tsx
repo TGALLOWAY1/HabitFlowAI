@@ -152,7 +152,7 @@ export const DayView = ({ onAddHabit, onEditHabit, onViewHistory }: DayViewProps
             if (existing) {
                 map.set(habit.id, { ...existing, isComplete });
             } else {
-                const completion = deriveDailyHabitCompletion(habit, []);
+                const completion = deriveDailyHabitCompletion(habit, [], dateStr);
                 map.set(habit.id, {
                     habit,
                     isComplete,

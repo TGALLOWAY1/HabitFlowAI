@@ -54,4 +54,38 @@ describe('resolveLocalHabitStatuses', () => {
     expect(result.targetValue).toBe(10);
     expect(result.isComplete).toBe(false);
   });
+
+  it('keeps an optimistic historical entry on its historical target', () => {
+    const revisedHabit: Habit = {
+      ...numericHabit,
+      goal: { type: 'number', frequency: 'daily', target: 20, unit: 'pages' },
+      trackingRevisions: [
+        {
+          effectiveFromDayKey: '2026-02-01',
+          goal: { type: 'number', frequency: 'daily', target: 10, unit: 'pages' },
+        },
+        {
+          effectiveFromDayKey: '2026-03-01',
+          goal: { type: 'number', frequency: 'daily', target: 20, unit: 'pages' },
+        },
+      ],
+    };
+
+    const result = resolveLocalHabitStatuses({
+      baseStatuses: new Map(),
+      habits: [revisedHabit],
+      logs: {
+        [`${numericHabit.id}-2026-02-18`]: {
+          habitId: numericHabit.id,
+          date: '2026-02-18',
+          value: 10,
+          completed: false,
+        },
+      },
+      dayKey: '2026-02-18',
+    }).get(numericHabit.id)!;
+
+    expect(result.targetValue).toBe(10);
+    expect(result.isComplete).toBe(true);
+  });
 });
