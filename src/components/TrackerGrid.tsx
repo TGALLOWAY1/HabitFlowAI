@@ -212,7 +212,6 @@ interface HabitRowContentProps {
     onCellPointerDown?: (habitId: string, dateStr: string, e: React.PointerEvent) => void;
     onCellPointerUp?: () => void;
     onCellPointerMove?: () => void;
-    onClearEntry?: (habitId: string, dateStr: string) => Promise<void>;
 }
 
 const HabitRowContent = ({
@@ -246,7 +245,6 @@ const HabitRowContent = ({
     onCellPointerDown,
     onCellPointerUp,
     onCellPointerMove,
-    onClearEntry,
 }: HabitRowContentProps) => {
 
     const { hideStreaks } = useDashboardPrefs();
@@ -463,20 +461,6 @@ const HabitRowContent = ({
                                     )
                                 )}
                             </button>
-                            {habit.type !== 'bundle' && hasExistingEntry && onClearEntry && (
-                                <button
-                                    type="button"
-                                    onClick={(event) => {
-                                        event.stopPropagation();
-                                        void onClearEntry(habit.id, dateStr);
-                                    }}
-                                    className="absolute top-0.5 right-0.5 z-10 w-4 h-4 rounded-full bg-neutral-950/90 text-neutral-400 hover:text-red-300 hover:bg-red-500/20 flex items-center justify-center border border-white/10"
-                                    title="Clear entry"
-                                    aria-label={`Clear entry for ${habit.name} on ${dateStr}`}
-                                >
-                                    <Trash2 size={9} aria-hidden="true" />
-                                </button>
-                            )}
                         </div>
                     );
                 })}
@@ -509,7 +493,6 @@ const SortableHabitRow = ({
     onCellPointerDown,
     onCellPointerUp,
     onCellPointerMove,
-    onClearEntry,
 }: {
     habit: Habit;
     allHabits: Habit[];
@@ -535,7 +518,6 @@ const SortableHabitRow = ({
     onCellPointerDown?: (habitId: string, dateStr: string, e: React.PointerEvent) => void;
     onCellPointerUp?: () => void;
     onCellPointerMove?: () => void;
-    onClearEntry?: (habitId: string, dateStr: string) => Promise<void>;
 }) => {
     const {
         attributes,
@@ -579,7 +561,7 @@ const SortableHabitRow = ({
                     },
                     archived: false,
                     createdAt: habit.createdAt,
-                    type: 'bundle-option-virtual' as any, // Only for internal distinction if needed
+                    type: metricMode === 'required' ? 'number' : 'boolean',
                     isVirtual: true,
                     associatedOptionId: opt.id,
                     bundleParentId: habit.id,
@@ -632,7 +614,6 @@ const SortableHabitRow = ({
                 onCellPointerDown={onCellPointerDown}
                 onCellPointerUp={onCellPointerUp}
                 onCellPointerMove={onCellPointerMove}
-                onClearEntry={onClearEntry}
             />
 
             {/* Child Rows - Rendered when expanded */}
@@ -661,7 +642,6 @@ const SortableHabitRow = ({
                     onCellPointerDown={onCellPointerDown}
                     onCellPointerUp={onCellPointerUp}
                     onCellPointerMove={onCellPointerMove}
-                    onClearEntry={onClearEntry}
                 />
             ))}
         </div>
@@ -1201,7 +1181,6 @@ export const TrackerGrid = ({
                                                 onCellPointerDown={onCellPointerDown}
                                                 onCellPointerUp={onCellPointerUp}
                                                 onCellPointerMove={onCellPointerMove}
-                                                onClearEntry={handleClearEntry}
                                             />
                                         ))}
                                     </SortableContext>
@@ -1270,12 +1249,10 @@ export const TrackerGrid = ({
                 onSubmit={async (val) => {
                     try {
                         const { habitId, date } = popoverState;
-                        // Use type assertion to access potential extra fields
-                        const state = popoverState as any;
-                        if (state.bundleOptionId) {
+                        if (popoverState.bundleOptionId) {
                             await upsertHabitEntry(habitId, date, {
                                 value: val,
-                                bundleOptionId: state.bundleOptionId
+                                bundleOptionId: popoverState.bundleOptionId
                             });
                         } else {
                             await upsertHabitEntry(habitId, date, { value: val });
