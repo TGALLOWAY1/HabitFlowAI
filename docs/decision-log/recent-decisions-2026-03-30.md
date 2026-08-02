@@ -80,7 +80,36 @@ instead of a primary “non-negotiable” toggle.
 
 ---
 
-## Decision 4: Bundle completion remains child-entry driven, with stronger temporal membership handling
+## Decision 4: Preserve habit history with lightweight rule and inactive-day metadata
+
+- **Date:** 2026-08-02
+- **Status:** Accepted
+
+### Decision
+
+Keep revisions and archive gaps on the existing habit document rather than introducing a version collection or rewriting HabitEntries.
+
+- The first target/schedule edit records the current rule at creation and the new rule at the local effective DayKey.
+- Historical completion and scheduling resolve the rule effective on that date.
+- Archive begins an inactive range on the following day; restore closes it on the preceding day.
+- Switching between occurrence and weekly streak units starts a new comparable segment.
+- `goal.frequency: total` changes cumulative goal aggregation only; habit-day completion remains target-based.
+- A real backdated/imported entry may start evidenced history before the habit document's `createdAt`; no missed opportunities are inferred before that entry.
+
+### Reasoning
+
+HabitFlowAI has one real user. This preserves entry history and streak meaning with a small, testable data shape while avoiding multi-user migration and compatibility infrastructure.
+
+### Implications
+- Existing entries and historical DayKeys remain unchanged.
+- Metadata is added lazily only when a rule changes or a user archive starts.
+
+### Follow-up actions / open questions
+- Pre-change rule edits and completed archive cycles cannot be reconstructed without source timestamps.
+
+---
+
+## Decision 5: Bundle completion remains child-entry driven, with stronger temporal membership handling
 
 - **Date:** 2026-03-30
 - **Status:** Accepted (ongoing hardening)
@@ -105,7 +134,7 @@ instead of a primary “non-negotiable” toggle.
 
 ---
 
-## Decision 5: Preserve visibility and integrity across archive/delete linkage operations
+## Decision 6: Preserve visibility and integrity across archive/delete linkage operations
 
 - **Date:** 2026-03-30
 - **Status:** Accepted
