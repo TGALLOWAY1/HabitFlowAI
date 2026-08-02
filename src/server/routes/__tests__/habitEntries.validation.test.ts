@@ -11,7 +11,12 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import express, { type Express } from 'express';
 import request from 'supertest';
-import { getHabitEntriesRoute, createHabitEntryRoute, upsertHabitEntryRoute } from '../habitEntries';
+import {
+  getHabitEntriesRoute,
+  createHabitEntryRoute,
+  updateHabitEntryRoute,
+  upsertHabitEntryRoute,
+} from '../habitEntries';
 import { setupTestMongo, teardownTestMongo, getTestDb } from '../../../test/mongoTestHelper';
 import { createHabit } from '../../repositories/habitRepository';
 import { createCategory } from '../../repositories/categoryRepository';
@@ -32,6 +37,7 @@ beforeAll(async () => {
   });
   app.get('/api/entries', getHabitEntriesRoute);
   app.post('/api/entries', createHabitEntryRoute);
+  app.patch('/api/entries/:id', updateHabitEntryRoute);
   app.put('/api/entries', upsertHabitEntryRoute);
 });
 
@@ -73,7 +79,7 @@ describe('GET /api/entries - DayKey and TimeZone Validation', () => {
     expect(response.body.error).toContain('Invalid DayKey format');
   });
 
-  it('should reject invalid timeZone', async () => {
+  it('should use the canonical fallback for an invalid timeZone', async () => {
     const response = await request(app)
       .get('/api/entries')
       .query({
@@ -81,8 +87,8 @@ describe('GET /api/entries - DayKey and TimeZone Validation', () => {
         timeZone: 'Invalid/Timezone/123', // Invalid timezone that will fail Intl check
       });
 
-    expect(response.status).toBe(400);
-    expect(response.body.error).toContain('Invalid timezone');
+    expect(response.status).toBe(200);
+    expect(response.body.entries).toEqual([]);
   });
 
   it('should accept valid DayKey and TimeZone', async () => {
@@ -158,7 +164,7 @@ describe('POST /api/entries - Payload Validation', () => {
     expect(response.body.error).toContain('habitId is required');
   });
 
-  it('should reject missing date', async () => {
+  it('should derive the current local day when date and timestamp are omitted', async () => {
     const response = await request(app)
       .post('/api/entries')
       .send({
@@ -166,8 +172,65 @@ describe('POST /api/entries - Payload Validation', () => {
         value: 1,
       });
 
+    expect(response.status).toBe(201);
+    expect(response.body.entry.dayKey).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  });
+
+  it('rejects negative numeric progress and accepts zero', async () => {
+    const category = await createCategory(
+      { name: 'Numeric Category', color: '#111111' },
+      TEST_HOUSEHOLD_ID,
+      TEST_USER_ID
+    );
+    const numericHabit = await createHabit(
+      {
+        name: 'Drink water',
+        categoryId: category.id,
+        goal: { type: 'number', frequency: 'daily', target: 8, unit: 'glasses' },
+      },
+      TEST_HOUSEHOLD_ID,
+      TEST_USER_ID
+    );
+
+    const negative = await request(app).post('/api/entries').send({
+      habitId: numericHabit.id,
+      date: '2025-01-15',
+      value: -1,
+    });
+    expect(negative.status).toBe(400);
+    expect(negative.body.error).toContain('cannot be negative');
+
+    const zero = await request(app).post('/api/entries').send({
+      habitId: numericHabit.id,
+      date: '2025-01-15',
+      value: 0,
+    });
+    expect(zero.status).toBe(201);
+    expect(zero.body.entry.value).toBe(0);
+  });
+
+  it('requires a finite value for numeric habits', async () => {
+    const category = await createCategory(
+      { name: 'Numeric Category', color: '#111111' },
+      TEST_HOUSEHOLD_ID,
+      TEST_USER_ID
+    );
+    const numericHabit = await createHabit(
+      {
+        name: 'Read pages',
+        categoryId: category.id,
+        goal: { type: 'number', frequency: 'daily', target: 10, unit: 'pages' },
+      },
+      TEST_HOUSEHOLD_ID,
+      TEST_USER_ID
+    );
+
+    const response = await request(app).post('/api/entries').send({
+      habitId: numericHabit.id,
+      date: '2025-01-15',
+    });
     expect(response.status).toBe(400);
-    expect(response.body.error).toContain('date is required');
+    expect(response.body.error).toContain('require a finite value');
   });
 
   it('should reject invalid source enum value', async () => {
@@ -418,5 +481,73 @@ describe('PUT /api/entries - TrackerGrid-style payload (upsert)', () => {
     expect(response.body.entry.habitId).toBe(habit.id);
     expect(response.body.entry.value).toBe(1);
   });
+
+  it('rejects invalid date keys and negative quantities', async () => {
+    const category = await createCategory(
+      { name: 'Numeric Cat', color: '#111111' },
+      TEST_HOUSEHOLD_ID,
+      TEST_USER_ID
+    );
+    const habit = await createHabit(
+      {
+        name: 'Steps',
+        categoryId: category.id,
+        goal: { type: 'number', frequency: 'daily', target: 1000, unit: 'steps' },
+      },
+      TEST_HOUSEHOLD_ID,
+      TEST_USER_ID
+    );
+
+    const badDate = await request(app).put('/api/entries').send({
+      habitId: habit.id,
+      dateKey: '2025-02-30',
+      value: 100,
+    });
+    expect(badDate.status).toBe(400);
+
+    const negative = await request(app).put('/api/entries').send({
+      habitId: habit.id,
+      dateKey: '2025-02-20',
+      value: -100,
+    });
+    expect(negative.status).toBe(400);
+    expect(negative.body.error).toContain('cannot be negative');
+  });
 });
 
+describe('PATCH /api/entries/:id - mutation invariants', () => {
+  it('rejects negative edits and immutable identity changes', async () => {
+    const category = await createCategory(
+      { name: 'Numeric Cat', color: '#111111' },
+      TEST_HOUSEHOLD_ID,
+      TEST_USER_ID
+    );
+    const habit = await createHabit(
+      {
+        name: 'Read pages',
+        categoryId: category.id,
+        goal: { type: 'number', frequency: 'daily', target: 10, unit: 'pages' },
+      },
+      TEST_HOUSEHOLD_ID,
+      TEST_USER_ID
+    );
+    const created = await request(app).post('/api/entries').send({
+      habitId: habit.id,
+      date: '2025-01-15',
+      value: 5,
+    });
+    expect(created.status).toBe(201);
+
+    const negative = await request(app)
+      .patch(`/api/entries/${created.body.entry.id}`)
+      .send({ value: -1 });
+    expect(negative.status).toBe(400);
+    expect(negative.body.error).toContain('cannot be negative');
+
+    const identityChange = await request(app)
+      .patch(`/api/entries/${created.body.entry.id}`)
+      .send({ habitId: 'another-habit' });
+    expect(identityChange.status).toBe(400);
+    expect(identityChange.body.error).toContain('immutable');
+  });
+});

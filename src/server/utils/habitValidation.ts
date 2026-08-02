@@ -13,6 +13,21 @@ export interface ValidationResult {
  * 3. Option Existence: bundleOptionId must exist in habit.bundleOptions.
  */
 export function validateHabitEntryPayload(habit: Habit, entryPayload: Partial<HabitEntry>): ValidationResult {
+    if (entryPayload.value !== undefined && entryPayload.value !== null) {
+        if (typeof entryPayload.value !== 'number' || !Number.isFinite(entryPayload.value)) {
+            return { valid: false, error: 'Entry value must be a finite number.' };
+        }
+        if (entryPayload.value < 0) {
+            return { valid: false, error: 'Entry value cannot be negative.' };
+        }
+    }
+
+    if (habit.type !== 'bundle' && habit.goal.type === 'number') {
+        if (typeof entryPayload.value !== 'number' || !Number.isFinite(entryPayload.value)) {
+            return { valid: false, error: 'Numeric habit entries require a finite value.' };
+        }
+    }
+
     // 1. Check if it's a Choice Bundle
     if (habit.bundleType === 'choice' && habit.bundleOptions) {
 

@@ -119,6 +119,10 @@ export const HabitHistoryModal: React.FC<HabitHistoryModalProps> = ({ habitId, o
     };
 
     const handleSaveEdit = async (entry: HabitEntry) => {
+        if (!Number.isFinite(editValue) || editValue < 0) {
+            alert('Quantity must be zero or greater.');
+            return;
+        }
         setSaving(true);
         try {
             await updateHabitEntry(entry.id, { value: editValue });
@@ -135,6 +139,10 @@ export const HabitHistoryModal: React.FC<HabitHistoryModalProps> = ({ habitId, o
 
     const handleCreateEntry = async () => {
         if (!selectedDate) return;
+        if (!Number.isFinite(newEntryValue) || newEntryValue < 0) {
+            alert('Quantity must be zero or greater.');
+            return;
+        }
         setSaving(true);
         try {
             const result = await createHabitEntry({
@@ -286,6 +294,8 @@ export const HabitHistoryModal: React.FC<HabitHistoryModalProps> = ({ habitId, o
                                             <div className="flex items-center gap-2 mb-3 p-3 bg-emerald-500/5 border border-emerald-500/20 rounded-lg">
                                                 <input
                                                     type="number"
+                                                    min="0"
+                                                    step="any"
                                                     value={newEntryValue}
                                                     onChange={e => setNewEntryValue(Number(e.target.value))}
                                                     className="w-20 px-2 py-1.5 text-sm bg-neutral-800 border border-white/10 rounded-md text-neutral-200 focus:outline-none focus:border-emerald-500/50"
@@ -323,6 +333,8 @@ export const HabitHistoryModal: React.FC<HabitHistoryModalProps> = ({ habitId, o
                                                             <div className="flex items-center gap-2 flex-1">
                                                                 <input
                                                                     type="number"
+                                                                    min="0"
+                                                                    step="any"
                                                                     value={editValue}
                                                                     onChange={e => setEditValue(Number(e.target.value))}
                                                                     className="w-20 px-2 py-1.5 text-sm bg-neutral-800 border border-white/10 rounded-md text-neutral-200 focus:outline-none focus:border-emerald-500/50"
