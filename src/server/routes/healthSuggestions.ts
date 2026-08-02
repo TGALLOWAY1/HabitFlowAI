@@ -14,6 +14,7 @@ import { getHabitById } from '../repositories/habitRepository';
 import { validateHabitEntryPayload } from '../utils/habitValidation';
 import { checkAndCompleteLinkedGoals } from '../services/goalAutoCompletion';
 import { invalidateUserCaches } from '../lib/cacheInstances';
+import { resolveTimeZone } from '../utils/dayKey';
 
 const router = Router();
 
@@ -98,7 +99,8 @@ router.post('/:id/accept', async (req: Request, res: Response) => {
     const completedGoalIds = await checkAndCompleteLinkedGoals(
       [suggestion.habitId],
       householdId,
-      userId
+      userId,
+      resolveTimeZone(typeof req.body?.timeZone === 'string' ? req.body.timeZone : undefined),
     );
     invalidateUserCaches(userId);
 

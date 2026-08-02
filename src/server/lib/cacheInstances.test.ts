@@ -8,11 +8,18 @@ describe('buildUserScopedCacheKey', () => {
   });
 
   it.each([
-    ['household', ['user-1', 'home-2', 'UTC', '2026-03-31', 'habit', 30]],
-    ['timezone', ['user-1', 'home-1', 'America/New_York', '2026-03-31', 'habit', 30]],
-    ['calendar day', ['user-1', 'home-1', 'UTC', '2026-04-01', 'habit', 30]],
-  ] as const)('isolates cache entries by %s', (_label, args) => {
+    ['household', 'home-2', 'UTC', '2026-03-31'],
+    ['timezone', 'home-1', 'America/New_York', '2026-03-31'],
+    ['calendar day', 'home-1', 'UTC', '2026-04-01'],
+  ] as const)('isolates cache entries by %s', (_label, householdId, timeZone, referenceDayKey) => {
     const baseline = buildUserScopedCacheKey('user-1', 'home-1', 'UTC', '2026-03-31', 'habit', 30);
-    expect(buildUserScopedCacheKey(...args)).not.toBe(baseline);
+    expect(buildUserScopedCacheKey(
+      'user-1',
+      householdId,
+      timeZone,
+      referenceDayKey,
+      'habit',
+      30,
+    )).not.toBe(baseline);
   });
 });

@@ -5,8 +5,8 @@ import { deriveDailyHabitCompletion } from './completion';
 export interface WeeklyProgressEntry {
   habitId: string;
   dayKey: DayKey;
-  value?: number;
-  deletedAt?: string;
+  value?: number | null;
+  deletedAt?: string | null;
   note?: string;
 }
 

@@ -159,8 +159,6 @@ export async function getCategory(req: Request, res: Response): Promise<void> {
       });
       return;
     }
-    invalidateUserCaches(userId);
-
     res.status(200).json({
       category,
     });
@@ -250,6 +248,7 @@ export async function updateCategoryRoute(req: Request, res: Response): Promise<
       });
       return;
     }
+    invalidateUserCaches(userId);
 
     res.status(200).json({
       category,

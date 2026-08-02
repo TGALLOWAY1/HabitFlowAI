@@ -443,34 +443,28 @@ export const HabitProvider: React.FC<{
             setLogs(updatedLogs);
 
             try {
-                const results = allComplete
-                    ? await Promise.all(childIds.map(childId => clearHabitEntriesForDay(childId, date)))
-                    : [await batchCreateEntries({
+                if (allComplete) {
+                    const results = await Promise.all(
+                        childIds.map(childId => clearHabitEntriesForDay(childId, date)),
+                    );
+                    setLogs(prev => {
+                        const next = { ...prev };
+                        childIds.forEach((childId, i) => {
+                            const childKey = `${childId}-${date}`;
+                            const dayLog = results[i].dayLog;
+                            if (dayLog) next[childKey] = dayLog;
+                            else delete next[childKey];
+                        });
+                        return next;
+                    });
+                } else {
+                    const result = await batchCreateEntries({
                         habitIds: childIds,
                         dayKey: date,
                         source: 'manual',
                         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-                    })];
-
-                // Apply server truth
-                setLogs(prev => {
-                    const next = { ...prev };
-                    childIds.forEach((childId, i) => {
-                        const childKey = `${childId}-${date}`;
-                        if (allComplete) {
-                            const result = results[i];
-                            if (!result.dayLog) {
-                                delete next[childKey];
-                            } else {
-                                next[childKey] = result.dayLog;
-                            }
-                        }
                     });
-                    return next;
-                });
-                // Surface any goal that just hit 100% from these creates.
-                for (const result of results) {
-                    if ('completedGoalIds' in result) notifyGoalCompletion(result.completedGoalIds);
+                    notifyGoalCompletion(result.completedGoalIds);
                 }
                 scheduleBackgroundSync();
             } catch (error) {
