@@ -87,10 +87,9 @@ export function useProgressOverview(): {
         loading,
         error,
         refresh: () => {
-            // Invalidate cache and trigger reload
-            // We can't easily force the effect to re-run without a state change,
-            // so we'll just call fetchProgressOverview directly and update state.
-            setLoading(true);
+            // Keep stale progress visible during mutation-driven revalidation.
+            // A blocking loading state is only appropriate before first data.
+            if (!data) setLoading(true);
             fetchProgressOverview()
                 .then(newData => {
                     setCachedProgressOverview(newData);
