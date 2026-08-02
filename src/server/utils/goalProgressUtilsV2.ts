@@ -260,25 +260,20 @@ export function computeFullGoalProgressV2(
   let currentValue: number;
   if (aggregationMode === 'sum') {
     currentValue = filteredEntries.reduce((sum, entry) => {
-      if (habitMap && goal.unit) {
-        const habit = habitMap.get(entry.habitId);
-        // Deleted habits won't be in the map — still count their raw entry value
-        if (habit) {
-          if (habit.goal.type === 'boolean') {
-            // Boolean habits contribute their target value per entry
-            // e.g. "do 25 pull ups" (boolean, target=25) contributes 25 per check-in
-            return sum + (habit.goal.target ?? 1);
-          }
+      const habit = habitMap?.get(entry.habitId);
+      // Boolean habits contribute their configured amount per check-in even
+      // when the parent goal has no display unit.
+      if (habit?.goal.type === 'boolean') {
+        return sum + (habit.goal.target ?? 1);
+      }
 
-          if (entry.unit && !unitsMatch(goal.unit, entry.unit)) {
-            warnings.push({
-              type: 'UNIT_MISMATCH',
-              habitId: entry.habitId,
-              expectedUnit: goal.unit,
-              foundUnit: entry.unit,
-            });
-          }
-        }
+      if (habit && goal.unit && entry.unit && !unitsMatch(goal.unit, entry.unit)) {
+        warnings.push({
+          type: 'UNIT_MISMATCH',
+          habitId: entry.habitId,
+          expectedUnit: goal.unit,
+          foundUnit: entry.unit,
+        });
       }
       return sum + (entry.value ?? 0);
     }, 0);
@@ -310,11 +305,9 @@ export function computeFullGoalProgressV2(
 
     if (aggregationMode === 'sum') {
       dayValue = dayEntries.reduce((sum, entry) => {
-        if (habitMap && goal.unit) {
-          const habit = habitMap.get(entry.habitId);
-          if (habit?.goal.type === 'boolean') {
-            return sum + (habit.goal.target ?? 1);
-          }
+        const habit = habitMap?.get(entry.habitId);
+        if (habit?.goal.type === 'boolean') {
+          return sum + (habit.goal.target ?? 1);
         }
         return sum + (entry.value ?? 0);
       }, 0);
