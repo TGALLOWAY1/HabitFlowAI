@@ -28,6 +28,13 @@ import type { Habit } from '../../models/persistenceTypes';
 import { getRequestIdentity } from '../middleware/identity';
 import { invalidateUserCaches } from '../lib/cacheInstances';
 import { validateHabitDefinition } from '../../domain/habits/definitionValidation';
+import { getHabitCreatedDayKey } from '../../domain/habits/schedule';
+import {
+  recordHabitTrackingRevision,
+  trackingRulesEqual,
+} from '../../domain/habits/trackingHistory';
+import { isValidDayKey } from '../../domain/time/dayKey';
+import { getNowDayKey, resolveTimeZone } from '../utils/dayKey';
 
 // One-time recovery: track which users have been recovered to avoid repeated DB calls.
 // Both recovery layers run at most once per user per server process to avoid
@@ -159,7 +166,7 @@ export async function createHabitRoute(req: Request, res: Response): Promise<voi
       linkedGoalId, linkedRoutineIds,
       requiredDaysPerWeek, timesPerWeek,
       checklistSuccessRule, streakType,
-      reminderTime, reminderEnabled
+      reminderTime, reminderEnabled,
     } = req.body;
 
     // null is treated as "no reminder" so create and PATCH share one contract
@@ -343,7 +350,8 @@ export async function updateHabitRoute(req: Request, res: Response): Promise<voi
       linkedGoalId, linkedRoutineIds,
       requiredDaysPerWeek, timesPerWeek,
       checklistSuccessRule, streakType,
-      reminderTime, reminderEnabled
+      reminderTime, reminderEnabled,
+      trackingEffectiveDayKey, timeZone,
     } = req.body;
 
     if (!id) {
@@ -428,6 +436,29 @@ export async function updateHabitRoute(req: Request, res: Response): Promise<voi
         error: { code: 'VALIDATION_ERROR', message: definitionValidation.error },
       });
       return;
+    }
+
+    const updatedHabitDefinition = { ...existingHabit, ...patch };
+    if (!trackingRulesEqual(existingHabit, updatedHabitDefinition)) {
+      if (trackingEffectiveDayKey !== undefined && !isValidDayKey(trackingEffectiveDayKey)) {
+        res.status(400).json({
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: 'trackingEffectiveDayKey must use YYYY-MM-DD format',
+          },
+        });
+        return;
+      }
+
+      const effectiveDayKey = trackingEffectiveDayKey ?? getNowDayKey(timeZone);
+      const baselineDayKey = getHabitCreatedDayKey(existingHabit, resolveTimeZone(timeZone))
+        ?? effectiveDayKey;
+      patch.trackingRevisions = recordHabitTrackingRevision(
+        existingHabit,
+        updatedHabitDefinition,
+        effectiveDayKey,
+        baselineDayKey,
+      );
     }
 
     if (patch.categoryId) {
@@ -561,8 +592,16 @@ export async function archiveHabitRoute(req: Request, res: Response): Promise<vo
       return;
     }
 
+    const { trackingEffectiveDayKey, timeZone } = req.body ?? {};
+    if (trackingEffectiveDayKey !== undefined && !isValidDayKey(trackingEffectiveDayKey)) {
+      res.status(400).json({
+        error: { code: 'VALIDATION_ERROR', message: 'trackingEffectiveDayKey must use YYYY-MM-DD format' },
+      });
+      return;
+    }
+    const archiveDayKey = trackingEffectiveDayKey ?? getNowDayKey(timeZone);
     const { householdId, userId } = getRequestIdentity(req);
-    const habit = await archiveHabit(id, householdId, userId);
+    const habit = await archiveHabit(id, householdId, userId, archiveDayKey);
 
     if (!habit) {
       res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Habit not found' } });
@@ -598,8 +637,22 @@ export async function unarchiveHabitRoute(req: Request, res: Response): Promise<
       return;
     }
 
+    const { trackingEffectiveDayKey, timeZone } = req.body ?? {};
+    if (trackingEffectiveDayKey !== undefined && !isValidDayKey(trackingEffectiveDayKey)) {
+      res.status(400).json({
+        error: { code: 'VALIDATION_ERROR', message: 'trackingEffectiveDayKey must use YYYY-MM-DD format' },
+      });
+      return;
+    }
+    const restoreDayKey = trackingEffectiveDayKey ?? getNowDayKey(timeZone);
     const { householdId, userId } = getRequestIdentity(req);
-    const habit = await unarchiveHabit(id, householdId, userId);
+    const habit = await unarchiveHabit(
+      id,
+      householdId,
+      userId,
+      restoreDayKey,
+      resolveTimeZone(timeZone),
+    );
 
     if (!habit) {
       res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Habit not found' } });

@@ -19,6 +19,7 @@ import { invalidateGoalDataCache, invalidateGoalCaches } from './goalDataCache';
 import { ACTIVE_USER_MODE_STORAGE_KEY, DEMO_USER_ID, type ActiveUserMode } from '../shared/demo';
 import { DEMO_WRITE_BLOCKED_EVENT, DEMO_READ_ONLY_MESSAGE, getBootModeOverride } from './demoMode';
 import { warnIfPersonaLeaksIntoHabitEntryRequest } from '../shared/invariants/personaInvariants';
+import { getNowDayKey } from '../domain/time/dayKey';
 
 
 
@@ -739,7 +740,11 @@ export async function updateHabit(
 
   const response = await apiRequest<{ habit: Habit }>(`/habits/${id}`, {
     method: 'PATCH',
-    body: JSON.stringify(patch),
+    body: JSON.stringify({
+      ...patch,
+      trackingEffectiveDayKey: getNowDayKey(getLocalTimeZone()),
+      timeZone: getLocalTimeZone(),
+    }),
   });
 
   return response.habit;
@@ -766,6 +771,10 @@ export async function deleteHabit(id: string): Promise<void> {
 export async function archiveHabit(id: string): Promise<Habit> {
   const response = await apiRequest<{ habit: Habit }>(`/habits/${id}/archive`, {
     method: 'POST',
+    body: JSON.stringify({
+      trackingEffectiveDayKey: getNowDayKey(getLocalTimeZone()),
+      timeZone: getLocalTimeZone(),
+    }),
   });
   return response.habit;
 }
@@ -776,6 +785,10 @@ export async function archiveHabit(id: string): Promise<Habit> {
 export async function unarchiveHabit(id: string): Promise<Habit> {
   const response = await apiRequest<{ habit: Habit }>(`/habits/${id}/unarchive`, {
     method: 'POST',
+    body: JSON.stringify({
+      trackingEffectiveDayKey: getNowDayKey(getLocalTimeZone()),
+      timeZone: getLocalTimeZone(),
+    }),
   });
   return response.habit;
 }
