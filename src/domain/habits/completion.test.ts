@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Habit } from '../../models/persistenceTypes';
-import { deriveDailyHabitCompletion, hasValidNumericTarget } from './completion';
+import { deriveDailyHabitCompletion, getCompletionEntryValue, hasValidNumericTarget } from './completion';
 
 function habit(goal: Habit['goal']): Pick<Habit, 'goal'> {
   return { goal };
@@ -48,6 +48,12 @@ describe('deriveDailyHabitCompletion', () => {
     const config = habit({ type: 'boolean', frequency: 'daily' });
     expect(deriveDailyHabitCompletion(config, [])).toMatchObject({ isComplete: false, currentValue: 0 });
     expect(deriveDailyHabitCompletion(config, [{ value: 0 }])).toMatchObject({ isComplete: true, currentValue: 1 });
+  });
+
+  it('uses the target when an interaction explicitly completes a numeric habit', () => {
+    expect(getCompletionEntryValue(habit({ type: 'boolean', frequency: 'daily' }))).toBe(1);
+    expect(getCompletionEntryValue(habit({ type: 'number', frequency: 'daily', target: 2.5 }))).toBe(2.5);
+    expect(getCompletionEntryValue(habit({ type: 'number', frequency: 'daily' }))).toBeNull();
   });
 
   it('ignores corrupt negative and non-finite numeric values', () => {

@@ -23,6 +23,12 @@ export function hasValidNumericTarget(habit: HabitWithGoal): boolean {
     && habit.goal.target > 0;
 }
 
+/** Value used when an interaction explicitly means "complete this habit". */
+export function getCompletionEntryValue(habit: HabitWithGoal): number | null {
+  if (habit.goal.type === 'boolean') return 1;
+  return hasValidNumericTarget(habit) ? habit.goal.target! : null;
+}
+
 function sumNonNegativeFiniteValues(entries: readonly CompletionEntry[]): number {
   return entries.reduce((sum, entry) => {
     const value = entry.value;

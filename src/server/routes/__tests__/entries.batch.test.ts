@@ -170,4 +170,53 @@ describe('POST /api/entries/batch', () => {
     const entriesA = await getHabitEntriesForDay(habitId1, dayKey, HOUSEHOLD_ID, USER_A);
     expect(entriesA).toHaveLength(0);
   });
+
+  it('writes the configured target when a routine completes a numeric habit', async () => {
+    const db = await getTestDb();
+    const category = await db.collection('categories').findOne({ userId: USER_A });
+    const numericHabit = await createHabit(
+      {
+        name: 'Drink water',
+        categoryId: category!.id,
+        goal: { type: 'number', target: 8, unit: 'glasses', frequency: 'daily' },
+      },
+      HOUSEHOLD_ID,
+      USER_A
+    );
+    const dayKey = '2025-02-10';
+
+    const res = await request(app).post('/api/entries/batch').send({
+      dayKey,
+      entries: [{ habitId: numericHabit.id, source: 'routine' }],
+    });
+
+    expect(res.status).toBe(200);
+    const entries = await getHabitEntriesForDay(numericHabit.id, dayKey, HOUSEHOLD_ID, USER_A);
+    expect(entries).toHaveLength(1);
+    expect(entries[0].value).toBe(8);
+  });
+
+  it('validates every item before writing any entries', async () => {
+    const dayKey = '2025-02-11';
+    const res = await request(app).post('/api/entries/batch').send({
+      dayKey,
+      entries: [
+        { habitId: habitId1, source: 'routine' },
+        { habitId: 'missing-habit', source: 'routine' },
+      ],
+    });
+
+    expect(res.status).toBe(404);
+    expect(await getHabitEntriesForDay(habitId1, dayKey, HOUSEHOLD_ID, USER_A)).toHaveLength(0);
+  });
+
+  it('rejects duplicate habit IDs in one batch', async () => {
+    const res = await request(app).post('/api/entries/batch').send({
+      dayKey: '2025-02-12',
+      entries: [{ habitId: habitId1 }, { habitId: habitId1 }],
+    });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toContain('Duplicate habitId');
+  });
 });

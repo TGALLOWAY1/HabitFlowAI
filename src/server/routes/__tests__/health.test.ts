@@ -111,6 +111,19 @@ describe('POST /api/health/apple/sync', () => {
     expect(res.status).toBe(400);
   });
 
+  it.each([
+    { steps: -1 },
+    { sleepHours: 'eight' },
+    { workoutMinutes: -5 },
+  ])('rejects invalid health quantities: %o', async invalidMetric => {
+    const res = await request(app)
+      .post('/api/health/apple/sync')
+      .send({ dayKey: '2026-03-15', ...invalidMetric });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe('VALIDATION_ERROR');
+  });
+
   it('auto-logs when rule is satisfied', async () => {
     // Create habit with auto_log rule
     const cat = await createCategory({ name: 'Fitness', color: 'bg-green-500' }, HID, UID);

@@ -161,6 +161,26 @@ describe('Health Suggestion Routes', () => {
       const entries = await getHabitEntriesForDay(habitId, '2026-03-15', HID, UID);
       expect(entries).toHaveLength(1);
     });
+
+    it('does not create an entry for a missing habit', async () => {
+      const suggestion = await createSuggestion(
+        {
+          userId: UID,
+          habitId: 'missing-habit',
+          ruleId: 'rule-1',
+          dayKey: '2026-03-15',
+          metricType: 'steps',
+          metricValue: 12000,
+          status: 'pending',
+        },
+        HID,
+        UID
+      );
+
+      const res = await request(app).post(`/api/health/suggestions/${suggestion.id}/accept`);
+      expect(res.status).toBe(404);
+      expect(await getHabitEntriesForDay('missing-habit', '2026-03-15', HID, UID)).toHaveLength(0);
+    });
   });
 
   describe('POST /api/health/suggestions/:id/dismiss', () => {

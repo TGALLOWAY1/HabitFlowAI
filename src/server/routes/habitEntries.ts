@@ -22,6 +22,7 @@ import { getRequestIdentity } from '../middleware/identity';
 import { invalidateUserCaches } from '../lib/cacheInstances';
 import { checkAndCompleteLinkedGoals } from '../services/goalAutoCompletion';
 import type { HabitEntry } from '../../models/persistenceTypes';
+import { getCompletionEntryValue } from '../../domain/habits/completion';
 
 const ENTRY_MUTATION_FIELDS = new Set([
     'value', 'bundleOptionId', 'choiceChildHabitId', 'bundleOptionLabel', 'unitSnapshot',
@@ -596,36 +597,63 @@ export async function batchCreateEntriesRoute(req: Request, res: Response): Prom
             return;
         }
 
-        let created = 0;
-        let updated = 0;
-        const results: { habitId: string; dayKey: string; id: string }[] = [];
-        const now = new Date().toISOString();
-        const touchedHabitIds = new Set<string>();
+        const preparedEntries: Array<{
+            habitId: string;
+            routineId?: string;
+            value: number;
+        }> = [];
+        const seenHabitIds = new Set<string>();
 
+        // Validate the complete batch before the first write so a bad later
+        // item cannot leave a partially applied routine completion.
         for (const item of entries) {
             const habitId = item?.habitId;
             if (!habitId || typeof habitId !== 'string') {
                 res.status(400).json({ error: 'Each entry must have a non-empty habitId string' });
                 return;
             }
+            if (seenHabitIds.has(habitId)) {
+                res.status(400).json({ error: `Duplicate habitId in batch: ${habitId}` });
+                return;
+            }
+            seenHabitIds.add(habitId);
 
             const habit = await getHabitById(habitId, householdId, userId);
-            if (!habit) {
-                res.status(404).json({ error: `Habit not found: ${habitId}` });
+            if (!habit || habit.archived || habit.deletedAt) {
+                res.status(404).json({ error: `Active habit not found: ${habitId}` });
                 return;
             }
 
-            const validation = validateHabitEntryPayload(habit, { value: 1, source: 'routine' });
+            const value = getCompletionEntryValue(habit);
+            if (value === null) {
+                res.status(400).json({ error: `${habit.name}: numeric habit has no valid completion target` });
+                return;
+            }
+            const validation = validateHabitEntryPayload(habit, { value, source: 'routine' });
             if (!validation.valid) {
                 res.status(400).json({ error: `${habit.name}: ${validation.error}` });
                 return;
             }
+            preparedEntries.push({
+                habitId,
+                value,
+                routineId: typeof item.routineId === 'string' ? item.routineId : undefined,
+            });
+        }
 
+        let created = 0;
+        let updated = 0;
+        const results: { habitId: string; dayKey: string; id: string }[] = [];
+        const now = new Date().toISOString();
+        const touchedHabitIds = new Set<string>();
+
+        for (const item of preparedEntries) {
+            const { habitId } = item;
             const existing = await getHabitEntriesForDay(habitId, dayKey, householdId, userId);
             const entry = await upsertHabitEntry(habitId, dayKey, householdId, userId, {
                 source: 'routine',
-                routineId: typeof item.routineId === 'string' ? item.routineId : undefined,
-                value: 1,
+                routineId: item.routineId,
+                value: item.value,
                 timestamp: now,
             });
             if (existing.length === 0) created += 1;

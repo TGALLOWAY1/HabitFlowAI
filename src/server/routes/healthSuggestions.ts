@@ -11,6 +11,9 @@ import { getRequestIdentity } from '../middleware/identity';
 import { getPendingSuggestionsByUser, getSuggestionById, updateSuggestionStatus } from '../repositories/healthSuggestionRepository';
 import { getHabitEntriesForDay, upsertHabitEntry } from '../repositories/habitEntryRepository';
 import { getHabitById } from '../repositories/habitRepository';
+import { validateHabitEntryPayload } from '../utils/habitValidation';
+import { checkAndCompleteLinkedGoals } from '../services/goalAutoCompletion';
+import { invalidateUserCaches } from '../lib/cacheInstances';
 
 const router = Router();
 
@@ -63,7 +66,16 @@ router.post('/:id/accept', async (req: Request, res: Response) => {
 
     // Determine value
     const habit = await getHabitById(suggestion.habitId, householdId, userId);
-    const value = habit?.goal?.type === 'number' ? suggestion.metricValue : 1;
+    if (!habit || habit.archived || habit.deletedAt) {
+      res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Active habit not found.' } });
+      return;
+    }
+    const value = habit.goal.type === 'number' ? suggestion.metricValue : 1;
+    const validation = validateHabitEntryPayload(habit, { value, source: 'apple_health' });
+    if (!validation.valid) {
+      res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: validation.error } });
+      return;
+    }
 
     // Create entry
     const entry = await upsertHabitEntry(
@@ -83,8 +95,14 @@ router.post('/:id/accept', async (req: Request, res: Response) => {
 
     // Mark suggestion as accepted
     const updated = await updateSuggestionStatus(id, 'accepted', householdId, userId);
+    const completedGoalIds = await checkAndCompleteLinkedGoals(
+      [suggestion.habitId],
+      householdId,
+      userId
+    );
+    invalidateUserCaches(userId);
 
-    res.status(200).json({ suggestion: updated, entry });
+    res.status(200).json({ suggestion: updated, entry, completedGoalIds });
   } catch (error) {
     console.error('[Health Suggestion Accept] Error:', error);
     const message = error instanceof Error ? error.message : 'Internal server error';

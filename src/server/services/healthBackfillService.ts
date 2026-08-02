@@ -15,6 +15,7 @@ import { evaluateHealthRule } from './healthRuleEvaluationService';
 import { getHealthMetricsForRange } from '../repositories/healthMetricDailyRepository';
 import { getHabitEntriesForDay } from '../repositories/habitEntryRepository';
 import { upsertHabitEntry } from '../repositories/habitEntryRepository';
+import { validateHabitEntryPayload } from '../utils/habitValidation';
 
 export interface BackfillResult {
   created: number;
@@ -102,6 +103,11 @@ export async function runBackfill(
 
     // Create entry
     const value = resolveEntryValue(habit, evaluation.metricValue);
+    const validation = validateHabitEntryPayload(habit, { value, source: 'apple_health' });
+    if (!validation.valid) {
+      result.skipped++;
+      continue;
+    }
     await upsertHabitEntry(
       habit.id,
       dayKey,

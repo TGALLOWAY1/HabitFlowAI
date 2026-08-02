@@ -17,6 +17,11 @@ import { getRequestIdentity } from '../middleware/identity';
 import { saveRoutineLog } from '../repositories/routineLogRepository';
 import { upsertHabitEntry } from '../repositories/habitEntryRepository';
 import { recomputeDayLogForHabit } from '../utils/recomputeUtils';
+import { getHabitById } from '../repositories/habitRepository';
+import { validateHabitEntryPayload } from '../utils/habitValidation';
+import { getCompletionEntryValue } from '../../domain/habits/completion';
+import { checkAndCompleteLinkedGoals } from '../services/goalAutoCompletion';
+import { invalidateUserCaches } from '../lib/cacheInstances';
 import { validateDayKey } from '../domain/canonicalValidators';
 import { resolveTimeZone, getDayKeyForTimestamp, getNowDayKey } from '../utils/dayKey';
 import type { Routine, RoutineStep, RoutineVariant, RoutineLog } from '../../models/persistenceTypes';
@@ -966,6 +971,19 @@ export async function submitRoutineRoute(req: Request, res: Response): Promise<v
     // Guardrail: Routines never imply completion. Only create HabitEntries when habitIdsToComplete is explicitly provided.
     const habitIds: string[] = habitIdsToComplete || [];
 
+    if (habitIds.some(habitId => typeof habitId !== 'string' || habitId.length === 0)) {
+      res.status(400).json({
+        error: { code: 'VALIDATION_ERROR', message: 'habitIdsToComplete must contain non-empty strings' },
+      });
+      return;
+    }
+    if (new Set(habitIds).size !== habitIds.length) {
+      res.status(400).json({
+        error: { code: 'VALIDATION_ERROR', message: 'habitIdsToComplete must not contain duplicates' },
+      });
+      return;
+    }
+
     // Server-side guardrail: only allow completing habits that are actually linked to this routine.
     // This prevents accidental or malicious completion of arbitrary habits via a routine submission.
     if (habitIds.length > 0) {
@@ -982,13 +1000,37 @@ export async function submitRoutineRoute(req: Request, res: Response): Promise<v
       }
     }
 
-    // Create entries in parallel for better performance
-    const entryPromises = habitIds.map(async (habitId: string) => {
+    const preparedHabits: Array<{ habitId: string; value: number }> = [];
+    for (const habitId of habitIds) {
+      const habit = await getHabitById(habitId, householdId, userId);
+      if (!habit || habit.archived || habit.deletedAt) {
+        res.status(404).json({ error: { code: 'NOT_FOUND', message: `Active habit not found: ${habitId}` } });
+        return;
+      }
+      const value = getCompletionEntryValue(habit);
+      if (value === null) {
+        res.status(400).json({
+          error: { code: 'VALIDATION_ERROR', message: `${habit.name} has no valid numeric completion target` },
+        });
+        return;
+      }
+      const validation = validateHabitEntryPayload(habit, { value, source: 'routine' });
+      if (!validation.valid) {
+        res.status(400).json({
+          error: { code: 'VALIDATION_ERROR', message: `${habit.name}: ${validation.error}` },
+        });
+        return;
+      }
+      preparedHabits.push({ habitId, value });
+    }
+
+    // Create entries in parallel after all requested habits pass validation.
+    const entryPromises = preparedHabits.map(async ({ habitId, value }) => {
 
       // Upsert HabitEntry with routine provenance (dayKey/logDate are set by upsertHabitEntry from args)
       const entry = await upsertHabitEntry(habitId, logDate, householdId, userId, {
         timestamp: entryTimestamp,
-        value: 1,
+        value,
         source: 'routine',
         routineId: routine.id,
         ...(variantId ? { variantId } : {}),
@@ -1001,6 +1043,14 @@ export async function submitRoutineRoute(req: Request, res: Response): Promise<v
 
     await Promise.all(entryPromises);
     const createdOrUpdatedCount = habitIds.length;
+
+    const completedGoalIds = await checkAndCompleteLinkedGoals(
+      habitIds,
+      householdId,
+      userId,
+      userTz
+    );
+    invalidateUserCaches(userId);
 
     // Compute actual duration if we have both timestamps
     let actualDurationSeconds: number | undefined;
@@ -1030,6 +1080,7 @@ export async function submitRoutineRoute(req: Request, res: Response): Promise<v
       message: 'Routine submitted successfully',
       createdOrUpdatedCount,
       completedHabitIds: habitIds,
+      completedGoalIds,
     });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
