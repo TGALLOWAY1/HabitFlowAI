@@ -137,6 +137,35 @@ describe('getProgressOverview', () => {
     expect(habitToday.atRisk).toBe(true);
   });
 
+  it('reports ten strict daily completions as a ten-day streak', async () => {
+    vi.setSystemTime(new Date('2026-02-19T12:00:00.000Z'));
+
+    const habit: Habit = {
+      ...dailyHabit('habit-strict-daily'),
+      assignedDays: [0, 1, 2, 3, 4, 5, 6],
+      requiredDaysPerWeek: 7,
+      createdAt: '2026-02-10T00:00:00.000Z',
+    };
+    vi.mocked(getHabitsByUser).mockResolvedValue([habit]);
+    vi.mocked(getHabitEntriesByUser).mockResolvedValue(
+      Array.from({ length: 10 }, (_, index) => (
+        entry(habit.id, `2026-02-${String(index + 10).padStart(2, '0')}`)
+      )),
+    );
+
+    const req = createReq();
+    const res = createRes();
+
+    await getProgressOverview(req, res);
+
+    const body = vi.mocked(res.json).mock.calls[0][0];
+    const habitToday = body.habitsToday[0];
+    expect(habitToday.currentStreak).toBe(10);
+    expect(habitToday.bestStreak).toBe(10);
+    expect(habitToday.formattedStreak).toBe('10 days');
+    expect(habitToday.weekSatisfied).toBeUndefined();
+  });
+
   it('computes weekly streak and atRisk from weekly progress', async () => {
     vi.setSystemTime(new Date('2026-02-20T12:00:00.000Z'));
 

@@ -5,4 +5,5 @@ export {
   getScheduledHabitsForDay,
   isHabitScheduledOnDay,
   isTrackableHabit,
+  usesWeeklyQuotaStreak,
 } from '../../domain/habits/schedule';

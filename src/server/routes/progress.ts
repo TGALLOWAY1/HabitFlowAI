@@ -13,6 +13,7 @@ import { getAllMembershipsByUser } from '../repositories/bundleMembershipReposit
 import { computeGoalsWithProgressFromData } from '../utils/goalProgressUtilsV2';
 import { calculateGlobalMomentum, calculateCategoryMomentum, getMomentumCopy } from '../services/momentumService';
 import { calculateHabitStreakMetrics, type HabitDayState } from '../services/streakService';
+import { usesWeeklyQuotaStreak } from '../../domain/habits/schedule';
 import { resolveTimeZone, getNowDayKey, getCanonicalDayKeyFromEntry } from '../utils/dayKey';
 import type { MomentumState } from '../../types';
 import type { CompletionRecord } from '../services/momentumService';
@@ -190,8 +191,7 @@ export async function getProgressOverview(req: Request, res: Response): Promise<
       const value = habit.goal.type === 'number' && todayState ? todayState.value : undefined;
       const streak = streakMetrics.currentStreak;
 
-      const isWeeklyStreak = (habit.timesPerWeek != null && habit.timesPerWeek > 0) ||
-        (habit.assignedDays?.length && habit.requiredDaysPerWeek);
+      const isWeeklyStreak = usesWeeklyQuotaStreak(habit);
       const formattedStreak = isWeeklyStreak
         ? `${streak} ${streak === 1 ? 'week' : 'weeks'}`
         : `${streak} ${streak === 1 ? 'day' : 'days'}`;

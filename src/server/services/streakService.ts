@@ -6,7 +6,11 @@ import {
   getIsoWeekStartDayKey,
   isValidDayKey,
 } from '../../domain/time/dayKey';
-import { getHabitCreatedDayKey, isHabitScheduledOnDay } from './scheduleEngine';
+import {
+  getHabitCreatedDayKey,
+  isHabitScheduledOnDay,
+  usesWeeklyQuotaStreak,
+} from './scheduleEngine';
 
 export interface HabitDayState {
   dayKey: string;
@@ -243,16 +247,13 @@ export function calculateHabitStreakMetrics(
   const referenceDay = referenceDayKey
     ?? (timeZone ? formatDayKeyFromDate(referenceDate, timeZone) : dateToLocalDayKey(referenceDate));
 
-  if (habit.timesPerWeek != null && habit.timesPerWeek > 0) {
-    return calculateWeeklyMetrics(dayStates, habit, referenceDay, habit.timesPerWeek, timeZone);
-  }
-
-  if (habit.assignedDays?.length && habit.requiredDaysPerWeek != null) {
+  if (usesWeeklyQuotaStreak(habit)) {
+    const target = habit.timesPerWeek ?? habit.requiredDaysPerWeek ?? 1;
     return calculateWeeklyMetrics(
       dayStates,
       habit,
       referenceDay,
-      habit.requiredDaysPerWeek,
+      target,
       timeZone,
     );
   }

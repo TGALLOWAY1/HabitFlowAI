@@ -14,6 +14,23 @@ export interface SchedulableHabit {
   createdAt?: string;
   timesPerWeek?: number;
   assignedDays?: number[];
+  requiredDaysPerWeek?: number;
+}
+
+/**
+ * Flexible weekly quotas are measured in completed weeks. A strict schedule
+ * (every assigned day is required) remains an occurrence-based habit, so its
+ * streak is expressed in completed scheduled days rather than collapsing a
+ * long daily run into a single week.
+ */
+export function usesWeeklyQuotaStreak(habit: SchedulableHabit): boolean {
+  if (habit.timesPerWeek != null && habit.timesPerWeek > 0) return true;
+
+  return !!(
+    habit.assignedDays?.length
+    && habit.requiredDaysPerWeek != null
+    && habit.requiredDaysPerWeek < habit.assignedDays.length
+  );
 }
 
 export function getHabitCreatedDayKey(habit: SchedulableHabit, timeZone?: string): string | null {

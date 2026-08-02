@@ -4,6 +4,7 @@ import {
   isHabitScheduledOnDay,
   getScheduledHabitsForDay,
   getExpectedOpportunitiesInRange,
+  usesWeeklyQuotaStreak,
 } from './scheduleEngine';
 import type { Habit } from '../../models/persistenceTypes';
 
@@ -33,6 +34,20 @@ describe('isTrackableHabit', () => {
 
   it('returns false for soft-deleted habits', () => {
     expect(isTrackableHabit(makeHabit({ deletedAt: '2026-03-30T12:00:00Z' }))).toBe(false);
+  });
+});
+
+describe('usesWeeklyQuotaStreak', () => {
+  const cases: Array<[string, Partial<Habit>, boolean]> = [
+    ['explicit weekly quota', { timesPerWeek: 3 }, true],
+    ['strict every-day schedule', { assignedDays: [0, 1, 2, 3, 4, 5, 6], requiredDaysPerWeek: 7 }, false],
+    ['strict custom weekdays', { assignedDays: [1, 3, 5], requiredDaysPerWeek: 3 }, false],
+    ['flexible schedule with a grace day', { assignedDays: [1, 2, 3, 4, 5], requiredDaysPerWeek: 4 }, true],
+    ['assigned days without a weekly requirement', { assignedDays: [1, 3, 5] }, false],
+  ];
+
+  it.each(cases)('classifies %s', (_label, schedule, expected) => {
+    expect(usesWeeklyQuotaStreak(makeHabit(schedule))).toBe(expected);
   });
 });
 
