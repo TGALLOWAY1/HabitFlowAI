@@ -168,6 +168,17 @@ describe('getExpectedOpportunitiesInRange', () => {
     expect(getExpectedOpportunitiesInRange(habit, '2026-04-01', '2026-04-01')).toBe(1);
   });
 
+  it('counts weekday schedules independently of the process timezone', () => {
+    const previousTimeZone = process.env.TZ;
+    process.env.TZ = 'Asia/Tokyo';
+    try {
+      const mondayHabit = makeHabit({ assignedDays: [1] });
+      expect(getExpectedOpportunitiesInRange(mondayHabit, '2026-03-30', '2026-03-30')).toBe(1);
+    } finally {
+      process.env.TZ = previousTimeZone;
+    }
+  });
+
   it('empty range returns 0', () => {
     const habit = makeHabit();
     expect(getExpectedOpportunitiesInRange(habit, '2026-04-05', '2026-04-01')).toBe(0);
