@@ -11,6 +11,8 @@ export interface HabitDayState {
   dayKey: string;
   value: number;
   completed: boolean;
+  /** Optional bundle-specific qualification when streak rules differ from daily success. */
+  streakCompleted?: boolean;
   isFrozen?: boolean;
 }
 
@@ -75,9 +77,13 @@ function calculateBestConsecutiveSpan(dayKeys: string[], stepInDays: number): nu
   return best;
 }
 
+function qualifiesForStreak(state: HabitDayState): boolean {
+  return state.streakCompleted ?? state.completed;
+}
+
 function getLastCompletedDayKey(dayStates: HabitDayState[]): string | null {
   const completedDayKeys = dayStates
-    .filter(state => state.completed)
+    .filter(qualifiesForStreak)
     .map(state => state.dayKey)
     .sort();
   return completedDayKeys.at(-1) ?? null;
@@ -95,7 +101,7 @@ function calculateOpportunityMetrics(
   const eligibleStates = filterStatesToHabitLifetime(dayStates, habit, referenceDayKey);
   const protectedDayKeys = new Set(
     eligibleStates
-      .filter(state => state.completed || state.isFrozen)
+      .filter(state => qualifiesForStreak(state) || state.isFrozen)
       .map(state => state.dayKey),
   );
   const completedDayKeys = new Set(
@@ -155,7 +161,7 @@ function buildWeeklyProgressMap(
   const protectedDaysByWeek = new Map<string, Set<string>>();
 
   for (const dayState of dayStates) {
-    if (!(dayState.completed || dayState.isFrozen)) continue;
+    if (!(qualifiesForStreak(dayState) || dayState.isFrozen)) continue;
     const weekKey = getIsoWeekStartDayKey(dayState.dayKey);
     const protectedDays = protectedDaysByWeek.get(weekKey) ?? new Set<string>();
     protectedDays.add(dayState.dayKey);

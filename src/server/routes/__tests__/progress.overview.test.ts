@@ -228,4 +228,34 @@ describe('getProgressOverview', () => {
       expect.any(Array), expect.any(Array), TEST_HOUSEHOLD_ID, TEST_USER_ID, expect.any(String), expect.any(Array)
     );
   });
+
+  it('keeps checklist daily success separate from its full-completion streak rule', async () => {
+    vi.setSystemTime(new Date('2026-02-03T12:00:00.000Z'));
+    const childA = dailyHabit('child-a');
+    const childB = dailyHabit('child-b');
+    const parent: Habit = {
+      ...dailyHabit('parent'),
+      name: 'Morning checklist',
+      type: 'bundle',
+      bundleType: 'checklist',
+      subHabitIds: [childA.id, childB.id],
+      checklistSuccessRule: { type: 'threshold', threshold: 1 },
+      streakType: 'full',
+    };
+    vi.mocked(getHabitsByUser).mockResolvedValue([parent, childA, childB]);
+    vi.mocked(getHabitEntriesByUser).mockResolvedValue([
+      entry(childA.id, '2026-02-01'),
+      entry(childA.id, '2026-02-02'),
+      entry(childB.id, '2026-02-02'),
+    ]);
+
+    const res = createRes();
+    await getProgressOverview(createReq(), res);
+
+    const body = vi.mocked(res.json).mock.calls[0][0];
+    const parentToday = body.habitsToday.find((item: { habit: Habit }) => item.habit.id === parent.id);
+    expect(parentToday.currentStreak).toBe(1);
+    expect(parentToday.bestStreak).toBe(1);
+    expect(parentToday.lastCompletedDayKey).toBe('2026-02-02');
+  });
 });

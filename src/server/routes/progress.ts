@@ -244,6 +244,18 @@ function isMembershipActiveOnDay(m: BundleMembershipRecord, dayKey: string, dayO
   return true;
 }
 
+function qualifiesBundleStreak(
+  parent: Habit,
+  completedCount: number,
+  totalChildren: number,
+  meetsSuccessRule: boolean,
+): boolean {
+  if (parent.bundleType !== 'checklist') return completedCount > 0;
+  if (parent.streakType === 'any') return completedCount > 0;
+  if (parent.streakType === 'full') return totalChildren > 0 && completedCount === totalChildren;
+  return meetsSuccessRule;
+}
+
 /**
  * Derive bundle parent dayStates from temporal memberships.
  *
@@ -291,12 +303,19 @@ function deriveBundleParentDayStatesFromMemberships(
     const isComplete = parent.bundleType === 'checklist'
       ? evaluateChecklistSuccess(completedCount, activeMemberships.length, parent.checklistSuccessRule).meetsSuccessRule
       : completedCount > 0;
+    const streakCompleted = qualifiesBundleStreak(
+      parent,
+      completedCount,
+      activeMemberships.length,
+      isComplete,
+    );
 
     parentDayMap.set(dayKey, {
       dayKey,
       value: completedCount,
       completed: isComplete,
-      isFrozen: hasFrozen && !isComplete ? true : undefined,
+      streakCompleted,
+      isFrozen: hasFrozen && !streakCompleted ? true : undefined,
     });
   }
 }
@@ -338,12 +357,19 @@ function deriveBundleParentDayStatesFallback(
     const isComplete = parent.bundleType === 'checklist'
       ? evaluateChecklistSuccess(completedCount, subHabitIds.length, parent.checklistSuccessRule).meetsSuccessRule
       : completedCount > 0;
+    const streakCompleted = qualifiesBundleStreak(
+      parent,
+      completedCount,
+      subHabitIds.length,
+      isComplete,
+    );
 
     parentDayMap.set(dayKey, {
       dayKey,
       value: completedCount,
       completed: isComplete,
-      isFrozen: hasFrozen && !isComplete ? true : undefined,
+      streakCompleted,
+      isFrozen: hasFrozen && !streakCompleted ? true : undefined,
     });
   }
 }
