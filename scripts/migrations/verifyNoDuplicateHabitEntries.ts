@@ -1,6 +1,8 @@
 #!/usr/bin/env tsx
 /**
- * Verify no duplicate active HabitEntries exist by (householdId, userId, habitId, dayKey).
+ * Verify no duplicate HabitEntries exist by (householdId, userId, habitId, dayKey).
+ * Includes soft-deleted documents because the invariant is enforced by a full
+ * unique index over the collection.
  * Read-only. Exits 0 if no duplicates, 1 if any duplicate groups remain.
  * Does not operate cross-household; each household is checked independently.
  *
@@ -16,8 +18,6 @@ import { MongoClient } from 'mongodb';
 import { getMongoDbUri, getMongoDbName } from '../../src/server/config/env';
 
 const COLLECTION = 'habitEntries';
-const DEFAULT_HOUSEHOLD_ID = 'default-household';
-
 async function main(): Promise<void> {
   const uri = getMongoDbUri();
   const dbName = getMongoDbName();
@@ -33,14 +33,13 @@ async function main(): Promise<void> {
     const coll = db.collection(COLLECTION);
 
     const cursor = coll.aggregate<{ count: number }>([
-      { $match: { deletedAt: { $exists: false } } },
       {
         $group: {
           _id: {
-            householdId: { $ifNull: ['$householdId', DEFAULT_HOUSEHOLD_ID] },
+            householdId: '$householdId',
             userId: '$userId',
             habitId: '$habitId',
-            dayKey: { $ifNull: ['$dayKey', '$date'] },
+            dayKey: '$dayKey',
           },
           n: { $sum: 1 },
         },
@@ -55,12 +54,12 @@ async function main(): Promise<void> {
       console.error(
         'FAIL: Found',
         duplicateKeyCount,
-        'duplicate (householdId, userId, habitId, dayKey) group(s) among active habit entries.'
+        'duplicate (householdId, userId, habitId, dayKey) group(s) in habitEntries.'
       );
       process.exit(1);
     }
 
-    console.log('OK: No duplicate active habit entries (per householdId, userId, habitId, dayKey).');
+    console.log('OK: No duplicate habit-entry index keys (per householdId, userId, habitId, dayKey).');
   } finally {
     await client.close();
   }

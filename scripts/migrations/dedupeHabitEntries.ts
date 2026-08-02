@@ -2,8 +2,10 @@
 /**
  * Deduplicate HabitEntries by (householdId, userId, habitId, dayKey).
  * Operates within a single household only; never merges or dedupes across households.
- * Active docs only (deletedAt not set). Deterministic winner: most recent updatedAt, else createdAt, else _id.
- * Losers are soft-deleted (deletedAt + meta.dedupe).
+ * Includes active and soft-deleted docs because the production invariant uses a
+ * full unique index. Deterministic winner: active first, then most recently
+ * updated/created, then _id. Losers are copied to a recovery collection before
+ * being removed from the indexed collection.
  *
  * Default: --dry-run (read-only). Use --apply to modify data; requires --i-understand-this-will-modify-data.
  *
@@ -21,8 +23,7 @@ import { getMongoDbUri, getMongoDbName } from '../../src/server/config/env';
 import { writeFileSync, mkdirSync } from 'fs';
 
 const COLLECTION = 'habitEntries';
-
-const DEFAULT_HOUSEHOLD_ID = 'default-household';
+const ARCHIVE_COLLECTION = 'habitEntryDedupeArchive';
 
 type Doc = {
   _id: ObjectId;
@@ -39,7 +40,7 @@ type Doc = {
 };
 
 type DupeGroup = {
-  key: { householdId: string; userId: string; habitId: string; dayKey: string };
+  key: { householdId: string | null; userId: string; habitId: string; dayKey: string };
   winner: Doc;
   losers: Doc[];
 };
@@ -51,10 +52,11 @@ type Report = {
   host: string;
   duplicatesFound: number;
   groupsAffected: number;
+  documentsMissingDayKey: number;
   docsArchived: number;
-  docsSoftDeleted: number;
+  docsRemoved: number;
   sampleGroups: Array<{
-    key: { householdId: string; userId: string; habitId: string; dayKey: string };
+    key: { householdId: string | null; userId: string; habitId: string; dayKey: string };
     winnerId: string;
     loserIds: string[];
   }>;
@@ -75,10 +77,13 @@ function parseArgs(): { dryRun: boolean; apply: boolean; confirm: boolean } {
 }
 
 function canonicalDayKey(doc: Doc): string {
-  return (doc.dayKey ?? doc.date ?? '').toString();
+  return (doc.dayKey ?? '').toString();
 }
 
 function compareDocs(a: Doc, b: Doc): number {
+  const aActive = !a.deletedAt;
+  const bActive = !b.deletedAt;
+  if (aActive !== bActive) return aActive ? -1 : 1;
   const aUp = a.updatedAt ?? '';
   const bUp = b.updatedAt ?? '';
   if (aUp !== bUp) return bUp.localeCompare(aUp);
@@ -117,18 +122,19 @@ async function main(): Promise<void> {
     const db = client.db(dbName);
     const coll = db.collection<Doc>(COLLECTION);
 
-    const active = await coll
-      .find({ deletedAt: { $exists: false } })
-      .toArray();
+    const documents = await coll.find({}).toArray();
+    const documentsMissingDayKey = documents.filter(doc => !canonicalDayKey(doc)).length;
+    if (documentsMissingDayKey > 0) {
+      throw new Error(
+        `${documentsMissingDayKey} habitEntries document(s) are missing dayKey. Run backfillDayKey before dedupe.`,
+      );
+    }
 
     const byKey = new Map<string, Doc[]>();
-    for (const doc of active) {
+    for (const doc of documents) {
       const dk = canonicalDayKey(doc);
-      if (!dk) continue;
-      const householdId = doc.householdId != null && String(doc.householdId).trim() !== ''
-        ? String(doc.householdId).trim()
-        : DEFAULT_HOUSEHOLD_ID;
-      const key = `${householdId}\t${doc.userId}\t${doc.habitId}\t${dk}`;
+      const householdId = doc.householdId == null ? null : String(doc.householdId);
+      const key = JSON.stringify([householdId, doc.userId, doc.habitId, dk]);
       const list = byKey.get(key) ?? [];
       list.push(doc);
       byKey.set(key, list);
@@ -138,9 +144,7 @@ async function main(): Promise<void> {
     for (const list of byKey.values()) {
       if (list.length <= 1) continue;
       list.sort(compareDocs);
-      const householdId = list[0].householdId != null && String(list[0].householdId).trim() !== ''
-        ? String(list[0].householdId).trim()
-        : DEFAULT_HOUSEHOLD_ID;
+      const householdId = list[0].householdId == null ? null : String(list[0].householdId);
       groups.push({
         key: {
           householdId,
@@ -167,8 +171,9 @@ async function main(): Promise<void> {
       host,
       duplicatesFound,
       groupsAffected: groups.length,
+      documentsMissingDayKey,
       docsArchived: 0,
-      docsSoftDeleted: 0,
+      docsRemoved: 0,
       sampleGroups,
     };
 
@@ -179,29 +184,35 @@ async function main(): Promise<void> {
       }
     } else {
       console.log('DB:', dbName, 'Host:', host);
-      console.log('Applying soft-delete to', duplicatesFound, 'loser(s) in', groups.length, 'group(s).');
+      console.log('Archiving and removing', duplicatesFound, 'loser(s) in', groups.length, 'group(s).');
       const now = new Date().toISOString();
-      let softDeleted = 0;
+      const archive = db.collection(ARCHIVE_COLLECTION);
+      let archived = 0;
+      let removed = 0;
       for (const g of groups) {
         for (const loser of g.losers) {
-          await coll.updateOne(
-            { _id: loser._id },
-            {
-              $set: {
-                deletedAt: now,
-                updatedAt: now,
-                'meta.dedupe': {
-                  winnerId: g.winner.id ?? g.winner._id.toString(),
-                  dedupedAt: now,
-                  reason: 'dedupe',
-                },
+          const { _id, ...archiveDocument } = loser;
+          await archive.updateOne(
+            { originalCollectionId: _id },
+            { $setOnInsert: {
+              ...archiveDocument,
+              originalCollectionId: _id,
+              archivedAt: now,
+              dedupe: {
+                winnerId: g.winner.id ?? g.winner._id.toString(),
+                dedupedAt: now,
+                reason: 'unique-index-repair',
               },
-            }
+            } },
+            { upsert: true },
           );
-          softDeleted++;
+          archived++;
+          const deletion = await coll.deleteOne({ _id });
+          removed += deletion.deletedCount;
         }
       }
-      report.docsSoftDeleted = softDeleted;
+      report.docsArchived = archived;
+      report.docsRemoved = removed;
     }
 
     const reportDir = resolve(process.cwd(), 'docs', 'migrations');
