@@ -30,6 +30,10 @@ describe('isTrackableHabit', () => {
   it('returns false for bundle parents', () => {
     expect(isTrackableHabit(makeHabit({ type: 'bundle' }))).toBe(false);
   });
+
+  it('returns false for soft-deleted habits', () => {
+    expect(isTrackableHabit(makeHabit({ deletedAt: '2026-03-30T12:00:00Z' }))).toBe(false);
+  });
 });
 
 describe('isHabitScheduledOnDay', () => {
@@ -42,6 +46,12 @@ describe('isHabitScheduledOnDay', () => {
       expect(isHabitScheduledOnDay(habit, '2026-03-31')).toBe(true);
       expect(isHabitScheduledOnDay(habit, '2026-04-05')).toBe(true); // Sunday
     });
+  });
+
+  it('is not scheduled before its creation day', () => {
+    const habit = makeHabit({ createdAt: '2026-04-01T18:00:00Z' });
+    expect(isHabitScheduledOnDay(habit, '2026-03-31')).toBe(false);
+    expect(isHabitScheduledOnDay(habit, '2026-04-01')).toBe(true);
   });
 
   describe('daily habit with assignedDays', () => {
@@ -182,5 +192,10 @@ describe('getExpectedOpportunitiesInRange', () => {
   it('empty range returns 0', () => {
     const habit = makeHabit();
     expect(getExpectedOpportunitiesInRange(habit, '2026-04-05', '2026-04-01')).toBe(0);
+  });
+
+  it('does not count opportunities before habit creation', () => {
+    const habit = makeHabit({ createdAt: '2026-04-03T18:00:00Z' });
+    expect(getExpectedOpportunitiesInRange(habit, '2026-03-30', '2026-04-05')).toBe(3);
   });
 });

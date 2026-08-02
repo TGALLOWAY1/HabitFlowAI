@@ -4,6 +4,10 @@ import {
   assertDayKey,
   formatDayKeyFromDate,
   getNowDayKey,
+  addDaysToDayKey,
+  differenceInDayKeys,
+  getDayOfWeekForDayKey,
+  getIsoWeekStartDayKey,
 } from './dayKey';
 
 describe('DayKey Utility', () => {
@@ -54,6 +58,27 @@ describe('DayKey Utility', () => {
       );
       expect(() => assertDayKey('2025-13-01')).toThrow();
       expect(() => assertDayKey('')).toThrow();
+    });
+  });
+
+  describe('timezone-neutral calendar arithmetic', () => {
+    it('crosses leap days and month boundaries', () => {
+      expect(addDaysToDayKey('2024-02-28', 1)).toBe('2024-02-29');
+      expect(addDaysToDayKey('2024-02-29', 1)).toBe('2024-03-01');
+      expect(addDaysToDayKey('2025-02-28', 1)).toBe('2025-03-01');
+      expect(differenceInDayKeys('2024-03-01', '2024-02-28')).toBe(2);
+    });
+
+    it('does not change behavior across DST boundaries', () => {
+      expect(addDaysToDayKey('2026-03-07', 1)).toBe('2026-03-08');
+      expect(addDaysToDayKey('2026-03-08', 1)).toBe('2026-03-09');
+      expect(differenceInDayKeys('2026-03-09', '2026-03-07')).toBe(2);
+    });
+
+    it('derives weekdays and ISO week starts from the DayKey', () => {
+      expect(getDayOfWeekForDayKey('2026-03-30')).toBe(1);
+      expect(getIsoWeekStartDayKey('2026-04-05')).toBe('2026-03-30');
+      expect(getIsoWeekStartDayKey('2026-04-06')).toBe('2026-04-06');
     });
   });
 
@@ -174,4 +199,3 @@ describe('DayKey Utility', () => {
     });
   });
 });
-

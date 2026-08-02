@@ -8,24 +8,22 @@
  * Handles: daily, daily+assignedDays, weekly, scheduled-daily (requiredDaysPerWeek).
  */
 
-import { parseISO, differenceInCalendarDays, startOfWeek, format } from 'date-fns';
 import type { Habit } from '../../models/persistenceTypes';
+import {
+  addDaysToDayKey,
+  differenceInDayKeys,
+  getDayOfWeekForDayKey,
+  getIsoWeekStartDayKey,
+  isValidDayKey,
+} from '../../domain/time/dayKey';
 
 /**
  * Returns the day-of-week (0=Sun..6=Sat) for a YYYY-MM-DD dayKey.
  * Uses noon UTC to avoid DST edge cases.
  */
-function dayOfWeek(dayKey: string): number {
-  return new Date(dayKey + 'T12:00:00Z').getUTCDay();
-}
-
-/**
- * Returns the Monday-based ISO week start dayKey for a given dayKey.
- */
-function weekStartDayKey(dayKey: string): string {
-  const date = parseISO(dayKey);
-  const monday = startOfWeek(date, { weekStartsOn: 1 });
-  return format(monday, 'yyyy-MM-dd');
+function getCreatedDayKey(habit: Habit): string | null {
+  const candidate = habit.createdAt?.slice(0, 10);
+  return candidate && isValidDayKey(candidate) ? candidate : null;
 }
 
 /**
@@ -40,7 +38,7 @@ function weekStartDayKey(dayKey: string): string {
  * - Progress → user's daily habit list completion (bundles as one unit)
  */
 export function isTrackableHabit(habit: Habit): boolean {
-  return !habit.archived && habit.type !== 'bundle';
+  return !habit.archived && !habit.deletedAt && habit.type !== 'bundle';
 }
 
 /**
@@ -53,7 +51,10 @@ export function isTrackableHabit(habit: Habit): boolean {
  * - Daily habit, no assignedDays → every day
  */
 export function isHabitScheduledOnDay(habit: Habit, dayKey: string): boolean {
-  const dow = dayOfWeek(dayKey);
+  const createdDayKey = getCreatedDayKey(habit);
+  if (createdDayKey && dayKey < createdDayKey) return false;
+
+  const dow = getDayOfWeekForDayKey(dayKey);
 
   if (habit.timesPerWeek != null && habit.timesPerWeek > 0) {
     // Weekly-quota habit: show on assigned days if set, otherwise every day
@@ -88,9 +89,11 @@ export function getExpectedOpportunitiesInRange(
   startDayKey: string,
   endDayKey: string
 ): number {
-  const start = parseISO(startDayKey);
-  const end = parseISO(endDayKey);
-  const totalDays = differenceInCalendarDays(end, start) + 1;
+  const createdDayKey = getCreatedDayKey(habit);
+  const effectiveStartDayKey = createdDayKey && createdDayKey > startDayKey
+    ? createdDayKey
+    : startDayKey;
+  const totalDays = differenceInDayKeys(endDayKey, effectiveStartDayKey) + 1;
 
   if (totalDays <= 0) return 0;
 
@@ -99,9 +102,7 @@ export function getExpectedOpportunitiesInRange(
       // Count assigned days in range
       let count = 0;
       for (let i = 0; i < totalDays; i++) {
-        const d = new Date(start);
-        d.setDate(d.getDate() + i);
-        const dow = d.getUTCDay();
+        const dow = getDayOfWeekForDayKey(addDaysToDayKey(effectiveStartDayKey, i));
         if (habit.assignedDays.includes(dow)) count++;
       }
       return count;
@@ -109,10 +110,8 @@ export function getExpectedOpportunitiesInRange(
     // No assignedDays: count distinct weeks in range
     const weeks = new Set<string>();
     for (let i = 0; i < totalDays; i++) {
-      const d = new Date(start);
-      d.setDate(d.getDate() + i);
-      const dk = format(d, 'yyyy-MM-dd');
-      weeks.add(weekStartDayKey(dk));
+      const dayKey = addDaysToDayKey(effectiveStartDayKey, i);
+      weeks.add(getIsoWeekStartDayKey(dayKey));
     }
     return weeks.size;
   }
@@ -121,9 +120,7 @@ export function getExpectedOpportunitiesInRange(
     // Count days in range that fall on assigned days
     let count = 0;
     for (let i = 0; i < totalDays; i++) {
-      const d = new Date(start);
-      d.setDate(d.getDate() + i);
-      const dow = d.getUTCDay();
+      const dow = getDayOfWeekForDayKey(addDaysToDayKey(effectiveStartDayKey, i));
       if (habit.assignedDays.includes(dow)) count++;
     }
     return count;
