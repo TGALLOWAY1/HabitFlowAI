@@ -129,7 +129,8 @@ describe('Case A — standalone habits only', () => {
     it('checking/unchecking a today habit updates shared completedCount', () => {
         const habits = [makeHabit({ id: 'h1', name: 'Meditate' })];
         const checkedLogs = Object.fromEntries([makeLog('h1', DATE, true)]);
-        const uncheckedLogs = Object.fromEntries([makeLog('h1', DATE, false)]);
+        // Boolean completion is entry-existence based; unchecking deletes the entry.
+        const uncheckedLogs: Record<string, DayLog> = {};
 
         expect(getTodayHabitStats(habits, checkedLogs, DATE).completedCount).toBe(1);
         expect(getTodayHabitStats(habits, uncheckedLogs, DATE).completedCount).toBe(0);

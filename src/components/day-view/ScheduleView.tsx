@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useHabitStore } from '../../store/HabitContext';
 import { DayCategorySection } from './DayCategorySection';
 import { CategoryPickerModal } from '../CategoryPickerModal';
@@ -8,18 +8,7 @@ import { fetchDayView, getLocalTimeZone } from '../../lib/persistenceClient';
 import { useEffect } from 'react';
 
 import type { Habit } from '../../types';
-import { deriveDailyHabitCompletion } from '../../domain/habits/completion';
-
-interface DayViewHabitStatus {
-    habit: Habit;
-    isComplete: boolean;
-    currentValue: number;
-    targetValue: number;
-    progressPercent: number;
-    weekComplete?: boolean;
-    completedChildrenCount?: number;
-    totalChildrenCount?: number;
-}
+import { resolveLocalHabitStatuses, type DayViewHabitStatus } from './habitStatusResolution';
 
 interface DayViewData {
     dayKey: string;
@@ -63,8 +52,7 @@ export const ScheduleView = () => {
     const [categoryPickerHabit, setCategoryPickerHabit] = useState<Habit | null>(null);
     const [showDailyHabits, setShowDailyHabits] = useState(false);
 
-    useEffect(() => {
-        const loadDayView = async () => {
+    const loadDayView = useCallback(async () => {
             setDayViewLoading(true);
             setDayViewError(null);
             try {
@@ -76,9 +64,11 @@ export const ScheduleView = () => {
             } finally {
                 setDayViewLoading(false);
             }
-        };
-        loadDayView();
     }, [selectedDayKey]);
+
+    useEffect(() => {
+        void loadDayView();
+    }, [loadDayView, habits]);
 
     const habitStatusMap = useMemo(() => {
         if (!dayViewData) return new Map<string, DayViewHabitStatus>();
@@ -131,46 +121,22 @@ export const ScheduleView = () => {
 
     // Merge context logs for immediate UI updates
     const resolvedHabitStatusMap = useMemo(() => {
-        const map = new Map(habitStatusMap);
-        const allRelevantHabits = [...scheduledHabits, ...dailyHabits];
-
-        const mergeHabitLog = (habit: Habit) => {
-            const key = `${habit.id}-${selectedDayKey}`;
-            const log = logs[key];
-            if (log !== undefined) {
-                const completion = deriveDailyHabitCompletion(habit, [{ value: log.value }]);
-                const existing = map.get(habit.id);
-                if (existing) {
-                    map.set(habit.id, {
-                        ...existing,
-                        isComplete: completion.isComplete,
-                        currentValue: completion.currentValue,
-                        targetValue: completion.targetValue,
-                        progressPercent: completion.progressPercent,
-                    });
-                } else {
-                    map.set(habit.id, {
-                        habit,
-                        isComplete: completion.isComplete,
-                        currentValue: completion.currentValue,
-                        targetValue: completion.targetValue,
-                        progressPercent: completion.progressPercent,
-                    });
-                }
-            }
-        };
-
-        allRelevantHabits.forEach(mergeHabitLog);
-        allRelevantHabits.forEach(habit => {
+        const rootHabits = [...scheduledHabits, ...dailyHabits];
+        const allRelevantHabits = [...rootHabits];
+        rootHabits.forEach(habit => {
             if (habit.type === 'bundle' && habit.subHabitIds) {
                 habit.subHabitIds.forEach(subId => {
                     const subHabit = allHabitsLookup.get(subId);
-                    if (subHabit) mergeHabitLog(subHabit);
+                    if (subHabit) allRelevantHabits.push(subHabit);
                 });
             }
         });
-
-        return map;
+        return resolveLocalHabitStatuses({
+            baseStatuses: habitStatusMap,
+            habits: allRelevantHabits,
+            logs,
+            dayKey: selectedDayKey,
+        });
     }, [habitStatusMap, logs, scheduledHabits, dailyHabits, selectedDayKey, allHabitsLookup]);
 
     // Group habits by category
@@ -196,6 +162,17 @@ export const ScheduleView = () => {
 
     const handleToggle = async (habitId: string) => {
         await toggleHabit(habitId, selectedDayKey);
+        await loadDayView();
+    };
+
+    const handleUpsertHabitEntry = async (habitId: string, dayKey: string, data: unknown) => {
+        await upsertHabitEntry(habitId, dayKey, data);
+        await loadDayView();
+    };
+
+    const handleDeleteHabitEntry = async (habitId: string, dayKey: string) => {
+        await deleteHabitEntryByKey(habitId, dayKey);
+        await loadDayView();
     };
 
     const handlePin = async (habitId: string) => {
@@ -222,8 +199,8 @@ export const ScheduleView = () => {
                         onPin={handlePin}
                         onMoveToCategory={(h) => setCategoryPickerHabit(h)}
                         allHabitsLookup={allHabitsLookup}
-                        onUpdateHabitEntry={upsertHabitEntry}
-                        deleteHabitEntryByKey={deleteHabitEntryByKey}
+                        onUpdateHabitEntry={handleUpsertHabitEntry}
+                        deleteHabitEntryByKey={handleDeleteHabitEntry}
                     />
                 );
             })}
@@ -238,8 +215,8 @@ export const ScheduleView = () => {
                     onPin={handlePin}
                     onMoveToCategory={(h) => setCategoryPickerHabit(h)}
                     allHabitsLookup={allHabitsLookup}
-                    onUpdateHabitEntry={upsertHabitEntry}
-                    deleteHabitEntryByKey={deleteHabitEntryByKey}
+                    onUpdateHabitEntry={handleUpsertHabitEntry}
+                    deleteHabitEntryByKey={handleDeleteHabitEntry}
                 />
             )}
         </>

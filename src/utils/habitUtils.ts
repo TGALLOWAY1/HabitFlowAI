@@ -1,6 +1,8 @@
 import type { Habit, DayLog } from '../types';
 import { evaluateChecklistSuccess } from '../shared/checklistSuccessRule';
 import { deriveDailyHabitCompletion } from '../domain/habits/completion';
+import { deriveWeeklyHabitProgress, getIsoWeekEndDayKey } from '../domain/habits/weeklyProgress';
+import { getIsoWeekStartDayKey } from '../domain/time/dayKey';
 
 
 export interface FlattenedHabitItem {
@@ -278,6 +280,19 @@ export function isHabitComplete(
 ): boolean {
     if (habit.type === 'bundle' && habit.subHabitIds && habit.subHabitIds.length > 0) {
         return computeBundleStatus(habit, logs, date).completed;
+    }
+
+    if (habit.timesPerWeek != null && habit.timesPerWeek > 0) {
+        const weekStartDayKey = getIsoWeekStartDayKey(date);
+        const weekEntries = Object.values(logs)
+            .filter(log => log.habitId === habit.id)
+            .map(log => ({ habitId: log.habitId, dayKey: log.date, value: log.value }));
+        return deriveWeeklyHabitProgress(
+            habit,
+            weekStartDayKey,
+            getIsoWeekEndDayKey(weekStartDayKey),
+            weekEntries,
+        ).isComplete;
     }
 
     const log = logs[`${habit.id}-${date}`];

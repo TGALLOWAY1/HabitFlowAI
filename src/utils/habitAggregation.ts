@@ -1,6 +1,8 @@
 import type { Habit, HabitEntry } from '../models/persistenceTypes';
 import { evaluateChecklistSuccess } from '../shared/checklistSuccessRule';
 import { deriveDailyHabitCompletion } from '../domain/habits/completion';
+import { deriveWeeklyHabitProgress, getIsoWeekEndDayKey } from '../domain/habits/weeklyProgress';
+import { getIsoWeekStartDayKey } from '../domain/time/dayKey';
 
 export interface HabitStatus {
     isComplete: boolean;
@@ -40,23 +42,13 @@ export function computeHabitStatus(
 
     // 1. Weekly-quota Habit Logic
     if (habit.timesPerWeek != null && habit.timesPerWeek > 0) {
-        // A weekly quota counts completed occurrences, never raw quantity.
-        const entriesByDay = new Map<string, HabitEntry[]>();
-        for (const entry of activeEntries.filter(entry => entry.habitId === habit.id)) {
-            const dayEntries = entriesByDay.get(entry.dateKey) ?? [];
-            dayEntries.push(entry);
-            entriesByDay.set(entry.dateKey, dayEntries);
-        }
-        const completedDays = Array.from(entriesByDay.values())
-            .filter(entries => deriveDailyHabitCompletion(habit, entries).isComplete)
-            .length;
-
-        return {
-            isComplete: completedDays >= habit.timesPerWeek,
-            isPartial: completedDays > 0 && completedDays < habit.timesPerWeek,
-            currentValue: completedDays,
-            targetValue: habit.timesPerWeek,
-        };
+        const weekStartDayKey = getIsoWeekStartDayKey(dateKey);
+        return deriveWeeklyHabitProgress(
+            habit,
+            weekStartDayKey,
+            getIsoWeekEndDayKey(weekStartDayKey),
+            activeEntries,
+        );
     }
 
     // 2. Choice Bundle Logic (Daily Only)

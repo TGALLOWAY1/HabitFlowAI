@@ -16,6 +16,7 @@ import type { DayKey } from '../../domain/time/dayKey';
 import { evaluateChecklistSuccess } from './checklistSuccessService';
 import { startOfWeek, endOfWeek, parseISO, format } from 'date-fns';
 import { deriveDailyHabitCompletion } from '../../domain/habits/completion';
+import { deriveWeeklyHabitProgress } from '../../domain/habits/weeklyProgress';
 
 /**
  * Day View Habit Status
@@ -134,33 +135,7 @@ function deriveWeeklyProgress(
   currentValue: number;
   targetValue: number;
 } {
-  // Filter entries to this week and exclude deleted
-  const weekEntries = entryViews.filter(
-    entry =>
-      entry.habitId === habit.id &&
-      entry.dayKey >= weekStartDayKey &&
-      entry.dayKey <= weekEndDayKey &&
-      !entry.deletedAt &&
-      !entry.note?.startsWith('freeze:')
-  );
-
-  const target = habit.timesPerWeek ?? 1;
-  const entriesByDay = new Map<DayKey, EntryView[]>();
-  for (const entry of weekEntries) {
-    const dayEntries = entriesByDay.get(entry.dayKey) ?? [];
-    dayEntries.push(entry);
-    entriesByDay.set(entry.dayKey, dayEntries);
-  }
-  const currentValue = Array.from(entriesByDay.values())
-    .filter(dayEntries => deriveDailyHabitCompletion(habit, dayEntries).isComplete)
-    .length;
-  const isComplete = currentValue >= target;
-
-  return {
-    isComplete,
-    currentValue,
-    targetValue: target,
-  };
+  return deriveWeeklyHabitProgress(habit, weekStartDayKey, weekEndDayKey, entryViews);
 }
 
 /**

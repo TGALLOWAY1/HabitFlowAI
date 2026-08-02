@@ -99,10 +99,16 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
     const [showBundlePicker, setShowBundlePicker] = useState(false);
     const [showConvertConfirm, setShowConvertConfirm] = useState(false);
     const pendingSubmitRef = useRef<(() => Promise<void>) | null>(null);
+    const categoriesRef = useRef(categories);
+
+    useEffect(() => {
+        categoriesRef.current = categories;
+    }, [categories]);
 
     // Initialize/Reset
     useEffect(() => {
         if (isOpen) {
+            const availableCategories = categoriesRef.current;
             setFormError(null);
             if (initialData) {
                 // Edit Mode
@@ -141,7 +147,7 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                 setName('');
                 setHabitType('regular');
                 setBundleMode(null);
-                setIsCreatingCategory(categories.length === 0);
+                setIsCreatingCategory(availableCategories.length === 0);
                 setNewCategoryName('');
 
                 setSubHabitIds([]);
@@ -162,19 +168,19 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                 setDescription('');
 
                 // Robust Category Selection Default
-                if (categoryId && categories.some(c => c.id === categoryId)) {
+                if (categoryId && availableCategories.some(c => c.id === categoryId)) {
                     // 1. Use passed categoryId if it exists in the list
                     setSelectedCategoryId(categoryId);
-                } else if (categories.length > 0) {
+                } else if (availableCategories.length > 0) {
                     // 2. Default to first category if passed ID is invalid or missing
-                    setSelectedCategoryId(categories[0].id);
+                    setSelectedCategoryId(availableCategories[0].id);
                 } else {
                     // 3. Fallback (shouldn't happen if categories exist)
                     setSelectedCategoryId('');
                 }
             }
         }
-    }, [isOpen, initialData, categoryId, categories]);
+    }, [isOpen, initialData, categoryId]);
 
     // Handle Escape key to close
     useEffect(() => {
@@ -562,6 +568,17 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
     );
 
     const isEditMode = !!initialData;
+    const numericTarget = Number(target);
+    const hasInvalidNumericTarget = habitType === 'regular'
+        && goalType === 'number'
+        && (!target || !Number.isFinite(numericTarget) || numericTarget <= 0);
+    const hasInvalidBundleNumericTarget = pendingSubHabits.some(pending => (
+        pending.goalType === 'number'
+        && (!pending.target || !Number.isFinite(Number(pending.target)) || Number(pending.target) <= 0)
+    )) || Object.values(modifiedLinkedHabits).some(modified => (
+        modified.goalType === 'number'
+        && (!modified.target || !Number.isFinite(Number(modified.target)) || Number(modified.target) <= 0)
+    ));
 
     return (
         <div className="modal-overlay fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
@@ -1286,7 +1303,10 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                             type="submit"
                             disabled={
                                 !name.trim() ||
+                                !selectedCategoryId ||
                                 isSubmitting ||
+                                hasInvalidNumericTarget ||
+                                hasInvalidBundleNumericTarget ||
                                 (habitType === 'bundle' && bundleMode === 'checklist' && subHabitIds.length === 0 && pendingSubHabits.length === 0) ||
                                 (habitType === 'bundle' && bundleMode === 'choice' && (subHabitIds.length + pendingSubHabits.length) < 1)
                             }

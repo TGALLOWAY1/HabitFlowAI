@@ -61,6 +61,11 @@ export const NumericInputPopover: React.FC<NumericInputPopoverProps> = ({
         e.preventDefault();
         const numValue = parseFloat(value);
         if (!Number.isFinite(numValue) || numValue < 0) return;
+        if (numValue === 0 && onClear) {
+            onClear();
+            onClose();
+            return;
+        }
         onSubmit(numValue);
         onClose();
     };
