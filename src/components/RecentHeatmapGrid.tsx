@@ -1,13 +1,14 @@
 import React, { useMemo, useRef } from 'react';
 import { useHabitStore } from '../store/HabitContext';
 import { getHeatmapColor } from '../utils/analytics';
-import { getBundleChildIds, isHabitComplete } from '../utils/habitUtils';
+import { getBundleChildIds, isHabitCompleteOnDay } from '../utils/habitUtils';
 import { eachDayOfInterval, subDays, format, startOfDay } from 'date-fns';
 import { Tooltip } from 'react-tooltip';
 import { HeatmapLegend } from './HeatmapLegend';
+import type { Habit } from '../types';
 
 interface RecentHeatmapGridProps {
-    habits: any[];
+    habits: Habit[];
     range: '90d' | '30d';
 }
 
@@ -44,7 +45,7 @@ export const RecentHeatmapGrid: React.FC<RecentHeatmapGridProps> = React.memo(({
 
             if (activeHabits.length > 0) {
                 activeHabits.forEach(habit => {
-                    if (isHabitComplete(habit, logs, dateStr)) {
+                    if (isHabitCompleteOnDay(habit, logs, dateStr)) {
                         completionCount++;
                         categoryIds.add(habit.categoryId);
                     }

@@ -1,13 +1,14 @@
 import React, { useEffect, useMemo, useRef } from 'react';
 import { useHabitStore } from '../store/HabitContext';
 import { getHeatmapColor } from '../utils/analytics';
-import { getBundleChildIds, isHabitComplete } from '../utils/habitUtils';
+import { getBundleChildIds, isHabitCompleteOnDay } from '../utils/habitUtils';
 import { eachDayOfInterval, subDays, format, getDay, startOfWeek, endOfWeek, isSameMonth } from 'date-fns';
 import { Tooltip } from 'react-tooltip';
 import { HeatmapLegend } from './HeatmapLegend';
+import type { Habit } from '../types';
 
 interface YearHeatmapGridProps {
-    habits: any[];
+    habits: Habit[];
 }
 
 export const YearHeatmapGrid: React.FC<YearHeatmapGridProps> = React.memo(({ habits }) => {
@@ -47,7 +48,7 @@ export const YearHeatmapGrid: React.FC<YearHeatmapGridProps> = React.memo(({ hab
 
             if (activeHabits.length > 0) {
                 activeHabits.forEach(habit => {
-                    if (isHabitComplete(habit, logs, dateStr)) {
+                    if (isHabitCompleteOnDay(habit, logs, dateStr)) {
                         completionCount++;
                         categoryIds.add(habit.categoryId);
                     }

@@ -63,12 +63,12 @@ export function flattenHabitList(
 
                 // Map Metric Config to Habit Goal
                 // If required: number goal. If none: boolean goal.
-                const virtualGoal = {
+                const virtualGoal: Habit['goal'] = {
                     ...habit.goal, // inherited frequency/target? No, target is per-entry.
                     type: metricMode === 'required' ? 'number' : 'boolean',
                     unit: opt.metricConfig?.unit,
                     target: 0 // Target is arbitrary here, we just want the UI type
-                } as any;
+                };
 
                 return {
                     id: `virtual-${habit.id}-${opt.id}`, // Stable synthetic ID
@@ -77,13 +77,7 @@ export function flattenHabitList(
                     goal: virtualGoal,
                     archived: false,
                     createdAt: habit.createdAt,
-                    type: 'bundle-option-virtual' as any, // Or just 'boolean'/'number'? Let's keep 'bundle' or 'boolean' to not break renderers? 
-                    // Actually, let's use the GOAL type to drive the renderer (checkbox vs #). 
-                    // But we need to flag it as virtual.
-                    // Let's say type = 'boolean' or 'number' based on goal.
-                    // But `isVirtual` flag handles the "Italic" styling.
-
-                    // Actually, for TrackerGrid persistence, it relies on `isVirtual`.
+                    type: metricMode === 'required' ? 'number' : 'boolean',
                     isVirtual: true,
                     associatedOptionId: opt.id,
                     bundleParentId: habit.id,
@@ -294,6 +288,23 @@ export function isHabitComplete(
             getIsoWeekEndDayKey(weekStartDayKey),
             weekEntries,
         ).isComplete;
+    }
+
+    return isHabitCompleteOnDay(habit, logs, date);
+}
+
+/**
+ * Whether this habit had a completed occurrence on one specific calendar day.
+ * Unlike isHabitComplete(), this never paints every day in a satisfied weekly
+ * quota as complete, so it is the correct semantic for activity heatmaps.
+ */
+export function isHabitCompleteOnDay(
+    habit: Habit,
+    logs: Record<string, DayLog>,
+    date: string
+): boolean {
+    if (habit.type === 'bundle' && habit.subHabitIds && habit.subHabitIds.length > 0) {
+        return computeBundleStatus(habit, logs, date).completed;
     }
 
     const log = logs[`${habit.id}-${date}`];
