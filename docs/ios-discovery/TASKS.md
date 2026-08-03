@@ -168,7 +168,7 @@ have been verified against the repository (see `INSTRUCTIONS.md` §11).
 
 ## Task 8 — History, progress, and analytics
 
-- **Status:** Not started
+- **Status:** In progress (2026-08-03)
 - **Deliverable:** `08-history-progress-analytics.md` — day view/day summary derivation,
   progress overview, heatmaps, analytics endpoints (habits/routines/goals/sleep), insights
   (correlations, predictions), goal progress math.
@@ -181,7 +181,7 @@ have been verified against the repository (see `INSTRUCTIONS.md` §11).
 
 ## Task 9 — Authentication, settings, reminders, and secondary features
 
-- **Status:** Not started
+- **Status:** In progress (2026-08-03; investigation overlapped with Task 8)
 - **Deliverable:** `09-auth-settings-secondary.md` — invite-based auth, sessions, admin
   surface, password reset, push reminders, wellbeing/medications/symptoms/supplements,
   journal, tasks, demo mode & tour, user-data deletion.
