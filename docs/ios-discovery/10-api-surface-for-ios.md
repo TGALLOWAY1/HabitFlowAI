@@ -57,8 +57,8 @@ archive/graduate/delete + `daysOfWeek`, `unlink-child`, `convert-to-bundle`, and
   X-Demo-Mode` but `Authorization` is never read. Native clients should call the Render
   origin directly (`https://habitflowai.onrender.com` per `vercel.json`) — no CORS in
   play.
-- **Error contract is split, not uniform:** ~94 4xx sites use
-  `{error: {code, message, details?}}`, ~69 use bare `{error: "string"}`; the global
+- **Error contract is split, not uniform:** 94 4xx sites use
+  `{error: {code, message, details?}}`, ~75-80 use bare `{error: "string"}`; the global
   handler returns `500 {error: message}` (`app.ts:336-340`). An iOS client must parse
   both shapes. Codes (`VALIDATION_ERROR`, `NOT_FOUND`, `PUSH_DISABLED`,
   `GEMINI_AUTH_ERROR`, `demoReadOnly` 403, …) are ad-hoc per route.
@@ -113,7 +113,7 @@ milestone semantics (detailed and correct).
 ## 5. Items for the quality register (→ Task 12)
 
 1. `docs/API.md` documents three nonexistent route groups and misses ~90 endpoints.
-2. Split error contract (94 vs 69 shape census).
+2. Split error contract (94 structured vs ~75-80 bare shape census).
 3. No API versioning story for non-reloadable clients.
 4. Ungated integrity report (re-listed).
 5. Dead-but-registered legacy: wellbeingLogs group; uncalled analytics sub-routes;

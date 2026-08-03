@@ -41,13 +41,14 @@ have been verified against the repository (see `INSTRUCTIONS.md` §11).
   01 doc §8), so this task's visual reference is `docs/product/HABITFLOW_UI_ARCHITECTURE.md`
   (584 lines, updated 2026-08-02) plus the code itself. Unauthenticated flows (login, invite
   redeem, forgot/reset password) are rendered via `src/components/AuthGate.tsx`;
-  `/reset-password` is the only true path route found so far. ~60 component files in
-  `src/components/` root; sub-areas: `day-view/`, `dashboard/`, `goals/`, `insights/`,
+  `/reset-password` is the only true path route found so far. 51 files (44 components)
+  in `src/components/` root; sub-areas: `day-view/`, `dashboard/`, `goals/`, `insights/`,
   `wellbeing/`, `tasks/`, `Journal/`, `analytics/`.
 - **Completion note (2026-08-03):** Criteria verified — every `AppRoute` value (14 + 6
-  legacy aliases), all 21 page components, and all 30 modal components inventoried with
-  mount-point evidence; 6 doc-vs-code discrepancies listed in the output doc §5. One
-  suspected bug found (stale `trackId` URL param — see Task 12 notes).
+  legacy aliases), all 24 page components (12 root + 6 goals + 6 insights tabs), and all
+  30 modal components inventoried with mount-point evidence; 6 doc-vs-code discrepancies
+  listed in the output doc §5. One suspected bug found (stale `trackId` URL param — see
+  Task 12 notes). Counts corrected by Task 14 verification.
 
 ## Task 3 — Implemented feature inventory
 
@@ -328,7 +329,7 @@ have been verified against the repository (see `INSTRUCTIONS.md` §11).
 
 ## Task 14 — Final independent verification
 
-- **Status:** In progress (2026-08-03)
+- **Status:** Complete (2026-08-03)
 - **Deliverable:** Verification report appended to `13-ios-handoff.md` (or standalone
   `14-verification.md`) — an independent pass (fresh eyes / subagents) sampling claims from
   each discovery document against the repository.
@@ -337,4 +338,7 @@ have been verified against the repository (see `INSTRUCTIONS.md` §11).
   interpretations.
 - **Dependencies:** Task 13.
 - **Output document:** `14-verification.md`
-- **Notes:** —
+- **Completion note (2026-08-03):** Fresh-eyes subagent sampled 39 claims (3 per doc):
+  30 confirmed, 1 wrong (dead-code over-reach), 7 imprecise (citation/count drift),
+  1 unverifiable (run stats). No load-bearing claim falsified. All 8 corrections applied
+  in place; DECISIONS.md updated. **Discovery effort complete.**

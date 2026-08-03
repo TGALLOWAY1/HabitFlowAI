@@ -12,7 +12,8 @@ its originating task — this register cites the doc that holds the evidence).
 
 `npx vitest run` on 2026-08-03, this container:
 
-- **589 passed · 1 failed · 439 skipped** across 118 files (91.9 s).
+- **589 passed · 1 failed · 439 skipped** (vitest reported 118 files; 117 `*.test.ts(x)`
+  files exist on disk — the extra is a non-`.test.` entry vitest picked up) (91.9 s).
 - The 52 "failed files" / 439 skips are an **environment artifact**: mongodb-memory-server
   cannot download its binary through this sandbox's proxy (403 from fastdl.mongodb.org),
   so every DB-backed suite aborted at setup. Not an application signal.
@@ -80,8 +81,11 @@ legacy virtual-choice branch (self-documented dead) · `choiceChildHabitId` payl
 support (allowlisted+tested, never sent) · `habitflow:wellbeing-entry-upsert` listener
 (~50 lines, no producer) · `habitflow:demo-data-changed` (dead on both ends) ·
 `checkinExtraMetricKeys` pref (no reader) · non-negotiable zombie fields + habit
-`description` dead state · `historyModalHabitId` never set · `evidenceHints` never
-populated · `stepStates`/`stepTrackingData`/`stepTimingData` collected, never persisted.
+`description` dead state · `evidenceHints` never populated ·
+`stepStates`/`stepTrackingData`/`stepTimingData` collected, never persisted.
+*(Corrected by Task 14: an earlier entry claimed `historyModalHabitId` is never set —
+wrong; it is set via `onViewHistory` at `TrackerGrid.tsx:1139` and the history modal is
+live. The genuinely-dead opener is `choiceLogState`, listed above.)*
 
 ## 5. Suspected-defect register (consolidated, by area; evidence in cited docs)
 

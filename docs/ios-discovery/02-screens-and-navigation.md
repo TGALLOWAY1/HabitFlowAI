@@ -14,8 +14,8 @@ UI architecture doc.
 
 ### Query-string routes (`?view=`)
 
-Routing is hand-rolled in `src/App.tsx`. `parseRouteFromLocation` (`App.tsx:76-119`) maps
-`?view=` to the `AppRoute` union (`App.tsx:78`); `buildUrlForRoute` (`App.tsx:121-141`)
+Routing is hand-rolled in `src/App.tsx`. `parseRouteFromLocation` (`App.tsx:77-119`) maps
+`?view=` to the `AppRoute` union (`App.tsx:73`); `buildUrlForRoute` (`App.tsx:121-141`)
 writes URLs; popstate is handled at `App.tsx:251-266`. Dashboard is the default (empty
 `?view` and any unknown value).
 

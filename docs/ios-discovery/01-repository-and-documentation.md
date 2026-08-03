@@ -37,7 +37,7 @@ with co-located frontend and backend (`package.json` has no `workspaces` field).
 |---|---|
 | `src/App.tsx`, `src/main.tsx` | Frontend entry + router |
 | `src/pages/` | Lazy-loaded pages (goals ×6, insights tabs ×7, Journal, Tasks, Analytics, AppleHealth, WellbeingHistory, Tour, Roadmap, auth pages, DebugEntries) |
-| `src/components/` | ~60 root components (grids, modals, editors) + subdirs: `day-view/`, `dashboard/`, `goals/`, `insights/`, `wellbeing/`, `tasks/`, `Journal/`, `analytics/` |
+| `src/components/` | 51 root files (44 components + 7 colocated tests — grids, modals, editors) + subdirs: `day-view/`, `dashboard/`, `goals/`, `insights/`, `wellbeing/`, `tasks/`, `Journal/`, `analytics/` |
 | `src/store/` | `AuthContext`, `HabitContext`, `RoutineContext`, `DashboardPrefsContext`, `GoalCompletionContext` |
 | `src/context/` | `TaskContext` only (CLAUDE.md's claim that contexts live here is mostly stale) |
 | `src/lib/` | API clients (`persistenceClient`, `analyticsClient`, `insightsClient`, `aiReportsClient`, `geminiClient`, `pushClient`), caches, hooks |

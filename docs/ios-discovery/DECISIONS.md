@@ -13,6 +13,21 @@ Entry format:
 
 ---
 
+## 2026-08-03 — Final verification: discovery corpus stands, one claim overturned
+
+- **Date:** 2026-08-03 (Task 14)
+- **Topic:** Independent verification of the 13 discovery documents
+- **Confirmed interpretation:** A fresh-eyes pass sampled 39 claims (3 per document);
+  no load-bearing architectural or negative claim was falsified. One claim overturned:
+  `historyModalHabitId` is **not** dead code — it is set via `onViewHistory`
+  (`TrackerGrid.tsx:1139`) and the habit-history modal is live; the genuinely-dead
+  opener is `choiceLogState`/`HabitLogModal`. Seven citation/count imprecisions were
+  corrected in place (details in `14-verification.md`).
+- **Evidence:** `14-verification.md`; corrections landed in docs 01/02/04/10/12/13 and
+  TASKS.md in the same commit.
+- **Alternatives / contradictions:** None open.
+- **Confidence:** High.
+
 ## 2026-08-03 — FEATURES.md verified: ~90% accurate, with 12 recorded corrections
 
 - **Date:** 2026-08-03

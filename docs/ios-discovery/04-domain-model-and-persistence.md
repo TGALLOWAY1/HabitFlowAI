@@ -129,7 +129,7 @@ routes/repo/client functions are dead code awaiting deletion. Full entry in DECI
   uniques, sessions TTL, non-fatal on failure) + per-repository lazy `ensureIndexes()`
   latches in 10 repos (aiReports, dashboardPrefs, journal, pushSendLog 48h TTL,
   pushSubscriptions, routineImages, wellbeingEntries, med/supp/symptom logs).
-  `bundleMembershipRepository.ensureIndexes` (`:292-303`) has **no caller** — its three
+  `ensureBundleMembershipIndexes` (`bundleMembershipRepository.ts:295-303`) has **no caller** — its three
   indexes likely never exist; only the central bundle index lands.
 - **Startup migrations** (`startup.ts:27-47`, `_migrations` ledger): only **002**
   (weekly frequency → `timesPerWeek`) and **003** (goal dedupe) are wired.

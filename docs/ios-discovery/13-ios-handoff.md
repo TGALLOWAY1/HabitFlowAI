@@ -91,7 +91,7 @@ web only) · per-process caches ⇒ no read-your-write within 30-60 s on cached 
    live in portable pure functions (`completion.ts`, `schedule.ts`, `streakService.ts`,
    `trackingHistory.ts`, `weeklyProgress.ts`); transliterate + port their tests, or
    evaluate server-side. Divergence here is the product breaking silently (05, 06).
-7. **Offline/sync design** — greenfield; use upsert-by-key outbox; do not port the web's
+2. **Offline/sync design** — greenfield; use upsert-by-key outbox; do not port the web's
    invalidation graph (11 §7).
 3. **Push** — entirely new pipeline (§3.1).
 4. **Type authority** — generate models from `persistenceTypes.ts`; `canonicalTypes.ts`
