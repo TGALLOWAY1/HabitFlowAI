@@ -168,7 +168,7 @@ have been verified against the repository (see `INSTRUCTIONS.md` §11).
 
 ## Task 8 — History, progress, and analytics
 
-- **Status:** In progress (2026-08-03)
+- **Status:** Complete (2026-08-03)
 - **Deliverable:** `08-history-progress-analytics.md` — day view/day summary derivation,
   progress overview, heatmaps, analytics endpoints (habits/routines/goals/sleep), insights
   (correlations, predictions), goal progress math.
@@ -177,7 +177,14 @@ have been verified against the repository (see `INSTRUCTIONS.md` §11).
   endpoints documented with derivation rules.
 - **Dependencies:** Tasks 4–6.
 - **Output document:** `08-history-progress-analytics.md`
-- **Notes:** —
+- **Completion note (2026-08-03):** Criteria verified — all 9 analytics + 5 insights
+  endpoints, progress overview, daySummary, dayView, truthQuery, and both goal-progress
+  paths documented with derivation rules, windows, and caching. Headline finds (all
+  spot-checked): a second, divergent goal-progress engine on the Analytics Goals tab
+  (wrong default aggregation, no bundle resolution, ignores activeWindow); the server
+  365-day heatmap computed on every /habits/all call and never rendered; 4 dead analytics
+  routes; goals summary ignores its `days` param; divergent freeze detection; client
+  heatmaps derive from daySummary, not analytics. 10 items carried to Task 12.
 
 ## Task 9 — Authentication, settings, reminders, and secondary features
 

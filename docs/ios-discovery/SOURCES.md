@@ -90,8 +90,16 @@ their importance; annotate why each matters.
 
 ## History
 
-- `src/server/services/dayViewService.ts`, `truthQuery.ts` — derived day view from entries.
-- `src/server/routes/dayView.ts`, `daySummary.ts`, `progress.ts`.
+- `src/server/services/dayViewService.ts`, `truthQuery.ts` — derived day view from
+  entries (EntryView normalization; weekly-quota-in-bundle handling at :221-231).
+- `src/server/routes/dayView.ts`, `daySummary.ts` (client `logs` map + freeze flow),
+  `progress.ts` (overview payload; unbounded history; 30 s cache).
+- `src/server/utils/goalProgressUtilsV2.ts` + `goalLinkSemantics.ts` — canonical goal
+  engine (full vs list paths); `analyticsService.computeGoalAnalytics` is a divergent
+  second engine (see 08 doc §8.3).
+- `src/server/services/analyticsService.ts` — metric definitions (consistency vs
+  completion rate); `src/server/lib/cache.ts` + `cacheInstances.ts` — TTL caches.
+- Endpoint/engine/cache matrix: `08-history-progress-analytics.md` §1.
 
 ## Authentication
 
