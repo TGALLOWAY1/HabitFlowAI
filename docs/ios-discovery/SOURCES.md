@@ -1,0 +1,107 @@
+# iOS Discovery — Curated Source Index
+
+High-value files only — this is a curated index, not a dump. Add files as tasks confirm
+their importance; annotate why each matters.
+
+## Application entry points
+
+- `src/main.tsx` — React root; service-worker registration (prod only) + push re-sync.
+- `src/App.tsx` — the entire frontend router (`AppRoute` union, `?view=` query routing),
+  provider stack, lazy-loaded pages.
+- `src/server/index.ts` — backend entry point.
+- `src/server/app.ts` — Express app factory; **the authoritative API surface** (~140 route
+  registrations) and middleware order.
+
+## Routes and screens
+
+- `src/components/AuthGate.tsx` — unauthenticated flows (login / invite / forgot / reset);
+  handles the `/reset-password` path route.
+- `src/pages/` — lazy pages: goals (6 files), insights tabs (7), Journal, Tasks, Analytics,
+  AppleHealth, WellbeingHistory, Tour, Roadmap, DebugEntries.
+- `src/components/BottomTabBar.tsx`, `src/components/Layout.tsx` — primary navigation.
+
+## Habit domain
+
+- `src/domain/habits/` — completion, schedule, weeklyProgress, trackingHistory,
+  definitionValidation (shared client/server logic with tests).
+- `src/server/routes/habits.ts`, `src/server/repositories/habitRepository.ts`.
+- `src/types/index.ts` — frontend domain types.
+- `src/server/domain/canonicalTypes.ts`, `canonicalValidators.ts` — server-side contracts.
+
+## Completion and quantities
+
+- `src/server/routes/habitEntries.ts` — entry CRUD + upsert-by-key + batch + rate limiting.
+- `src/server/repositories/habitEntryRepository.ts` (+ `__tests__/…guardrails.test.ts`).
+- `src/lib/habitEntryPayload.ts` — client payload construction (tested).
+- `src/server/routes/__tests__/entriesOnly.invariants.test.ts` — CI-enforced truth invariants.
+
+## Scheduling and streaks
+
+- `src/server/utils/dayKey.ts`, `dayKeyNormalization.ts` — server DayKey authority.
+- `src/domain/time/dayKey.ts` — shared DayKey utilities.
+- `src/server/services/scheduleEngine.ts`, `streakService.ts`, `freezeService.ts`,
+  `momentumService.ts` (each with tests).
+- `docs/semantics/daykey.md` — policy doc (America/New_York fallback).
+
+## Bundles
+
+- `src/server/routes/bundleMemberships.ts` — membership lifecycle (end/archive/graduate).
+- `src/shared/checklistSuccessRule.ts`, `src/server/services/checklistSuccessService.ts`.
+- `src/server/services/habitConversionService.ts` — habit ⇄ bundle conversion.
+- `docs/decision-log/bundle-temporal-membership.md`, `checklist-temporal-membership.md`.
+
+## History
+
+- `src/server/services/dayViewService.ts`, `truthQuery.ts` — derived day view from entries.
+- `src/server/routes/dayView.ts`, `daySummary.ts`, `progress.ts`.
+
+## Authentication
+
+- `src/server/routes/auth.ts` — login, invite redeem, bootstrap admin, forgot/reset.
+- `src/server/middleware/identity.ts` (+ test), `session.ts`, `publicDemo.ts`.
+- `src/server/lib/authCrypto.ts`, `sessionCookie.ts`.
+- `src/store/AuthContext.tsx` — client-side auth state.
+
+## API and backend
+
+- `src/server/app.ts` — route inventory (see Entry points).
+- `src/lib/persistenceClient.ts` — the frontend API client (all fetch call sites, headers).
+- `src/server/middleware/rateLimitAuth.ts` — rate limiters (auth, invites, entry writes).
+- `src/server/lib/gemini.ts`, `src/lib/geminiClient.ts` — Gemini BYOK AI plumbing.
+- `src/server/services/reminderScheduler.ts`, `src/server/lib/webPush.ts`,
+  `public/sw.js` — Web Push reminder pipeline.
+
+## Database
+
+- `src/server/lib/mongoClient.ts` — connection handling.
+- `src/server/repositories/` — 30 repositories ≈ collection inventory (native MongoDB
+  driver v7, no ODM).
+- `src/server/migrations/` — startup migrations (routine variants, weekly frequency,
+  goal dedupe).
+
+## Tests
+
+- `vitest.config.ts`, `src/test/mongoTestHelper.ts`, `src/test/setup.ts`,
+  `src/test/assertTestDb.ts` — mongodb-memory-server harness.
+- `package.json` `test:beta` script — the CI-gated critical suite (9 files).
+- 117 test files total (Task 1 count); heaviest: `src/server/routes/__tests__` (48).
+
+## Existing documentation
+
+- `docs/DOC_INDEX.md` — documentation map + standards (which doc owns what).
+- `docs/FEATURES.md` — canonical feature inventory w/ status (updated 2026-08-03).
+- `docs/product/HABITFLOW_UI_ARCHITECTURE.md` — canonical UI/screen/flow reference
+  (updated 2026-08-02).
+- `FEATURE_AUDIT.md` — code-verified feature audit dated 2026-07-01.
+- `docs/API.md`, `docs/DATA_MODEL.md`, `docs/ARCHITECTURE.md`, `docs/DOMAIN_CANON.md`.
+- `docs/system-model/` — entity model, relationships, system rules, bug analysis
+  (2026-04-04 era — verify before trusting).
+- `docs/reference/V2 (Current - iOS focus)/`, `docs/reference/iOS release V1/` — prior
+  iOS-facing product intent (aspirational; not implementation evidence).
+- `.claude/CLAUDE.md`, `tasks/lessons.md`, `tasks/todo.md` — agent instructions and
+  history affecting repo work.
+
+## Screenshots
+
+- **None in the repository** (see DECISIONS.md 2026-08-03). Only app icons under `public/`
+  and two runtime-uploaded routine images under `public/uploads/routine-images/`.
