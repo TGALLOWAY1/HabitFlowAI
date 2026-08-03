@@ -27,7 +27,7 @@ have been verified against the repository (see `INSTRUCTIONS.md` §11).
 
 ## Task 2 — Route, screen, modal, and screenshot inventory
 
-- **Status:** Not started
+- **Status:** Complete (2026-08-03)
 - **Deliverable:** `02-screens-and-navigation.md` — complete inventory of frontend routes
   (`?view=` values in `src/App.tsx` + the path-based auth/reset flows), pages, modals, tab
   bars, and navigation flows, cross-checked against
@@ -44,6 +44,10 @@ have been verified against the repository (see `INSTRUCTIONS.md` §11).
   `/reset-password` is the only true path route found so far. ~60 component files in
   `src/components/` root; sub-areas: `day-view/`, `dashboard/`, `goals/`, `insights/`,
   `wellbeing/`, `tasks/`, `Journal/`, `analytics/`.
+- **Completion note (2026-08-03):** Criteria verified — every `AppRoute` value (14 + 6
+  legacy aliases), all 21 page components, and all 30 modal components inventoried with
+  mount-point evidence; 6 doc-vs-code discrepancies listed in the output doc §5. One
+  suspected bug found (stale `trackId` URL param — see Task 12 notes).
 
 ## Task 3 — Implemented feature inventory
 
@@ -199,6 +203,14 @@ have been verified against the repository (see `INSTRUCTIONS.md` §11).
 - **Notes (from Task 1):** Known legacy candidates: `wellbeingLogs` (see Task 4 note),
   `archive/old-scripts/` migration scripts, `docs/archive/**`, `DebugEntriesPage`,
   dev-only routes (`/api/dev/*`, `/api/debug/*`).
+- **Notes (from Task 2):** Suspected bug — `buildUrlForRoute` never clears `trackId`
+  (`src/App.tsx:130-132`) while `selectedTrackId` hydrates from the URL (`App.tsx:199-202`)
+  and outranks `view` in render order (`App.tsx:604`): after visiting a track detail page,
+  a reload on any other tab re-opens the track detail. Code-path evidence only, not yet
+  reproduced at runtime. Also confirmed: `?view=debug-entries` has no production gate
+  (`App.tsx:693`), matching UI-architecture doc known-issue #13. Legacy route aliases
+  kept alive: `progress`, `streak-dashboard`, `streaks`, `daily`, `day`, `wins`
+  (`App.tsx:82-102`).
 
 ## Task 13 — Cross-reference matrix and iOS-planning handoff
 

@@ -13,6 +13,22 @@ Entry format:
 
 ---
 
+## 2026-08-03 — Goal creation is a 2-step modal, not a full-page flow
+
+- **Date:** 2026-08-03
+- **Topic:** Goal creation UX (doc self-contradiction resolved)
+- **Confirmed interpretation:** Goal creation runs entirely inside
+  `src/components/CreateGoalModal.tsx` as a two-step modal (`step` state `1 | 2` at line
+  16: details → link habits). The UI architecture doc's §7 claim of a "full-page flow" and
+  its §6 references to `CreateGoalPage` / `CreateGoalLinkHabits` components are wrong —
+  no such components exist; the doc's own §3 screen inventory correctly labels both steps
+  "Modal".
+- **Evidence:** `src/components/CreateGoalModal.tsx:16,127-129,219-223`; mounted at
+  `src/App.tsx:798-801`; grep for `CreateGoalPage`/`CreateGoalLinkHabits` returns nothing.
+- **Alternatives / contradictions:** `docs/product/HABITFLOW_UI_ARCHITECTURE.md` §6/§7 vs
+  §3 (internal contradiction — §3 is the accurate one).
+- **Confidence:** High.
+
 ## 2026-08-03 — No screenshots exist in the repository
 
 - **Date:** 2026-08-03

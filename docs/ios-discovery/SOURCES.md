@@ -14,11 +14,17 @@ their importance; annotate why each matters.
 
 ## Routes and screens
 
-- `src/components/AuthGate.tsx` — unauthenticated flows (login / invite / forgot / reset);
-  handles the `/reset-password` path route.
+- `src/components/AuthGate.tsx` — pre-auth state machine (login / invite / forgot / reset
+  / tour / roadmap); handles the `/reset-password` path route.
 - `src/pages/` — lazy pages: goals (6 files), insights tabs (7), Journal, Tasks, Analytics,
-  AppleHealth, WellbeingHistory, Tour, Roadmap, DebugEntries.
-- `src/components/BottomTabBar.tsx`, `src/components/Layout.tsx` — primary navigation.
+  AppleHealth, WellbeingHistory (= Insights page), Tour, Roadmap, DebugEntries.
+- `src/components/BottomTabBar.tsx` — 4 tabs (Dashboard, Habits, Routines, Goals).
+- `src/components/Layout.tsx` — header chrome: AI hub, Settings, user menu, demo banner;
+  window-event modal openers (`habitflow:open-settings` / `open-ai` / `close-overlays`).
+- `src/components/ProgressDashboard.tsx` — dashboard composition; mounts all wellbeing
+  modals and dashboard cards.
+- `src/components/TrackerGrid.tsx` — tracker "All" mode; mounts habit context-menu modals.
+- Full screen/modal inventory: `docs/ios-discovery/02-screens-and-navigation.md`.
 
 ## Habit domain
 
