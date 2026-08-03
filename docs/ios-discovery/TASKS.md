@@ -273,7 +273,7 @@ have been verified against the repository (see `INSTRUCTIONS.md` §11).
 
 ## Task 12 — Test coverage, dead code, contradictions, and suspected defects
 
-- **Status:** Not started
+- **Status:** In progress (2026-08-03)
 - **Deliverable:** `12-quality-and-contradictions.md` — test inventory (117 test files
   counted in Task 1), coverage gaps by domain, legacy/dead code list, documented-vs-actual
   contradictions, suspected bugs (recorded, not fixed).
