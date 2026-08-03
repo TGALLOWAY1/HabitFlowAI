@@ -17,7 +17,7 @@
  *   generated at the end of the run.
  */
 import { test, expect, type Page } from '@playwright/test';
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -50,6 +50,9 @@ async function snap(page: Page, section: string, name: string, title: string, de
     path: join(dir, file),
     fullPage: true,
     animations: 'disabled',
+    // Full-page capture stitches beyond the viewport, which would paint the
+    // fixed header/tab-bar mid-page — pin them to the document edges instead.
+    style: 'body { position: relative; } header { position: absolute !important; } nav { position: absolute !important; }',
   });
   manifest.push({ section, file: `${section}/${file}`, title, description });
 }
@@ -302,9 +305,10 @@ test('tracker: grid — Fitness category (weekly habits, choice bundle)', async 
 
 test('tracker: today view — choice bundle options', async ({ page }) => {
   await openTracker(page, 'Today');
-  await page.getByRole('button', { name: /^Fitness/ }).first().click().catch(() => {});
-  await page.waitForTimeout(600);
-  await page.getByText('Daily Movement').first().scrollIntoViewIfNeeded().catch(() => {});
+  // Day-view sections start expanded (completed ones collapse), so the
+  // Fitness section with the choice bundle is already open.
+  await page.getByText('Daily Movement').first().scrollIntoViewIfNeeded();
+  await page.waitForTimeout(400);
   await snap(page, '04-tracker', '04-choice-bundle', 'Choice Bundle', 'Daily Movement choice bundle — "Pick one" of Yoga session / Bike ride / Swim satisfies the habit for the day.');
 });
 
@@ -505,10 +509,20 @@ test('goals: create goal — one-time type', async ({ page }) => {
 
 test('goals: edit goal modal', async ({ page }) => {
   await openApp(page, '&view=goals');
-  await expandGoalCategory(page, 'Fitness');
+  await expandGoalCategory(page, 'Productivity');
   await page.getByRole('button', { name: 'Edit Goal' }).first().click();
   await page.waitForTimeout(800);
   await snapViewport(page, '06-goals', '09-edit-goal', 'Edit Goal', 'Modify goal title, milestones, target, deadline, and linked habits.');
+});
+
+test('goals: delete goal confirmation', async ({ page }) => {
+  await openApp(page, '&view=goals');
+  await expandGoalCategory(page, 'Productivity');
+  await page.getByText('Log 150 hours of deep work').first().click();
+  await page.waitForTimeout(1200);
+  await page.getByRole('button', { name: 'Delete goal' }).click();
+  await page.waitForTimeout(600);
+  await snapViewport(page, '06-goals', '11-delete-goal-confirm', 'Delete Goal Confirmation', 'Soft-delete confirmation dialog from the goal detail page.');
 });
 
 test('goals: create track modal', async ({ page }) => {
@@ -609,9 +623,19 @@ test('misc: tour page', async ({ page }) => {
 test.afterAll(() => {
   if (manifest.length === 0) return;
   mkdirSync(OUT_DIR, { recursive: true });
-  writeFileSync(join(OUT_DIR, 'manifest.json'), JSON.stringify(manifest, null, 2));
 
-  const sections = [...new Set(manifest.map((m) => m.section))];
+  // Merge with the manifest from previous runs so a filtered run (`-g …`)
+  // refreshes its own entries without dropping the rest of the gallery.
+  const manifestPath = join(OUT_DIR, 'manifest.json');
+  const existing: ManifestEntry[] = existsSync(manifestPath)
+    ? (JSON.parse(readFileSync(manifestPath, 'utf8')) as ManifestEntry[])
+    : [];
+  const byFile = new Map(existing.map((m) => [m.file, m]));
+  for (const entry of manifest) byFile.set(entry.file, entry);
+  const merged = [...byFile.values()].sort((a, b) => a.file.localeCompare(b.file));
+  writeFileSync(manifestPath, JSON.stringify(merged, null, 2));
+
+  const sections = [...new Set(merged.map((m) => m.section))];
   const lines: string[] = [
     '# HabitFlow — Mobile Screenshot Reference',
     '',
@@ -626,7 +650,7 @@ test.afterAll(() => {
   for (const section of sections) {
     const pretty = section.replace(/^\d+-/, '');
     lines.push(`## ${pretty.charAt(0).toUpperCase()}${pretty.slice(1)}`, '');
-    for (const entry of manifest.filter((m) => m.section === section)) {
+    for (const entry of merged.filter((m) => m.section === section)) {
       lines.push(`### ${entry.title}`, '', entry.description, '', `![${entry.title}](${entry.file})`, '');
     }
   }
