@@ -100,7 +100,7 @@ have been verified against the repository (see `INSTRUCTIONS.md` §11).
 
 ## Task 5 — Completion and numeric-habit behavior
 
-- **Status:** Not started
+- **Status:** In progress (2026-08-03)
 - **Deliverable:** `05-completion-and-quantities.md` — how boolean vs quantity habits are
   logged, edited, and evaluated; entry payload shapes; per-day upsert/delete semantics.
 - **Completion criteria:** `src/domain/habits/completion.ts`, `src/lib/habitEntryPayload.ts`,
