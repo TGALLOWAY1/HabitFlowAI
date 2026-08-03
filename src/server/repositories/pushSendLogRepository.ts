@@ -2,9 +2,14 @@
  * Push Send Log Repository
  *
  * Dedup ledger for reminder sends: at most one push per
- * (habitId, dayKey, endpoint), enforced by a unique index so the scheduler is
+ * (sourceId, dayKey, endpoint), enforced by a unique index so the scheduler is
  * idempotent across restarts, overlapping ticks, and multiple instances.
  * Rows expire via TTL — dedup only needs to outlive the day it protects.
+ *
+ * sourceId is the reminding entity: a habit id, or a namespaced "routine:<id>"
+ * for routine reminders (habit ids are UUIDs, so the prefix can't collide).
+ * The stored field (and unique index) keeps its original name `habitId` so
+ * existing deployments need no index migration.
  */
 
 import { getDb } from '../lib/mongoClient';
@@ -31,11 +36,11 @@ async function ensureIndexes(): Promise<void> {
 }
 
 /**
- * Claim the right to send this (habit, day, device) reminder by inserting the
+ * Claim the right to send this (source, day, device) reminder by inserting the
  * dedup row first. Returns false if another tick/instance already claimed it.
  */
 export async function tryClaimSend(
-  habitId: string,
+  sourceId: string,
   dayKey: string,
   endpoint: string,
   householdId: string,
@@ -47,7 +52,7 @@ export async function tryClaimSend(
   const col = db.collection(COLLECTION);
   try {
     await col.insertOne({
-      habitId,
+      habitId: sourceId,
       dayKey,
       endpoint,
       householdId: scope.householdId,
@@ -66,7 +71,7 @@ export async function tryClaimSend(
 
 /** Record the outcome of a claimed send. */
 export async function markSendResult(
-  habitId: string,
+  sourceId: string,
   dayKey: string,
   endpoint: string,
   status: 'sent' | 'gone'
@@ -74,7 +79,7 @@ export async function markSendResult(
   await ensureIndexes();
   const db = await getDb();
   const col = db.collection(COLLECTION);
-  await col.updateOne({ habitId, dayKey, endpoint }, { $set: { status } });
+  await col.updateOne({ habitId: sourceId, dayKey, endpoint }, { $set: { status } });
 }
 
 /**
@@ -82,12 +87,12 @@ export async function markSendResult(
  * (bounded by the scheduler's catch-up window).
  */
 export async function releaseClaim(
-  habitId: string,
+  sourceId: string,
   dayKey: string,
   endpoint: string
 ): Promise<void> {
   await ensureIndexes();
   const db = await getDb();
   const col = db.collection(COLLECTION);
-  await col.deleteOne({ habitId, dayKey, endpoint });
+  await col.deleteOne({ habitId: sourceId, dayKey, endpoint });
 }
