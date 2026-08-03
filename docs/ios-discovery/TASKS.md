@@ -145,7 +145,7 @@ have been verified against the repository (see `INSTRUCTIONS.md` §11).
 
 ## Task 7 — Habit bundles
 
-- **Status:** In progress (2026-08-03)
+- **Status:** Complete (2026-08-03)
 - **Deliverable:** `07-bundles.md` — checklist vs choice bundles, membership lifecycle
   (create/end/archive/graduate), success rules, conversion, temporal membership semantics.
 - **Completion criteria:** `src/server/routes/bundleMemberships.ts`,
@@ -157,6 +157,14 @@ have been verified against the repository (see `INSTRUCTIONS.md` §11).
 - **Notes (from Task 3):** Membership `daysOfWeek` windows are validated, stored, and
   honored at read time (`bundleMemberships.ts:70,107-111`, `daySummary.ts:232-237`,
   `progress.ts:258`) but no UI sets them — cover both the used and unused halves.
+- **Completion note (2026-08-03):** Criteria verified — membership routes, success rule,
+  conversion service, and all four temporal-read implementations documented and reconciled
+  with both decision-log docs (they match code) and the 2026-03-30 audit (P7 half-done).
+  Major finds: the history-preserving convert-to-bundle endpoint is a **dead path from the
+  UI** (plain `updateHabit` is used instead), client-driven membership sync swallows
+  errors creating a permanent client/server denominator cliff, and daySummary vs progress
+  disagree on legacy choice parents. One subagent claim refuted by spot-check (PATCH does
+  validate merged definitions, `habits.ts:433`). 9 items carried to Task 12.
 
 ## Task 8 — History, progress, and analytics
 

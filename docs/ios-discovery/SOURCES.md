@@ -77,10 +77,16 @@ their importance; annotate why each matters.
 
 ## Bundles
 
-- `src/server/routes/bundleMemberships.ts` — membership lifecycle (end/archive/graduate).
-- `src/shared/checklistSuccessRule.ts`, `src/server/services/checklistSuccessService.ts`.
-- `src/server/services/habitConversionService.ts` — habit ⇄ bundle conversion.
-- `docs/decision-log/bundle-temporal-membership.md`, `checklist-temporal-membership.md`.
+- `src/server/routes/bundleMemberships.ts` + `bundleMembershipRepository.ts` — membership
+  lifecycle; temporal read rule at repo:182-211.
+- `src/shared/checklistSuccessRule.ts` — the one success-rule evaluator
+  (`checklistSuccessService.ts` is a re-export shim).
+- `src/server/services/habitConversionService.ts` — history-preserving conversion
+  (**dead path from UI** — AddHabitModal uses plain updateHabit).
+- `src/utils/habitUtils.ts` — client bundle status/stats (subHabitIds-based).
+- `docs/decision-log/bundle-temporal-membership.md`, `checklist-temporal-membership.md` —
+  both verified to match code.
+- Full semantics + risk list: `07-bundles.md`.
 
 ## History
 
