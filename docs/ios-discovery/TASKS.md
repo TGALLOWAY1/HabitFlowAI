@@ -8,7 +8,7 @@ have been verified against the repository (see `INSTRUCTIONS.md` §11).
 
 ## Task 1 — Repository and documentation orientation
 
-- **Status:** In progress
+- **Status:** Complete (2026-08-03)
 - **Deliverable:** `01-repository-and-documentation.md` — architecture overview, repository
   map, entry points, tech stack, backend/database/auth boundaries, test & deployment setup,
   documentation inventory with trust ratings, screenshot inventory, initial risks/unknowns,
@@ -19,7 +19,11 @@ have been verified against the repository (see `INSTRUCTIONS.md` §11).
   updated with the most important files; next task selected.
 - **Dependencies:** None.
 - **Output document:** `01-repository-and-documentation.md`
-- **Notes:** —
+- **Notes:** Criteria verified 2026-08-03: all `src/` subtrees, `docs/` (recursive),
+  `scripts/`, `archive/`, `public/`, `.github/`, `.claude/`, and `tasks/` inspected;
+  screenshot absence confirmed and logged in `DECISIONS.md`; `SOURCES.md` populated.
+  Next task selected: **Task 2** (screens/navigation), because the freshest trustworthy
+  doc (`HABITFLOW_UI_ARCHITECTURE.md`) needs code-diffing before feature verification.
 
 ## Task 2 — Route, screen, modal, and screenshot inventory
 
@@ -63,7 +67,7 @@ have been verified against the repository (see `INSTRUCTIONS.md` §11).
 - **Status:** Not started
 - **Deliverable:** `04-domain-model-and-persistence.md` — collections, schemas, ownership,
   soft-delete semantics, identity scoping, derived-vs-stored boundaries.
-- **Completion criteria:** Every repository in `src/server/repositories/` (30 files) is
+- **Completion criteria:** Every repository in `src/server/repositories/` (29 files) is
   mapped to its collection and owner; `docs/DATA_MODEL.md` claims verified; the
   "entries are truth" invariant checked against write paths.
 - **Dependencies:** Task 1.
@@ -154,7 +158,7 @@ have been verified against the repository (see `INSTRUCTIONS.md` §11).
   auth, request/response shapes), CORS/headers, rate limits, upload handling, error
   contract, and an assessment of gaps for a native client (auth without cookies?, BYOK AI
   key storage, image upload, push).
-- **Completion criteria:** Every route registered in `src/server/app.ts` (~140 endpoints)
+- **Completion criteria:** Every route registered in `src/server/app.ts` (151 registrations)
   is listed and classified; `docs/API.md` discrepancies noted; native-client gaps have
   evidence-backed assessments.
 - **Dependencies:** Tasks 4, 9.

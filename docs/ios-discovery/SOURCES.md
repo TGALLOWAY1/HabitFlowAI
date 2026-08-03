@@ -9,7 +9,7 @@ their importance; annotate why each matters.
 - `src/App.tsx` — the entire frontend router (`AppRoute` union, `?view=` query routing),
   provider stack, lazy-loaded pages.
 - `src/server/index.ts` — backend entry point.
-- `src/server/app.ts` — Express app factory; **the authoritative API surface** (~140 route
+- `src/server/app.ts` — Express app factory; **the authoritative API surface** (151 route
   registrations) and middleware order.
 
 ## Routes and screens
@@ -74,7 +74,7 @@ their importance; annotate why each matters.
 ## Database
 
 - `src/server/lib/mongoClient.ts` — connection handling.
-- `src/server/repositories/` — 30 repositories ≈ collection inventory (native MongoDB
+- `src/server/repositories/` — 29 repositories ≈ collection inventory (native MongoDB
   driver v7, no ODM).
 - `src/server/migrations/` — startup migrations (routine variants, weekly frequency,
   goal dedupe).
