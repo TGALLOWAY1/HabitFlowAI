@@ -100,7 +100,7 @@ have been verified against the repository (see `INSTRUCTIONS.md` §11).
 
 ## Task 5 — Completion and numeric-habit behavior
 
-- **Status:** In progress (2026-08-03)
+- **Status:** Complete (2026-08-03)
 - **Deliverable:** `05-completion-and-quantities.md` — how boolean vs quantity habits are
   logged, edited, and evaluated; entry payload shapes; per-day upsert/delete semantics.
 - **Completion criteria:** `src/domain/habits/completion.ts`, `src/lib/habitEntryPayload.ts`,
@@ -114,6 +114,12 @@ have been verified against the repository (see `INSTRUCTIONS.md` §11).
   a latent 400-on-edit bug (`definitionValidation.ts:85-87` + `AddHabitModal.tsx:293`).
   Cover entry semantics for `source` values ('routine', 'apple_health') and provenance
   fields (`routineId`, `sourceRuleId`, `importedMetricValue/Type`).
+- **Completion note (2026-08-03):** Criteria verified — completion.ts, habitEntryPayload.ts
+  (+ tests), habitEntries.ts, and all four UI logging surfaces documented with a full
+  payload matrix in the output doc. 8 new inconsistencies/suspected bugs recorded (value
+  1-vs-target divergence, zero-stores-value-0 asymmetry, swallowed errors, future-date
+  gap, dead HabitLogModal/updateLog). Dead-code and error-path claims spot-checked
+  directly before acceptance.
 
 ## Task 6 — Scheduling, dates, time zones, and streaks
 

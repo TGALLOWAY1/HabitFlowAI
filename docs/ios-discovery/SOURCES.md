@@ -47,10 +47,20 @@ their importance; annotate why each matters.
 
 ## Completion and quantities
 
+- `src/domain/habits/completion.ts` — **the** canonical completion rule
+  (`deriveDailyHabitCompletion`, `getCompletionEntryValue`).
+- `src/domain/habits/trackingHistory.ts` — per-day historical target/type resolution
+  (`resolveHabitTrackingForDay` over `trackingRevisions`).
+- `src/domain/habits/weeklyProgress.ts` — weekly quota = distinct completed scheduled days.
 - `src/server/routes/habitEntries.ts` — entry CRUD + upsert-by-key + batch + rate limiting.
+- `src/server/utils/habitValidation.ts` — per-habit payload rules (numeric requires value;
+  both choice-bundle generations).
+- `src/server/utils/dayKeyNormalization.ts` — dayKey > date > timestamp priority, NY fallback.
 - `src/server/repositories/habitEntryRepository.ts` (+ `__tests__/…guardrails.test.ts`).
-- `src/lib/habitEntryPayload.ts` — client payload construction (tested).
+- `src/lib/habitEntryPayload.ts` — client payload allowlist (guards PUT only; tested).
+- `src/store/HabitContext.tsx` — toggle/upsert/delete flows, optimistic model, 30 s sync.
 - `src/server/routes/__tests__/entriesOnly.invariants.test.ts` — CI-enforced truth invariants.
+- Full UI payload matrix: `05-completion-and-quantities.md` §3.
 
 ## Scheduling and streaks
 
