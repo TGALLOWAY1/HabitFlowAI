@@ -90,11 +90,17 @@ their importance; annotate why each matters.
 
 ## Database
 
-- `src/server/lib/mongoClient.ts` — connection handling.
+- `src/models/persistenceTypes.ts` — **the real type authority** (MONGO_COLLECTIONS at
+  :1499-1534; HabitEntry :1583-1697; Goal :1067-1203; Routine :527-598;
+  WellbeingEntry :985-1016). Generate iOS models from this, not canonicalTypes.
+- `src/server/domain/canonicalTypes.ts` — misleadingly named; stale HabitEntry shape
+  (`date` instead of `dayKey`, no `freezeType`).
+- `src/server/lib/mongoClient.ts` — connection + central `ensureCoreIndexes`
+  (:127-192); conditional habitEntries unique index (:57-89).
+- `src/server/lib/scoping.ts` — `scopeFilter` (household+user), not uniformly used.
 - `src/server/repositories/` — 29 repositories ≈ collection inventory (native MongoDB
-  driver v7, no ODM).
-- `src/server/migrations/` — startup migrations (routine variants, weekly frequency,
-  goal dedupe).
+  driver v7, no ODM). Full map: `04-domain-model-and-persistence.md` §1-3.
+- `src/server/migrations/startup.ts` — only migrations 002/003 wired; 001 orphaned.
 
 ## Tests
 

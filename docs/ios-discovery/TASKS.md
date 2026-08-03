@@ -73,7 +73,7 @@ have been verified against the repository (see `INSTRUCTIONS.md` §11).
 
 ## Task 4 — Domain model and persistence
 
-- **Status:** In progress (2026-08-03)
+- **Status:** Complete (2026-08-03)
 - **Deliverable:** `04-domain-model-and-persistence.md` — collections, schemas, ownership,
   soft-delete semantics, identity scoping, derived-vs-stored boundaries.
 - **Completion criteria:** Every repository in `src/server/repositories/` (29 files) is
@@ -89,6 +89,14 @@ have been verified against the repository (see `INSTRUCTIONS.md` §11).
   (comment at `persistenceClient.ts:328`). Determine the actual read/write topology and
   whether a dual-write exists. Also: `medications`, `symptoms`, `supplements` collections
   have full CRUD but are barely mentioned in the architecture docs.
+- **Completion note (2026-08-03):** Criteria verified — all 29 repositories mapped
+  (collection, scoping, delete semantics, indexes) in the output doc; DATA_MODEL.md
+  verified with 8+ wrong/stale claims recorded (trust downgraded to Low-Medium);
+  entries-are-truth checked against write paths (allowlist + `assertNoStoredCompletion` +
+  CI tests) with one caveat: the entries unique index is created conditionally and may be
+  absent if duplicates exist (`mongoClient.ts:57-89`). Wellbeing contradiction resolved:
+  `wellbeingEntries` is the only live path; legacy `wellbeingLogs` is dead-but-registered
+  (DECISIONS.md corrected). New risks carried to Task 12 (§9 of the output doc).
 
 ## Task 5 — Completion and numeric-habit behavior
 
