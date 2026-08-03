@@ -249,7 +249,7 @@ have been verified against the repository (see `INSTRUCTIONS.md` §11).
 
 ## Task 11 — Client state, optimistic updates, offline behavior, and synchronization
 
-- **Status:** Not started
+- **Status:** In progress (2026-08-03)
 - **Deliverable:** `11-client-state-and-sync.md` — context/store architecture, caching,
   optimistic update patterns, error/rollback handling, offline capability (service worker
   scope), refetch strategy.
