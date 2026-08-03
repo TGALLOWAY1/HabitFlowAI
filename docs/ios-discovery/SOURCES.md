@@ -66,9 +66,14 @@ their importance; annotate why each matters.
 
 - `src/server/utils/dayKey.ts`, `dayKeyNormalization.ts` — server DayKey authority.
 - `src/domain/time/dayKey.ts` — shared DayKey utilities.
-- `src/server/services/scheduleEngine.ts`, `streakService.ts`, `freezeService.ts`,
-  `momentumService.ts` (each with tests).
-- `docs/semantics/daykey.md` — policy doc (America/New_York fallback).
+- `src/domain/habits/schedule.ts` — shared schedule domain (assignedDays /
+  requiredDaysPerWeek quota rules, creation boundary, expected opportunities);
+  `src/server/services/scheduleEngine.ts` is just a re-export shim.
+- `src/server/services/streakService.ts` — canonical streak engine (opportunity-based
+  daily + satisfied-week modes); `freezeService.ts` (dormant), `momentumService.ts`
+  (dead server twin of `src/utils/momentum.ts`).
+- `docs/semantics/daykey.md` — policy doc (America/New_York fallback; two stale claims —
+  see `06-scheduling-time-and-streaks.md` §1).
 
 ## Bundles
 

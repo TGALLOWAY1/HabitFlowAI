@@ -123,7 +123,7 @@ have been verified against the repository (see `INSTRUCTIONS.md` §11).
 
 ## Task 6 — Scheduling, dates, time zones, and streaks
 
-- **Status:** Not started
+- **Status:** Complete (2026-08-03)
 - **Deliverable:** `06-scheduling-time-and-streaks.md` — DayKey policy, timezone handling,
   schedule types (assigned days, times-per-week, required-days), streaks, freezes, momentum.
 - **Completion criteria:** `src/server/utils/dayKey.ts`, `src/domain/time/dayKey.ts`,
@@ -134,6 +134,14 @@ have been verified against the repository (see `INSTRUCTIONS.md` §11).
 - **Notes (from Task 1):** Server falls back to America/New_York when client timezone is
   invalid — critical to verify exact behavior for an iOS client that will always send a
   real device timezone.
+- **Completion note (2026-08-03):** Criteria verified — both dayKey modules, the shared
+  schedule domain, and streak/freeze/momentum services read in full with tests noted;
+  `docs/semantics/daykey.md` verified (accurate minus a nonexistent
+  `/api/dashboard/streaks` reference and an overstated unique-index guarantee).
+  Streak semantics documented as the portable spec (opportunity counting, open-day grace,
+  freeze protection, weekly excusal, mode segmentation). Freeze service confirmed dormant
+  with two additional shipping blockers (server-local dates; legacy-only weekly
+  detection). New items carried to Task 12.
 
 ## Task 7 — Habit bundles
 
