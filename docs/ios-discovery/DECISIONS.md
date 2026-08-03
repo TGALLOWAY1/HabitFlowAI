@@ -66,19 +66,35 @@ Entry format:
   they may live outside the repository (not accessible here).
 - **Confidence:** High (for repository contents).
 
-## 2026-08-03 — Legacy `wellbeingLogs` API is still live and written to by the frontend
+## 2026-08-03 — Wellbeing topology RESOLVED: `wellbeingEntries` is the only live path; `wellbeingLogs` is dead-but-registered (SUPERSEDES the earlier entry below)
 
-- **Date:** 2026-08-03
+- **Date:** 2026-08-03 (Task 4; corrects the Task 1 entry that follows)
+- **Topic:** Wellbeing truth collection — read/write topology
+- **Confirmed interpretation:** The active frontend path is 100% `wellbeingEntries`.
+  Writes: `WellbeingCheckInModal` → `logWellbeing` (`HabitContext.tsx:262-310`) decomposes
+  morning/evening sessions into per-metric entries → `upsertWellbeingEntries` →
+  `POST /api/wellbeingEntries`. Reads: `loadWellbeingLogsFromApi` (`HabitContext.tsx:149-160`)
+  fetches entries and aggregates them back into the `DailyWellbeing` map the UI consumes.
+  The legacy `saveWellbeingLog`/`fetchWellbeingLogs` client functions have **zero callers**
+  (verified by repo-wide grep), and the `/api/wellbeingLogs` routes write only to the
+  legacy collection with no dual-write ("Dual-write adapter removed (C3 audit fix)",
+  `wellbeingLogs.ts:91-93`). So: CLAUDE.md's "replaces legacy wellbeingLogs" is correct
+  for the active path; the legacy endpoints, repository, and client functions are
+  **dead code that was never deleted**.
+- **Evidence:** `src/store/HabitContext.tsx:149-160,262-310`; grep for
+  `saveWellbeingLog|fetchWellbeingLogs` callers outside `persistenceClient.ts` → none;
+  `src/server/routes/wellbeingLogs.ts:91-93`.
+- **Alternatives / contradictions:** Task 1's provisional reading (below) inferred a live
+  legacy write path from the function's existence without tracing call sites — overturned.
+- **Confidence:** High.
+
+## 2026-08-03 — [SUPERSEDED — see entry above] Legacy `wellbeingLogs` API is still live and written to by the frontend
+
+- **Date:** 2026-08-03 (Task 1 provisional; **overturned by Task 4**)
 - **Topic:** Wellbeing truth collection
-- **Confirmed interpretation:** Despite `.claude/CLAUDE.md` stating `wellbeingEntries`
-  "replaces legacy `wellbeingLogs`", the `wellbeingLogs` endpoints remain registered and the
-  frontend still writes through them: `saveWellbeingLog` POSTs to `/wellbeingLogs` while a
-  comment marks reads as coming from `wellbeingEntries`. The exact read/write topology
-  (dual-write? server-side bridging?) is **unresolved** and assigned to Task 4.
-- **Evidence:** Routes registered at `src/server/app.ts:190-197`; frontend write path
-  `src/lib/persistenceClient.ts:865-867`; read-path comment `src/lib/persistenceClient.ts:328`;
-  UI usage in `src/components/wellbeing/WellbeingCheckInModal.tsx:104`.
-- **Alternatives / contradictions:** CLAUDE.md / `docs/ARCHITECTURE.md` describe
-  `wellbeingEntries` as canonical. Both endpoints coexisting suggests migration-in-progress
-  rather than completed replacement.
-- **Confidence:** High that both paths are live; Low on the intended end-state until Task 4.
+- **Original (incorrect) interpretation:** The frontend still writes through
+  `saveWellbeingLog` → POST `/wellbeingLogs`. Wrong: that function exists but has no
+  callers. Kept for the audit trail.
+- **Evidence at the time:** Routes registered at `src/server/app.ts:190-197`; function body
+  `src/lib/persistenceClient.ts:865-867`; read-path comment `persistenceClient.ts:328`.
+- **Confidence:** n/a (superseded).

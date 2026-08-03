@@ -73,7 +73,7 @@ have been verified against the repository (see `INSTRUCTIONS.md` §11).
 
 ## Task 4 — Domain model and persistence
 
-- **Status:** Not started
+- **Status:** In progress (2026-08-03)
 - **Deliverable:** `04-domain-model-and-persistence.md` — collections, schemas, ownership,
   soft-delete semantics, identity scoping, derived-vs-stored boundaries.
 - **Completion criteria:** Every repository in `src/server/repositories/` (29 files) is
