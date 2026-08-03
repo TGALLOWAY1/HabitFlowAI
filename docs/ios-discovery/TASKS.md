@@ -249,7 +249,7 @@ have been verified against the repository (see `INSTRUCTIONS.md` §11).
 
 ## Task 11 — Client state, optimistic updates, offline behavior, and synchronization
 
-- **Status:** In progress (2026-08-03)
+- **Status:** Complete (2026-08-03)
 - **Deliverable:** `11-client-state-and-sync.md` — context/store architecture, caching,
   optimistic update patterns, error/rollback handling, offline capability (service worker
   scope), refetch strategy.
@@ -262,6 +262,14 @@ have been verified against the repository (see `INSTRUCTIONS.md` §11).
 - **Notes (from Task 1):** No react-query/SWR/Redux — hand-rolled React Context + fetch
   client. `.claude/CLAUDE.md` says contexts live in `src/context/` but most live in
   `src/store/` (only `TaskContext` is in `src/context/`).
+- **Completion note (2026-08-03):** Criteria verified — all stores, the shared goal cache
+  (7 hooks), client plumbing, localStorage census, and offline reality documented with
+  per-domain sync classification. Headline finds (all spot-checked): entry writes never
+  invalidate the goal cache (stale goals ≤30 s after a toggle; milestone celebrations
+  can't fire from a toggle); only completedGoalIds[0] celebrates; the
+  demo-data-changed/wellbeing-entry-upsert event pair is dead (no-detail producer vs
+  detail-requiring consumers / listener with no producer); nothing resets on logout;
+  no offline story at all. 12+ items carried to Task 12.
 
 ## Task 12 — Test coverage, dead code, contradictions, and suspected defects
 

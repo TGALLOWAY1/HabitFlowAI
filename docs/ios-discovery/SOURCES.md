@@ -112,6 +112,17 @@ their importance; annotate why each matters.
 - `src/store/AuthContext.tsx` — client-side auth state.
 - Full flow + iOS credential answer: `09-auth-settings-secondary.md` §1.
 
+## Client state and sync (Task 11)
+
+- `src/lib/persistenceClient.ts` `apiRequest` — identity headers, demo block, 401 event,
+  stringly-typed errors; siblings `analyticsClient`/`insightsClient`/`aiReportsClient`
+  bypass it.
+- `src/lib/goalDataCache.ts` — shared 30 s stale-while-revalidate cache + 7 hooks with
+  uneven invalidation subscriptions.
+- `src/store/RoutineContext.tsx` — pessimistic mutations, unpersisted step telemetry,
+  fire-and-forget evidence batch.
+- Full sync classification + localStorage census: `11-client-state-and-sync.md`.
+
 ## API and backend
 
 - `src/server/app.ts` — route inventory (see Entry points).
