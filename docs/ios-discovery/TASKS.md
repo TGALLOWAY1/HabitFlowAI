@@ -273,7 +273,7 @@ have been verified against the repository (see `INSTRUCTIONS.md` §11).
 
 ## Task 12 — Test coverage, dead code, contradictions, and suspected defects
 
-- **Status:** In progress (2026-08-03)
+- **Status:** Complete (2026-08-03)
 - **Deliverable:** `12-quality-and-contradictions.md` — test inventory (117 test files
   counted in Task 1), coverage gaps by domain, legacy/dead code list, documented-vs-actual
   contradictions, suspected bugs (recorded, not fixed).
@@ -299,6 +299,13 @@ have been verified against the repository (see `INSTRUCTIONS.md` §11).
   same-day duplicates, latent `timesPerWeek` 400, incomplete delete-all-data, ungated
   integrity report, `predefinedHabits.ts` orphan, freeze write path dead, server momentum
   never read, non-negotiable zombie fields.
+- **Completion note (2026-08-03):** Criteria verified — full suite actually run (589
+  passed / 1 genuine failure / 439 skipped due to sandbox mongodb-memory-server download
+  block); the one red test characterized (stale `buildGoalStacks` exclusion assertion,
+  invisible to the 9-file CI gate); coverage gaps mapped (HabitContext and most client
+  state untested); 47-item consolidated defect register; HABITFLOW_BUG_ANALYSIS.md
+  reconciled (statuses verified — the most trustworthy audit doc in the repo) and
+  lessons.md patterns confirmed present.
 
 ## Task 13 — Cross-reference matrix and iOS-planning handoff
 
