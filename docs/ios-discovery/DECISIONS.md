@@ -13,6 +13,27 @@ Entry format:
 
 ---
 
+## 2026-08-03 — FEATURES.md verified: ~90% accurate, with 12 recorded corrections
+
+- **Date:** 2026-08-03
+- **Topic:** Trust calibration of `docs/FEATURES.md` / `FEATURE_AUDIT.md` after full
+  claim-by-claim verification (Task 3)
+- **Confirmed interpretation:** Both docs are reliable for feature *existence* but not for
+  edge behavior. Durable corrections (full list in `03-feature-inventory.md` §2): (1)
+  "Inactivity Coaching" is documented-only — no engine or popup exists, just a static
+  badge; (2) per-step routine images are never persisted (blob-URL stub,
+  `StepEditorPanel.tsx:65-75`) — only the routine cover image pipeline is real; (3)
+  routine habit-logging is opt-in by server guardrail ("Routines never imply completion",
+  `routines.ts:1006`), not automatic; (4) journal upsert-by-key is server-only — the UI
+  creates duplicates; (5) `timesPerWeek` scheduling is not user-settable (legacy
+  migration only); (6) goal badges are HF-generated AI images triggered on goal
+  *creation*, needing undocumented `HF_TOKEN`.
+- **Evidence:** Four parallel code investigations + direct spot-checks; citations embedded
+  per-claim in `03-feature-inventory.md`.
+- **Alternatives / contradictions:** None open — each correction was spot-checked against
+  the cited lines.
+- **Confidence:** High.
+
 ## 2026-08-03 — Goal creation is a 2-step modal, not a full-page flow
 
 - **Date:** 2026-08-03

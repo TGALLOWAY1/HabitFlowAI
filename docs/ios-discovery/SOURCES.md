@@ -26,6 +26,17 @@ their importance; annotate why each matters.
 - `src/components/TrackerGrid.tsx` — tracker "All" mode; mounts habit context-menu modals.
 - Full screen/modal inventory: `docs/ios-discovery/02-screens-and-navigation.md`.
 
+## Feature verification (Task 3 additions)
+
+- `src/server/services/badgeGenerationService.ts` — AI goal-badge images (HF, `HF_TOKEN`).
+- `src/utils/momentum.ts` + `src/components/CategoryMomentumBanner.tsx` — live momentum
+  banner (undocumented); `src/server/services/momentumService.ts` is the dead server twin.
+- `src/server/services/freezeService.ts` — dormant streak-freeze write path.
+- `src/lib/demoRoutineSuggestions.ts` — demo-mode AI variant drafts.
+- `src/lib/betaAccess.ts` — client beta email gate (one of three allowlist copies).
+- `src/server/routes/userData.ts` — delete-all-data collection list (incomplete).
+- `src/data/journalTemplates.ts` — 11 templates + separate free-write.
+
 ## Habit domain
 
 - `src/domain/habits/` — completion, schedule, weeklyProgress, trackingHistory,

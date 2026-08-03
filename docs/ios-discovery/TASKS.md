@@ -51,7 +51,7 @@ have been verified against the repository (see `INSTRUCTIONS.md` §11).
 
 ## Task 3 — Implemented feature inventory
 
-- **Status:** In progress (2026-08-03)
+- **Status:** Complete (2026-08-03)
 - **Deliverable:** `03-feature-inventory.md` — feature list with per-feature status
   (Implemented / Partially implemented / Documented-only / Likely unused / Suspected bug),
   built by verifying `docs/FEATURES.md` and `FEATURE_AUDIT.md` claims against routes,
@@ -65,6 +65,11 @@ have been verified against the repository (see `INSTRUCTIONS.md` §11).
   `src/server/lib/gemini.ts`). Apple Health integration is Beta, email-allowlisted, and
   depends on an external sync bridge (`docs/FEATURES.md` status table;
   `requireHealthFeature` middleware). Both materially affect iOS planning.
+- **Completion note (2026-08-03):** Criteria verified — every FEATURES.md status-table area
+  and every FEATURE_AUDIT.md claim has a verified status with evidence in the output doc
+  (12 corrections, 4 undocumented implemented features, 9 dead/legacy items, 11 suspected
+  bugs). Verification ran as four parallel read-only investigations whose surprising
+  findings were each re-confirmed by direct spot-checks before acceptance.
 
 ## Task 4 — Domain model and persistence
 
@@ -95,7 +100,12 @@ have been verified against the repository (see `INSTRUCTIONS.md` §11).
   paths (TrackerGrid, NumericInputPopover, HabitLogModal, day view) documented.
 - **Dependencies:** Task 4.
 - **Output document:** `05-completion-and-quantities.md`
-- **Notes:** —
+- **Notes (from Task 3):** Freeze entries exist as a special HabitEntry shape
+  (`freezeType`, zero value, `note: 'freeze:auto'` — `freezeService.ts:40-127`) that the
+  read path renders but nothing produces in production. Legacy `timesPerWeek` habits have
+  a latent 400-on-edit bug (`definitionValidation.ts:85-87` + `AddHabitModal.tsx:293`).
+  Cover entry semantics for `source` values ('routine', 'apple_health') and provenance
+  fields (`routineId`, `sourceRuleId`, `importedMetricValue/Type`).
 
 ## Task 6 — Scheduling, dates, time zones, and streaks
 
@@ -122,7 +132,9 @@ have been verified against the repository (see `INSTRUCTIONS.md` §11).
   and the bundle PRD/audits.
 - **Dependencies:** Tasks 4–5.
 - **Output document:** `07-bundles.md`
-- **Notes:** —
+- **Notes (from Task 3):** Membership `daysOfWeek` windows are validated, stored, and
+  honored at read time (`bundleMemberships.ts:70,107-111`, `daySummary.ts:232-237`,
+  `progress.ts:258`) but no UI sets them — cover both the used and unused halves.
 
 ## Task 8 — History, progress, and analytics
 
@@ -149,6 +161,12 @@ have been verified against the repository (see `INSTRUCTIONS.md` §11).
   secondary feature classified.
 - **Dependencies:** Task 4.
 - **Output document:** `09-auth-settings-secondary.md`
+- **Notes (from Task 3):** Delete-all-data omits 8+ collections (`userData.ts:11-28`);
+  beta/health email allowlist is hardcoded in three files, two client-side
+  (`requireHealthFeature.ts:9`, `persistenceClient.ts:1764`, `betaAccess.ts:12`); journal
+  upsert-by-key endpoint is orphaned client-side; push send-dedup uses a claim-by-insert
+  unique index with 48h TTL (`pushSendLogRepository.ts:22-59`); scheduler has a 5-min
+  catch-up window and dies with the process (documented in file header).
 - **Notes (from Task 1):** Push reminders use Web Push (VAPID) with an in-process 60-second
   scheduler and `PUSH_REMINDERS_ENABLED` is `"false"` in `render.yaml` — verify whether the
   feature is actually live in production. iOS will need APNs instead of Web Push. Session
@@ -172,6 +190,11 @@ have been verified against the repository (see `INSTRUCTIONS.md` §11).
   frontend is Vercel-static with `/api/*` rewritten to Render
   (`vercel.json` → `habitflowai.onrender.com`) — an iOS client would presumably hit the
   Render origin directly; confirm auth cookie behavior cross-origin.
+- **Notes (from Task 3):** Gemini BYOK key travels in the request **body** (`geminiApiKey`
+  field read from `req.body` in all five AI routes), never a header. Badge generation needs
+  server env `HF_TOKEN` (absent from `.env.example`). `/api/admin/integrity-report` lacks
+  `requireAdmin` (`app.ts:309`). `GET /api/health` healthcheck shadows the gated health
+  router mount (`app.ts:136` vs `:186`).
 
 ## Task 11 — Client state, optimistic updates, offline behavior, and synchronization
 
@@ -211,6 +234,12 @@ have been verified against the repository (see `INSTRUCTIONS.md` §11).
   (`App.tsx:693`), matching UI-architecture doc known-issue #13. Legacy route aliases
   kept alive: `progress`, `streak-dashboard`, `streaks`, `daily`, `day`, `wins`
   (`App.tsx:82-102`).
+- **Notes (from Task 3):** Suspected-bug list (11 items) and dead/legacy list (9 items)
+  consolidated in `03-feature-inventory.md` §4-5 — carry all of them into this task's
+  final contradiction register. Headliners: step-image blob-URL stub, journal
+  same-day duplicates, latent `timesPerWeek` 400, incomplete delete-all-data, ungated
+  integrity report, `predefinedHabits.ts` orphan, freeze write path dead, server momentum
+  never read, non-negotiable zombie fields.
 
 ## Task 13 — Cross-reference matrix and iOS-planning handoff
 
