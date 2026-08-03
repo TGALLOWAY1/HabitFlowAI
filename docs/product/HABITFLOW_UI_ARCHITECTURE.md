@@ -423,7 +423,7 @@ graph TB
    - Step title, instructions, timer mode
    - **Linked Habit** (prominent section with searchable tappable chips, not a hidden dropdown)
    - Image upload, tracking fields
-   - Back arrow returns to step list
+   - Sticky **Done** button (footer) or back arrow returns to step list
 7. Optionally: use AI suggestion (Gemini)
 8. Submit → routine created
 
