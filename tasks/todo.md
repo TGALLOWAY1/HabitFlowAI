@@ -1,122 +1,15 @@
-# Interactive Product Tour + Public Demo Mode
+# Routine Push Reminders
 
-Goal: replace the static Take a Tour feature list with an interactive guided tour,
-add a production-safe read-only Demo Mode with seeded showcase data, a
-mobile/desktop preview toggle, and a dedicated Roadmap page. Portfolio-first:
-a visitor should understand HabitFlow in under 3 minutes without an account.
+Bring habit-style push reminders (`reminderTime` / `reminderEnabled`) to routines.
 
-Architecture decisions (locked):
-- Demo Mode is **server-backed**: real screens, real API, real derived views,
-  scoped to seeded demo data. No fixture drift, no fake copies of screens.
-- Public demo identity: persistenceClient attaches `X-Demo-Mode: true` when the
-  active user mode is `demo`; server maps it to a fixed demo household/user when
-  `PUBLIC_DEMO_ENABLED=true`. Works in production (unlike dev-only
-  DEMO_MODE_ENABLED path, which stays unchanged).
-- Read-only enforcement in BOTH layers: server middleware rejects mutating
-  methods for the public demo identity (403), client intercepts writes in
-  `apiRequest` and shows a friendly toast instead of firing the request.
-- Tour previews the REAL app via an iframe (`?demo=1&embed=1`): the
-  mobile/desktop toggle changes the iframe viewport (390px vs full), so actual
-  Tailwind breakpoints and the real mobile nav render — not a scaled screenshot.
-  `embed=1` → replaceState instead of pushState so iframe navigation doesn't
-  pollute parent history; the tour drives the iframe via postMessage.
-- Beta pages (Analytics, Insights) become viewable by the demo identity, always
-  labeled Beta. Apple Health stays allowlisted (described honestly, not shown).
-- Honesty rules: roadmap items never mixed into implemented features; the seeded
-  sample AI report is labeled as an illustrative example of the report format,
-  never claimed to be a live Gemini generation.
+- [x] 1. Model + API: add `reminderTime`/`reminderEnabled` to `Routine`, validate on POST/PATCH `/api/routines` (commit 1)
+- [x] 2. Scheduler: `findReminderRoutinesForScopes`, routine-log completion skip, send-log dedup namespacing, routine send loop in `reminderScheduler` (commit 2)
+- [x] 3. UI: reminder time + enable controls in `RoutineEditorModal` (commit 3)
+- [x] 4. Tests: `routines.reminder.test.ts` + scheduler routine cases (commit 4)
+- [x] 5. Docs: FEATURES.md, HABITFLOW_UI_ARCHITECTURE.md, InfoModal Reminders blurb (commit 5)
+- [x] 6. `npm run build` + relevant test runs, push, open PR
 
-## Commits
-
-- [x] 1. FEATURE_AUDIT.md — honest audit: Implemented / Partial / Roadmap
-       (verified against code by 4 exploration passes).
-- [x] 2. Backend: public demo identity + read-only guard middleware
-       (src/shared/demo.ts additions, src/server/middleware/publicDemo.ts,
-       app.ts wiring, tests).
-- [x] 3. Backend: comprehensive demo showcase seed (categories, habits incl.
-       numeric/weekly/bundles, ~10 weeks of entries, goals + milestones + a
-       track, tasks, journal, wellbeing/sleep, medications, routines + logs,
-       pinned prefs, sample AI report) — idempotent, startup-invoked when
-       PUBLIC_DEMO_ENABLED, plus npm run seed:showcase.
-- [x] 4. Frontend: demo mode entry/exit + read-only UX (persistenceClient header
-       + write guard, AuthContext demo session, Layout demo banner + exit,
-       LoginPage "Explore the demo" CTA, ?demo=1 / embed=1 boot params, demo
-       access to beta pages).
-- [x] 5. Frontend: interactive TourPage rewrite — step-based guided walkthrough
-       (Welcome → Dashboard → Habits → Goals → Tasks → Journal → Routines →
-       Weekly AI Review → Journal Intelligence → Insights/Analytics → Sleep →
-       Settings → Roadmap/CTA) with live embedded demo preview and
-       mobile/desktop toggle + contextual honesty callouts.
-- [x] 6. Frontend: dedicated Roadmap page (?view=roadmap), reachable from tour,
-       login screen, and app; content mirrors ROADMAP.md with status chips.
-- [x] 7. Docs: docs/DEMO_ARCHITECTURE.md (how demo works), FEATURES.md,
-       HABITFLOW_UI_ARCHITECTURE.md, README pointer.
-
-## Verification
-- [x] npm run build (tsc -b + vite build): GREEN
-- [x] npm run lint:beta: 0 errors (pre-existing `any` warnings only)
-- [x] npm run test:beta: 4 suites / 20 tests pass; 5 suites fail ONLY because
-      mongodb-memory-server cannot download its binary in this sandbox
-      (HTTP 403 via proxy — environmental, same as previous sessions)
-- [x] publicDemo middleware tests: 17/17 pass
-- [x] Frontend component tests: pass except TrackerGrid.clearEntry (3 tests),
-      which fails identically on main — pre-existing, unrelated
-- [x] Playwright smoke test (vite dev server): login CTAs render, tour renders
-      13 step chips, postMessage step navigation drives the embedded preview,
-      Desktop/Mobile toggle renders a real 390px viewport, Roadmap page renders
-- [x] Live end-to-end verification (second pass): MongoDB binaries are
-      proxy-blocked, so a locally-built FerretDB v1.24 (Mongo wire protocol,
-      SQLite backend) stood in — patched locally with $addToSet/$size/$ifNull
-      and two upstream fixes (per-accumulator group iterators, $-path renames
-      in $project). Sandbox-only tooling; nothing committed to the repo.
-      Verified against the running stack:
-      - startup seed runs, detects freshness, skips when fresh; --force reseeds
-      - demo-header reads return seeded data; writes 403 demoReadOnly;
-        headerless requests 401; read-only toast fires in the UI
-      - every screen renders real seeded data (dashboard ring, habits grid
-        with bundle + streaks, goal track completed→active 72%→locked,
-        milestones, tasks, journal, routines, insights, sleep)
-      - the Insights correlation engine genuinely detects the seeded
-        wind-down↔sleep/energy pattern (Cohen's d, n=30 vs 15)
-      - sample Weekly AI Review opens from history without a Gemini key
-- [ ] After production deploy (real MongoDB): set PUBLIC_DEMO_ENABLED=true,
-      confirm /api/health reports publicDemo:true, click "Explore the live demo".
-
-## Tour section deep-links (trust fix)
-
-Problem: several tour stops didn't land on the section they named — Weekly
-Review (AI) dropped visitors on the Habits tracker instead of a completed
-review, Settings pointed at the gear icon, Sleep landed on the Analytics
-Habits tab, and Journal→AI Review tab switches were ignored by the persistent
-iframe.
-
-- [x] Embedded demo navigation supports section deep-links: `modal: 'ai'|'settings'`
-      (+ `focus` for the AI hub card), `routineEditor: '<title>'`, and `tab`
-      for Analytics; overlays from the previous stop close on every step change
-- [x] Journal/Analytics keyed by tab so `?tab=` deep-links apply even when the
-      page is already mounted (fixes tour step Journal → AI Journal Review)
-- [x] Tour stops updated: Weekly Review opens the AI hub with the completed
-      archived review on top; Routine Builder opens the Morning Kickstart
-      editor; Sleep opens the Sleep tab; Settings opens the Settings modal
-- [x] Docs: HABITFLOW_UI_ARCHITECTURE.md + FEATURES.md tour entries updated
-- [x] Verified: `npm run build` green; aiCardsArchived tests pass; demo seeds
-      an archived weekly_review report so the card renders it without a key
-
-## Merge with tour-streamline PR (#512/#513)
-
-Main independently removed the Routine Builder/Sleep/Settings tour stops
-while this branch was in flight. Resolved by merge:
-- [x] Kept main's stop removal (11 stops, 3 AI stops)
-- [x] Kept this branch's routineEditor deep-link, applied to the surviving
-      Routines stop — it now opens Morning Kickstart in the editor directly
-      (main's version only pointed at the routines list)
-- [x] docs/FEATURES.md + HABITFLOW_UI_ARCHITECTURE.md rewritten to match
-      the final 11-stop tour and its deep-links
-- [x] Verified: tsc -b + vite build green; Playwright smoke against the
-      merged tour (mocking /api/routines + /api/routineLogs, since this
-      sandbox has no MongoDB backend) confirms all 12 checks pass —
-      11 chips, Weekly Review opens AI hub with review on top, Journal
-      lands on History, Journal Review on the AI tab, Routines opens the
-      Morning Kickstart editor with Suggest with AI visible, Wellbeing
-      deep-links correctly, Sleep/Settings chips are gone, and overlays
-      close when moving to the next stop
+Design decisions:
+- Routines have no schedule concept (no assignedDays) → reminders fire every day, skipped when the routine already has a log for that local dayKey (any variant).
+- Dedup ledger keeps the existing `{habitId, dayKey, endpoint}` unique index; routine sends namespace the id as `routine:<id>` (no migration, no collision — habit ids are UUIDs).
+- Notification deep-link: `/?view=routines`, tag `routine-<id>-<dayKey>`.

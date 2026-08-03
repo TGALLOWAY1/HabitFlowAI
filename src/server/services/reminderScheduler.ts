@@ -1,15 +1,17 @@
 /**
  * Reminder Scheduler
  *
- * In-process scheduler for Web Push habit reminders. Every TICK_MS it
- * computes, per subscription timezone, the current local minute plus a small
- * catch-up window of recent minutes (so a delayed/skipped tick after a deploy
- * or restart still delivers), finds habits whose reminderTime matches, and
- * pushes to each subscribed device — unless the habit is already completed
- * for that local day.
+ * In-process scheduler for Web Push habit and routine reminders. Every
+ * TICK_MS it computes, per subscription timezone, the current local minute
+ * plus a small catch-up window of recent minutes (so a delayed/skipped tick
+ * after a deploy or restart still delivers), finds habits and routines whose
+ * reminderTime matches, and pushes to each subscribed device — unless the
+ * habit is already completed (routine already logged) for that local day.
+ * Habits fire only on their assigned days; routines have no per-day schedule,
+ * so their reminders fire every day.
  *
- * Idempotency: pushSendLog's unique (habitId, dayKey, endpoint) index with
- * claim-by-insert makes sends at-most-once per habit per day per device, even
+ * Idempotency: pushSendLog's unique (sourceId, dayKey, endpoint) index with
+ * claim-by-insert makes sends at-most-once per source per day per device, even
  * across overlapping ticks, restarts, and multiple instances. The dayKey is
  * computed per offset minute so the catch-up window behaves correctly across
  * local midnight; dayKey-scoped dedup also makes the DST fall-back repeated
@@ -21,19 +23,21 @@
  * adapt runReminderTick() behind a cron-triggered endpoint.
  */
 
-import type { Habit } from '../../models/persistenceTypes';
+import type { Habit, Routine } from '../../models/persistenceTypes';
 import {
   getActivePushSubscriptions,
   disablePushSubscriptionByEndpoint,
 } from '../repositories/pushSubscriptionRepository';
 import { tryClaimSend, markSendResult, releaseClaim } from '../repositories/pushSendLogRepository';
 import { findReminderHabitsForScopes, getHabitById } from '../repositories/habitRepository';
+import { findReminderRoutinesForScopes } from '../repositories/routineRepository';
+import { hasRoutineLogForDay } from '../repositories/routineLogRepository';
 import { getHabitEntriesForDay } from '../repositories/habitEntryRepository';
 import { isHabitScheduledOnDay } from './scheduleEngine';
 import { resolveChildIdsForDay } from './dayViewService';
 import { evaluateChecklistSuccess } from './checklistSuccessService';
 import { getDayKeyForDate } from '../utils/dayKey';
-import { sendPush, isPushConfigured } from '../lib/webPush';
+import { sendPush, isPushConfigured, type PushPayload } from '../lib/webPush';
 import { deriveDailyHabitCompletion } from '../../domain/habits/completion';
 
 const TICK_MS = 60_000;
@@ -141,10 +145,13 @@ export async function runReminderTick(now: Date): Promise<void> {
     scopes.push({ householdId: sub.householdId, userId: sub.userId });
   }
   const allTimes = [...new Set([...tzCandidates.values()].flat().map((c) => c.hhmm))];
-  const habits = await findReminderHabitsForScopes(scopes, allTimes);
-  if (habits.length === 0) return;
+  const [habits, routines] = await Promise.all([
+    findReminderHabitsForScopes(scopes, allTimes),
+    findReminderRoutinesForScopes(scopes, allTimes),
+  ]);
+  if (habits.length === 0 && routines.length === 0) return;
 
-  // Completion lookups are cached per (habit, dayKey) within the tick.
+  // Completion lookups are cached per (source, dayKey) within the tick.
   const completionCache = new Map<string, boolean>();
   async function isCompleted(
     habit: Habit & { householdId: string; userId: string },
@@ -158,7 +165,47 @@ export async function runReminderTick(now: Date): Promise<void> {
     return completed;
   }
 
-  // 3. Match each subscription's local candidate minutes against its user's habits.
+  // Routine "done today" = any completion log (any variant) for the dayKey.
+  async function isRoutineLogged(
+    routine: Routine & { userId: string },
+    dayKey: string
+  ): Promise<boolean> {
+    const cacheKey = `routine:${routine.id}|${dayKey}`;
+    const cached = completionCache.get(cacheKey);
+    if (cached !== undefined) return cached;
+    const logged = await hasRoutineLogForDay(routine.id, dayKey, routine.userId);
+    completionCache.set(cacheKey, logged);
+    return logged;
+  }
+
+  type ActiveSub = (typeof subscriptions)[number];
+
+  // 4. Claim-then-send: the unique dedup index makes this at-most-once per
+  //    (source, day, device). On transient error the claim is released so the
+  //    next tick can retry while the minute is inside the catch-up window.
+  async function claimAndSend(
+    sub: ActiveSub,
+    sourceId: string,
+    dayKey: string,
+    payload: PushPayload
+  ): Promise<void> {
+    const claimed = await tryClaimSend(sourceId, dayKey, sub.endpoint, sub.householdId, sub.userId);
+    if (!claimed) return;
+
+    const result = await sendPush({ endpoint: sub.endpoint, keys: sub.keys }, payload);
+
+    if (result === 'sent') {
+      await markSendResult(sourceId, dayKey, sub.endpoint, 'sent');
+    } else if (result === 'gone') {
+      await markSendResult(sourceId, dayKey, sub.endpoint, 'gone');
+      await disablePushSubscriptionByEndpoint(sub.householdId, sub.userId, sub.endpoint);
+    } else {
+      await releaseClaim(sourceId, dayKey, sub.endpoint);
+    }
+  }
+
+  // 3. Match each subscription's local candidate minutes against its user's
+  //    habits and routines.
   for (const sub of subscriptions) {
     const candidates = tzCandidates.get(sub.timeZone) ?? [];
     for (const habit of habits) {
@@ -168,36 +215,26 @@ export async function runReminderTick(now: Date): Promise<void> {
       if (!isHabitScheduledOnDay(habit, candidate.dayKey, sub.timeZone)) continue;
       if (await isCompleted(habit, candidate.dayKey)) continue;
 
-      // 4. Claim-then-send: the unique dedup index makes this at-most-once.
-      const claimed = await tryClaimSend(
-        habit.id,
-        candidate.dayKey,
-        sub.endpoint,
-        sub.householdId,
-        sub.userId
-      );
-      if (!claimed) continue;
+      await claimAndSend(sub, habit.id, candidate.dayKey, {
+        title: habit.name,
+        body: `Time for ${habit.name}`,
+        tag: `habit-${habit.id}-${candidate.dayKey}`,
+        data: { url: '/?view=tracker' },
+      });
+    }
 
-      const result = await sendPush(
-        { endpoint: sub.endpoint, keys: sub.keys },
-        {
-          title: habit.name,
-          body: `Time for ${habit.name}`,
-          tag: `habit-${habit.id}-${candidate.dayKey}`,
-          data: { url: '/?view=tracker' },
-        }
-      );
+    for (const routine of routines) {
+      if (routine.householdId !== sub.householdId || routine.userId !== sub.userId) continue;
+      const candidate = candidates.find((c) => c.hhmm === routine.reminderTime);
+      if (!candidate) continue;
+      if (await isRoutineLogged(routine, candidate.dayKey)) continue;
 
-      if (result === 'sent') {
-        await markSendResult(habit.id, candidate.dayKey, sub.endpoint, 'sent');
-      } else if (result === 'gone') {
-        await markSendResult(habit.id, candidate.dayKey, sub.endpoint, 'gone');
-        await disablePushSubscriptionByEndpoint(sub.householdId, sub.userId, sub.endpoint);
-      } else {
-        // Transient failure: release the claim so the next tick can retry
-        // while the minute is still inside the catch-up window.
-        await releaseClaim(habit.id, candidate.dayKey, sub.endpoint);
-      }
+      await claimAndSend(sub, `routine:${routine.id}`, candidate.dayKey, {
+        title: routine.title,
+        body: `Time for ${routine.title}`,
+        tag: `routine-${routine.id}-${candidate.dayKey}`,
+        data: { url: '/?view=routines' },
+      });
     }
   }
 }

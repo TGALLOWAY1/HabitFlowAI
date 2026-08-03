@@ -96,6 +96,38 @@ export async function getRoutine(
   return stripScope(routine);
 }
 
+/**
+ * SCHEDULER-ONLY: cross-scope query for routines with a reminder due at one of
+ * the given "HH:mm" times, restricted to the scopes that actually have active
+ * push subscriptions. Returns routines WITH their scope fields so the scheduler
+ * can match them to subscriptions — a deliberate exception to the per-request
+ * scoping rule; never call this from a request handler.
+ * (Routines are hard-deleted and have no archive state, so unlike the habit
+ * counterpart there are no deletedAt/archived filters.)
+ */
+export async function findReminderRoutinesForScopes(
+  scopes: Array<{ householdId: string; userId: string }>,
+  times: string[]
+): Promise<Array<Routine & { householdId: string; userId: string }>> {
+  if (scopes.length === 0 || times.length === 0) return [];
+
+  const db = await getDb();
+  const collection = db.collection(COLLECTION);
+
+  const docs = await collection
+    .find({
+      $or: scopes.map((s) => ({ householdId: s.householdId, userId: s.userId })),
+      reminderTime: { $in: times },
+      reminderEnabled: { $ne: false },
+    })
+    .toArray();
+
+  return docs.map((doc) => {
+    const { householdId, userId } = doc as any;
+    return { ...stripScope(doc), householdId, userId };
+  });
+}
+
 export async function createRoutine(
   householdId: string,
   userId: string,

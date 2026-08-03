@@ -85,6 +85,25 @@ export async function saveRoutineLog(
 }
 
 /**
+ * Does the routine have a completion log (any variant) for the given day?
+ * Used by the reminder scheduler to skip reminders once the routine is done.
+ */
+export async function hasRoutineLogForDay(
+    routineId: string,
+    date: string,
+    userId: string
+): Promise<boolean> {
+    const db = await getDb();
+    const collection = db.collection(COLLECTION_NAME);
+
+    const log = await collection.findOne(
+        { routineId, date, userId },
+        { projection: { _id: 1 } }
+    );
+    return log !== null;
+}
+
+/**
  * Get all routine logs for a user.
  *
  * @param userId - User ID to filter logs

@@ -4,7 +4,8 @@
  * Drives runReminderTick() with fixed Dates against memory Mongo, with the
  * web-push sender mocked. Covers timezone matching, the catch-up window,
  * schedule/completion/enablement exclusions, dedup, gone-endpoint cleanup,
- * transient-error retry, local-midnight windows, and multi-device fan-out.
+ * transient-error retry, local-midnight windows, multi-device fan-out, and
+ * routine reminders (fire daily, skipped once the routine is logged).
  */
 
 import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from 'vitest';
@@ -22,7 +23,8 @@ import { sendPush } from '../../lib/webPush';
 import { runReminderTick, formatLocalHHmm } from '../reminderScheduler';
 import { upsertPushSubscription, getActivePushSubscriptions } from '../../repositories/pushSubscriptionRepository';
 import { createHabit } from '../../repositories/habitRepository';
-import type { Habit } from '../../../models/persistenceTypes';
+import { createRoutine } from '../../repositories/routineRepository';
+import type { Habit, Routine } from '../../../models/persistenceTypes';
 
 const HH = 'sched-household';
 const USER = 'sched-user';
@@ -81,6 +83,8 @@ describe('reminderScheduler', () => {
     await db.collection('pushSendLog').deleteMany({});
     await db.collection('habits').deleteMany({});
     await db.collection('habitEntries').deleteMany({});
+    await db.collection('routines').deleteMany({});
+    await db.collection('routineLogs').deleteMany({});
     vi.mocked(sendPush).mockClear();
     vi.mocked(sendPush).mockResolvedValue('sent');
   });
@@ -345,6 +349,117 @@ describe('reminderScheduler', () => {
     vi.mocked(sendPush).mockClear();
     await runReminderTick(utc('2026-07-16T13:00:10Z'));
     expect(vi.mocked(sendPush)).not.toHaveBeenCalled();
+  });
+
+  describe('routine reminders (fire daily, skipped once logged)', () => {
+    async function makeRoutine(overrides: Partial<Record<string, unknown>> = {}, userId = USER) {
+      const data = {
+        title: (overrides.title as string) ?? 'Wind Down',
+        steps: [],
+        linkedHabitIds: [],
+        reminderTime: '08:00',
+        ...overrides,
+      } as Omit<Routine, 'id' | 'userId' | 'createdAt' | 'updatedAt'>;
+      return createRoutine(HH, userId, data);
+    }
+
+    async function logRoutine(routineId: string, date = '2026-07-16', variantId?: string) {
+      const db = await getTestDb();
+      await db.collection('routineLogs').insertOne({
+        routineId,
+        date,
+        userId: USER,
+        completedAt: `${date}T11:00:00.000Z`,
+        compositeKey: variantId ? `${routineId}-${variantId}-${date}` : `${routineId}-${date}`,
+        ...(variantId ? { variantId } : {}),
+      });
+    }
+
+    it('sends when the local minute matches, deep-linking to the routines view', async () => {
+      await subscribe();
+      const routine = await makeRoutine();
+
+      await runReminderTick(utc('2026-07-16T12:00:10Z')); // 08:00 NY
+
+      expect(vi.mocked(sendPush)).toHaveBeenCalledTimes(1);
+      const [target, payload] = vi.mocked(sendPush).mock.calls[0];
+      expect(target.endpoint).toBe(ENDPOINT);
+      expect(payload.title).toBe('Wind Down');
+      expect(payload.tag).toBe(`routine-${routine.id}-2026-07-16`);
+      expect(payload.data?.url).toBe('/?view=routines');
+    });
+
+    it('skips a routine already logged for the local day', async () => {
+      await subscribe();
+      const routine = await makeRoutine();
+      await logRoutine(routine.id);
+
+      await runReminderTick(utc('2026-07-16T12:00:10Z'));
+
+      expect(vi.mocked(sendPush)).not.toHaveBeenCalled();
+    });
+
+    it('counts a variant-scoped log as done for the day', async () => {
+      await subscribe();
+      const routine = await makeRoutine();
+      await logRoutine(routine.id, '2026-07-16', 'variant-quick');
+
+      await runReminderTick(utc('2026-07-16T12:00:10Z'));
+
+      expect(vi.mocked(sendPush)).not.toHaveBeenCalled();
+    });
+
+    it('still sends when only a previous day is logged', async () => {
+      await subscribe();
+      const routine = await makeRoutine();
+      await logRoutine(routine.id, '2026-07-15');
+
+      await runReminderTick(utc('2026-07-16T12:00:10Z'));
+
+      expect(vi.mocked(sendPush)).toHaveBeenCalledTimes(1);
+    });
+
+    it('skips reminderEnabled=false routines', async () => {
+      await subscribe();
+      await makeRoutine({ reminderEnabled: false });
+
+      await runReminderTick(utc('2026-07-16T12:00:10Z'));
+
+      expect(vi.mocked(sendPush)).not.toHaveBeenCalled();
+    });
+
+    it('dedups across consecutive ticks (at most one send per routine/day/device)', async () => {
+      await subscribe();
+      await makeRoutine();
+
+      await runReminderTick(utc('2026-07-16T12:00:10Z'));
+      await runReminderTick(utc('2026-07-16T12:01:10Z'));
+      await runReminderTick(utc('2026-07-16T12:02:10Z'));
+
+      expect(vi.mocked(sendPush)).toHaveBeenCalledTimes(1);
+    });
+
+    it('sends a habit and a routine reminder independently at the same minute', async () => {
+      await subscribe();
+      await makeHabit({ name: 'Meditate' });
+      await makeRoutine({ title: 'Morning Startup' });
+
+      await runReminderTick(utc('2026-07-16T12:00:10Z'));
+
+      expect(vi.mocked(sendPush)).toHaveBeenCalledTimes(2);
+      const titles = vi.mocked(sendPush).mock.calls.map(([, p]) => p.title).sort();
+      expect(titles).toEqual(['Meditate', 'Morning Startup']);
+    });
+
+    it('does not cross-fire routines between users', async () => {
+      await subscribe({ endpoint: ENDPOINT, userId: USER });
+      // OTHER_USER has the routine but no subscription
+      await makeRoutine({ title: 'Other user routine' }, OTHER_USER);
+
+      await runReminderTick(utc('2026-07-16T12:00:10Z'));
+
+      expect(vi.mocked(sendPush)).not.toHaveBeenCalled();
+    });
   });
 
   it('does not cross-fire habits between users', async () => {

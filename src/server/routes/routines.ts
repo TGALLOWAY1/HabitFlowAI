@@ -53,6 +53,13 @@ const routineImageUpload = multer({
 
 export const uploadRoutineImageMiddleware = routineImageUpload.single('file');
 
+// 24h "HH:mm" — the format stored for reminderTime (same contract as habits).
+const REMINDER_TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/;
+
+function isValidReminderTime(value: unknown): value is string {
+  return typeof value === 'string' && REMINDER_TIME_PATTERN.test(value);
+}
+
 /**
  * Validate a RoutineStep object.
  * 
@@ -320,7 +327,18 @@ export async function getRoutineRoute(req: Request, res: Response): Promise<void
 export async function createRoutineRoute(req: Request, res: Response): Promise<void> {
   try {
     // Validate request body
-    const { title, categoryId, steps, linkedHabitIds, variants, defaultVariantId } = req.body;
+    const { title, categoryId, steps, linkedHabitIds, variants, defaultVariantId, reminderTime, reminderEnabled } = req.body;
+
+    // null is treated as "no reminder" so create and PATCH share one contract
+    if (reminderTime !== undefined && reminderTime !== null && !isValidReminderTime(reminderTime)) {
+      res.status(400).json({
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'reminderTime must be a 24h "HH:mm" string (e.g. "09:00")',
+        },
+      });
+      return;
+    }
 
     if (!title || typeof title !== 'string' || title.trim().length === 0) {
       res.status(400).json({
@@ -399,6 +417,8 @@ export async function createRoutineRoute(req: Request, res: Response): Promise<v
         steps: (steps as RoutineStep[]) || [],
         linkedHabitIds: linkedHabitIds || [],
         ...(variants ? { variants: variants as RoutineVariant[], defaultVariantId } : {}),
+        reminderTime: reminderTime ?? undefined,
+        reminderEnabled: reminderEnabled === undefined ? undefined : !!reminderEnabled,
       }
     );
 
@@ -432,7 +452,7 @@ export async function createRoutineRoute(req: Request, res: Response): Promise<v
 export async function updateRoutineRoute(req: Request, res: Response): Promise<void> {
   try {
     const { id } = req.params;
-    const { title, categoryId, steps, linkedHabitIds, variants, defaultVariantId, icon, color } = req.body;
+    const { title, categoryId, steps, linkedHabitIds, variants, defaultVariantId, icon, color, reminderTime, reminderEnabled } = req.body;
 
     if (!id) {
       res.status(400).json({
@@ -552,6 +572,21 @@ export async function updateRoutineRoute(req: Request, res: Response): Promise<v
       }
       patch.color = color.trim();
     }
+
+    // Clear with null, set with a valid "HH:mm" string (same contract as habits).
+    if (reminderTime !== undefined) {
+      if (reminderTime !== null && !isValidReminderTime(reminderTime)) {
+        res.status(400).json({
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: 'reminderTime must be a 24h "HH:mm" string (e.g. "09:00")',
+          },
+        });
+        return;
+      }
+      patch.reminderTime = reminderTime === null ? undefined : reminderTime;
+    }
+    if (reminderEnabled !== undefined) patch.reminderEnabled = !!reminderEnabled;
 
     if (Object.keys(patch).length === 0) {
       res.status(400).json({
