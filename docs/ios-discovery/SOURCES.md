@@ -149,7 +149,9 @@ their importance; annotate why each matters.
 - `docs/product/HABITFLOW_UI_ARCHITECTURE.md` — canonical UI/screen/flow reference
   (updated 2026-08-02).
 - `FEATURE_AUDIT.md` — code-verified feature audit dated 2026-07-01.
-- `docs/API.md`, `docs/DATA_MODEL.md`, `docs/ARCHITECTURE.md`, `docs/DOMAIN_CANON.md`.
+- `docs/API.md` (**trust: Low** — 3 nonexistent route groups, ~90 endpoints missing;
+  see 10 doc §3), `docs/DATA_MODEL.md` (**trust: Low-Medium** — see 04 doc §8),
+  `docs/ARCHITECTURE.md`, `docs/DOMAIN_CANON.md`.
 - `docs/system-model/` — entity model, relationships, system rules, bug analysis
   (2026-04-04 era — verify before trusting).
 - `docs/reference/V2 (Current - iOS focus)/`, `docs/reference/iOS release V1/` — prior

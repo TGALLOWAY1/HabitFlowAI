@@ -220,7 +220,7 @@ have been verified against the repository (see `INSTRUCTIONS.md` §11).
 
 ## Task 10 — API and backend suitability for a native client
 
-- **Status:** Not started
+- **Status:** Complete (2026-08-03)
 - **Deliverable:** `10-api-surface-for-ios.md` — complete endpoint inventory (method, path,
   auth, request/response shapes), CORS/headers, rate limits, upload handling, error
   contract, and an assessment of gaps for a native client (auth without cookies?, BYOK AI
@@ -240,6 +240,12 @@ have been verified against the repository (see `INSTRUCTIONS.md` §11).
   server env `HF_TOKEN` (absent from `.env.example`). `/api/admin/integrity-report` lacks
   `requireAdmin` (`app.ts:309`). `GET /api/health` healthcheck shadows the gated health
   router mount (`app.ts:136` vs `:186`).
+- **Completion note (2026-08-03):** Criteria verified — all 151 registrations (plus
+  mounted routers) inventoried and classified by domain/auth in the output doc;
+  docs/API.md verified with 7 wrong/dead claims (three nonexistent route groups) and
+  ~90 undocumented endpoints — trust downgraded to Low; error-shape census (94 structured
+  vs 69 bare); native-client gap table (cookie-only credential, no APNs, BYOK-in-body,
+  HealthKit-direct opportunity, no versioning, no offline).
 
 ## Task 11 — Client state, optimistic updates, offline behavior, and synchronization
 
