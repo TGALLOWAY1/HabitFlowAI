@@ -576,6 +576,20 @@ export interface Routine {
      */
     defaultVariantId?: string;
 
+    /**
+     * Optional: Push reminder time ("HH:mm"), interpreted in each subscribed
+     * device's local timezone. Routines have no per-day schedule, so reminders
+     * fire every day and skip days the routine already has a completion log.
+     * null clears the reminder on PATCH (and may round-trip from storage).
+     */
+    reminderTime?: string | null;
+
+    /**
+     * Optional: Toggle push reminders without losing the configured time.
+     * Absent means enabled when reminderTime is set.
+     */
+    reminderEnabled?: boolean;
+
     /** ISO 8601 timestamp of when the routine was created */
     createdAt: string;
 
