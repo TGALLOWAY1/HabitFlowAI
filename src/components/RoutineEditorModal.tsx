@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Plus, Copy, Loader2, Image as ImageIcon, Sparkles } from 'lucide-react';
+import { X, Plus, Copy, Loader2, Image as ImageIcon, Sparkles, Bell } from 'lucide-react';
 import { uploadRoutineImage, deleteRoutineImage, suggestVariants, getActiveUserMode } from '../lib/persistenceClient';
 import { getGeminiApiKey, hasGeminiApiKey } from '../lib/geminiClient';
 import { getDemoSuggestedVariants } from '../lib/demoRoutineSuggestions';
@@ -70,6 +70,8 @@ export const RoutineEditorModal: React.FC<RoutineEditorModalProps> = ({
     // Form State
     const [title, setTitle] = useState('');
     const [categoryId, setCategoryId] = useState<string | undefined>(undefined);
+    const [reminderTime, setReminderTime] = useState('');
+    const [reminderEnabled, setReminderEnabled] = useState(true);
     const [variants, setVariants] = useState<RoutineVariant[]>([createEmptyVariant()]);
     const [activeVariantIndex, setActiveVariantIndex] = useState(0);
 
@@ -118,6 +120,8 @@ export const RoutineEditorModal: React.FC<RoutineEditorModalProps> = ({
         if (mode === 'edit' && initialRoutine) {
             setTitle(initialRoutine.title);
             setCategoryId(initialRoutine.categoryId);
+            setReminderTime(initialRoutine.reminderTime || '');
+            setReminderEnabled(initialRoutine.reminderEnabled !== false);
             const converted = routineToVariants(initialRoutine);
             setVariants(converted);
             const targetIndex = initialVariantId
@@ -128,6 +132,8 @@ export const RoutineEditorModal: React.FC<RoutineEditorModalProps> = ({
         } else {
             setTitle('');
             setCategoryId(undefined);
+            setReminderTime('');
+            setReminderEnabled(true);
             setVariants([createEmptyVariant()]);
             setActiveVariantIndex(0);
             setCurrentRoutineImageUrl(null);
@@ -291,6 +297,8 @@ export const RoutineEditorModal: React.FC<RoutineEditorModalProps> = ({
                 linkedHabitIds,
                 defaultVariantId: variants[0]?.id,
                 steps: [], // Empty — steps now live inside variants
+                reminderTime: reminderTime || null,
+                reminderEnabled,
             };
 
             let savedRoutine: Routine;
@@ -380,6 +388,48 @@ export const RoutineEditorModal: React.FC<RoutineEditorModalProps> = ({
                                         <option key={cat.id} value={cat.id}>{cat.name}</option>
                                     ))}
                                 </select>
+                            </div>
+
+                            {/* Reminder — routines have no per-day schedule, so the
+                                push fires daily and skips days the routine is logged */}
+                            <div>
+                                <label htmlFor="routine-reminder-time" className="text-sm font-medium text-neutral-400 mb-2 flex items-center gap-1.5">
+                                    <Bell size={14} /> Reminder (Optional)
+                                </label>
+                                <div className="flex items-center gap-2">
+                                    <input
+                                        id="routine-reminder-time"
+                                        type="time"
+                                        value={reminderTime}
+                                        onChange={e => setReminderTime(e.target.value)}
+                                        className="px-4 py-3 rounded-lg bg-neutral-800 text-white border border-white/10 focus:outline-none focus:border-emerald-500 [color-scheme:dark]"
+                                    />
+                                    {reminderTime && (
+                                        <button
+                                            type="button"
+                                            onClick={() => setReminderTime('')}
+                                            className="min-h-[44px] min-w-[44px] flex items-center justify-center text-neutral-500 hover:text-neutral-300 rounded-lg hover:bg-white/5"
+                                            aria-label="Clear reminder time"
+                                        >
+                                            <X size={16} />
+                                        </button>
+                                    )}
+                                </div>
+                                {reminderTime && (
+                                    <label className="flex items-center gap-2 text-sm text-neutral-300 cursor-pointer mt-2">
+                                        <input
+                                            type="checkbox"
+                                            checked={reminderEnabled}
+                                            onChange={e => setReminderEnabled(e.target.checked)}
+                                            className="w-4 h-4 rounded border-white/20 bg-neutral-800 accent-emerald-500"
+                                        />
+                                        Send push reminder
+                                    </label>
+                                )}
+                                <p className="text-[11px] text-neutral-500 mt-2">
+                                    Reminders go to devices where you've enabled notifications
+                                    (Settings → Notifications). Skipped on days the routine is already completed.
+                                </p>
                             </div>
 
                             {/* Routine Image Upload (edit mode only) */}
