@@ -2,12 +2,12 @@
 
 Bring habit-style push reminders (`reminderTime` / `reminderEnabled`) to routines.
 
-- [ ] 1. Model + API: add `reminderTime`/`reminderEnabled` to `Routine`, validate on POST/PATCH `/api/routines` (commit 1)
-- [ ] 2. Scheduler: `findReminderRoutinesForScopes`, routine-log completion skip, send-log dedup namespacing, routine send loop in `reminderScheduler` (commit 2)
-- [ ] 3. UI: reminder time + enable controls in `RoutineEditorModal` (commit 3)
-- [ ] 4. Tests: `routines.reminder.test.ts` + scheduler routine cases (commit 4)
-- [ ] 5. Docs: FEATURES.md, HABITFLOW_UI_ARCHITECTURE.md, InfoModal Reminders blurb (commit 5)
-- [ ] 6. `npm run build` + relevant test runs, push, open PR
+- [x] 1. Model + API: add `reminderTime`/`reminderEnabled` to `Routine`, validate on POST/PATCH `/api/routines` (commit 1)
+- [x] 2. Scheduler: `findReminderRoutinesForScopes`, routine-log completion skip, send-log dedup namespacing, routine send loop in `reminderScheduler` (commit 2)
+- [x] 3. UI: reminder time + enable controls in `RoutineEditorModal` (commit 3)
+- [x] 4. Tests: `routines.reminder.test.ts` + scheduler routine cases (commit 4)
+- [x] 5. Docs: FEATURES.md, HABITFLOW_UI_ARCHITECTURE.md, InfoModal Reminders blurb (commit 5)
+- [x] 6. `npm run build` + relevant test runs, push, open PR
 
 Design decisions:
 - Routines have no schedule concept (no assignedDays) → reminders fire every day, skipped when the routine already has a log for that local dayKey (any variant).

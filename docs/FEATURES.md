@@ -65,6 +65,7 @@ Every feature area below is **Shipped** unless an item notes otherwise.
 - **Linked Habit Auto-Logging** — Completing a routine auto-marks its linked habits as done
 - **Pinned Routines** — Pin frequently-used routines to the dashboard for quick access
 - **Routine Logs** — Track completion history with timestamps
+- **Push Reminders** — Set a reminder time per routine (create/edit modal); a Web Push notification fires at that local time every day and is skipped once the routine has a completion log for that day (any variant counts). Tapping the notification opens the Routines page. Uses the same per-device enrollment (**Settings → Notifications**), `PUSH_REMINDERS_ENABLED` + VAPID gating, and always-on scheduler as habit reminders; unlike habits, routines have no assigned days, so the reminder fires daily until completed
 
 ## Goals
 
