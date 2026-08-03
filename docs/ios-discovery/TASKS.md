@@ -309,7 +309,7 @@ have been verified against the repository (see `INSTRUCTIONS.md` §11).
 
 ## Task 13 — Cross-reference matrix and iOS-planning handoff
 
-- **Status:** Not started
+- **Status:** Complete (2026-08-03)
 - **Deliverable:** `13-ios-handoff.md` — matrix of feature × screen × API × data model ×
   status; open questions; prioritized risk list; explicit inputs for the iOS build plan
   (including deltas required: APNs, auth, key storage, HealthKit-native opportunity).
@@ -319,7 +319,12 @@ have been verified against the repository (see `INSTRUCTIONS.md` §11).
   `docs/reference/iOS release V1/` product intent (differences flagged, not adopted).
 - **Dependencies:** Tasks 1–12.
 - **Output document:** `13-ios-handoff.md`
-- **Notes:** —
+- **Completion note (2026-08-03):** Criteria verified — every Task 3 feature area appears
+  in the matrix with surface/API/data/status/doc links; inherited server issues, required
+  server deltas, product decisions, and prioritized risks enumerated; 6 open questions
+  carried (all requiring information outside the repository); intent docs compared with
+  6 flagged differences — notably rolling-vs-ISO-calendar weeks, routines-never-create-
+  entries vs the implemented opt-in, and offline-as-MUST vs none existing.
 
 ## Task 14 — Final independent verification
 
