@@ -328,7 +328,7 @@ have been verified against the repository (see `INSTRUCTIONS.md` §11).
 
 ## Task 14 — Final independent verification
 
-- **Status:** Not started
+- **Status:** In progress (2026-08-03)
 - **Deliverable:** Verification report appended to `13-ios-handoff.md` (or standalone
   `14-verification.md`) — an independent pass (fresh eyes / subagents) sampling claims from
   each discovery document against the repository.
