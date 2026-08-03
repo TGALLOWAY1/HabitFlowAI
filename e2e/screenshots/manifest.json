@@ -1,0 +1,434 @@
+[
+  {
+    "section": "01-auth",
+    "file": "01-auth/01-login.png",
+    "title": "Login",
+    "description": "Email + password sign-in, forgot-password link, invite-code entry, and tour CTA. Default screen for unauthenticated users."
+  },
+  {
+    "section": "01-auth",
+    "file": "01-auth/02-forgot-password.png",
+    "title": "Forgot Password",
+    "description": "Email input; always shows a non-committal success message (no account enumeration)."
+  },
+  {
+    "section": "01-auth",
+    "file": "01-auth/03-invite-redeem.png",
+    "title": "Invite Redeem",
+    "description": "Account creation with an invite code."
+  },
+  {
+    "section": "02-dashboard",
+    "file": "02-dashboard/01-dashboard.png",
+    "title": "Dashboard",
+    "description": "Overview hub: Daily Habits completion ring, Wellbeing card (Morning/Evening/Health), Tasks and Journal cards, pinned routines, pinned goals, activity heatmap."
+  },
+  {
+    "section": "02-dashboard",
+    "file": "02-dashboard/02-wellbeing-overview.png",
+    "title": "Wellbeing Overview",
+    "description": "Today's check-in status (Morning/Evening/Sleep), 7-day trends, quick actions. Opened from the Wellbeing card chevron."
+  },
+  {
+    "section": "02-dashboard",
+    "file": "02-dashboard/03-morning-checkin.png",
+    "title": "Morning Check-in",
+    "description": "\"How do I feel right now?\" — 5-point sliders (Mood, Energy, Anxiety, Motivation, Focus), notes, and Medications Taken Today."
+  },
+  {
+    "section": "02-dashboard",
+    "file": "02-dashboard/04-evening-checkin.png",
+    "title": "Evening Check-in",
+    "description": "\"How did today go?\" — 5-point sliders (Satisfaction, Productivity, Mood, Stress, Enjoyment), reflection, day-impact tags."
+  },
+  {
+    "section": "02-dashboard",
+    "file": "02-dashboard/05-health-hub.png",
+    "title": "Health Hub",
+    "description": "Entry points for Sleep, Medications, Supplements, Symptoms, Weight, and Caffeine logging."
+  },
+  {
+    "section": "02-dashboard",
+    "file": "02-dashboard/06-log-sleep.png",
+    "title": "Log Sleep",
+    "description": "Apple Watch sleep score + sub-scores, bedtime/wake pickers, duration, quality, last-night habit toggles, \"Night of\" date picker."
+  },
+  {
+    "section": "02-dashboard",
+    "file": "02-dashboard/07-medication-manager.png",
+    "title": "Medication Manager",
+    "description": "Add/edit/delete medications (dose, schedule), toggle active. Seeded with Loratadine 10mg."
+  },
+  {
+    "section": "02-dashboard",
+    "file": "02-dashboard/08-supplement-manager.png",
+    "title": "Supplement Manager",
+    "description": "User-defined supplements (dose, schedule) + today's taken/not-taken toggle. Seeded with Vitamin D3 and Magnesium glycinate."
+  },
+  {
+    "section": "02-dashboard",
+    "file": "02-dashboard/09-symptom-manager.png",
+    "title": "Symptom Manager",
+    "description": "User-defined symptoms + today's 1–5 severity log. Seeded with Headache."
+  },
+  {
+    "section": "02-dashboard",
+    "file": "02-dashboard/10-weight-log.png",
+    "title": "Weight Log",
+    "description": "Generic once-per-day numeric health factor logger (lbs)."
+  },
+  {
+    "section": "02-dashboard",
+    "file": "02-dashboard/11-caffeine-log.png",
+    "title": "Caffeine Log",
+    "description": "Additive caffeine logger with quick-add presets (Coffee 95mg, Espresso 63mg, Tea 47mg, Soda 40mg)."
+  },
+  {
+    "section": "03-header",
+    "file": "03-header/01-ai-hub.png",
+    "title": "AI Hub",
+    "description": "Wellbeing Summary, Weekly Review, and Journal Insights cards. Without a Gemini key each card shows the latest archived report inline (seeded sample reports)."
+  },
+  {
+    "section": "03-header",
+    "file": "03-header/02-ai-report-history.png",
+    "title": "AI Report History",
+    "description": "Browse/open/delete archived AI reports of one kind."
+  },
+  {
+    "section": "03-header",
+    "file": "03-header/03-settings.png",
+    "title": "Settings",
+    "description": "Preferences, API keys, notifications, data management, archived habits, and the \"How HabitFlow works\" tutorial entry."
+  },
+  {
+    "section": "03-header",
+    "file": "03-header/04-info-basics.png",
+    "title": "How HabitFlow Works — Basics",
+    "description": "User-facing reference for habit tracking types and core concepts."
+  },
+  {
+    "section": "03-header",
+    "file": "03-header/05-info-advanced.png",
+    "title": "How HabitFlow Works — Advanced",
+    "description": "Goal types, bundles, and advanced behaviors."
+  },
+  {
+    "section": "03-header",
+    "file": "03-header/06-info-ai.png",
+    "title": "How HabitFlow Works — AI",
+    "description": "AI features reference (BYOK Gemini)."
+  },
+  {
+    "section": "03-header",
+    "file": "03-header/07-archived-habits.png",
+    "title": "Archived Habits",
+    "description": "Restore or permanently delete archived habits; archive preserves entry history."
+  },
+  {
+    "section": "03-header",
+    "file": "03-header/08-user-menu.png",
+    "title": "User Menu",
+    "description": "Display name, hide/show streaks, analytics (beta), sign out / exit demo."
+  },
+  {
+    "section": "04-tracker",
+    "file": "04-tracker/01-grid-health.png",
+    "title": "Tracker Grid — Health",
+    "description": "Habit grid with day columns. Shows a boolean habit (Morning walk), numeric habit with target (Drink water, 8 glasses), and the Wind-Down Checklist bundle."
+  },
+  {
+    "section": "04-tracker",
+    "file": "04-tracker/02-checklist-bundle.png",
+    "title": "Checklist Bundle",
+    "description": "Wind-Down Checklist bundle with child habits (No screens after 10pm, Evening stretch). Bundle completes when its success rule is met."
+  },
+  {
+    "section": "04-tracker",
+    "file": "04-tracker/03-grid-fitness.png",
+    "title": "Tracker Grid — Fitness",
+    "description": "Weekly-frequency habits (Run 3×/week, Strength training 3×/week) and the Daily Movement choice bundle."
+  },
+  {
+    "section": "04-tracker",
+    "file": "04-tracker/04-choice-bundle.png",
+    "title": "Choice Bundle",
+    "description": "Daily Movement choice bundle — \"Pick one\" of Yoga session / Bike ride / Swim satisfies the habit for the day."
+  },
+  {
+    "section": "04-tracker",
+    "file": "04-tracker/05-grid-mind.png",
+    "title": "Tracker Grid — Mind",
+    "description": "Daily boolean habits (Read 20 minutes, Meditate) with streak display."
+  },
+  {
+    "section": "04-tracker",
+    "file": "04-tracker/06-grid-productivity.png",
+    "title": "Tracker Grid — Productivity",
+    "description": "Deep work block: numeric habit (target 3 hours) scheduled on weekdays only (assigned days)."
+  },
+  {
+    "section": "04-tracker",
+    "file": "04-tracker/07-numeric-popover.png",
+    "title": "Numeric Entry Popover",
+    "description": "Tapping a numeric habit opens quantity entry with quick-select chips and save/clear actions."
+  },
+  {
+    "section": "04-tracker",
+    "file": "04-tracker/09-habit-history.png",
+    "title": "Habit History",
+    "description": "Scrollable month calendar with entry markers plus per-date entry list; select a date to edit/create entries."
+  },
+  {
+    "section": "04-tracker",
+    "file": "04-tracker/10-edit-habit-numeric.png",
+    "title": "Edit Habit — Numeric",
+    "description": "Add/Edit Habit modal in edit mode for a numeric habit: name, target value + unit, frequency, schedule, category, goal links."
+  },
+  {
+    "section": "04-tracker",
+    "file": "04-tracker/11-category-picker.png",
+    "title": "Category Picker",
+    "description": "Move a habit to a different category."
+  },
+  {
+    "section": "04-tracker",
+    "file": "04-tracker/12-bundle-picker.png",
+    "title": "Bundle Picker",
+    "description": "Select an existing bundle to add this habit to."
+  },
+  {
+    "section": "04-tracker",
+    "file": "04-tracker/13-add-habit.png",
+    "title": "Add Habit — Regular",
+    "description": "Habit creation: Regular Habit vs Habit Bundle toggle, name, goal type (boolean/numeric), schedule & streak options, category, reminder."
+  },
+  {
+    "section": "04-tracker",
+    "file": "04-tracker/14-add-habit-bundle.png",
+    "title": "Add Habit — Bundle Modes",
+    "description": "Bundle creation: Checklist (\"do multiple items\") vs Choice (\"any one option satisfies\") with sub-habit management."
+  },
+  {
+    "section": "04-tracker",
+    "file": "04-tracker/15-today-view.png",
+    "title": "Today View",
+    "description": "Single-day view grouped by category with per-habit completion state."
+  },
+  {
+    "section": "04-tracker",
+    "file": "04-tracker/16-schedule-view.png",
+    "title": "Schedule (Weekly) View",
+    "description": "Week-at-a-glance overview of scheduled habits."
+  },
+  {
+    "section": "05-routines",
+    "file": "05-routines/01-routine-list.png",
+    "title": "Routines List",
+    "description": "Routine cards grouped by category; expanding a card reveals variants, start, edit, and delete."
+  },
+  {
+    "section": "05-routines",
+    "file": "05-routines/02-routine-expanded.png",
+    "title": "Routine Card Expanded",
+    "description": "Morning Kickstart expanded: Quick and Standard variants with step counts and estimated durations."
+  },
+  {
+    "section": "05-routines",
+    "file": "05-routines/03-routine-preview.png",
+    "title": "Routine Preview",
+    "description": "Read-only step list with timers and linked habits before starting the run."
+  },
+  {
+    "section": "05-routines",
+    "file": "05-routines/04-routine-runner.png",
+    "title": "Routine Runner",
+    "description": "Step-by-step execution: instructions, timer (countdown/stopwatch), linked habit logging, next/previous/skip."
+  },
+  {
+    "section": "05-routines",
+    "file": "05-routines/05-routine-editor.png",
+    "title": "Routine Editor",
+    "description": "Title, category, image, variant tabs, step list with summary badges, and \"Suggest with AI\" (in demo: pre-authored drafts)."
+  },
+  {
+    "section": "05-routines",
+    "file": "05-routines/06-step-editor.png",
+    "title": "Step Editor Panel",
+    "description": "Per-step editing: title, instructions, timer mode, linked habit chips, image, tracking fields."
+  },
+  {
+    "section": "06-goals",
+    "file": "06-goals/01-goals-all-collapsed.png",
+    "title": "Goals — All (Collapsed)",
+    "description": "Collapsible category stacks with goal counts. \"New Track\" and \"+\" create actions in header."
+  },
+  {
+    "section": "06-goals",
+    "file": "06-goals/01b-goals-all-expanded.png",
+    "title": "Goals — All (Fitness Expanded)",
+    "description": "Fitness stack expanded: goal cards with progress bars plus the Distance Milestones track."
+  },
+  {
+    "section": "06-goals",
+    "file": "06-goals/02-goals-schedule.png",
+    "title": "Goals — Schedule",
+    "description": "Insight calendar with deadline/forecast/milestone event dots, category filter, and date detail panel."
+  },
+  {
+    "section": "06-goals",
+    "file": "06-goals/03-goals-achievements.png",
+    "title": "Goals — Achievements",
+    "description": "Three-section gallery: Single wins, Progressive iteration chains with milestone nodes, and Track rows with locked stubs."
+  },
+  {
+    "section": "06-goals",
+    "file": "06-goals/04-goal-detail-cumulative.png",
+    "title": "Goal Detail — Cumulative",
+    "description": "Cumulative goal with milestone markers: progress charts, entry list, linked habits, deadline forecast."
+  },
+  {
+    "section": "06-goals",
+    "file": "06-goals/05-goal-detail-onetime.png",
+    "title": "Goal Detail — One-time (Completed)",
+    "description": "A completed one-time goal (Finish a 10K race)."
+  },
+  {
+    "section": "06-goals",
+    "file": "06-goals/06-goal-track-detail.png",
+    "title": "Goal Track Detail",
+    "description": "Ordered stage goals (Run 40 → 80 → 150 miles) with per-stage states and progress."
+  },
+  {
+    "section": "06-goals",
+    "file": "06-goals/07-create-goal-cumulative.png",
+    "title": "Create Goal — Cumulative",
+    "description": "Step 1: title, Cumulative/One-time type, milestone rows + final target, unit, deadline, category."
+  },
+  {
+    "section": "06-goals",
+    "file": "06-goals/08-create-goal-onetime.png",
+    "title": "Create Goal — One-time",
+    "description": "One-time goal variant: title, event date, category."
+  },
+  {
+    "section": "06-goals",
+    "file": "06-goals/09-edit-goal.png",
+    "title": "Edit Goal",
+    "description": "Modify goal title, milestones, target, deadline, and linked habits."
+  },
+  {
+    "section": "06-goals",
+    "file": "06-goals/10-create-track.png",
+    "title": "Create Goal Track",
+    "description": "Create an ordered track of staged goals."
+  },
+  {
+    "section": "06-goals",
+    "file": "06-goals/11-delete-goal-confirm.png",
+    "title": "Delete Goal Confirmation",
+    "description": "Soft-delete confirmation dialog from the goal detail page."
+  },
+  {
+    "section": "07-journal",
+    "file": "07-journal/01-free-write.png",
+    "title": "Journal — Free Write",
+    "description": "Freeform journal entry editor."
+  },
+  {
+    "section": "07-journal",
+    "file": "07-journal/02-templates.png",
+    "title": "Journal — Templates",
+    "description": "Template-based guided journaling."
+  },
+  {
+    "section": "07-journal",
+    "file": "07-journal/03-history.png",
+    "title": "Journal — History",
+    "description": "Past entries list (seeded with ~10 entries)."
+  },
+  {
+    "section": "07-journal",
+    "file": "07-journal/04-ai-review.png",
+    "title": "Journal — AI Review",
+    "description": "AI journal insights (seeded sample report shown inline in demo)."
+  },
+  {
+    "section": "08-tasks",
+    "file": "08-tasks/01-tasks.png",
+    "title": "Tasks",
+    "description": "Today and Inbox columns with inline rename, complete, move, and delete actions."
+  },
+  {
+    "section": "09-insights",
+    "file": "09-insights/01-ai-review.png",
+    "title": "Insights — AI Review",
+    "description": "Gemini narrative over wellbeing data (seeded sample shown in demo)."
+  },
+  {
+    "section": "09-insights",
+    "file": "09-insights/02-overview.png",
+    "title": "Insights — Overview",
+    "description": "Discoveries, top correlations, metric averages, heatmap/weekly/multiples."
+  },
+  {
+    "section": "09-insights",
+    "file": "09-insights/03-correlations.png",
+    "title": "Insights — Correlations",
+    "description": "What's helping / what's holding you back (Cohen's d cross-domain correlations)."
+  },
+  {
+    "section": "09-insights",
+    "file": "09-insights/04-habits.png",
+    "title": "Insights — Habits",
+    "description": "Habit stats and habit↔wellbeing correlations."
+  },
+  {
+    "section": "09-insights",
+    "file": "09-insights/05-medications.png",
+    "title": "Insights — Medications",
+    "description": "Adherence and medication↔wellbeing correlations."
+  },
+  {
+    "section": "09-insights",
+    "file": "09-insights/06-predictions.png",
+    "title": "Insights — Predictions",
+    "description": "Linear-trend projections."
+  },
+  {
+    "section": "10-analytics",
+    "file": "10-analytics/01-habits.png",
+    "title": "Analytics — Habits",
+    "description": "Habit completion statistics and trends."
+  },
+  {
+    "section": "10-analytics",
+    "file": "10-analytics/02-routines.png",
+    "title": "Analytics — Routines",
+    "description": "Routine completion history and stats."
+  },
+  {
+    "section": "10-analytics",
+    "file": "10-analytics/03-goals.png",
+    "title": "Analytics — Goals",
+    "description": "Goal progress analytics."
+  },
+  {
+    "section": "10-analytics",
+    "file": "10-analytics/04-sleep.png",
+    "title": "Analytics — Sleep",
+    "description": "Sleep score, consistency, bedtime/wake trends, correlation factors, weekly summary, \"Edit a night\" list."
+  },
+  {
+    "section": "11-misc",
+    "file": "11-misc/01-roadmap.png",
+    "title": "Roadmap",
+    "description": "Future functionality with status chips (In Development / Planned / Exploring); shipped features never appear here."
+  },
+  {
+    "section": "11-misc",
+    "file": "11-misc/02-tour.png",
+    "title": "Take a Tour",
+    "description": "Guided walkthrough pairing narrative panels with a live read-only preview of the real app."
+  }
+]

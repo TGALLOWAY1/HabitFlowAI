@@ -19,6 +19,8 @@
     "test:run": "vitest run",
     "test:beta": "vitest run --config vitest.config.ts src/server/routes/__tests__/entriesOnly.invariants.test.ts src/server/routes/__tests__/goals.entriesDerived.test.ts src/server/routes/__tests__/routines.completion-guardrail.test.ts src/server/routes/__tests__/auth.integration.test.ts src/server/routes/__tests__/auth.identity.test.ts src/server/middleware/identity.test.ts src/server/__tests__/noDayLogImports.test.ts src/server/routes/__tests__/progress.overview.test.ts src/server/repositories/__tests__/habitEntryRepository.guardrails.test.ts",
     "verify": "bash scripts/verify.sh",
+    "screenshots:mobile": "playwright test --config playwright.config.ts",
+    "screenshots:serve": "tsx e2e/serve.ts",
     "check:invariants": "tsx scripts/check-invariants.ts",
     "seed:emotion": "tsx scripts/seed-emotion-regulation.ts",
     "seed:fitness": "tsx scripts/seed-fitness.ts",
@@ -53,6 +55,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
+    "@playwright/test": "^1.62.1",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.0",
     "@types/bcrypt": "^6.0.0",

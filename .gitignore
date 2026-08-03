@@ -39,3 +39,8 @@ docs/debug/mongo-inspection.json
 /fix_*.py
 /*_output.txt
 /tsc_output.txt
+
+# E2E screenshot harness (binaries + Playwright run artifacts)
+e2e/.cache/
+test-results/
+playwright-report/
