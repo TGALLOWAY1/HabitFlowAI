@@ -51,7 +51,7 @@ have been verified against the repository (see `INSTRUCTIONS.md` §11).
 
 ## Task 3 — Implemented feature inventory
 
-- **Status:** Not started
+- **Status:** In progress (2026-08-03)
 - **Deliverable:** `03-feature-inventory.md` — feature list with per-feature status
   (Implemented / Partially implemented / Documented-only / Likely unused / Suspected bug),
   built by verifying `docs/FEATURES.md` and `FEATURE_AUDIT.md` claims against routes,
