@@ -7,7 +7,7 @@
  * Key UX improvements:
  * - Habit linking is a prominent, first-class section with tappable chips
  * - All fields are laid out spaciously instead of crammed into an accordion
- * - Back button returns to the step list
+ * - Back button and a sticky Done footer both return to the step list
  */
 import React, { useState, useRef } from 'react';
 import {
@@ -408,6 +408,17 @@ export const StepEditorPanel: React.FC<StepEditorPanelProps> = ({
                         </button>
                     </div>
                 </div>
+            </div>
+
+            {/* Sticky footer — explicit Done action returns to the step list */}
+            <div className="pt-4 border-t border-white/10">
+                <button
+                    type="button"
+                    onClick={onBack}
+                    className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-emerald-500 text-neutral-900 font-bold rounded-lg hover:bg-emerald-400 transition-colors shadow-lg shadow-emerald-500/20"
+                >
+                    <Check size={18} /> Done
+                </button>
             </div>
         </div>
     );
