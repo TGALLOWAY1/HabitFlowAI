@@ -104,9 +104,13 @@ their importance; annotate why each matters.
 ## Authentication
 
 - `src/server/routes/auth.ts` — login, invite redeem, bootstrap admin, forgot/reset.
-- `src/server/middleware/identity.ts` (+ test), `session.ts`, `publicDemo.ts`.
-- `src/server/lib/authCrypto.ts`, `sessionCookie.ts`.
+- `src/server/middleware/identity.ts` (+ test), `session.ts` (60 s cache), `publicDemo.ts`.
+- `src/server/lib/sessionCookie.ts` — `hf_session`, 14 d fixed, SameSite=None(prod);
+  `authCrypto.ts` — token/code generation + hashing.
+- `src/server/repositories/sessionRepository.ts`, `passwordResetTokenRepository.ts`
+  (**no indexes** despite header claim), `inviteRepository.ts`.
 - `src/store/AuthContext.tsx` — client-side auth state.
+- Full flow + iOS credential answer: `09-auth-settings-secondary.md` §1.
 
 ## API and backend
 

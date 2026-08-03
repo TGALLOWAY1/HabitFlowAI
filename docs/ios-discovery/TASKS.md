@@ -188,7 +188,7 @@ have been verified against the repository (see `INSTRUCTIONS.md` §11).
 
 ## Task 9 — Authentication, settings, reminders, and secondary features
 
-- **Status:** In progress (2026-08-03; investigation overlapped with Task 8)
+- **Status:** Complete (2026-08-03)
 - **Deliverable:** `09-auth-settings-secondary.md` — invite-based auth, sessions, admin
   surface, password reset, push reminders, wellbeing/medications/symptoms/supplements,
   journal, tasks, demo mode & tour, user-data deletion.
@@ -204,6 +204,14 @@ have been verified against the repository (see `INSTRUCTIONS.md` §11).
   upsert-by-key endpoint is orphaned client-side; push send-dedup uses a claim-by-insert
   unique index with 48h TTL (`pushSendLogRepository.ts:22-59`); scheduler has a 5-min
   catch-up window and dies with the process (documented in file header).
+- **Completion note (2026-08-03):** Criteria verified — auth traced end-to-end (fixed
+  14-day session cookie is the ONLY production credential; headers never override a
+  session; no bearer path), push pipeline fully documented (per-device timezones,
+  claim-then-send dedup, daily routine reminders), Settings inventory complete, and each
+  secondary feature classified. 11 security-posture notes recorded for Task 12 (no CSRF +
+  SameSite=None + CSP off; zero indexes on passwordResetTokens; non-atomic invite uses;
+  reset URLs logged without RESEND key; Gemini output via dangerouslySetInnerHTML).
+  All headline claims spot-checked at cited lines.
 - **Notes (from Task 1):** Push reminders use Web Push (VAPID) with an in-process 60-second
   scheduler and `PUSH_REMINDERS_ENABLED` is `"false"` in `render.yaml` — verify whether the
   feature is actually live in production. iOS will need APNs instead of Web Push. Session
