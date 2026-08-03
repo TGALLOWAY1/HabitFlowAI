@@ -145,7 +145,7 @@ have been verified against the repository (see `INSTRUCTIONS.md` §11).
 
 ## Task 7 — Habit bundles
 
-- **Status:** Not started
+- **Status:** In progress (2026-08-03)
 - **Deliverable:** `07-bundles.md` — checklist vs choice bundles, membership lifecycle
   (create/end/archive/graduate), success rules, conversion, temporal membership semantics.
 - **Completion criteria:** `src/server/routes/bundleMemberships.ts`,
