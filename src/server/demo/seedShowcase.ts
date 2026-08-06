@@ -441,6 +441,36 @@ export async function seedDemoShowcase(options?: { force?: boolean }): Promise<S
     HH, UID
   );
 
+  // Scheduled goal with a future start date (auto-activates when it arrives)
+  await createGoal(
+    {
+      categoryId: fitness.id,
+      title: 'Train for a half marathon',
+      type: 'cumulative',
+      targetValue: 120,
+      unit: 'miles',
+      linkedHabitIds: [run.id],
+      aggregationMode: 'sum',
+      status: 'scheduled',
+      startDate: dayKeyDaysAgo(-14),
+      notes: 'Kicks off after the current mileage block wraps up.',
+    },
+    HH, UID
+  );
+
+  // Backlog goal (someday/maybe — no start date)
+  await createGoal(
+    {
+      categoryId: mind.id,
+      title: 'Read the complete Stoics',
+      type: 'onetime',
+      linkedHabitIds: [],
+      status: 'backlog',
+      notes: 'Meditations, Letters, and Discourses. Someday.',
+    },
+    HH, UID
+  );
+
   // Goal track: distance milestones, windows aligned with actual seeded miles.
   const track = await createGoalTrack(
     {
