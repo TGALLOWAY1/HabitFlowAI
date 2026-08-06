@@ -72,7 +72,8 @@ HabitFlow App
 │   │
 │   └── Goals (toggle: All / Schedule / Achievements)
 │       ├── All — Goal List (collapsible category stacks)
-│       ├── Schedule — Insight calendar (deadlines, forecasts, milestones)
+│       │   └── Per-stack collapsed "Scheduled (n)" / "Backlog (n)" sub-sections (status-chipped cards, no drag reorder)
+│       ├── Schedule — Insight calendar (deadlines, forecasts, milestones, scheduled start dates)
 │       │   ├── Month grid with event dots
 │       │   ├── Category filter
 │       │   ├── Single-goal focus mode
@@ -118,13 +119,13 @@ HabitFlow App
 | Tracker (Today) | Page | View toggle on Tracker | Single-day habit view grouped by category, with full action icons (history, edit, delete, move, bundle) in expanded card | Habits, Entries | Same as Grid |
 | Tracker (Weekly) | Page | View toggle on Tracker | Week-at-a-glance overview | Habits, Entries | Same as Grid |
 | Routines List | Page | Bottom tab "Routines" | Card list of all routines | Routines | Routine Editor, Runner, Preview |
-| Goals — All | Page | Bottom tab "Goals", "All" toggle | Collapsible category stacks with progress bars. "New Track" button in header bar next to "+" | Goals, Categories | Create Goal Flow, Goal Detail, Edit Goal Modal, Create Track Modal |
-| Goals — Schedule | Page | "Schedule" toggle on Goals | Insight calendar with deadlines, forecasts, milestones | Goals, Categories | Goal Detail, Focus Mode |
+| Goals — All | Page | Bottom tab "Goals", "All" toggle | Collapsible category stacks with progress bars; active goals first, then collapsed "Scheduled (n)" / "Backlog (n)" sub-sections with status-chipped cards. "New Track" button in header bar next to "+" | Goals, Categories | Create Goal Flow, Goal Detail, Edit Goal Modal, Create Track Modal |
+| Goals — Schedule | Page | "Schedule" toggle on Goals | Insight calendar with deadlines, forecasts, milestones, and scheduled-goal start dates ("Starts" events) | Goals, Categories | Goal Detail, Focus Mode |
 | Goals — Achievements | Page | "Achievements" toggle on Goals (trophy icon) | Three-section accomplishments gallery — Single (one-time wins), Progressive (iteration-chain nodes plus in-progress milestone-bearing goals with parallel completion state — completed nodes filled, future nodes outlined), Track (horizontal per-track rows with locked stubs for not-yet-earned goals). Section-local "View all" expands long Single/Progressive lists | Goals, Goal Tracks | Goal Detail, Goal Track Detail |
 | Goal Detail | Page | Click goal card / pinned goal | Charts, entries, linked habits (plus a "Removed habits still contributing" list when the goal has orphan contributions from deleted habits) for one goal | Goals, Habits, Entries | Edit Goal Modal, Goal Completed |
 | Goal Completed | Page | Auto-shown on 100% or manual | Celebratory screen with next actions | Goals | Achievements, Goal Detail, Extend |
 | Goal Track Detail | Page | Click track in Goals page | Track name, ordered goals with states, reorder, add/remove goals | Goal Tracks, Goals | Goal Detail, Goals List |
-| Create Goal (Step 1) | Modal | "+ Goal" button on Goals page | Enter goal details. For cumulative goals: title, type, **MilestoneRowList** (intermediate stages plus a pinned "Final Goal" row that holds `targetValue`), unit, deadline, category. For one-time goals: title, type, event date, category. | Goals, Categories | Create Goal Step 2 |
+| Create Goal (Step 1) | Modal | "+ Goal" button on Goals page | Enter goal details. For cumulative goals: title, type, **MilestoneRowList** (intermediate stages plus a pinned "Final Goal" row that holds `targetValue`), unit, deadline, category. For one-time goals: title, type, event date, category. Both: Active/Scheduled/Backlog status selector; Scheduled reveals an optional start date. | Goals, Categories | Create Goal Step 2 |
 | Create Goal (Step 2) | Modal | Next from Step 1 | Link habits to goal (filtered by category if selected) | Goals, Habits | Goals List (on submit) |
 | Journal | Page | Dashboard card / `?view=journal` (`&tab=` deep-links Free/Template/History/AI Review) | Free-write, templates, history, and AI Review tabs; user-requested weekly AI summary banner (hidden in the read-only demo). In demo mode the AI Review tab always renders the latest saved review inline (read-only, no generate UI) even if the browser has a Gemini key — the tour's Journal Review stop relies on this | Journal Entries | — |
 | Tasks | Page | Dashboard card / `?view=tasks` | Today + Inbox columns; click a task title or pencil icon to rename inline | Tasks | — |
@@ -319,6 +320,7 @@ graph TB
 | **Track progress** | Goal Detail Page (cumulative chart, trend chart with adjustable "Start from" window, entry list) |
 | **Complete** | Auto-triggered at 100% → Goal Completed Page |
 | **Extend / Repeat** | Goal Completed Page actions |
+| **Schedule / Backlog** | Create or Edit Goal Modal → status selector (standalone goals only); scheduled goals with a start date auto-activate when it arrives |
 | **View wins** | Goals page "Achievements" tab → Win Archive |
 
 ### Habit Entry / Logging

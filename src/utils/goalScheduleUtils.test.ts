@@ -194,6 +194,28 @@ describe('deriveScheduleEvents', () => {
     expect(events.every(e => e.categoryId === 'cat-study')).toBe(true);
   });
 
+  it('creates a starts event for a scheduled goal with a startDate', () => {
+    const goals = [makeGoalWithProgress({ status: 'scheduled', startDate: '2026-05-01' })];
+    const events = deriveScheduleEvents(goals, [], REF_DATE);
+    const startsEvents = events.filter(e => e.eventType === 'starts');
+    expect(startsEvents).toHaveLength(1);
+    expect(startsEvents[0].date).toBe('2026-05-01');
+    expect(startsEvents[0].label).toBe('Goal starts');
+    expect(startsEvents[0].status).toBe('insufficient-data');
+  });
+
+  it('creates no starts event for an undated scheduled goal', () => {
+    const goals = [makeGoalWithProgress({ status: 'scheduled' })];
+    const events = deriveScheduleEvents(goals, [], REF_DATE);
+    expect(events.filter(e => e.eventType === 'starts')).toHaveLength(0);
+  });
+
+  it('creates no starts event for an active goal', () => {
+    const goals = [makeGoalWithProgress({ deadline: '2026-06-15' })];
+    const events = deriveScheduleEvents(goals, [makeAnalytic()], REF_DATE);
+    expect(events.filter(e => e.eventType === 'starts')).toHaveLength(0);
+  });
+
   it('all events have isDerived: true', () => {
     const goals = [makeGoalWithProgress({ deadline: '2026-06-15', completedAt: '2026-03-01T00:00:00Z' })];
     const analytics = [makeAnalytic({ status: 'Completed', estimatedCompletionWeeks: 5 })];
@@ -279,6 +301,16 @@ describe('sortEvents', () => {
     expect(sorted[1].eventType).toBe('completed'); // completed before milestone on same date
     expect(sorted[2].eventType).toBe('milestone');
   });
+
+  it('orders starts after completed but before target on the same date', () => {
+    const events: ScheduleEvent[] = [
+      { goalId: 'g1', goalTitle: 'A', eventType: 'target', date: '2026-06-15', label: '', status: 'on-track', progressPercent: 50, isDerived: true },
+      { goalId: 'g2', goalTitle: 'B', eventType: 'starts', date: '2026-06-15', label: '', status: 'insufficient-data', progressPercent: 0, isDerived: true },
+      { goalId: 'g3', goalTitle: 'C', eventType: 'completed', date: '2026-06-15', label: '', status: 'on-track', progressPercent: 100, isDerived: true },
+    ];
+    const sorted = sortEvents(events);
+    expect(sorted.map(e => e.eventType)).toEqual(['completed', 'starts', 'target']);
+  });
 });
 
 // ─── Utility functions ──────────────────────────────────────────────────────
@@ -289,6 +321,7 @@ describe('getEventTypeColor', () => {
     expect(getEventTypeColor('completed')).toBe('bg-emerald-500');
     expect(getEventTypeColor('forecast')).toBe('bg-amber-500');
     expect(getEventTypeColor('milestone')).toBe('bg-purple-500');
+    expect(getEventTypeColor('starts')).toBe('bg-cyan-500');
   });
 });
 

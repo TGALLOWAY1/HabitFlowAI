@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { X, Target, CalendarCheck, Plus, Search, Loader2, AlertCircle, Calendar, ChevronLeft } from 'lucide-react';
+import { X, Target, CalendarCheck, Plus, Search, Loader2, AlertCircle, Calendar, ChevronLeft, Play, CalendarClock, Archive } from 'lucide-react';
 import { useHabitStore } from '../store/HabitContext';
 import { createGoal } from '../lib/persistenceClient';
 import { HabitCreationInlineModal } from './HabitCreationInlineModal';
@@ -24,6 +24,8 @@ export const CreateGoalModal: React.FC<CreateGoalModalProps> = ({ isOpen, onClos
     const [deadline, setDeadline] = useState('');
     const [categoryId, setCategoryId] = useState('');
     const [milestoneRows, setMilestoneRows] = useState<MilestoneRow[]>([]);
+    const [status, setStatus] = useState<'active' | 'scheduled' | 'backlog'>('active');
+    const [startDate, setStartDate] = useState('');
 
     // Category creation state
     const [isCreatingCategory, setIsCreatingCategory] = useState(false);
@@ -54,6 +56,8 @@ export const CreateGoalModal: React.FC<CreateGoalModalProps> = ({ isOpen, onClos
             setDeadline('');
             setCategoryId('');
             setMilestoneRows([]);
+            setStatus('active');
+            setStartDate('');
             setIsCreatingCategory(false);
             setNewCategoryName('');
             setSelectedHabitIds(new Set());
@@ -191,6 +195,8 @@ export const CreateGoalModal: React.FC<CreateGoalModalProps> = ({ isOpen, onClos
                 linkedHabitIds: Array.from(selectedHabitIds),
                 deadline: deadline || undefined,
                 categoryId: categoryId || undefined,
+                ...(status !== 'active' ? { status } : {}),
+                ...(status === 'scheduled' && startDate ? { startDate } : {}),
                 ...(type === 'cumulative' && parsedMilestones.values.length > 0
                     ? { milestones: parsedMilestones.values.map((value) => ({ id: '', value })) }
                     : {}),
@@ -423,6 +429,46 @@ export const CreateGoalModal: React.FC<CreateGoalModalProps> = ({ isOpen, onClos
                                             <option key={cat.id} value={cat.id}>{cat.name}</option>
                                         ))}
                                     </select>
+                                )}
+                            </div>
+
+                            {/* Lifecycle status */}
+                            <div className="space-y-2">
+                                <label className="block text-sm font-medium text-neutral-400">Status</label>
+                                <div className="flex gap-2">
+                                    {([
+                                        { value: 'active', label: 'Active', icon: Play },
+                                        { value: 'scheduled', label: 'Scheduled', icon: CalendarClock },
+                                        { value: 'backlog', label: 'Backlog', icon: Archive },
+                                    ] as const).map(({ value, label, icon: Icon }) => (
+                                        <button
+                                            key={value}
+                                            type="button"
+                                            onClick={() => setStatus(value)}
+                                            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border transition-all ${status === value
+                                                ? 'bg-emerald-500/10 border-emerald-500/50 ring-1 ring-emerald-500/20'
+                                                : 'bg-neutral-900/50 border-white/5 hover:border-white/10 hover:bg-neutral-800/50'
+                                                }`}
+                                        >
+                                            <Icon size={18} className={status === value ? 'text-emerald-400' : 'text-neutral-400'} />
+                                            <span className="text-white font-medium">{label}</span>
+                                        </button>
+                                    ))}
+                                </div>
+                                {status === 'scheduled' && (
+                                    <div className="flex items-center gap-3 pt-1">
+                                        <span className="text-sm text-neutral-400">
+                                            Start date <span className="text-neutral-500">(optional — activates automatically)</span>
+                                        </span>
+                                        <input
+                                            type="date"
+                                            value={startDate}
+                                            onChange={(e) => setStartDate(e.target.value)}
+                                            min={new Date().toISOString().split('T')[0]}
+                                            className="bg-neutral-900/50 border border-white/10 rounded-xl px-3 py-2 text-white text-sm focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/50 transition-all [color-scheme:dark]"
+                                            aria-label="Start date"
+                                        />
+                                    </div>
                                 )}
                             </div>
                         </>

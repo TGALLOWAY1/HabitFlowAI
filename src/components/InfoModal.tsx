@@ -441,7 +441,10 @@ export function InfoModal({ isOpen, onClose }: InfoModalProps) {
                   </li>
                 </ul>
                 <p className="text-xs text-neutral-500 mt-2">
-                  The Goals page has three views: <span className="text-neutral-400">All</span> (active goals), <span className="text-neutral-400">Schedule</span> (calendar with deadlines, forecasts, and milestones), and <span className="text-neutral-400">Achievements</span> (completed goals gallery).
+                  The Goals page has three views: <span className="text-neutral-400">All</span> (your goals grouped by category, with collapsed Scheduled and Backlog sub-sections below the active ones), <span className="text-neutral-400">Schedule</span> (calendar with deadlines, forecasts, milestones, and scheduled start dates), and <span className="text-neutral-400">Achievements</span> (completed goals gallery).
+                </p>
+                <p className="text-xs text-neutral-500 mt-2">
+                  <span className="font-semibold text-emerald-400">Goal status</span> — Every goal is <span className="text-neutral-400">Active</span> (being pursued now), <span className="text-neutral-400">Scheduled</span> (planned to start later), or <span className="text-neutral-400">Backlog</span> (someday/maybe). Set it when creating or editing a goal. A Scheduled goal can carry an optional start date — when that day arrives it becomes Active automatically and until then it shows on the Schedule calendar as a "Starts" event. Goals inside a track don't use this status; the track sequence controls them.
                 </p>
                 <p className="text-xs text-neutral-500 mt-2">
                   <span className="font-semibold text-emerald-400">Goal Tracks</span> — Create ordered sequences of goals within a category (e.g., Exam 1 → Exam 2 → Exam 3). Only one goal per track is active at a time. When you complete the active goal, the next one unlocks automatically. Progress for each goal only counts from when it became active, so shared habits won't leak progress forward.
