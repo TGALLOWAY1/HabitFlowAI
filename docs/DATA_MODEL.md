@@ -82,6 +82,10 @@ Bundle parent completion is derived from children whose membership is active on 
 
 See: `src/server/repositories/bundleMembershipRepository.ts`
 
+## Goal Lifecycle Status
+
+Standalone goals carry an optional `Goal.status` (`'active' | 'scheduled' | 'backlog'`; absent/null = active — legacy documents need no migration) and an optional `Goal.startDate` dayKey that is only meaningful while `status === 'scheduled'`. Leaving the scheduled status clears `startDate`. Goal reads lazily promote scheduled goals whose `startDate` has arrived to `active` and persist the promotion. Tracked goals (with `trackId`) never use these fields — `trackStatus` governs them, and `addGoalToTrack` clears both.
+
 ## Goal Milestones
 
 Cumulative goals may declare intermediate stages via `Goal.milestones`. Each entry has:
