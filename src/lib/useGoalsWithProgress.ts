@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { fetchGoalsWithProgress } from './persistenceClient';
 import type { GoalWithProgress } from '../models/persistenceTypes';
 import { getCachedGoalsWithProgress, setCachedGoalsWithProgress, isGoalsWithProgressFresh, subscribeToCacheInvalidation } from './goalDataCache';
@@ -30,17 +30,22 @@ export function useGoalsWithProgress() {
         return getCachedGoalsWithProgress() === null;
     });
     const [error, setError] = useState<string | null>(null);
+    // Tracks whether we've ever successfully loaded goals, so cache-invalidation-driven
+    // refetches (e.g. after a reorder) can revalidate in the background instead of
+    // blanking already-rendered cards with a blocking spinner.
+    const hasLoadedRef = useRef<boolean>(getCachedGoalsWithProgress() !== null);
 
     const loadGoals = useCallback(async () => {
         // Check cache first
         const cached = getCachedGoalsWithProgress();
         if (cached) {
             setGoals(cached);
+            hasLoadedRef.current = true;
             setLoading(false);
             setError(null);
             // Skip background fetch if cache is still fresh within TTL
             if (isGoalsWithProgressFresh()) return;
-        } else {
+        } else if (!hasLoadedRef.current) {
             setLoading(true);
         }
 
@@ -50,6 +55,7 @@ export function useGoalsWithProgress() {
             // Update cache
             setCachedGoalsWithProgress(fetchedGoals);
             setGoals(fetchedGoals);
+            hasLoadedRef.current = true;
             setLoading(false);
         } catch (err) {
             const errorMessage = err instanceof Error ? err.message : 'Failed to load goals';
