@@ -17,7 +17,7 @@
     "preview": "vite preview",
     "test": "vitest",
     "test:run": "vitest run",
-    "test:beta": "vitest run --config vitest.config.ts src/server/routes/__tests__/entriesOnly.invariants.test.ts src/server/routes/__tests__/goals.entriesDerived.test.ts src/server/routes/__tests__/routines.completion-guardrail.test.ts src/server/routes/__tests__/auth.integration.test.ts src/server/routes/__tests__/auth.identity.test.ts src/server/middleware/identity.test.ts src/server/__tests__/noDayLogImports.test.ts src/server/routes/__tests__/progress.overview.test.ts src/server/repositories/__tests__/habitEntryRepository.guardrails.test.ts",
+    "test:beta": "vitest run --config vitest.config.ts src/server/routes/__tests__/entriesOnly.invariants.test.ts src/server/routes/__tests__/goals.entriesDerived.test.ts src/server/routes/__tests__/goals.status.test.ts src/server/routes/__tests__/routines.completion-guardrail.test.ts src/server/routes/__tests__/auth.integration.test.ts src/server/routes/__tests__/auth.identity.test.ts src/server/middleware/identity.test.ts src/server/__tests__/noDayLogImports.test.ts src/server/routes/__tests__/progress.overview.test.ts src/server/repositories/__tests__/habitEntryRepository.guardrails.test.ts",
     "verify": "bash scripts/verify.sh",
     "screenshots:mobile": "playwright test --config playwright.config.ts",
     "screenshots:serve": "tsx e2e/serve.ts",

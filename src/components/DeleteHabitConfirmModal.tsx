@@ -1,4 +1,5 @@
 import React from 'react';
+import { createPortal } from 'react-dom';
 import { X, AlertTriangle, Loader2, Target, Archive, Trash2 } from 'lucide-react';
 
 interface RemoveHabitModalProps {
@@ -25,6 +26,12 @@ interface RemoveHabitModalProps {
  *
  * For habits linked to one or more goals, the modal also surfaces the
  * affected goal titles so the user knows what gets disconnected.
+ *
+ * Rendered through a portal into `document.body`. Call sites mount this
+ * inside habit cards (e.g. `HabitGridCell`) whose own styling — an expanded
+ * `scale-[1.02]` transform plus `overflow-hidden` — would otherwise become
+ * the containing block for `position: fixed` and clip the overlay down to
+ * the size of a single habit row.
  */
 export const DeleteHabitConfirmModal: React.FC<RemoveHabitModalProps> = ({
     isOpen,
@@ -75,11 +82,16 @@ export const DeleteHabitConfirmModal: React.FC<RemoveHabitModalProps> = ({
 
     const hasLinkedGoals = linkedGoalTitles.length > 0;
 
-    return (
-        <div className="modal-overlay fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-            <div className="w-full max-w-md bg-neutral-900 border border-white/10 rounded-2xl p-6 shadow-2xl">
+    return createPortal(
+        <div className="modal-overlay fixed inset-0 z-[110] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+            <div
+                className="w-full max-w-md max-h-full overflow-y-auto modal-scroll bg-neutral-900 border border-white/10 rounded-2xl p-6 shadow-2xl"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="remove-habit-title"
+            >
                 <div className="flex items-center justify-between mb-6">
-                    <h3 className="text-xl font-bold text-white">Remove Habit</h3>
+                    <h3 id="remove-habit-title" className="text-xl font-bold text-white">Remove Habit</h3>
                     <button
                         onClick={handleCancel}
                         disabled={!!busy}
@@ -180,6 +192,7 @@ export const DeleteHabitConfirmModal: React.FC<RemoveHabitModalProps> = ({
                     </div>
                 </div>
             </div>
-        </div>
+        </div>,
+        document.body
     );
 };

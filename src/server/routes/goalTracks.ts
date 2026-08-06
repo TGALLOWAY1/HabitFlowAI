@@ -337,6 +337,10 @@ export async function addGoalToTrack(req: Request, res: Response): Promise<void>
       trackId,
       trackOrder,
       trackStatus,
+      // Track membership supersedes the standalone lifecycle status; clear it
+      // so stale scheduled/backlog state can't resurface after later removal.
+      status: undefined,
+      startDate: undefined,
     };
     if (activeWindowStart) {
       patch.activeWindowStart = activeWindowStart;

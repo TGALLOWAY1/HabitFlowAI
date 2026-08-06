@@ -101,6 +101,12 @@ Habit create/PATCH accept `reminderTime` (24h `"HH:mm"`; `null` clears) and `rem
 - `DELETE /goals/:id`
 - `POST /goals/:id/milestones/:milestoneId/acknowledge`
 
+### Lifecycle Status
+
+POST/PUT bodies accept an optional `status` (`'active' | 'scheduled' | 'backlog'`; absent/null = active) and, only when `status === 'scheduled'`, an optional `startDate` (`YYYY-MM-DD`). Sending `startDate` with any other status is a 400. Moving a goal out of `scheduled` clears its `startDate` server-side. Tracked goals (with `trackId`) reject status changes — their lifecycle is governed by `trackStatus` — though re-sending the unchanged value is tolerated (edit-modal round-trips).
+
+Auto-activation happens at read time: `GET /goals` and `GET /goals-with-progress` promote any standalone scheduled goal whose `startDate` has arrived (per the request's `timeZone` query param, falling back to the server default) to `status: 'active'` and persist the change before responding.
+
 ### Milestones
 
 Cumulative goals may declare intermediate stages via the optional `milestones` field on POST/PUT bodies. Each entry: `{ value: number }` (server assigns `id`). Constraints: positive number, unique, strictly less than `targetValue`, max 20 entries, only valid when `type === 'cumulative'`. Server normalizes to ascending order by `value`. PUT-replace preserves `acknowledgedAt` from existing milestones matched by `id`.

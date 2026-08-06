@@ -1302,7 +1302,10 @@ export async function reorderGoals(goalIds: string[]): Promise<void> {
  * @throws Error if API request fails
  */
 export async function fetchGoalsWithProgress(): Promise<GoalWithProgress[]> {
-  const response = await apiRequest<{ goals: GoalWithProgress[] }>('/goals-with-progress');
+  const timeZone = getLocalTimeZone();
+  const response = await apiRequest<{ goals: GoalWithProgress[] }>(
+    `/goals-with-progress?timeZone=${encodeURIComponent(timeZone)}`
+  );
   return response.goals;
 }
 

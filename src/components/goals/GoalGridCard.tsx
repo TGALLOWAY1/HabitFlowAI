@@ -1,6 +1,6 @@
 import React from 'react';
-import { Edit, Check, GripVertical, Clock, CalendarCheck } from 'lucide-react';
-import type { GoalWithProgress } from '../../types';
+import { Edit, Check, GripVertical, Clock, CalendarCheck, CalendarClock, Archive } from 'lucide-react';
+import type { Goal, GoalWithProgress } from '../../types';
 import { MiniHeatmap } from './MiniHeatmap';
 
 interface GoalGridCardProps {
@@ -11,6 +11,33 @@ interface GoalGridCardProps {
     dragHandleProps?: Record<string, unknown>;
     isDragging?: boolean;
 }
+
+/**
+ * Small lifecycle-status chip for scheduled/backlog goals. Active goals (the
+ * default) render nothing.
+ */
+const StatusChip: React.FC<{ goal: Goal }> = ({ goal }) => {
+    if (goal.status === 'scheduled') {
+        const startsLabel = goal.startDate
+            ? `Starts ${new Date(goal.startDate + 'T00:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}`
+            : 'Scheduled';
+        return (
+            <span className="inline-flex items-center gap-1 text-[11px] font-medium text-cyan-400 bg-cyan-500/10 border border-cyan-500/20 rounded-full px-2 py-0.5 whitespace-nowrap">
+                <CalendarClock size={11} />
+                {startsLabel}
+            </span>
+        );
+    }
+    if (goal.status === 'backlog') {
+        return (
+            <span className="inline-flex items-center gap-1 text-[11px] font-medium text-neutral-400 bg-neutral-700/30 border border-neutral-600/40 rounded-full px-2 py-0.5 whitespace-nowrap">
+                <Archive size={11} />
+                Backlog
+            </span>
+        );
+    }
+    return null;
+};
 
 /**
  * Compact card for onetime goals — single row, minimal height.
@@ -43,14 +70,16 @@ const CompactGoalCard: React.FC<GoalGridCardProps> = ({
             } ${isDragging ? 'opacity-50 shadow-2xl' : ''}`}
             onClick={() => onViewDetails(goal.id)}
         >
-            {/* Drag handle */}
-            <div
-                {...dragHandleProps}
-                className="flex-shrink-0 text-neutral-600 hover:text-neutral-400 cursor-grab active:cursor-grabbing touch-none"
-                onClick={(e) => e.stopPropagation()}
-            >
-                <GripVertical size={16} />
-            </div>
+            {/* Drag handle (only when the card is sortable) */}
+            {dragHandleProps && (
+                <div
+                    {...dragHandleProps}
+                    className="flex-shrink-0 text-neutral-600 hover:text-neutral-400 cursor-grab active:cursor-grabbing touch-none"
+                    onClick={(e) => e.stopPropagation()}
+                >
+                    <GripVertical size={16} />
+                </div>
+            )}
 
             {/* Status icon */}
             <div className="flex-shrink-0">
@@ -78,6 +107,8 @@ const CompactGoalCard: React.FC<GoalGridCardProps> = ({
 
             {/* Metadata chips */}
             <div className="flex items-center gap-2 flex-shrink-0">
+                {!isCompleted && <StatusChip goal={goal} />}
+
                 {/* Deadline */}
                 {deadlineLabel && !isCompleted && (
                     <span className="flex items-center gap-1 text-xs text-neutral-500">
@@ -140,19 +171,24 @@ const CumulativeGoalCard: React.FC<GoalGridCardProps> = ({
         >
             {/* Header */}
             <div className="px-3 pt-3 pb-1 flex items-start gap-2">
-                {/* Drag handle */}
-                <div
-                    {...dragHandleProps}
-                    className="flex-shrink-0 mt-0.5 text-neutral-600 hover:text-neutral-400 cursor-grab active:cursor-grabbing touch-none"
-                    onClick={(e) => e.stopPropagation()}
-                >
-                    <GripVertical size={16} />
-                </div>
+                {/* Drag handle (only when the card is sortable) */}
+                {dragHandleProps && (
+                    <div
+                        {...dragHandleProps}
+                        className="flex-shrink-0 mt-0.5 text-neutral-600 hover:text-neutral-400 cursor-grab active:cursor-grabbing touch-none"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <GripVertical size={16} />
+                    </div>
+                )}
 
                 <div className="flex-1 min-w-0">
-                    <h3 className="font-semibold text-neutral-100 truncate text-sm leading-tight">
-                        {goal.title}
-                    </h3>
+                    <div className="flex items-center gap-2 min-w-0">
+                        <h3 className="font-semibold text-neutral-100 truncate text-sm leading-tight">
+                            {goal.title}
+                        </h3>
+                        {!isCompleted && <StatusChip goal={goal} />}
+                    </div>
                     <div className="text-xs text-neutral-500 mt-0.5">
                         {goal.targetValue} {goal.unit} total
                         {goal.deadline && (

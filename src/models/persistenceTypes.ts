@@ -1159,6 +1159,23 @@ export interface Goal {
      */
     sortOrder?: number;
 
+    /**
+     * Lifecycle status of a standalone goal (distinct from `trackStatus`,
+     * which governs goals inside a track). Absent/null means 'active'.
+     * - 'active': currently being pursued (default)
+     * - 'scheduled': planned to start later (optionally on `startDate`)
+     * - 'backlog': someday/maybe, not currently pursued
+     * Not settable on tracked goals (trackId present).
+     */
+    status?: 'active' | 'scheduled' | 'backlog';
+
+    /**
+     * Optional planned start date (DayKey, YYYY-MM-DD). Only meaningful when
+     * `status === 'scheduled'`; cleared whenever the goal leaves that status.
+     * When the date arrives, goal reads lazily promote the goal to 'active'.
+     */
+    startDate?: string | null;
+
     /** ID of the GoalTrack this goal belongs to (undefined = standalone goal) */
     trackId?: string;
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { X, Loader2, AlertCircle, Plus, Folder, Search, Filter } from 'lucide-react';
+import { X, Loader2, AlertCircle, Plus, Folder, Search, Filter, Play, CalendarClock, Archive } from 'lucide-react';
 import { updateGoal } from '../../lib/persistenceClient';
 import { useHabitStore } from '../../store/HabitContext';
 import type { GoalWithProgress } from '../../models/persistenceTypes';
@@ -38,6 +38,10 @@ export const EditGoalModal: React.FC<EditGoalModalProps> = ({
         })),
     );
 
+    // Lifecycle status (standalone goals only — tracked goals use trackStatus)
+    const [status, setStatus] = useState<'active' | 'scheduled' | 'backlog'>(goal.status ?? 'active');
+    const [startDate, setStartDate] = useState(goal.startDate || '');
+
     // Category State
     const [categoryId, setCategoryId] = useState(goal.categoryId || '');
     const [isCreatingCategory, setIsCreatingCategory] = useState(false);
@@ -61,6 +65,8 @@ export const EditGoalModal: React.FC<EditGoalModalProps> = ({
             setUnit(goal.unit || '');
             setSelectedHabitIds(goal.linkedHabitIds);
             setDeadline(goal.deadline || '');
+            setStatus(goal.status ?? 'active');
+            setStartDate(goal.startDate || '');
             setCategoryId(goal.categoryId || '');
             setMilestoneRows(
                 (goal.milestones ?? []).map((m) => ({
@@ -191,6 +197,14 @@ export const EditGoalModal: React.FC<EditGoalModalProps> = ({
                 linkedHabitIds: selectedHabitIds,
                 deadline: deadline || undefined,
                 categoryId: categoryId || undefined,
+                // Lifecycle status is a standalone-goal concept; the server
+                // rejects changes on tracked goals, so don't send it for them.
+                ...(goal.trackId
+                    ? {}
+                    : {
+                        status,
+                        startDate: status === 'scheduled' ? (startDate || null) : null,
+                    }),
                 ...(milestonesPayload !== undefined ? { milestones: milestonesPayload } : {}),
             });
 
@@ -406,6 +420,47 @@ export const EditGoalModal: React.FC<EditGoalModalProps> = ({
                             </div>
                         </div>
 
+                        {/* Lifecycle status (standalone goals only) */}
+                        {!goal.trackId && (
+                            <div>
+                                <label className="block text-sm font-medium text-neutral-300 mb-2">
+                                    Status
+                                </label>
+                                <div className="flex gap-2">
+                                    {([
+                                        { value: 'active', label: 'Active', icon: Play },
+                                        { value: 'scheduled', label: 'Scheduled', icon: CalendarClock },
+                                        { value: 'backlog', label: 'Backlog', icon: Archive },
+                                    ] as const).map(({ value, label, icon: Icon }) => (
+                                        <button
+                                            key={value}
+                                            type="button"
+                                            onClick={() => setStatus(value)}
+                                            className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-sm transition-all ${status === value
+                                                ? 'bg-emerald-500/10 border-emerald-500/50 text-emerald-400'
+                                                : 'bg-neutral-800/50 border-white/10 text-neutral-400 hover:bg-neutral-800'
+                                                }`}
+                                        >
+                                            <Icon size={14} />
+                                            {label}
+                                        </button>
+                                    ))}
+                                </div>
+                                {status === 'scheduled' && (
+                                    <div className="mt-3">
+                                        <label className="block text-xs font-medium text-neutral-400 mb-1">
+                                            Start date (optional — goal activates automatically on this day)
+                                        </label>
+                                        <input
+                                            type="date"
+                                            value={startDate}
+                                            onChange={(e) => setStartDate(e.target.value)}
+                                            className="w-full bg-neutral-800 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-emerald-500 [color-scheme:dark]"
+                                        />
+                                    </div>
+                                )}
+                            </div>
+                        )}
 
                         {/* Habit Selector */}
                         <div>

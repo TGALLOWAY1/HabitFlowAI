@@ -24,7 +24,7 @@ import { GoalTrackSection } from '../../components/goals/GoalTrackSection';
 import { Loader2, AlertCircle } from 'lucide-react';
 import { EditGoalModal } from '../../components/goals/EditGoalModal';
 import { useHabitStore } from '../../store/HabitContext';
-import { buildGoalStacks } from '../../utils/goalUtils';
+import { buildGoalStacks, type GoalStack } from '../../utils/goalUtils';
 import { reorderGoals, reorderGoalTracks } from '../../lib/persistenceClient';
 import type { GoalWithProgress } from '../../types';
 
@@ -113,7 +113,7 @@ const SortableTrackSection: React.FC<{
 };
 
 interface StackProps {
-    stack: { category: { id: string; name: string; color: string }; goals: Array<{ id: string; type?: string }>; tracks: Array<{ track: { id: string; name: string; categoryId: string; description?: string; createdAt: string; updatedAt: string; completedAt?: string | null }; goals: Array<{ id: string; trackStatus?: string; trackOrder?: number; type?: string; title: string; completedAt?: string | null; activeWindowStart?: string }> }> };
+    stack: GoalStack;
     isExpanded: boolean;
     goalCount: number;
     onToggle: () => void;
@@ -128,6 +128,50 @@ interface StackProps {
     /** Whether any goals in this stack are cumulative (need grid layout) */
     hasCumulativeGoals: boolean;
 }
+
+// Collapsed-by-default list of scheduled or backlog goals within a stack.
+// Cards are not sortable — drag reorder applies to active goals only.
+const StatusSubSection: React.FC<{
+    label: string;
+    goals: GoalStack['scheduledGoals'];
+    getGoalWithProgress: (goalId: string) => GoalWithProgress | undefined;
+    onViewGoal?: (goalId: string) => void;
+    onEdit: (goalId: string) => void;
+    onNavigateToCompleted?: (goalId: string) => void;
+}> = ({ label, goals, getGoalWithProgress, onViewGoal, onEdit, onNavigateToCompleted }) => {
+    const [isOpen, setIsOpen] = useState(false);
+
+    if (goals.length === 0) return null;
+
+    return (
+        <div className="mt-2">
+            <button
+                onClick={() => setIsOpen(open => !open)}
+                className="flex items-center gap-1.5 px-1 py-1 w-full text-left text-xs font-medium text-neutral-500 hover:text-neutral-300 transition-colors"
+            >
+                {isOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                {label} ({goals.length})
+            </button>
+            {isOpen && (
+                <div className="space-y-1.5 mt-1">
+                    {goals.map((goal) => {
+                        const gwp = getGoalWithProgress(goal.id);
+                        if (!gwp) return null;
+                        return (
+                            <GoalGridCard
+                                key={goal.id}
+                                goalWithProgress={gwp}
+                                onViewDetails={onViewGoal || (() => {})}
+                                onEdit={onEdit}
+                                onNavigateToCompleted={onNavigateToCompleted}
+                            />
+                        );
+                    })}
+                </div>
+            )}
+        </div>
+    );
+};
 
 const Stack: React.FC<StackProps> = ({
     stack,
@@ -244,6 +288,24 @@ const Stack: React.FC<StackProps> = ({
                             </SortableContext>
                         </DndContext>
                     )}
+
+                    {/* Scheduled / Backlog sub-sections (collapsed by default) */}
+                    <StatusSubSection
+                        label="Scheduled"
+                        goals={stack.scheduledGoals}
+                        getGoalWithProgress={getGoalWithProgress}
+                        onViewGoal={onViewGoal}
+                        onEdit={onEdit}
+                        onNavigateToCompleted={onNavigateToCompleted}
+                    />
+                    <StatusSubSection
+                        label="Backlog"
+                        goals={stack.backlogGoals}
+                        getGoalWithProgress={getGoalWithProgress}
+                        onViewGoal={onViewGoal}
+                        onEdit={onEdit}
+                        onNavigateToCompleted={onNavigateToCompleted}
+                    />
                 </div>
             )}
         </div>
@@ -430,7 +492,8 @@ export const GoalsPage: React.FC<GoalsPageProps> = ({
                     {goalStacks.map((stack) => {
                         const isExpanded = expandedStacks.has(stack.category.id);
                         const trackGoalCount = stack.tracks.reduce((sum, tg) => sum + tg.goals.length, 0);
-                        const goalCount = stack.goals.length + trackGoalCount;
+                        const goalCount = stack.goals.length + trackGoalCount
+                            + stack.scheduledGoals.length + stack.backlogGoals.length;
                         const allGoals = [...stack.goals, ...stack.tracks.flatMap(tg => tg.goals)];
                         const hasCumulativeGoals = allGoals.some(g => g.type === 'cumulative');
 

@@ -23,7 +23,7 @@ interface GoalScheduleViewProps {
   onViewGoal?: (goalId: string) => void;
 }
 
-const EVENT_TYPE_ORDER: ScheduleEventType[] = ['completed', 'target', 'forecast', 'milestone'];
+const EVENT_TYPE_ORDER: ScheduleEventType[] = ['completed', 'starts', 'target', 'forecast', 'milestone'];
 
 export const GoalScheduleView: React.FC<GoalScheduleViewProps> = ({ onViewGoal }) => {
   const { data: goals, loading: goalsLoading, error: goalsError } = useGoalsWithProgress();
@@ -220,7 +220,7 @@ export const GoalScheduleView: React.FC<GoalScheduleViewProps> = ({ onViewGoal }
 
       {/* Legend */}
       <div className="flex flex-wrap gap-3 mt-3 px-1">
-        {(['target', 'forecast', 'milestone', 'completed'] as ScheduleEventType[]).map(type => (
+        {(['starts', 'target', 'forecast', 'milestone', 'completed'] as ScheduleEventType[]).map(type => (
           <div key={type} className="flex items-center gap-1.5">
             <span className={`w-2 h-2 rounded-full ${getEventTypeColor(type)}`} />
             <span className="text-xs text-neutral-500">{getEventTypeLabel(type)}</span>
