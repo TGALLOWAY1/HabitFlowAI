@@ -535,3 +535,48 @@ describe('Edge cases', () => {
         expect(root.map(h => h.id)).not.toContain('orphan-child');
     });
 });
+
+// =============================================================================
+// Archived / missing parent — children must surface as roots
+// =============================================================================
+describe('getBundleChildIds — inactive parents do not hide children', () => {
+    it('children of an archived parent surface as roots', () => {
+        const habits = [
+            makeHabit({
+                id: 'archived-bundle',
+                name: 'Old Bundle',
+                type: 'bundle',
+                bundleType: 'checklist',
+                subHabitIds: ['ab-child-1', 'ab-child-2'],
+                archived: true,
+            }),
+            makeHabit({ id: 'ab-child-1', name: 'Child 1', bundleParentId: 'archived-bundle' }),
+            makeHabit({ id: 'ab-child-2', name: 'Child 2', bundleParentId: 'archived-bundle' }),
+        ];
+
+        const childIds = getBundleChildIds(habits);
+        expect(childIds.has('ab-child-1')).toBe(false);
+        expect(childIds.has('ab-child-2')).toBe(false);
+
+        const root = getRootHabits(habits);
+        expect(root.map(h => h.id)).toEqual(['ab-child-1', 'ab-child-2']);
+    });
+
+    it('children whose parent is not in the list (deleted) surface as roots', () => {
+        const habits = [
+            makeHabit({ id: 'ghost-child', name: 'Ghost Child', bundleParentId: 'deleted-parent' }),
+            makeHabit({ id: 'h1', name: 'Standalone' }),
+        ];
+
+        const childIds = getBundleChildIds(habits);
+        expect(childIds.has('ghost-child')).toBe(false);
+
+        expect(getHabitsForDate(habits, DATE).map(h => h.id)).toContain('ghost-child');
+    });
+
+    it('children of an active parent stay hidden', () => {
+        const { parent, children } = checklistBundle();
+        const childIds = getBundleChildIds([parent, ...children]);
+        children.forEach(c => expect(childIds.has(c.id)).toBe(true));
+    });
+});

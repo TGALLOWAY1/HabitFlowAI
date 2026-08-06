@@ -5,6 +5,7 @@ import { CategoryPickerModal } from '../CategoryPickerModal';
 import { format, startOfWeek, endOfWeek, addDays, subWeeks, addWeeks } from 'date-fns';
 import { Calendar, ChevronLeft, ChevronRight, ChevronDown, ChevronUp } from 'lucide-react';
 import { getLocalTimeZone } from '../../lib/persistenceClient';
+import { getBundleChildIds } from '../../utils/habitUtils';
 
 import type { Habit } from '../../types';
 import { resolveLocalHabitStatuses, type DayViewHabitStatus } from './habitStatusResolution';
@@ -52,16 +53,9 @@ export const ScheduleView = () => {
         return new Map(dayViewData.habits.map(status => [status.habit.id, status]));
     }, [dayViewData]);
 
-    // Build child ID set
-    const childIds = useMemo(() => {
-        const ids = new Set<string>();
-        habits.forEach(h => {
-            if (h.type === 'bundle' && h.subHabitIds) {
-                h.subHabitIds.forEach(id => ids.add(id));
-            }
-        });
-        return ids;
-    }, [habits]);
+    // Build child ID set. Shared helper: only ACTIVE parents hide their
+    // children, so children of archived/deleted bundles stay reachable.
+    const childIds = useMemo(() => getBundleChildIds(habits), [habits]);
 
     // Separate scheduled habits vs daily habits
     const { scheduledHabits, dailyHabits } = useMemo(() => {
