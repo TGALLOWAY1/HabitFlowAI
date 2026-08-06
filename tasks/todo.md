@@ -1,15 +1,19 @@
-# Routine Push Reminders
+# Goal Lifecycle Status (Active / Scheduled / Backlog)
 
-Bring habit-style push reminders (`reminderTime` / `reminderEnabled`) to routines.
+Branch: `claude/goal-status-differentiation-6vzdy3`
 
-- [x] 1. Model + API: add `reminderTime`/`reminderEnabled` to `Routine`, validate on POST/PATCH `/api/routines` (commit 1)
-- [x] 2. Scheduler: `findReminderRoutinesForScopes`, routine-log completion skip, send-log dedup namespacing, routine send loop in `reminderScheduler` (commit 2)
-- [x] 3. UI: reminder time + enable controls in `RoutineEditorModal` (commit 3)
-- [x] 4. Tests: `routines.reminder.test.ts` + scheduler routine cases (commit 4)
-- [x] 5. Docs: FEATURES.md, HABITFLOW_UI_ARCHITECTURE.md, InfoModal Reminders blurb (commit 5)
-- [x] 6. `npm run build` + relevant test runs, push, open PR
+- [ ] 1. Model + create/update validation (persistenceTypes, goals.ts, goalTracks.ts, goals.status.test.ts) (commit 1)
+- [ ] 2. Lazy auto-activation on read (`promoteDueScheduledGoals` + persistenceClient timeZone) (commit 2)
+- [ ] 3. `buildGoalStacks` three-way grouping + tests (commit 3)
+- [ ] 4. GoalsPage sub-sections + GoalGridCard status badges (commit 4)
+- [ ] 5. Create/Edit modal status controls (commit 5)
+- [ ] 6. Schedule calendar "Starts" event + tests (commit 6)
+- [ ] 7. Demo seed: scheduled + backlog examples (commit 7)
+- [ ] 8. Docs (FEATURES, API, DATA_MODEL, UI architecture) + InfoModal (commit 8)
+- [ ] Verify: npm run build, test:run, lint:beta; push; open PR
 
 Design decisions:
-- Routines have no schedule concept (no assignedDays) → reminders fire every day, skipped when the routine already has a log for that local dayKey (any variant).
-- Dedup ledger keeps the existing `{habitId, dayKey, endpoint}` unique index; routine sends namespace the id as `routine:<id>` (no migration, no collision — habit ids are UUIDs).
-- Notification deep-link: `/?view=routines`, tag `routine-<id>-<dayKey>`.
+- `Goal.status?: 'active' | 'scheduled' | 'backlog'` — absent/null = active (no migration). `startDate?: string | null` dayKey, only when scheduled; cleared server-side when status leaves scheduled.
+- Auto-activation: server-side lazy promotion in GET /api/goals + /api/goals-with-progress (request timezone dayKey), persisted.
+- Tracked goals: status/startDate rejected (trackStatus governs); addGoalToTrack clears both.
+- Auto-completion untouched — entries are truth; backlog goals can still complete.
