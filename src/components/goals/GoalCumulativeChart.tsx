@@ -114,8 +114,11 @@ export const GoalCumulativeChart: React.FC<GoalCumulativeChartProps> = ({
                         formatter={(value: number) => [`${value} ${unit}`, 'Total Progress']}
                         labelFormatter={(label: number) => formatXAxis(label)}
                     />
+                    {/* stepAfter holds each value flat until the next entry, so
+                        gaps render as plateaus instead of implying continuous
+                        progress between two distant contributions. */}
                     <Area
-                        type="monotone"
+                        type="stepAfter"
                         dataKey="value"
                         stroke={color}
                         fillOpacity={1}
