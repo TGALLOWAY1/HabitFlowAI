@@ -188,7 +188,7 @@ Consequences for new UI:
 | Log Sleep | Modal | Health hub → Sleep, or "Edit a night" list on Analytics → Sleep tab | Apple Watch sleep score + sub-scores, bedtime/wake pickers, duration, quality, last-night habit toggles, and configurable sleep targets; a "Night of" date picker (capped at today) lets any previous night be logged or corrected | Wellbeing Entries, Dashboard Prefs |
 | Edit Goal | Modal | Goal context menu "Edit" | Modify goal title, target, deadline | Goals |
 | Delete Goal Confirm | Modal | Goal context menu "Delete" | Deletion confirmation dialog | Goals |
-| Remove Habit | Modal | Trash button on a habit that is linked to one or more goals (shown after the click-twice confirm so the user sees which goals are affected) | Lists the affected goals and offers two paths: **Archive** (recommended, restorable from Settings) or **Delete permanently** (soft-delete, not restorable). For unlinked habits the trash icon archives directly without opening this modal | Habits, Goals |
+| Remove Habit | Modal | Trash button on a habit that is linked to one or more goals, or on a bundle with sub-habits (shown after the click-twice confirm so the user sees what is affected) | Lists the affected goals and, for bundles, the sub-habits (kept either way — they surface as standalone habits, with a checkbox to archive them together with the bundle). Offers two paths: **Archive** (recommended, restorable from Settings) or **Delete permanently** (soft-delete, not restorable; releases any bundle children as root habits). For unlinked, childless habits the trash icon archives directly without opening this modal | Habits, Goals |
 | Archived Habits | Modal | Settings → "View archived habits" | Lists archived habits with Restore and Delete-permanently actions; empty state explains archive preserves entries | Habits |
 | Completed Habits | Modal | Routine runner completion | Summary of habits logged during routine | Habits, Entries |
 | AI Hub | Modal | Header ✨ AI icon | Stacks the three AI artifacts as inline generators (Wellbeing Summary, Weekly Review, Journal Insights); each shows an explanation, last-generated date, and a history icon. When no Gemini key is configured, each card renders the latest archived report inline (readable without a key), so the read-only demo shows real AI output instead of an empty prompt | AI Reports |
@@ -316,9 +316,9 @@ graph TB
 | **Analyze** | Dashboard heatmap, category completion rows |
 | **Assign Category** | Add Habit Modal (creation) or Category Picker Modal |
 | **Link to Goal** | Add Habit Modal or Create Goal Flow (Step 2) |
-| **Archive** | Tracker → trash icon (click twice). Goal-linked habits open the Remove Habit modal first |
+| **Archive** | Tracker → trash icon (click twice). Goal-linked habits and bundles with sub-habits open the Remove Habit modal first (bundles: optional checkbox archives sub-habits too) |
 | **Restore** | Settings → View archived habits → Restore |
-| **Delete permanently** | Goal-linked: Remove Habit modal → "Delete permanently". Archived habit: Settings → View archived habits → trash icon → confirm |
+| **Delete permanently** | Goal-linked or bundle: Remove Habit modal → "Delete permanently" (bundle children are released as standalone habits). Archived habit: Settings → View archived habits → trash icon → confirm |
 | **Set Reminder** | Add Habit Modal (create/edit) → Schedule & Streak section → Reminder time input + "Send push reminder" toggle (regular habits and bundles alike; a bundle's reminder is skipped once its children satisfy the bundle's completion rule) |
 | **Enable Notifications (per device)** | Settings → Notifications → "Enable habit reminders" (permission prompt; test-send + turn-off once enabled). Hidden in demo mode or when the server has push disabled. iPhone/iPad: requires Add to Home Screen first (iOS 16.4+) — the section shows install guidance until then |
 
