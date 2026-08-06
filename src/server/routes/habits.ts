@@ -129,6 +129,27 @@ export async function getHabits(req: Request, res: Response): Promise<void> {
           const updatedMap = new Map(updatedHabits.filter(Boolean).map(h => [h!.id, h!]));
           habits = habits.map(h => updatedMap.get(h.id) ?? h);
         }
+
+        // Clear dangling bundleParentId on children whose parent bundle no
+        // longer exists (deleting a bundle never cascades to its children).
+        // A dangling parent reference hides the habit from every habit view
+        // (All/Today/Schedule treat any bundleParentId as "rendered under the
+        // parent") while per-category counts still include it. Archived
+        // parents are left intact — unarchiving restores the bundle.
+        const habitIds = new Set(habits.map(h => h.id));
+        const orphanedChildren = habits.filter(
+          h => h.bundleParentId && !habitIds.has(h.bundleParentId)
+        );
+        if (orphanedChildren.length > 0) {
+          console.log(`[Self-heal] Clearing dangling bundleParentId on ${orphanedChildren.length} habits for user ${userId}`);
+          const updatedOrphans = await Promise.all(
+            orphanedChildren.map(h =>
+              updateHabit(h.id, householdId, userId, { bundleParentId: null })
+            )
+          );
+          const orphanMap = new Map(updatedOrphans.filter(Boolean).map(h => [h!.id, h!]));
+          habits = habits.map(h => orphanMap.get(h.id) ?? h);
+        }
       }
     }
 
