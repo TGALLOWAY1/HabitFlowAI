@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { fetchGoalTracks } from './persistenceClient';
 import type { GoalTrack } from '../models/persistenceTypes';
 import { getCachedGoalTracks, setCachedGoalTracks, isGoalTracksFresh, subscribeToCacheInvalidation } from './goalDataCache';
@@ -15,15 +15,20 @@ export function useGoalTracks() {
         return getCachedGoalTracks() === null;
     });
     const [error, setError] = useState<string | null>(null);
+    // Tracks whether we've ever successfully loaded tracks, so cache-invalidation-driven
+    // refetches (e.g. after a reorder) can revalidate in the background instead of
+    // blanking already-rendered cards with a blocking spinner.
+    const hasLoadedRef = useRef<boolean>(getCachedGoalTracks() !== null);
 
     const loadTracks = useCallback(async () => {
         const cached = getCachedGoalTracks();
         if (cached) {
             setTracks(cached);
+            hasLoadedRef.current = true;
             setLoading(false);
             setError(null);
             if (isGoalTracksFresh()) return;
-        } else {
+        } else if (!hasLoadedRef.current) {
             setLoading(true);
         }
 
@@ -32,6 +37,7 @@ export function useGoalTracks() {
             const fetched = await fetchGoalTracks();
             setCachedGoalTracks(fetched);
             setTracks(fetched);
+            hasLoadedRef.current = true;
             setLoading(false);
         } catch (err) {
             const errorMessage = err instanceof Error ? err.message : 'Failed to load goal tracks';
