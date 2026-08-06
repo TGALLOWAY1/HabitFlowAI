@@ -75,7 +75,7 @@ describe('buildGoalStacks', () => {
             expect(stacks[0].goals[0].id).toBe('goal-1');
         });
 
-        it('should exclude goals with invalid categoryId', () => {
+        it('should route goals with invalid categoryId to the Uncategorized stack', () => {
             const categories = [createCategory('cat-1', 'Category 1')];
             const goals = [
                 createGoal('goal-1', 'Valid Goal', 'cat-1'),
@@ -84,9 +84,10 @@ describe('buildGoalStacks', () => {
 
             const stacks = buildGoalStacks({ goals, categories });
 
-            expect(stacks).toHaveLength(1);
-            expect(stacks[0].goals).toHaveLength(1);
-            expect(stacks[0].goals[0].id).toBe('goal-1');
+            expect(stacks).toHaveLength(2);
+            expect(stacks[0].goals.map(g => g.id)).toEqual(['goal-1']);
+            const uncategorized = stacks.find(s => s.category.id === 'uncategorized');
+            expect(uncategorized?.goals.map(g => g.id)).toEqual(['goal-2']);
         });
     });
 
@@ -205,6 +206,115 @@ describe('buildGoalStacks', () => {
             expect(stacks).toHaveLength(1);
             expect(stacks[0].category.id).toBe('uncategorized');
             expect(stacks[0].goals.map(g => g.id)).toEqual(['goal-1', 'goal-2']);
+        });
+    });
+
+    describe('lifecycle status buckets', () => {
+        it('should split goals into active, scheduled, and backlog buckets', () => {
+            const categories = [createCategory('cat-1', 'Category 1')];
+            const goals = [
+                createGoal('goal-1', 'Active Goal', 'cat-1'),
+                { ...createGoal('goal-2', 'Scheduled Goal', 'cat-1'), status: 'scheduled' as const },
+                { ...createGoal('goal-3', 'Backlog Goal', 'cat-1'), status: 'backlog' as const },
+            ];
+
+            const stacks = buildGoalStacks({ goals, categories });
+
+            expect(stacks).toHaveLength(1);
+            expect(stacks[0].goals.map(g => g.id)).toEqual(['goal-1']);
+            expect(stacks[0].scheduledGoals.map(g => g.id)).toEqual(['goal-2']);
+            expect(stacks[0].backlogGoals.map(g => g.id)).toEqual(['goal-3']);
+        });
+
+        it('should treat explicit "active" status the same as no status', () => {
+            const categories = [createCategory('cat-1', 'Category 1')];
+            const goals = [
+                { ...createGoal('goal-1', 'Explicit Active', 'cat-1'), status: 'active' as const },
+            ];
+
+            const stacks = buildGoalStacks({ goals, categories });
+
+            expect(stacks[0].goals).toHaveLength(1);
+            expect(stacks[0].scheduledGoals).toHaveLength(0);
+        });
+
+        it('should keep a stack whose only goals are backlog', () => {
+            const categories = [createCategory('cat-1', 'Category 1')];
+            const goals = [
+                { ...createGoal('goal-1', 'Backlog Only', 'cat-1'), status: 'backlog' as const },
+            ];
+
+            const stacks = buildGoalStacks({ goals, categories });
+
+            expect(stacks).toHaveLength(1);
+            expect(stacks[0].goals).toHaveLength(0);
+            expect(stacks[0].backlogGoals).toHaveLength(1);
+        });
+
+        it('should exclude a completed scheduled goal', () => {
+            const categories = [createCategory('cat-1', 'Category 1')];
+            const goals = [
+                {
+                    ...createGoal('goal-1', 'Done Scheduled', 'cat-1', undefined, new Date().toISOString()),
+                    status: 'scheduled' as const,
+                },
+            ];
+
+            const stacks = buildGoalStacks({ goals, categories });
+
+            expect(stacks).toHaveLength(0);
+        });
+
+        it('should sort scheduled goals by startDate with undated last', () => {
+            const categories = [createCategory('cat-1', 'Category 1')];
+            const goals = [
+                { ...createGoal('goal-1', 'Undated', 'cat-1', 0), status: 'scheduled' as const },
+                { ...createGoal('goal-2', 'June', 'cat-1', 1), status: 'scheduled' as const, startDate: '2026-06-01' },
+                { ...createGoal('goal-3', 'March', 'cat-1', 2), status: 'scheduled' as const, startDate: '2026-03-01' },
+            ];
+
+            const stacks = buildGoalStacks({ goals, categories });
+
+            expect(stacks[0].scheduledGoals.map(g => g.id)).toEqual(['goal-3', 'goal-2', 'goal-1']);
+        });
+
+        it('should route scheduled/backlog goals into the Uncategorized stack', () => {
+            const categories: Category[] = [];
+            const goals = [
+                { ...createGoal('goal-1', 'Loose Backlog'), status: 'backlog' as const },
+            ];
+
+            const stacks = buildGoalStacks({ goals, categories });
+
+            expect(stacks).toHaveLength(1);
+            expect(stacks[0].category.id).toBe('uncategorized');
+            expect(stacks[0].backlogGoals.map(g => g.id)).toEqual(['goal-1']);
+        });
+
+        it('should ignore lifecycle status on tracked goals (trackStatus governs)', () => {
+            const categories = [createCategory('cat-1', 'Category 1')];
+            const track = {
+                id: 'track-1',
+                name: 'Track 1',
+                categoryId: 'cat-1',
+                createdAt: new Date('2024-01-01').toISOString(),
+            };
+            const goals = [
+                {
+                    ...createGoal('goal-1', 'Tracked Scheduled', 'cat-1'),
+                    trackId: 'track-1',
+                    trackOrder: 0,
+                    trackStatus: 'active' as const,
+                    status: 'scheduled' as const,
+                },
+            ];
+
+            const stacks = buildGoalStacks({ goals, categories, tracks: [track as any] });
+
+            expect(stacks).toHaveLength(1);
+            expect(stacks[0].scheduledGoals).toHaveLength(0);
+            expect(stacks[0].tracks).toHaveLength(1);
+            expect(stacks[0].tracks[0].goals.map(g => g.id)).toEqual(['goal-1']);
         });
     });
 
