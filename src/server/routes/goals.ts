@@ -22,6 +22,7 @@ import { getHabitsByUser, linkHabitsToGoal, unlinkHabitsFromGoal } from '../repo
 import { computeGoalProgressV2, computeGoalListProgress } from '../utils/goalProgressUtilsV2';
 import type { Goal, GoalMilestone } from '../../models/persistenceTypes';
 import { getRequestIdentity } from '../middleware/identity';
+import { getNowDayKey } from '../utils/dayKey';
 import { generateBadgeForGoal, backfillGoalBadges } from '../services/badgeGenerationService';
 import { invalidateUserCaches } from '../lib/cacheInstances';
 
@@ -141,6 +142,22 @@ function validateGoalData(data: any): string | null {
 
   if (data.iteratedFromGoalId !== undefined && typeof data.iteratedFromGoalId !== 'string') {
     return 'iteratedFromGoalId must be a string if provided';
+  }
+
+  // Validate lifecycle status if provided. Same null tolerance as aggregationMode.
+  if (data.status !== undefined && data.status !== null) {
+    if (data.status !== 'active' && data.status !== 'scheduled' && data.status !== 'backlog') {
+      return 'status must be one of "active", "scheduled", or "backlog"';
+    }
+  }
+
+  if (data.startDate !== undefined && data.startDate !== null) {
+    if (typeof data.startDate !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(data.startDate)) {
+      return 'startDate must be in YYYY-MM-DD format';
+    }
+    if (data.status !== 'scheduled') {
+      return 'startDate can only be set when status is "scheduled"';
+    }
   }
 
   return null;
@@ -296,8 +313,48 @@ function buildIteratedGoalData(goal: Goal, currentValue: number | null): Omit<Go
 
 
 /**
+ * Lazily promote scheduled goals whose startDate has arrived (in the request
+ * timezone) to 'active', persisting the change so every consumer sees one
+ * consistent state. Tracked goals are governed by trackStatus and are skipped.
+ * Returns the goal list with promotions applied.
+ */
+async function promoteDueScheduledGoals(
+  goals: Goal[],
+  householdId: string,
+  userId: string,
+  timeZone?: string | null
+): Promise<Goal[]> {
+  const due = goals.filter(
+    (g) =>
+      g.status === 'scheduled' &&
+      typeof g.startDate === 'string' &&
+      !g.trackId &&
+      g.startDate <= getNowDayKey(timeZone)
+  );
+  if (due.length === 0) return goals;
+
+  const promoted = new Map<string, Goal>();
+  for (const goal of due) {
+    try {
+      const updated = await updateGoal(goal.id, householdId, userId, {
+        status: 'active',
+        startDate: undefined,
+      });
+      if (updated) promoted.set(goal.id, updated);
+    } catch (error) {
+      // Promotion is best-effort — never fail the read for it.
+      console.error(`Failed to promote scheduled goal ${goal.id}:`, error);
+    }
+  }
+  if (promoted.size === 0) return goals;
+
+  invalidateUserCaches(userId);
+  return goals.map((g) => promoted.get(g.id) ?? g);
+}
+
+/**
  * Get all goals for the current user.
- * 
+ *
  * GET /api/goals
  */
 export async function getGoals(req: Request, res: Response): Promise<void> {
@@ -305,7 +362,12 @@ export async function getGoals(req: Request, res: Response): Promise<void> {
     // TODO: Extract userId from authentication token/session
     const { householdId, userId } = getRequestIdentity(req);
 
-    const goals = await getGoalsByUser(householdId, userId);
+    const goals = await promoteDueScheduledGoals(
+      await getGoalsByUser(householdId, userId),
+      householdId,
+      userId,
+      typeof req.query.timeZone === 'string' ? req.query.timeZone : undefined
+    );
 
     res.status(200).json({
       goals,
@@ -422,10 +484,11 @@ export async function getGoalsWithProgress(req: Request, res: Response): Promise
 
     // Fetch goals and habits in parallel; entries are fetched filtered by
     // linked habit IDs inside computeGoalsWithProgressFromData (via truthQuery)
-    const [goals, allHabits] = await Promise.all([
+    const [rawGoals, allHabits] = await Promise.all([
       getGoalsByUser(householdId, userId),
       getHabitsByUser(householdId, userId),
     ]);
+    const goals = await promoteDueScheduledGoals(rawGoals, householdId, userId, userTimeZone);
 
     const goalsWithProgress = await computeGoalListProgress(
       goals, allHabits, householdId, userId, userTimeZone
@@ -636,6 +699,10 @@ export async function createGoalRoute(req: Request, res: Response): Promise<void
         badgeImageUrl: req.body.badgeImageUrl?.trim(),
         categoryId: req.body.categoryId,
         sortOrder,
+        ...(req.body.status && req.body.status !== 'active' ? { status: req.body.status } : {}),
+        ...(req.body.status === 'scheduled' && req.body.startDate
+          ? { startDate: req.body.startDate }
+          : {}),
         ...(normalizedMilestones !== undefined ? { milestones: normalizedMilestones } : {}),
       },
       householdId,
@@ -869,6 +936,90 @@ export async function updateGoalRoute(req: Request, res: Response): Promise<void
         return;
       }
       patch.sortOrder = req.body.sortOrder;
+    }
+
+    if (req.body.status !== undefined || req.body.startDate !== undefined) {
+      const newStatus = req.body.status ?? undefined;
+      if (
+        newStatus !== undefined &&
+        newStatus !== 'active' &&
+        newStatus !== 'scheduled' &&
+        newStatus !== 'backlog'
+      ) {
+        res.status(400).json({
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: 'status must be one of "active", "scheduled", or "backlog"',
+          },
+        });
+        return;
+      }
+
+      if (req.body.startDate !== undefined && req.body.startDate !== null) {
+        if (
+          typeof req.body.startDate !== 'string' ||
+          !/^\d{4}-\d{2}-\d{2}$/.test(req.body.startDate)
+        ) {
+          res.status(400).json({
+            error: {
+              code: 'VALIDATION_ERROR',
+              message: 'startDate must be in YYYY-MM-DD format',
+            },
+          });
+          return;
+        }
+      }
+
+      const { householdId: hid, userId: uid } = getRequestIdentity(req);
+      const existingForStatus = await getGoalById(id, hid, uid);
+      if (!existingForStatus) {
+        res.status(404).json({
+          error: { code: 'NOT_FOUND', message: 'Goal not found' },
+        });
+        return;
+      }
+
+      const effectiveStatus = newStatus ?? existingForStatus.status ?? 'active';
+
+      // Lifecycle status is a standalone-goal concept; tracked goals are
+      // governed by trackStatus. Only reject an ACTUAL change — the Edit Goal
+      // modal re-sends status on every save (same rationale as the category
+      // guard above).
+      if (
+        existingForStatus.trackId &&
+        newStatus !== undefined &&
+        newStatus !== (existingForStatus.status ?? 'active')
+      ) {
+        res.status(400).json({
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: 'Cannot change status of a goal that belongs to a track. Remove it from the track first.',
+          },
+        });
+        return;
+      }
+
+      if (req.body.startDate && effectiveStatus !== 'scheduled') {
+        res.status(400).json({
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: 'startDate can only be set when status is "scheduled"',
+          },
+        });
+        return;
+      }
+
+      if (newStatus !== undefined) {
+        patch.status = newStatus;
+      }
+      if (effectiveStatus === 'scheduled') {
+        if (req.body.startDate !== undefined) {
+          patch.startDate = req.body.startDate || undefined;
+        }
+      } else if (newStatus !== undefined || req.body.startDate !== undefined) {
+        // startDate is only meaningful while scheduled — clear it on the way out.
+        patch.startDate = undefined;
+      }
     }
 
     // Milestones: validate against the goal's effective type/targetValue after
