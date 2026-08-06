@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { format, parseISO, isValid, subDays } from 'date-fns';
+import { format, parseISO, isValid, subDays, eachDayOfInterval, isAfter } from 'date-fns';
 
 interface GoalCumulativeChartProps {
     data: Array<{
@@ -15,7 +15,7 @@ interface GoalCumulativeChartProps {
 interface ChartPoint {
     date: string;
     value: number;
-    synthetic?: boolean;
+    isEntry?: boolean;
 }
 
 export const GoalCumulativeChart: React.FC<GoalCumulativeChartProps> = ({
@@ -24,21 +24,32 @@ export const GoalCumulativeChart: React.FC<GoalCumulativeChartProps> = ({
     unit = ""
 }) => {
     const chartData = useMemo<ChartPoint[]>(() => {
-        // Sort by date ascending to ensure proper line graph
-        const sorted: ChartPoint[] = [...data]
-            .sort((a, b) => a.date.localeCompare(b.date))
-            .map(d => ({ date: d.date, value: d.value }));
+        const sorted = [...data].sort((a, b) => a.date.localeCompare(b.date));
+        if (sorted.length === 0) return [];
 
-        if (sorted.length === 0) return sorted;
-
-        // Prepend a synthetic zero point 2 days before the first entry so the
-        // chart visibly starts near the first real datapoint with a small buffer.
         const firstEntry = parseISO(sorted[0].date);
-        if (isValid(firstEntry)) {
-            const bufferStart = format(subDays(firstEntry, 2), 'yyyy-MM-dd');
-            return [{ date: bufferStart, value: 0, synthetic: true }, ...sorted];
+        const lastEntry = parseISO(sorted[sorted.length - 1].date);
+        if (!isValid(firstEntry) || !isValid(lastEntry)) {
+            return sorted.map(d => ({ date: d.date, value: d.value, isEntry: true }));
         }
-        return sorted;
+
+        // One point per calendar day so the x-axis is linear in time — with only
+        // entry dates plotted, a 1-day gap and a 30-day gap would render the
+        // same width. Start 2 days before the first entry for a small visual
+        // buffer, and extend through today (or the last entry if future-dated)
+        // so the chart doesn't stop at the last logged day.
+        const today = new Date();
+        const start = subDays(firstEntry, 2);
+        const end = isAfter(lastEntry, today) ? lastEntry : today;
+
+        const dataMap = new Map(sorted.map(d => [d.date, d.value]));
+        let runningTotal = 0;
+        return eachDayOfInterval({ start, end }).map(dateObj => {
+            const dateStr = format(dateObj, 'yyyy-MM-dd');
+            const isEntry = dataMap.has(dateStr);
+            if (isEntry) runningTotal = dataMap.get(dateStr)!;
+            return { date: dateStr, value: runningTotal, isEntry };
+        });
     }, [data]);
 
     const formatXAxis = (tickItem: string) => {
@@ -97,13 +108,7 @@ export const GoalCumulativeChart: React.FC<GoalCumulativeChartProps> = ({
                             fontSize: '12px'
                         }}
                         itemStyle={{ color: color }}
-                        formatter={(value: number, _name, item) => {
-                            // Suppress tooltip content for the synthetic leading buffer point
-                            if (item && (item.payload as ChartPoint)?.synthetic) {
-                                return [null, null] as unknown as [string, string];
-                            }
-                            return [`${value} ${unit}`, 'Total Progress'];
-                        }}
+                        formatter={(value: number) => [`${value} ${unit}`, 'Total Progress']}
                         labelFormatter={(label: string) => formatXAxis(label)}
                     />
                     <Area
@@ -115,7 +120,7 @@ export const GoalCumulativeChart: React.FC<GoalCumulativeChartProps> = ({
                         strokeWidth={2}
                         dot={(props: { cx?: number; cy?: number; payload?: ChartPoint; index?: number }) => {
                             const { cx, cy, payload, index } = props;
-                            if (!payload || payload.synthetic || cx == null || cy == null) {
+                            if (!payload || !payload.isEntry || cx == null || cy == null) {
                                 // Recharts requires an SVG element return; render an invisible marker
                                 return <circle key={`dot-hidden-${index ?? 'x'}`} cx={0} cy={0} r={0} fill="none" />;
                             }
