@@ -241,13 +241,21 @@ export function getBundleStats(
  * Uses both parent's subHabitIds and child's bundleParentId for robustness.
  */
 export function getBundleChildIds(habits: Habit[]): Set<string> {
+    const byId = new Map(habits.map(h => [h.id, h]));
     const childIds = new Set<string>();
     habits.forEach(h => {
-        if (h.type === 'bundle' && h.subHabitIds) {
+        // Only ACTIVE parents hide their children: a child is rendered inside
+        // its parent's drawer, so when the parent is archived or deleted the
+        // child must surface as a root habit or it becomes unreachable while
+        // category counts still include it.
+        if (h.type === 'bundle' && !h.archived && h.subHabitIds) {
             h.subHabitIds.forEach(id => childIds.add(id));
         }
         if (h.bundleParentId) {
-            childIds.add(h.id);
+            const parent = byId.get(h.bundleParentId);
+            if (parent && !parent.archived) {
+                childIds.add(h.id);
+            }
         }
     });
     return childIds;
