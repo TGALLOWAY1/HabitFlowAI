@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { format, parseISO, isValid, subDays, eachDayOfInterval, isAfter } from 'date-fns';
+import { format, parseISO, isValid, subDays, startOfDay } from 'date-fns';
 
 interface GoalCumulativeChartProps {
     data: Array<{
@@ -13,7 +13,7 @@ interface GoalCumulativeChartProps {
 }
 
 interface ChartPoint {
-    date: string;
+    ts: number;
     value: number;
     isEntry?: boolean;
 }
@@ -24,41 +24,41 @@ export const GoalCumulativeChart: React.FC<GoalCumulativeChartProps> = ({
     unit = ""
 }) => {
     const chartData = useMemo<ChartPoint[]>(() => {
-        const sorted = [...data].sort((a, b) => a.date.localeCompare(b.date));
+        // Only real entries become data points; the time-scaled x-axis keeps
+        // spacing linear in time regardless of gaps, so the point count stays
+        // bounded by the entry count no matter how far back the series starts.
+        const sorted = [...data]
+            .filter(d => isValid(parseISO(d.date)))
+            .sort((a, b) => a.date.localeCompare(b.date));
         if (sorted.length === 0) return [];
 
-        const firstEntry = parseISO(sorted[0].date);
-        const lastEntry = parseISO(sorted[sorted.length - 1].date);
-        if (!isValid(firstEntry) || !isValid(lastEntry)) {
-            return sorted.map(d => ({ date: d.date, value: d.value, isEntry: true }));
+        const entries: ChartPoint[] = sorted.map(d => ({
+            ts: parseISO(d.date).getTime(),
+            value: d.value,
+            isEntry: true
+        }));
+
+        // Zero point 2 days before the first entry so the line visibly rises
+        // from a baseline instead of starting mid-chart.
+        const points: ChartPoint[] = [
+            { ts: subDays(entries[0].ts, 2).getTime(), value: 0 },
+            ...entries
+        ];
+
+        // Extend the line flat through today (unless the last entry is
+        // future-dated) so the axis doesn't stop at the last logged day.
+        const todayTs = startOfDay(new Date()).getTime();
+        const last = entries[entries.length - 1];
+        if (todayTs > last.ts) {
+            points.push({ ts: todayTs, value: last.value });
         }
 
-        // One point per calendar day so the x-axis is linear in time — with only
-        // entry dates plotted, a 1-day gap and a 30-day gap would render the
-        // same width. Start 2 days before the first entry for a small visual
-        // buffer, and extend through today (or the last entry if future-dated)
-        // so the chart doesn't stop at the last logged day.
-        const today = new Date();
-        const start = subDays(firstEntry, 2);
-        const end = isAfter(lastEntry, today) ? lastEntry : today;
-
-        const dataMap = new Map(sorted.map(d => [d.date, d.value]));
-        let runningTotal = 0;
-        return eachDayOfInterval({ start, end }).map(dateObj => {
-            const dateStr = format(dateObj, 'yyyy-MM-dd');
-            const isEntry = dataMap.has(dateStr);
-            if (isEntry) runningTotal = dataMap.get(dateStr)!;
-            return { date: dateStr, value: runningTotal, isEntry };
-        });
+        return points;
     }, [data]);
 
-    const formatXAxis = (tickItem: string) => {
-        try {
-            const date = parseISO(tickItem);
-            return isValid(date) ? format(date, 'MMM d') : tickItem;
-        } catch {
-            return tickItem;
-        }
+    const formatXAxis = (ts: number) => {
+        const date = new Date(ts);
+        return isValid(date) ? format(date, 'MMM d') : '';
     };
 
     if (data.length === 0) {
@@ -84,7 +84,10 @@ export const GoalCumulativeChart: React.FC<GoalCumulativeChartProps> = ({
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" vertical={false} />
                     <XAxis
-                        dataKey="date"
+                        dataKey="ts"
+                        type="number"
+                        scale="time"
+                        domain={['dataMin', 'dataMax']}
                         tickFormatter={formatXAxis}
                         stroke="#737373"
                         fontSize={12}
@@ -109,7 +112,7 @@ export const GoalCumulativeChart: React.FC<GoalCumulativeChartProps> = ({
                         }}
                         itemStyle={{ color: color }}
                         formatter={(value: number) => [`${value} ${unit}`, 'Total Progress']}
-                        labelFormatter={(label: string) => formatXAxis(label)}
+                        labelFormatter={(label: number) => formatXAxis(label)}
                     />
                     <Area
                         type="monotone"
@@ -126,7 +129,7 @@ export const GoalCumulativeChart: React.FC<GoalCumulativeChartProps> = ({
                             }
                             return (
                                 <circle
-                                    key={`dot-${index ?? payload.date}`}
+                                    key={`dot-${index ?? payload.ts}`}
                                     cx={cx}
                                     cy={cy}
                                     r={4}
