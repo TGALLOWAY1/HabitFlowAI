@@ -4,7 +4,7 @@ import type { GoalBreakdownItem } from '../lib/analyticsClient';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
-export type ScheduleEventType = 'milestone' | 'target' | 'forecast' | 'completed';
+export type ScheduleEventType = 'milestone' | 'target' | 'forecast' | 'completed' | 'starts';
 
 export type GoalScheduleStatus = 'on-track' | 'at-risk' | 'behind' | 'insufficient-data';
 
@@ -118,7 +118,23 @@ export function deriveScheduleEvents(
       });
     }
 
-    // 3. Forecasted completion date
+    // 3. Planned start date (scheduled goals; server promotion keeps these
+    // today-or-future by the time the client sees them)
+    if (goal.status === 'scheduled' && goal.startDate) {
+      events.push({
+        goalId: goal.id,
+        goalTitle: goal.title,
+        eventType: 'starts',
+        date: goal.startDate,
+        label: 'Goal starts',
+        categoryId: goal.categoryId,
+        status,
+        progressPercent,
+        isDerived: true,
+      });
+    }
+
+    // 4. Forecasted completion date
     if (
       !goal.completedAt &&
       goal.type === 'cumulative' &&
@@ -140,7 +156,7 @@ export function deriveScheduleEvents(
       });
     }
 
-    // 4. Milestones (only for cumulative goals with pace data)
+    // 5. Milestones (only for cumulative goals with pace data)
     if (
       goal.type === 'cumulative' &&
       goal.targetValue &&
@@ -220,9 +236,10 @@ export function filterEventsByGoal(
 
 const EVENT_TYPE_ORDER: Record<ScheduleEventType, number> = {
   completed: 0,
-  target: 1,
-  forecast: 2,
-  milestone: 3,
+  starts: 1,
+  target: 2,
+  forecast: 3,
+  milestone: 4,
 };
 
 export function sortEvents(events: ScheduleEvent[]): ScheduleEvent[] {
@@ -242,6 +259,7 @@ export function getEventTypeColor(eventType: ScheduleEventType): string {
     case 'completed': return 'bg-emerald-500';
     case 'forecast': return 'bg-amber-500';
     case 'milestone': return 'bg-purple-500';
+    case 'starts': return 'bg-cyan-500';
   }
 }
 
@@ -251,6 +269,7 @@ export function getEventTypeLabel(eventType: ScheduleEventType): string {
     case 'completed': return 'Completed';
     case 'forecast': return 'Forecast';
     case 'milestone': return 'Milestone';
+    case 'starts': return 'Starts';
   }
 }
 
