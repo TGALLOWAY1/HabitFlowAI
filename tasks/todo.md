@@ -1,19 +1,30 @@
-# Goal Lifecycle Status (Active / Scheduled / Backlog)
+# Bottom Nav Drifts Up While Scrolling (iOS)
 
-Branch: `claude/goal-status-differentiation-6vzdy3`
+The fixed header and bottom tab bar float up with the content mid-scroll on iOS
+(reported from an iPhone), leaving the tab bar stranded in the middle of the screen
+until scrolling stops.
 
-- [x] 1. Model + create/update validation + lazy auto-activation (persistenceTypes, goals.ts, goalTracks.ts) (commit 1)
-- [x] 2. Tests (goals.status.test.ts, added to test:beta) + persistenceClient timeZone (commit 2)
-- [x] 3. `buildGoalStacks` three-way grouping + tests (commit 3)
-- [x] 4. GoalsPage sub-sections + GoalGridCard status badges (commit 4)
-- [x] 5. Create/Edit modal status controls (commit 5)
-- [x] 6. Schedule calendar "Starts" event + tests (commit 6)
-- [x] 7. Demo seed: scheduled + backlog examples (commit 7)
-- [x] 8. Docs (FEATURES, API, DATA_MODEL, UI architecture) + InfoModal (commit 8)
-- [x] Verify: npm run build ✓, test:run (601 passed; mongo suites can't run in sandbox — network-blocked binary download; CI covers them via test:beta), lint:beta ✓ (0 errors); push; open PR
+- [x] 1. Diagnose: fixed positioning is correct in Chromium at iPhone size (nav pinned, no
+      transform/filter/contain ancestor, no horizontal document overflow) — the drift is iOS
+      deferring `position: fixed` repaints until a document scroll ends. In the report both bars
+      are displaced by the same offset (the scroll delta), which is the signature of that behavior.
+- [x] 2. Fix: turn the signed-in chrome into a real app shell — `.app-shell` (100dvh,
+      `overflow: hidden`) + `main.app-scroll` as the only scroll container, so the
+      document never scrolls and the fixed bars have nothing to drift against (commit 1)
+- [x] 3. Carried in the same commit (inseparable from the shell change): page-scroll callers must
+      scroll `main.app-scroll` (`TourPage.goTo`); bottom padding now clears the tab bar *plus*
+      `safe-area-inset-bottom` (previously `pb-20` = 80px vs. a 90px tab bar on notched iPhones —
+      the last habit card sat ~10px under the bar)
+- [x] 4. Docs: app shell & scrolling section in HABITFLOW_UI_ARCHITECTURE.md (commit 2)
+- [x] 5. Verify: `npm run build`, `npm run test:run`, `npm run lint`, plus a Playwright check at
+      390×500 and 1280×800 asserting the document is unscrollable, the tab bar stays pinned to
+      the viewport bottom through container/wheel scrolling, PageDown still scrolls, and the last
+      card clears the bar
 
 Design decisions:
-- `Goal.status?: 'active' | 'scheduled' | 'backlog'` — absent/null = active (no migration). `startDate?: string | null` dayKey, only when scheduled; cleared server-side when status leaves scheduled.
-- Auto-activation: server-side lazy promotion in GET /api/goals + /api/goals-with-progress (request timezone dayKey), persisted.
-- Tracked goals: status/startDate rejected (trackStatus governs); addGoalToTrack clears both.
-- Auto-completion untouched — entries are truth; backlog goals can still complete.
+- Header and tab bar keep `position: fixed`. With no document scroll they are stable, and
+  keeping them fixed leaves the header's translucent blur over the content intact and avoids
+  restructuring where `BottomTabBar` is mounted (still rendered from `HabitTrackerContent`).
+- Height uses `height: 100vh` then `height: 100dvh` in `.app-shell` so browsers without `dvh`
+  fall back to `vh` rather than to `auto`.
+- Auth screens render outside `Layout` and keep ordinary document scrolling; untouched.

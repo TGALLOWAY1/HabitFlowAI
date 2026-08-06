@@ -106,6 +106,32 @@ HabitFlow App
 └── Debug Entries (dev only)
 ```
 
+### App Shell & Scrolling
+
+The signed-in chrome (`src/components/Layout.tsx`) is a fixed-size **app shell**, not a
+scrolling document:
+
+- The shell root (`.app-shell`) is exactly one viewport tall (`100dvh`) with
+  `overflow: hidden`, so **the document itself never scrolls**.
+- The global header and the bottom tab bar are `position: fixed` over that shell.
+- `<main class="app-scroll">` is the app's **only** scroll container. Every page rendered
+  inside the shell scrolls there; its padding clears the header, the tab bar, and the
+  device safe areas.
+
+Why it matters: iOS (Safari and installed PWAs) repaints `position: fixed` elements only
+at the end of a document scroll. With a body-scrolling layout the header and tab bar drift
+upward with the content mid-gesture and snap back when scrolling stops. Removing the
+document scroll removes that failure mode entirely.
+
+Consequences for new UI:
+
+- Anything that scrolls the page must scroll `main.app-scroll`, not `window`
+  (`window.scrollTo` is a no-op inside the shell). See `TourPage`'s `goTo` for the pattern.
+- Auth screens (login, invite, forgot/reset password) render *outside* the shell and keep
+  ordinary document scrolling.
+- `position: sticky` inside a page sticks to the `main.app-scroll` scrollport, which is
+  the viewport — unchanged from before.
+
 ---
 
 ## 3. Screen Inventory
