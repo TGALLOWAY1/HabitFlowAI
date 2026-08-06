@@ -134,8 +134,11 @@ export interface Habit {
      * Why the habit is archived. Distinguishes user-driven archive (which
      * persists until the user restores it) from system-driven archive caused
      * by category deletion (which is auto-recovered on the next session).
+     * 'system' marks a persistent system-driven archive (e.g. the "(history)"
+     * child created by habit→bundle conversion) that the GET /api/habits
+     * archived-without-reason recovery must NOT unarchive.
      */
-    archivedReason?: 'user' | 'category_deleted';
+    archivedReason?: 'user' | 'category_deleted' | 'system';
 
     /** Historical completion/schedule rules, recorded only when those rules change. */
     trackingRevisions?: HabitTrackingRevision[];

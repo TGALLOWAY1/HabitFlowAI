@@ -146,6 +146,9 @@ describe('convertToBundleRoute', () => {
     expect(result.legacyChild).not.toBeNull();
     expect(result.legacyChild.name).toBe('Dog Activity (history)');
     expect(result.legacyChild.archived).toBe(true);
+    // 'system' keeps the history child out of the GET /api/habits
+    // archived-without-reason recovery (which would unarchive it).
+    expect(result.legacyChild.archivedReason).toBe('system');
 
     // Two new children created
     expect(result.children).toHaveLength(2);
