@@ -660,7 +660,12 @@ const HabitTrackerContent: React.FC = () => {
               handleNavigate('goals', { goalId });
             }}
             onSelectCategory={(categoryId) => {
-              setActiveCategoryId(categoryId);
+              // The "No Category" bucket has no tab of its own — it maps to
+              // the Uncategorized chip. Without this, the tracker's default-
+              // category effect silently resets the selection.
+              setActiveCategoryId(
+                noCategoryCategoryIds.has(categoryId) ? UNCATEGORIZED_ID : categoryId
+              );
               handleNavigate('tracker');
             }}
             onNavigateWellbeingHistory={() => handleNavigate('wellbeing-history')}
