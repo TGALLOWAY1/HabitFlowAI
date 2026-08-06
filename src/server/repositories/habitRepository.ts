@@ -366,6 +366,30 @@ export async function deleteHabit(
   return result.modifiedCount > 0;
 }
 
+/**
+ * Release every child of a bundle parent by clearing its `bundleParentId`,
+ * turning the children into root habits. Called when a bundle parent is
+ * deleted: a dangling `bundleParentId` hides the child from every habit view
+ * while per-category counts still include it.
+ */
+export async function releaseBundleChildren(
+  parentId: string,
+  householdId: string,
+  userId: string
+): Promise<number> {
+  const db = await getDb();
+  const collection = db.collection(COLLECTION_NAME);
+
+  const result = await collection.updateMany(
+    scopeFilter(householdId, userId, {
+      bundleParentId: parentId,
+      deletedAt: { $exists: false },
+    }),
+    { $set: { bundleParentId: null } }
+  );
+  return result.modifiedCount;
+}
+
 export async function reorderHabits(
   householdId: string,
   userId: string,

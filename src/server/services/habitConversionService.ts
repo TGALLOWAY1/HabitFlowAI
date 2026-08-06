@@ -91,8 +91,11 @@ export async function convertHabitToBundle(
         );
 
         await reassignEntries('__pending__', legacyChild.id, householdId, userId, session);
-        await updateHabit(legacyChild.id, householdId, userId, { archived: true }, session);
-        legacyChild = { ...legacyChild, archived: true };
+        // archivedReason 'system' keeps the history child out of the GET
+        // /api/habits archived-without-reason recovery, which would
+        // otherwise unarchive it and surface it as a visible habit.
+        await updateHabit(legacyChild.id, householdId, userId, { archived: true, archivedReason: 'system' }, session);
+        legacyChild = { ...legacyChild, archived: true, archivedReason: 'system' };
 
         const dayBefore = getDayBefore(todayDayKey);
         const legacyMembership = await createMembership(
@@ -213,8 +216,10 @@ async function convertHabitToBundleNoTx(
     );
 
     await reassignEntries('__pending__', legacyChild.id, householdId, userId);
-    await updateHabit(legacyChild.id, householdId, userId, { archived: true });
-    legacyChild = { ...legacyChild, archived: true };
+    // See transactional path: 'system' shields the history child from the
+    // archived-without-reason recovery in GET /api/habits.
+    await updateHabit(legacyChild.id, householdId, userId, { archived: true, archivedReason: 'system' });
+    legacyChild = { ...legacyChild, archived: true, archivedReason: 'system' };
 
     const dayBefore = getDayBefore(todayDayKey);
     const legacyMembership = await createMembership(

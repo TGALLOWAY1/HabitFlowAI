@@ -1,15 +1,26 @@
 import React from 'react';
 import { createPortal } from 'react-dom';
-import { X, AlertTriangle, Loader2, Target, Archive, Trash2 } from 'lucide-react';
+import { X, AlertTriangle, Loader2, Target, Archive, Trash2, Layers } from 'lucide-react';
+
+export interface RemoveHabitOptions {
+    /** Also archive the bundle's sub-habits (bundles only). */
+    archiveChildren: boolean;
+}
 
 interface RemoveHabitModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onArchive: () => Promise<void>;
-    onDelete: () => Promise<void>;
+    onArchive: (options: RemoveHabitOptions) => Promise<void>;
+    onDelete: (options: RemoveHabitOptions) => Promise<void>;
     habitName: string;
     /** When non-empty, the habit is linked to one or more goals — modal explains the goal impact. */
     linkedGoalTitles: string[];
+    /**
+     * When non-empty, the habit is a bundle with these sub-habits — modal
+     * explains that sub-habits are kept (they surface as standalone habits)
+     * and offers to archive them along with the bundle.
+     */
+    subHabitNames?: string[];
 }
 
 /**
@@ -27,6 +38,12 @@ interface RemoveHabitModalProps {
  * For habits linked to one or more goals, the modal also surfaces the
  * affected goal titles so the user knows what gets disconnected.
  *
+ * For bundle parents, the modal lists the bundle's sub-habits and explains
+ * they are kept either way: removing a bundle never removes its sub-habits —
+ * they surface as standalone habits (archiving keeps them linked so
+ * unarchiving restores the bundle; deleting releases them). A checkbox lets
+ * the user archive the sub-habits together with the bundle instead.
+ *
  * Rendered through a portal into `document.body`. Call sites mount this
  * inside habit cards (e.g. `HabitGridCell`) whose own styling — an expanded
  * `scale-[1.02]` transform plus `overflow-hidden` — would otherwise become
@@ -40,9 +57,17 @@ export const DeleteHabitConfirmModal: React.FC<RemoveHabitModalProps> = ({
     onDelete,
     habitName,
     linkedGoalTitles,
+    subHabitNames = [],
 }) => {
     const [busy, setBusy] = React.useState<'archive' | 'delete' | null>(null);
     const [error, setError] = React.useState<string | null>(null);
+    const [archiveChildren, setArchiveChildren] = React.useState(false);
+
+    // Reset the checkbox whenever the modal closes so a later open (possibly
+    // for a different habit) starts from the safe default.
+    React.useEffect(() => {
+        if (!isOpen) setArchiveChildren(false);
+    }, [isOpen]);
 
     if (!isOpen) return null;
 
@@ -50,7 +75,7 @@ export const DeleteHabitConfirmModal: React.FC<RemoveHabitModalProps> = ({
         setBusy('archive');
         setError(null);
         try {
-            await onArchive();
+            await onArchive({ archiveChildren });
         } catch (err) {
             const errorMessage = err instanceof Error ? err.message : 'Failed to archive habit';
             setError(errorMessage);
@@ -64,7 +89,7 @@ export const DeleteHabitConfirmModal: React.FC<RemoveHabitModalProps> = ({
         setBusy('delete');
         setError(null);
         try {
-            await onDelete();
+            await onDelete({ archiveChildren });
         } catch (err) {
             const errorMessage = err instanceof Error ? err.message : 'Failed to delete habit';
             setError(errorMessage);
@@ -81,6 +106,7 @@ export const DeleteHabitConfirmModal: React.FC<RemoveHabitModalProps> = ({
     };
 
     const hasLinkedGoals = linkedGoalTitles.length > 0;
+    const hasSubHabits = subHabitNames.length > 0;
 
     return createPortal(
         <div className="modal-overlay fixed inset-0 z-[110] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
@@ -130,6 +156,38 @@ export const DeleteHabitConfirmModal: React.FC<RemoveHabitModalProps> = ({
                                     </li>
                                 ))}
                             </ul>
+                        </div>
+                    )}
+
+                    {/* Bundle sub-habits notice (only for bundle parents with children) */}
+                    {hasSubHabits && (
+                        <div className="p-3 bg-neutral-800/50 rounded-lg">
+                            <div className="flex items-start gap-2 mb-2">
+                                <Layers size={14} className="text-emerald-400 flex-shrink-0 mt-0.5" />
+                                <div className="text-xs text-neutral-300">
+                                    This bundle has {subHabitNames.length === 1 ? '1 sub-habit' : `${subHabitNames.length} sub-habits`}. Sub-habits are never removed with their bundle — unless archived below, they will appear as standalone habits.
+                                </div>
+                            </div>
+                            <ul className="space-y-1.5 mb-3 pl-1">
+                                {subHabitNames.map((name, idx) => (
+                                    <li key={idx} className="flex items-center gap-2 text-white text-sm">
+                                        <span className="w-1 h-1 rounded-full bg-emerald-400 flex-shrink-0" />
+                                        <span className="truncate">{name}</span>
+                                    </li>
+                                ))}
+                            </ul>
+                            <label className="flex items-center gap-2 cursor-pointer select-none">
+                                <input
+                                    type="checkbox"
+                                    checked={archiveChildren}
+                                    onChange={(e) => setArchiveChildren(e.target.checked)}
+                                    disabled={!!busy}
+                                    className="w-4 h-4 rounded border-white/20 bg-neutral-900 text-emerald-500 focus:ring-emerald-500/50"
+                                />
+                                <span className="text-xs text-neutral-300">
+                                    Also archive {subHabitNames.length === 1 ? 'the sub-habit' : `all ${subHabitNames.length} sub-habits`}
+                                </span>
+                            </label>
                         </div>
                     )}
 

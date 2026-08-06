@@ -17,6 +17,7 @@ import {
   unarchiveHabit,
   reorderHabits,
   recoverCategoryDeletedHabits,
+  releaseBundleChildren,
 } from '../repositories/habitRepository';
 import { createCategory, getCategoriesByUser, getCategoryById } from '../repositories/categoryRepository';
 import { addHabitToGoalLinkedIds, removeHabitFromGoalLinkedIds } from '../repositories/goalRepository';
@@ -580,6 +581,14 @@ export async function deleteHabitRoute(req: Request, res: Response): Promise<voi
         },
       });
       return;
+    }
+
+    // Release any bundle children of the deleted habit so they become root
+    // habits instead of pointing at a soft-deleted parent (which would hide
+    // them from every habit view while category counts still include them).
+    const released = await releaseBundleChildren(id, householdId, userId);
+    if (released > 0) {
+      console.log(`[Habits] Released ${released} bundle children of deleted habit ${id} for user ${userId}`);
     }
 
     invalidateUserCaches(userId);

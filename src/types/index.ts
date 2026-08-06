@@ -58,8 +58,8 @@ export interface Habit {
     archived: boolean;
     /** ISO 8601 timestamp of when the habit was archived. Set on user archive, cleared on restore. */
     archivedAt?: string;
-    /** Why the habit is archived. 'user' = user-driven (persists); 'category_deleted' = system (auto-recovered). */
-    archivedReason?: 'user' | 'category_deleted';
+    /** Why the habit is archived. 'user' = user-driven (persists); 'category_deleted' = system (auto-recovered); 'system' = system-driven, persists (e.g. conversion history child). */
+    archivedReason?: 'user' | 'category_deleted' | 'system';
     /** Historical completion/schedule rules, recorded only when those rules change. */
     trackingRevisions?: HabitTrackingRevision[];
     /** Closed/open local-day ranges excluded from restored-habit opportunities. */

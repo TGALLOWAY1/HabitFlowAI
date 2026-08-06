@@ -20,7 +20,7 @@ import { resolveHabitTrackingForDay } from '../domain/habits/trackingHistory';
 
 
 
-import { computeBundleStatus, getBundleStats } from '../utils/habitUtils';
+import { computeBundleStatus, getBundleStats, getBundleChildHabits } from '../utils/habitUtils';
 import {
     DndContext,
     closestCenter,
@@ -742,23 +742,26 @@ export const TrackerGrid = ({
 
     const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
     // Pending confirmation for removing a habit that is linked to one or more
-    // goals. Shown via the Remove Habit modal after the user clicks trash twice —
-    // the modal surfaces affected goals and offers Archive (default) or Delete
-    // permanently. Historical goal progress is preserved either way.
+    // goals, or is a bundle with sub-habits. Shown via the Remove Habit modal
+    // after the user clicks trash twice — the modal surfaces affected goals
+    // and sub-habits and offers Archive (default) or Delete permanently.
+    // Historical goal progress is preserved either way.
     const [pendingDeleteHabit, setPendingDeleteHabit] = useState<{
         habit: Habit;
         linkedGoalTitles: string[];
+        childHabits: Habit[];
     } | null>(null);
 
     /**
      * Wrapper invoked from the trash icon. Archives by default — the safer
      * action that preserves the habit and entries. For habits linked to a
-     * goal, opens a modal that lets the user choose Archive vs Delete
-     * permanently and surfaces affected goals.
+     * goal, or bundles with sub-habits, opens a modal that lets the user
+     * choose Archive vs Delete permanently and surfaces what is affected.
      *
-     * - Unlinked habit → archive immediately (the "click-twice" flow in
-     *   HabitActionButtons still protects against accidental clicks).
-     * - Linked habit → open Remove Habit modal listing affected goals.
+     * - Unlinked, childless habit → archive immediately (the "click-twice"
+     *   flow in HabitActionButtons still protects against accidental clicks).
+     * - Linked habit or bundle parent → open Remove Habit modal listing
+     *   affected goals and sub-habits.
      *   Returns a resolved Promise so the child's click-twice state resets.
      */
     const handleDeleteHabitRequest = useCallback(async (id: string): Promise<void> => {
@@ -770,15 +773,19 @@ export const TrackerGrid = ({
         const linkedGoals = (goalsWithProgress || []).filter(gwp =>
             gwp.goal.linkedHabitIds?.includes(id)
         );
-        if (linkedGoals.length === 0) {
+        // Children may live in another category, so resolve against the full
+        // habit set when available.
+        const childHabits = getBundleChildHabits(habit, allHabits ?? habits);
+        if (linkedGoals.length === 0 && childHabits.length === 0) {
             await archiveHabit(id);
             return;
         }
         setPendingDeleteHabit({
             habit,
             linkedGoalTitles: linkedGoals.map(gwp => gwp.goal.title),
+            childHabits,
         });
-    }, [habits, goalsWithProgress, archiveHabit]);
+    }, [habits, allHabits, goalsWithProgress, archiveHabit]);
 
     const [historyModalHabitId, setHistoryModalHabitId] = useState<string | null>(null);
     const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
@@ -1385,24 +1392,39 @@ export const TrackerGrid = ({
                 habitName={bundlePickerHabit?.name ?? ''}
             />
 
-            {/* Remove Habit modal (shown only for habits linked to goals).
-                Offers Archive (default) or Delete permanently — both preserve
-                historical goal progress; only Archive can be restored from UI. */}
+            {/* Remove Habit modal (shown for goal-linked habits and bundle
+                parents). Offers Archive (default) or Delete permanently — both
+                preserve historical goal progress; only Archive can be restored
+                from UI. For bundles, sub-habits are kept either way and can
+                optionally be archived along with the parent. */}
             <DeleteHabitConfirmModal
                 isOpen={!!pendingDeleteHabit}
                 onClose={() => setPendingDeleteHabit(null)}
-                onArchive={async () => {
+                onArchive={async ({ archiveChildren }) => {
                     if (!pendingDeleteHabit) return;
                     await archiveHabit(pendingDeleteHabit.habit.id);
+                    if (archiveChildren) {
+                        for (const child of pendingDeleteHabit.childHabits) {
+                            await archiveHabit(child.id);
+                        }
+                    }
                     setPendingDeleteHabit(null);
                 }}
-                onDelete={async () => {
+                onDelete={async ({ archiveChildren }) => {
                     if (!pendingDeleteHabit) return;
+                    if (archiveChildren) {
+                        // Archive children first: if deletion of the parent
+                        // fails midway, an archived child is fully restorable.
+                        for (const child of pendingDeleteHabit.childHabits) {
+                            await archiveHabit(child.id);
+                        }
+                    }
                     await deleteHabit(pendingDeleteHabit.habit.id);
                     setPendingDeleteHabit(null);
                 }}
                 habitName={pendingDeleteHabit?.habit.name ?? ''}
                 linkedGoalTitles={pendingDeleteHabit?.linkedGoalTitles ?? []}
+                subHabitNames={pendingDeleteHabit?.childHabits.map(c => c.name) ?? []}
             />
         </div>
     );

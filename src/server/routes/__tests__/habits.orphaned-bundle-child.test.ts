@@ -156,4 +156,42 @@ describe('GET /api/habits orphaned bundle child recovery', () => {
     const archivedParentChild = res.body.habits.find((h: any) => h.id === 'archived-parent-child');
     expect(archivedParentChild.bundleParentId).toBe('archived-parent');
   });
+
+  it('does not unarchive habits archived with reason system (conversion history children)', async () => {
+    const userId = 'test-system-archived-user';
+    const testDb = await getTestDb();
+    await testDb.collection('categories').insertOne({
+      id: 'cat-4',
+      name: 'Physical Health',
+      color: 'bg-emerald-600',
+      householdId: 'default-household',
+      userId,
+    });
+    await testDb.collection('habits').insertMany([
+      {
+        id: 'converted-bundle',
+        name: 'Guitar',
+        categoryId: 'cat-4',
+        type: 'bundle',
+        subHabitIds: ['guitar-history'],
+        ...baseHabit(userId),
+      },
+      {
+        id: 'guitar-history',
+        name: 'Guitar (history)',
+        categoryId: 'cat-4',
+        bundleParentId: 'converted-bundle',
+        ...baseHabit(userId),
+        archived: true,
+        archivedReason: 'system',
+      },
+    ]);
+
+    const res = await request(makeApp(userId)).get('/api/habits');
+    expect(res.status).toBe(200);
+
+    const historyChild = res.body.habits.find((h: any) => h.id === 'guitar-history');
+    expect(historyChild.archived).toBe(true);
+    expect(historyChild.archivedReason).toBe('system');
+  });
 });
