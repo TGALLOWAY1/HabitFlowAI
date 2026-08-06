@@ -305,7 +305,12 @@ export const TourPage: React.FC<TourPageProps> = (props) => {
 
   const goTo = (index: number) => {
     setStepIndex(Math.max(0, Math.min(STEPS.length - 1, index)));
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    // Signed-in, the tour renders inside the app shell, whose <main> is the
+    // scroll container; on the auth screens it renders standalone and the
+    // document scrolls.
+    const shellScroller = document.querySelector<HTMLElement>('main.app-scroll');
+    if (shellScroller) shellScroller.scrollTo({ top: 0, behavior: 'smooth' });
+    else window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const roadmapAction = () => {

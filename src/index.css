@@ -25,6 +25,24 @@ body {
 }
 
 @layer utilities {
+  /* App shell: the document itself never scrolls — the shell is exactly one
+     viewport tall and all page scrolling happens inside .app-scroll.
+     iOS (Safari and installed PWAs) repaints `position: fixed` elements only
+     at the end of a document scroll, so a body-scrolling layout lets the fixed
+     header and bottom tab bar drift upward with the content mid-gesture. With
+     no document scroll there is nothing for them to drift against. */
+  .app-shell {
+    height: 100vh;
+    height: 100dvh;
+    overflow: hidden;
+  }
+  .app-scroll {
+    height: 100%;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-y: contain;
+  }
+
   /* Modal scroll on iPhone: contain scroll and smooth momentum */
   .modal-scroll {
     overflow-y: auto;

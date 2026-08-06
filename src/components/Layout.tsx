@@ -120,7 +120,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
     }, [userMenuOpen]);
 
     return (
-        <div className="min-h-screen bg-neutral-900 text-white font-sans selection:bg-emerald-500/30">
+        <div className="app-shell bg-neutral-900 text-white font-sans selection:bg-emerald-500/30">
             {/* Header */}
             <header className="fixed top-0 left-0 right-0 pt-[env(safe-area-inset-top,0px)] h-[calc(4rem+env(safe-area-inset-top,0px))] bg-neutral-900/80 backdrop-blur-md border-b border-white/5 flex items-center justify-between px-6 z-50">
                 <div className="flex items-center gap-3">
@@ -234,24 +234,27 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
                 </div>
             </header>
 
-            {/* Main Content - safe-area for notched devices */}
-            <main className="pt-[calc(4rem+env(safe-area-inset-top,0px))] px-4 pb-20 max-w-7xl mx-auto min-h-screen">
-                {/* Demo banner — persistent trust cue while exploring read-only.
-                    Hidden in the tour's embedded preview, which carries its own framing. */}
-                {isDemo && !isEmbed && (
-                    <div className="mb-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 px-4 py-2 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-center">
-                        <p className="text-xs sm:text-sm text-emerald-200">
-                            You’re exploring the read-only demo — every screen is the real, working product on seeded data.
-                        </p>
-                        <button
-                            onClick={exitDemoMode}
-                            className="text-xs sm:text-sm font-semibold text-emerald-300 underline underline-offset-2 hover:text-emerald-100 transition-colors"
-                        >
-                            Exit demo
-                        </button>
-                    </div>
-                )}
-                {children}
+            {/* Main Content — the app's only scroll container. Padding clears the
+                fixed header and bottom tab bar, plus safe areas on notched devices. */}
+            <main className="app-scroll">
+                <div className="pt-[calc(4rem+env(safe-area-inset-top,0px))] px-4 pb-[calc(5rem+env(safe-area-inset-bottom,0px))] max-w-7xl mx-auto">
+                    {/* Demo banner — persistent trust cue while exploring read-only.
+                        Hidden in the tour's embedded preview, which carries its own framing. */}
+                    {isDemo && !isEmbed && (
+                        <div className="mb-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 px-4 py-2 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-center">
+                            <p className="text-xs sm:text-sm text-emerald-200">
+                                You’re exploring the read-only demo — every screen is the real, working product on seeded data.
+                            </p>
+                            <button
+                                onClick={exitDemoMode}
+                                className="text-xs sm:text-sm font-semibold text-emerald-300 underline underline-offset-2 hover:text-emerald-100 transition-colors"
+                            >
+                                Exit demo
+                            </button>
+                        </div>
+                    )}
+                    {children}
+                </div>
             </main>
             <SettingsModal
                 isOpen={settingsOpen}
