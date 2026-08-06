@@ -262,6 +262,23 @@ export function getBundleChildIds(habits: Habit[]): Set<string> {
 }
 
 /**
+ * Resolves the real (non-virtual, non-archived, non-deleted) child habits of
+ * a bundle. Uses both the parent's subHabitIds and each child's
+ * bundleParentId for robustness, mirroring getBundleChildIds. Used by the
+ * Remove Habit flow to surface which sub-habits are affected when a bundle
+ * parent is archived or deleted.
+ */
+export function getBundleChildHabits(parent: Habit, allHabits: Habit[]): Habit[] {
+    const subIds = new Set(parent.subHabitIds ?? []);
+    return allHabits.filter(h =>
+        h.id !== parent.id &&
+        !h.archived &&
+        !h.isVirtual &&
+        (h.bundleParentId === parent.id || subIds.has(h.id))
+    );
+}
+
+/**
  * Filters habits to only root-level (non-archived, non-child) habits.
  * Each standalone habit counts as 1, each bundle parent counts as 1,
  * and bundle children are excluded.

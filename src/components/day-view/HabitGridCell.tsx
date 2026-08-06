@@ -6,6 +6,7 @@ import { useHabitStore } from '../../store/HabitContext';
 import { useGoalsWithProgress } from '../../lib/useGoalsWithProgress';
 import { DeleteHabitConfirmModal } from '../DeleteHabitConfirmModal';
 import { resolveHabitTrackingForDay } from '../../domain/habits/trackingHistory';
+import { getBundleChildHabits } from '../../utils/habitUtils';
 
 interface DayViewHabitStatus {
     habit: Habit;
@@ -77,7 +78,7 @@ export const HabitGridCell = ({
     childStatusMap,
     dayKey,
 }: HabitGridCellProps) => {
-    const { archiveHabit, deleteHabit } = useHabitStore();
+    const { archiveHabit, deleteHabit, habits: allHabits = [] } = useHabitStore();
     const { data: goalsWithProgress } = useGoalsWithProgress();
     const [showRemoveModal, setShowRemoveModal] = useState(false);
 
@@ -97,6 +98,13 @@ export const HabitGridCell = ({
         // goal-warning section automatically.
         setShowRemoveModal(true);
     };
+
+    // Real sub-habits affected if this bundle parent is removed. Resolved
+    // against the full habit set (children can live in another category).
+    const removableChildHabits = useMemo(
+        () => getBundleChildHabits(habit, allHabits),
+        [habit, allHabits]
+    );
 
     const isChecklistBundle = habit.type === 'bundle' && habit.bundleType === 'checklist';
     const isChoiceBundle = habit.type === 'bundle' && habit.bundleType === 'choice';
@@ -429,16 +437,29 @@ export const HabitGridCell = ({
             <DeleteHabitConfirmModal
                 isOpen={showRemoveModal}
                 onClose={() => setShowRemoveModal(false)}
-                onArchive={async () => {
+                onArchive={async ({ archiveChildren }) => {
                     await archiveHabit(habit.id);
+                    if (archiveChildren) {
+                        for (const child of removableChildHabits) {
+                            await archiveHabit(child.id);
+                        }
+                    }
                     setShowRemoveModal(false);
                 }}
-                onDelete={async () => {
+                onDelete={async ({ archiveChildren }) => {
+                    if (archiveChildren) {
+                        // Archive children first: if deletion of the parent
+                        // fails midway, an archived child is fully restorable.
+                        for (const child of removableChildHabits) {
+                            await archiveHabit(child.id);
+                        }
+                    }
                     await deleteHabit(habit.id);
                     setShowRemoveModal(false);
                 }}
                 habitName={habit.name}
                 linkedGoalTitles={linkedGoalTitles}
+                subHabitNames={removableChildHabits.map(c => c.name)}
             />
         </div>
     );

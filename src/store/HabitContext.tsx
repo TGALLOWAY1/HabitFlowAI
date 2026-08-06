@@ -623,8 +623,12 @@ export const HabitProvider: React.FC<{
                 }
             }
 
-            // Update state
-            const updatedHabits = habits.filter(h => h.id !== id);
+            // Update state. The server releases any bundle children of the
+            // deleted habit (clears their bundleParentId) — mirror that
+            // locally so released children surface as root habits immediately.
+            const updatedHabits = habits
+                .filter(h => h.id !== id)
+                .map(h => h.bundleParentId === id ? { ...h, bundleParentId: null } : h);
             // Also update parent's subHabitIds in local state
             if (parentId) {
                 const parentIdx = updatedHabits.findIndex(h => h.id === parentId);
