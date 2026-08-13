@@ -41,7 +41,7 @@ interface HabitGridCellProps {
     // Bundle Props
     subHabits?: Habit[];
     subHabitStatuses?: Map<string, boolean>;
-    onSubHabitToggle?: (subHabitId: string) => void | Promise<void>;
+    onSubHabitToggle?: (subHabitId: string, e: React.MouseEvent) => void | Promise<void>;
 
     // For Choice Bundles
     onChoiceSelect?: (optionKey: string, e: React.MouseEvent) => void | Promise<void>;
@@ -276,7 +276,7 @@ export const HabitGridCell = ({
                                 <button
                                     onClick={(e) => {
                                         e.stopPropagation();
-                                        onSubHabitToggle?.(child.id);
+                                        onSubHabitToggle?.(child.id, e);
                                     }}
                                     className={cn(
                                         "flex-shrink-0 w-4 h-4 rounded border flex items-center justify-center transition-all duration-200",

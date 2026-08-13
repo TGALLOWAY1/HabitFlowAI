@@ -110,6 +110,38 @@ describe('PinnedHabitsStrip habit type wiring', () => {
         expect(onToggle).toHaveBeenCalledWith(optionA.id);
     });
 
+    it('opens the quantity popover for a numeric checklist child instead of logging value 1', async () => {
+        const numericChild: Habit = {
+            ...numericHabit,
+            id: 'child-numeric',
+            pinned: undefined,
+            bundleParentId: 'checklist-1',
+        };
+        const checklistBundle: Habit = {
+            ...choiceBundle,
+            id: 'checklist-1',
+            name: 'Evening wind-down',
+            bundleType: 'checklist',
+            subHabitIds: [numericChild.id],
+        };
+        const statusMap = new Map([
+            [checklistBundle.id, statusFor(checklistBundle)],
+            [numericChild.id, statusFor(numericChild, { currentValue: 0, targetValue: 10 })],
+        ]);
+        const { onToggle, onUpdateHabitEntry } = renderStrip([checklistBundle], statusMap, [checklistBundle, numericChild]);
+
+        // The child row's checkbox is the only unnamed button inside the cell list.
+        const childRow = screen.getByText('Read pages').closest('div')!;
+        fireEvent.click(childRow.querySelector('button')!);
+
+        expect(onToggle).not.toHaveBeenCalled();
+        const input = await screen.findByRole('textbox');
+        fireEvent.change(input, { target: { value: '6' } });
+        fireEvent.submit(input.closest('form')!);
+
+        expect(onUpdateHabitEntry).toHaveBeenCalledWith(numericChild.id, DAY_KEY, { value: 6, source: 'manual' });
+    });
+
     it('still toggles a pinned boolean habit directly', () => {
         const booleanHabit: Habit = {
             ...numericHabit,

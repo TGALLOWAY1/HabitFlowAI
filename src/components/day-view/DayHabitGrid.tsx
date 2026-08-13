@@ -55,7 +55,7 @@ export const DayHabitGrid = ({
         position: { top: number; left: number };
     }>({ isOpen: false, habitId: '', initialValue: 0, position: { top: 0, left: 0 } });
 
-    const handleNumericClick = (e: React.MouseEvent, habit: Habit) => {
+    const openNumericPopover = (e: React.MouseEvent, habit: Habit) => {
         const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
         const status = habitStatusMap.get(habit.id);
         const tracking = resolveHabitTrackingForDay(habit, dateStr);
@@ -121,12 +121,22 @@ export const DayHabitGrid = ({
                             habitStatus={status}
                             childStatusMap={habit.type === 'bundle' && habit.bundleType === 'choice' ? habitStatusMap : undefined}
                             dayKey={dateStr}
-                            onSubHabitToggle={async (subHabitId) => {
+                            onSubHabitToggle={async (subHabitId, e) => {
                                 if (pendingMutation) return;
+
+                                // Numeric checklist children get the quantity popover —
+                                // a plain toggle would record value 1 instead of the
+                                // actual amount.
+                                const childHabit = allHabitsLookup.get(subHabitId);
+                                if (childHabit && resolveHabitTrackingForDay(childHabit, dateStr).goal.type === 'number') {
+                                    openNumericPopover(e, childHabit);
+                                    return;
+                                }
+
                                 setPendingMutation(true);
                                 try { await onToggle(subHabitId); } finally { setPendingMutation(false); }
                             }}
-                            onNumericClick={(e) => handleNumericClick(e, habit)}
+                            onNumericClick={(e) => openNumericPopover(e, habit)}
 
                             // Choice bundle: toggle individual children (multi-select)
                             selectedChoices={selectedChoices}
@@ -139,16 +149,8 @@ export const DayHabitGrid = ({
                                 const isNumeric = childTracking?.goal.type === 'number';
 
                                 // Numeric children: open popover for quantity input
-                                if (isNumeric) {
-                                    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-                                    const childStatus = habitStatusMap.get(optionKey);
-                                    setPopover({
-                                        isOpen: true,
-                                        habitId: optionKey,
-                                        initialValue: childStatus?.currentValue ?? 0,
-                                        unit: childTracking?.goal.unit,
-                                        position: { top: rect.bottom + 4, left: rect.left }
-                                    });
+                                if (isNumeric && childHabit) {
+                                    openNumericPopover(e, childHabit);
                                     return;
                                 }
 
