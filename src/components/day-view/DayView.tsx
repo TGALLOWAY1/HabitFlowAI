@@ -338,12 +338,13 @@ export const DayView = ({ onAddHabit, onEditHabit, onViewHistory }: DayViewProps
             {!dayViewLoading && !dayViewError && pinnedHabits.length > 0 && (
                 <PinnedHabitsStrip
                     habits={pinnedHabits}
+                    habitStatusMap={resolvedHabitStatusMap}
+                    dateStr={dateStr}
+                    allHabitsLookup={allHabitsLookup}
                     onUnpin={handlePin}
                     onToggle={handleToggle}
-                    checkStatus={(id) => {
-                        const status = resolvedHabitStatusMap.get(id);
-                        return status?.isComplete ?? false;
-                    }}
+                    onUpdateHabitEntry={handleUpsertHabitEntry}
+                    deleteHabitEntryByKey={handleDeleteHabitEntry}
                 />
             )}
 

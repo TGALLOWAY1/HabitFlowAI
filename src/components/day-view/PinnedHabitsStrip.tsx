@@ -1,19 +1,30 @@
-import React from 'react';
 import type { Habit } from '../../types';
 
-import { HabitGridCell } from './HabitGridCell';
+import { DayHabitGrid } from './DayHabitGrid';
+import type { DayViewHabitStatus } from './habitStatusResolution';
 import { Flame } from 'lucide-react';
 
 interface PinnedHabitsStripProps {
     habits: Habit[];
+    habitStatusMap: Map<string, DayViewHabitStatus>;
+    dateStr: string;
+    allHabitsLookup: Map<string, Habit>;
     onUnpin: (id: string) => void;
-    onToggle: (id: string) => void;
-    checkStatus: (id: string) => boolean;
+    onToggle: (habitId: string) => Promise<void>;
+    onUpdateHabitEntry: (habitId: string, dateKey: string, data: unknown) => Promise<void>;
+    deleteHabitEntryByKey: (habitId: string, dateKey: string) => Promise<void>;
 }
 
-export const PinnedHabitsStrip = ({ habits, onUnpin, onToggle, checkStatus }: PinnedHabitsStripProps) => {
-    const [expandedId, setExpandedId] = React.useState<string | null>(null);
-
+export const PinnedHabitsStrip = ({
+    habits,
+    habitStatusMap,
+    dateStr,
+    allHabitsLookup,
+    onUnpin,
+    onToggle,
+    onUpdateHabitEntry,
+    deleteHabitEntryByKey,
+}: PinnedHabitsStripProps) => {
     if (!habits || habits.length === 0) return null;
 
     return (
@@ -23,20 +34,16 @@ export const PinnedHabitsStrip = ({ habits, onUnpin, onToggle, checkStatus }: Pi
                 Today's Focus
             </h2>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-2">
-                {habits.map(habit => (
-                    <HabitGridCell
-                        key={habit.id}
-                        habit={habit}
-                        isCompleted={checkStatus(habit.id)}
-                        isExpanded={expandedId === habit.id}
-                        onToggle={() => onToggle(habit.id)}
-                        onExpand={() => setExpandedId(prev => prev === habit.id ? null : habit.id)}
-                        onPin={onUnpin}
-                        subHabits={[]} // Bundles in pinned view - simplified for now
-                    />
-                ))}
-            </div>
+            <DayHabitGrid
+                habits={habits}
+                habitStatusMap={habitStatusMap}
+                dateStr={dateStr}
+                allHabitsLookup={allHabitsLookup}
+                onToggle={onToggle}
+                onPin={onUnpin}
+                onUpdateHabitEntry={onUpdateHabitEntry}
+                deleteHabitEntryByKey={deleteHabitEntryByKey}
+            />
         </div>
     );
 };
