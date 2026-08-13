@@ -227,6 +227,7 @@ Every feature area below is **Shipped** unless an item notes otherwise.
 
 - **Tracker Grid** — Default view showing all habits by category with toggle controls
 - **Day View (Today)** — Focused view of today's scheduled habits
+- **Today's Focus (Pinned Habits)** — Habits pinned via the cell's Pin action surface in a strip above the Day View categories. Pinned cells have full tracking controls for every habit type: numeric habits open the quantity popover, checklist bundles list their sub-habits, and choice bundles show selectable options — identical behavior to the category grid below
 - **Schedule View (Weekly)** — Week-at-a-glance showing habit completion across 7 days
 
 ## Settings & Account

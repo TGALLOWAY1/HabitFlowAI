@@ -55,6 +55,7 @@ HabitFlow App
 │   │   ├── Category Tabs (filter)
 │   │   ├── Grid View (default) — habit grid only (Weekly Review moved to the header AI hub)
 │   │   ├── Today View (day-focused)
+│   │   │   └── Today's Focus strip (pinned habits; same cell controls as category grid — numeric popover, bundle children)
 │   │   ├── Weekly View (week-at-a-glance)
 │   │   ├── [+] Add Habit (→ modal)
 │   │   └── Habit Context Menu
