@@ -151,6 +151,40 @@ export async function getHabits(req: Request, res: Response): Promise<void> {
           const orphanMap = new Map(updatedOrphans.filter(Boolean).map(h => [h!.id, h!]));
           habits = habits.map(h => orphanMap.get(h.id) ?? h);
         }
+
+        // Realign bundle children whose category drifted from their live
+        // parent's. Children always share the parent bundle's category
+        // (enforced on writes since the bundle-category-sync change); data
+        // written before that enforcement can still be desynced, which makes
+        // a child surface under the wrong category tab in the All view while
+        // the Day view renders it inside the bundle.
+        const habitById = new Map(habits.map(h => [h.id, h]));
+        const parentBySubId = new Map<string, Habit>();
+        for (const h of habits) {
+          if (h.type === 'bundle' && !h.archived && h.subHabitIds) {
+            for (const subId of h.subHabitIds) parentBySubId.set(subId, h);
+          }
+        }
+        const resolveLiveParent = (h: Habit): Habit | undefined => {
+          const byRef = h.bundleParentId ? habitById.get(h.bundleParentId) : undefined;
+          const parent = (byRef && !byRef.archived ? byRef : undefined) ?? parentBySubId.get(h.id);
+          return parent && parent.type === 'bundle' && !parent.archived ? parent : undefined;
+        };
+        const desyncedChildren = habits
+          .map(h => ({ habit: h, parent: resolveLiveParent(h) }))
+          .filter(({ habit: h, parent }) =>
+            parent && parent.id !== h.id && parent.categoryId && h.categoryId !== parent.categoryId
+          );
+        if (desyncedChildren.length > 0) {
+          console.log(`[Self-heal] Realigning category on ${desyncedChildren.length} bundle children for user ${userId}`);
+          const realigned = await Promise.all(
+            desyncedChildren.map(({ habit: h, parent }) =>
+              updateHabit(h.id, householdId, userId, { categoryId: parent!.categoryId })
+            )
+          );
+          const realignedMap = new Map(realigned.filter(Boolean).map(h => [h!.id, h!]));
+          habits = habits.map(h => realignedMap.get(h.id) ?? h);
+        }
       }
     }
 
