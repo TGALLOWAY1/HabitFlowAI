@@ -279,6 +279,25 @@ export function getBundleChildHabits(parent: Habit, allHabits: Habit[]): Habit[]
 }
 
 /**
+ * Resolves the category a habit should be grouped under in category views.
+ *
+ * Bundle children always group under their parent bundle's category. The Day
+ * view already renders children inside the parent's card regardless of the
+ * child's own categoryId, so category-filtered views (e.g. the All tab) must
+ * resolve the same way — otherwise a child whose stored categoryId drifted
+ * from its parent surfaces as a standalone row under the wrong category.
+ * Only a live (non-archived) parent overrides the child's own category; when
+ * the parent is archived or missing, the child stands alone and its own
+ * categoryId applies.
+ */
+export function getEffectiveCategoryId(habit: Habit, habitById: Map<string, Habit>): string {
+    if (!habit.bundleParentId) return habit.categoryId;
+    const parent = habitById.get(habit.bundleParentId);
+    if (!parent || parent.archived) return habit.categoryId;
+    return parent.categoryId;
+}
+
+/**
  * Filters habits to only root-level (non-archived, non-child) habits.
  * Each standalone habit counts as 1, each bundle parent counts as 1,
  * and bundle children are excluded.
