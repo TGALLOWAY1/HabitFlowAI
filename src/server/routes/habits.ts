@@ -275,7 +275,17 @@ export async function createHabitRoute(req: Request, res: Response): Promise<voi
     }
 
     const { householdId, userId } = getRequestIdentity(req);
-    const category = await getCategoryById(categoryId, householdId, userId);
+
+    // Bundle child category invariant: a habit created directly into a bundle
+    // inherits the bundle's category so it always groups with its parent.
+    if (bundleParentId && typeof bundleParentId === 'string') {
+      const parentHabit = await getHabitById(bundleParentId, householdId, userId);
+      if (parentHabit && !parentHabit.archived && parentHabit.categoryId) {
+        habitData.categoryId = parentHabit.categoryId;
+      }
+    }
+
+    const category = await getCategoryById(habitData.categoryId, householdId, userId);
     if (!category) {
       res.status(400).json({ error: { code: 'INVALID_CATEGORY', message: 'Target category does not exist' } });
       return;
@@ -452,6 +462,21 @@ export async function updateHabitRoute(req: Request, res: Response): Promise<voi
       return;
     }
 
+    // Bundle child category invariant: a child always lives in its live
+    // parent bundle's category (the Day view and All view both group children
+    // under the parent). Whenever a patch links this habit to a parent or
+    // touches a linked child's categoryId, snap categoryId to the parent's so
+    // no client flow can desync a child from its bundle.
+    const effectiveParentId = patch.bundleParentId !== undefined
+      ? patch.bundleParentId
+      : existingHabit.bundleParentId;
+    if (effectiveParentId && (patch.bundleParentId || patch.categoryId !== undefined)) {
+      const parentHabit = await getHabitById(effectiveParentId, householdId, userId);
+      if (parentHabit && !parentHabit.archived && parentHabit.categoryId) {
+        patch.categoryId = parentHabit.categoryId;
+      }
+    }
+
     const definitionValidation = validateHabitDefinition({ ...existingHabit, ...patch });
     if (!definitionValidation.valid) {
       res.status(400).json({
@@ -515,6 +540,27 @@ export async function updateHabitRoute(req: Request, res: Response): Promise<voi
       }
       if (linkedGoalId) {
         await addHabitToGoalLinkedIds(linkedGoalId, id, householdId, userId);
+      }
+    }
+
+    // Cascade a bundle's category to its children when the bundle's category
+    // changes, or when the bundle is unarchived (children may have been moved
+    // while it was archived). Children always share the parent's grouping;
+    // without the cascade they surface under the wrong category in the All tab.
+    if (habit.type === 'bundle') {
+      const categoryChanged = patch.categoryId !== undefined && patch.categoryId !== existingHabit.categoryId;
+      const unarchived = patch.archived === false && existingHabit.archived === true;
+      if (categoryChanged || unarchived) {
+        const allUserHabits = await getHabitsByUser(householdId, userId);
+        const subIds = new Set(habit.subHabitIds ?? []);
+        const desyncedChildren = allUserHabits.filter(h =>
+          h.id !== habit.id &&
+          (h.bundleParentId === habit.id || subIds.has(h.id)) &&
+          h.categoryId !== habit.categoryId
+        );
+        await Promise.all(desyncedChildren.map(child =>
+          updateHabit(child.id, householdId, userId, { categoryId: habit.categoryId })
+        ));
       }
     }
 

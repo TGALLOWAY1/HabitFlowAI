@@ -9,7 +9,7 @@ import type { Request, Response } from 'express';
 import { getRequestIdentity } from '../middleware/identity';
 import { invalidateUserCaches } from '../lib/cacheInstances';
 import { validateDayKey } from '../domain/canonicalValidators';
-import { getHabitById } from '../repositories/habitRepository';
+import { getHabitById, updateHabit } from '../repositories/habitRepository';
 import { getHabitEntriesByHabit } from '../repositories/habitEntryRepository';
 import {
   createMembership,
@@ -148,6 +148,13 @@ export async function createBundleMembershipRoute(req: Request, res: Response): 
       activeToDayKey,
       daysOfWeek
     );
+
+    // Bundle child category invariant: children always live in their parent
+    // bundle's category. Align on link so a habit pulled in from another
+    // category never surfaces under its old category in the All tab.
+    if (!parentHabit.archived && parentHabit.categoryId && childHabit.categoryId !== parentHabit.categoryId) {
+      await updateHabit(childHabitId, householdId, userId, { categoryId: parentHabit.categoryId });
+    }
 
     invalidateUserCaches(userId);
     res.status(201).json(membership);
