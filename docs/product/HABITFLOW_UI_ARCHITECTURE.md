@@ -394,6 +394,7 @@ graph TB
 | **Log** | Tracker → interact with bundle UI (checklist: check items, choice: select option) |
 | **Convert from habit** | Habit context menu → Convert to Bundle Confirm Modal |
 | **Add habit to bundle** | Habit context menu → Bundle Picker Modal |
+| **Move to category** | Category Picker Modal on the bundle parent — sub-habits follow the bundle's category automatically. Sub-habits of a live bundle have no standalone "Move to Category" action (moving one alone would desync it from its bundle) |
 
 ---
 

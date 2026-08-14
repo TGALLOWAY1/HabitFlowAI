@@ -304,6 +304,7 @@ export function InfoModal({ isOpen, onClose }: InfoModalProps) {
                   <p className="font-medium text-neutral-300 mb-1">Managing bundles</p>
                   <ul className="space-y-0.5">
                     <li>- You can move an existing habit into a checklist or choice bundle</li>
+                    <li>- Sub-habits always share their bundle's category — adding a habit to a bundle moves it into the bundle's category, and moving the bundle moves its sub-habits with it</li>
                     <li>- You can remove a habit from a bundle (end or archive the membership)</li>
                     <li>- Converting a habit into a bundle is one-way — a bundle cannot be converted back to a regular habit</li>
                     <li>- Removing a bundle never removes its sub-habits — they appear as standalone habits. The Remove Habit modal lists them and can archive them together with the bundle. Unarchiving an archived bundle restores it with its sub-habits</li>
