@@ -1302,15 +1302,20 @@ export const TrackerGrid = ({
                                     <Link2 size={14} /> {linked.length > 0 ? 'Edit Links...' : 'Link Routine...'}
                                 </button>
 
-                                <button
-                                    onClick={() => {
-                                        setCategoryPickerHabit(habit);
-                                        setContextMenu(null);
-                                    }}
-                                    className="flex items-center gap-2 px-2 py-1.5 text-sm text-neutral-300 hover:bg-neutral-700/50 rounded transition-colors text-left w-full"
-                                >
-                                    <FolderInput size={14} /> Move to Category…
-                                </button>
+                                {/* Bundle children always live in their parent's category, so
+                                    moving one on its own would just desync it from the bundle.
+                                    Move the bundle instead — its children follow. */}
+                                {!(habit.bundleParentId && childLookupHabits.some(p => p.id === habit.bundleParentId && !p.archived)) && (
+                                    <button
+                                        onClick={() => {
+                                            setCategoryPickerHabit(habit);
+                                            setContextMenu(null);
+                                        }}
+                                        className="flex items-center gap-2 px-2 py-1.5 text-sm text-neutral-300 hover:bg-neutral-700/50 rounded transition-colors text-left w-full"
+                                    >
+                                        <FolderInput size={14} /> Move to Category…
+                                    </button>
+                                )}
 
                                 {habit.type !== 'bundle' && !habit.bundleParentId && (
                                     <button

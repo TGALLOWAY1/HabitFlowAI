@@ -360,7 +360,23 @@ export const HabitProvider: React.FC<{
     const updateHabit = async (id: string, patch: Partial<Omit<Habit, 'id' | 'createdAt'>>): Promise<Habit> => {
         try {
             const updatedHabit = await updateHabitApi(id, patch);
-            setHabits(prev => prev.map(h => h.id === id ? updatedHabit : h));
+            setHabits(prev => {
+                // Mirror the server-side cascade: bundle children always share
+                // their parent bundle's category, so when a bundle's category
+                // changes the server realigns its children — reflect that here
+                // without waiting for a refetch.
+                const cascadeToChildren = updatedHabit.type === 'bundle' && !updatedHabit.archived;
+                const subIds = new Set(updatedHabit.subHabitIds ?? []);
+                return prev.map(h => {
+                    if (h.id === id) return updatedHabit;
+                    if (cascadeToChildren &&
+                        (h.bundleParentId === id || subIds.has(h.id)) &&
+                        h.categoryId !== updatedHabit.categoryId) {
+                        return { ...h, categoryId: updatedHabit.categoryId };
+                    }
+                    return h;
+                });
+            });
             return updatedHabit;
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : 'Unknown error';
@@ -369,7 +385,9 @@ export const HabitProvider: React.FC<{
         }
     };
 
-    // Moves only the selected habit. For bundle parents, sub-habits keep their own categoryId.
+    // Moving a bundle parent moves its sub-habits with it — children always
+    // share their bundle's category (the server cascades the change; the
+    // optimistic update mirrors it).
     const moveHabitToCategory = async (habitId: string, targetCategoryId: string): Promise<void> => {
         const previousHabits = habits;
         const habit = habits.find(h => h.id === habitId);
@@ -381,9 +399,16 @@ export const HabitProvider: React.FC<{
         const maxOrder = habitsInTarget.reduce((max, h) => Math.max(max, h.order ?? 0), -1);
         const newOrder = maxOrder + 1;
 
-        // Optimistic update
+        // Optimistic update (bundle children follow their parent)
+        const subIds = new Set(habit.subHabitIds ?? []);
+        const isChildOfMovedBundle = (h: Habit) =>
+            habit.type === 'bundle' && (h.bundleParentId === habitId || subIds.has(h.id));
         setHabits(prev => prev.map(h =>
-            h.id === habitId ? { ...h, categoryId: targetCategoryId, order: newOrder } : h
+            h.id === habitId
+                ? { ...h, categoryId: targetCategoryId, order: newOrder }
+                : isChildOfMovedBundle(h)
+                    ? { ...h, categoryId: targetCategoryId }
+                    : h
         ));
 
         try {

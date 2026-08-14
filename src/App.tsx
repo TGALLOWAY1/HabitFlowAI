@@ -33,6 +33,7 @@ import { GoalCompletionProvider, useGoalCompletion } from './store/GoalCompletio
 import { useMilestoneCelebrationWatcher } from './lib/useMilestoneCelebrationWatcher';
 import { MilestoneCelebrationModal } from './components/goals/MilestoneCelebrationModal';
 import { acknowledgeMilestone } from './lib/persistenceClient';
+import { getEffectiveCategoryId } from './utils/habitUtils';
 
 // Retry wrapper for lazy imports — handles stale chunk failures after deployments
 function lazyRetry<T extends React.ComponentType<any>>(
@@ -158,9 +159,15 @@ const HabitTrackerContent: React.FC = () => {
     [categories, noCategoryCategoryIds]
   );
 
+  const habitById = useMemo(() => new Map(habits.map(h => [h.id, h])), [habits]);
+
+  // Category checks resolve bundle children to their parent bundle's category
+  // (getEffectiveCategoryId) so a child whose stored categoryId drifted from
+  // its parent still groups with the bundle instead of surfacing elsewhere.
   const isUncategorizedHabit = React.useCallback((habit: Habit) => {
-    return noCategoryCategoryIds.has(habit.categoryId) || !categories.some(c => c.id === habit.categoryId);
-  }, [categories, noCategoryCategoryIds]);
+    const categoryId = getEffectiveCategoryId(habit, habitById);
+    return noCategoryCategoryIds.has(categoryId) || !categories.some(c => c.id === categoryId);
+  }, [categories, noCategoryCategoryIds, habitById]);
 
   // Set default category to "Physical Health" when categories are loaded
   useEffect(() => {
@@ -346,10 +353,9 @@ const HabitTrackerContent: React.FC = () => {
 
   // Detect habits that are uncategorized either by missing category linkage
   // or by the backend-managed "No Category" bucket.
-  const categoryIds = useMemo(() => new Set(categories.map(c => c.id)), [categories]);
   const hasUncategorized = useMemo(
-    () => habits.some(h => !h.archived && (noCategoryCategoryIds.has(h.categoryId) || !categoryIds.has(h.categoryId))),
-    [habits, categoryIds, noCategoryCategoryIds]
+    () => habits.some(h => !h.archived && isUncategorizedHabit(h)),
+    [habits, isUncategorizedHabit]
   );
 
   const uncategorizedCategory = useMemo(
@@ -360,9 +366,9 @@ const HabitTrackerContent: React.FC = () => {
   const filteredHabits = habits.filter(h => {
     if (h.archived) return false;
     if (activeCategoryId === UNCATEGORIZED_ID) {
-      return noCategoryCategoryIds.has(h.categoryId) || !categoryIds.has(h.categoryId);
+      return isUncategorizedHabit(h);
     }
-    return h.categoryId === activeCategoryId;
+    return getEffectiveCategoryId(h, habitById) === activeCategoryId;
   });
 
   return (
