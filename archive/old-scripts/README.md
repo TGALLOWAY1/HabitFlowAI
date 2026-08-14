@@ -9,7 +9,6 @@ npm script, and may no longer run against the current codebase.
 | `migrateBundleMemberships.ts` | Backfilled habit bundle membership records |
 | `migrateChecklistBundleMemberships.ts` | Backfilled checklist-bundle membership records |
 | `migrateChoiceBundles.ts` | Migrated choice-bundle data shape |
-| `migrateDayLogsToEntries.ts` | One-time DayLogs → HabitEntries migration (the `dayLogs` collection has since been removed) |
 | `migrateRoutineImagesFromDisk.ts` | Moved routine images from `public/uploads/` disk storage into MongoDB |
 | `compare-legacy-vs-canonical.ts` | Compared legacy DayLog-based reads against canonical entries-derived reads during the M6 migration (the legacy read path no longer exists) |
 | `remap-orphaned-categories.ts` | One-off orphaned-category remap; superseded by the mounted admin route `remapOrphanedCategories` in `src/server/routes/admin.ts` |
