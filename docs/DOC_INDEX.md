@@ -43,7 +43,6 @@ of content in exactly one home.
 - `docs/maintenance/verification.md` — test suite commands and smoke test checklist.
 - `docs/repo-cleanup-audit.md` — repository cleanup audit trail (what was removed/archived and why).
 - `docs/semantics/daykey.md` — DayKey and timezone policy (America/New_York fallback).
-- `docs/migrations/README.md` — migration scripts and safe-run instructions.
 
 ## Canonical References (Authoritative Sources)
 
