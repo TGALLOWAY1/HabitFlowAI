@@ -196,6 +196,17 @@ export interface Habit {
     reminderEnabled?: boolean;
 
     /**
+     * Optional: Restrict push reminders to specific days of the week.
+     * 0 = Sunday, 1 = Monday, ..., 6 = Saturday.
+     * Only affects notifications — never scheduling, streaks, or quotas —
+     * so a flexible weekly habit (e.g. timesPerWeek 3) keeps its grace-day
+     * semantics while reminding only on the chosen days. Reminders still
+     * respect assignedDays: a reminder day outside the schedule never fires.
+     * Absent/null means remind on every scheduled day (null clears on PATCH).
+     */
+    reminderDays?: number[] | null;
+
+    /**
      * Optional: Duration in minutes for the habit (default: 30).
      * Used for calendar visualization.
      */
