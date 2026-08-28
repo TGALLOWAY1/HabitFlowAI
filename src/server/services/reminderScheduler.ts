@@ -7,8 +7,10 @@
  * after a deploy or restart still delivers), finds habits and routines whose
  * reminderTime matches, and pushes to each subscribed device — unless the
  * habit is already completed (routine already logged) for that local day.
- * Habits fire only on their assigned days; routines have no per-day schedule,
- * so their reminders fire every day.
+ * Habits fire only on their assigned days, further narrowed by reminderDays
+ * when set (a notification-only filter, so flexible weekly habits can pick
+ * reminder days without changing quota semantics); routines have no per-day
+ * schedule, so their reminders fire every day.
  *
  * Idempotency: pushSendLog's unique (sourceId, dayKey, endpoint) index with
  * claim-by-insert makes sends at-most-once per source per day per device, even
@@ -37,6 +39,7 @@ import { isHabitScheduledOnDay } from './scheduleEngine';
 import { resolveChildIdsForDay } from './dayViewService';
 import { evaluateChecklistSuccess } from './checklistSuccessService';
 import { getDayKeyForDate } from '../utils/dayKey';
+import { getDayOfWeekForDayKey } from '../../domain/time/dayKey';
 import { sendPush, isPushConfigured, type PushPayload } from '../lib/webPush';
 import { deriveDailyHabitCompletion } from '../../domain/habits/completion';
 
@@ -213,6 +216,9 @@ export async function runReminderTick(now: Date): Promise<void> {
       const candidate = candidates.find((c) => c.hhmm === habit.reminderTime);
       if (!candidate) continue;
       if (!isHabitScheduledOnDay(habit, candidate.dayKey, sub.timeZone)) continue;
+      // reminderDays narrows notifications only; scheduling stays untouched.
+      if (habit.reminderDays?.length
+        && !habit.reminderDays.includes(getDayOfWeekForDayKey(candidate.dayKey))) continue;
       if (await isCompleted(habit, candidate.dayKey)) continue;
 
       await claimAndSend(sub, habit.id, candidate.dayKey, {
