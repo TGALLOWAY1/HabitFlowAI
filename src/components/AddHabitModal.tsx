@@ -70,6 +70,8 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
     const [requiredDaysPerWeek, setRequiredDaysPerWeek] = useState<number>(7);
     const [reminderTime, setReminderTime] = useState('');
     const [reminderEnabled, setReminderEnabled] = useState(true);
+    // All 7 selected = remind on every scheduled day (stored as unset)
+    const [reminderDays, setReminderDays] = useState<number[]>([0, 1, 2, 3, 4, 5, 6]);
 
     // Metadata
     const [description, setDescription] = useState('');
@@ -126,6 +128,7 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                 setScheduledTime(initialData.scheduledTime || '');
                 setReminderTime(initialData.reminderTime || '');
                 setReminderEnabled(initialData.reminderEnabled !== false);
+                setReminderDays(initialData.reminderDays?.length ? initialData.reminderDays : [0, 1, 2, 3, 4, 5, 6]);
                 setLinkedGoalId(initialData.linkedGoalId || null);
                 setLinkedRoutineIds(initialData.linkedRoutineIds || []);
                 setDurationMinutes(initialData.durationMinutes?.toString() || '30');
@@ -159,6 +162,7 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                 setScheduledTime('');
                 setReminderTime('');
                 setReminderEnabled(true);
+                setReminderDays([0, 1, 2, 3, 4, 5, 6]);
                 setLinkedGoalId(null);
                 setIsCreateGoalOpen(false);
                 setLinkedRoutineIds([]);
@@ -286,6 +290,9 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                 // state from the children.
                 reminderTime: reminderTime || null,
                 reminderEnabled,
+                // Notification-only day filter; all 7 days (or no reminder
+                // time) clears it back to "every scheduled day".
+                reminderDays: reminderTime && reminderDays.length < 7 ? reminderDays : null,
                 durationMinutes: durationMinutes ? Number(durationMinutes) : undefined,
                 linkedGoalId: linkedGoalId || undefined,
                 linkedRoutineIds: linkedRoutineIds.length > 0 ? linkedRoutineIds : undefined,
@@ -1254,15 +1261,33 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({ isOpen, onClose, c
                                 )}
                             </div>
                             {reminderTime && (
-                                <label className="flex items-center gap-2 text-sm text-neutral-300 cursor-pointer">
-                                    <input
-                                        type="checkbox"
-                                        checked={reminderEnabled}
-                                        onChange={(e) => setReminderEnabled(e.target.checked)}
-                                        className="w-4 h-4 rounded border-white/20 bg-neutral-800 accent-emerald-500"
-                                    />
-                                    Send push reminder
-                                </label>
+                                <>
+                                    <label className="flex items-center gap-2 text-sm text-neutral-300 cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            checked={reminderEnabled}
+                                            onChange={(e) => setReminderEnabled(e.target.checked)}
+                                            className="w-4 h-4 rounded border-white/20 bg-neutral-800 accent-emerald-500"
+                                        />
+                                        Send push reminder
+                                    </label>
+                                    <div className="space-y-1">
+                                        <span className="block text-[11px] font-medium text-neutral-500 uppercase">
+                                            Remind on
+                                        </span>
+                                        <DayChipSelector
+                                            selectedDays={reminderDays}
+                                            onChange={setReminderDays}
+                                            minSelected={1}
+                                            disabled={!reminderEnabled}
+                                        />
+                                        <p className="text-[11px] text-neutral-500">
+                                            {reminderDays.length === 7
+                                                ? 'Reminding on every scheduled day — deselect days to only be nudged on specific ones.'
+                                                : 'Only affects notifications; you can still complete the habit on any scheduled day.'}
+                                        </p>
+                                    </div>
+                                </>
                             )}
                             <p className="text-[11px] text-neutral-500">
                                 Reminders go to devices where you've enabled notifications

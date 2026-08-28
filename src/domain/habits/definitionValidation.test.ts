@@ -32,11 +32,20 @@ describe('validateHabitDefinition', () => {
     })).valid).toBe(true);
   });
 
+  it('accepts reminderDays as a day list, null, or absent', () => {
+    expect(validateHabitDefinition(definition({ reminderDays: [1, 3, 5] })).valid).toBe(true);
+    expect(validateHabitDefinition(definition({ reminderDays: null })).valid).toBe(true);
+    expect(validateHabitDefinition(definition({ reminderDays: undefined })).valid).toBe(true);
+  });
+
   it.each([
     { goal: { type: 'number', frequency: 'daily' } },
     { goal: { type: 'number', frequency: 'daily', target: Number.NaN } },
     { assignedDays: [1, 1] },
     { assignedDays: [8] },
+    { reminderDays: [] },
+    { reminderDays: [7] },
+    { reminderDays: [2, 2] },
     { requiredDaysPerWeek: 4 },
     { timesPerWeek: 2, requiredDaysPerWeek: 2 },
     { type: 'bundle', bundleType: undefined },
