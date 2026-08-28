@@ -3,18 +3,18 @@
 Remove code and tests that existed only for completed one-time data migrations
 (startup migrations, incident-remediation scripts, archived one-offs).
 
-- [ ] 1. Remove completed startup migrations (`src/server/migrations/` 001–003 + runner)
+- [x] 1. Remove completed startup migrations (`src/server/migrations/` 001–003 + runner)
       and the `runStartupMigrations` call in `src/server/index.ts` (commit 1)
-- [ ] 2. Drop the migration-era startup duplicate-key preflight scan in
+- [x] 2. Drop the migration-era startup duplicate-key preflight scan in
       `src/server/lib/mongoClient.ts` (+ its test); handle E11000 in the createIndex
       catch instead (commit 2)
-- [ ] 3. Remove one-time migration/incident scripts: `scripts/migrations/` (incl. its
+- [x] 3. Remove one-time migration/incident scripts: `scripts/migrations/` (incl. its
       test), `scripts/debug/`, `docs/migrations/`, stale `.gitignore` entries (commit 3)
-- [ ] 4. Delete `archive/old-scripts/` (already-retired one-offs) and drop the
+- [x] 4. Delete `archive/old-scripts/` (already-retired one-offs) and drop the
       `archive` ESLint ignore (commit 4)
-- [ ] 5. Update living docs: `docs/DOC_INDEX.md`, `docs/maintenance/verification.md`
+- [x] 5. Update living docs: `docs/DOC_INDEX.md`, `docs/maintenance/verification.md`
       (commit 5)
-- [ ] 6. Verify: `npm run build`, `npm run lint:beta`, `npm run test:beta`; push + PR
+- [x] 6. Verify: `npm run build`, `npm run lint:beta`, `npm run test:beta`; push + PR
 
 Design decisions:
 - Startup migrations 002/003 are recorded complete in the `_migrations` collection in
