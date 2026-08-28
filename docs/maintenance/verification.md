@@ -1,6 +1,6 @@
 # Verification and Maintenance
 
-Commands and checklists for routine verification. See also `docs/migrations/README.md` for migration scripts and safe-run rules.
+Commands and checklists for routine verification.
 
 ## Test suite
 
@@ -53,5 +53,4 @@ After changes to server routes, identity, or entry logic:
 - **Architecture:** `docs/ARCHITECTURE.md`
 - **Data model:** `docs/DATA_MODEL.md`
 - **DayKey semantics:** `docs/semantics/daykey.md`
-- **Migrations and safe-run:** `docs/migrations/README.md`
 - **Dev guide:** `docs/DEV_GUIDE.md`

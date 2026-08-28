@@ -16,8 +16,6 @@ let connectionPromise: Promise<MongoClient> | null = null;
 let indexesEnsuredForDbName: string | null = null;
 
 const HABIT_ENTRIES_UNIQUE_INDEX_NAME = 'idx_habitEntries_user_habit_dayKey_active_unique';
-const DEDUPE_INSTRUCTIONS =
-  'Backfill missing dayKey values, then run the dedupe script to archive and remove duplicate index keys (see docs/migrations/README.md).';
 
 function isTestEnv(): boolean {
   return (
@@ -27,45 +25,8 @@ function isTestEnv(): boolean {
   );
 }
 
-/**
- * Count duplicate keys exactly as MongoDB's full unique index sees them.
- * Deleted documents remain in the indexed collection, so excluding them (or
- * falling back from dayKey to date) can incorrectly report that index creation
- * is safe.
- */
-export async function countDuplicateHabitEntryKeys(database: Db): Promise<number> {
-  const coll = database.collection('habitEntries');
-  const cursor = coll.aggregate<{ count: number }>([
-    {
-      $group: {
-        _id: {
-          householdId: '$householdId',
-          userId: '$userId',
-          habitId: '$habitId',
-          dayKey: '$dayKey',
-        },
-        n: { $sum: 1 },
-      },
-    },
-    { $match: { n: { $gt: 1 } } },
-    { $count: 'count' },
-  ]);
-  const result = await cursor.next();
-  return result?.count ?? 0;
-}
-
 async function ensureHabitEntriesUniqueIndex(database: Db): Promise<void> {
   const coll = database.collection('habitEntries');
-
-  // In test, skip duplicate check (aggregation) to avoid slowness; in dev/prod detect duplicates and warn (do not create unique index until deduped).
-  if (!isTestEnv()) {
-    const duplicateCount = await countDuplicateHabitEntryKeys(database);
-    if (duplicateCount > 0) {
-      const msg = `[MongoDB] Duplicate habit-entry index keys detected (${duplicateCount} duplicate keys). ${DEDUPE_INSTRUCTIONS}`;
-      console.warn(msg);
-      return;
-    }
-  }
 
   // Optional: skip index creation in test for even faster runs (set SKIP_HABIT_ENTRY_INDEX_IN_TEST=1).
   if (isTestEnv() && (process.env.SKIP_HABIT_ENTRY_INDEX_IN_TEST === '1' || process.env.SKIP_HABIT_ENTRY_INDEX_IN_TEST === 'true')) {
@@ -82,6 +43,11 @@ async function ensureHabitEntriesUniqueIndex(database: Db): Promise<void> {
   } catch (error: unknown) {
     const code = (error as { code?: number })?.code;
     if (code === 85 || code === 86) {
+      return;
+    }
+    // 11000 = duplicate keys already in the collection; the index cannot be built until they are resolved.
+    if (code === 11000) {
+      console.warn('[MongoDB] Cannot create habitEntries unique index: duplicate (householdId, userId, habitId, dayKey) keys exist. Resolve the duplicates, then restart.');
       return;
     }
     console.warn('[MongoDB] habitEntries unique index creation failed (non-fatal):', error);
