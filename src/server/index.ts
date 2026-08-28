@@ -10,7 +10,6 @@ import { assertMongoEnabled } from './config';
 import { isPublicDemoEnabled } from './config/demo';
 import { createApp } from './app';
 import { closeConnection } from './lib/mongoClient';
-import { runStartupMigrations } from './migrations/startup';
 import { maybeSeedDemoShowcase } from './demo/seedShowcase';
 import { isPushConfigured } from './lib/webPush';
 import { startReminderScheduler, type ReminderSchedulerHandle } from './services/reminderScheduler';
@@ -26,13 +25,6 @@ const server = app.listen(PORT, async () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);
   console.log(`📡 API endpoints available at http://localhost:${PORT}/api`);
   console.log(`💾 MongoDB persistence: ENABLED (required)`);
-
-  // Run data migrations after server is listening (non-blocking)
-  try {
-    await runStartupMigrations();
-  } catch (err) {
-    console.error('Startup migrations failed (non-fatal):', err);
-  }
 
   // Seed/refresh the read-only public demo dataset (non-fatal)
   if (isPublicDemoEnabled()) {
