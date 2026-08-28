@@ -123,6 +123,51 @@ describe('Habit Reminder Fields (reminderTime + reminderEnabled)', () => {
     expect(on.body.habit.reminderTime).toBe('07:30');
   });
 
+  it('creates a habit with reminderDays', async () => {
+    const res = await createHabit({ reminderTime: '09:00', reminderDays: [1, 3, 5] });
+    expect(res.status).toBe(201);
+    expect(res.body.habit.reminderDays).toEqual([1, 3, 5]);
+  });
+
+  it('treats null reminderDays as unset on create', async () => {
+    const res = await createHabit({ reminderTime: '09:00', reminderDays: null });
+    expect(res.status).toBe(201);
+    expect(res.body.habit.reminderDays ?? undefined).toBeUndefined();
+  });
+
+  it.each([[[]], [[7]], [[-1]], [[1, 1]], [['mon']], ['135']])(
+    'rejects malformed reminderDays %j on create',
+    async (bad) => {
+      const res = await createHabit({ reminderTime: '09:00', reminderDays: bad });
+      expect(res.status).toBe(400);
+      expect(res.body.error.code).toBe('VALIDATION_ERROR');
+    }
+  );
+
+  it('sets and clears reminderDays via PATCH', async () => {
+    const created = await createHabit({ reminderTime: '07:30' });
+    const id = created.body.habit.id;
+
+    const set = await request(app).patch(`/api/habits/${id}`).send({ reminderDays: [2, 4] });
+    expect(set.status).toBe(200);
+    expect(set.body.habit.reminderDays).toEqual([2, 4]);
+    expect(set.body.habit.reminderTime).toBe('07:30');
+
+    const cleared = await request(app).patch(`/api/habits/${id}`).send({ reminderDays: null });
+    expect(cleared.status).toBe(200);
+    expect(cleared.body.habit.reminderDays ?? undefined).toBeUndefined();
+    expect(cleared.body.habit.reminderTime).toBe('07:30');
+  });
+
+  it('rejects malformed reminderDays via PATCH', async () => {
+    const created = await createHabit({ reminderTime: '07:30' });
+    const res = await request(app)
+      .patch(`/api/habits/${created.body.habit.id}`)
+      .send({ reminderDays: [0, 8] });
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe('VALIDATION_ERROR');
+  });
+
   it('clears reminderTime with null while keeping other fields', async () => {
     const created = await createHabit({ reminderTime: '07:30', description: 'daily calm' });
     const id = created.body.habit.id;

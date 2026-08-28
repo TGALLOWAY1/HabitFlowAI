@@ -64,6 +64,11 @@ export function validateHabitDefinition(habit: Partial<Habit>): HabitDefinitionV
     const result = validateDayList(habit.nonNegotiableDays, 'nonNegotiableDays');
     if (!result.valid) return result;
   }
+  // Notification-only day filter; null means "every scheduled day".
+  if (habit.reminderDays != null) {
+    const result = validateDayList(habit.reminderDays, 'reminderDays');
+    if (!result.valid) return result;
+  }
 
   if (habit.requiredDaysPerWeek !== undefined && habit.requiredDaysPerWeek !== null) {
     if (!Number.isInteger(habit.requiredDaysPerWeek) || habit.requiredDaysPerWeek < 1 || habit.requiredDaysPerWeek > 7) {

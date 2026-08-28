@@ -222,7 +222,7 @@ export async function createHabitRoute(req: Request, res: Response): Promise<voi
       linkedGoalId, linkedRoutineIds,
       requiredDaysPerWeek, timesPerWeek,
       checklistSuccessRule, streakType,
-      reminderTime, reminderEnabled,
+      reminderTime, reminderEnabled, reminderDays,
     } = req.body;
 
     // null is treated as "no reminder" so create and PATCH share one contract
@@ -298,6 +298,7 @@ export async function createHabitRoute(req: Request, res: Response): Promise<voi
         timesPerWeek,
         reminderTime: reminderTime ?? undefined,
         reminderEnabled: reminderEnabled === undefined ? undefined : !!reminderEnabled,
+        reminderDays: reminderDays ?? undefined,
       };
 
     const definitionValidation = validateHabitDefinition(habitData);
@@ -416,7 +417,7 @@ export async function updateHabitRoute(req: Request, res: Response): Promise<voi
       linkedGoalId, linkedRoutineIds,
       requiredDaysPerWeek, timesPerWeek,
       checklistSuccessRule, streakType,
-      reminderTime, reminderEnabled,
+      reminderTime, reminderEnabled, reminderDays,
       trackingEffectiveDayKey, timeZone,
     } = req.body;
 
@@ -482,6 +483,8 @@ export async function updateHabitRoute(req: Request, res: Response): Promise<voi
       patch.reminderTime = reminderTime === null ? undefined : reminderTime;
     }
     if (reminderEnabled !== undefined) patch.reminderEnabled = !!reminderEnabled;
+    // Clear with null, set with a day list (validated on the merged definition below).
+    if (reminderDays !== undefined) patch.reminderDays = reminderDays === null ? undefined : reminderDays;
 
     if (Object.keys(patch).length === 0) {
       res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'At least one field must be provided for update' } });

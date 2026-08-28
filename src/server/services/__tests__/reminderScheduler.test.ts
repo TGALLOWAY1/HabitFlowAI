@@ -161,6 +161,39 @@ describe('reminderScheduler', () => {
     expect(vi.mocked(sendPush).mock.calls[0][1].title).toBe('ThursdayHabit');
   });
 
+  it('respects reminderDays without touching the schedule (2026-07-16 is a Thursday=4)', async () => {
+    await subscribe();
+    // Flexible weekly habit: scheduled every day (3x/week quota), but the
+    // user only wants to be nudged on Mon/Wed/Fri — Thursday stays silent.
+    await makeHabit({ name: 'FlexQuiet', timesPerWeek: 3, reminderDays: [1, 3, 5] });
+    await makeHabit({ name: 'FlexThursday', timesPerWeek: 3, reminderDays: [2, 4] });
+
+    await runReminderTick(utc('2026-07-16T12:00:10Z'));
+
+    expect(vi.mocked(sendPush)).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(sendPush).mock.calls[0][1].title).toBe('FlexThursday');
+  });
+
+  it('never fires a reminderDay outside assignedDays', async () => {
+    await subscribe();
+    // Thursday is a reminder day but not a scheduled day — no send.
+    await makeHabit({ name: 'WeekendSched', assignedDays: [0, 6], reminderDays: [4] });
+
+    await runReminderTick(utc('2026-07-16T12:00:10Z'));
+
+    expect(vi.mocked(sendPush)).not.toHaveBeenCalled();
+  });
+
+  it('treats null/absent reminderDays as every scheduled day', async () => {
+    await subscribe();
+    await makeHabit({ name: 'NullDays', reminderDays: null });
+
+    await runReminderTick(utc('2026-07-16T12:00:10Z'));
+
+    expect(vi.mocked(sendPush)).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(sendPush).mock.calls[0][1].title).toBe('NullDays');
+  });
+
   it('skips reminderEnabled=false and archived habits', async () => {
     await subscribe();
     await makeHabit({ name: 'Disabled', reminderEnabled: false });

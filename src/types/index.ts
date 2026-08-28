@@ -82,6 +82,7 @@ export interface Habit {
     // Push Reminder Fields
     reminderTime?: string | null; // HH:mm, device-local; null/unset = no reminder (null clears on PATCH)
     reminderEnabled?: boolean; // absent = enabled when reminderTime is set
+    reminderDays?: number[] | null; // 0=Sun..6=Sat; notification-only filter — absent/null = every scheduled day (null clears on PATCH)
 
     // Non-Negotiable Fields
     nonNegotiable?: boolean;

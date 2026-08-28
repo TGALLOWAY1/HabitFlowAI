@@ -233,9 +233,12 @@ export function InfoModal({ isOpen, onClose }: InfoModalProps) {
                 <p className="text-sm text-neutral-300 mt-1">
                   Give any habit — including bundles — or routine a reminder time (when
                   creating or editing it) and HabitFlow sends a push notification at that
-                  time. Habit reminders fire on the habit's scheduled days and are skipped
-                  automatically once it's done for the day (for bundles, once the children
-                  satisfy the bundle's rule); routine reminders fire daily and are skipped
+                  time. Habit reminders fire on the habit's scheduled days — or only on
+                  the specific days you pick under "Remind on", handy for flexible
+                  weekly habits (e.g. 3×/week) so you're nudged on your usual days
+                  without changing the schedule — and are skipped automatically once
+                  it's done for the day (for bundles, once the children satisfy the
+                  bundle's rule); routine reminders fire daily and are skipped
                   once the routine is completed that day. Turn notifications on per device
                   in <span className="text-neutral-200">Settings → Notifications</span>.
                 </p>
