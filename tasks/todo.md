@@ -1,30 +1,30 @@
-# Bottom Nav Drifts Up While Scrolling (iOS)
+# Remove One-Time Migration Bloat
 
-The fixed header and bottom tab bar float up with the content mid-scroll on iOS
-(reported from an iPhone), leaving the tab bar stranded in the middle of the screen
-until scrolling stops.
+Remove code and tests that existed only for completed one-time data migrations
+(startup migrations, incident-remediation scripts, archived one-offs).
 
-- [x] 1. Diagnose: fixed positioning is correct in Chromium at iPhone size (nav pinned, no
-      transform/filter/contain ancestor, no horizontal document overflow) — the drift is iOS
-      deferring `position: fixed` repaints until a document scroll ends. In the report both bars
-      are displaced by the same offset (the scroll delta), which is the signature of that behavior.
-- [x] 2. Fix: turn the signed-in chrome into a real app shell — `.app-shell` (100dvh,
-      `overflow: hidden`) + `main.app-scroll` as the only scroll container, so the
-      document never scrolls and the fixed bars have nothing to drift against (commit 1)
-- [x] 3. Carried in the same commit (inseparable from the shell change): page-scroll callers must
-      scroll `main.app-scroll` (`TourPage.goTo`); bottom padding now clears the tab bar *plus*
-      `safe-area-inset-bottom` (previously `pb-20` = 80px vs. a 90px tab bar on notched iPhones —
-      the last habit card sat ~10px under the bar)
-- [x] 4. Docs: app shell & scrolling section in HABITFLOW_UI_ARCHITECTURE.md (commit 2)
-- [x] 5. Verify: `npm run build`, `npm run test:run`, `npm run lint`, plus a Playwright check at
-      390×500 and 1280×800 asserting the document is unscrollable, the tab bar stays pinned to
-      the viewport bottom through container/wheel scrolling, PageDown still scrolls, and the last
-      card clears the bar
+- [ ] 1. Remove completed startup migrations (`src/server/migrations/` 001–003 + runner)
+      and the `runStartupMigrations` call in `src/server/index.ts` (commit 1)
+- [ ] 2. Drop the migration-era startup duplicate-key preflight scan in
+      `src/server/lib/mongoClient.ts` (+ its test); handle E11000 in the createIndex
+      catch instead (commit 2)
+- [ ] 3. Remove one-time migration/incident scripts: `scripts/migrations/` (incl. its
+      test), `scripts/debug/`, `docs/migrations/`, stale `.gitignore` entries (commit 3)
+- [ ] 4. Delete `archive/old-scripts/` (already-retired one-offs) and drop the
+      `archive` ESLint ignore (commit 4)
+- [ ] 5. Update living docs: `docs/DOC_INDEX.md`, `docs/maintenance/verification.md`
+      (commit 5)
+- [ ] 6. Verify: `npm run build`, `npm run lint:beta`, `npm run test:beta`; push + PR
 
 Design decisions:
-- Header and tab bar keep `position: fixed`. With no document scroll they are stable, and
-  keeping them fixed leaves the header's translucent blur over the content intact and avoids
-  restructuring where `BottomTabBar` is mounted (still rendered from `HabitTrackerContent`).
-- Height uses `height: 100vh` then `height: 100dvh` in `.app-shell` so browsers without `dvh`
-  fall back to `vh` rather than to `auto`.
-- Auth screens render outside `Layout` and keep ordinary document scrolling; untouched.
+- Startup migrations 002/003 are recorded complete in the `_migrations` collection in
+  any environment that has run this code; a fresh DB has no legacy data to migrate, so
+  the runner is a no-op everywhere and safe to delete.
+- The per-startup duplicate-key aggregation existed only to guard the one-time
+  dedupe/unique-index transition. If a legacy DB with duplicates ever appears,
+  `createIndex` fails with E11000 and is logged non-fatally — same net behavior
+  (index skipped, warning logged) without a full-collection scan on every boot.
+- `noDayLogImports.test.ts` is kept: it enforces the documented "removed collections"
+  invariant from CLAUDE.md and is part of the CI beta suite.
+- Historical snapshot docs (postmortem, repo-cleanup-audit, archives, ios-discovery)
+  keep their stale path references; only living docs are updated.
