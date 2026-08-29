@@ -39,6 +39,7 @@ of content in exactly one home.
 - `docs/FEATURES.md` — canonical feature list with status, organized by domain (habits, routines, goals, journal, AI, etc.).
 - `docs/ai-features.md` — applied-AI features: design, data flow, grounding, routes/contracts.
 - `docs/DEMO_ARCHITECTURE.md` — public read-only demo + interactive tour: identity, seeding, embed previews.
+- `docs/IOS_PARITY.md` — iOS parity snapshot; pointer to the full gap analysis and parity plan in the `iOS-HabitFlow` repo.
 - `FEATURE_AUDIT.md` — code-verified implemented / partial / roadmap feature audit (root).
 - `docs/maintenance/verification.md` — test suite commands and smoke test checklist.
 - `docs/repo-cleanup-audit.md` — repository cleanup audit trail (what was removed/archived and why).
