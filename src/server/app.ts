@@ -25,6 +25,7 @@ import { getIntegrityReport, dedupHabits, recoverHabits, remapOrphanedCategories
 import { getEntriesRoute, createEntryRoute, upsertEntryByKeyRoute, getEntryRoute, updateEntryRoute, deleteEntryRoute } from './routes/journal';
 import { getTasksRoute, createTaskRoute, updateTaskRoute, deleteTaskRoute } from './routes/tasks';
 import { getDashboardPrefsRoute, updateDashboardPrefsRoute } from './routes/dashboardPrefs';
+import { getDailyCheckInRoute, upsertDailyCheckInRoute } from './routes/dailyCheckIns';
 import {
   getPushPublicKeyRoute,
   savePushSubscriptionRoute,
@@ -244,6 +245,8 @@ export function createApp(): Express {
   app.delete('/api/journal/:id', deleteEntryRoute);
   app.get('/api/dashboardPrefs', getDashboardPrefsRoute);
   app.put('/api/dashboardPrefs', updateDashboardPrefsRoute);
+  app.get('/api/dailyCheckIns/:dayKey', getDailyCheckInRoute);
+  app.put('/api/dailyCheckIns/:dayKey', upsertDailyCheckInRoute);
   app.get('/api/goals', getGoals);
   app.get('/api/goals/completed', getCompletedGoals);
   app.get('/api/goals-with-progress', getGoalsWithProgress);

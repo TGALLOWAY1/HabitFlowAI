@@ -1562,6 +1562,7 @@ export const MONGO_COLLECTIONS = {
     SUPPLEMENT_LOGS: 'supplementLogs',
     PUSH_SUBSCRIPTIONS: 'pushSubscriptions',
     PUSH_SEND_LOG: 'pushSendLog',
+    DAILY_CHECK_INS: 'dailyCheckIns',
 } as const;
 
 /**
@@ -1783,6 +1784,79 @@ export interface HabitPotentialEvidence {
 }
 
 export type HabitPotentialEvidenceStatsStorage = HabitPotentialEvidence[];
+
+/**
+ * Daily Check-in lifecycle. A day with no stored document is "not started".
+ * `complete` is sticky: re-opening a completed check-in to edit it never
+ * reverts the status.
+ */
+export type DailyCheckInStatus = 'in_progress' | 'complete';
+
+/**
+ * Supplemental completion states that habitEntries cannot represent.
+ * "done" is intentionally absent — completion is always derived from
+ * habitEntries, never stored on a check-in.
+ */
+export type HabitCheckInCompletionStatus = 'partial' | 'skipped';
+
+/**
+ * Per-habit reflection captured during a Daily Check-in.
+ */
+export interface HabitCheckIn {
+    /** Foreign key reference to Habit.id */
+    habitId: string;
+
+    /** 'partial' | 'skipped' as declared by the user; null when not declared (done is derived). */
+    completionStatus: HabitCheckInCompletionStatus | null;
+
+    /** How the habit felt, 1 (really tough) to 5 (great); null when not recorded. */
+    moodScore: number | null;
+
+    /** Optional descriptive tags (ids from DAILY_CHECK_IN_MOOD_TAGS). */
+    moodTags: string[];
+
+    /** Perceived effort, 1 (very easy) to 5 (very hard); null when not recorded. */
+    effortScore: number | null;
+
+    /** Optional habit-specific journal note. */
+    journalEntry: string | null;
+}
+
+/**
+ * DailyCheckIn Entity (reflective record — NOT behavioral truth)
+ *
+ * Storage Key: 'dailyCheckIns'
+ * One document per (householdId, userId, dayKey).
+ *
+ * Holds the guided Daily Check-in's resume state and per-habit reflections.
+ * Completion truth stays in habitEntries.
+ */
+export interface DailyCheckIn {
+    /** Application-level ID (UUID), not MongoDB _id */
+    id: string;
+
+    /** User ID owner */
+    userId: string;
+
+    /** DayKey (YYYY-MM-DD) the check-in belongs to */
+    dayKey: string;
+
+    status: DailyCheckInStatus;
+
+    /** Page (1-5) the user was last on — the resume point. */
+    currentStep: number;
+
+    habits: HabitCheckIn[];
+
+    /** ISO 8601 timestamp of when the check-in was started */
+    startedAt: string;
+
+    /** ISO 8601 timestamp of first completion; null while in progress */
+    completedAt: string | null;
+
+    createdAt: string;
+    updatedAt: string;
+}
 
 // ─── Apple Health Integration Types ─────────────────────────────────────────
 
