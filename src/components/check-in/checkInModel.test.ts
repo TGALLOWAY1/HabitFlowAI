@@ -3,6 +3,8 @@ import type { Category, DayLog, Habit } from '../../types';
 import {
     buildCheckInSummary,
     estimateRemainingMinutes,
+    formatStreakLabel,
+    getRadioKeyTarget,
     getCheckInHabits,
     getCheckInHabitTruth,
     getCompletionHeadline,
@@ -108,6 +110,25 @@ describe('step navigation', () => {
         expect(getPreviousStep(5, 3)).toBe(4);
         expect(getPreviousStep(1, 3)).toBe(1);
         expect(getNextStep(5, 3)).toBe(5);
+    });
+});
+
+describe('formatStreakLabel', () => {
+    it('turns progress-overview streak text into a streak label', () => {
+        expect(formatStreakLabel('12 days')).toBe('12 day streak');
+        expect(formatStreakLabel('1 day')).toBe('1 day streak');
+        expect(formatStreakLabel('3 weeks')).toBe('3 week streak');
+    });
+});
+
+describe('getRadioKeyTarget', () => {
+    it('wraps arrow keys and supports Home/End', () => {
+        expect(getRadioKeyTarget('ArrowRight', 4, 5)).toBe(0);
+        expect(getRadioKeyTarget('ArrowLeft', 0, 5)).toBe(4);
+        expect(getRadioKeyTarget('ArrowDown', 1, 5)).toBe(2);
+        expect(getRadioKeyTarget('Home', 3, 5)).toBe(0);
+        expect(getRadioKeyTarget('End', 0, 5)).toBe(4);
+        expect(getRadioKeyTarget('Enter', 2, 5)).toBeNull();
     });
 });
 

@@ -82,6 +82,20 @@ export function resolveCheckInStatus(
     return null;
 }
 
+/** One habit as presented in the check-in. */
+export interface CheckInRow {
+    habit: Habit;
+    truth: CheckInHabitTruth;
+    status: CheckInCompletionStatus | null;
+    reflection?: HabitCheckIn;
+}
+
+/** "12 days" / "3 weeks" (progress overview format) → "12 day streak" / "3 week streak". */
+export function formatStreakLabel(formattedStreak: string): string {
+    const match = /^(\d+) (day|week)s?$/.exec(formattedStreak.trim());
+    return match ? `${match[1]} ${match[2]} streak` : `${formattedStreak} streak`;
+}
+
 /** Done and partial habits get mood/effort reflection; skipped or unmarked ones do not. */
 export function needsReflection(status: CheckInCompletionStatus | null): boolean {
     return status === 'done' || status === 'partial';
@@ -178,6 +192,24 @@ export const MOOD_TAG_LABELS: Record<DailyCheckInMoodTag, string> = {
     proud: 'Proud',
     tired: 'Tired',
 };
+
+/** Roving-focus target for arrow/Home/End keys in a radio group, or null for other keys. */
+export function getRadioKeyTarget(key: string, index: number, count: number): number | null {
+    switch (key) {
+        case 'ArrowRight':
+        case 'ArrowDown':
+            return (index + 1) % count;
+        case 'ArrowLeft':
+        case 'ArrowUp':
+            return (index - 1 + count) % count;
+        case 'Home':
+            return 0;
+        case 'End':
+            return count - 1;
+        default:
+            return null;
+    }
+}
 
 export function getMoodOption(score: number | null | undefined) {
     return MOOD_OPTIONS.find(option => option.score === score);
