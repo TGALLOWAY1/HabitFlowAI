@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { format } from 'date-fns';
 import type { DayLog, Habit } from '../../types';
@@ -87,6 +87,33 @@ describe('DailyCheckInCard', () => {
         expect(screen.getByText('3 habits logged')).toBeInTheDocument();
         fireEvent.click(screen.getByRole('button', { name: 'View summary' }));
         expect(onOpen).toHaveBeenCalledWith(5);
+    });
+
+    it('moves on to the new day when the app is resumed after midnight', async () => {
+        vi.useFakeTimers({ toFake: ['Date'] });
+        try {
+            vi.setSystemTime(new Date(2026, 9, 12, 23, 58));
+            setStore(FOUR_HABITS);
+            mocks.fetchDailyCheckIn.mockImplementation(async (dayKey: string) => (
+                dayKey === '2026-10-12'
+                    ? checkIn({ dayKey, status: 'complete', currentStep: 5, completedAt: '2026-10-12T23:00:00.000Z' })
+                    : null
+            ));
+            const onOpen = vi.fn();
+            render(<DailyCheckInCard onOpen={onOpen} />);
+            expect(await screen.findByRole('heading', { name: "Today's check-in complete" })).toBeInTheDocument();
+
+            // The suspended app comes back the next morning.
+            vi.setSystemTime(new Date(2026, 9, 13, 7, 30));
+            act(() => { document.dispatchEvent(new Event('visibilitychange')); });
+
+            expect(await screen.findByText('4 habits waiting · ~2 min')).toBeInTheDocument();
+            expect(mocks.fetchDailyCheckIn).toHaveBeenLastCalledWith('2026-10-13');
+            fireEvent.click(screen.getByRole('button', { name: 'Start check-in' }));
+            expect(onOpen).toHaveBeenCalledWith(1);
+        } finally {
+            vi.useRealTimers();
+        }
     });
 
     it('stays hidden when nothing is scheduled and no check-in exists', async () => {

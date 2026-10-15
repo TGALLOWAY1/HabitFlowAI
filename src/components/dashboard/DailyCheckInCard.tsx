@@ -1,4 +1,4 @@
-import React, { useId, useMemo, useState } from 'react';
+import React, { useEffect, useId, useMemo, useState } from 'react';
 import { format } from 'date-fns';
 import { ArrowRight, CircleCheck, ClipboardCheck } from 'lucide-react';
 import { useHabitStore } from '../../store/HabitContext';
@@ -19,14 +19,31 @@ interface DailyCheckInCardProps {
     onOpen: (step: number) => void;
 }
 
+function todayKey(): string {
+    return format(new Date(), 'yyyy-MM-dd');
+}
+
 /**
- * Dashboard entry point for the optional Daily Check-in. Three states:
- * not started ("4 habits waiting · ~2 min"), in progress ("2 of 5 steps
- * complete"), and complete ("4 habits logged" → View summary).
+ * Today's local dayKey, re-read when the app returns to the foreground and
+ * once a minute, so a dashboard left open (or a resumed home-screen app)
+ * moves on to the new day after midnight.
  */
-export const DailyCheckInCard: React.FC<DailyCheckInCardProps> = ({ onOpen }) => {
+function useTodayKey(): string {
+    const [dayKey, setDayKey] = useState(todayKey);
+    useEffect(() => {
+        const refresh = () => setDayKey(todayKey());
+        const timer = window.setInterval(refresh, 60_000);
+        document.addEventListener('visibilitychange', refresh);
+        return () => {
+            window.clearInterval(timer);
+            document.removeEventListener('visibilitychange', refresh);
+        };
+    }, []);
+    return dayKey;
+}
+
+const DayCheckInCard: React.FC<DailyCheckInCardProps & { dayKey: string }> = ({ dayKey, onOpen }) => {
     const { habits, categories, logs, loading: habitsLoading } = useHabitStore();
-    const [dayKey] = useState(() => format(new Date(), 'yyyy-MM-dd'));
     const { draft, phase, loading: checkInLoading } = useDailyCheckIn(dayKey);
     const headingId = useId();
 
@@ -121,4 +138,15 @@ export const DailyCheckInCard: React.FC<DailyCheckInCardProps> = ({ onOpen }) =>
             )}
         </section>
     );
+};
+
+/**
+ * Dashboard entry point for the optional Daily Check-in. Three states:
+ * not started ("4 habits waiting · ~2 min"), in progress ("2 of 5 steps
+ * complete"), and complete ("4 habits logged" → View summary).
+ */
+export const DailyCheckInCard: React.FC<DailyCheckInCardProps> = ({ onOpen }) => {
+    const dayKey = useTodayKey();
+    // Remount per day so the state shown (and the page it opens) always belongs to today.
+    return <DayCheckInCard key={dayKey} dayKey={dayKey} onOpen={onOpen} />;
 };
