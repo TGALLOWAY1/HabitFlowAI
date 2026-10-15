@@ -1,30 +1,55 @@
-# Remove One-Time Migration Bloat
+# Daily Check-in (guided habit reflection flow)
 
-Remove code and tests that existed only for completed one-time data migrations
-(startup migrations, incident-remediation scripts, archived one-offs).
+Additive, optional 5-step flow reachable from the Dashboard (`?view=check-in&step=N`).
+Nothing existing is removed or replaced; Today/All/Schedule, Dashboard, Routines and
+Goals keep working unchanged.
 
-- [x] 1. Remove completed startup migrations (`src/server/migrations/` 001–003 + runner)
-      and the `runStartupMigrations` call in `src/server/index.ts` (commit 1)
-- [x] 2. Drop the migration-era startup duplicate-key preflight scan in
-      `src/server/lib/mongoClient.ts` (+ its test); handle E11000 in the createIndex
-      catch instead (commit 2)
-- [x] 3. Remove one-time migration/incident scripts: `scripts/migrations/` (incl. its
-      test), `scripts/debug/`, `docs/migrations/`, stale `.gitignore` entries (commit 3)
-- [x] 4. Delete `archive/old-scripts/` (already-retired one-offs) and drop the
-      `archive` ESLint ignore (commit 4)
-- [x] 5. Update living docs: `docs/DOC_INDEX.md`, `docs/maintenance/verification.md`
-      (commit 5)
-- [x] 6. Verify: `npm run build`, `npm run lint:beta`, `npm run test:beta`; push + PR
+## Findings (repo inspection)
 
-Design decisions:
-- Startup migrations 002/003 are recorded complete in the `_migrations` collection in
-  any environment that has run this code; a fresh DB has no legacy data to migrate, so
-  the runner is a no-op everywhere and safe to delete.
-- The per-startup duplicate-key aggregation existed only to guard the one-time
-  dedupe/unique-index transition. If a legacy DB with duplicates ever appears,
-  `createIndex` fails with E11000 and is logged non-fatally — same net behavior
-  (index skipped, warning logged) without a full-collection scan on every boot.
-- `noDayLogImports.test.ts` is kept: it enforces the documented "removed collections"
-  invariant from CLAUDE.md and is part of the CI beta suite.
-- Historical snapshot docs (postmortem, repo-cleanup-audit, archives, ios-discovery)
-  keep their stale path references; only living docs are updated.
+- React 19 + Vite, query-string routing in `src/App.tsx` (`?view=`), React Context stores.
+- Persistence is server-first (Express + MongoDB via `src/lib/persistenceClient.ts`);
+  no local-first store. `habitEntries` is canonical behavioral truth — one active entry
+  per (user, habit, dayKey); completion is always derived.
+- "Today's habits" = `getTodayHabitStats(...).scheduledHabitsForToday` (shared by Today
+  view + dashboard ring). Numeric habits already have a native partial state
+  (value below target); boolean habits are complete/incomplete only.
+- Streaks/momentum come from `useProgressOverview()` (`habitsToday[].currentStreak`,
+  `momentum.global`); `hideStreaks` pref must be respected.
+
+## Design decisions
+
+- **Completion stays in `habitEntries`.** Done = derived from entries. Selecting Done
+  writes a completion through the same store calls the Today view uses
+  (`upsertHabitEntry` / checklist `toggleHabit` / choice child pick). Partial/Skip on a
+  habit that is currently complete un-complete it exactly like unchecking in Today
+  (soft delete via `deleteHabitEntryByKey`); otherwise entries are never touched.
+  Numeric Partial offers an amount input (below-target value = native partial).
+- **New reflective collection `dailyCheckIns`** — one doc per (household, user, dayKey):
+  `status` (in_progress | complete; not_started = no doc), `currentStep`, `startedAt`,
+  `completedAt`, and per-habit `{ completionStatus: partial|skipped|null, moodScore,
+  moodTags, effortScore, journalEntry }`. Never stores "done". `complete` is sticky.
+- **Drafts:** hook keeps an on-device mirror (localStorage, keyed by session userId +
+  dayKey, skipped in read-only demo) + debounced server sync, so refresh/exit never
+  loses input; a dirty local mirror wins on reload and is re-synced.
+- Steps 3/4 cycle through Done/Partial habits inside the page (global page stays 3/5 or
+  4/5). Skipped/unmarked habits need no reflection.
+
+## Plan (one commit per item)
+
+- [ ] 1. Plan (this file)
+- [ ] 2. Server: `dailyCheckIns` types + repository + `GET/PUT /api/dailyCheckIns/:dayKey`
+      + user-data deletion + repository/route tests
+- [ ] 3. Client: API functions, pure helpers (status resolution, step navigation, time
+      estimate, summary) and `useDailyCheckIn` draft/sync hook + unit tests
+- [ ] 4. Wizard UI: `CheckInPage` (5 steps) + components, `?view=check-in&step=N`
+      routing with history/back support, a11y + reduced motion + component tests
+- [ ] 5. Dashboard entry point: `DailyCheckInCard` (not started / in progress / complete)
+      + tests
+- [ ] 6. Docs: FEATURES.md, HABITFLOW_UI_ARCHITECTURE.md, API.md, DATA_MODEL.md,
+      "How HabitFlow Works" modal
+- [ ] 7. Verify: `npm run build`, lint, full test suite, mobile visual pass vs mockups;
+      push + PR
+
+## Review
+
+(filled in at the end)
