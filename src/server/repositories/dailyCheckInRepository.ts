@@ -57,6 +57,11 @@ export async function getDailyCheckIn(
  * Create or replace the check-in for a day. `startedAt` is set once on
  * insert; completion is sticky (an already-complete check-in stays complete
  * and keeps its original `completedAt`).
+ *
+ * A single pipeline update evaluates stickiness against the stored document
+ * atomically, so even saves from two devices racing each other can never
+ * reopen a completed check-in. Client data is wrapped in $literal so text
+ * starting with "$" is stored as-is rather than read as a field path.
  */
 export async function upsertDailyCheckIn(
   householdId: string,
@@ -67,36 +72,26 @@ export async function upsertDailyCheckIn(
   const scope = requireScope(householdId, userId);
   await ensureIndexes();
   const db = await getDb();
-  const collection = db.collection(COLLECTION);
-  const filter = scopeFilter(scope.householdId, scope.userId, { dayKey });
-
-  const existing = await collection.findOne(filter, { projection: { status: 1, completedAt: 1 } });
   const now = new Date().toISOString();
-  const status: DailyCheckInStatus =
-    existing?.status === 'complete' || input.status === 'complete' ? 'complete' : 'in_progress';
-  const completedAt = status === 'complete'
-    ? (typeof existing?.completedAt === 'string' ? existing.completedAt : now)
-    : null;
+  const isComplete = input.status === 'complete' ? true : { $eq: ['$status', 'complete'] };
 
-  const result = await collection.findOneAndUpdate(
-    filter,
-    {
-      $set: {
-        status,
-        currentStep: input.currentStep,
-        habits: input.habits,
-        completedAt,
-        updatedAt: now,
+  // On insert, the filter's equality fields (householdId, userId, dayKey) seed the document.
+  const result = await db.collection(COLLECTION).findOneAndUpdate(
+    scopeFilter(scope.householdId, scope.userId, { dayKey }),
+    [
+      {
+        $set: {
+          status: { $cond: [isComplete, 'complete', 'in_progress'] },
+          completedAt: { $cond: [isComplete, { $ifNull: ['$completedAt', now] }, null] },
+          currentStep: { $literal: input.currentStep },
+          habits: { $literal: input.habits },
+          updatedAt: now,
+          id: { $ifNull: ['$id', randomUUID()] },
+          startedAt: { $ifNull: ['$startedAt', now] },
+          createdAt: { $ifNull: ['$createdAt', now] },
+        },
       },
-      $setOnInsert: {
-        id: randomUUID(),
-        householdId: scope.householdId,
-        userId: scope.userId,
-        dayKey,
-        startedAt: now,
-        createdAt: now,
-      },
-    },
+    ],
     { upsert: true, returnDocument: 'after' }
   );
   if (!result) {

@@ -105,6 +105,30 @@ describe('DailyCheckInRepository', () => {
     expect(edited.habits[0].moodScore).toBe(5);
   });
 
+  it('keeps completion sticky when an in-progress save races a completion', async () => {
+    for (let i = 1; i <= 10; i++) {
+      const day = `2026-11-${String(i).padStart(2, '0')}`;
+      await upsertDailyCheckIn(HOUSEHOLD_ID, USER_ID, day, { status: 'in_progress', currentStep: 2, habits: [] });
+      // Two devices saving at once: whichever write lands last, completion must survive.
+      await Promise.all([
+        upsertDailyCheckIn(HOUSEHOLD_ID, USER_ID, day, { status: 'complete', currentStep: 5, habits: [] }),
+        upsertDailyCheckIn(HOUSEHOLD_ID, USER_ID, day, { status: 'in_progress', currentStep: 4, habits: [] }),
+      ]);
+      const stored = await getDailyCheckIn(HOUSEHOLD_ID, USER_ID, day);
+      expect(stored?.status).toBe('complete');
+      expect(stored?.completedAt).toBeTruthy();
+    }
+  });
+
+  it('stores reflection text verbatim, including text that starts with "$"', async () => {
+    const saved = await upsertDailyCheckIn(HOUSEHOLD_ID, USER_ID, DAY, {
+      status: 'in_progress',
+      currentStep: 5,
+      habits: [reflection('habit-a', { journalEntry: '$status: saved $20 on takeout' })],
+    });
+    expect(saved.habits[0].journalEntry).toBe('$status: saved $20 on takeout');
+  });
+
   it('keeps each day separate so a new day never overwrites a prior check-in', async () => {
     await upsertDailyCheckIn(HOUSEHOLD_ID, USER_ID, DAY, {
       status: 'complete',
