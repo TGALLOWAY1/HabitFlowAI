@@ -20,7 +20,7 @@ import { PRIMARY_BUTTON, SECONDARY_TEXT_BUTTON } from '../components/check-in/ch
 import {
     CHECK_IN_LAST_STEP,
     buildCheckInSummary,
-    estimateRemainingMinutes,
+    estimateCheckInMinutes,
     formatStreakLabel,
     getCheckInHabitTruth,
     getCheckInHabits,
@@ -53,6 +53,11 @@ function readStepFromUrl(): number {
     return parseCheckInStep(new URLSearchParams(window.location.search).get('step'));
 }
 
+/** The app scrolls inside one container that persists across views. */
+function scrollAppToTop(): void {
+    document.querySelector('main.app-scroll')?.scrollTo?.({ top: 0 });
+}
+
 interface CheckInPageProps {
     /** Leave the flow. Progress is saved continuously, so nothing is lost. */
     onExit: () => void;
@@ -64,7 +69,16 @@ interface CheckInPageProps {
  * store calls as the Today view, so habitEntries stay the only completion
  * truth; reflections persist via useDailyCheckIn.
  */
-export const CheckInPage: React.FC<CheckInPageProps> = ({ onExit }) => {
+export const CheckInPage: React.FC<CheckInPageProps> = ({ onExit: exitFlow }) => {
+    // Start each visit at the top, and hand the next view an unscrolled page.
+    useEffect(() => {
+        scrollAppToTop();
+    }, []);
+    const onExit = useCallback(() => {
+        scrollAppToTop();
+        exitFlow();
+    }, [exitFlow]);
+
     const {
         habits,
         categories,
@@ -209,7 +223,7 @@ export const CheckInPage: React.FC<CheckInPageProps> = ({ onExit }) => {
         if (!focusHeadingRef.current) return;
         focusHeadingRef.current = false;
         headingRef.current?.focus({ preventScroll: true });
-        document.querySelector('main.app-scroll')?.scrollTo?.({ top: 0 });
+        scrollAppToTop();
     }, [step, currentReflectIndex]);
 
     const showReflectIndex = (index: number) => {
@@ -354,11 +368,7 @@ export const CheckInPage: React.FC<CheckInPageProps> = ({ onExit }) => {
 
     const reflectRow = reflectRows[currentReflectIndex];
     const isCycling = (step === 3 || step === 4) && reflectRows.length > 0;
-    const minutesLeft = estimateRemainingMinutes(
-        step,
-        rows.length,
-        step <= 2 ? reflectRows.length + unmarkedCount : reflectRows.length,
-    );
+    const minutesLeft = estimateCheckInMinutes(step, rows.map(row => row.status));
 
     let primaryLabel: string;
     let onPrimary: () => void = goNext;

@@ -690,6 +690,7 @@ const HabitTrackerContent: React.FC = () => {
             onNavigateToTasks={() => handleNavigate('tasks')}
             onNavigateToGoals={() => handleNavigate('goals')}
             onNavigate={(route) => handleNavigate(route as AppRoute)}
+            onOpenCheckIn={(step) => handleNavigate('check-in', { step: String(step) })}
           />
         ) : view === 'wellbeing-history' ? (
           <WellbeingHistoryPage onBack={() => handleNavigate('dashboard')} />

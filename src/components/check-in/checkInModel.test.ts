@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { Category, DayLog, Habit } from '../../types';
 import {
     buildCheckInSummary,
+    estimateCheckInMinutes,
     estimateRemainingMinutes,
     formatStreakLabel,
     getRadioKeyTarget,
@@ -137,6 +138,14 @@ describe('estimateRemainingMinutes', () => {
         expect(estimateRemainingMinutes(1, 4, 4)).toBe(2);
         expect(estimateRemainingMinutes(5, 4, 4)).toBe(1);
         expect(estimateRemainingMinutes(1, 22, 22)).toBeGreaterThan(estimateRemainingMinutes(1, 4, 4));
+    });
+
+    it('counts unmarked habits as possible reflections until page 2 is done', () => {
+        const statuses = ['skipped', null, null, null, null, null] as const;
+        // 6 habits on page 2: 30s marking + 5 possible reflections (50s mood + 25s effort) + 30s wrap-up.
+        expect(estimateCheckInMinutes(2, statuses)).toBe(3);
+        // From page 3 on only done/partial habits matter (none here).
+        expect(estimateCheckInMinutes(3, statuses)).toBe(1);
     });
 });
 

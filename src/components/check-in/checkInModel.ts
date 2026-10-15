@@ -161,6 +161,16 @@ export function estimateRemainingMinutes(step: number, habitCount: number, refle
     return Math.max(1, Math.ceil(seconds / 60));
 }
 
+/**
+ * Minutes left given each habit's status. Until page 2 is answered, unmarked
+ * habits may still need reflection, so they count toward pages 3 and 4.
+ */
+export function estimateCheckInMinutes(step: number, statuses: ReadonlyArray<CheckInCompletionStatus | null>): number {
+    const reflectCount = statuses.filter(needsReflection).length;
+    const unmarkedCount = statuses.filter(status => status === null).length;
+    return estimateRemainingMinutes(step, statuses.length, step <= 2 ? reflectCount + unmarkedCount : reflectCount);
+}
+
 // ─── Scales & tags ─────────────────────────────────────────────────────────
 
 export interface ScaleOption {
