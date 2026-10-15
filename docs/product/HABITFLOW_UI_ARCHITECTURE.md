@@ -42,6 +42,7 @@ HabitFlow App
 ├── Bottom Tab Bar (4 tabs)
 │   ├── Dashboard
 │   │   ├── Setup Guide (onboarding)
+│   │   ├── Daily Check-in card (not started: "N habits waiting · ~M min" → Start; in progress: "X of 5 steps complete" → Continue at the saved page; complete: "N habits logged" → View summary)
 │   │   ├── Top cards (two-column grid: narrow status card left, wide action card right)
 │   │   │   ├── Daily Habits (narrow; completion ring + count, e.g. 0/22)
 │   │   │   ├── Wellbeing (wide; status: Morning/Evening/Sleep; actions: ☀️ Morning, 🌙 Evening, 💊 Health; chevron → Wellbeing Overview → 📈 Insights page)
@@ -84,6 +85,13 @@ HabitFlow App
 │       ├── Goal Detail Page (charts, entries, linked habits)
 │       ├── Edit Goal (→ modal)
 │       └── Goal Completed Page (celebration)
+│
+├── Daily Check-in (via Dashboard card or `?view=check-in&step=1..5`; optional guided flow, Habits tab stays highlighted)
+│   ├── 1 Intro — today's scheduled habits, date, time estimate, what to expect
+│   ├── 2 What did you complete? — Done / Partial / Skip per habit (numeric Partial asks "How much?"; choice bundles ask which option)
+│   ├── 3 How did it feel? — emoji mood scale + optional tags, cycling through done/partial habits ("1 of 3")
+│   ├── 4 How much effort did it take? — 1–5 effort, same cycling
+│   └── 5 Wrap up your day — per-habit journal notes + Today's Summary → Complete Check-in
 │
 ├── Journal (via dashboard card or direct URL; dashboard card deep-links via `?tab=`)
 │   ├── AI Weekly Summary Banner (user-requested via button, dismissible)
@@ -141,7 +149,8 @@ Consequences for new UI:
 
 | Screen Name | Type | How Opened | Purpose | Related Objects | Can Navigate To |
 |---|---|---|---|---|---|
-| Dashboard | Page | Bottom tab / default view | Overview hub with progress, shortcuts | Goals, Routines, Habits, Journal, Tasks, Wellbeing | Goal Detail, Tracker, Routines, Journal, Tasks, Wellbeing History, Check-in Modal |
+| Dashboard | Page | Bottom tab / default view | Overview hub with progress, shortcuts | Goals, Routines, Habits, Journal, Tasks, Wellbeing | Goal Detail, Tracker, Routines, Journal, Tasks, Wellbeing History, Check-in Modal, Daily Check-in |
+| Daily Check-in | Page (5-step flow) | Dashboard Daily Check-in card / `?view=check-in&step=1..5` | Optional guided daily reflection: intro → Done/Partial/Skip per habit → mood (emoji scale + tags) → effort (1–5) → per-habit journal + Today's Summary. Every page has back, segmented progress ("Page X / 5"), time estimate, sticky primary action and "Finish later". Steps are in the URL (pushState), so refresh and browser back work; drafts persist continuously and resume from the card. Done/Partial/Skip writes go through the same habit-store calls as the Today view | Habits, Entries, Daily Check-ins | Dashboard (Finish later / Complete), Habits tab |
 | Tracker (Grid) | Page | Bottom tab "Habits" | Grid of habits by category, daily logging | Habits, Categories, Entries | Add Habit Modal, Habit History, Category Picker |
 | Tracker (Today) | Page | View toggle on Tracker | Single-day habit view grouped by category, with full action icons (history, edit, delete, move, bundle) in expanded card | Habits, Entries | Same as Grid |
 | Tracker (Weekly) | Page | View toggle on Tracker | Week-at-a-glance overview | Habits, Entries | Same as Grid |
@@ -223,7 +232,7 @@ seeded demo data, with three chrome additions:
 The beta-gated Analytics and Insights pages are viewable in demo mode (labeled Beta).
 See `docs/DEMO_ARCHITECTURE.md` for the full mechanism.
 
-**Total: 16 pages + 17 modals + 2 feature-gated surfaces + demo chrome = 35+ distinct UI surfaces**
+**Total: 17 pages + 17 modals + 2 feature-gated surfaces + demo chrome = 36+ distinct UI surfaces**
 
 ---
 
@@ -241,6 +250,7 @@ graph TB
     subgraph "Dashboard"
         DASH["Progress Dashboard"]
         DASH --> CHECKIN_MODAL["Wellbeing (Morning/Evening/Health/Overview)"]
+        DASH --> DAILY_CHECKIN["Daily Check-in (5 pages: intro → completion → mood → effort → wrap-up)"]
         DASH --> GOAL_DETAIL
         DASH --> TAB_HABITS
         DASH --> ROUTINE_RUNNER
@@ -355,6 +365,7 @@ graph TB
 | Action | Location |
 |---|---|
 | **Log boolean** | Tracker grid checkbox click |
+| **Log via Daily Check-in** | Daily Check-in page 2 → Done (writes the same entry as the tracker), Partial (numeric: "How much?" amount; boolean: recorded on the check-in only), Skip (check-in only). Partial/Skip on an already-completed habit un-completes it, exactly like unchecking in Today |
 | **Log numeric** | Tracker grid → Habit Log Modal or inline popover |
 | **Batch log (routine)** | Routine Runner completion → auto-creates entries |
 | **Auto-log (health)** | Apple Health sync → rule evaluation → auto-created entry (feature-gated) |
@@ -500,6 +511,17 @@ graph TB
 4. Select one option → entry logged for that choice
 5. Only one option active per day
 
+### Complete a Daily Check-in
+
+1. **Start:** Dashboard → Daily Check-in card → "Start check-in" (`?view=check-in&step=1`)
+2. Page 1 lists today's scheduled habits with a time estimate → "Start Daily Check-in"
+3. Page 2: mark each habit Done / Partial / Skip (Done writes a habit entry; numeric Partial asks "How much?"; choice bundles ask which option) → "Continue to Reflection"
+4. Page 3: for each Done/Partial habit ("1 of 3"), pick an emoji mood and optional tags → "Next habit" / "Continue" (skipped if nothing needs reflection)
+5. Page 4: same cycle for effort 1–5
+6. Page 5: optional journal note per habit, Today's Summary (completed / partial / skipped, mood, average effort, streak or momentum) → "Complete Check-in"
+7. Returns to Dashboard with a confirmation toast; the card shows "Today's check-in complete" → "View summary"
+8. **Leaving early:** "Finish later", the tab bar, or closing the app keeps all answers; the card shows "Continue check-in" and resumes on the saved page
+
 ### Navigate from Dashboard to Deeper Pages
 
 1. **To Goal Detail:** Click pinned goal card → Goal Detail Page
@@ -509,6 +531,7 @@ graph TB
 5. **To Tasks:** Click tasks card → Tasks Page
 6. **To Wellbeing History:** Click wellbeing link → Wellbeing History Page
 7. **To Create Goal:** Click "+ Goal" → Create Goal Flow
+8. **To Daily Check-in:** Click the Daily Check-in card's action → Daily Check-in page (intro, saved page, or summary)
 
 ---
 
@@ -542,6 +565,7 @@ graph TB
 - **Sub-views:** Tracker has Grid/Today/Weekly toggle — same page, different rendering
 - **URL sync:** All views use `?view=...` query params; browser back/forward supported
 - **Goal ID in URL:** `?view=goals&goalId=...` deep-links to goal detail
+- **Multi-step flows in URL:** `?view=check-in&step=N` — each step change pushes a history entry, so browser back walks back through the Daily Check-in pages
 
 ### Bundle Behavior
 
@@ -610,5 +634,5 @@ This document **must be updated** whenever:
 
 ## 10. Last Updated
 
-- **Date:** 2026-07-01
-- **Branch:** `claude/habitflow-onboarding-demo-fmyy1v`
+- **Date:** 2026-10-15
+- **Branch:** `claude/daily-check-in-flow`

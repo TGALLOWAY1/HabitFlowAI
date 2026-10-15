@@ -8,6 +8,13 @@ dated by when the work landed on `main`. Format loosely follows
 
 ## Unreleased
 
+### Added
+- **Daily Check-in.** Optional guided five-page flow (`?view=check-in&step=1..5`) reached from a new
+  Dashboard card: today's habits → Done / Partial / Skip → emoji mood + tags → effort (1–5) → per-habit
+  journal and a daily summary. Done writes ordinary habit entries (habitEntries stays the only completion
+  truth); reflections, partial/skipped states and the resume step live in a new per-day `dailyCheckIns`
+  record (`GET/PUT /api/dailyCheckIns/:dayKey`). Drafts survive refresh and leaving mid-flow.
+
 ### Changed
 - **Gemini 3.5 Flash upgrade.** All AI routes (Weekly Review, Journal Review, Journal Summary, Variant
   Suggestions) now call `gemini-3.5-flash` through a shared `src/server/lib/gemini.ts` helper (model id,

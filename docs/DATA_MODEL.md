@@ -31,6 +31,7 @@ Defined in `src/models/persistenceTypes.ts` (`MONGO_COLLECTIONS`). **Current** c
 - `healthSuggestions` (pending suggestions from health rule evaluation)
 - `aiReports` (archived AI-generated insights — Weekly Review, Journal Summary — for history; generated artifacts, not derived truth; soft-deleted)
 - `pushSubscriptions` (Web Push device registrations — operational device data, NOT truth; one doc per user+device endpoint with per-device IANA `timeZone`; unique index on `householdId+userId+endpoint`; gone endpoints soft-disabled via `disabledAt`, revived on re-subscribe; hard-deleted on user unsubscribe)
+- `dailyCheckIns` (Daily Check-in reflections — one doc per household+user+dayKey, unique index; resume step, lifecycle, and per-habit mood/tags/effort/journal plus the supplemental `partial`/`skipped` states. Reflective, NOT behavioral truth: never stores completion)
 - `pushSendLog` (reminder send-dedup ledger — operational, NOT truth; unique index on `habitId+dayKey+endpoint` makes scheduler sends at-most-once; rows expire via 48h TTL on `sentAt`)
 
 **Removed / no longer used:** `dayLogs`, `goalManualLogs`. Do not reference these in new code or docs.
@@ -49,7 +50,7 @@ Pending suggestions created when a `suggest` rule is satisfied. User must accept
 ## Truth Ownership
 
 - **Behavioral truth:** `habitEntries` only. Completion and progress are derived at read time, not stored.
-- **Reflective truth:** `journalEntries`
+- **Reflective truth:** `journalEntries`; Daily Check-in reflections in `dailyCheckIns`
 - **Subjective-state truth:** `wellbeingEntries`
 - **Derived read-model surfaces** (computed from entries, not stored): day view, day summary, progress/overview, streaks, goal progress.
 
@@ -96,6 +97,20 @@ Cumulative goals may declare intermediate stages via `Goal.milestones`. Each ent
 Milestone *completion* is derived at read time from HabitEntries (see `src/server/utils/goalProgressUtilsV2.ts` → `computeMilestoneStates`); only the configuration above and `acknowledgedAt` are stored. The server normalizes the array to ascending order by `value` on write.
 
 `acknowledgedAt` is the only progress-adjacent field stored on the goal. It mirrors `Goal.completedAt`: derived completion remains canonical, while the acknowledgment marker keeps the celebration screen idempotent across reloads.
+
+## Daily Check-ins
+
+`dailyCheckIns` holds one document per `(householdId, userId, dayKey)` for the optional Daily Check-in flow:
+`status` (`in_progress` | `complete`; no document = not started), `currentStep` (1–5 resume point), `startedAt`,
+`completedAt`, and `habits[]` reflections `{ habitId, completionStatus, moodScore, moodTags, effortScore, journalEntry }`.
+
+- **Completion stays in `habitEntries`.** A habit is "done" in the check-in only when its entries say so;
+  `completionStatus` only records what entries cannot express — `partial` (e.g. a boolean habit partly done) and
+  `skipped`. The API rejects `done`.
+- Choosing Done in the flow writes a normal habit entry; choosing Partial/Skip for a completed habit soft-deletes
+  that day's entry, exactly like unchecking it in the Today view.
+- `complete` is sticky (re-editing never reopens it and keeps the first `completedAt`). Each day is its own
+  document, so a new day never overwrites earlier check-ins. Included in delete-all-data.
 
 ## DayKey Boundary
 

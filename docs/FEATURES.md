@@ -14,6 +14,7 @@ Every feature area below is **Shipped** unless an item notes otherwise.
 | Area | Status | Notes |
 |---|---|---|
 | Habits | Shipped | Tracking, scheduling, categories, bundles, linking, streaks, archiving |
+| Daily Check-in | Shipped | Optional guided 5-page flow: Done/Partial/Skip, mood, effort, per-habit journal, daily summary |
 | Routines | Shipped | Variants, timers, images, runner, AI variant suggestions, auto-logging |
 | Goals & Tracks | Shipped | Cumulative/one-time, milestones, trends, achievements, ordered tracks |
 | Tasks | Shipped | Today/Inbox lists; slated to move out of primary nav (see roadmap) |
@@ -23,7 +24,7 @@ Every feature area below is **Shipped** unless an item notes otherwise.
 | Sleep Analytics | Shipped | Dedicated Sleep tab; Apple Watch sleep score, consistency, correlations |
 | AI Features (Gemini BYOK) | Shipped | Header AI hub (Wellbeing Summary, Weekly Review, Journal Insights), summaries, variant suggestions |
 | Apple Health Integration | Beta | Email-allowlisted users only; requires external sync bridge |
-| Dashboard | Shipped | Daily habits ring, check-in & journal action cards, pinned goals/routines, tasks, setup guide |
+| Dashboard | Shipped | Daily Check-in card, daily habits ring, check-in & journal action cards, pinned goals/routines, tasks, setup guide |
 | Views | Shipped | Tracker grid, Day view, weekly Schedule view |
 | Settings & Account | Shipped | API key, archived habits, delete-all-data |
 | Demo & Tour | Shipped | Interactive guided tour, read-only public demo (seeded data), Roadmap page |
@@ -53,6 +54,21 @@ Every feature area below is **Shipped** unless an item notes otherwise.
 - **Remove Habit Modal (goal-linked habits and bundles)** — Removing a habit linked to one or more goals, or a bundle with sub-habits, opens a chooser listing affected goals and sub-habits and offering two paths: **Archive** (recommended, restorable) or **Delete permanently** (soft-delete, not restorable from UI). Historical goal progress is preserved either way — past entries keep contributing to the goal — but only Archive lets you bring the habit itself back without re-creating it. For bundles, an optional checkbox archives the sub-habits along with the parent; otherwise they remain as standalone habits
 - **Reordering** — Drag-and-drop to reorder habits within categories
 - **Push Reminders** — Set a reminder time per habit (create/edit modal, Schedule section); a Web Push notification fires at that local time on the habit's assigned days and is skipped when the habit is already completed that day. A "Remind on" day picker (shown once a time is set) optionally narrows notifications to specific days of the week (`reminderDays`) — notification-only, so a flexible weekly habit (e.g. 3×/week with grace days) keeps its quota semantics while reminding only on the chosen days; a reminder day outside the habit's assigned days never fires. Bundles can have reminders too: a choice bundle counts as done once any child is completed, a checklist bundle once its success rule is met. Notifications are enabled per device from **Settings → Notifications** (test-send included); on iPhone/iPad the app must be added to the Home Screen first (iOS 16.4+). Server-side the feature is gated by `PUSH_REMINDERS_ENABLED` + VAPID keys, and the in-process scheduler requires an always-on backend instance
+
+## Daily Check-in
+
+An optional guided reflection flow layered on top of habit tracking (`?view=check-in&step=1..5`).
+It shares completion data with the tracker and never replaces it.
+
+- **Dashboard entry point** — A card at the top of the Dashboard with three states: not started ("4 habits waiting · ~2 min" → Start check-in), in progress ("2 of 5 steps complete" → Continue check-in, resuming on the saved page), and complete ("Today's check-in complete · 4 habits logged" → View summary). Hidden when nothing is scheduled today
+- **Page 1 · Intro** — Today's scheduled habits (the same set as the Today view), the date, an estimated time, and what to expect
+- **Page 2 · What did you complete?** — Done / Partial / Skip for each habit, with current streaks. Done writes a normal habit entry (boolean = 1, numeric = target, checklist bundle = all items, choice bundle asks which option). Numeric Partial asks "How much?" and saves the below-target amount. Boolean Partial and Skip are recorded on the check-in only. Choosing Partial or Skip for an already-completed habit un-completes it exactly like unchecking it in Today
+- **Page 3 · How did it feel?** — 5-point emoji mood scale (Really tough → Felt great) plus optional tags (Calm, Energized, Focused, Distracted, Proud, Tired), cycling through Done/Partial habits ("1 of 3") within the page. Skipped habits need no reflection
+- **Page 4 · How much effort did it take?** — 1–5 effort (Very easy → Very hard) with the same cycling. Pages 3–4 are skipped when nothing was done or partly done
+- **Page 5 · Wrap up your day** — Optional journal note per habit ("What helped? What got in the way?", up to 500 characters) and Today's Summary: habits completed, partial/skipped counts, average mood, average effort, and the longest streak kept alive today (honours "Hide streaks") or current momentum
+- **Save & resume** — Answers save continuously (an on-device copy plus server sync), so leaving mid-flow, refreshing, or switching devices keeps progress; every page has "Finish later". Each day is its own check-in: a new day starts fresh and earlier days stay intact. Completing it again later updates the same day
+- **Accessibility** — Back control and "Step X of 5" progress on every page, keyboard-operable scales (arrow keys), screen-reader labels for every emoji/effort value, labelled journal fields, focus moves to each new page, and reduced-motion preferences respected
+- **Data** — Stored per day in `dailyCheckIns` (a reflective record). Completion is never stored there: "done" always comes from habit entries
 
 ## Routines
 
@@ -214,6 +230,7 @@ Every feature area below is **Shipped** unless an item notes otherwise.
 
 ## Dashboard
 
+- **Daily Check-in Card** — Top-of-dashboard entry point to the Daily Check-in with Start / Continue / View summary states (see Daily Check-in)
 - **Daily Habits Card** — Narrow status card showing the daily completion ring and count (e.g. 0/22)
 - **Wellbeing Card** — Wide card showing today's status (Morning / Evening / Sleep) and three actions: ☀️ Morning, 🌙 Evening, 💊 Health; chevron opens the Wellbeing Overview (which still links to the Insights page)
 - **Goals at a Glance** — Pinned goals with progress bars (configurable which goals to pin)
