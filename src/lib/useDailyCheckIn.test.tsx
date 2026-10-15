@@ -161,6 +161,40 @@ describe('useDailyCheckIn', () => {
         expect(result.current.draft?.completedAt).toBe('2026-10-12T21:00:00.000Z');
     });
 
+    it('never lets the response to an older in-flight save downgrade a completion', async () => {
+        mocks.fetchDailyCheckIn.mockResolvedValue(serverCheckIn());
+        const { result } = renderHook(() => useDailyCheckIn(DAY));
+        await waitFor(() => expect(result.current.loading).toBe(false));
+
+        // An autosave is still in flight when the user taps Complete.
+        let releaseAutosave!: () => void;
+        mocks.saveDailyCheckIn.mockImplementationOnce((_dayKey: string, payload: { status: DailyCheckIn['status']; currentStep: number }) =>
+            new Promise<DailyCheckIn>(resolve => {
+                releaseAutosave = () => resolve(serverCheckIn({ status: payload.status, currentStep: payload.currentStep }));
+            }),
+        );
+        act(() => result.current.updateHabit('h1', { journalEntry: 'Wrote this just before completing' }));
+        let autosave!: Promise<boolean>;
+        let completion!: Promise<boolean>;
+        act(() => {
+            autosave = result.current.flush();
+            completion = result.current.complete();
+        });
+
+        let completed = false;
+        await act(async () => {
+            releaseAutosave();
+            await autosave;
+            completed = await completion;
+        });
+
+        expect(completed).toBe(true);
+        const calls = mocks.saveDailyCheckIn.mock.calls;
+        expect(calls).toHaveLength(2);
+        expect(calls[1][1]).toMatchObject({ status: 'complete', currentStep: 5 });
+        expect(result.current.phase).toBe('complete');
+    });
+
     it('keeps edits on-device and surfaces an error when sync fails, then retries', async () => {
         mocks.fetchDailyCheckIn.mockResolvedValue(serverCheckIn());
         mocks.saveDailyCheckIn.mockRejectedValueOnce(new Error('offline'));

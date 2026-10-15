@@ -134,13 +134,16 @@ export function useDailyCheckIn(dayKey: string) {
         try {
             const saved = await request;
             setSaveError(null);
-            // Adopt server-owned lifecycle fields without clobbering newer local edits.
+            // Adopt server-owned lifecycle fields without clobbering newer local
+            // edits. Completion is sticky on both sides: the response to an
+            // older in-progress save must never downgrade a completion made since.
             const current = draftRef.current ?? snapshot;
+            const complete = saved.status === 'complete' || current.status === 'complete';
             const merged: DailyCheckInDraft = {
                 ...current,
-                status: saved.status,
+                status: complete ? 'complete' : 'in_progress',
                 startedAt: saved.startedAt,
-                completedAt: saved.completedAt,
+                completedAt: complete ? (saved.completedAt ?? current.completedAt) : null,
             };
             draftRef.current = merged;
             setDraft(merged);
