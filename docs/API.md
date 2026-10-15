@@ -115,6 +115,18 @@ Cumulative goals may declare intermediate stages via the optional `milestones` f
 
 `POST /goals/:id/milestones/:milestoneId/acknowledge` sets `acknowledgedAt = now` on the matching milestone. Idempotent: a second call preserves the original timestamp. Returns the updated goal. The frontend invokes this after the user dismisses a milestone celebration screen so the celebration does not replay.
 
+## Daily Check-ins (Reflective)
+
+- `GET /dailyCheckIns/:dayKey` → `{ checkIn: DailyCheckIn | null }` (`null` = not started)
+- `PUT /dailyCheckIns/:dayKey` — body `{ status: 'in_progress' | 'complete', currentStep: 1-5, habits: HabitCheckIn[] }` → `{ checkIn }`
+
+The PUT body is the full mutable state and replaces the stored `habits` list. Each `HabitCheckIn`
+is `{ habitId, completionStatus: 'partial' | 'skipped' | null, moodScore: 1-5 | null, moodTags: string[], effortScore: 1-5 | null, journalEntry: string | null }`;
+`moodTags` must come from `DAILY_CHECK_IN_MOOD_TAGS` (`src/shared/dailyCheckIn.ts`) and `journalEntry` is at most
+500 characters. `completionStatus: 'done'` is rejected with 400 — completion is derived from habit entries.
+Records with no reflection are dropped. `startedAt` is set on first save; `complete` is sticky and keeps its
+original `completedAt`.
+
 ## Journal
 
 - `GET /journal`

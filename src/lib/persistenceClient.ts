@@ -9,6 +9,7 @@ import type { Category, Habit, DayLog, DailyWellbeing, Goal, GoalWithProgress, G
 import type { WellbeingEntry, WellbeingMetricKey } from '../models/persistenceTypes';
 import type { Medication, MedicationLog, Symptom, SymptomLog, Supplement, SupplementLog } from '../models/persistenceTypes';
 import type { DashboardPrefs, HouseholdUser } from '../models/persistenceTypes';
+import type { DailyCheckIn, DailyCheckInStatus, HabitCheckIn } from '../models/persistenceTypes';
 
 import type { GoalDetail, CompletedGoal, ProgressOverview, GoalTrackWithGoals } from '../types';
 import type { Task, CreateTaskRequest, UpdateTaskRequest } from '../types/task';
@@ -580,6 +581,25 @@ export async function updateDashboardPrefs(patch: Partial<Pick<DashboardPrefs, '
     body: JSON.stringify(patch),
   });
   return response.dashboardPrefs;
+}
+
+/**
+ * Daily Check-in (reflective record — habit completion stays in habitEntries)
+ */
+export async function fetchDailyCheckIn(dayKey: string): Promise<DailyCheckIn | null> {
+  const response = await apiRequest<{ checkIn: DailyCheckIn | null }>(`/dailyCheckIns/${encodeURIComponent(dayKey)}`);
+  return response.checkIn;
+}
+
+export async function saveDailyCheckIn(
+  dayKey: string,
+  payload: { status: DailyCheckInStatus; currentStep: number; habits: HabitCheckIn[] }
+): Promise<DailyCheckIn> {
+  const response = await apiRequest<{ checkIn: DailyCheckIn }>(`/dailyCheckIns/${encodeURIComponent(dayKey)}`, {
+    method: 'PUT',
+    body: JSON.stringify(payload),
+  });
+  return response.checkIn;
 }
 
 /**

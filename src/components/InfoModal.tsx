@@ -248,6 +248,26 @@ export function InfoModal({ isOpen, onClose }: InfoModalProps) {
                 </p>
               </div>
 
+              {/* Daily Check-in */}
+              <div className="pl-3 border-l-2 border-emerald-500/40">
+                <p className="text-sm text-neutral-200">
+                  <span className="font-bold text-emerald-400">Daily Check-in</span>
+                </p>
+                <p className="text-sm text-neutral-300 mt-1">
+                  An optional, guided way to wrap up your day from the Dashboard card: mark
+                  each of today's habits <span className="text-neutral-200">Done</span>,{' '}
+                  <span className="text-neutral-200">Partial</span>, or{' '}
+                  <span className="text-neutral-200">Skip</span>, rate how it felt and how much
+                  effort it took, add an optional note, and review a quick summary. Done counts
+                  exactly like checking the habit off in Today (a numeric Partial records the
+                  amount you got); Partial and Skip never count as completed.
+                </p>
+                <p className="text-xs text-neutral-500 mt-1.5">
+                  Takes a couple of minutes. Leave anytime — your answers are saved, and
+                  "Continue check-in" picks up where you stopped.
+                </p>
+              </div>
+
               {/* Link to advanced tab */}
               <div className="pt-2 border-t border-white/5">
                 <button

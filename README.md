@@ -15,6 +15,7 @@ Most habit trackers either oversimplify (a single "did you do it?" toggle) or dr
 ## Key features
 
 - Track **habits** (boolean or quantity) on a tracker grid, day view, or weekly schedule — with bundles, categories, streaks, and heatmaps.
+- Wrap up the day with an optional guided **Daily Check-in**: Done / Partial / Skip per habit, how it felt, effort, a note, and a summary.
 - Build and run multi-step **routines** with timers, images, and AI-generated variant suggestions.
 - Set **goals** (cumulative or one-time), link them to habits, and group them into ordered **goal tracks**.
 - Keep a **journal** with 11 persona-driven templates plus free-write.

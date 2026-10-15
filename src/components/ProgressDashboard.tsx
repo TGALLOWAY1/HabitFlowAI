@@ -9,6 +9,7 @@ import { Loader2, Pin } from 'lucide-react';
 import { GoalPulseCard } from './goals/GoalPulseCard';
 import { ActivitySection } from './ActivitySection';
 import { DailyOverviewCard } from './dashboard/DailyOverviewCard';
+import { DailyCheckInCard } from './dashboard/DailyCheckInCard';
 import { JournalCard } from './dashboard/JournalCard';
 import { TasksCard } from './dashboard/TasksCard';
 import { PinnedRoutinesCard } from './dashboard/PinnedRoutinesCard';
@@ -102,6 +103,8 @@ interface ProgressDashboardProps {
     onNavigateToTasks?: () => void;
     onNavigateToGoals?: () => void;
     onNavigate?: (route: string, params?: Record<string, string>) => void;
+    /** Open the Daily Check-in flow at a page (1 = intro). */
+    onOpenCheckIn?: (step: number) => void;
 }
 
 export const ProgressDashboard: React.FC<ProgressDashboardProps> = ({
@@ -116,6 +119,7 @@ export const ProgressDashboard: React.FC<ProgressDashboardProps> = ({
     onNavigateToTasks,
     onNavigateToGoals,
     onNavigate,
+    onOpenCheckIn,
 }) => {
     const { data: progressData, loading: progressLoading } = useProgressOverview();
     const goalsCount = progressData?.goalsWithProgress?.length ?? 0;
@@ -184,6 +188,9 @@ export const ProgressDashboard: React.FC<ProgressDashboardProps> = ({
                     forceOpen={guideForceOpen}
                 />
             )}
+
+            {/* Daily Check-in — optional guided reflection flow */}
+            {onOpenCheckIn && <DailyCheckInCard onOpen={onOpenCheckIn} />}
 
             {/* Top cards: narrow status card (left) + wide action card (right).
                 Both rows share one column template so the narrow cards match

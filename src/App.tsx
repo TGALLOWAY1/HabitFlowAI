@@ -69,9 +69,10 @@ const AnalyticsPage = lazyRetry(() => import('./pages/AnalyticsPage').then(m => 
 const AppleHealthPage = lazyRetry(() => import('./pages/AppleHealthPage').then(m => ({ default: m.AppleHealthPage })));
 const TourPage = lazyRetry(() => import('./pages/TourPage').then(m => ({ default: m.TourPage })));
 const RoadmapPage = lazyRetry(() => import('./pages/RoadmapPage').then(m => ({ default: m.RoadmapPage })));
+const CheckInPage = lazyRetry(() => import('./pages/CheckInPage').then(m => ({ default: m.CheckInPage })));
 
 // Simple router state
-type AppRoute = 'tracker' | 'dashboard' | 'routines' | 'goals' | 'wins' | 'journal' | 'tasks' | 'day' | 'debug-entries' | 'wellbeing-history' | 'analytics' | 'health' | 'tour' | 'roadmap';
+type AppRoute = 'tracker' | 'dashboard' | 'routines' | 'goals' | 'wins' | 'journal' | 'tasks' | 'day' | 'debug-entries' | 'wellbeing-history' | 'analytics' | 'health' | 'tour' | 'roadmap' | 'check-in';
 
 
 // Helper functions for URL syncing
@@ -113,6 +114,8 @@ function parseRouteFromLocation(location: Location): AppRoute {
       return "tour";
     case "roadmap":
       return "roadmap";
+    case "check-in":
+      return "check-in";
     default:
 
       return "dashboard"; // default view
@@ -131,6 +134,7 @@ function buildUrlForRoute(route: AppRoute, params: Record<string, string> = {}):
   // Clear any existing ID params to prevent leakage between views
   searchParams.delete("goalId");
   searchParams.delete("tab");
+  searchParams.delete("step");
 
   // Set new params
   Object.entries(params).forEach(([key, value]) => {
@@ -389,7 +393,7 @@ const HabitTrackerContent: React.FC = () => {
 
       <div className="flex flex-col gap-4">
         {/* Title Section */}
-        <div className={`flex flex-col gap-2 ${view === 'journal' || view === 'analytics' ? 'hidden' : ''}`}>
+        <div className={`flex flex-col gap-2 ${view === 'journal' || view === 'analytics' || view === 'check-in' ? 'hidden' : ''}`}>
           <div className="flex items-center justify-between">
             <h2 className="text-2xl font-bold text-white">
               {view === 'tracker' ? 'Habits' : view === 'dashboard' ? 'Dashboard' : view === 'routines' ? 'Routines' : view === 'tasks' ? 'Tasks' : 'Goals'}
@@ -514,7 +518,11 @@ const HabitTrackerContent: React.FC = () => {
 
       <Suspense fallback={<div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500" /></div>}>
       {
-        completedGoalId ? (
+        // Daily Check-in renders ahead of goal celebrations so a goal completed
+        // mid-flow celebrates after the user leaves instead of interrupting.
+        view === 'check-in' ? (
+          <CheckInPage onExit={() => handleNavigate('dashboard')} />
+        ) : completedGoalId ? (
           <GoalCompletedPage
             goalId={completedGoalId}
             onBack={() => {
@@ -682,6 +690,7 @@ const HabitTrackerContent: React.FC = () => {
             onNavigateToTasks={() => handleNavigate('tasks')}
             onNavigateToGoals={() => handleNavigate('goals')}
             onNavigate={(route) => handleNavigate(route as AppRoute)}
+            onOpenCheckIn={(step) => handleNavigate('check-in', { step: String(step) })}
           />
         ) : view === 'wellbeing-history' ? (
           <WellbeingHistoryPage onBack={() => handleNavigate('dashboard')} />
@@ -832,7 +841,8 @@ const HabitTrackerContent: React.FC = () => {
         />
       )}
 
-      <BottomTabBar activeView={view} onNavigate={handleNavigate} />
+      {/* The check-in is a habits flow, so the Habits tab stays highlighted. */}
+      <BottomTabBar activeView={view === 'check-in' ? 'tracker' : view} onNavigate={handleNavigate} />
     </div >
   );
 };
